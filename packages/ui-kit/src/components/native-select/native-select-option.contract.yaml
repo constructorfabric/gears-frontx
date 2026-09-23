@@ -1,0 +1,72 @@
+# Semantic overlay for NativeSelectOption - a part of the NativeSelect
+# family, see native-select.contract.yaml's `family_membership` for how the
+# three contracts relate.
+#
+# Machine-extractable facts do NOT belong here: the compiler takes them from
+# native-select.tsx and the <option> element surface, and rejects an overlay
+# that tries to restate them - one fact, one owner.
+component: native-select-option
+
+intent: One choice inside a NativeSelect, shown as its text and submitted as its value.
+
+typical_uses:
+  - One entry in a NativeSelect's list of choices
+
+dont_use_when:
+  - situation: Item content beyond plain text (an icon, a description, per-option styling)
+    instead:
+      target: SelectItem
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.select_item.v1
+
+# The option's text content is its caption, so plain text children are the
+# ordinary case; nothing else may appear inside - a picker flattens whatever
+# does.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: text-is-the-label-value-is-the-submission
+    text: >-
+      The option's text content is what the user sees in the picker and what
+      assistive tech announces; `value` is what the form submits and what the
+      select compares its own `value`/`defaultValue` against.
+
+anti_patterns:
+  - dont: Preselect this option by setting `selected` on it
+    do_instead: >-
+      Set `defaultValue` or `value` on the surrounding NativeSelect - React
+      warns on `selected`, and the select, not the option, owns the selection
+      state
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      native-select.test.tsx's option queries - getByRole('option', { name:
+      'Americas' }) and getByRole('option', { name: 'France' }) - which read
+      an option's announced name from its text content
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Two options in a select
+      code: |
+        <NativeSelect defaultValue="us" aria-label="Region">
+          <NativeSelectOption value="eu">Europe</NativeSelectOption>
+          <NativeSelectOption value="us">Americas</NativeSelectOption>
+        </NativeSelect>
+  bad:
+    - title: An option with no select around it
+      code: <NativeSelectOption value="eu">Europe</NativeSelectOption>
+      why: >-
+        An <option> holds no state of its own - the surrounding <select> owns
+        the selection - so outside one it is inert markup with no picker to
+        appear in.
+
+family_membership:
+  name: native_select
+  role: part

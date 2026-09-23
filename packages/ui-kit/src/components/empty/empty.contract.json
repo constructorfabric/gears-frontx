@@ -1,0 +1,112 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.empty.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "empty",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Stand in for a list, table or panel that has settled with nothing to show, explaining why and offering a way forward.",
+  "typical_uses": [
+    "A list, table or search result that returned zero items",
+    "A first-run panel shown before any data exists"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Data is still loading and the region is not yet known to be empty",
+      "instead": {
+        "target": "Skeleton",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.skeleton.v1"
+      }
+    },
+    {
+      "situation": "A short loading indicator with no layout to hold",
+      "instead": {
+        "target": "Spinner",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.spinner.v1"
+      }
+    },
+    {
+      "situation": "A status or error message about the page, such as a failed request",
+      "instead": {
+        "target": "Alert",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert.v1"
+      }
+    },
+    {
+      "situation": "A bounded container around real content that is present",
+      "instead": {
+        "target": "Card",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_header.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_actions.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "no-role-or-live-region",
+      "text": "Empty and every part render a plain div with no role, no aria attribute and no live region of their own; appearing or disappearing announces nothing to assistive tech."
+    },
+    {
+      "id": "centered-column-capped-at-32rem",
+      "text": "The root is a flex column that centers its children on the cross axis, center-aligns its text, spaces its direct children var(--space-6) apart and caps its own width at 32rem inside a dashed border."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A search with no results, an icon, a detail line and two actions",
+        "code": "<Empty>\n  <EmptyHeader>\n    <EmptyMedia variant=\"icon\">\n      <SearchIcon />\n    </EmptyMedia>\n    <EmptyTitle>No results</EmptyTitle>\n    <EmptyDescription>Try a different search term or clear your filters.</EmptyDescription>\n    <EmptyDetail>3 filters applied</EmptyDetail>\n  </EmptyHeader>\n  <EmptyActions>\n    <Button onClick={createFirst}>New project</Button>\n    <Button variant=\"outline\" onClick={clearFilters}>Clear filters</Button>\n  </EmptyActions>\n</Empty>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Empty rendered while the request is still in flight",
+        "code": "{isLoading || rows.length === 0 ? (\n  <Empty>\n    <EmptyHeader>\n      <EmptyTitle>No projects yet</EmptyTitle>\n    </EmptyHeader>\n  </Empty>\n) : (\n  <ProjectList rows={rows} />\n)}\n",
+        "why": "The user reads \"no projects yet\" during the load and then sees rows appear; a loading state belongs to Skeleton or Spinner, and Empty only to a settled empty result."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "empty",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_actions.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_description.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_detail.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_header.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_media.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_title.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Empty",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

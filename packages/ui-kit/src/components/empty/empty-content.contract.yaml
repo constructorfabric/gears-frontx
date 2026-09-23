@@ -1,0 +1,58 @@
+# Semantic overlay for EmptyContent - part of the Empty family, see
+# empty.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from Empty's own accepted components, not
+# authored here.
+component: empty-content
+
+intent: Hold arbitrary content at the foot of the placeholder, such as a search field or a short form, in a centered column.
+
+typical_uses:
+  - A field or small form that lets the user fill the empty state from where it is shown
+
+dont_use_when:
+  - situation: The foot holds only a row of buttons
+    instead:
+      target: EmptyActions
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.empty_actions.v1
+
+# Arbitrary content by design (a field, a form), so it is not constrained
+# to a list of components.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: centered-column-capped-at-24rem
+    text: >-
+      EmptyContent is a flex column capped at 24rem that centers its
+      children, so a lone button keeps its own width instead of stretching,
+      and spaces them var(--space-4) apart.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A search field at the foot of the placeholder
+      code: |
+        <EmptyContent><Input type="search" aria-label="Search projects" /></EmptyContent>
+  bad:
+    - title: Two buttons stacked by EmptyContent
+      code: |
+        <EmptyContent>
+          <Button>New project</Button>
+          <Button variant="outline">Import</Button>
+        </EmptyContent>
+      why: >-
+        EmptyContent is a column, so the buttons stack one above the other;
+        EmptyActions is the part that sets them side by side.
+
+family_membership:
+  name: empty
+  role: part

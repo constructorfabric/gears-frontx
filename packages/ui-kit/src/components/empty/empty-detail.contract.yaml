@@ -1,0 +1,65 @@
+# Semantic overlay for EmptyDetail - part of the Empty family, see
+# empty.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from EmptyHeader's accepted components, not
+# authored here.
+component: empty-detail
+
+intent: Add a secondary line under the description, such as a count, a hint or the query that came back empty.
+
+typical_uses:
+  - The last line of an EmptyHeader, set smaller than the description
+
+dont_use_when:
+  - situation: The main explanation of the empty state
+    instead:
+      target: EmptyDescription
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.empty_description.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: extra-top-margin-only-inside-the-header
+    text: >-
+      Inside an EmptyHeader, at any depth, EmptyDetail adds a
+      var(--space-2) top margin on top of the header's own gap; placed
+      anywhere else it has no margin of its own and takes its parent's
+      spacing.
+
+anti_patterns:
+  - dont: Place EmptyDetail before EmptyDescription
+    do_instead: >-
+      Render it last inside EmptyHeader; its extra top margin is meant to
+      separate it from the description above
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A filter count under the description
+      code: |
+        <EmptyHeader>
+          <EmptyTitle>No results</EmptyTitle>
+          <EmptyDescription>Try a different search term.</EmptyDescription>
+          <EmptyDetail>3 filters applied</EmptyDetail>
+        </EmptyHeader>
+  bad:
+    - title: The detail placed above the description
+      code: |
+        <EmptyHeader>
+          <EmptyTitle>No results</EmptyTitle>
+          <EmptyDetail>3 filters applied</EmptyDetail>
+          <EmptyDescription>Try a different search term.</EmptyDescription>
+        </EmptyHeader>
+      why: EmptyDetail's extra top margin then puts 16px between the title and the detail but only 8px between the detail and the description below it, and the smaller line reads before the explanation it qualifies.
+
+family_membership:
+  name: empty
+  role: part

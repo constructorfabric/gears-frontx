@@ -1,0 +1,73 @@
+# Semantic overlay for InputOtpGroup - a part of the InputOtp family, see
+# input-otp.contract.yaml's `family_membership` for how the four contracts
+# relate.
+component: input-otp-group
+
+intent: Join a run of an InputOtp's slots into one visually attached segment.
+
+typical_uses:
+  - One run of slots, for instance each half of a six-digit code split by a separator
+
+dont_use_when:
+  - situation: Joining buttons into one attached row
+    instead:
+      target: ButtonGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button_group.v1
+  - situation: Joining a text input with its addons into one frame
+    instead:
+      target: InputGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.input_group.v1
+
+# `mounted_in` is filled from InputOtp's own accepted components, not
+# authored here.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.input_otp_slot.v1 # InputOtpSlot
+
+invariants:
+  - id: purely-visual-plain-div
+    text: >-
+      The group is a plain div with no role and no state of its own; it
+      takes part in neither the value nor the focus order, which stay with
+      the root and its slots. Only its first and last slot get rounded outer
+      corners, and adjacent slots share one border.
+
+anti_patterns:
+  - dont: Give the group an accessible name or a role to describe the code
+    do_instead: >-
+      Label the InputOtp root instead - the primitive already renders it as
+      the role="group" that assistive tech announces for the field
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A run of three slots
+      code: |
+        <InputOtpGroup>
+          <InputOtpSlot />
+          <InputOtpSlot />
+          <InputOtpSlot />
+        </InputOtpGroup>
+  bad:
+    - title: A group with no InputOtp around it
+      code: |
+        <InputOtpGroup>
+          <InputOtpSlot />
+          <InputOtpSlot />
+        </InputOtpGroup>
+      why: >-
+        The group is only a div; its slots read their character and state
+        from the InputOtp root through the primitive's context, and throw
+        when that context is missing.
+
+family_membership:
+  name: input_otp
+  role: part

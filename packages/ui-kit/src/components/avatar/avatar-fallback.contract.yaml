@@ -1,0 +1,116 @@
+# Semantic overlay for AvatarFallback - a part of the avatar family, see
+# avatar.contract.yaml's `family_membership` for how the four contracts
+# relate. The `tone` and `variant` axes and their defaults are extracted
+# from avatar.tsx, not restated here.
+component: avatar-fallback
+
+intent: What an Avatar shows in place of its picture - initials or a glyph - while no image has loaded.
+
+typical_uses:
+  - A person's initials, shown until their picture loads or when there is none
+  - A colored identity circle for someone who has no picture
+
+dont_use_when:
+  - situation: A placeholder while the record the avatar belongs to is itself still loading
+    instead:
+      target: Skeleton
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.skeleton.v1
+
+# AvatarFallback examines nothing about what a consumer nests inside it;
+# initials or a glyph render centered in the circle.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: shown-until-the-image-loads
+    text: >-
+      The fallback renders whenever its Avatar's load status is anything
+      but loaded - idle with no AvatarImage, loading, or error - and is
+      removed from the DOM the moment the status becomes loaded.
+  - id: delay-holds-back-the-first-showing
+    text: >-
+      With `delay`, the fallback stays out of the DOM for that many
+      milliseconds after it mounts, so an image that loads within the delay
+      never shows a fallback at all; once the delay has passed it follows
+      the load status like a fallback without one. Without `delay` it can
+      show from the first render.
+  - id: fill-cells-shared-with-the-group-count
+    text: >-
+      `tone` and `variant` pick one of the twelve fill cells
+      avatar.module.css shares with AvatarGroupCount, so a fallback and a
+      count chip given the same pair paint the same colors.
+
+anti_patterns:
+  - dont: Drive `tone` from a live state, such as danger for a suspended account or success for an online one
+    do_instead: >-
+      Derive `tone` from a stable identity (a hash of the user id, a team's
+      assigned color) and show the state with AvatarBadge
+
+deprecations: {}
+
+# avatar.test.tsx asserts the fallback's classes and when its text is
+# present; nothing in it asserts how assistive technology reads the
+# fallback, and the primitive gives the span no role.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  tone:
+    states: tone is one of neutral, accent, info, success, warning or danger, and neutral when omitted
+    because: >-
+      avatar.tsx builds this cva axis from the shared `fillAxes` object,
+      which the extractor does not follow, so the prop reaches the contract
+      through its VariantProps type, a string union with `null` and
+      `undefined`, and the compiler emits one JSON type per property.
+  variant:
+    states: variant is solid or soft, and soft when omitted
+    because: >-
+      avatar.tsx builds this cva axis from the shared `fillAxes` object,
+      which the extractor does not follow, so the prop reaches the contract
+      through its VariantProps type, a string union with `null` and
+      `undefined`, and the compiler emits one JSON type per property.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the
+      fallback's own state, so its type is a union of a React element and a
+      callback - neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the fallback's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (imageLoadingStatus). A JSON Schema `object`
+      would reject the function form, so nothing is asserted; the kit's own
+      styling goes through avatar.module.css, not through this.
+
+examples:
+  good:
+    - title: Initials behind a picture, held back briefly to avoid a flash
+      code: |
+        <Avatar>
+          <AvatarImage src="/jane.jpg" alt="Jane Doe" />
+          <AvatarFallback delay={300}>JD</AvatarFallback>
+        </Avatar>
+    - title: An identity fill for someone with no picture
+      code: |
+        <Avatar>
+          <AvatarFallback tone="accent" variant="solid">ML</AvatarFallback>
+        </Avatar>
+  bad:
+    - title: A tone switched by the person's status
+      code: |
+        <Avatar>
+          <AvatarFallback tone={user.online ? 'success' : 'danger'}>JD</AvatarFallback>
+        </Avatar>
+      why: >-
+        The circle changes color whenever the state changes, so the fill no
+        longer identifies the person; keep `tone` tied to identity and put
+        the state on an AvatarBadge.
+
+family_membership:
+  name: avatar
+  role: part

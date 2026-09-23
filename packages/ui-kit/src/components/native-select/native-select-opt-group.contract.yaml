@@ -1,0 +1,80 @@
+# Semantic overlay for NativeSelectOptGroup - a part of the NativeSelect
+# family, see native-select.contract.yaml's `family_membership` for how the
+# three contracts relate.
+#
+# Machine-extractable facts do NOT belong here: the compiler takes them from
+# native-select.tsx and the <optgroup> element surface, and rejects an overlay
+# that tries to restate them - one fact, one owner.
+component: native-select-opt-group
+
+intent: Group related options under one label inside a NativeSelect.
+
+typical_uses:
+  - A named cluster of related options inside a longer NativeSelect list (regions inside a timezone picker)
+
+dont_use_when:
+  - situation: A flat list with no natural grouping
+    instead:
+      target: NativeSelect itself, with the options as its direct children
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.native_select.v1
+
+# Only the family's options may appear inside; the group's own face in the
+# picker is its `label`, so text children have no place beside them.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.native_select_option.v1 # NativeSelectOption
+
+invariants:
+  - id: label-is-the-group-name
+    text: >-
+      `label` is the name the group goes by - it is what the platform draws as
+      the group's header inside the picker and what assistive tech announces
+      for the group.
+
+# Nesting is the compiler's own statement here: `accepts` above lists the
+# option and nothing else, so a group inside a group is already refused by
+# the one authored nesting rule - there is no second, prose copy of it.
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      native-select.test.tsx's "groups options under an optgroup label"
+      assertion, which queries the group by its group role and the name taken
+      from `label`
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Two groups in one select
+      code: |
+        <NativeSelect aria-label="Timezone">
+          <NativeSelectOptGroup label="Europe">
+            <NativeSelectOption value="cet">Central European Time</NativeSelectOption>
+          </NativeSelectOptGroup>
+          <NativeSelectOptGroup label="Americas">
+            <NativeSelectOption value="est">Eastern Time</NativeSelectOption>
+          </NativeSelectOptGroup>
+        </NativeSelect>
+  bad:
+    - title: A lone group wrapping every option in the list
+      code: |
+        <NativeSelect aria-label="Region">
+          <NativeSelectOptGroup label="Europe">
+            <NativeSelectOption value="eu">Europe</NativeSelectOption>
+            <NativeSelectOption value="us">Americas</NativeSelectOption>
+          </NativeSelectOptGroup>
+        </NativeSelect>
+      why: >-
+        One group for the whole list adds a header without adding structure -
+        with nothing to distinguish it from, the group only stands between the
+        user and the choice.
+
+family_membership:
+  name: native_select
+  role: part

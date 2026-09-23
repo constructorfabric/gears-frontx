@@ -1,0 +1,60 @@
+# Semantic overlay for EmptyActions - part of the Empty family, see
+# empty.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from Empty's own accepted components, not
+# authored here.
+component: empty-actions
+
+intent: Lay out the placeholder's actions as one centered, wrapping row of buttons.
+
+typical_uses:
+  - The one or two buttons at the foot of an Empty that create the first item or clear what filtered everything out
+
+dont_use_when:
+  - situation: The foot holds a field, a form or other content beyond buttons
+    instead:
+      target: EmptyContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.empty_content.v1
+
+# empty.md and empty.tsx describe this part as the button strip.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1 # Button
+
+invariants:
+  - id: no-margin-of-its-own
+    text: >-
+      EmptyActions sets no margin; the distance above it comes from its
+      parent's gap, var(--space-6) as a direct child of Empty.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Two buttons side by side
+      code: |
+        <EmptyActions>
+          <Button onClick={createFirst}>New project</Button>
+          <Button variant="outline" onClick={clearFilters}>Clear filters</Button>
+        </EmptyActions>
+  bad:
+    - title: A margin added to reach the spacing above
+      code: |
+        <EmptyActions style={{ marginTop: 24 }}>
+          <Button>New project</Button>
+        </EmptyActions>
+      why: >-
+        The root's gap already puts var(--space-6) above the row; a margin
+        doubles that distance.
+
+family_membership:
+  name: empty
+  role: part

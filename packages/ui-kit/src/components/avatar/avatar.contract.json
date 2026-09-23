@@ -1,0 +1,148 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "avatar",
+  "forwards_to": "gts.frontx.uikit.element.dom_span.v1~",
+  "intent": "Frame one person's or account's picture in a fixed-size circle and hold the load status its image and fallback share.",
+  "typical_uses": [
+    "The picture of a person or account beside their name",
+    "One member of a stacked group of participants"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A picture or icon with no person or account behind it",
+      "instead": {
+        "target": "a plain img element or an icon",
+        "note": "Avatar exists for the image-or-fallback switch of an identity picture; a product thumbnail or a decorative glyph needs none of it."
+      }
+    },
+    {
+      "situation": "A placeholder while the record the avatar belongs to is itself still loading",
+      "instead": {
+        "target": "Skeleton",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.skeleton.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar_image.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar_fallback.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar_badge.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "any layout in the consuming application",
+      "note": "A single avatar sits beside a name or inside any row or header of the application; AvatarGroup is needed only to overlap several of them."
+    }
+  ],
+  "invariants": [
+    {
+      "id": "one-load-status-per-root",
+      "text": "The root holds one image load status (idle, loading, loaded, error) that AvatarImage writes and AvatarFallback reads; it stays idle while no AvatarImage is mounted and returns to idle when the AvatarImage unmounts."
+    },
+    {
+      "id": "load-status-has-no-data-attribute",
+      "text": "The load status reaches no data attribute on the root or its parts; it is readable only through AvatarImage's `onLoadingStatusChange` and through the state the `render` and `style` functions receive."
+    },
+    {
+      "id": "size-drives-the-parts",
+      "text": "`size` sets the circle's width and height, and avatar.module.css reads the root's size class back in the parts: the badge's diameter steps with every size and the fallback's text takes the smaller meta text size at `sm`; the parts take no size of their own."
+    },
+    {
+      "id": "root-does-not-clip",
+      "text": "The root rounds itself but sets no `overflow: hidden`; the image and the fallback each round themselves, which is what lets AvatarBadge sit on the circle's edge without being cut off."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Pass the picture's `src` or `alt` to Avatar itself",
+      "do_instead": "Put them on an AvatarImage inside the Avatar - the root is a span frame and renders no image of its own"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the avatar's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+    },
+    "style": {
+      "states": "style accepts a function of the avatar's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (imageLoadingStatus). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through avatar.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A picture with initials shown until it loads",
+        "code": "<Avatar>\n  <AvatarImage src=\"/jane.jpg\" alt=\"Jane Doe\" />\n  <AvatarFallback>JD</AvatarFallback>\n</Avatar>\n"
+      },
+      {
+        "title": "A large avatar with a status badge",
+        "code": "<Avatar size=\"lg\">\n  <AvatarImage src=\"/jane.jpg\" alt=\"Jane Doe\" />\n  <AvatarFallback>JD</AvatarFallback>\n  <AvatarBadge />\n</Avatar>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The image source passed to the root",
+        "code": "<Avatar src=\"/jane.jpg\" alt=\"Jane Doe\" />",
+        "why": "Avatar forwards to a span and declares no `src` or `alt`; nothing loads and the root renders an empty circle. The picture is an AvatarImage child, with an AvatarFallback beside it for while it loads or when it fails."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "avatar",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar_badge.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar_fallback.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar_image.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof avatarVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Avatar",
+    "type": "object",
+    "properties": {
+      "size": {
+        "type": "string",
+        "enum": [
+          "default",
+          "sm",
+          "lg"
+        ],
+        "default": "default"
+      },
+      "className": {
+        "type": "string"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, AvatarRootState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the avatar's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: AvatarRootState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the avatar's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (imageLoadingStatus). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through avatar.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

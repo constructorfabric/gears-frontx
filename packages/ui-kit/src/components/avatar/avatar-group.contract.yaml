@@ -1,0 +1,99 @@
+# Semantic overlay for AvatarGroup - the root of the avatar_group family,
+# with AvatarGroupCount as its one part. A group wraps several Avatar
+# roots, so it is not a part of the avatar family itself. No primitive
+# backs it: it is a plain div laid out by avatar.module.css.
+component: avatar-group
+
+intent: Overlap several Avatars into one stack, optionally capped by a count of the ones left out.
+
+typical_uses:
+  - The participants of a thread, a call or a shared document shown as one stack
+
+dont_use_when:
+  - situation: People who each need their name or an action shown beside their picture
+    instead:
+      target: Item
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1
+
+# The group examines nothing about its children: it is a plain div, and
+# avatar.module.css overlaps whatever it holds. Its styling targets Avatar
+# roots and one AvatarGroupCount (see the invariants). Listing Avatar under
+# `specified` is not possible while the conformance suite requires every
+# kit mount point of a family member, the root included, to lie inside that
+# member's own family.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: children-overlap-in-dom-order
+    text: >-
+      The group lays its children out in a row and pulls every child after
+      the first back by `var(--space-2)` so the circles overlap; later
+      children paint over earlier ones, so the last in the markup sits on
+      top.
+  - id: members-ringed-in-the-page-background
+    text: >-
+      Every Avatar that is a direct child of the group gets a 2px ring in
+      the page background color, drawn outside its circle, so overlapping
+      circles read as separate discs whatever each is filled with.
+  - id: size-is-set-per-avatar
+    text: >-
+      The group takes no size of its own and imposes none: each Avatar
+      keeps its own `size`.
+
+anti_patterns:
+  - dont: Wrap each Avatar in another element inside the group
+    do_instead: >-
+      Place the Avatars as direct children - the member ring and the count's
+      size rule select only direct Avatar children of the group
+
+deprecations: {}
+
+# avatar.test.tsx asserts the group's and the count's classes and the
+# declared overlap and ring; the group is a plain div with no role, and
+# nothing in the test asserts how assistive technology reads it.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: failed
+    by: avatar.module.css overlaps with a physical margin-left, so an RTL row does not overlap the way the invariant states
+
+examples:
+  good:
+    - title: A stack of participants with a count of the rest
+      code: |
+        <AvatarGroup>
+          <Avatar>
+            <AvatarImage src="/jane.jpg" alt="Jane Doe" />
+            <AvatarFallback>JD</AvatarFallback>
+          </Avatar>
+          <Avatar>
+            <AvatarImage src="/sam.jpg" alt="Sam Lee" />
+            <AvatarFallback>SL</AvatarFallback>
+          </Avatar>
+          <AvatarGroupCount>+3</AvatarGroupCount>
+        </AvatarGroup>
+  bad:
+    - title: Avatars wrapped in extra elements inside the group
+      code: |
+        <AvatarGroup>
+          <span>
+            <Avatar>
+              <AvatarFallback>JD</AvatarFallback>
+            </Avatar>
+          </span>
+          <span>
+            <Avatar>
+              <AvatarFallback>SL</AvatarFallback>
+            </Avatar>
+          </span>
+        </AvatarGroup>
+      why: >-
+        The wrappers still overlap, but the Avatars inside them are no longer
+        direct children of the group, so they lose the background ring that
+        separates overlapping circles.
+
+family_membership:
+  name: avatar_group
+  role: root

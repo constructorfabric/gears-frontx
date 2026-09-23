@@ -1,0 +1,218 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.input_otp.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "input-otp",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Collect a fixed-length one-time code, one character per slot, as one string value.",
+  "typical_uses": [
+    "A verification or one-time passcode of a known, fixed length"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A short free-form value whose length varies (a promo code, a postal code), or a single numeric value such as an amount or a quantity",
+      "instead": {
+        "target": "Input",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.input.v1",
+        "note": "Input, with `type=\"number\"` or `inputMode=\"numeric\"` for a number; InputOtp splits its value into one slot per character and only completes once every slot is filled."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input_otp_group.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input_otp_separator.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "value-wins-over-default-value",
+      "text": "`value` and `defaultValue` are both accepted; `defaultValue` seeds the initial state and is ignored afterwards, and when `value` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "value-normalized-to-length",
+      "text": "Every value, whether given through `value`, `defaultValue` or typed and pasted, is stripped of whitespace, filtered by `validationType`, passed through `normalizeValue` and clamped to `length` characters before the slots show it."
+    },
+    {
+      "id": "id-lands-on-the-first-slot",
+      "text": "`id` is not rendered on the root element: the first slot receives it and each later slot receives `{id}-2`, `{id}-3` and so on. A `<label htmlFor>` naming that `id` therefore labels the first slot. Unless the root is given its own `aria-labelledby`, the primitive then points the root's and every slot's `aria-labelledby` at that label; a slot given its own `aria-labelledby`, or a slot other than the first given its own `aria-label`, keeps that instead."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Label the field with `aria-label` on the first slot",
+      "do_instead": "Put a Label whose `htmlFor` names the root's `id` - the primitive drops `aria-label` from the first slot and warns in development when that slot has no associated label"
+    },
+    {
+      "dont": "Render a number of InputOtpSlot parts that differs from `length`",
+      "do_instead": "Render exactly `length` slots - the value is clamped to `length`, not to the slots rendered, completion fires only at `length` characters, and the primitive warns in development when the two counts differ"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "The primitive's OTPField.Root (role=\"group\", aria-labelledby taken from a label associated with the first slot) and OTPField.Input (focus moved between slots by the arrow, Home and End keys) plus input-otp.test.tsx's assertion that typing into the first slot moves focus to the second"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "onValueChange": {
+      "states": "onValueChange is a function called with the next code string and event details, not a value",
+      "because": "A function type has no JSON Schema representation. Its second argument carries Base UI's own change-event-details shape, whose reason names what changed the value (typing, clearing, pasting or a key), which only tsc can check."
+    },
+    "onValueComplete": {
+      "states": "onValueComplete is a function called with the full code string once every slot is filled, not a value",
+      "because": "A function type has no JSON Schema representation. It also fires when a complete value is pasted over an already complete one, and runs right before the owning form is submitted when `autoSubmit` is on."
+    },
+    "onValueInvalid": {
+      "states": "onValueInvalid is a function called with the attempted text when validation or normalization rejects characters, not a value",
+      "because": "A function type has no JSON Schema representation. Its first argument is the raw text the user typed or pasted, before normalization."
+    },
+    "normalizeValue": {
+      "states": "normalizeValue is a function from a string to a string, applied after whitespace and validationType filtering",
+      "because": "A function type has no JSON Schema representation. Its result is filtered by `validationType` again and clamped to `length`, and it may run more than once on the same value, so it has to be idempotent."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the field's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+    },
+    "style": {
+      "states": "style accepts a function of the field's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (complete, disabled, readOnly, required, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through input-otp.module.css, not through this."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "The primitive's hidden validation input",
+      "reason": "OTPField.Root renders one extra native input beside the root element, hidden from assistive tech and out of the tab order, that carries the whole code for `name`, `form`, `required` and constraint validation; the kit exports no part for it."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "Six digits in two groups, labelled by a sibling Label",
+        "code": "<Label htmlFor=\"otp\">Verification code</Label>\n<InputOtp id=\"otp\" length={6} onValueComplete={verify}>\n  <InputOtpGroup>\n    <InputOtpSlot />\n    <InputOtpSlot />\n    <InputOtpSlot />\n  </InputOtpGroup>\n  <InputOtpSeparator />\n  <InputOtpGroup>\n    <InputOtpSlot />\n    <InputOtpSlot />\n    <InputOtpSlot />\n  </InputOtpGroup>\n</InputOtp>\n"
+      },
+      {
+        "title": "Controlled four-character alphanumeric code",
+        "code": "<InputOtp id=\"code\" length={4} validationType=\"alphanumeric\" value={code} onValueChange={setCode}>\n  <InputOtpGroup>\n    <InputOtpSlot />\n    <InputOtpSlot />\n    <InputOtpSlot />\n    <InputOtpSlot />\n  </InputOtpGroup>\n</InputOtp>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Four slots under a length of six",
+        "code": "<InputOtp length={6}>\n  <InputOtpGroup>\n    <InputOtpSlot />\n    <InputOtpSlot />\n    <InputOtpSlot />\n    <InputOtpSlot />\n  </InputOtpGroup>\n</InputOtp>\n",
+        "why": "A pasted six-character code is accepted in full while only four characters are visible, and completion needs six characters the user can never type into the missing slots."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "input_otp",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input_otp_group.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input_otp_separator.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input_otp_slot.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit InputOtp",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "autoComplete": {
+        "type": "string"
+      },
+      "autoSubmit": {
+        "type": "boolean"
+      },
+      "defaultValue": {
+        "type": "string"
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "form": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      },
+      "inputMode": {
+        "type": "string",
+        "enum": [
+          "search",
+          "text",
+          "none",
+          "email",
+          "tel",
+          "url",
+          "numeric",
+          "decimal"
+        ]
+      },
+      "length": {
+        "type": "number"
+      },
+      "mask": {
+        "type": "boolean"
+      },
+      "name": {
+        "type": "string"
+      },
+      "normalizeValue": {
+        "description": "TS: ((value: string) => string) | undefined. Not expressible in JSON Schema, checked by tsc. normalizeValue is a function from a string to a string, applied after whitespace and validationType filtering. A function type has no JSON Schema representation. Its result is filtered by `validationType` again and clamped to `length`, and it may run more than once on the same value, so it has to be idempotent."
+      },
+      "onValueChange": {
+        "description": "TS: ((value: string, eventDetails: OTPFieldRootChangeEventDetails) => void) | undefined. Not expressible in JSON Schema, checked by tsc. onValueChange is a function called with the next code string and event details, not a value. A function type has no JSON Schema representation. Its second argument carries Base UI's own change-event-details shape, whose reason names what changed the value (typing, clearing, pasting or a key), which only tsc can check."
+      },
+      "onValueComplete": {
+        "description": "TS: ((value: string, eventDetails: OTPFieldRootCompleteEventDetails) => void) | undefined. Not expressible in JSON Schema, checked by tsc. onValueComplete is a function called with the full code string once every slot is filled, not a value. A function type has no JSON Schema representation. It also fires when a complete value is pasted over an already complete one, and runs right before the owning form is submitted when `autoSubmit` is on."
+      },
+      "onValueInvalid": {
+        "description": "TS: ((value: string, eventDetails: OTPFieldRootInvalidEventDetails) => void) | undefined. Not expressible in JSON Schema, checked by tsc. onValueInvalid is a function called with the attempted text when validation or normalization rejects characters, not a value. A function type has no JSON Schema representation. Its first argument is the raw text the user typed or pasted, before normalization."
+      },
+      "readOnly": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, OTPFieldRootState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the field's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      },
+      "required": {
+        "type": "boolean"
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: OTPFieldRootState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the field's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (complete, disabled, readOnly, required, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through input-otp.module.css, not through this."
+      },
+      "validationType": {
+        "type": "string",
+        "enum": [
+          "none",
+          "numeric",
+          "alpha",
+          "alphanumeric"
+        ]
+      },
+      "value": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "length"
+    ],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

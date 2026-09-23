@@ -1,0 +1,99 @@
+# Semantic overlay for ProgressIndicator - a part of the Progress family, see
+# progress.contract.yaml's `family_membership` for how the five contracts
+# relate.
+#
+# Machine-extractable facts (prop list, forwarded surface) do NOT belong
+# here: the compiler takes those from progress.tsx and the Base UI Progress
+# primitive it wraps, and rejects an overlay that tries to restate them -
+# one fact, one owner.
+component: progress-indicator
+
+intent: The filled portion of a progress track, sized from its root's value.
+
+typical_uses:
+  - The fill inside a ProgressTrack
+
+dont_use_when:
+  - situation: A short busy state of unknown duration, with no percentage to measure
+    instead:
+      target: Spinner
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.spinner.v1
+
+# ProgressIndicator examines nothing about what a consumer nests inside it:
+# a forwarded child renders inside the fill, and the kit's own wrapper
+# renders the indicator empty.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: width-written-by-the-primitive
+    text: >-
+      The fill's width is written inline by the primitive at runtime - a
+      percentage between the root's `min` and `max`; progress.module.css
+      supplies the rest - the 100% height, the color, and the width
+      transition.
+  - id: indeterminate-has-no-width
+    text: >-
+      With an indeterminate root the primitive writes no width, and the
+      stylesheet's track-keyed rule replaces the width fill with a 40%-wide
+      sweeping band whose duration `prefers-reduced-motion` slows.
+
+anti_patterns:
+  - dont: Set the fill's width by hand
+    do_instead: >-
+      Set the value on the root - the primitive computes the percentage and
+      writes the width itself, so a hand-set width desyncs from the value
+      the bar reports
+
+deprecations: {}
+
+# The indicator wires no accessibility semantics of its own;
+# progress.test.tsx asserts its width from the value and its drawn color.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+# What each property that reaches this contract asserting nothing (or only
+# part of its shape) actually states, and why - keyed on the property
+# itself. The compiler emits both halves into that property's own
+# description, beside the `TS:` text.
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the
+      indicator's own state, so its type is a union of a React element and
+      a callback - neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the indicator's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (status). A JSON Schema `object` would
+      reject the function form, so nothing is asserted; the kit's own
+      styling goes through progress.module.css, not through this.
+
+examples:
+  good:
+    - title: A fill inside its track, beside the primitive's own root
+      code: |-
+        import { Progress as ProgressPrimitive } from '@base-ui/react/progress';
+
+        <ProgressPrimitive.Root value={64}>
+          <ProgressTrack>
+            <ProgressIndicator />
+          </ProgressTrack>
+        </ProgressPrimitive.Root>
+  bad:
+    - title: An indicator with no progress root around it
+      code: <ProgressIndicator />
+      why: >-
+        The indicator reads the nearest progress root's value, min and max
+        through React context and throws when there is none; its width has
+        no source of its own.
+
+family_membership:
+  name: progress
+  role: part

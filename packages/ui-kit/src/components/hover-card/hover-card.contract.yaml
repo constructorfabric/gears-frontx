@@ -1,0 +1,146 @@
+# Semantic overlay for HoverCard (the root) - the hand-written half of one of
+# three contracts describing this compound component. See
+# hover-card-trigger.contract.yaml and hover-card-content.contract.yaml for
+# the rest of the family, and `family_membership` below for how a reader
+# walks between them.
+#
+# Machine-extractable facts (prop list, forwarded surface) do NOT belong
+# here: the compiler takes those from hover-card.tsx and the Base UI
+# PreviewCard primitive it re-exports. The root renders no element of its
+# own, so it names no element surface.
+component: hover-card
+
+intent: Hold the open state of one hover card and tie a link to the preview card it shows on hover or keyboard focus.
+
+typical_uses:
+  - A preview of what a link points to, such as a person's profile behind their handle
+  - A summary of a referenced document behind a link to it
+
+dont_use_when:
+  - situation: A short label for an icon-only control
+    instead:
+      target: Tooltip
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.tooltip.v1
+  - situation: A floating panel the user opens deliberately by clicking, or one holding controls to operate
+    instead:
+      target: Popover
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.popover.v1
+  - situation: A list of actions anchored to a trigger
+    instead:
+      target: DropdownMenu
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu.v1
+  - situation: Information a user needs to complete the task
+    instead:
+      target: visible text on the page, or the page the link leads to
+      note: >-
+        Hovering opens the card for mouse pointers only, so touch users
+        never see it; the link itself has to carry everything they need.
+
+# The ONE authored statement of the family's nesting: the compiler fills the
+# trigger's and the content's `mounted_in` from this list.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.hover_card_trigger.v1 # HoverCardTrigger
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.hover_card_content.v1 # HoverCardContent
+
+invariants:
+  - id: open-wins-over-default-open
+    text: >-
+      `open` and `defaultOpen` are both accepted; `defaultOpen` seeds the
+      initial state and is ignored afterwards, and when `open` is given it
+      wins and the component follows it on every render.
+  - id: escape-and-outside-press-close
+    text: >-
+      While open, pressing Escape or pressing outside the card closes it and
+      reports the change through `onOpenChange`.
+  - id: no-aria-link-to-the-trigger
+    text: >-
+      The root wires no ARIA relationship between trigger and card: the
+      trigger receives no `aria-describedby`, `aria-expanded` or
+      `aria-haspopup`, and the card no role, so assistive technology is not
+      told that a preview exists.
+
+anti_patterns: []
+
+deprecations: {}
+
+# hover-card.test.tsx asserts hover open and close, the open delay, the
+# portal container and the trigger's link role; nothing in it asserts how
+# assistive technology reads the card, and the primitive wires no ARIA link
+# to assert.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  children:
+    states: children is the root's content, either React nodes or a function of the active trigger's payload that returns them
+    because: >-
+      `React.ReactNode | PayloadChildRenderFunction<Payload>` - the function
+      form receives `{ payload }` from whichever trigger opened the card. A
+      React node and a function have no JSON Schema representation.
+  onOpenChange:
+    states: onOpenChange is a callback called with the next open state and event details, not a value
+    because: >-
+      `(open: boolean, eventDetails) => void`; the second argument carries
+      Base UI's change-event details, including the reason (such as a
+      trigger hover or focus, an outside press or Escape). No JSON Schema
+      type covers a function.
+  onOpenChangeComplete:
+    states: onOpenChangeComplete is a callback called with the open state once the open or close animation has finished
+    because: >-
+      `(open: boolean) => void` - a function, which no JSON Schema type
+      covers.
+  actionsRef:
+    states: actionsRef is a ref the root fills with imperative `close` and `unmount` actions
+    because: >-
+      `React.RefObject<PreviewCardRootActions | null>` - a ref object holding
+      functions, which no JSON Schema type covers.
+  handle:
+    states: handle is an opaque object from the primitive's PreviewCard.createHandle(), shared with a trigger placed outside this root
+    because: >-
+      `PreviewCardHandle<Payload>` is a class instance holding the card's
+      store, not data; the kit re-exports no createHandle, so a caller
+      imports it from the primitive.
+  triggerId:
+    states: triggerId is the id of the trigger a controlled card is open for, or null
+    because: >-
+      `string | null` - the compiler emits one JSON type per property, so a
+      string-or-null union is left unasserted.
+  defaultTriggerId:
+    states: defaultTriggerId is the id of the trigger an initially open card is open for, or null
+    because: >-
+      `string | null` - the compiler emits one JSON type per property, so a
+      string-or-null union is left unasserted.
+
+examples:
+  good:
+    - title: A profile preview behind a handle
+      code: |
+        <HoverCard>
+          <HoverCardTrigger href="/users/ada">@ada</HoverCardTrigger>
+          <HoverCardContent>Ada Lovelace - maintainer of the analytics engine.</HoverCardContent>
+        </HoverCard>
+    - title: A card opened from state the caller owns
+      code: |
+        <HoverCard open={open} onOpenChange={setOpen}>
+          <HoverCardTrigger href="/docs/spec">Specification</HoverCardTrigger>
+          <HoverCardContent>The current draft, last reviewed this week.</HoverCardContent>
+        </HoverCard>
+  bad:
+    - title: A made-up openDelay prop on the root
+      code: |
+        <HoverCard openDelay={200}>
+          <HoverCardTrigger href="/users/ada">@ada</HoverCardTrigger>
+          <HoverCardContent>Ada Lovelace</HoverCardContent>
+        </HoverCard>
+      why: >-
+        The root takes no delay prop; the open and close delays belong to
+        the trigger as `delay` and `closeDelay`.
+
+family_membership:
+  name: hover_card
+  role: root

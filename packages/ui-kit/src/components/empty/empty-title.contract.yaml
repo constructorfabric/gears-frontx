@@ -1,0 +1,59 @@
+# Semantic overlay for EmptyTitle - part of the Empty family, see
+# empty.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from EmptyHeader's accepted components, not
+# authored here.
+component: empty-title
+
+intent: Name what is missing in a short headline.
+
+typical_uses:
+  - The one-line headline of an Empty, such as "No results"
+
+dont_use_when:
+  - situation: The title of a card that holds real content
+    instead:
+      target: CardTitle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_title.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: renders-a-div-not-a-heading
+    text: >-
+      EmptyTitle renders a div with no heading role or level, so it does not
+      appear in the page's heading outline.
+
+anti_patterns:
+  - dont: Put the explanation in EmptyTitle
+    do_instead: >-
+      Keep EmptyTitle to the short headline and give the explanation its own
+      EmptyDescription beneath it
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A short headline
+      code: |
+        <EmptyTitle>No results</EmptyTitle>
+  bad:
+    - title: The explanation folded into the headline
+      code: |
+        <EmptyHeader>
+          <EmptyTitle>No results. Try a different search term or clear your filters.</EmptyTitle>
+        </EmptyHeader>
+      why: >-
+        EmptyTitle is the headline; the explanation belongs in
+        EmptyDescription, which carries the muted body text.
+
+family_membership:
+  name: empty
+  role: part

@@ -1,0 +1,82 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.native_select_opt_group.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "native-select-opt-group",
+  "forwards_to": "gts.frontx.uikit.element.dom_optgroup.v1~",
+  "intent": "Group related options under one label inside a NativeSelect.",
+  "typical_uses": [
+    "A named cluster of related options inside a longer NativeSelect list (regions inside a timezone picker)"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A flat list with no natural grouping",
+      "instead": {
+        "target": "NativeSelect itself, with the options as its direct children",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.native_select.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.native_select_option.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "NativeSelect",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.native_select.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "label-is-the-group-name",
+      "text": "`label` is the name the group goes by - it is what the platform draws as the group's header inside the picker and what assistive tech announces for the group."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "native-select.test.tsx's \"groups options under an optgroup label\" assertion, which queries the group by its group role and the name taken from `label`"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Two groups in one select",
+        "code": "<NativeSelect aria-label=\"Timezone\">\n  <NativeSelectOptGroup label=\"Europe\">\n    <NativeSelectOption value=\"cet\">Central European Time</NativeSelectOption>\n  </NativeSelectOptGroup>\n  <NativeSelectOptGroup label=\"Americas\">\n    <NativeSelectOption value=\"est\">Eastern Time</NativeSelectOption>\n  </NativeSelectOptGroup>\n</NativeSelect>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A lone group wrapping every option in the list",
+        "code": "<NativeSelect aria-label=\"Region\">\n  <NativeSelectOptGroup label=\"Europe\">\n    <NativeSelectOption value=\"eu\">Europe</NativeSelectOption>\n    <NativeSelectOption value=\"us\">Americas</NativeSelectOption>\n  </NativeSelectOptGroup>\n</NativeSelect>\n",
+        "why": "One group for the whole list adds a header without adding structure - with nothing to distinguish it from, the group only stands between the user and the choice."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "native_select",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit NativeSelectOptGroup",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

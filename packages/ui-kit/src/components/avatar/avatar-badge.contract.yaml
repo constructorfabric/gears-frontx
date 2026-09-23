@@ -1,0 +1,87 @@
+# Semantic overlay for AvatarBadge - a part of the avatar family, see
+# avatar.contract.yaml's `family_membership` for how the four contracts
+# relate. No primitive backs this part: it is a plain span placed by
+# avatar.module.css.
+component: avatar-badge
+
+intent: A small status mark pinned to the corner of an Avatar's circle.
+
+typical_uses:
+  - A person's presence or state shown on their avatar
+
+dont_use_when:
+  - situation: A status shown beside text rather than on an avatar's corner
+    instead:
+      target: StatusDot
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.status_dot.v1
+  - situation: A count or a short label in a chip of its own
+    instead:
+      target: Badge
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.badge.v1
+
+# AvatarBadge examines nothing about what a consumer nests inside it; left
+# empty it is a plain dot, and avatar.module.css sizes any svg inside it.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: pinned-to-the-root-corner
+    text: >-
+      The badge is absolutely positioned at the bottom-right corner of its
+      Avatar root, the nearest positioned ancestor, and stacks above the
+      image and the fallback; the root does not clip it.
+  - id: diameter-follows-the-avatar-size
+    text: >-
+      The badge's diameter comes from avatar.module.css rules on the
+      ancestor Avatar's size class and steps with each size; any svg inside
+      is sized at the default and large sizes and hidden at `sm`, where the
+      badge is a bare dot.
+  - id: no-semantics-of-its-own
+    text: >-
+      The badge renders a plain span with no role and no text of its own,
+      so on its own it conveys the state by color only.
+
+anti_patterns:
+  - dont: Let the badge's color be the only signal of the state it marks
+    do_instead: >-
+      Say the state in text as well, beside the avatar or in the row it
+      belongs to
+
+deprecations: {}
+
+# avatar.test.tsx asserts the badge's class only; the badge carries no
+# role or accessible name to assert.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A status dot on a large avatar
+      code: |
+        <Avatar size="lg">
+          <AvatarImage src="/jane.jpg" alt="Jane Doe" />
+          <AvatarFallback>JD</AvatarFallback>
+          <AvatarBadge />
+        </Avatar>
+  bad:
+    - title: A badge placed beside the avatar instead of inside it
+      code: |
+        <div>
+          <Avatar>
+            <AvatarFallback>JD</AvatarFallback>
+          </Avatar>
+          <AvatarBadge />
+        </div>
+      why: >-
+        The badge's position and diameter come from its Avatar root: outside
+        one it is placed against the nearest positioned ancestor, or the
+        page when there is none, and no size rule gives it a diameter, so
+        an empty badge collapses to a 4px dot in the page background
+        color: its 2px box-shadow around a zero-size box.
+
+family_membership:
+  name: avatar
+  role: part

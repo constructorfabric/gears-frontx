@@ -34,6 +34,10 @@
     {
       "container": "AlertAction",
       "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_action.v1"
+    },
+    {
+      "container": "EmptyActions",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_actions.v1"
     }
   ],
   "invariants": [

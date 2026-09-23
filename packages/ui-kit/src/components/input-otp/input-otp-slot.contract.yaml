@@ -1,0 +1,97 @@
+# Semantic overlay for InputOtpSlot - a part of the InputOtp family, see
+# input-otp.contract.yaml's `family_membership` for how the four contracts
+# relate.
+component: input-otp-slot
+
+intent: One character position of an InputOtp, rendered as its own native input.
+
+typical_uses:
+  - One character of a fixed-length code, inside an InputOtpGroup
+
+dont_use_when:
+  - situation: A standalone text field outside an InputOtp, even a one-character one
+    instead:
+      target: Input
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.input.v1
+
+# A native input takes no children; the character it shows comes from the
+# root's value.
+accepts:
+  content: nothing
+
+invariants:
+  - id: position-from-render-order
+    text: >-
+      A slot's position, and so which character of the root's value it
+      shows and edits, is its render order among the root's slots; it takes
+      no index prop. Typing a character moves focus to the next slot, and
+      only the active slot is in the tab order.
+  - id: aria-invalid-tints-border-destructive
+    text: >-
+      Setting `aria-invalid="true"` on a slot tints its border and inset
+      ring to the destructive color, and the invalid look wins over the
+      focus ring while that slot is focused.
+
+anti_patterns:
+  - dont: Render an InputOtpSlot outside any InputOtp
+    do_instead: >-
+      Mount it inside an InputOtpGroup under an InputOtp - the slot reads its
+      character, its id and its disabled, read-only and masked state from
+      the root through the primitive's context, and throws when that
+      context is missing
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      The primitive's OTPField.Input (a real native input per slot, a
+      roving tabindex that keeps only the active slot tabbable,
+      aria-labelledby inherited from the root's label) plus
+      input-otp.test.tsx's assertions that every slot is an INPUT element
+      and that typing into the first slot moves focus to the second
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the slot's
+      own state, so its type is a union of a React element and a callback -
+      neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the slot's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (filled, index, disabled, readOnly, ...). A
+      JSON Schema `object` would reject the function form, so nothing is
+      asserted; the kit's own styling goes through input-otp.module.css, not
+      through this.
+
+examples:
+  good:
+    - title: Slots inside a group
+      code: |
+        <InputOtpGroup>
+          <InputOtpSlot />
+          <InputOtpSlot />
+        </InputOtpGroup>
+    - title: A slot marked invalid after a failed check
+      code: <InputOtpSlot aria-invalid={codeRejected} />
+  bad:
+    - title: An explicit slot index carried over from another OTP library
+      code: |
+        <InputOtpGroup>
+          <InputOtpSlot index={0} />
+          <InputOtpSlot index={1} />
+        </InputOtpGroup>
+      why: >-
+        InputOtpSlot declares no index prop, so tsc rejects it; the
+        primitive derives each slot's position from render order instead.
+
+family_membership:
+  name: input_otp
+  role: part

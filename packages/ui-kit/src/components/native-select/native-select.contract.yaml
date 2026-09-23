@@ -1,0 +1,139 @@
+# Semantic overlay for NativeSelect (the root) - the hand-written half of one
+# of three contracts describing this compound component. See
+# native-select-option.contract.yaml and native-select-opt-group.contract.yaml
+# for the rest of the family, and `family_membership` below for how a reader
+# (or the conformance test) walks between them.
+#
+# Machine-extractable facts (prop list, the size axis, defaults, forwarded
+# surface) do NOT belong here: the compiler takes those from native-select.tsx
+# and the <select> element surface it forwards to, and rejects an overlay that
+# tries to restate them - one fact, one owner. This file carries only what the
+# code cannot express: intent, boundaries, invariants.
+component: native-select
+
+intent: Render the platform's own select control in the kit's field chrome, so the browser owns the popup and the picking.
+
+typical_uses:
+  - A form field whose choices are plain text, where the platform's own picker is an asset
+  - A form field where the platform's own picker is wanted (native mobile picker, native typeahead)
+
+dont_use_when:
+  - situation: Options carry more than plain text (an icon, a description, per-option styling)
+    instead:
+      target: Select
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.select.v1
+  - situation: A short list of choices that should all stay visible at once
+    instead:
+      target: RadioGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group.v1
+  - situation: An ordinary choice list with no reason to prefer the platform picker
+    instead:
+      target: Select
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.select.v1
+  - situation: A long list the user needs to search or filter
+    instead:
+      target: Combobox
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.combobox.v1
+
+# The ONE authored statement of a nesting relationship: the compiler fills
+# every other contract's `mounted_in` from lists like this one, so the two
+# directions cannot disagree.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.native_select_option.v1 # NativeSelectOption
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.native_select_opt_group.v1 # NativeSelectOptGroup
+
+invariants:
+  - id: value-wins-over-default-value
+    text: >-
+      `value` and `defaultValue` are both accepted; `defaultValue` seeds the
+      initial state and is ignored afterwards, and when `value` is given it
+      wins and the component follows it on every render.
+  - id: props-route-by-target
+    text: >-
+      `className` merges onto the wrapper div around the <select> and `size`
+      picks the wrapper's compact class - neither reaches the <select> itself;
+      every other prop lands on the <select>, so an `aria-label` names the
+      select (the element the platform exposes as the control, role combobox
+      unless `multiple` makes it a listbox), never the wrapper.
+  - id: disabled-stamps-data-disabled-on-the-wrapper
+    text: >-
+      `disabled` disables the <select> and stamps `data-disabled` on the
+      wrapper, absent when enabled; native-select.module.css dims the whole
+      wrapper, chevron included, with var(--opacity-disabled) off that
+      attribute.
+
+anti_patterns:
+  - dont: Restyle the picker's options with the kit's own theme tokens
+    do_instead: >-
+      Leave the option chrome to the platform - several engines (macOS,
+      mobile) draw the native popup with OS colors whatever author CSS says,
+      which is why the kit pins options and groups to the system Canvas
+      colors instead of its own
+
+deprecations: {}
+
+# One outcome per claim. "failed" (looked at, does not hold) and "unknown"
+# (nobody looked) are different answers - say which.
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      native-select.test.tsx's "renders a native select with its options and
+      the kit classes" assertion, which queries the control by its combobox
+      role and its `aria-label` accessible name, and its "groups options under
+      an optgroup label" assertion, which queries the group by role and name
+  rtl:
+    outcome: unknown
+
+# Internal structure this component composes that the kit does not expose
+# as a component of its own.
+unexposed_parts:
+  - part: The wrapper div around the <select>
+    reason: >-
+      A <select> is a replaced element with no ::before or ::after, so the
+      wrapper exists only to host the field chrome and position the chevron;
+      it takes no role, and of the component's props only `className` and
+      `size` style it (its `data-disabled` marker is derived from `disabled`,
+      not a prop a consumer sets on it).
+  - part: The fixed trailing chevron glyph
+    reason: >-
+      The dropdown indicator is rendered by the component itself, and no prop
+      hides or replaces it - a select without its indicator reads as broken,
+      so there is deliberately no slot for turning it off.
+
+examples:
+  good:
+    - title: Uncontrolled select named for assistive tech
+      code: |
+        <NativeSelect defaultValue="eu" aria-label="Region">
+          <NativeSelectOption value="eu">Europe</NativeSelectOption>
+          <NativeSelectOption value="us">Americas</NativeSelectOption>
+        </NativeSelect>
+    - title: Grouped options under a label
+      code: |
+        <NativeSelect aria-label="Timezone">
+          <NativeSelectOptGroup label="Europe">
+            <NativeSelectOption value="cet">Central European Time</NativeSelectOption>
+          </NativeSelectOptGroup>
+          <NativeSelectOption value="utc">Coordinated Universal Time</NativeSelectOption>
+        </NativeSelect>
+  bad:
+    - title: Rich option content
+      code: |
+        <NativeSelect aria-label="Region">
+          <NativeSelectOption value="eu">
+            <GlobeIcon /> Europe <span className="hint">EU countries</span>
+          </NativeSelectOption>
+        </NativeSelect>
+      why: >-
+        The platform picker shows only the option's text, so the icon and the
+        hint never appear. Rich item content is what Select is for.
+
+# Family membership. Every member names the same family and states its own
+# role; `members` is filled by the compiler on the root from every contract
+# naming this family as a part, so nothing here points at a sibling.
+family_membership:
+  name: native_select
+  role: root

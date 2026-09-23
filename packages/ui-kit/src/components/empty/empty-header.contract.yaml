@@ -1,0 +1,76 @@
+# Semantic overlay for EmptyHeader - part of the Empty family, see
+# empty.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from Empty's own accepted components, not
+# authored here.
+component: empty-header
+
+intent: Group the placeholder's media, title, description and detail line into one centered text block.
+
+typical_uses:
+  - The block at the top of an Empty holding its icon or illustration and its explanatory text
+
+dont_use_when:
+  - situation: A header for a card or panel that holds real content
+    instead:
+      target: CardHeader
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.empty_media.v1 # EmptyMedia
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.empty_title.v1 # EmptyTitle
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.empty_description.v1 # EmptyDescription
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.empty_detail.v1 # EmptyDetail
+
+invariants:
+  - id: centered-column-capped-at-24rem
+    text: >-
+      EmptyHeader is a flex column that centers its children, spaces them
+      var(--space-2) apart and caps its own width at 24rem.
+
+anti_patterns:
+  - dont: Put EmptyActions inside EmptyHeader
+    do_instead: >-
+      Render EmptyActions as a direct child of Empty after the header, so
+      the root's var(--space-6) gap separates the text block from the
+      action row
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Media, title and description in one header
+      code: |
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <InboxIcon />
+          </EmptyMedia>
+          <EmptyTitle>No messages</EmptyTitle>
+          <EmptyDescription>New messages will appear here.</EmptyDescription>
+        </EmptyHeader>
+  bad:
+    - title: The action row folded into the header
+      code: |
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>No messages</EmptyTitle>
+            <EmptyActions>
+              <Button>Compose</Button>
+            </EmptyActions>
+          </EmptyHeader>
+        </Empty>
+      why: >-
+        Inside the header the actions sit var(--space-2) under the text and are
+        held to its 24rem width; as a child of Empty they get the root's
+        var(--space-6) gap above them.
+
+family_membership:
+  name: empty
+  role: part
