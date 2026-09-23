@@ -1,0 +1,72 @@
+# Semantic overlay for BreadcrumbList - part of the Breadcrumb family, see
+# breadcrumb.contract.yaml. `mounted_in` is filled from Breadcrumb's own
+# accepted components, not authored here.
+component: breadcrumb-list
+
+intent: Hold the crumbs of a breadcrumb trail, and the separators between them, as one ordered list.
+
+typical_uses:
+  - The one list inside a Breadcrumb, alternating items and separators
+
+dont_use_when:
+  - situation: The row of page items inside a Pagination
+    instead:
+      target: PaginationContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_content.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_item.v1 # BreadcrumbItem
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_separator.v1 # BreadcrumbSeparator
+
+invariants:
+  - id: wraps-onto-further-lines
+    text: >-
+      The list is a wrapping flex row (breadcrumb.module.css `.list`:
+      `flex-wrap: wrap`, `overflow-wrap: break-word`, gap
+      var(--space-1)) with no bullets, margin or padding, so a trail wider
+      than its container continues on the next line rather than truncating
+      or scrolling.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: breadcrumb.test.tsx asserts getByRole('list') resolves to an OL element
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Items with a separator between them
+      code: |
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/">Home</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Settings</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+  bad:
+    - title: A separator placed inside an item
+      code: |
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/">Home</BreadcrumbLink>
+            <BreadcrumbSeparator />
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      why: >-
+        BreadcrumbSeparator renders an `li` of its own, so inside an item it
+        nests one list item in another; it belongs beside the items, as a
+        direct child of the list.
+
+family_membership:
+  name: breadcrumb
+  role: part

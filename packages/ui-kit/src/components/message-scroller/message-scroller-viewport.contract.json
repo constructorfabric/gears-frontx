@@ -1,0 +1,93 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller_viewport.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "message-scroller-viewport",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Be the element that actually scrolls inside a MessageScroller, and the one whose user input decides whether the scroller keeps following the end.",
+  "typical_uses": [
+    "The single scrolling region of a MessageScroller, holding its MessageScrollerContent"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A scrolling region outside a MessageScroller",
+      "instead": {
+        "target": "ScrollArea",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.scroll_area.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller_content.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "MessageScroller",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "focusable-region-named-messages",
+      "text": "The viewport renders with `role=\"region\"`, `aria-label=\"Messages\"` and `tabIndex={0}`, each replaced when the consumer passes its own, so the transcript is a named landmark a keyboard user can focus and scroll."
+    },
+    {
+      "id": "prepend-keeps-the-reading-position",
+      "text": "While `preserveScrollOnPrepend` is on, items inserted before the first item leave the first item with a `messageId` that was in view at the same offset from the viewport's top instead of pushing it down."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "message-scroller.test.tsx finds the viewport with getByRole('region', { name: 'Messages' }); the primitive's Viewport supplies the role, the default aria-label and tabIndex 0"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A viewport with its own accessible name",
+        "code": "<MessageScrollerViewport aria-label=\"Conversation with Alex\">\n  <MessageScrollerContent>{items}</MessageScrollerContent>\n</MessageScrollerViewport>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Items written straight into the viewport",
+        "code": "<MessageScrollerViewport>\n  <MessageScrollerItem messageId=\"1\">Hello</MessageScrollerItem>\n</MessageScrollerViewport>\n",
+        "why": "The scroller watches only the children of MessageScrollerContent: an item outside it is never counted or anchored, `scrollToMessage` to it queues a jump that never happens, and it sits outside the content's bottom-anchoring layout."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "message_scroller",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit MessageScrollerViewport",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "preserveScrollOnPrepend": {
+        "type": "boolean"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,102 @@
+# Semantic overlay for Breadcrumb (the root) - the hand-written half of one
+# of seven contracts describing this family. The parts are breadcrumb-list,
+# breadcrumb-item, breadcrumb-link, breadcrumb-page, breadcrumb-separator and
+# breadcrumb-ellipsis; `family_membership` below is how a reader (or the
+# conformance test) walks between them.
+#
+# Machine-extractable facts (prop list, forwarded surface) do NOT belong
+# here: the compiler takes those from breadcrumb.tsx and rejects an overlay
+# that restates them. No primitive backs the family: every export is
+# semantic markup (nav > ol > li), and only BreadcrumbLink gains an API
+# prop, `render`, from useRender.
+component: breadcrumb
+
+intent: Show where the current page sits in a hierarchy as a trail of ancestor links ending in the current page.
+
+typical_uses:
+  - A trail from the application's home down through its sections to the page in view
+  - A trail with its middle levels collapsed behind an ellipsis
+
+dont_use_when:
+  - situation: Switching between sections of one page
+    instead:
+      target: Tabs
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.tabs.v1
+  - situation: Primary navigation between the application's top-level sections
+    instead:
+      target: NavigationMenu
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu.v1
+  - situation: Moving between pages of one result set
+    instead:
+      target: Pagination
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.pagination.v1
+  - situation: A single back action
+    instead:
+      target: Button
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_list.v1 # BreadcrumbList
+
+invariants:
+  - id: named-navigation-landmark
+    text: >-
+      Breadcrumb renders a `nav` landmark named "breadcrumb" through
+      `aria-label`; the label is set ahead of the consumer's props, so an
+      `aria-label` passed to Breadcrumb replaces it.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      breadcrumb.test.tsx asserts getByRole('navigation', { name:
+      'breadcrumb' }) resolves to a NAV element
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A trail with one collapsed level, ending in the current page
+      code: |
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/">Home</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbEllipsis />
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/reports">Reports</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Q3 summary</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+  bad:
+    - title: Items placed straight into the root
+      code: |
+        <Breadcrumb>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/">Home</BreadcrumbLink>
+          </BreadcrumbItem>
+        </Breadcrumb>
+      why: >-
+        BreadcrumbItem renders an `li`, which is only valid inside a list;
+        without BreadcrumbList there is no `ol`, so the trail loses its
+        list semantics and the wrapping row layout breadcrumb.module.css puts
+        on `.list`.
+
+family_membership:
+  name: breadcrumb
+  role: root

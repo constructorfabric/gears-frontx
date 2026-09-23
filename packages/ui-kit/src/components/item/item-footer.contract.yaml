@@ -1,0 +1,67 @@
+# Semantic overlay for ItemFooter - part of the item family, see
+# item.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from Item's accepted components.
+component: item-footer
+
+intent: Put a full-width line below an item row's media, content and actions.
+
+typical_uses:
+  - A line under the row, such as a status at one end and a link at the other
+
+dont_use_when:
+  - situation: The row of actions at the foot of a bounded panel
+    instead:
+      target: CardFooter
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_footer.v1
+
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: takes-a-whole-line-of-the-row
+    text: >-
+      ItemFooter takes the full width of the Item's wrapping row, so it
+      gets a line of its own, and spreads its children to both ends with a
+      var(--space-2) gap. It sits below the rest of the row only when it
+      comes last in the markup; its position follows the markup, not its
+      name.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A status line under the row
+      code: |
+        <Item variant="outline">
+          <ItemContent>
+            <ItemTitle>Deploy to staging</ItemTitle>
+          </ItemContent>
+          <ItemFooter>
+            <span>Running</span>
+            <span>3 of 5 steps</span>
+          </ItemFooter>
+        </Item>
+  bad:
+    - title: A footer placed before the content
+      code: |
+        <Item>
+          <ItemFooter>Running</ItemFooter>
+          <ItemContent>
+            <ItemTitle>Deploy to staging</ItemTitle>
+          </ItemContent>
+        </Item>
+      why: >-
+        ItemFooter goes where the markup puts it, so this one renders on its
+        own line above the content; place it last.
+
+family_membership:
+  name: item
+  role: part

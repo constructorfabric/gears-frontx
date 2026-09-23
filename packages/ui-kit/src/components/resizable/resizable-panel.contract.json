@@ -1,0 +1,175 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.resizable_panel.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "resizable-panel",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "One resizable region of a ResizablePanelGroup, holding any content and sized by the group's handles within its own limits.",
+  "typical_uses": [
+    "One pane of a split view, such as a list, an editor or a preview"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A bordered, padded box that groups a section of content",
+      "instead": {
+        "target": "Card",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "ResizablePanelGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.resizable_panel_group.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "size-units",
+      "text": "`defaultSize`, `minSize`, `maxSize` and `collapsedSize` read a number as pixels and a string with no unit as a percentage of the group; a string may also carry `px`, `%`, `em`, `rem`, `vh` or `vw`."
+    },
+    {
+      "id": "class-and-style-reach-the-inner-element",
+      "text": "The panel renders two divs: the outer one carries `id`, `data-panel` and every other forwarded attribute, and `className` and `style` go to the inner div that holds the children. The kit applies no class to either."
+    },
+    {
+      "id": "collapsible-snaps-below-min-size",
+      "text": "A `collapsible` panel dragged below the midpoint between its `collapsedSize` (0% when unset) and its `minSize` collapses to `collapsedSize`; between that midpoint and `minSize` it stays at `minSize`."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Expect the panel to draw a border, a background or padding of its own",
+      "do_instead": "Style the content placed inside it, or pass `className`, which lands on the inner element"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "defaultSize": {
+      "states": "defaultSize is the panel's starting size, a number of pixels or a string size",
+      "because": "`number | string`, read as `size-units` describes, and the compiler emits one JSON type per property. Without it the panel takes an even share of the group."
+    },
+    "minSize": {
+      "states": "minSize is the smallest size a drag can give the panel, a number of pixels or a string size",
+      "because": "`number | string`, read as `size-units` describes, and the compiler emits one JSON type per property. It defaults to 0%."
+    },
+    "maxSize": {
+      "states": "maxSize is the largest size a drag can give the panel, a number of pixels or a string size",
+      "because": "`number | string`, read as `size-units` describes, and the compiler emits one JSON type per property. It defaults to 100%."
+    },
+    "collapsedSize": {
+      "states": "collapsedSize is the size a collapsible panel snaps to, a number of pixels or a string size",
+      "because": "`number | string`, read as `size-units` describes, and the compiler emits one JSON type per property. It defaults to 0% and has an effect only with `collapsible`."
+    },
+    "elementRef": {
+      "states": "elementRef is a ref to the panel's outer div element",
+      "because": "`Ref<HTMLDivElement | null>` is a union of a ref object and a callback function - the compiler emits one JSON type per property."
+    },
+    "panelRef": {
+      "states": "panelRef receives the panel's imperative handle, with collapse, expand, getSize, isCollapsed and resize",
+      "because": "`Ref<PanelImperativeHandle | null>` is a ref object or a callback holding an object of functions, which no JSON Schema type covers."
+    },
+    "onResize": {
+      "states": "onResize is a callback called with the panel's new size, its id and its previous size, not a value",
+      "because": "`(panelSize, id, prevPanelSize) => void`, where a size carries `asPercentage` and `inPixels` - a function, which no JSON Schema type covers."
+    },
+    "style": {
+      "states": "style is a plain style object applied inline to the panel's inner div",
+      "because": "`CSSProperties` is React's style object type, which the compiler leaves to tsc; it lands on the inner element that holds the children, not on the panel element."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "the library's inner content div",
+      "reason": "The wrapped Panel renders an inner div inside the panel element that holds the children and receives `className` and `style`; it is not a component of its own."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "A collapsible side panel with size limits in percent",
+        "code": "<ResizablePanel id=\"nav\" defaultSize=\"25%\" minSize=\"15%\" maxSize=\"40%\" collapsible>\n  Navigation\n</ResizablePanel>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A number meant as a percentage",
+        "code": "<ResizablePanel defaultSize={30} minSize={20}>Sidebar</ResizablePanel>",
+        "why": "Numbers are pixels, so this panel starts at 30px wide with a 20px minimum; write `\"30%\"` and `\"20%\"` for a share of the group."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "resizable",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ResizablePanel",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "collapsedSize": {
+        "description": "TS: string | number | undefined. The compiler emits one JSON type per property; this type is left to tsc. collapsedSize is the size a collapsible panel snaps to, a number of pixels or a string size. `number | string`, read as `size-units` describes, and the compiler emits one JSON type per property. It defaults to 0% and has an effect only with `collapsible`."
+      },
+      "collapsible": {
+        "type": "boolean"
+      },
+      "defaultSize": {
+        "description": "TS: string | number | undefined. The compiler emits one JSON type per property; this type is left to tsc. defaultSize is the panel's starting size, a number of pixels or a string size. `number | string`, read as `size-units` describes, and the compiler emits one JSON type per property. Without it the panel takes an even share of the group."
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "elementRef": {
+        "description": "TS: Ref<HTMLDivElement | null> | undefined. The compiler emits one JSON type per property; this type is left to tsc. elementRef is a ref to the panel's outer div element. `Ref<HTMLDivElement | null>` is a union of a ref object and a callback function - the compiler emits one JSON type per property."
+      },
+      "groupResizeBehavior": {
+        "type": "string",
+        "enum": [
+          "preserve-pixel-size",
+          "preserve-relative-size"
+        ]
+      },
+      "id": {
+        "type": "string"
+      },
+      "maxSize": {
+        "description": "TS: string | number | undefined. The compiler emits one JSON type per property; this type is left to tsc. maxSize is the largest size a drag can give the panel, a number of pixels or a string size. `number | string`, read as `size-units` describes, and the compiler emits one JSON type per property. It defaults to 100%."
+      },
+      "minSize": {
+        "description": "TS: string | number | undefined. The compiler emits one JSON type per property; this type is left to tsc. minSize is the smallest size a drag can give the panel, a number of pixels or a string size. `number | string`, read as `size-units` describes, and the compiler emits one JSON type per property. It defaults to 0%."
+      },
+      "onResize": {
+        "description": "TS: ((panelSize: ResizablePrimitive.PanelSize, id: string | number | undefined, prevPanelSize: ResizablePrimitive.PanelSize | undefined) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onResize is a callback called with the panel's new size, its id and its previous size, not a value. `(panelSize, id, prevPanelSize) => void`, where a size carries `asPercentage` and `inPixels` - a function, which no JSON Schema type covers."
+      },
+      "panelRef": {
+        "description": "TS: Ref<ResizablePrimitive.PanelImperativeHandle | null> | undefined. The compiler emits one JSON type per property; this type is left to tsc. panelRef receives the panel's imperative handle, with collapse, expand, getSize, isCollapsed and resize. `Ref<PanelImperativeHandle | null>` is a ref object or a callback holding an object of functions, which no JSON Schema type covers."
+      },
+      "style": {
+        "description": "TS: CSSProperties | undefined. The compiler emits one JSON type per property; this type is left to tsc. style is a plain style object applied inline to the panel's inner div. `CSSProperties` is React's style object type, which the compiler leaves to tsc; it lands on the inner element that holds the children, not on the panel element."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

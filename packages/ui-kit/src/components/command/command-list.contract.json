@@ -1,0 +1,119 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.command_list.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "command-list",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The scrollable listbox of a Command that holds its items, groups, separators and empty message.",
+  "typical_uses": [
+    "The list below a CommandInput"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A scrolling region of a page or panel that is not the list of a Command",
+      "instead": {
+        "target": "ScrollArea",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.scroll_area.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.command_empty.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.command_group.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.command_item.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.command_separator.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "CommandDialog",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.command_dialog.v1"
+    },
+    {
+      "container": "Command",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.command.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "listbox-named-by-label",
+      "text": "The list renders with `role=\"listbox\"` and takes its `aria-label` from its own `label` prop, not the root's (the library's default is \"Suggestions\"), set after the caller's props."
+    },
+    {
+      "id": "height-capped-and-exposed",
+      "text": "command.module.css caps the list at 18.75rem and scrolls it vertically; the library sets the `--cmdk-list-height` custom property on the list to the height of its content."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Name the list with `aria-label`",
+      "do_instead": "Pass `label`; the component sets `aria-label` from it after the caller's props"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is the list's items, groups, separators and empty message",
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "The library's list sizer div",
+      "reason": "A div inside the list that holds the children and is measured for `--cmdk-list-height`; fixed markup, not a component of its own."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "A list with an empty message and a group",
+        "code": "<CommandList label=\"Commands\">\n  <CommandEmpty>No results found.</CommandEmpty>\n  <CommandGroup heading=\"Suggestions\">\n    <CommandItem value=\"calendar\">Calendar</CommandItem>\n  </CommandGroup>\n</CommandList>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The search field placed inside the list",
+        "code": "<CommandList>\n  <CommandInput />\n  <CommandItem value=\"calendar\">Calendar</CommandItem>\n</CommandList>\n",
+        "why": "CommandInput is a sibling of CommandList under Command; inside the listbox it scrolls away with the items and sits inside the element it controls."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "command",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit CommandList",
+    "type": "object",
+    "properties": {
+      "asChild": {
+        "type": "boolean"
+      },
+      "children": {
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the list's items, groups, separators and empty message. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+      },
+      "label": {
+        "type": "string"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

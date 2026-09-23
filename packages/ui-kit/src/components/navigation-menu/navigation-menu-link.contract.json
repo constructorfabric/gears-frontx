@@ -1,0 +1,152 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu_link.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "navigation-menu-link",
+  "forwards_to": "gts.frontx.uikit.element.dom_a.v1~",
+  "intent": "A link to a page or section, either a direct top-level entry of a NavigationMenu or a row inside an open panel.",
+  "typical_uses": [
+    "A row in a NavigationMenuContent panel, optionally with an icon and a description",
+    "A top-level entry that navigates directly, drawn like a trigger with navigationMenuTriggerStyle()"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A link in running text or anywhere outside a NavigationMenu",
+      "instead": {
+        "target": "the consuming application's own link component (a plain anchor when it has none)",
+        "note": "This kit ships no Link component, and no kit component is a substitute for one: navigation belongs to the app's own router."
+      }
+    },
+    {
+      "situation": "A step in the path to the current page",
+      "instead": {
+        "target": "BreadcrumbLink",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_link.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "NavigationMenuItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu_item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "active-marks-the-current-page",
+      "text": "`active` sets `aria-current=\"page\"` and `data-active` on the link; navigation-menu.module.css draws an active link with the secondary fill and a hairline, and keeps it under the pointer."
+    },
+    {
+      "id": "click-keeps-the-menu-open-unless-close-on-click",
+      "text": "Clicking a link does not close the menu unless `closeOnClick` is given; moving focus out of the menu from a link closes it."
+    },
+    {
+      "id": "size-is-a-height-floor",
+      "text": "`size` sets the link's minimum height and block padding only; a link whose content wraps, such as one with a description, grows past it."
+    },
+    {
+      "id": "descendant-svg-sized",
+      "text": "navigation-menu.module.css sizes every descendant `svg` of the link to the small icon size and keeps it from shrinking."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Style a direct top-level link by hand to match the triggers beside it",
+      "do_instead": "Pass `className={navigationMenuTriggerStyle()}`, the same class the triggers carry"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "the primitive's NavigationMenu.Link renders an `a` and sets aria-current=\"page\" when active; navigation-menu.test.tsx asserts links are found by the link role and name, and that clicking one with closeOnClick removes the open content"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the link's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the link's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (active). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through navigation-menu.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A direct top-level link drawn like a trigger",
+        "code": "<NavigationMenuItem>\n  <NavigationMenuLink className={navigationMenuTriggerStyle()} href=\"/pricing\">\n    Pricing\n  </NavigationMenuLink>\n</NavigationMenuItem>\n"
+      },
+      {
+        "title": "The current page's link in a panel, compact, closing the menu on click",
+        "code": "<NavigationMenuContent>\n  <NavigationMenuLink href=\"/docs/start\" active size=\"compact\" closeOnClick>\n    Getting started\n  </NavigationMenuLink>\n</NavigationMenuContent>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A link rendered outside any NavigationMenu",
+        "code": "<NavigationMenuLink href=\"/pricing\">Pricing</NavigationMenuLink>",
+        "why": "The link reads the menu's state from the root's context, and the primitive throws when no NavigationMenu encloses it; use a plain link there instead."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "navigation_menu",
+    "role": "part"
+  },
+  "companions": [
+    {
+      "export": "navigationMenuTriggerStyle",
+      "typed_by": "a class-variance-authority recipe with no variants, returning a class string",
+      "description": "The class a NavigationMenuTrigger carries, for a direct top-level NavigationMenuLink that should look like a trigger without opening a panel."
+    }
+  ],
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof navigationMenuLinkVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit NavigationMenuLink",
+    "type": "object",
+    "properties": {
+      "size": {
+        "type": "string",
+        "enum": [
+          "default",
+          "compact"
+        ],
+        "default": "default"
+      },
+      "className": {
+        "type": "string"
+      },
+      "active": {
+        "type": "boolean"
+      },
+      "closeOnClick": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, NavigationMenuLinkState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the link's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: NavigationMenuLinkState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the link's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (active). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through navigation-menu.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

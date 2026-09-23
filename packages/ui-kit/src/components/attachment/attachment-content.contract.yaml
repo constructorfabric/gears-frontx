@@ -1,0 +1,65 @@
+# Semantic overlay for AttachmentContent - part of the attachment family,
+# see attachment.contract.yaml's `family_membership`. `mounted_in` is
+# filled from Attachment's accepted components, not authored here.
+component: attachment-content
+
+intent: Group the attachment's title and description into the column that shrinks beside the preview.
+
+typical_uses:
+  - The name and the details of one attached file
+
+dont_use_when:
+  - situation: The title and description block of a card that is not a file
+    instead:
+      target: CardHeader
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_title.v1 # AttachmentTitle
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_description.v1 # AttachmentDescription
+
+invariants:
+  - id: takes-the-remaining-width
+    text: >-
+      AttachmentContent grows into the width the preview and the actions
+      leave (`flex: 1 1 0%`) and may shrink below its content
+      (`min-width: 0`), which is what lets the title and description
+      truncate instead of widening the card.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A name and its details
+      code: |
+        <AttachmentContent>
+          <AttachmentTitle>report.pdf</AttachmentTitle>
+          <AttachmentDescription>PDF, 2.4 MB</AttachmentDescription>
+        </AttachmentContent>
+  bad:
+    - title: Content wrapped one element deeper
+      code: |
+        <Attachment>
+          <div>
+            <AttachmentContent>
+              <AttachmentTitle>report.pdf</AttachmentTitle>
+            </AttachmentContent>
+          </div>
+        </Attachment>
+      why: >-
+        The root pads itself only while an AttachmentContent is its direct
+        child, so the extra wrapper leaves the card with no padding.
+
+family_membership:
+  name: attachment
+  role: part

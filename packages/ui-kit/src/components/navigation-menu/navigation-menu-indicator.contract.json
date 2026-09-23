@@ -1,0 +1,109 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu_indicator.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "navigation-menu-indicator",
+  "forwards_to": "gts.frontx.uikit.element.dom_span.v1~",
+  "intent": "A small arrow hanging below an open trigger, pointing from it at the shared popup.",
+  "typical_uses": [
+    "An optional marker under each expanding entry, visible only on the open one"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Marking a trigger as expandable",
+      "instead": {
+        "target": "NavigationMenuIcon",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu_icon.v1",
+        "note": "NavigationMenuTrigger already renders its NavigationMenuIcon chevron."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "NavigationMenuItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu_item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "one-per-item-not-one-per-list",
+      "text": "The indicator belongs to the NavigationMenuItem it is rendered in and throws outside one; each expanding item carries its own, and only the open item's indicator is visible (`data-popup-open`). It is positioned directly under its item, not moved along the list."
+    },
+    {
+      "id": "draws-its-own-arrow",
+      "text": "The indicator renders a fixed arrow as its only child; children passed to it are ignored. It is hidden from assistive technology."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the indicator's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the indicator's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through navigation-menu.module.css, not through this."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "the arrow box",
+      "reason": "NavigationMenuIndicator renders one rotated square as its child to draw the arrow; the kit exports no part for it."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "An indicator beside its trigger",
+        "code": "<NavigationMenuItem>\n  <NavigationMenuTrigger>Products</NavigationMenuTrigger>\n  <NavigationMenuIndicator />\n  <NavigationMenuContent>\n    <NavigationMenuLink href=\"/products/a\">Product A</NavigationMenuLink>\n  </NavigationMenuContent>\n</NavigationMenuItem>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "One indicator for the whole list",
+        "code": "<NavigationMenuList>\n  <NavigationMenuItem>\n    <NavigationMenuTrigger>Products</NavigationMenuTrigger>\n    <NavigationMenuContent>\n      <NavigationMenuLink href=\"/products/a\">Product A</NavigationMenuLink>\n    </NavigationMenuContent>\n  </NavigationMenuItem>\n  <NavigationMenuIndicator />\n</NavigationMenuList>\n",
+        "why": "The indicator reads its item from the nearest NavigationMenuItem; outside one the primitive throws."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "navigation_menu",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit NavigationMenuIndicator",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, NavigationMenuIconState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the indicator's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: NavigationMenuIconState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the indicator's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through navigation-menu.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

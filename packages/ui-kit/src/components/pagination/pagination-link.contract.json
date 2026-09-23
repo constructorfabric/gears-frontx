@@ -1,0 +1,126 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_link.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "pagination-link",
+  "forwards_to": "gts.frontx.uikit.element.dom_a.v1~",
+  "intent": "Link to one page of a paged result set, marking the page in view.",
+  "typical_uses": [
+    "A page number in the row, with the current page marked by isActive"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A navigation link outside a pagination row",
+      "instead": {
+        "target": "the consuming application's own link component (a plain anchor when it has none)",
+        "note": "This kit ships no Link component, and no kit component is a substitute for one: navigation belongs to the app's own router."
+      }
+    },
+    {
+      "situation": "A link to the previous page",
+      "instead": {
+        "target": "PaginationPrevious",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_previous.v1"
+      }
+    },
+    {
+      "situation": "A link to the next page",
+      "instead": {
+        "target": "PaginationNext",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_next.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "PaginationItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "always-a-real-anchor",
+      "text": "PaginationLink always renders an `a` and has no `render` prop, so the application's own router link component cannot replace the element; every anchor attribute and handler, `href` and `onClick` included, is forwarded to it."
+    },
+    {
+      "id": "is-active-marks-the-current-page",
+      "text": "`isActive` sets `aria-current=\"page\"` and `data-active` on the anchor, and the active paint (pagination.module.css `.link[data-active]`: the --background fill under a --primary label) selects `data-active`; without it neither attribute is rendered."
+    },
+    {
+      "id": "square-is-a-fixed-footprint",
+      "text": "With `square` on, the link is a fixed var(--control-height-xs) square with no inline padding, and a label wider than that does not grow it; with `square` off it keeps the same height and takes inline padding of var(--space-2), growing with its label."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Mark more than one link as isActive",
+      "do_instead": "Set isActive on the one link to the page in view; only one page is current"
+    },
+    {
+      "dont": "Drive page changes from onClick on an href of \"#\" alone",
+      "do_instead": "Give every link its page's real href, and intercept the click when the app routes on the client, so the link stays crawlable and can be opened in a new tab"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "pagination.test.tsx asserts aria-current=\"page\" and data-active=\"true\" with isActive, and neither attribute without it"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "The current page",
+        "code": "<PaginationLink href=\"?page=2\" isActive>2</PaginationLink>"
+      },
+      {
+        "title": "A page reached through the app's client-side router",
+        "code": "<PaginationLink href=\"?page=3\" onClick={(event) => { event.preventDefault(); navigate('?page=3'); }}>3</PaginationLink>"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The router link passed through a render prop",
+        "code": "<PaginationLink render={<RouterLink to=\"?page=3\" />}>3</PaginationLink>",
+        "why": "PaginationLink has no `render` prop; it always renders its own anchor. Keep the real href and intercept the click for client-side routing."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "pagination",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit PaginationLink",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "isActive": {
+        "type": "boolean"
+      },
+      "square": {
+        "type": "boolean",
+        "default": true
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu_item.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "navigation-menu-item",
+  "forwards_to": "gts.frontx.uikit.element.dom_li.v1~",
+  "intent": "One top-level entry of a NavigationMenu, holding either a trigger with its content or a single direct link.",
+  "typical_uses": [
+    "An entry that expands, holding a NavigationMenuTrigger and its NavigationMenuContent",
+    "An entry that navigates directly, holding one NavigationMenuLink"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A link inside an open panel",
+      "instead": {
+        "target": "NavigationMenuLink",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu_link.v1",
+        "note": "Links inside a NavigationMenuContent need no item of their own; the item is only for the list's top-level entries."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu_trigger.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu_link.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu_indicator.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "NavigationMenuList",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu_list.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "value-ties-trigger-to-content",
+      "text": "The item's `value` is what the root's value is compared against to decide which item is open; without one, the item generates a unique value of its own, so `value` is needed only when the caller sets the root's `value` or `defaultValue`."
+    },
+    {
+      "id": "item-is-the-context-for-its-parts",
+      "text": "The trigger, the content, the NavigationMenuIcon and the NavigationMenuIndicator read which item they belong to from the nearest NavigationMenuItem, and all four throw when rendered outside one."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put two NavigationMenuTrigger parts in one item",
+      "do_instead": "Give every trigger its own item; an item carries one value, so both triggers would open the same content"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "value": {
+      "states": "value is an opaque identifier, typed any by Base UI, compared by identity against the root's value",
+      "because": "Base UI's NavigationMenu.Item declares `value?: any` - not interpreted, only compared by identity, so no JSON Schema type can state what it holds."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the item's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property; the primitive passes an empty state object."
+    },
+    "style": {
+      "states": "style accepts a function as well as a plain style object; the primitive passes that function an empty state object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`, and the item's state carries no fields. The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through navigation-menu.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "An expanding entry with a controlled value",
+        "code": "<NavigationMenuItem value=\"products\">\n  <NavigationMenuTrigger>Products</NavigationMenuTrigger>\n  <NavigationMenuContent>\n    <NavigationMenuLink href=\"/products/a\">Product A</NavigationMenuLink>\n  </NavigationMenuContent>\n</NavigationMenuItem>\n"
+      },
+      {
+        "title": "An expanding entry with its tracking arrow",
+        "code": "<NavigationMenuItem>\n  <NavigationMenuTrigger>Solutions</NavigationMenuTrigger>\n  <NavigationMenuIndicator />\n  <NavigationMenuContent>\n    <NavigationMenuLink href=\"/solutions/a\">Solution A</NavigationMenuLink>\n  </NavigationMenuContent>\n</NavigationMenuItem>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Two triggers sharing one item",
+        "code": "<NavigationMenuItem>\n  <NavigationMenuTrigger>Products</NavigationMenuTrigger>\n  <NavigationMenuTrigger>Solutions</NavigationMenuTrigger>\n  <NavigationMenuContent>\n    <NavigationMenuLink href=\"/products/a\">Product A</NavigationMenuLink>\n  </NavigationMenuContent>\n</NavigationMenuItem>\n",
+        "why": "Both triggers read the same item value, so either one opens the same content and the second entry has no panel of its own."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "navigation_menu",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit NavigationMenuItem",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, NavigationMenuItemState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the item's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property; the primitive passes an empty state object."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: NavigationMenuItemState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function as well as a plain style object; the primitive passes that function an empty state object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`, and the item's state carries no fields. The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through navigation-menu.module.css, not through this."
+      },
+      "value": {
+        "description": "TS: any. The compiler emits one JSON type per property; this type is left to tsc. value is an opaque identifier, typed any by Base UI, compared by identity against the root's value. Base UI's NavigationMenu.Item declares `value?: any` - not interpreted, only compared by identity, so no JSON Schema type can state what it holds."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

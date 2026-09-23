@@ -1,0 +1,106 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "breadcrumb",
+  "forwards_to": "gts.frontx.uikit.element.dom_nav.v1~",
+  "intent": "Show where the current page sits in a hierarchy as a trail of ancestor links ending in the current page.",
+  "typical_uses": [
+    "A trail from the application's home down through its sections to the page in view",
+    "A trail with its middle levels collapsed behind an ellipsis"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Switching between sections of one page",
+      "instead": {
+        "target": "Tabs",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.tabs.v1"
+      }
+    },
+    {
+      "situation": "Primary navigation between the application's top-level sections",
+      "instead": {
+        "target": "NavigationMenu",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu.v1"
+      }
+    },
+    {
+      "situation": "Moving between pages of one result set",
+      "instead": {
+        "target": "Pagination",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination.v1"
+      }
+    },
+    {
+      "situation": "A single back action",
+      "instead": {
+        "target": "Button",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_list.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "named-navigation-landmark",
+      "text": "Breadcrumb renders a `nav` landmark named \"breadcrumb\" through `aria-label`; the label is set ahead of the consumer's props, so an `aria-label` passed to Breadcrumb replaces it."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "breadcrumb.test.tsx asserts getByRole('navigation', { name: 'breadcrumb' }) resolves to a NAV element"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A trail with one collapsed level, ending in the current page",
+        "code": "<Breadcrumb>\n  <BreadcrumbList>\n    <BreadcrumbItem>\n      <BreadcrumbLink href=\"/\">Home</BreadcrumbLink>\n    </BreadcrumbItem>\n    <BreadcrumbSeparator />\n    <BreadcrumbItem>\n      <BreadcrumbEllipsis />\n    </BreadcrumbItem>\n    <BreadcrumbSeparator />\n    <BreadcrumbItem>\n      <BreadcrumbLink href=\"/reports\">Reports</BreadcrumbLink>\n    </BreadcrumbItem>\n    <BreadcrumbSeparator />\n    <BreadcrumbItem>\n      <BreadcrumbPage>Q3 summary</BreadcrumbPage>\n    </BreadcrumbItem>\n  </BreadcrumbList>\n</Breadcrumb>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Items placed straight into the root",
+        "code": "<Breadcrumb>\n  <BreadcrumbItem>\n    <BreadcrumbLink href=\"/\">Home</BreadcrumbLink>\n  </BreadcrumbItem>\n</Breadcrumb>\n",
+        "why": "BreadcrumbItem renders an `li`, which is only valid inside a list; without BreadcrumbList there is no `ol`, so the trail loses its list semantics and the wrapping row layout breadcrumb.module.css puts on `.list`."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "breadcrumb",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_ellipsis.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_item.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_link.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_list.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_page.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_separator.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Breadcrumb",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

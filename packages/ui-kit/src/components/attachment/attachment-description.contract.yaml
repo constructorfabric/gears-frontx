@@ -1,0 +1,63 @@
+# Semantic overlay for AttachmentDescription - part of the attachment
+# family, see attachment.contract.yaml's `family_membership`.
+# `mounted_in` is filled from AttachmentContent's accepted components, not
+# authored here.
+component: attachment-description
+
+intent: Show the attachment's secondary details, such as its type, size or upload status, on one muted line.
+
+typical_uses:
+  - The file type and size under the name
+  - The progress or the failure reason of an upload
+
+dont_use_when:
+  - situation: The supporting text of a card that is not a file
+    instead:
+      target: CardDescription
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_description.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: one-line-truncated-muted
+    text: >-
+      The description renders a span laid out as a block in the small
+      meta type size and var(--muted-foreground) color; it never wraps and
+      cuts overflowing text with an ellipsis.
+  - id: danger-text-on-error
+    text: >-
+      While the ancestor Attachment's `state` is `error`, the description
+      is drawn in var(--danger).
+
+anti_patterns:
+  - dont: Write a long failure explanation into the description
+    do_instead: Keep it to one short line, since it is cut with an ellipsis, and show the full explanation elsewhere
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A type and a size
+      code: <AttachmentDescription>PDF, 2.4 MB</AttachmentDescription>
+  bad:
+    - title: A description outside AttachmentContent
+      code: |
+        <Attachment>
+          <AttachmentDescription>PDF, 2.4 MB</AttachmentDescription>
+        </Attachment>
+      why: >-
+        AttachmentDescription belongs inside AttachmentContent, which is
+        what lets it shrink and truncate and what the root's padding waits
+        for.
+
+family_membership:
+  name: attachment
+  role: part

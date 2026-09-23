@@ -1,0 +1,83 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_item.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "breadcrumb-item",
+  "forwards_to": "gts.frontx.uikit.element.dom_li.v1~",
+  "intent": "Hold one crumb of a breadcrumb trail - an ancestor link, the current page or the collapsed-levels ellipsis.",
+  "typical_uses": [
+    "One level of the trail, holding exactly one link, page or ellipsis"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "One page item inside a Pagination",
+      "instead": {
+        "target": "PaginationItem",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_item.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_link.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_page.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_ellipsis.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "BreadcrumbList",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_list.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "inline-row-of-its-children",
+      "text": "The item renders an `li` laid out as an inline flex row that centers its children and spaces them var(--space-1) apart (breadcrumb.module.css `.item`); it adds no role or aria attribute of its own."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "An ancestor crumb",
+        "code": "<BreadcrumbItem>\n  <BreadcrumbLink href=\"/reports\">Reports</BreadcrumbLink>\n</BreadcrumbItem>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Plain text as a crumb",
+        "code": "<BreadcrumbItem>Reports</BreadcrumbItem>",
+        "why": "Bare text gets neither the link styling of BreadcrumbLink nor the current-page semantics of BreadcrumbPage; wrap an ancestor in BreadcrumbLink and the current page in BreadcrumbPage."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "breadcrumb",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit BreadcrumbItem",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

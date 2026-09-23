@@ -1,0 +1,70 @@
+# Semantic overlay for ItemDescription - part of the item family, see
+# item.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from ItemContent's accepted components.
+# Unlike the other parts it renders a p, not a div.
+component: item-description
+
+intent: Give the supporting line under an item's title in muted text.
+
+typical_uses:
+  - The muted detail under an ItemTitle, such as a size, a date or a status
+
+dont_use_when:
+  - situation: The supporting line under a bounded panel's title
+    instead:
+      target: CardDescription
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_description.v1
+  - situation: The explanation in a placeholder for a region with nothing to show
+    instead:
+      target: EmptyDescription
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.empty_description.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: muted-paragraph-clamped-to-two-lines
+    text: >-
+      ItemDescription renders a p with no margin in the muted foreground
+      color, cut after two lines; a link inside it is underlined and takes
+      the link color on hover.
+
+anti_patterns: []
+
+deprecations: {}
+
+# The text alignment is physical, not logical.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: failed
+    by: >-
+      item.module.css sets `.itemDescription { text-align: left }`, a
+      physical alignment, so under a right-to-left direction the description
+      stays aligned to the left edge while the title follows the direction
+
+examples:
+  good:
+    - title: A description with an inline link
+      code: |
+        <ItemContent>
+          <ItemTitle>Invoice #1024</ItemTitle>
+          <ItemDescription>
+            Paid on Jan 4. <a href="/invoices/1024">View receipt</a>
+          </ItemDescription>
+        </ItemContent>
+  bad:
+    - title: Block content nested in the description
+      code: |
+        <ItemDescription>
+          <div>Paid on Jan 4</div>
+        </ItemDescription>
+      why: >-
+        ItemDescription is a p, and HTML does not allow a div inside a p;
+        keep it to phrasing content such as text, links and inline elements.
+
+family_membership:
+  name: item
+  role: part

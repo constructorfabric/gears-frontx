@@ -1,0 +1,84 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_item.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "pagination-item",
+  "forwards_to": "gts.frontx.uikit.element.dom_li.v1~",
+  "intent": "Hold one entry of a pagination row - a page link, the previous or next link, or the ellipsis.",
+  "typical_uses": [
+    "One entry of the page row, holding exactly one link or the ellipsis"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "One crumb inside a Breadcrumb",
+      "instead": {
+        "target": "BreadcrumbItem",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_item.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_link.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_previous.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_next.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_ellipsis.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "PaginationContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_content.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "bare-list-item",
+      "text": "The item renders a bare `li` with no kit class, role or aria attribute; every visual property of an entry comes from what it holds."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A page link in its item",
+        "code": "<PaginationItem>\n  <PaginationLink href=\"?page=3\">3</PaginationLink>\n</PaginationItem>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Two links in one item",
+        "code": "<PaginationItem>\n  <PaginationLink href=\"?page=1\">1</PaginationLink>\n  <PaginationLink href=\"?page=2\">2</PaginationLink>\n</PaginationItem>\n",
+        "why": "Each entry is one list item; two links in one item read as a single entry to assistive tech and sit outside the row's var(--space-1) spacing."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "pagination",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit PaginationItem",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

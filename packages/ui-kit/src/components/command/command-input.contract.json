@@ -1,0 +1,127 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.command_input.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "command-input",
+  "forwards_to": "gts.frontx.uikit.element.dom_input.v1~",
+  "intent": "The search field of a Command, whose text filters the list.",
+  "typical_uses": [
+    "The one-line search field above a CommandList"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A search or text field that filters nothing in a Command",
+      "instead": {
+        "target": "Input",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.input.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "CommandDialog",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.command_dialog.v1"
+    },
+    {
+      "container": "Command",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.command.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "value-controls-the-search",
+      "text": "Without `value` the input holds the search text itself; with `value` the search text follows `value` and typing only reports the new text through `onValueChange`."
+    },
+    {
+      "id": "combobox-wiring-is-fixed",
+      "text": "The input always renders as `type=\"text\"` with `role=\"combobox\"`, `aria-autocomplete=\"list\"`, `aria-expanded=\"true\"`, `aria-controls` pointing at the CommandList, `aria-activedescendant` pointing at the highlighted item and `aria-labelledby` pointing at the root's hidden label; these, `id`, `onChange` and autocomplete, autocorrect and spellcheck (all off) are set after the caller's props and cannot be overridden."
+    },
+    {
+      "id": "class-names-reach-two-elements",
+      "text": "`className` reaches the input element and `wrapperClassName` the div around the decorative search icon and the input; command.module.css draws the bottom border on that div."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Listen to `onChange` for the search text",
+      "do_instead": "Use `onValueChange`, which receives the text; `onChange` is left out of the props type and replaced by the component's own"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "onValueChange": {
+      "states": "onValueChange is a callback called with the search text on every keystroke, not a value",
+      "because": "`(search: string) => void` - a function, which no JSON Schema type covers."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "The wrapper div and its search icon",
+      "reason": "Fixed markup around the input; the icon is decorative (`aria-hidden`) and the div is styled only through `wrapperClassName`."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "A search field with a placeholder",
+        "code": "<CommandInput placeholder=\"Type a command or search...\" />"
+      },
+      {
+        "title": "A search text the caller owns",
+        "code": "<CommandInput value={query} onValueChange={setQuery} />"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The search text read from the change event",
+        "code": "<CommandInput onChange={(event) => setQuery(event.target.value)} />",
+        "why": "`onChange` is left out of CommandInput's props type, and at run time the component's own `onChange` replaces it, so this handler never runs; the text arrives through `onValueChange`."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "command",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit CommandInput",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "wrapperClassName": {
+        "type": "string"
+      },
+      "asChild": {
+        "type": "boolean"
+      },
+      "onValueChange": {
+        "description": "TS: ((search: string) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onValueChange is a callback called with the search text on every keystroke, not a value. `(search: string) => void` - a function, which no JSON Schema type covers."
+      },
+      "value": {
+        "type": "string"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

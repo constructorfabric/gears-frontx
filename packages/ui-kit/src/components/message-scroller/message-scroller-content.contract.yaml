@@ -1,0 +1,85 @@
+# Semantic overlay for MessageScrollerContent - part of the MessageScroller
+# family, see message-scroller.contract.yaml's `family_membership`.
+component: message-scroller-content
+
+intent: Hold the transcript's messages as a log whose additions the scroller watches to follow, anchor or preserve the reading position.
+
+typical_uses:
+  - The list of MessageScrollerItems inside a MessageScrollerViewport
+
+dont_use_when:
+  - situation: The layout of one message, its avatar, side and header
+    instead:
+      target: Message, inside a MessageScrollerItem
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.message.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller_item.v1 # MessageScrollerItem
+
+invariants:
+  - id: log-with-additions-relevant
+    text: >-
+      The content renders with `role="log"` and `aria-relevant="additions"`,
+      each replaced when the consumer passes its own.
+  - id: every-direct-child-counts-as-a-message
+    text: >-
+      The scroller counts every direct child except its own spacer as a
+      message when it decides whether content was appended or prepended;
+      only a MessageScrollerItem carries the `messageId` and `scrollAnchor`
+      that anchoring, visibility and `scrollToMessage` read.
+  - id: renders-a-hidden-spacer-last
+    text: >-
+      After its children the content renders one `aria-hidden` spacer
+      (`data-message-scroller-spacer`, class `spacerClassName`), hidden at
+      zero height, that the scroller sizes to make an alignment to the top
+      reachable; scrolling to the end or the start collapses it to zero.
+  - id: short-transcript-sits-at-the-bottom
+    text: >-
+      When at least one direct child carries `data-scroll-anchor`, which
+      every MessageScrollerItem renders, message-scroller.module.css packs
+      the children to the end of the content box, so a transcript shorter
+      than the viewport sits at its bottom; without such a child the
+      content flows from the top.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      message-scroller.test.tsx finds the content with getByRole('log'); the
+      primitive's Content supplies the role and aria-relevant
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A content list of items
+      code: |
+        <MessageScrollerContent>
+          {messages.map((message) => (
+            <MessageScrollerItem key={message.id} messageId={message.id}>
+              {message.text}
+            </MessageScrollerItem>
+          ))}
+        </MessageScrollerContent>
+  bad:
+    - title: The jump button placed inside the content
+      code: |
+        <MessageScrollerContent>
+          {items}
+          <MessageScrollerButton />
+        </MessageScrollerContent>
+      why: >-
+        The button then counts as a message in the scroller's bookkeeping: it
+        is taken for an appended item and its box enters the content-height
+        measurement. It belongs directly inside MessageScroller, positioned
+        over the viewport.
+
+family_membership:
+  name: message_scroller
+  role: part

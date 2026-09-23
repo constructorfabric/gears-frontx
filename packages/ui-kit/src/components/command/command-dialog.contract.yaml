@@ -1,0 +1,181 @@
+# Semantic overlay for CommandDialog - a part of the Command family, see
+# command.contract.yaml's `family_membership` for how the contracts relate.
+# It composes the kit's own Dialog: Dialog's root props are extracted as its
+# API; it renders no element of its own at the root, so it names no element
+# surface. Nothing in the kit accepts it, so it has no mount point.
+component: command-dialog
+
+intent: Show a Command list in a modal dialog above the page, with a visually hidden title and description naming it.
+
+typical_uses:
+  - A command palette the application opens from a keyboard shortcut or a button
+
+dont_use_when:
+  - situation: The searchable list sits inside the page or a panel, not in an overlay
+    instead:
+      target: Command
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.command.v1
+  - situation: A modal window holding a form, a confirmation or other content that is not a searchable list
+    instead:
+      target: Dialog
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog.v1
+
+# Its children are rendered inside a Command root it creates itself, so it
+# hosts what the root hosts.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.command_input.v1 # CommandInput
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.command_list.v1 # CommandList
+
+invariants:
+  - id: open-wins-over-default-open
+    text: >-
+      `open` and `defaultOpen` are both accepted; `defaultOpen` seeds the
+      initial state and is ignored afterwards, and when `open` is given it
+      wins and the component follows it on every render.
+  - id: children-inside-its-own-command
+    text: >-
+      The children are rendered inside a Command root the component creates
+      itself, with no props other than its class, so the root's `label`,
+      `filter`, `shouldFilter`, `value`, `loop` and `vimBindings` cannot be
+      set here; the search input's `aria-labelledby` points at that root's
+      hidden label, which is empty.
+  - id: hidden-title-outside-the-popup
+    text: >-
+      `title` and `description` render as a visually hidden heading and
+      paragraph where CommandDialog sits in the tree, outside the portalled
+      popup and whether or not the dialog is open; the dialog takes its
+      accessible name and description from them.
+  - id: popup-width
+    text: >-
+      `className` is merged onto the popup, which command.module.css sets to
+      no padding and no gap and, from 640px wide, a maximum width of 40rem.
+  - id: escape-and-outside-press-close
+    text: >-
+      Escape and a press outside the popup close the dialog, reporting the
+      reason to `onOpenChange`; with nested dialogs open, only the topmost
+      one closes. `disablePointerDismissal` keeps an outside press from
+      closing it.
+
+anti_patterns:
+  - dont: Wrap the children in a Command of your own
+    do_instead: >-
+      Pass CommandInput and CommandList directly; CommandDialog already
+      renders the Command root, and a second one makes the inner parts read
+      the inner root while the outer one filters nothing
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      command.test.tsx asserts role="dialog" named "Command Palette" by
+      default and "Quick actions" with a custom `title`, no "Close" button
+      by default, and that Escape closes the dialog
+  rtl:
+    outcome: unknown
+
+capabilities:
+  - name: close_button
+    enabled_by: showCloseButton
+    description: >-
+      Default false: when true, DialogContent renders its close (X) button
+      in the popup.
+
+unexposed_parts:
+  - part: DialogHeader, DialogTitle and DialogDescription
+    reason: >-
+      Rendered fixed and visually hidden to carry `title` and
+      `description`; the caller sets their text only through those two props.
+  - part: DialogContent
+    reason: >-
+      The popup the list renders in; only its `className` and
+      `showCloseButton` reach it through this component's own props.
+  - part: The inner Command root
+    reason: >-
+      Created by the component around its children with no configurable
+      props (see children-inside-its-own-command).
+
+prop_statements:
+  children:
+    states: children is the palette's content, React nodes holding CommandInput and CommandList
+    because: >-
+      `React.ReactNode` is a union of elements, strings, numbers, fragments
+      and more; the compiler emits one JSON type per property.
+  title:
+    states: title is the dialog's accessible name, rendered visually hidden
+    because: >-
+      `React.ReactNode` is a union, and the compiler emits one JSON type per property.
+      Defaults to "Command Palette".
+  description:
+    states: description is the dialog's accessible description, rendered visually hidden
+    because: >-
+      `React.ReactNode` is a union, and the compiler emits one JSON type per property.
+      Defaults to "Search for a command to run...".
+  modal:
+    states: modal is true (the default), false, or "trap-focus" to trap focus without locking page scroll or outside pointer interaction
+    because: >-
+      `boolean | 'trap-focus'` - the compiler emits one JSON type per
+      property, so a boolean-or-string union is left unasserted.
+  onOpenChange:
+    states: onOpenChange is a callback called with the next open state and event details, not a value
+    because: >-
+      `(open: boolean, eventDetails) => void`; the second argument carries
+      Base UI's change-event details, including the reason (such as a
+      trigger press, an outside press or Escape). No JSON Schema type covers
+      a function.
+  onOpenChangeComplete:
+    states: onOpenChangeComplete is a callback called with the open state once the open or close animation has finished
+    because: >-
+      `(open: boolean) => void` - a function, which no JSON Schema type
+      covers.
+  actionsRef:
+    states: actionsRef is a ref the dialog fills with imperative `close` and `unmount` actions
+    because: >-
+      `React.RefObject<DialogRootActions | null>` - a ref object holding
+      functions, which no JSON Schema type covers.
+  handle:
+    states: handle is an opaque object from the primitive's Dialog.createHandle(), shared with a trigger placed outside this dialog
+    because: >-
+      `DialogHandle<unknown>` is a class instance holding the dialog's
+      store, not data; the kit re-exports no createHandle, so a caller
+      imports it from the primitive.
+  triggerId:
+    states: triggerId is the id of the trigger a controlled dialog is open for, or null
+    because: >-
+      `string | null` - the compiler emits one JSON type per property, so a
+      string-or-null union is left unasserted.
+  defaultTriggerId:
+    states: defaultTriggerId is the id of the trigger an initially open dialog is open for, or null
+    because: >-
+      `string | null` - the compiler emits one JSON type per property, so a
+      string-or-null union is left unasserted.
+
+examples:
+  good:
+    - title: A palette the caller opens and closes
+      code: |
+        <CommandDialog open={open} onOpenChange={setOpen} title="Quick actions">
+          <CommandInput placeholder="Type a command or search..." />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandItem value="new-file" onSelect={() => setOpen(false)}>New file</CommandItem>
+          </CommandList>
+        </CommandDialog>
+  bad:
+    - title: Command props passed to the dialog
+      code: |
+        <CommandDialog open={open} onOpenChange={setOpen} shouldFilter={false} loop>
+          <CommandInput />
+          <CommandList>{results}</CommandList>
+        </CommandDialog>
+      why: >-
+        CommandDialog takes Dialog's root props, not Command's; `shouldFilter`
+        and `loop` are never passed to the Command it renders, so the list
+        still filters and does not wrap.
+
+family_membership:
+  name: command
+  role: part

@@ -1,0 +1,164 @@
+# Semantic overlay for Command (the root) - the hand-written half of one of
+# nine contracts describing this compound component. The root wraps the
+# third-party command-menu library's root; props, their types and the
+# forwarded div surface are extracted from command.tsx and that library.
+# This file carries only meaning.
+component: command
+
+intent: Hold the search text and the highlighted item of one searchable, keyboard-navigable list of commands, and filter and rank its items by what the user types.
+
+typical_uses:
+  - A list of actions the user narrows down by typing and runs with Enter or a click
+  - A searchable list embedded in a page or a panel, rather than in an overlay
+
+dont_use_when:
+  - situation: The searchable list should open as an overlay above the page, such as from a keyboard shortcut
+    instead:
+      target: CommandDialog
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.command_dialog.v1
+  - situation: A value picked from a searchable list and kept as the field's value
+    instead:
+      target: Combobox
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.combobox.v1
+  - situation: A short menu of actions anchored to a trigger button, with no need to search
+    instead:
+      target: DropdownMenu
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu.v1
+  - situation: One value from a short fixed list with no need to search
+    instead:
+      target: Select
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.select.v1
+
+# The ONE authored statement of the root's nesting: the search field and the
+# list. CommandList states what goes inside the list.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.command_input.v1 # CommandInput
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.command_list.v1 # CommandList
+
+invariants:
+  - id: value-is-the-highlighted-item
+    text: >-
+      `value` is the value of the highlighted item, not a chosen one:
+      `defaultValue` seeds the initial highlight and is ignored afterwards,
+      every change of a given `value` moves the highlight to the item with
+      that value, and only while `value` is given does a keyboard or
+      pointer move report the newly highlighted item's value through
+      `onValueChange`. Running an item is reported by that item's own
+      `onSelect`.
+  - id: filters-and-ranks-by-search
+    text: >-
+      While the search text is not empty, each item is scored against it
+      (by `filter` when given, otherwise the library's built-in fuzzy
+      score, over the item's value and `keywords`); items scoring 0 are not
+      rendered, the rest are sorted by score, and a group with no remaining
+      item is hidden. `shouldFilter={false}` turns scoring and sorting off
+      and leaves rendering the matching items to the caller.
+  - id: keyboard-on-the-root
+    text: >-
+      The root handles keys pressed anywhere inside it: ArrowDown and
+      ArrowUp move the highlight (wrapping only with `loop`), Home and End
+      jump to the first and last item, Enter runs the highlighted item, and
+      Ctrl+N/J and Ctrl+P/K move down and up unless `vimBindings` is false.
+      Disabled items are skipped.
+  - id: label-names-the-search-input
+    text: >-
+      `label` is rendered as a visually hidden `<label>` for the search
+      input, and the input's `aria-labelledby` always points at it; an
+      `aria-label` on the root names only the root div, which carries no
+      role.
+
+anti_patterns:
+  - dont: Name the palette with `aria-label` on the root and leave `label` out
+    do_instead: Pass `label`; it is the text the search input is labelled by
+  - dont: Filter the items by hand while the root still filters them
+    do_instead: >-
+      Either let the root filter (the default), or pass
+      `shouldFilter={false}` and render only the items that match
+
+deprecations: {}
+
+# command.test.tsx asserts filtering, CommandEmpty and onSelect, but no role
+# or aria attribute of the root, the input or the items.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+unexposed_parts:
+  - part: The library's hidden label element
+    reason: >-
+      The root renders a visually hidden `<label>` holding `label` before its
+      children; it is fixed markup of the root, not a component of its own.
+
+prop_statements:
+  children:
+    states: children is the root's content, React nodes holding CommandInput and CommandList
+    because: >-
+      `React.ReactNode` is a union of elements, strings, numbers, fragments
+      and more; the compiler emits one JSON type per property.
+  defaultValue:
+    states: defaultValue is the value of the item highlighted when the root first renders
+    because: >-
+      The library types it as `string`, but the root's props also inherit
+      the div's own `defaultValue` attribute, and the intersection prints as
+      `string | (readonly string[] & string)` - the compiler emits one JSON
+      type per property. Pass a string.
+  filter:
+    states: filter is a function scoring an item against the search text, from 0 (hidden) to 1 (best match)
+    because: >-
+      `(value: string, search: string, keywords?: string[]) => number` - a
+      function, which no JSON Schema type covers. Without it the library's
+      built-in fuzzy score is used.
+  onValueChange:
+    states: onValueChange is a callback called with the newly highlighted item's value, not a value
+    because: >-
+      `(value: string) => void` - a function, which no JSON Schema type
+      covers. It is called only while `value` is given (see
+      value-is-the-highlighted-item).
+
+examples:
+  good:
+    - title: A searchable list of actions with groups
+      code: |
+        <Command label="Commands">
+          <CommandInput placeholder="Type a command or search..." />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup heading="Suggestions">
+              <CommandItem value="calendar" onSelect={openCalendar}>Calendar</CommandItem>
+              <CommandItem value="calculator" onSelect={openCalculator}>Calculator</CommandItem>
+            </CommandGroup>
+          </CommandList>
+        </Command>
+    - title: Filtering done by the caller
+      code: |
+        <Command label="Files" shouldFilter={false}>
+          <CommandInput value={query} onValueChange={setQuery} />
+          <CommandList>
+            {results.map((file) => (
+              <CommandItem key={file.id} value={file.id} onSelect={() => open(file)}>
+                {file.name}
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
+  bad:
+    - title: Items placed straight under the root
+      code: |
+        <Command label="Commands">
+          <CommandInput />
+          <CommandItem value="calendar">Calendar</CommandItem>
+        </Command>
+      why: >-
+        Items belong inside CommandList, which renders the listbox the input
+        points at through `aria-controls`; items outside it are options with
+        no listbox, and the list's height and scrolling do not apply; the
+        root looks for items only inside the list, so arrow keys and Enter
+        never reach them.
+
+family_membership:
+  name: command
+  role: root

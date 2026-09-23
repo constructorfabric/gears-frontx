@@ -1,0 +1,106 @@
+# Semantic overlay for MessageScroller (the family root) - one of five
+# contracts in this family; the parts are message-scroller-viewport,
+# message-scroller-content, message-scroller-item and
+# message-scroller-button. MessageScrollerProvider, the sixth export, wraps
+# the root from above and is not a part of the family it wraps (see
+# message-scroller-provider.contract.yaml).
+#
+# Behaviour comes from a headless scroller primitive outside Base UI; this
+# directory adds only message-scroller.module.css and composes the kit
+# Button for the jump affordance.
+component: message-scroller
+
+intent: Frame a scrolling message transcript that follows its newest content, keeps anchored messages in view and floats a jump button over its edge.
+
+typical_uses:
+  - A conversation transcript that grows at the end while the reader may be scrolled back into its history
+
+dont_use_when:
+  - situation: A generic scrollable panel with no following, anchoring or jumping to a message
+    instead:
+      target: ScrollArea
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.scroll_area.v1
+  - situation: A list long enough to need windowing, where only the rows in view exist in the DOM
+    instead:
+      target: a virtualizing list library
+      note: >-
+        Every MessageScrollerItem stays mounted; `content-visibility: auto`
+        in message-scroller.module.css skips rendering work for items off
+        screen but does not remove them. The kit ships no virtualized list.
+
+# The frame holds the scrolling viewport and the floating jump button, which
+# is positioned against the frame rather than scrolled with the content.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller_viewport.v1 # MessageScrollerViewport
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller_button.v1 # MessageScrollerButton
+
+invariants:
+  - id: needs-a-bounded-height
+    text: >-
+      The frame is a relatively positioned flex column at `height: 100%`
+      that clips its overflow; the viewport scrolls only when its parent gives it a
+      bounded height, which the viewport then fills.
+  - id: scrollable-edges-are-stamped
+    text: >-
+      The frame and the viewport both carry `data-scrollable` naming the
+      edges past which more content lies (`start`, `end` or `start end`,
+      absent when neither), and `data-autoscrolling` for a moment after a
+      scroll to the end starts.
+
+anti_patterns: []
+
+deprecations: {}
+
+# The frame is a plain div with no role; message-scroller.test.tsx asserts
+# its consumer class only. Nothing renders it right to left.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A transcript with a jump-to-end button, inside its provider
+      code: |
+        <MessageScrollerProvider autoScroll>
+          <MessageScroller style={{ height: 480 }}>
+            <MessageScrollerViewport>
+              <MessageScrollerContent>
+                {messages.map((message, index) => (
+                  <MessageScrollerItem
+                    key={message.id}
+                    messageId={message.id}
+                    scrollAnchor={index === messages.length - 1}
+                  >
+                    <Message>
+                      <MessageContent>
+                        <Bubble>
+                          <BubbleContent>{message.text}</BubbleContent>
+                        </Bubble>
+                      </MessageContent>
+                    </Message>
+                  </MessageScrollerItem>
+                ))}
+              </MessageScrollerContent>
+            </MessageScrollerViewport>
+            <MessageScrollerButton direction="end" />
+          </MessageScroller>
+        </MessageScrollerProvider>
+  bad:
+    - title: A scroller rendered without its provider
+      code: |
+        <MessageScroller>
+          <MessageScrollerViewport>
+            <MessageScrollerContent>{items}</MessageScrollerContent>
+          </MessageScrollerViewport>
+        </MessageScroller>
+      why: >-
+        Every part reads the scroller state from a MessageScrollerProvider
+        above it and throws without one; wrap the scroller in the provider.
+
+family_membership:
+  name: message_scroller
+  role: root

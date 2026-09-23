@@ -1,0 +1,163 @@
+# Semantic overlay for Attachment (the root) - the hand-written half of one
+# of eight contracts in the attachment family. The parts are
+# attachment-media, attachment-content, attachment-title,
+# attachment-description, attachment-actions, attachment-action and
+# attachment-trigger; `family_membership` below is how a reader (or the
+# conformance test) walks between them. AttachmentGroup is the ninth
+# contract of this directory and belongs to no family: it is a wrapper
+# around whole attachments, not a part of one (see
+# attachment-group.contract.yaml).
+#
+# Machine-extractable facts (the `size` and `orientation` axes, their
+# defaults, the `state` union and its default, the forwarded div surface)
+# do NOT belong here: the compiler takes those from attachment.tsx and
+# rejects an overlay that restates them. Attachment wraps no primitive.
+component: attachment
+
+intent: Show one file or image as a compact card with its preview, its name and details, its upload state and its actions.
+
+typical_uses:
+  - A file or image attached to a message or waiting in a composer before it is sent
+  - One entry of an upload in progress, done or failed
+
+dont_use_when:
+  - situation: The visible surface of a text turn in a conversation
+    instead:
+      target: Bubble
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.bubble.v1
+  - situation: A bounded panel of related content that is not a file
+    instead:
+      target: Card
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1
+  - situation: A row in a list of similar things, such as a notification or a search result
+    instead:
+      target: Item
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1
+  - situation: A short inline label for a file type or a count
+    instead:
+      target: Badge
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.badge.v1
+  - situation: Picking the file to upload
+    instead:
+      target: a native file input or the application's own drop zone
+      note: >-
+        The kit ships no file picker; Attachment only shows a file once
+        the application has one, and its `idle` state is a styling of
+        the card, not an input.
+
+# The ONE authored statement of a nesting relationship: the compiler fills
+# every other contract's `mounted_in` from lists like this one. The title
+# and description sit inside AttachmentContent, and AttachmentAction inside
+# AttachmentActions. No text flag: the root's text belongs in its parts.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_media.v1 # AttachmentMedia
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_content.v1 # AttachmentContent
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_actions.v1 # AttachmentActions
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_trigger.v1 # AttachmentTrigger
+
+# The kit mount point is filled from AttachmentGroup's accepts. This entry
+# states the one the kit cannot: an Attachment on its own.
+mounted_in:
+  - container: any parent in the consuming application
+    note: >-
+      A single Attachment may stand on its own, outside an
+      AttachmentGroup.
+
+invariants:
+  - id: state-reaches-parts-without-props
+    text: >-
+      `state` is set once on the root and reaches the parts without being
+      passed again: `idle` dashes the root's border, `error` tints the
+      root's border, AttachmentMedia's plate and AttachmentDescription's
+      text, and AttachmentTitle shimmers while the state is `uploading` or
+      `processing` (read from React context, the rest through
+      attachment.module.css descendant selectors on the root's
+      `data-state`).
+  - id: padding-needs-direct-content
+    text: >-
+      The root's padding is set only while an AttachmentContent is its
+      direct child (attachment.module.css
+      `.attachment.size*:has(> .attachmentContent)`); an attachment with
+      no direct AttachmentContent renders with no padding.
+  - id: whole-card-hover-needs-direct-button-or-link
+    text: >-
+      The whole-card hover tint applies only while a button or a link is a
+      direct child of the root, as an AttachmentTrigger is
+      (`.attachment:has(> a):hover, .attachment:has(> button):hover`); an
+      AttachmentAction inside AttachmentActions does not turn it on.
+  - id: focus-shows-on-the-card
+    text: >-
+      The root draws a 1px ring while any descendant has focus
+      (`.attachment:focus-within`), which is the only focus indication an
+      AttachmentTrigger gets, since the trigger sets `outline: none`.
+
+anti_patterns:
+  - dont: Let the `error` state's color be the only sign that an upload failed
+    do_instead: Say what failed in AttachmentDescription as well; the state adds no text or icon of its own
+
+deprecations: {}
+
+# attachment.test.tsx asserts classes and data attributes only, no role,
+# name or contrast. No test renders it under a right-to-left direction.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+companions:
+  - export: attachmentVariants
+    typed_by: 'cva(...), returns (props: VariantProps<typeof attachmentVariants> & { className?: string }) => string'
+    description: >-
+      The class-name builder Attachment uses for its base, `size` and
+      `orientation` classes. It does not set the `data-state`,
+      `data-size` and `data-orientation` attributes the state styling
+      reads, and it provides no state to AttachmentTitle.
+
+examples:
+  good:
+    - title: A done file with a remove action
+      code: |
+        <Attachment>
+          <AttachmentMedia>
+            <FileTextIcon />
+          </AttachmentMedia>
+          <AttachmentContent>
+            <AttachmentTitle>sales-dashboard.pdf</AttachmentTitle>
+            <AttachmentDescription>PDF, 2.4 MB</AttachmentDescription>
+          </AttachmentContent>
+          <AttachmentActions>
+            <AttachmentAction icon={<XIcon />} aria-label="Remove sales-dashboard.pdf" />
+          </AttachmentActions>
+        </Attachment>
+    - title: A failed upload that says why
+      code: |
+        <Attachment state="error">
+          <AttachmentMedia>
+            <FileIcon />
+          </AttachmentMedia>
+          <AttachmentContent>
+            <AttachmentTitle>large-export.csv</AttachmentTitle>
+            <AttachmentDescription>Upload failed: file is over 20 MB</AttachmentDescription>
+          </AttachmentContent>
+        </Attachment>
+  bad:
+    - title: Title and description placed straight into the root
+      code: |
+        <Attachment>
+          <AttachmentMedia>
+            <FileIcon />
+          </AttachmentMedia>
+          <AttachmentTitle>report.pdf</AttachmentTitle>
+          <AttachmentDescription>PDF, 1 MB</AttachmentDescription>
+        </Attachment>
+      why: >-
+        The root pads itself only while an AttachmentContent is its direct
+        child, and AttachmentContent is what lets the title and description
+        shrink and truncate; without it the card renders with no padding.
+
+family_membership:
+  name: attachment
+  role: root

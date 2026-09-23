@@ -1,0 +1,97 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.item_media.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "item-media",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Hold the leading icon, image or avatar of an item row.",
+  "typical_uses": [
+    "An icon, a thumbnail or an avatar at the start of an Item"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The illustration of a region that has nothing to show",
+      "instead": {
+        "target": "EmptyMedia",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_media.v1"
+      }
+    },
+    {
+      "situation": "An image that runs to the edges of a bounded panel",
+      "instead": {
+        "target": "Card, with the image as its direct child",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "Item",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "variant-sizes-what-it-holds",
+      "text": "ItemMedia is a centered, non-shrinking flex box; `variant=\"icon\"` sizes every svg inside it to --icon-size-sm, and `variant=\"image\"` makes a 2.5rem square with a small radius that clips its content and makes every img inside it cover the square. Every svg inside ItemMedia ignores pointer events whatever the variant."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A thumbnail cropped to the media square",
+        "code": "<Item>\n  <ItemMedia variant=\"image\">\n    <img src=\"/covers/q3.png\" alt=\"\" />\n  </ItemMedia>\n  <ItemContent>\n    <ItemTitle>Q3 report</ItemTitle>\n  </ItemContent>\n</Item>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A size prop guessed for the image",
+        "code": "<ItemMedia variant=\"image\" size=\"sm\">\n  <img src=\"/covers/q3.png\" alt=\"\" />\n</ItemMedia>\n",
+        "why": "ItemMedia declares no `size`; the image square already shrinks to follow the surrounding Item's `size`, so set `size=\"sm\"` on the Item."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "item",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof itemMediaVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ItemMedia",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "icon",
+          "image"
+        ],
+        "default": "default"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

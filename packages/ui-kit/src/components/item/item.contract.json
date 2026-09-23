@@ -1,0 +1,186 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "item",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Lay out one row of a collection whose rows share the same shape - media, a title and a description, and trailing actions.",
+  "typical_uses": [
+    "One row in a list of similar things, such as a notification, a person or a search result",
+    "A whole row that is itself a link or a button"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "One self-contained panel of related content, not one row of many",
+      "instead": {
+        "target": "Card",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1"
+      }
+    },
+    {
+      "situation": "Tabular data read across rows and columns",
+      "instead": {
+        "target": "Table",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.table.v1"
+      }
+    },
+    {
+      "situation": "A list of commands shown in a popup",
+      "instead": {
+        "target": "DropdownMenu",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu.v1"
+      }
+    },
+    {
+      "situation": "One turn of a conversation with an avatar, a sender or a timestamp",
+      "instead": {
+        "target": "Message",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.message.v1"
+      }
+    },
+    {
+      "situation": "One attached or uploading file with its preview, name, upload state and actions",
+      "instead": {
+        "target": "Attachment",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment.v1"
+      }
+    },
+    {
+      "situation": "A form control with its label and description beside it",
+      "instead": {
+        "target": "Field",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.item_media.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.item_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.item_actions.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.item_header.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.item_footer.v1"
+    ],
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "ItemGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.item_group.v1"
+    },
+    {
+      "container": "any parent in the consuming application",
+      "note": "A single Item may stand on its own, outside an ItemGroup; it then spans its parent's full width."
+    }
+  ],
+  "invariants": [
+    {
+      "id": "no-state-data-attributes",
+      "text": "Item reflects neither `variant` nor `size` as a data attribute on the rendered element; a function passed as `render` receives them as its state argument, `{ variant, size }`, with an omitted value resolved to \"default\"."
+    },
+    {
+      "id": "size-sets-the-row-and-its-parts",
+      "text": "`size` sets the row's gap and padding (var(--space-4) at default, var(--space-3) at sm, var(--space-2) at xs); inside an sm or xs Item an image ItemMedia shrinks from 2.5rem to 2rem or 1.5rem, and inside an xs Item ItemContent drops its gap and ItemDescription steps down to the meta text size."
+    },
+    {
+      "id": "media-tops-when-a-description-is-present",
+      "text": "When an ItemDescription sits anywhere inside the Item, ItemMedia aligns to the top of the row, moved down by 2px, instead of the row's vertical center."
+    },
+    {
+      "id": "focus-ring-on-the-item-itself",
+      "text": "Item draws its focus state, a --ring colored border and inset ring, on its own element under :focus-visible; the default div is not focusable, so the ring appears only once the Item itself takes focus, for example when `render` makes it a link or a button."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Render the Item as a link or a button while its ItemActions holds buttons of its own",
+      "do_instead": "Keep the Item a div and make the title's text the link, since HTML allows no interactive content inside a link or a button"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "useRender's render prop takes an element or a function of the props to spread and the item's own state (`{ variant, size }`), so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A person row with an avatar, a name and a role, and one action",
+        "code": "<Item variant=\"outline\">\n  <ItemMedia>\n    <Avatar>\n      <AvatarImage src=\"/jane.jpg\" alt=\"\" />\n      <AvatarFallback>JD</AvatarFallback>\n    </Avatar>\n  </ItemMedia>\n  <ItemContent>\n    <ItemTitle>Jane Doe</ItemTitle>\n    <ItemDescription>Owner</ItemDescription>\n  </ItemContent>\n  <ItemActions>\n    <Button variant=\"ghost\" size=\"sm\">Manage</Button>\n  </ItemActions>\n</Item>\n"
+      },
+      {
+        "title": "A whole row rendered as a link",
+        "code": "<Item size=\"sm\" render={<a href=\"/files/2\" />}>\n  <ItemContent>\n    <ItemTitle>Notes.txt</ItemTitle>\n  </ItemContent>\n</Item>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A link wrapped around the row",
+        "code": "<a href=\"/files/2\">\n  <Item>\n    <ItemContent>\n      <ItemTitle>Notes.txt</ItemTitle>\n    </ItemContent>\n  </Item>\n</a>\n",
+        "why": "Keyboard focus lands on the outer link, not on the Item, so the Item's focus ring never shows; pass render={<a href=\"/files/2\" />} so the Item itself is the link."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "item",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.item_actions.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.item_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.item_description.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.item_footer.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.item_header.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.item_media.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.item_title.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof itemVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Item",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "outline",
+          "muted"
+        ],
+        "default": "default"
+      },
+      "size": {
+        "type": "string",
+        "enum": [
+          "default",
+          "sm",
+          "xs"
+        ],
+        "default": "default"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, { variant: ItemVariant; size: ItemSize; }> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. useRender's render prop takes an element or a function of the props to spread and the item's own state (`{ variant, size }`), so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "attachment-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Group the attachment's title and description into the column that shrinks beside the preview.",
+  "typical_uses": [
+    "The name and the details of one attached file"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The title and description block of a card that is not a file",
+      "instead": {
+        "target": "CardHeader",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_title.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_description.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Attachment",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "takes-the-remaining-width",
+      "text": "AttachmentContent grows into the width the preview and the actions leave (`flex: 1 1 0%`) and may shrink below its content (`min-width: 0`), which is what lets the title and description truncate instead of widening the card."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A name and its details",
+        "code": "<AttachmentContent>\n  <AttachmentTitle>report.pdf</AttachmentTitle>\n  <AttachmentDescription>PDF, 2.4 MB</AttachmentDescription>\n</AttachmentContent>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Content wrapped one element deeper",
+        "code": "<Attachment>\n  <div>\n    <AttachmentContent>\n      <AttachmentTitle>report.pdf</AttachmentTitle>\n    </AttachmentContent>\n  </div>\n</Attachment>\n",
+        "why": "The root pads itself only while an AttachmentContent is its direct child, so the extra wrapper leaves the card with no padding."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "attachment",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit AttachmentContent",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

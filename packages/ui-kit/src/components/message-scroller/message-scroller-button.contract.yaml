@@ -1,0 +1,107 @@
+# Semantic overlay for MessageScrollerButton - part of the MessageScroller
+# family, see message-scroller.contract.yaml's `family_membership`.
+component: message-scroller-button
+
+intent: Float a button over one edge of the transcript that appears while more content lies past that edge and scrolls there when pressed.
+
+typical_uses:
+  - A jump-to-latest button at the bottom of a transcript the reader has scrolled back in
+  - A jump-to-start button at the top of a long transcript
+
+dont_use_when:
+  - situation: A jump to one particular message, or a scroll action outside the transcript frame
+    instead:
+      target: Button calling `scrollToMessage` or `scrollToEnd` from useMessageScroller
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: active-only-while-the-edge-is-scrollable
+    text: >-
+      The button is active only while more content lies past the edge its
+      `direction` names; the end button stays inactive while the scroller
+      follows the end. Inactive, it carries `data-active="false"`, `inert`
+      and `tabIndex={-1}`, ignores clicks, and message-scroller.module.css
+      fades it out and slides it off that edge.
+  - id: click-scrolls-unless-prevented
+    text: >-
+      A click on the active button runs the consumer's `onClick` first;
+      unless that calls `preventDefault`, the button blurs itself and
+      scrolls to its edge with the given `behavior`.
+  - id: default-name-follows-direction
+    text: >-
+      Without `aria-label` the button is named "Scroll to end" or "Scroll to
+      start" after its `direction`, even when children give it a visible
+      label; without children it renders icon-only,
+      a downward arrow the stylesheet turns upward for `direction="start"`,
+      and children become a visible label beside the arrow.
+  - id: render-replaces-the-kit-button
+    text: >-
+      By default the button renders the kit Button with `variant` and
+      `size`; a `render` element replaces that Button entirely, so `variant`
+      and `size` then have no effect and the arrow icon is gone.
+  - id: positioned-against-the-frame
+    text: >-
+      message-scroller.module.css positions the button absolutely, centred
+      horizontally in a left-to-right layout (in right-to-left the
+      `inset-inline-start: 50%` plus physical `translate: -50%` pair leaves
+      it a full button width off centre), near the bottom of the nearest positioned ancestor
+      for `direction="end"` and near its top for `direction="start"`; that
+      ancestor is MessageScroller when the button is its direct child.
+
+anti_patterns:
+  - dont: Render the button only when useMessageScrollerScrollable reports the edge scrollable
+    do_instead: Render it unconditionally - it activates and hides itself, and conditional mounting skips its fade
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      message-scroller.test.tsx finds the button with getByRole('button',
+      { name: 'Scroll to end' }) and with the 'Back to top' aria-label
+      override; the primitive's Button sets inert and tabIndex -1 while
+      inactive
+  rtl:
+    outcome: failed
+    by: >-
+      message-scroller.module.css `.button` pairs the logical
+      `inset-inline-start: 50%` with the physical `translate: -50% 0`, so in
+      a right-to-left layout the button is shifted away from the centre
+      instead of onto it
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      The primitive's render prop takes an element or a function of the
+      button's own state (`active`, `direction`), so its type is a union of
+      a React element and a callback - the compiler emits one JSON type per property.
+      Given, it replaces the kit Button this component renders by default.
+
+examples:
+  good:
+    - title: Jump buttons on both edges
+      code: |
+        <MessageScroller>
+          <MessageScrollerViewport>
+            <MessageScrollerContent>{items}</MessageScrollerContent>
+          </MessageScrollerViewport>
+          <MessageScrollerButton direction="start" />
+          <MessageScrollerButton direction="end" aria-label="New messages">New messages</MessageScrollerButton>
+        </MessageScroller>
+  bad:
+    - title: Styling expected from variant on a custom render target
+      code: |
+        <MessageScrollerButton variant="outline" render={<a href="#latest" />} />
+      why: >-
+        `render` replaces the kit Button, so `variant` reaches nothing; style
+        the rendered element itself or drop `render`.
+
+family_membership:
+  name: message_scroller
+  role: part

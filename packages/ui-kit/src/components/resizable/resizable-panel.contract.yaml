@@ -1,0 +1,122 @@
+# Semantic overlay for ResizablePanel - a part of the resizable family, see
+# resizable-panel-group.contract.yaml's `family_membership`. The kit adds
+# nothing to the wrapped library's Panel: no class, no styling.
+component: resizable-panel
+
+intent: One resizable region of a ResizablePanelGroup, holding any content and sized by the group's handles within its own limits.
+
+typical_uses:
+  - One pane of a split view, such as a list, an editor or a preview
+
+dont_use_when:
+  - situation: A bordered, padded box that groups a section of content
+    instead:
+      target: Card
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1
+
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: size-units
+    text: >-
+      `defaultSize`, `minSize`, `maxSize` and `collapsedSize` read a number
+      as pixels and a string with no unit as a percentage of the group;
+      a string may also carry `px`, `%`, `em`, `rem`, `vh` or `vw`.
+  - id: class-and-style-reach-the-inner-element
+    text: >-
+      The panel renders two divs: the outer one carries `id`, `data-panel`
+      and every other forwarded attribute, and `className` and `style` go
+      to the inner div that holds the children. The kit applies no class
+      to either.
+  - id: collapsible-snaps-below-min-size
+    text: >-
+      A `collapsible` panel dragged below the midpoint between its
+      `collapsedSize` (0% when unset) and its `minSize` collapses to
+      `collapsedSize`; between that midpoint and `minSize` it stays at
+      `minSize`.
+
+anti_patterns:
+  - dont: Expect the panel to draw a border, a background or padding of its own
+    do_instead: Style the content placed inside it, or pass `className`, which lands on the inner element
+
+deprecations: {}
+
+# resizable.test.tsx asserts data-panel, the text and an empty class on the
+# outer element; nothing about accessibility.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+unexposed_parts:
+  - part: the library's inner content div
+    reason: >-
+      The wrapped Panel renders an inner div inside the panel element that
+      holds the children and receives `className` and `style`; it is not a
+      component of its own.
+
+prop_statements:
+  defaultSize:
+    states: defaultSize is the panel's starting size, a number of pixels or a string size
+    because: >-
+      `number | string`, read as `size-units` describes, and the compiler
+      emits one JSON type per property. Without it the panel takes an even
+      share of the group.
+  minSize:
+    states: minSize is the smallest size a drag can give the panel, a number of pixels or a string size
+    because: >-
+      `number | string`, read as `size-units` describes, and the compiler
+      emits one JSON type per property. It defaults to 0%.
+  maxSize:
+    states: maxSize is the largest size a drag can give the panel, a number of pixels or a string size
+    because: >-
+      `number | string`, read as `size-units` describes, and the compiler
+      emits one JSON type per property. It defaults to 100%.
+  collapsedSize:
+    states: collapsedSize is the size a collapsible panel snaps to, a number of pixels or a string size
+    because: >-
+      `number | string`, read as `size-units` describes, and the compiler
+      emits one JSON type per property. It defaults to 0% and has an effect
+      only with `collapsible`.
+  elementRef:
+    states: elementRef is a ref to the panel's outer div element
+    because: >-
+      `Ref<HTMLDivElement | null>` is a union of a ref object and a callback
+      function - the compiler emits one JSON type per property.
+  panelRef:
+    states: panelRef receives the panel's imperative handle, with collapse, expand, getSize, isCollapsed and resize
+    because: >-
+      `Ref<PanelImperativeHandle | null>` is a ref object or a callback
+      holding an object of functions, which no JSON Schema type covers.
+  onResize:
+    states: onResize is a callback called with the panel's new size, its id and its previous size, not a value
+    because: >-
+      `(panelSize, id, prevPanelSize) => void`, where a size carries
+      `asPercentage` and `inPixels` - a function, which no JSON Schema type
+      covers.
+  style:
+    states: style is a plain style object applied inline to the panel's inner div
+    because: >-
+      `CSSProperties` is React's style object type, which the compiler
+      leaves to tsc; it lands on the inner element that holds the children,
+      not on the panel element.
+
+examples:
+  good:
+    - title: A collapsible side panel with size limits in percent
+      code: |
+        <ResizablePanel id="nav" defaultSize="25%" minSize="15%" maxSize="40%" collapsible>
+          Navigation
+        </ResizablePanel>
+  bad:
+    - title: A number meant as a percentage
+      code: <ResizablePanel defaultSize={30} minSize={20}>Sidebar</ResizablePanel>
+      why: >-
+        Numbers are pixels, so this panel starts at 30px wide with a 20px
+        minimum; write `"30%"` and `"20%"` for a share of the group.
+
+family_membership:
+  name: resizable
+  role: part

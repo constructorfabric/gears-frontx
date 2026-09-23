@@ -1,0 +1,87 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.item_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "item-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Stack an item's title and description in the column that takes the row's free width.",
+  "typical_uses": [
+    "The title and description column of an Item"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The body of a bounded panel",
+      "instead": {
+        "target": "CardContent",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_content.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.item_title.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.item_description.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Item",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "grows-and-may-shrink-below-its-text",
+      "text": "ItemContent is a flex column spaced var(--space-1) apart that grows into the row's free width and has no minimum width, so a long title or description is cut by its own truncation instead of widening the row. An ItemContent that directly follows another ItemContent does not grow; it keeps its content's width."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Place two ItemContent blocks in a row expecting two equal columns",
+      "do_instead": "Use one ItemContent for the main text and a second one only for a short trailing block, such as a timestamp, which keeps its own width"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A main column and a trailing timestamp",
+        "code": "<Item>\n  <ItemContent>\n    <ItemTitle>Build finished</ItemTitle>\n    <ItemDescription>All checks passed</ItemDescription>\n  </ItemContent>\n  <ItemContent>\n    <ItemDescription>2m ago</ItemDescription>\n  </ItemContent>\n</Item>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Title and description placed straight in the row",
+        "code": "<Item>\n  <ItemTitle>Build finished</ItemTitle>\n  <ItemDescription>All checks passed</ItemDescription>\n</Item>\n",
+        "why": "The row is a wrapping flex row, so the two text parts sit side by side instead of stacked, and neither takes the free width; wrap them in ItemContent."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "item",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ItemContent",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

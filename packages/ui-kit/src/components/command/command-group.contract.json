@@ -1,0 +1,122 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.command_group.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "command-group",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "A titled group of items inside a CommandList, hidden while none of its items matches the search.",
+  "typical_uses": [
+    "Items of one kind under one heading"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A group of rows in a menu anchored to a trigger",
+      "instead": {
+        "target": "DropdownMenuGroup",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_group.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.command_item.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "CommandList",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.command_list.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "heading-names-the-group",
+      "text": "`heading` renders in its own div, hidden from assistive technology, and names the inner `role=\"group\"` element that holds the items through `aria-labelledby`; the outer div, which receives the caller's props and `className`, carries `role=\"presentation\"`."
+    },
+    {
+      "id": "hidden-when-nothing-matches",
+      "text": "While the search text is not empty the group carries the `hidden` attribute when none of its items matches, unless `forceMount` is true or the root's `shouldFilter` is false; `forceMount` on the group also keeps every item inside it rendered."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put a heading element as the group's first child",
+      "do_instead": "Pass the heading text as `heading`, which names the group and is styled by command.module.css"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is the group's items",
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+    },
+    "heading": {
+      "states": "heading is the group's visible title and accessible name",
+      "because": "`React.ReactNode` is a union, and the compiler emits one JSON type per property."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "The library's group heading and group items divs",
+      "reason": "Fixed markup inside the group: the heading div (reached only by command.module.css's `[cmdk-group-heading]` selector) and the `role=\"group\"` div holding the items."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "A group with a heading",
+        "code": "<CommandGroup heading=\"Settings\">\n  <CommandItem value=\"profile\">Profile</CommandItem>\n  <CommandItem value=\"billing\">Billing</CommandItem>\n</CommandGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A heading passed as a child",
+        "code": "<CommandGroup>\n  <h3>Settings</h3>\n  <CommandItem value=\"profile\">Profile</CommandItem>\n</CommandGroup>\n",
+        "why": "The child renders as one more piece of content inside the `role=\"group\"` element instead of naming it; without `heading` the group has no accessible name and command.module.css's heading style does not apply."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "command",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit CommandGroup",
+    "type": "object",
+    "properties": {
+      "asChild": {
+        "type": "boolean"
+      },
+      "children": {
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the group's items. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+      },
+      "forceMount": {
+        "type": "boolean"
+      },
+      "heading": {
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. heading is the group's visible title and accessible name. `React.ReactNode` is a union, and the compiler emits one JSON type per property."
+      },
+      "value": {
+        "type": "string"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

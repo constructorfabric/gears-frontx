@@ -1,0 +1,67 @@
+# Semantic overlay for ItemHeader - part of the item family, see
+# item.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from Item's accepted components.
+component: item-header
+
+intent: Put a full-width line above an item row's media, content and actions.
+
+typical_uses:
+  - A line of context above the row, such as a category and a date at either end
+
+dont_use_when:
+  - situation: The title block at the top of a bounded panel
+    instead:
+      target: CardHeader
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1
+
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: takes-a-whole-line-of-the-row
+    text: >-
+      ItemHeader takes the full width of the Item's wrapping row, so it
+      gets a line of its own, and spreads its children to both ends with a
+      var(--space-2) gap. It sits above the rest of the row only when it
+      comes first in the markup; its position follows the markup, not its
+      name.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A category and a date above the row
+      code: |
+        <Item variant="outline">
+          <ItemHeader>
+            <span>Invoices</span>
+            <span>Jan 4</span>
+          </ItemHeader>
+          <ItemContent>
+            <ItemTitle>Invoice #1024</ItemTitle>
+          </ItemContent>
+        </Item>
+  bad:
+    - title: A header placed after the content
+      code: |
+        <Item>
+          <ItemContent>
+            <ItemTitle>Invoice #1024</ItemTitle>
+          </ItemContent>
+          <ItemHeader>Invoices</ItemHeader>
+        </Item>
+      why: >-
+        ItemHeader goes where the markup puts it, so this one renders on its
+        own line below the content; place it first.
+
+family_membership:
+  name: item
+  role: part

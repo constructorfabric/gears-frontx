@@ -1,0 +1,168 @@
+# Semantic overlay for Item (the root) - the hand-written half of one of
+# eight contracts in the item family. The parts are item-media,
+# item-content, item-title, item-description, item-actions, item-header
+# and item-footer; `family_membership` below is how a reader (or the
+# conformance test) walks between them. ItemGroup and ItemSeparator, the
+# other two exports of this directory, form the item_group family: a group
+# wraps whole Item roots, so it is not a part of the thing it wraps (see
+# item-group.contract.yaml).
+#
+# Machine-extractable facts (the `variant` and `size` axes and their
+# defaults, the prop list, the forwarded div surface) do NOT belong here:
+# the compiler takes those from item.tsx and rejects an overlay that
+# restates them. Item's root is built on the useRender utility, not on a
+# stateful primitive, so its one statement is about `render`.
+component: item
+
+intent: Lay out one row of a collection whose rows share the same shape - media, a title and a description, and trailing actions.
+
+typical_uses:
+  - One row in a list of similar things, such as a notification, a person or a search result
+  - A whole row that is itself a link or a button
+
+dont_use_when:
+  - situation: One self-contained panel of related content, not one row of many
+    instead:
+      target: Card
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1
+  - situation: Tabular data read across rows and columns
+    instead:
+      target: Table
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.table.v1
+  - situation: A list of commands shown in a popup
+    instead:
+      target: DropdownMenu
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu.v1
+  - situation: One turn of a conversation with an avatar, a sender or a timestamp
+    instead:
+      target: Message
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.message.v1
+  - situation: One attached or uploading file with its preview, name, upload state and actions
+    instead:
+      target: Attachment
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.attachment.v1
+  - situation: A form control with its label and description beside it
+    instead:
+      target: Field
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1
+
+# The ONE authored statement of a nesting relationship: the compiler fills
+# every part's `mounted_in` from this list. ItemTitle and ItemDescription go
+# inside ItemContent, not directly in the row. Text is meaningful: item.md's
+# own example renders a link row whose only child is its caption.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.item_media.v1 # ItemMedia
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.item_content.v1 # ItemContent
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.item_actions.v1 # ItemActions
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.item_header.v1 # ItemHeader
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.item_footer.v1 # ItemFooter
+  text: true
+
+# The kit mount point (ItemGroup) is filled from the group's own accepts.
+# This authored entry states the one the kit cannot: a single Item used
+# outside any group.
+mounted_in:
+  - container: any parent in the consuming application
+    note: >-
+      A single Item may stand on its own, outside an ItemGroup; it then
+      spans its parent's full width.
+
+invariants:
+  - id: no-state-data-attributes
+    text: >-
+      Item reflects neither `variant` nor `size` as a data attribute on the
+      rendered element; a function passed as `render` receives them as its
+      state argument, `{ variant, size }`, with an omitted value resolved to
+      "default".
+  - id: size-sets-the-row-and-its-parts
+    text: >-
+      `size` sets the row's gap and padding (var(--space-4) at default,
+      var(--space-3) at sm, var(--space-2) at xs); inside an sm or xs Item
+      an image ItemMedia shrinks from 2.5rem to 2rem or 1.5rem, and inside
+      an xs Item ItemContent drops its gap and ItemDescription steps down to
+      the meta text size.
+  - id: media-tops-when-a-description-is-present
+    text: >-
+      When an ItemDescription sits anywhere inside the Item, ItemMedia
+      aligns to the top of the row, moved down by 2px, instead of the row's
+      vertical center.
+  - id: focus-ring-on-the-item-itself
+    text: >-
+      Item draws its focus state, a --ring colored border and inset ring,
+      on its own element under :focus-visible; the default div is not
+      focusable, so the ring appears only once the Item itself takes focus,
+      for example when `render` makes it a link or a button.
+
+anti_patterns:
+  - dont: Render the Item as a link or a button while its ItemActions holds buttons of its own
+    do_instead: >-
+      Keep the Item a div and make the title's text the link, since HTML
+      allows no interactive content inside a link or a button
+
+deprecations: {}
+
+# item.test.tsx asserts the classes, the missing data attributes and that
+# render={<a href>} yields a link named by its text; nothing in it asserts
+# how assistive technology reads a row, and no test renders it under a
+# right-to-left direction.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      useRender's render prop takes an element or a function of the props to
+      spread and the item's own state (`{ variant, size }`), so its type is
+      a union of a React element and a callback - the compiler emits one
+      JSON type per property.
+
+examples:
+  good:
+    - title: A person row with an avatar, a name and a role, and one action
+      code: |
+        <Item variant="outline">
+          <ItemMedia>
+            <Avatar>
+              <AvatarImage src="/jane.jpg" alt="" />
+              <AvatarFallback>JD</AvatarFallback>
+            </Avatar>
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle>Jane Doe</ItemTitle>
+            <ItemDescription>Owner</ItemDescription>
+          </ItemContent>
+          <ItemActions>
+            <Button variant="ghost" size="sm">Manage</Button>
+          </ItemActions>
+        </Item>
+    - title: A whole row rendered as a link
+      code: |
+        <Item size="sm" render={<a href="/files/2" />}>
+          <ItemContent>
+            <ItemTitle>Notes.txt</ItemTitle>
+          </ItemContent>
+        </Item>
+  bad:
+    - title: A link wrapped around the row
+      code: |
+        <a href="/files/2">
+          <Item>
+            <ItemContent>
+              <ItemTitle>Notes.txt</ItemTitle>
+            </ItemContent>
+          </Item>
+        </a>
+      why: >-
+        Keyboard focus lands on the outer link, not on the Item, so the
+        Item's focus ring never shows; pass render={<a href="/files/2" />}
+        so the Item itself is the link.
+
+family_membership:
+  name: item
+  role: root

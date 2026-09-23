@@ -1,0 +1,94 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_ellipsis.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "breadcrumb-ellipsis",
+  "forwards_to": "gts.frontx.uikit.element.dom_span.v1~",
+  "intent": "Mark the levels of a breadcrumb trail that are collapsed out of view.",
+  "typical_uses": [
+    "A stand-in for the middle levels of a long trail"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The collapsed-pages marker in a Pagination row",
+      "instead": {
+        "target": "PaginationEllipsis",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_ellipsis.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "BreadcrumbItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "fixed-content-hidden-from-assistive-tech",
+      "text": "The ellipsis renders a `span` with `role=\"presentation\"` and `aria-hidden=\"true\"` holding a horizontal dots icon and a visually hidden \"More\" label; children passed to it are not rendered. Because the label sits inside the aria-hidden span it is hidden as well, so assistive tech hears nothing where the collapsed levels are."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Make the ellipsis the only way to reach the collapsed levels",
+      "do_instead": "Keep the collapsed levels reachable some other way; the ellipsis is hidden from assistive tech and is not interactive"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "failed",
+      "by": "breadcrumb.tsx puts the visually hidden \"More\" label inside the span that carries aria-hidden=\"true\", so it is never announced; breadcrumb.test.tsx asserts aria-hidden=\"true\" and textContent \"More\" on the same element"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "the horizontal dots icon",
+      "reason": "breadcrumb.tsx renders a MoreHorizontalIcon inside the span; it is not exported as a component of its own and cannot be replaced."
+    },
+    {
+      "part": "the visually hidden \"More\" label",
+      "reason": "breadcrumb.tsx renders it as a span with the stylesheet's srOnly class; it is not exported and its text cannot be changed."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "A collapsed level in its own item",
+        "code": "<BreadcrumbItem>\n  <BreadcrumbEllipsis />\n</BreadcrumbItem>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A custom label given as children",
+        "code": "<BreadcrumbEllipsis>2 more</BreadcrumbEllipsis>",
+        "why": "The ellipsis renders fixed content and ignores children, so the label never appears."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "breadcrumb",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit BreadcrumbEllipsis",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,70 @@
+# Semantic overlay for CommandEmpty - a part of the Command family, see
+# command.contract.yaml's `family_membership`. The forwarded surface is the
+# library's div.
+component: command-empty
+
+intent: The message a Command shows while no item is visible.
+
+typical_uses:
+  - A "No results found." line in a CommandList
+
+dont_use_when:
+  - situation: An empty state of a page, a table or a panel, outside a Command
+    instead:
+      target: Empty
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.empty.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: rendered-only-with-no-visible-item
+    text: >-
+      The component renders only while the root counts no item: with
+      search text, while no item matches it; with an empty search or
+      `shouldFilter={false}`, while no item is registered at all. Items
+      with `forceMount` are not counted. Otherwise it renders nothing.
+
+anti_patterns:
+  - dont: Render the empty message conditionally by hand
+    do_instead: Always render CommandEmpty; it shows and hides itself from the root's own count
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  children:
+    states: children is the message shown while no item is visible
+    because: >-
+      `React.ReactNode` is a union of elements, strings, numbers, fragments
+      and more; the compiler emits one JSON type per property.
+
+examples:
+  good:
+    - title: An empty message in a list
+      code: |
+        <CommandList>
+          <CommandEmpty>No results found.</CommandEmpty>
+          <CommandItem value="calendar">Calendar</CommandItem>
+        </CommandList>
+  bad:
+    - title: An empty message shown by the caller's own check
+      code: |
+        <CommandList>
+          {items.length === 0 ? <CommandEmpty>No results found.</CommandEmpty> : null}
+          {items.map((item) => <CommandItem key={item} value={item}>{item}</CommandItem>)}
+        </CommandList>
+      why: >-
+        `items` is the full list, not what the search left visible, so the
+        message never shows while filtering; CommandEmpty already reads the
+        root's own count.
+
+family_membership:
+  name: command
+  role: part

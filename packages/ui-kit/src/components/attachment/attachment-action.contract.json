@@ -1,0 +1,164 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_action.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "attachment-action",
+  "forwards_to": "gts.frontx.uikit.element.dom_button.v1~",
+  "intent": "Trigger one action on the attachment, such as removing or downloading it, as a small ghost button.",
+  "typical_uses": [
+    "An icon-only remove or download button on an attached file"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "An action that does not act on an attachment",
+      "instead": {
+        "target": "Button",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+      }
+    },
+    {
+      "situation": "Opening or previewing the whole attachment by clicking the card",
+      "instead": {
+        "target": "AttachmentTrigger",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_trigger.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true,
+    "icons_via": "icon"
+  },
+  "mounted_in": [
+    {
+      "container": "AttachmentActions",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_actions.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "ghost-when-unset",
+      "text": "AttachmentAction renders Button's `ghost` variant when `variant` is not given or is null."
+    },
+    {
+      "id": "icon-only-needs-the-icon-prop-and-a-label",
+      "text": "The button is squared as icon-only only when the icon is passed through `icon` with no children (Button's `data-icon-only`); it then has no accessible name of its own and needs an `aria-label`."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Leave an icon-only action without an `aria-label`",
+      "do_instead": "Name the action and its target, such as aria-label=\"Remove report.pdf\""
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "attachment.test.tsx asserts that an AttachmentAction with aria-label=\"Remove\" is found by role \"button\" with the accessible name \"Remove\""
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "icon": {
+      "states": "icon is a React node, not a value",
+      "because": "`ReactNode` is a union of an element, a string, a number, a fragment, `false` and more - the compiler emits one JSON type per property. It is Button's icon slot, which sizes the icon, hides it while `loading` and marks it `aria-hidden`."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the button's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the button's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through button.module.css and attachment.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "An icon-only remove action",
+        "code": "<AttachmentAction icon={<XIcon />} aria-label=\"Remove report.pdf\" />"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The icon passed as children",
+        "code": "<AttachmentAction aria-label=\"Remove report.pdf\">\n  <XIcon />\n</AttachmentAction>\n",
+        "why": "Children are Button's label: the icon lands in the label span and the button is not squared as icon-only, since Button sets `data-icon-only` only for an `icon` with no children. Pass it through `icon`."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "attachment",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {
+      "icon": {
+        "typeText": "ReactNode",
+        "optional": true
+      }
+    },
+    "variant_sources": [
+      "VariantProps<typeof buttonVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit AttachmentAction",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "destructive",
+          "outline",
+          "secondary",
+          "ghost",
+          "link",
+          "navigation",
+          "avatar",
+          "utility"
+        ],
+        "default": "default"
+      },
+      "size": {
+        "type": "string",
+        "enum": [
+          "default",
+          "sm",
+          "lg"
+        ],
+        "default": "sm"
+      },
+      "className": {
+        "type": "string"
+      },
+      "focusableWhenDisabled": {
+        "type": "boolean"
+      },
+      "icon": {
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. icon is a React node, not a value. `ReactNode` is a union of an element, a string, a number, a fragment, `false` and more - the compiler emits one JSON type per property. It is Button's icon slot, which sizes the icon, hides it while `loading` and marks it `aria-hidden`."
+      },
+      "loading": {
+        "type": "boolean"
+      },
+      "nativeButton": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ButtonState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the button's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: ButtonState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the button's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through button.module.css and attachment.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}
