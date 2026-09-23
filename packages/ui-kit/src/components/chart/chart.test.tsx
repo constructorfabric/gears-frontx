@@ -1,12 +1,15 @@
 import type { ComponentProps } from 'react';
 import { cleanup, render, screen } from '@testing-library/react';
+import { Bar, BarChart } from 'recharts';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   type ChartConfig,
   ChartContainer,
+  ChartLegend,
   ChartLegendContent,
   ChartStyle,
+  ChartTooltip,
   ChartTooltipContent,
 } from './chart';
 import styles from './chart.module.css';
@@ -80,6 +83,17 @@ describe('ChartContainer', () => {
     );
     const root = container.firstElementChild as HTMLElement;
     expect(root.getAttribute('data-chart')).toMatch(/^chart-/);
+  });
+
+  it("keeps its own data-chart id over a caller's, so the series colors still match", () => {
+    const { container } = render(
+      <ChartContainer config={config} id="usage" data-chart="mine">
+        <div />
+      </ChartContainer>,
+    );
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.getAttribute('data-chart')).toBe('chart-usage');
+    expect(container.querySelector('style')?.innerHTML).toContain("[data-chart='chart-usage']");
   });
 
   it('merges a consumer className', () => {
@@ -241,6 +255,22 @@ describe('ChartTooltipContent', () => {
     expect(container.querySelector(`.${styles.tooltipItemLabelGroup} > .${styles.tooltipLabel}`)).toBeTruthy();
   });
 
+  it('forwards a div attribute to its root and merges a consumer className', () => {
+    renderTooltip({ 'aria-label': 'Values', id: 'tip', className: 'consumer' });
+    const root = document.getElementById('tip') as HTMLElement;
+    expect(root.getAttribute('aria-label')).toBe('Values');
+    expect(root.className).toContain(styles.tooltipContent);
+    expect(root.className).toContain('consumer');
+  });
+
+  it("keeps the Tooltip's own settings off the root element", () => {
+    renderTooltip({ id: 'tip', separator: ' = ', trigger: 'click', wrapperClassName: 'wrapper' });
+    const root = document.getElementById('tip') as HTMLElement;
+    expect(root.hasAttribute('separator')).toBe(false);
+    expect(root.hasAttribute('trigger')).toBe(false);
+    expect(root.hasAttribute('wrapperclassname')).toBe(false);
+  });
+
   it('lets a custom formatter replace the default row rendering entirely', () => {
     renderTooltip({ formatter: (value, name) => <span data-testid="custom">{`${String(name)}=${value}`}</span> });
     expect(screen.getByTestId('custom').textContent).toBe('desktop=186');
@@ -285,5 +315,77 @@ describe('ChartLegendContent', () => {
       </ChartContainer>,
     );
     expect(bottom.querySelector(`.${styles.legendBottom}`)).toBeTruthy();
+  });
+
+  it('forwards a div attribute to its root and merges a consumer className', () => {
+    render(
+      <ChartContainer config={config}>
+        <ChartLegendContent payload={payload} data-testid="legend" aria-label="Series" className="consumer" />
+      </ChartContainer>,
+    );
+    const root = screen.getByTestId('legend');
+    expect(root.getAttribute('aria-label')).toBe('Series');
+    expect(root.className).toContain(styles.legendContent);
+    expect(root.className).toContain('consumer');
+  });
+
+  it("keeps the Legend's own settings off the root element", () => {
+    render(
+      <ChartContainer config={config}>
+        <ChartLegendContent payload={payload} data-testid="legend" layout="horizontal" iconSize={14} align="center" />
+      </ChartContainer>,
+    );
+    const root = screen.getByTestId('legend');
+    expect(root.hasAttribute('layout')).toBe(false);
+    expect(root.hasAttribute('iconsize')).toBe(false);
+    expect(root.hasAttribute('align')).toBe(false);
+  });
+
+  it('keeps what a real Legend passes in off the root element, without a React warning', () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const onMouseMove = vi.fn();
+    try {
+      render(
+        <ChartContainer config={config}>
+          <BarChart width={320} height={200} data={[{ month: 'January', desktop: 186 }]}>
+            <Bar dataKey="desktop" fill="var(--color-desktop)" isAnimationActive={false} />
+            <ChartLegend onMouseMove={onMouseMove} content={<ChartLegendContent data-testid="legend" />} />
+          </BarChart>
+        </ChartContainer>,
+      );
+      const root = screen.getByTestId('legend');
+      for (const attribute of ['margin', 'chartwidth', 'chartheight', 'content', 'portal', 'layout', 'align']) {
+        expect(root.hasAttribute(attribute), attribute).toBe(false);
+      }
+      root.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
+      expect(onMouseMove).not.toHaveBeenCalled();
+      expect(errors).not.toHaveBeenCalled();
+    } finally {
+      errors.mockRestore();
+    }
+  });
+});
+
+describe('ChartTooltip with ChartTooltipContent', () => {
+  it('keeps what a real Tooltip passes in off the root element, without a React warning', () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      render(
+        <ChartContainer config={config}>
+          <BarChart width={320} height={200} data={[{ month: 'January', desktop: 186 }]}>
+            <Bar dataKey="desktop" fill="var(--color-desktop)" isAnimationActive={false} />
+            <ChartTooltip active defaultIndex={0} isAnimationActive={false} content={<ChartTooltipContent id="tip" />} />
+          </BarChart>
+        </ChartContainer>,
+      );
+      const root = document.getElementById('tip') as HTMLElement;
+      expect(root).toBeTruthy();
+      for (const attribute of ['coordinate', 'activeindex', 'accessibilitylayer', 'content', 'cursor', 'trigger']) {
+        expect(root.hasAttribute(attribute), attribute).toBe(false);
+      }
+      expect(errors).not.toHaveBeenCalled();
+    } finally {
+      errors.mockRestore();
+    }
   });
 });

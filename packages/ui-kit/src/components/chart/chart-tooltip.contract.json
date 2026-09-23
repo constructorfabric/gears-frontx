@@ -1,0 +1,253 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.chart_tooltip.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "chart-tooltip",
+  "intent": "Show the values of the chart point under the pointer in a floating box, rendered by its `content`.",
+  "typical_uses": [
+    "The values of every series at the hovered category",
+    "The value of the one bar or point under the pointer"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A hint for a control or any element outside a chart",
+      "instead": {
+        "target": "Tooltip",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.tooltip.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "a Recharts chart element (BarChart, LineChart, AreaChart, PieChart and the like)",
+      "note": "The tooltip reads the active point from the chart element's own state; outside one it renders nothing. The chart element is the library's, not a kit component; ChartTooltipContent additionally needs ChartContainer around it."
+    }
+  ],
+  "invariants": [
+    {
+      "id": "default-content-reads-no-config",
+      "text": "Without `content` the tooltip renders the library's own default content, which reads no ChartConfig; ChartTooltipContent is the content that resolves labels and colors from the config."
+    },
+    {
+      "id": "content-receives-the-tooltip-props",
+      "text": "The element given as `content` is cloned on every render, or rendered as a component when it is a function, with all of the tooltip's props plus the active state, index and coordinate, the payload and the label of the active point."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Style the tooltip box through `contentStyle`, `itemStyle` or `labelStyle` while `content` is ChartTooltipContent",
+      "do_instead": "Pass `className` or `labelClassName` to ChartTooltipContent; only the library's default content reads the three style props"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "allowEscapeViewBox": {
+      "states": "allowEscapeViewBox says per axis, as `{ x?, y? }` booleans, whether the tooltip may extend past the chart's box",
+      "because": "`AllowInDimension` is an `{ x?, y? }` object type the compiler emits no JSON type for."
+    },
+    "animationEasing": {
+      "states": "animationEasing is a named easing curve, `spring`, or an easing function for the tooltip's movement",
+      "because": "`EasingInput` mixes strings with a function, which no JSON Schema type covers."
+    },
+    "axisId": {
+      "states": "axisId is the id of the axis the tooltip attaches to, a string or a number",
+      "because": "`string | number` - the compiler emits one JSON type per property."
+    },
+    "content": {
+      "states": "content renders the tooltip's box: an element the tooltip clones with its props, or a function of them; the kit's is ChartTooltipContent",
+      "because": "`ReactElement | ((props) => ReactNode)` - an element or a function, which no JSON Schema type covers."
+    },
+    "contentStyle": {
+      "states": "contentStyle is a style object the library's default content applies to its box; ChartTooltipContent does not read it",
+      "because": "`CSSProperties` - an object type the compiler emits no JSON type for."
+    },
+    "cursor": {
+      "states": "cursor turns the hover cursor off with `false`, or configures it with SVG attributes or a replacement element",
+      "because": "`boolean | ReactElement | SVGProps<SVGElement>` mixes a boolean with an element and an object, which no JSON Schema type covers."
+    },
+    "defaultIndex": {
+      "states": "defaultIndex is the data index the tooltip shows before any interaction, a number or a string",
+      "because": "`number | string | null` - the compiler emits one JSON type per property."
+    },
+    "formatter": {
+      "states": "formatter customises each row: the library's default content calls it with the value, name, row, index and the whole payload array, and shows its return as the row's value, or a value and name pair; ChartTooltipContent calls it only for a row with a value and a name, passes that row's own data point as the fifth argument in place of the payload array its type declares, and shows the return in place of the whole row",
+      "because": "A function, which no JSON Schema type covers."
+    },
+    "isAnimationActive": {
+      "states": "isAnimationActive turns the tooltip's movement animation on or off, or `auto` to follow the reduced-motion preference and skip it in server rendering",
+      "because": "`boolean | 'auto'` - the compiler emits one JSON type per property."
+    },
+    "itemSorter": {
+      "states": "itemSorter orders the rows by `dataKey`, `value`, `name` or a function of the row; the library's default content applies it and ChartTooltipContent keeps the payload's order",
+      "because": "A union of strings and a function, which no JSON Schema type covers."
+    },
+    "itemStyle": {
+      "states": "itemStyle is a style object the library's default content applies to each row; ChartTooltipContent does not read it",
+      "because": "`CSSProperties` - an object type the compiler emits no JSON type for."
+    },
+    "labelFormatter": {
+      "states": "labelFormatter returns the label's content: the library's default content calls it with the category label and the payload; ChartTooltipContent calls it with the label it resolved from the config, which may be undefined, and does not call it under `hideLabel`",
+      "because": "A function, which no JSON Schema type covers."
+    },
+    "labelStyle": {
+      "states": "labelStyle is a style object the library's default content applies to the label; ChartTooltipContent does not read it",
+      "because": "`CSSProperties` - an object type the compiler emits no JSON type for."
+    },
+    "offset": {
+      "states": "offset is the gap in pixels between the pointer and the tooltip, one number or an `{ x, y }` pair",
+      "because": "`number | Coordinate` - the compiler emits one JSON type per property."
+    },
+    "payloadUniqBy": {
+      "states": "payloadUniqBy is a boolean or a function returning each row's identity, deciding which duplicate rows the tooltip drops before its content renders",
+      "because": "`boolean | ((entry) => unknown)` - a function, which no JSON Schema type covers."
+    },
+    "portal": {
+      "states": "portal is the element the tooltip renders into; without it the tooltip renders inside the chart's wrapper",
+      "because": "`HTMLElement | null` - a live DOM node, which no JSON Schema type covers."
+    },
+    "position": {
+      "states": "position fixes the tooltip at `{ x?, y? }` pixels; an axis left out follows the pointer",
+      "because": "`Partial<Coordinate>` - an object type the compiler emits no JSON type for."
+    },
+    "reverseDirection": {
+      "states": "reverseDirection says per axis, as `{ x?, y? }` booleans, whether the tooltip opens on the opposite side of the pointer",
+      "because": "`AllowInDimension` is an `{ x?, y? }` object type the compiler emits no JSON type for."
+    },
+    "wrapperStyle": {
+      "states": "wrapperStyle is a style object for the tooltip's positioned wrapper element",
+      "because": "`CSSProperties` - an object type the compiler emits no JSON type for."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "The kit's content with a line indicator",
+        "code": "<ChartContainer config={chartConfig}>\n  <BarChart data={data}>\n    <Bar dataKey=\"desktop\" fill=\"var(--color-desktop)\" />\n    <ChartTooltip cursor={false} content={<ChartTooltipContent indicator=\"line\" />} />\n  </BarChart>\n</ChartContainer>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A tooltip outside the chart element",
+        "code": "<ChartContainer config={chartConfig}>\n  <ChartTooltip content={<ChartTooltipContent />} />\n</ChartContainer>\n",
+        "why": "The tooltip reads the active point from a chart element; with none around it, it renders nothing."
+      }
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ChartTooltip",
+    "type": "object",
+    "properties": {
+      "active": {
+        "type": "boolean"
+      },
+      "allowEscapeViewBox": {
+        "description": "TS: AllowInDimension | undefined. The compiler emits one JSON type per property; this type is left to tsc. allowEscapeViewBox says per axis, as `{ x?, y? }` booleans, whether the tooltip may extend past the chart's box. `AllowInDimension` is an `{ x?, y? }` object type the compiler emits no JSON type for."
+      },
+      "animationDuration": {
+        "type": "number"
+      },
+      "animationEasing": {
+        "description": "TS: EasingInput | undefined. The compiler emits one JSON type per property; this type is left to tsc. animationEasing is a named easing curve, `spring`, or an easing function for the tooltip's movement. `EasingInput` mixes strings with a function, which no JSON Schema type covers."
+      },
+      "axisId": {
+        "description": "TS: AxisId | undefined. The compiler emits one JSON type per property; this type is left to tsc. axisId is the id of the axis the tooltip attaches to, a string or a number. `string | number` - the compiler emits one JSON type per property."
+      },
+      "content": {
+        "description": "TS: ContentType<ValueType, NameType> | undefined. The compiler emits one JSON type per property; this type is left to tsc. content renders the tooltip's box: an element the tooltip clones with its props, or a function of them; the kit's is ChartTooltipContent. `ReactElement | ((props) => ReactNode)` - an element or a function, which no JSON Schema type covers."
+      },
+      "contentStyle": {
+        "description": "TS: React.CSSProperties | undefined. The compiler emits one JSON type per property; this type is left to tsc. contentStyle is a style object the library's default content applies to its box; ChartTooltipContent does not read it. `CSSProperties` - an object type the compiler emits no JSON type for."
+      },
+      "cursor": {
+        "description": "TS: CursorDefinition | undefined. The compiler emits one JSON type per property; this type is left to tsc. cursor turns the hover cursor off with `false`, or configures it with SVG attributes or a replacement element. `boolean | ReactElement | SVGProps<SVGElement>` mixes a boolean with an element and an object, which no JSON Schema type covers."
+      },
+      "defaultIndex": {
+        "description": "TS: number | TooltipIndex | undefined. The compiler emits one JSON type per property; this type is left to tsc. defaultIndex is the data index the tooltip shows before any interaction, a number or a string. `number | string | null` - the compiler emits one JSON type per property."
+      },
+      "filterNull": {
+        "type": "boolean"
+      },
+      "formatter": {
+        "description": "TS: (Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => React.ReactNode | [React.ReactNode, React.ReactNode])) | undefined. The compiler emits one JSON type per property; this type is left to tsc. formatter customises each row: the library's default content calls it with the value, name, row, index and the whole payload array, and shows its return as the row's value, or a value and name pair; ChartTooltipContent calls it only for a row with a value and a name, passes that row's own data point as the fifth argument in place of the payload array its type declares, and shows the return in place of the whole row. A function, which no JSON Schema type covers."
+      },
+      "includeHidden": {
+        "type": "boolean"
+      },
+      "isAnimationActive": {
+        "description": "TS: boolean | \"auto\" | undefined. The compiler emits one JSON type per property; this type is left to tsc. isAnimationActive turns the tooltip's movement animation on or off, or `auto` to follow the reduced-motion preference and skip it in server rendering. `boolean | 'auto'` - the compiler emits one JSON type per property."
+      },
+      "itemSorter": {
+        "description": "TS: (TooltipItemSorter<ValueType, NameType> & TooltipItemSorter) | undefined. The compiler emits one JSON type per property; this type is left to tsc. itemSorter orders the rows by `dataKey`, `value`, `name` or a function of the row; the library's default content applies it and ChartTooltipContent keeps the payload's order. A union of strings and a function, which no JSON Schema type covers."
+      },
+      "itemStyle": {
+        "description": "TS: React.CSSProperties | undefined. The compiler emits one JSON type per property; this type is left to tsc. itemStyle is a style object the library's default content applies to each row; ChartTooltipContent does not read it. `CSSProperties` - an object type the compiler emits no JSON type for."
+      },
+      "labelClassName": {
+        "type": "string"
+      },
+      "labelFormatter": {
+        "description": "TS: (((label: React.ReactNode, payload: readonly Payload<ValueType, NameType>[]) => React.ReactNode) & ((label: React.ReactNode, payload: TooltipPayload) => React.ReactNode)) | undefined. The compiler emits one JSON type per property; this type is left to tsc. labelFormatter returns the label's content: the library's default content calls it with the category label and the payload; ChartTooltipContent calls it with the label it resolved from the config, which may be undefined, and does not call it under `hideLabel`. A function, which no JSON Schema type covers."
+      },
+      "labelStyle": {
+        "description": "TS: React.CSSProperties | undefined. The compiler emits one JSON type per property; this type is left to tsc. labelStyle is a style object the library's default content applies to the label; ChartTooltipContent does not read it. `CSSProperties` - an object type the compiler emits no JSON type for."
+      },
+      "offset": {
+        "description": "TS: number | Coordinate | undefined. The compiler emits one JSON type per property; this type is left to tsc. offset is the gap in pixels between the pointer and the tooltip, one number or an `{ x, y }` pair. `number | Coordinate` - the compiler emits one JSON type per property."
+      },
+      "payloadUniqBy": {
+        "description": "TS: UniqueOption<TooltipPayloadEntry> | undefined. The compiler emits one JSON type per property; this type is left to tsc. payloadUniqBy is a boolean or a function returning each row's identity, deciding which duplicate rows the tooltip drops before its content renders. `boolean | ((entry) => unknown)` - a function, which no JSON Schema type covers."
+      },
+      "portal": {
+        "description": "TS: HTMLElement | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. portal is the element the tooltip renders into; without it the tooltip renders inside the chart's wrapper. `HTMLElement | null` - a live DOM node, which no JSON Schema type covers."
+      },
+      "position": {
+        "description": "TS: Partial<Coordinate> | undefined. The compiler emits one JSON type per property; this type is left to tsc. position fixes the tooltip at `{ x?, y? }` pixels; an axis left out follows the pointer. `Partial<Coordinate>` - an object type the compiler emits no JSON type for."
+      },
+      "reverseDirection": {
+        "description": "TS: AllowInDimension | undefined. The compiler emits one JSON type per property; this type is left to tsc. reverseDirection says per axis, as `{ x?, y? }` booleans, whether the tooltip opens on the opposite side of the pointer. `AllowInDimension` is an `{ x?, y? }` object type the compiler emits no JSON type for."
+      },
+      "separator": {
+        "type": "string"
+      },
+      "shared": {
+        "type": "boolean"
+      },
+      "trigger": {
+        "type": "string",
+        "enum": [
+          "click",
+          "hover"
+        ]
+      },
+      "useTranslate3d": {
+        "type": "boolean"
+      },
+      "wrapperClassName": {
+        "type": "string"
+      },
+      "wrapperStyle": {
+        "description": "TS: React.CSSProperties | undefined. The compiler emits one JSON type per property; this type is left to tsc. wrapperStyle is a style object for the tooltip's positioned wrapper element. `CSSProperties` - an object type the compiler emits no JSON type for."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}
