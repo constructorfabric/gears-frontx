@@ -1,7 +1,7 @@
 # Semantic overlay for MessageHeader - part of the Message family, see
 # message.contract.yaml's `family_membership` for how the five contracts
-# relate. It belongs inside MessageContent, whose `accepts` is unconstrained
-# (see message-content.contract.yaml), so no kit mount point is filled here.
+# relate. `mounted_in` is filled from MessageContent's own accepted
+# components, not authored here.
 component: message-header
 
 intent: Show a short line of metadata above a message's surface, such as the sender's name.

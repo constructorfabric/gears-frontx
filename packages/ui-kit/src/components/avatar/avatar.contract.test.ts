@@ -2,8 +2,8 @@
 // family (Avatar with its Image, Fallback and Badge parts) and the
 // avatar_group family (AvatarGroup with its Count part). One file because
 // the interesting assertions are about how the six relate - two families
-// in one directory, and a group that hosts Avatar roots without naming
-// them; the per-component shape comes from testing.ts's assertContractFreshness.
+// in one directory, and a group that hosts the other family's Avatar
+// roots; the per-component shape comes from testing.ts's assertContractFreshness.
 import Ajv2020 from 'ajv/dist/2020';
 import { describe, expect, it } from 'vitest';
 
@@ -120,41 +120,59 @@ describe('avatar directory: what nests where', () => {
     });
   });
 
-  it('AvatarGroup constrains nothing inside it, so nothing gains a kit mount point from it', () => {
-    // The group is a plain div that examines nothing about its children,
-    // which is what `unconstrained` states, so no kit component gains a
-    // mount point from it.
-    expect(units[GROUP].contract.accepts).toEqual({ content: 'unconstrained' });
-    expect(units['avatar-group-count'].contract.mounted_in).toBeUndefined();
+  it('AvatarGroup accepts Avatar roots and the count, and nothing else', () => {
+    expect(units[GROUP].contract.accepts).toEqual({
+      content: 'specified',
+      components: [ref(DIRECTORY), ref('avatar-group-count')],
+    });
   });
 
-  it("every avatar part's mount point is FILLED from the root that accepts it", () => {
+  it("every part's mount point is FILLED from the root that accepts it", () => {
     for (const stem of AVATAR_PARTS) {
       expect(units[stem].contract.mounted_in, stem).toEqual([
         { container: pascalCase(DIRECTORY), component: ref(DIRECTORY) },
       ]);
     }
+    expect(units['avatar-group-count'].contract.mounted_in).toEqual([
+      { container: pascalCase(GROUP), component: ref(GROUP) },
+    ]);
   });
 
-  it('Avatar carries one authored mount point outside the kit and none inside it', () => {
+  it('Avatar is mounted in AvatarGroup and MessageAvatar, filled, and on its own in the application, authored', () => {
+    // A family root may be mounted in another directory's container; only
+    // parts are held to their own family. Those entries are filled from the
+    // containers' own overlays, so they are checked by containment.
     const mounts = units[DIRECTORY].contract.mounted_in ?? [];
-    expect(mounts).toHaveLength(1);
-    expect(mounts[0].component).toBeUndefined();
-    expect(mounts[0].container).toBe('any layout in the consuming application');
-    expect(mounts[0].note).toBeTruthy();
+    expect(mounts).toContainEqual({ container: pascalCase(GROUP), component: ref(GROUP) });
+    expect(mounts).toContainEqual({
+      container: pascalCase('message-avatar'),
+      component: componentRef('message-avatar', contractMajor('message', 'message-avatar')),
+    });
+    const outside = mounts.filter((entry) => entry.component === undefined);
+    expect(outside).toHaveLength(1);
+    expect(outside[0]?.container).toBe('any layout in the consuming application');
+    expect(outside[0]?.note).toBeTruthy();
   });
 
   it('gives the group no mount point at all - nothing in the kit mounts an AvatarGroup', () => {
     expect(units[GROUP].contract.mounted_in).toBeUndefined();
   });
 
-  it('every nesting reference stays inside its family', () => {
+  it('every accepts reference and every part mount point stays inside its family, except the group hosting Avatar roots', () => {
+    // The root's own mount points are left out: a family root may be
+    // mounted in another directory's container (MessageAvatar), filled from
+    // that container's overlay.
     for (const family of [AVATAR_FAMILY, GROUP_FAMILY]) {
       const familyRefs = new Set(family.map((stem) => bareGtsId(String(units[stem].contract.$id))));
       for (const stem of family) {
         const { contract } = units[stem];
-        const mounts = (contract.mounted_in ?? []).map((entry) => entry.component).filter((r): r is string => r !== undefined);
+        const mounts =
+          stem === DIRECTORY || stem === GROUP
+            ? []
+            : (contract.mounted_in ?? []).map((entry) => entry.component).filter((r): r is string => r !== undefined);
         for (const nested of [...(contract.accepts.components ?? []), ...mounts]) {
+          // The one crossing: the group hosts Avatar roots from the other family.
+          if (stem === GROUP && nested === ref(DIRECTORY)) continue;
           expect(familyRefs.has(nested), `${stem}: it names "${nested}", which is not a member of this family`).toBe(true);
         }
       }

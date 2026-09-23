@@ -3,10 +3,10 @@
 // rows and belongs to no family. One file because the interesting
 // assertions are about how the contracts relate (family membership,
 // composition refs), not about any one of them in isolation. See
-// empty.contract.test.ts for the family shape this follows; unlike Empty,
-// only the root names its parts in `accepts` - MessageContent hosts a Bubble
-// from another family and so accepts unconstrained content, which leaves
-// MessageHeader and MessageFooter without a filled kit mount point.
+// empty.contract.test.ts for the family shape this follows. Two nesting
+// references leave the family, both at a foreign family's root: the avatar
+// slot hosts Avatar and the content column hosts Bubble. MessageGroup, in
+// turn, hosts the Message root from outside the family.
 import Ajv2020 from 'ajv/dist/2020';
 import { describe, expect, it } from 'vitest';
 
@@ -51,6 +51,10 @@ const componentType = buildComponentType();
 
 const ref = (stem: string) => componentRef(stem, contractMajor(DIRECTORY, stem));
 const ROOT_REF = ref(DIRECTORY);
+// The two foreign family roots this family hosts, each at its own
+// contract's major.
+const AVATAR_REF = componentRef('avatar', contractMajor('avatar', 'avatar'));
+const BUBBLE_REF = componentRef('bubble', contractMajor('bubble', 'bubble'));
 
 describe('message directory: component type validity', () => {
   it('all six contracts validate against the component type', () => {
@@ -106,34 +110,56 @@ describe('message family: what nests where', () => {
     expect(units[DIRECTORY].contract.accepts).toEqual({ content: 'specified', components: ROOT_HOSTED.map(ref) });
   });
 
-  it('the content column, the avatar slot, the header, the footer and the group accept unconstrained content', () => {
-    for (const stem of [...PART_STEMS, GROUP]) {
+  it('the content column accepts the header, Bubble and the footer, and nothing else', () => {
+    expect(units['message-content'].contract.accepts).toEqual({
+      content: 'specified',
+      components: [ref('message-header'), BUBBLE_REF, ref('message-footer')],
+    });
+  });
+
+  it('the avatar slot accepts Avatar, and nothing else', () => {
+    expect(units['message-avatar'].contract.accepts).toEqual({ content: 'specified', components: [AVATAR_REF] });
+  });
+
+  it('the group accepts the Message root, and nothing else', () => {
+    expect(units[GROUP].contract.accepts).toEqual({ content: 'specified', components: [ROOT_REF] });
+  });
+
+  it('the header and the footer accept unconstrained content', () => {
+    for (const stem of CONTENT_HOSTED) {
       expect(units[stem].contract.accepts, stem).toEqual({ content: 'unconstrained' });
     }
   });
 
-  it("the root's parts get their mount point FILLED from the root, and only from it", () => {
+  it("every part's mount point is FILLED from the member that accepts it, and only that member", () => {
     for (const stem of ROOT_HOSTED) {
       expect(units[stem].contract.mounted_in, stem).toEqual([{ container: pascalCase(DIRECTORY), component: ROOT_REF }]);
     }
-  });
-
-  it('gives the header, the footer, the root and the group no kit mount point', () => {
-    // Absent, not an empty list: MessageContent accepts unconstrained
-    // content, so nothing names the header or footer, and no contract in
-    // the kit names the root or the group inside it.
-    for (const stem of [...CONTENT_HOSTED, DIRECTORY, GROUP]) {
-      expect(units[stem].contract.mounted_in, stem).toBeUndefined();
+    for (const stem of CONTENT_HOSTED) {
+      expect(units[stem].contract.mounted_in, stem).toEqual([{ container: pascalCase('message-content'), component: ref('message-content') }]);
     }
   });
 
-  it('every nesting reference in the family points inside the family', () => {
+  it("the root's mount point is FILLED from MessageGroup, and the group has none", () => {
+    expect(units[DIRECTORY].contract.mounted_in).toEqual([{ container: pascalCase(GROUP), component: ref(GROUP) }]);
+    // Absent, not an empty list: no contract in the kit names the group.
+    expect(units[GROUP].contract.mounted_in).toBeUndefined();
+  });
+
+  it('every part is mounted only inside the family, and only Avatar and Bubble leave it', () => {
     const familyRefs = new Set(FAMILY_STEMS.map((stem) => bareGtsId(String(units[stem].contract.$id))));
+    const foreignRoots = new Set([AVATAR_REF, BUBBLE_REF]);
     for (const stem of FAMILY_STEMS) {
       const { contract } = units[stem];
-      const mounts = (contract.mounted_in ?? []).map((entry) => entry.component).filter((mount): mount is string => mount !== undefined);
-      for (const nested of [...(contract.accepts.components ?? []), ...mounts]) {
-        expect(familyRefs.has(nested), `${stem}: it names "${nested}", which is not a member of this family`).toBe(true);
+      for (const accepted of contract.accepts.components ?? []) {
+        if (foreignRoots.has(accepted)) continue;
+        expect(familyRefs.has(accepted), `${stem}: it accepts "${accepted}", which is not a member of this family`).toBe(true);
+      }
+    }
+    for (const stem of PART_STEMS) {
+      const mounts = (units[stem].contract.mounted_in ?? []).map((entry) => entry.component).filter((mount): mount is string => mount !== undefined);
+      for (const mount of mounts) {
+        expect(familyRefs.has(mount), `${stem}: it is mounted in "${mount}", which is not a member of this family`).toBe(true);
       }
     }
   });

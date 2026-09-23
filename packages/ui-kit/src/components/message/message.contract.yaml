@@ -4,7 +4,8 @@
 # below is how a reader (or the conformance test) walks between them.
 # MessageGroup, the sixth export of this directory, wraps whole Message rows
 # and is therefore not a part of the family it wraps (see
-# message-group.contract.yaml).
+# message-group.contract.yaml); the root's `mounted_in` is filled from the
+# group's accepted components.
 #
 # Machine-extractable facts (prop list, defaults, forwarded surface) do NOT
 # belong here: the compiler takes those from message.tsx and rejects an

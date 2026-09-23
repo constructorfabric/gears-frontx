@@ -2,8 +2,8 @@
 // interesting assertions are about how they relate, not about any one in
 // isolation. Bubble, BubbleContent and BubbleReactions form the bubble
 // family (root and two parts, as in radio-group.contract.test.ts);
-// BubbleGroup belongs to no family: it wraps whole bubbles, the way
-// AvatarGroup wraps Avatar roots, so it is not a part of the thing it wraps.
+// BubbleGroup belongs to no family: it wraps whole bubbles, so it is not a
+// part of the thing it wraps, and its accepts names the Bubble root.
 import { GTS } from '@globaltypesystem/gts-ts';
 import Ajv2020 from 'ajv/dist/2020';
 import { describe, expect, it } from 'vitest';
@@ -104,12 +104,12 @@ describe('bubble: what nests where', () => {
     expect(units[DIRECTORY].contract.accepts).toEqual({ content: 'specified', components: PART_STEMS.map(ref) });
   });
 
-  it('the group and both parts take any content', () => {
-    // The group cannot list Bubble under `specified`: the shared suite
-    // requires every kit mount point of a family member, the root included,
-    // to lie inside that member's own family, and the group is not one of
-    // its members (the same reason AvatarGroup's accepts is unconstrained).
-    for (const stem of [GROUP, ...PART_STEMS]) {
+  it('the group accepts Bubble and nothing else', () => {
+    expect(units[GROUP].contract.accepts).toEqual({ content: 'specified', components: [ROOT_REF] });
+  });
+
+  it('both parts take any content', () => {
+    for (const stem of PART_STEMS) {
       expect(units[stem].contract.accepts, stem).toEqual({ content: 'unconstrained' });
     }
   });
@@ -120,23 +120,31 @@ describe('bubble: what nests where', () => {
     }
   });
 
-  it("the root's only mount point is the authored one outside the kit", () => {
-    // Nothing in the kit names Bubble in a `specified` accepts list, so no
-    // kit mount point is filled; the authored entry carries no component.
+  it("the root's mount points include the group, FILLED from its accepts, and one authored entry outside the kit", () => {
+    // Other kit containers (a Message row's content column) may name Bubble
+    // too; their entries are filled from their own overlays, so only the
+    // group's entry and the authored one are pinned here.
     const mounts = units[DIRECTORY].contract.mounted_in ?? [];
-    expect(mounts).toHaveLength(1);
-    expect(mounts[0]?.component).toBeUndefined();
-    expect(mounts[0]?.container).toBe('any parent in the consuming application');
+    expect(mounts).toContainEqual({ container: pascalCase(GROUP), component: ref(GROUP) });
+    const outside = mounts.filter((entry) => entry.component === undefined);
+    expect(outside).toHaveLength(1);
+    expect(outside[0]?.container).toBe('any parent in the consuming application');
   });
 
   it('gives the group no mount point at all - nothing in the kit names BubbleGroup in its accepts', () => {
     expect(units[GROUP].contract.mounted_in).toBeUndefined();
   });
 
-  it('every nesting reference in the directory points inside the directory', () => {
+  it('every accepts reference, and every part mount point, points inside the directory', () => {
+    // The root's own mount points are left out: a family root may be
+    // mounted in another directory's container, and those entries are
+    // filled from that container's overlay.
     const directoryRefs = new Set(Object.values(units).map(({ contract }) => bareGtsId(String(contract.$id))));
     for (const { stem, contract } of Object.values(units)) {
-      const mounts = (contract.mounted_in ?? []).map((entry) => entry.component).filter((mount): mount is string => mount !== undefined);
+      const mounts =
+        stem === DIRECTORY
+          ? []
+          : (contract.mounted_in ?? []).map((entry) => entry.component).filter((mount): mount is string => mount !== undefined);
       for (const nested of [...(contract.accepts.components ?? []), ...mounts]) {
         expect(directoryRefs.has(nested), `${stem}: it names "${nested}", which is not a contract of this directory`).toBe(true);
       }

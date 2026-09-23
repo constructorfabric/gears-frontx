@@ -55,8 +55,16 @@
   },
   "mounted_in": [
     {
+      "container": "BubbleGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.bubble_group.v1"
+    },
+    {
+      "container": "MessageContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.message_content.v1"
+    },
+    {
       "container": "any parent in the consuming application",
-      "note": "A Bubble sits on its own, in a BubbleGroup with other turns from the same sender, or in a Message row's MessageContent."
+      "note": "A single Bubble may stand on its own, outside a BubbleGroup or a Message row."
     }
   ],
   "invariants": [

@@ -20,6 +20,12 @@
   "accepts": {
     "content": "unconstrained"
   },
+  "mounted_in": [
+    {
+      "container": "AvatarGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar_group.v1"
+    }
+  ],
   "invariants": [
     {
       "id": "size-comes-from-the-sibling-avatars",

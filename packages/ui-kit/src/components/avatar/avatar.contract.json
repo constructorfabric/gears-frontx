@@ -35,6 +35,14 @@
   },
   "mounted_in": [
     {
+      "container": "AvatarGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar_group.v1"
+    },
+    {
+      "container": "MessageAvatar",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.message_avatar.v1"
+    },
+    {
       "container": "any layout in the consuming application",
       "note": "A single avatar sits beside a name or inside any row or header of the application; AvatarGroup is needed only to overlap several of them."
     }

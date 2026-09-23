@@ -15,15 +15,16 @@ dont_use_when:
       target: Bubble, placed inside this column
       component: gts.frontx.uikit._.component.v1~frontx.uikit._.bubble.v1
 
-# The column examines nothing about its children. It hosts MessageHeader, a
-# Bubble and MessageFooter. Bubble ships no contract yet, but its directory
-# exports BubbleContent, BubbleGroup and BubbleReactions beside it, so once
-# described it is a family member, and the conformance suite requires every
-# kit mount point of a family member to lie inside that member's own family.
-# Listing only the header and footer would leave out the surface the column
-# exists for, so the column stays unconstrained.
+# The column hosts the header, the message surface and the footer, as
+# message.md's composition tree states. Bubble is the bubble family's root,
+# and a family root may be mounted in another component's container. No
+# text flag: bare text belongs in a Bubble (see the anti-pattern).
 accepts:
-  content: unconstrained
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.message_header.v1 # MessageHeader
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.bubble.v1 # Bubble
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.message_footer.v1 # MessageFooter
 
 invariants:
   - id: column-in-source-order

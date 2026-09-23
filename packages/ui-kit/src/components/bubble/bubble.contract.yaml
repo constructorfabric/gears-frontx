@@ -48,14 +48,16 @@ accepts:
     - gts.frontx.uikit._.component.v1~frontx.uikit._.bubble_content.v1 # BubbleContent
     - gts.frontx.uikit._.component.v1~frontx.uikit._.bubble_reactions.v1 # BubbleReactions
 
-# A Bubble stands in any flex column; the kit's BubbleGroup and
-# MessageContent both accept unconstrained content, so no kit mount point is
-# filled here.
+# The kit mount points are filled from the containers' own accepts lists
+# (BubbleGroup and MessageContent both name Bubble). This authored
+# entry states the one mount point the kit cannot: a Bubble used on its own,
+# outside any kit container, which bubble.module.css supports by aligning
+# the bubble from its own `data-align`.
 mounted_in:
   - container: any parent in the consuming application
     note: >-
-      A Bubble sits on its own, in a BubbleGroup with other turns from the
-      same sender, or in a Message row's MessageContent.
+      A single Bubble may stand on its own, outside a BubbleGroup or a
+      Message row.
 
 invariants:
   - id: paint-reaches-direct-content-only

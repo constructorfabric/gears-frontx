@@ -18,12 +18,13 @@ dont_use_when:
       target: MessageScroller
       component: gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller.v1
 
-# The group examines nothing about its children: it is a plain div laid out
-# as a column. Listing Message under `specified` is not possible while the
-# conformance suite requires every kit mount point of a family member, the
-# root included, to lie inside that member's own family.
+# The group stacks whole Message rows, as message.md's composition tree
+# states. Message is the message family's root, and a family root may be
+# mounted in another component's container.
 accepts:
-  content: unconstrained
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.message.v1 # Message
 
 invariants:
   - id: column-spaced-space-2

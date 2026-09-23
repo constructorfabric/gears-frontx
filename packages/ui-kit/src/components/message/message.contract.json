@@ -39,6 +39,12 @@
       "gts.frontx.uikit._.component.v1~frontx.uikit._.message_content.v1"
     ]
   },
+  "mounted_in": [
+    {
+      "container": "MessageGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.message_group.v1"
+    }
+  ],
   "invariants": [
     {
       "id": "align-is-stamped-as-data-align",

@@ -38,9 +38,9 @@ accepts:
     - gts.frontx.uikit._.component.v1~frontx.uikit._.avatar_fallback.v1 # AvatarFallback
     - gts.frontx.uikit._.component.v1~frontx.uikit._.avatar_badge.v1 # AvatarBadge
 
-# A single avatar stands on its own, with no kit container around it;
-# several overlap inside an AvatarGroup, whose `accepts` is unconstrained
-# (see avatar-group.contract.yaml), so no kit mount point is filled here.
+# Kit mount points (AvatarGroup, MessageAvatar) are filled from those
+# containers' own `accepts`; the entry below is the authored one, for an
+# avatar that stands on its own with no kit container around it.
 mounted_in:
   - container: any layout in the consuming application
     note: >-

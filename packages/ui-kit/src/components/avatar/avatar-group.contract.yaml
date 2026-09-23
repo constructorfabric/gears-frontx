@@ -15,14 +15,14 @@ dont_use_when:
       target: Item
       component: gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1
 
-# The group examines nothing about its children: it is a plain div, and
-# avatar.module.css overlaps whatever it holds. Its styling targets Avatar
-# roots and one AvatarGroupCount (see the invariants). Listing Avatar under
-# `specified` is not possible while the conformance suite requires every
-# kit mount point of a family member, the root included, to lie inside that
-# member's own family.
+# The ONE authored statement of what a group hosts: Avatar's and
+# AvatarGroupCount's `mounted_in` entries for AvatarGroup are filled from
+# this list. Avatar comes from outside this family.
 accepts:
-  content: unconstrained
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.avatar.v1 # Avatar
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.avatar_group_count.v1 # AvatarGroupCount
 
 invariants:
   - id: children-overlap-in-dom-order

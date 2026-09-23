@@ -21,6 +21,12 @@
   "accepts": {
     "content": "unconstrained"
   },
+  "mounted_in": [
+    {
+      "container": "MessageContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.message_content.v1"
+    }
+  ],
   "invariants": [
     {
       "id": "muted-meta-line",

@@ -19,7 +19,10 @@
     }
   ],
   "accepts": {
-    "content": "unconstrained"
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar.v1"
+    ]
   },
   "mounted_in": [
     {

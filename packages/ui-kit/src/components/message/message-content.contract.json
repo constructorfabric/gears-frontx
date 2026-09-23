@@ -18,7 +18,12 @@
     }
   ],
   "accepts": {
-    "content": "unconstrained"
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.message_header.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.bubble.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.message_footer.v1"
+    ]
   },
   "mounted_in": [
     {

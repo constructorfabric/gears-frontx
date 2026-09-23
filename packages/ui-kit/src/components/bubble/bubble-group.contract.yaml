@@ -15,13 +15,13 @@ dont_use_when:
       target: MessageGroup, with one Message per turn
       component: gts.frontx.uikit._.component.v1~frontx.uikit._.message_group.v1
 
-# The group examines nothing about its children: it is a plain flex column
-# (bubble.module.css `.bubbleGroup`), and Bubble roots are what it is for.
-# Listing Bubble under `specified` is not possible while the conformance
-# suite requires every kit mount point of a family member, the root
-# included, to lie inside that member's own family.
+# The ONE authored statement of this nesting: the compiler fills Bubble's
+# `mounted_in` from this list. The group holds whole Bubble roots and
+# nothing else; no text flag, since text belongs in a BubbleContent.
 accepts:
-  content: unconstrained
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.bubble.v1 # Bubble
 
 invariants:
   - id: flex-column-with-fixed-gap

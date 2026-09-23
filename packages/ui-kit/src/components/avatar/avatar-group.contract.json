@@ -18,7 +18,11 @@
     }
   ],
   "accepts": {
-    "content": "unconstrained"
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar_group_count.v1"
+    ]
   },
   "invariants": [
     {

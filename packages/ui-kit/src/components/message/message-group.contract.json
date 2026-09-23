@@ -25,7 +25,10 @@
     }
   ],
   "accepts": {
-    "content": "unconstrained"
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.message.v1"
+    ]
   },
   "invariants": [
     {

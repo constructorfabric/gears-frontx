@@ -16,12 +16,13 @@ dont_use_when:
       target: Avatar
       component: gts.frontx.uikit._.component.v1~frontx.uikit._.avatar.v1
 
-# The slot examines nothing about its children; it is meant for an Avatar.
-# Listing Avatar under `specified` is not possible while the conformance
-# suite requires every kit mount point of a family member (Avatar is the
-# avatar family's root) to lie inside that member's own family.
+# The slot holds the sender's Avatar, or nothing (an empty slot keeps its
+# width). Avatar is the avatar family's root, and a family root may be
+# mounted in another component's container.
 accepts:
-  content: unconstrained
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.avatar.v1 # Avatar
 
 invariants:
   - id: fixed-bottom-anchored-column
