@@ -107,6 +107,7 @@
     "role": "root",
     "members": [
       "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_addon.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_button.v1",
       "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_input.v1",
       "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_text.v1",
       "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_textarea.v1"

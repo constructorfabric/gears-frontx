@@ -1,10 +1,8 @@
 // Conformance for the InputGroup family contracts: the root and the parts it
-// frames (InputGroupAddon, InputGroupText, InputGroupInput,
+// frames (InputGroupAddon, InputGroupButton, InputGroupText, InputGroupInput,
 // InputGroupTextarea). One file because the interesting assertions are about
 // how they relate (family membership, what nests where); the per-component
-// shape comes from testing.ts's assertContractFreshness. InputGroupButton is
-// not described yet, so it is referenced from the addon's `accepts` as a
-// component the kit ships without a contract.
+// shape comes from testing.ts's assertContractFreshness.
 import Ajv2020 from 'ajv/dist/2020';
 import { describe, expect, it } from 'vitest';
 
@@ -31,7 +29,13 @@ import {
 applyContractTestTimeout();
 
 const DIRECTORY = 'input-group';
-const PART_STEMS = ['input-group-addon', 'input-group-text', 'input-group-input', 'input-group-textarea'] as const;
+const PART_STEMS = [
+  'input-group-addon',
+  'input-group-button',
+  'input-group-text',
+  'input-group-input',
+  'input-group-textarea',
+] as const;
 const ALL_STEMS = [DIRECTORY, ...PART_STEMS] as const;
 
 for (const stem of ALL_STEMS) assertContractFreshness(DIRECTORY, stem);
@@ -39,8 +43,6 @@ for (const stem of ALL_STEMS) assertContractFreshness(DIRECTORY, stem);
 const units = compileUnits(DIRECTORY, ALL_STEMS);
 const componentType = buildComponentType();
 const ref = (stem: string) => componentRef(stem, contractMajor(DIRECTORY, stem));
-// The button part ships no contract yet, so a reference to it may only name major 1.
-const BUTTON_REF = componentRef('input-group-button', 1);
 const KBD_REF = componentRef('kbd', contractMajor('kbd', 'kbd'));
 
 describe('input-group family: component type validity', () => {
@@ -103,13 +105,8 @@ describe('input-group family: what nests where', () => {
     expect(units['input-group-addon'].contract.accepts).toEqual({
       content: 'specified',
       text: true,
-      components: [BUTTON_REF, ref('input-group-text'), KBD_REF],
+      components: [ref('input-group-button'), ref('input-group-text'), KBD_REF],
     });
-    // The button part is a component the kit ships, in this directory,
-    // without a contract yet.
-    const button = resolveComponentRef(BUTTON_REF);
-    expect(button.directory).toBe(DIRECTORY);
-    expect(button.contractId).toBeUndefined();
   });
 
   it('the field parts take no content', () => {
@@ -124,6 +121,7 @@ describe('input-group family: what nests where', () => {
     expect(units['input-group-input'].contract.mounted_in).toEqual(host(DIRECTORY));
     expect(units['input-group-textarea'].contract.mounted_in).toEqual(host(DIRECTORY));
     expect(units['input-group-text'].contract.mounted_in).toEqual(host('input-group-addon'));
+    expect(units['input-group-button'].contract.mounted_in).toEqual(host('input-group-addon'));
   });
 
   it('every part mounts only inside the family', () => {
@@ -137,10 +135,11 @@ describe('input-group family: what nests where', () => {
 });
 
 describe('input-group family: what the schema cannot assert', () => {
-  it('only the input part carries prop statements, for the props Input brings with it', () => {
+  it('only the input and button parts carry prop statements, for the props Input and Button bring with them', () => {
     expect(Object.keys(units['input-group-input'].contract.prop_statements ?? {}).sort()).toEqual(
       ['defaultValue', 'end', 'icon', 'onValueChange', 'render', 'style', 'value'].sort(),
     );
+    expect(Object.keys(units['input-group-button'].contract.prop_statements ?? {}).sort()).toEqual(['icon', 'render', 'style']);
     for (const stem of [DIRECTORY, 'input-group-addon', 'input-group-text', 'input-group-textarea'] as const) {
       expect(units[stem].contract.prop_statements, stem).toBeUndefined();
     }
@@ -149,6 +148,17 @@ describe('input-group family: what the schema cannot assert', () => {
   it('the root and the addon carry their cva axes, nothing else of their own beyond className', () => {
     expect(Object.keys(units[DIRECTORY].contract.props.properties).sort()).toEqual(['className', 'size']);
     expect(Object.keys(units['input-group-addon'].contract.props.properties).sort()).toEqual(['align', 'className']);
+  });
+
+  it("the button part carries its own narrowed size and its own defaults, not Button's", () => {
+    // InputGroupButtonProps omits Button's `size` and `type` and redeclares
+    // them; the component then defaults `variant`, `size` and `type` in its
+    // own parameter list. Button's own axis values and defaults must not
+    // leak through the Omit.
+    const properties = units['input-group-button'].contract.props.properties;
+    expect(properties.size).toEqual({ type: 'string', enum: ['sm', 'xs'], default: 'xs' });
+    expect(properties.variant?.default).toBe('ghost');
+    expect(properties.type?.default).toBe('button');
   });
 });
 
@@ -167,6 +177,7 @@ describe('input-group family in a GTS store', () => {
     }
     expect(units[DIRECTORY].contract.forwards_to).toBe(elementTypeRef('dom_div'));
     expect(units['input-group-addon'].contract.forwards_to).toBe(elementTypeRef('dom_div'));
+    expect(units['input-group-button'].contract.forwards_to).toBe(elementTypeRef('dom_button'));
     expect(units['input-group-text'].contract.forwards_to).toBe(elementTypeRef('dom_span'));
     expect(units['input-group-input'].contract.forwards_to).toBe(elementTypeRef('dom_input'));
     expect(units['input-group-textarea'].contract.forwards_to).toBe(elementTypeRef('dom_textarea'));
