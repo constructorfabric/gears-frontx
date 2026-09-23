@@ -55,15 +55,66 @@ function freezeColumns(cell: HTMLTableCellElement): HTMLTableCellElement[] {
       column.style.width = `${Math.round(column.getBoundingClientRect().width)}px`;
     }
     table.style.tableLayout = 'fixed';
+    pinTableWidth(cells);
   }
   return cells;
 }
 
+function frozenWidthOf(cell: HTMLTableCellElement): number {
+  return Number.parseFloat(cell.style.width) || 0;
+}
+
+/*
+ * A fixed layout still stretches its columns to the table's own width, and
+ * `.table` is `width: 100%`: left alone, whatever a column gives up is handed
+ * straight back to the others, which is why the last column could never be
+ * narrowed. Pinning the table to the sum of its frozen columns makes the
+ * columns the only thing deciding its width, so it can end up narrower than
+ * its container or wider than it (the wrapper then scrolls).
+ */
+function pinTableWidth(cells: HTMLTableCellElement[]): void {
+  const table = cells[0]?.closest('table');
+  if (table) {
+    table.style.width = `${cells.reduce((sum, column) => sum + frozenWidthOf(column), 0)}px`;
+  }
+}
+
+/*
+ * The floor a dragged column resizes against. Only the last column can
+ * change the table's width, so only the last one also has to respect a
+ * `min-width` on the table (the collection view's 960px): below that the
+ * browser would widen the table back and spread the difference over every
+ * column, and the width the handle announced would no longer be the one on
+ * screen.
+ */
+function minSelfOf(
+  cells: HTMLTableCellElement[],
+  index: number,
+  override: number | undefined,
+): number {
+  const self = cells[index];
+  if (!self) {
+    return 0;
+  }
+  const own = minWidthOf(self, override);
+  const table = self.closest('table');
+  if (index !== cells.length - 1 || !table) {
+    return own;
+  }
+  const tableFloor = Number.parseFloat(getComputedStyle(table).minWidth);
+  if (!Number.isFinite(tableFloor)) {
+    return own;
+  }
+  const others = cells.slice(0, index).reduce((sum, column) => sum + frozenWidthOf(column), 0);
+  return Math.max(own, Math.ceil(tableFloor - others));
+}
+
 /*
  * A column resizes against its TRAILING neighbour: the pair's combined width
- * is what stays constant, so dragging a boundary never changes the table's
- * own width. The last column has no neighbour to trade with, and there the
- * table's width is what gives.
+ * is what stays constant, so dragging an inner boundary never changes the
+ * table's own width. The last column has no neighbour to trade with, and
+ * there the table's pinned width (see pinTableWidth) follows it in both
+ * directions.
  */
 function applyWidths(
   cells: HTMLTableCellElement[],
@@ -88,6 +139,7 @@ function applyWidths(
   if (neighbour && neighbourStart !== null) {
     neighbour.style.width = `${selfStart + neighbourStart - next}px`;
   }
+  pinTableWidth(cells);
   return next;
 }
 
@@ -190,7 +242,7 @@ function TableColumnResizer({ minWidth }: TableColumnResizerProps) {
       index,
       selfStart: cell.getBoundingClientRect().width,
       neighbourStart: neighbour ? neighbour.getBoundingClientRect().width : null,
-      minSelf: minWidthOf(cell, minWidth),
+      minSelf: minSelfOf(cells, index, minWidth),
       minNeighbour: neighbour ? minWidthOf(neighbour, undefined) : 0,
     };
     capturePointer(event.currentTarget, event.pointerId, true);
@@ -237,7 +289,7 @@ function TableColumnResizer({ minWidth }: TableColumnResizerProps) {
         cell.getBoundingClientRect().width,
         neighbour ? neighbour.getBoundingClientRect().width : null,
         step,
-        minWidthOf(cell, minWidth),
+        minSelfOf(cells, index, minWidth),
         neighbour ? minWidthOf(neighbour, undefined) : 0,
       ),
     );

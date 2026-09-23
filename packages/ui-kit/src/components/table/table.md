@@ -217,9 +217,14 @@ header and the row height, and `density` still tightens the cells inside
 it.
 
 A resizable column trades width with its trailing neighbour, so the table's
-own width never changes as a boundary moves; the first drag freezes every
-column at what it currently renders and switches the table to a fixed
-layout. The handle is an 8 px grab area straddling the trailing edge, drawn
+own width never changes as an inner boundary moves; the first drag freezes
+every column at what it currently renders, switches the table to a fixed
+layout and pins the table's width to the sum of its columns. The last
+column has no neighbour, so dragging it changes the table's width instead:
+the table can end up narrower than its container, or wider (the wrapper
+then scrolls). It still stops at the table's own `min-width` (the collection
+view's 960 px), so what the handle announces is always the width on
+screen. The handle is an 8 px grab area straddling the trailing edge, drawn
 as a 1 px `--border` hairline that thickens to 2 px `--primary` while
 hovered, focused or dragged. It is focusable, carries `role="separator"`,
 and its accessible name reports the column's current pixel width live;

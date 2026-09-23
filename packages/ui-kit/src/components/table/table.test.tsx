@@ -341,6 +341,46 @@ describe('TableHead column resize', () => {
     expect(cells[0]?.style.width).toBe('188px');
   });
 
+  function renderLastResizable(tableStyle?: { minWidth: number }) {
+    return render(
+      <Table style={tableStyle}>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead resizable>Owner</TableHead>
+          </TableRow>
+        </TableHeader>
+      </Table>,
+    );
+  }
+
+  it('pins the table to its columns so the last column can narrow and widen', () => {
+    const { container } = renderLastResizable();
+    stubWidths([200, 300]);
+    const table = container.querySelector('table');
+    const handle = screen.getByRole('separator');
+    fireEvent(handle, pointerEvent('pointerdown', { clientX: 0 }));
+    expect(table?.style.width).toBe('500px');
+    fireEvent(handle, pointerEvent('pointermove', { clientX: -80 }));
+    expect(table?.style.width).toBe('420px');
+    expect(handle.getAttribute('aria-label')).toBe('Owner width, 220 pixels');
+    fireEvent(handle, pointerEvent('pointermove', { clientX: 60 }));
+    expect(table?.style.width).toBe('560px');
+  });
+
+  it('stops the last column where the table min-width would take over', () => {
+    // Below the floor the browser would widen the table back and spread the
+    // difference, so the announced width would not be the rendered one.
+    const { container } = renderLastResizable({ minWidth: 450 });
+    const cells = stubWidths([200, 300]);
+    const handle = screen.getByRole('separator');
+    fireEvent(handle, pointerEvent('pointerdown', { clientX: 0 }));
+    fireEvent(handle, pointerEvent('pointermove', { clientX: -200 }));
+    expect(cells[1]?.style.width).toBe('250px');
+    expect(container.querySelector('table')?.style.width).toBe('450px');
+    expect(handle.getAttribute('aria-label')).toBe('Owner width, 250 pixels');
+  });
+
   it('leaves a body cursor it did not set alone on pointer-up and unmount', () => {
     const { unmount } = renderResizable();
     document.body.style.cursor = 'wait';
