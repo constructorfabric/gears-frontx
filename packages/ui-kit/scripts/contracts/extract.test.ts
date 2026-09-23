@@ -1055,6 +1055,14 @@ describe('extractComponent: defaults read from a kit component an alias or a wra
     expect(byName('Level5').cannotExtract).toEqual([]);
   });
 
+  it("notes once on the wrapper that the inner body leaves defaults unread without naming the props", () => {
+    expect(byName('UnreadInner').cannotExtract).toEqual([expect.stringMatching(/^default: another spread follows the rest spread/)]);
+    expect(byName('UnreadWrapper').propDefaults).toEqual({ side: 'bottom' });
+    expect(byName('UnreadWrapper').cannotExtract).toEqual([
+      "default: UnreadInner's body leaves some defaults unread, so props reaching it untouched may have defaults not stated here",
+    ]);
+  });
+
   it('ends on two components that render each other', () => {
     expect(byName('CycleA').propDefaults).toEqual({ side: 'top' });
     expect(byName('CycleB').propDefaults).toEqual({ side: 'top' });

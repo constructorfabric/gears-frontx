@@ -2114,8 +2114,9 @@ function acceptsLiteral(paramType: ts.Type, name: string, value: PropDefault, lo
 // through anything but an import or a const chain, the binding used as a
 // whole beyond its spread - takes nothing. The inner body's notes stay with
 // its own contract; the wrapper records one note for a prop it passes through
-// whose default the inner contract notes rather than states, and one for an
-// inner default its own type for the prop does not accept.
+// whose default the inner contract notes rather than states, one for an
+// inner default its own type for the prop does not accept, and one when the
+// inner body leaves defaults unread without naming the props.
 function inheritedDefaults(
   param: ts.ParameterDeclaration,
   body: ts.Node,
@@ -2211,6 +2212,17 @@ function inheritedDefaults(
     notes.push(
       `default: prop "${name}" reaches ${innerName} untouched, whose contract notes its default rather than stating ` +
         `one - the body gives no single literal default for it`,
+    );
+  }
+  // A note naming no prop - the rest spread on an element that is not the
+  // one returned, under a conditional, or followed by another spread - says
+  // the inner body leaves defaults unread without saying which, so any prop
+  // passed through may have one this wrapper cannot state.
+  const unread = scratch.some((note) => note.startsWith('default: ') && !note.startsWith('default: prop "'));
+  if (unread && [...propNames].some(passesThrough)) {
+    notes.push(
+      `default: ${innerName}'s body leaves some defaults unread, so props reaching it untouched may have defaults ` +
+        `not stated here`,
     );
   }
   return inherited;

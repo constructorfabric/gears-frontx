@@ -190,6 +190,17 @@ export function Level5(props: ContentProps) {
   return <Level4 {...props} />;
 }
 
+// An inner component whose own defaults are partly unread: another spread
+// follows its rest spread, so the literal `align` before it is noted without
+// a prop name. The wrapper takes `side` and notes that more may be unread.
+export function UnreadInner({ side = 'bottom', ...props }: ContentProps) {
+  const extra = { tone: 'loud' };
+  return <Content side={side} align="end" {...props} {...extra} />;
+}
+export function UnreadWrapper(props: ContentProps) {
+  return <UnreadInner {...props} />;
+}
+
 // Two components that render each other.
 export function CycleA({ side = 'top', ...props }: ContentProps): ReactElement {
   return <CycleB data-side={side} {...props} />;
