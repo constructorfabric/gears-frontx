@@ -216,17 +216,22 @@ describe('menubar directory: what the schema cannot assert', () => {
   it("both popups' placement enums are typed and their offset and container unions carry prop statements", () => {
     for (const stem of ['menubar-content', 'menubar-sub-content']) {
       const { contract } = units[stem];
+      // MenubarContent writes its own `align = 'start'` and passes `side`
+      // through to DropdownMenuContent, which defaults it to bottom; the
+      // submenu popup is DropdownMenuSubContent re-exported, whose own body
+      // writes side right and align start.
       expect(contract.props.properties.side, stem).toEqual({
         type: 'string',
         enum: ['bottom', 'inline-end', 'inline-start', 'left', 'right', 'top'],
+        default: stem === 'menubar-content' ? 'bottom' : 'right',
       });
-      // MenubarContent writes its own `align = 'start'`; the submenu popup
-      // is DropdownMenuSubContent re-exported, which writes none.
       expect(contract.props.properties.align, stem).toEqual({
         type: 'string',
         enum: ['center', 'end', 'start'],
-        ...(stem === 'menubar-content' ? { default: 'start' } : {}),
+        default: 'start',
       });
+      expect(contract.props.properties.sideOffset?.default, stem).toBe(stem === 'menubar-content' ? 8 : 0);
+      expect(contract.props.properties.alignOffset?.default, stem).toBe(stem === 'menubar-content' ? -4 : -3);
       expect(contract.props.properties.positionMethod, stem).toEqual({ type: 'string', enum: ['absolute', 'fixed'] });
       for (const prop of ['container', 'sideOffset', 'alignOffset', 'collisionBoundary', 'collisionPadding', 'finalFocus']) {
         expect(Object.keys(contract.prop_statements ?? {}), `${stem}.${prop}`).toContain(prop);
@@ -240,9 +245,12 @@ describe('menubar directory: what the schema cannot assert', () => {
       enum: ['default', 'destructive'],
       default: 'default',
     });
+    // MenubarRadioItem is DropdownMenuRadioItem re-exported, so the default
+    // its body writes is the alias's too.
     expect(units['menubar-radio-item'].contract.props.properties.indicatorSide).toMatchObject({
       type: 'string',
       enum: ['end', 'start'],
+      default: 'end',
     });
   });
 

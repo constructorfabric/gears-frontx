@@ -60,7 +60,8 @@ examples:
         As a direct child of the popup the plate takes the popup's region
         inset, a var(--space-6) padding on each side inside its fixed 4rem
         width, which leaves 1rem for the glyph; inside AlertDialogHeader it
-        keeps its full plate and is centered with the title.
+        keeps its full plate and is aligned with the title - centered, or
+        at the start from a 640px-wide viewport at the default size.
 
 family_membership:
   name: alert_dialog

@@ -2022,6 +2022,200 @@ function bodyDefaults(
   return defaults;
 }
 
+type KitFunction = ts.FunctionDeclaration | ts.ArrowFunction | ts.FunctionExpression;
+
+// The function a value names, found through the value and never through its
+// type: an import and a `const X = Y` chain are followed, and nothing else - a
+// cast, a conditional, a `let`, a call such as a higher-order component or
+// forwardRef, or an object member names a value whose type may say one
+// component while another renders.
+function namedFunction(expr: ts.Node, checker: ts.TypeChecker, depth = 0): KitFunction | undefined {
+  const node = ts.isPropertyAccessExpression(expr) ? expr.name : expr;
+  if (!ts.isIdentifier(node)) return undefined;
+  return functionOfSymbol(checker.getSymbolAtLocation(node), checker, depth);
+}
+
+function functionOfSymbol(symbol: ts.Symbol | undefined, checker: ts.TypeChecker, depth: number): KitFunction | undefined {
+  if (symbol === undefined || depth > 4) return undefined;
+  const resolved = symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
+  const declaration = resolved.valueDeclaration;
+  if (declaration === undefined) return undefined;
+  if (ts.isFunctionDeclaration(declaration)) return declaration;
+  if (!ts.isVariableDeclaration(declaration) || !(ts.getCombinedNodeFlags(declaration) & ts.NodeFlags.Const)) return undefined;
+  const initializer = declaration.initializer;
+  if (initializer === undefined) return undefined;
+  if (ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer)) return initializer;
+  return ts.isIdentifier(initializer) || ts.isPropertyAccessExpression(initializer)
+    ? namedFunction(initializer, checker, depth + 1)
+    : undefined;
+}
+
+// The body of a kit component: a function written in this package with a
+// body that renders. An ambient declaration, a library's function or a helper
+// that renders nothing answers undefined.
+function kitComponentBody(fn: KitFunction | undefined, checker: ts.TypeChecker): ts.Node | undefined {
+  if (fn === undefined || fn.body === undefined) return undefined;
+  if (!isPackageSource(fn.getSourceFile().fileName)) return undefined;
+  return renderingShape(fn.body, checker) ? fn.body : undefined;
+}
+
+// The kit component a body-less export names as a value: `export const X = Y`
+// with `X` a const, or `export { Y as X } from '...'`.
+function aliasedKitFunction(candidate: CandidateDeclaration, checker: ts.TypeChecker): KitFunction | undefined {
+  if (ts.isExportSpecifier(candidate)) return functionOfSymbol(checker.getSymbolAtLocation(candidate.name), checker, 0);
+  if (!ts.isVariableDeclaration(candidate) || !(ts.getCombinedNodeFlags(candidate) & ts.NodeFlags.Const)) return undefined;
+  const initializer = candidate.initializer;
+  return initializer !== undefined && (ts.isIdentifier(initializer) || ts.isPropertyAccessExpression(initializer))
+    ? namedFunction(initializer, checker)
+    : undefined;
+}
+
+// An alias's body: the aliased kit component's, when the value the alias
+// names is that component and the alias's props parameter is its own.
+function aliasedBody(
+  candidate: CandidateDeclaration,
+  param: ts.ParameterDeclaration | undefined,
+  checker: ts.TypeChecker,
+): ts.Node | undefined {
+  const fn = aliasedKitFunction(candidate, checker);
+  return fn !== undefined && param !== undefined && fn.parameters[0] === param ? kitComponentBody(fn, checker) : undefined;
+}
+
+// Whether a props type accepts a literal for one prop, in every branch that
+// declares it.
+function acceptsLiteral(paramType: ts.Type, name: string, value: PropDefault, location: ts.Node, checker: ts.TypeChecker): boolean {
+  const nonNullable = checker.getNonNullableType(paramType);
+  const declaring = (nonNullable.isUnion() ? nonNullable.types : [nonNullable])
+    .map((branch) => branch.getProperty(name))
+    .filter((prop): prop is ts.Symbol => prop !== undefined);
+  if (declaring.length === 0) return false;
+  const literal =
+    value === null
+      ? checker.getNullType()
+      : typeof value === 'string'
+        ? checker.getStringLiteralType(value)
+        : typeof value === 'number'
+          ? checker.getNumberLiteralType(value)
+          : value
+            ? checker.getTrueType()
+            : checker.getFalseType();
+  return declaring.every((prop) => checker.isTypeAssignableTo(literal, checker.getTypeOfSymbolAtLocation(prop, location)));
+}
+
+// The defaults a wrapper takes from the one kit component it renders. When
+// the body returns that one element and passes it the props through a single
+// spread of the rest binding (or of the whole props parameter), a prop the
+// wrapper neither destructures, nor writes on the element, nor uses through
+// that binding elsewhere reaches the inner component exactly as the caller
+// gave it - absent when the caller passes nothing - so the value the inner
+// body's binding takes for it is the wrapper's default too. Inner components
+// are followed at most four levels down. Any other shape - another spread, a
+// return beside it, a library or intrinsic element, a kit component reached
+// through anything but an import or a const chain, the binding used as a
+// whole beyond its spread - takes nothing. The inner body's notes stay with
+// its own contract; the wrapper records one note for a prop it passes through
+// whose default the inner contract notes rather than states, and one for an
+// inner default its own type for the prop does not accept.
+function inheritedDefaults(
+  param: ts.ParameterDeclaration,
+  body: ts.Node,
+  checker: ts.TypeChecker,
+  propNames: ReadonlySet<string>,
+  own: ReadonlySet<string>,
+  notes: string[],
+  depth: number,
+): Record<string, PropDefault> {
+  const inherited: Record<string, PropDefault> = {};
+  if (depth >= 4) return inherited;
+  const { elements, ambiguous } = returnedElements(body);
+  if (ambiguous || elements.length !== 1) return inherited;
+  const element = elements[0];
+  const destructured = new Set<string>();
+  let spreadSymbol: ts.Symbol | undefined;
+  if (ts.isIdentifier(param.name)) spreadSymbol = checker.getSymbolAtLocation(param.name);
+  else if (ts.isObjectBindingPattern(param.name)) {
+    for (const bindingElement of param.name.elements) {
+      if (bindingElement.dotDotDotToken !== undefined) {
+        if (ts.isIdentifier(bindingElement.name)) spreadSymbol = checker.getSymbolAtLocation(bindingElement.name);
+        continue;
+      }
+      const key = bindingElement.propertyName ?? bindingElement.name;
+      // A computed key leaves unread which props the rest still carries.
+      if (!ts.isIdentifier(key) && !ts.isStringLiteral(key)) return inherited;
+      destructured.add(key.text);
+    }
+  }
+  if (spreadSymbol === undefined) return inherited;
+  const attributes = attributesOf(element);
+  const spreads = attributes.filter(ts.isJsxSpreadAttribute);
+  const spread = spreads[0];
+  if (
+    spreads.length !== 1 ||
+    !ts.isIdentifier(spread.expression) ||
+    checker.getSymbolAtLocation(spread.expression) !== spreadSymbol
+  ) {
+    return inherited;
+  }
+  const written = new Set<string>();
+  for (const attribute of attributes) {
+    if (ts.isJsxAttribute(attribute)) written.add(attribute.name.getText());
+  }
+  if (ts.isJsxElement(element) && element.children.length > 0) written.add('children');
+  const touched = otherUses(body, spreadSymbol, spread, checker);
+  if (touched === 'all') return inherited;
+  const tag = (ts.isJsxElement(element) ? element.openingElement : element).tagName;
+  if (ts.isIdentifier(tag) && !/^[A-Z]/.test(tag.text)) return inherited;
+  const innerFunction = namedFunction(tag, checker);
+  const innerBody = kitComponentBody(innerFunction, checker);
+  const innerParam = innerFunction?.parameters[0];
+  if (innerBody === undefined || innerParam === undefined) return inherited;
+  const innerType = checker.getNonNullableType(checker.getTypeAtLocation(innerParam));
+  const innerNames = new Set(
+    (innerType.isUnion() ? innerType.types : [innerType]).flatMap((branch) =>
+      checker.getPropertiesOfType(branch).map((prop) => prop.getName()),
+    ),
+  );
+  // The inner component's notes belong to its own contract; they are read
+  // here only for the props they leave without a stated default.
+  const scratch: string[] = [];
+  const innerDefaults = destructuredDefaults(innerParam, scratch);
+  for (const [name, value] of Object.entries(bodyDefaults(innerParam, innerBody, checker, innerNames, scratch))) {
+    if (!Object.prototype.hasOwnProperty.call(innerDefaults, name)) innerDefaults[name] = value;
+  }
+  const innerOwn = new Set(Object.keys(innerDefaults));
+  for (const [name, value] of Object.entries(
+    inheritedDefaults(innerParam, innerBody, checker, innerNames, innerOwn, scratch, depth + 1),
+  )) {
+    if (!Object.prototype.hasOwnProperty.call(innerDefaults, name)) innerDefaults[name] = value;
+  }
+  const noted = new Set(
+    scratch.map((note) => /^default: prop "([^"]+)"/.exec(note)?.[1]).filter((name): name is string => name !== undefined),
+  );
+  const passesThrough = (name: string): boolean =>
+    propNames.has(name) && !own.has(name) && !destructured.has(name) && !written.has(name) && !touched.has(name);
+  const paramType = checker.getTypeAtLocation(param);
+  const innerName = tag.getText();
+  for (const [name, value] of Object.entries(innerDefaults)) {
+    if (!passesThrough(name)) continue;
+    if (!acceptsLiteral(paramType, name, value, param, checker)) {
+      notes.push(
+        `default: prop "${name}" reaches ${innerName} untouched, whose default ${JSON.stringify(value)} this ` +
+          `component's own type for the prop does not accept - not stated`,
+      );
+      continue;
+    }
+    inherited[name] = value;
+  }
+  for (const name of [...noted].sort()) {
+    if (Object.prototype.hasOwnProperty.call(innerDefaults, name) || !passesThrough(name)) continue;
+    notes.push(
+      `default: prop "${name}" reaches ${innerName} untouched, whose contract notes its default rather than stating ` +
+        `one - the body gives no single literal default for it`,
+    );
+  }
+  return inherited;
+}
+
 type CoalescedDefault = { kind: 'literal'; value: PropDefault } | { kind: 'unsure'; why: string };
 
 // How the body reads one destructured binding: undefined when it never reads
@@ -2388,6 +2582,9 @@ function extractFromSource(source: ts.SourceFile, program: ts.Program): Componen
       // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
       const candidateBody = componentBody(candidate, checker);
       const hasBody = candidateBody !== undefined;
+      // The body the defaults are read from: the component's own, or, for an
+      // alias, the body of the kit component it names as a value.
+      const defaultsBody = shape.form === 'body' ? candidateBody : aliasedBody(candidate, param, checker);
       let admitsUnlistedProps = false;
       // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
 
@@ -2432,9 +2629,10 @@ function extractFromSource(source: ts.SourceFile, program: ts.Program): Componen
         axes = variantsResult.axes;
         booleanAxes = variantsResult.booleanAxes;
         defaults = variantsResult.defaults;
-        // An alias's parameter is declared by the callable type it aliases,
-        // with no body and so no default of the kit's to read.
-        if (shape.form === 'body') propDefaults = destructuredDefaults(param, cannotExtract);
+        // An alias of a kit component reads the defaults of the body it
+        // aliases, as that component's own contract does; an alias of a
+        // library's callable has no body of the kit's and reads none.
+        if (defaultsBody !== undefined) propDefaults = destructuredDefaults(param, cannotExtract);
         // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-axes
         // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-props
         const axisNames = new Set(Object.keys(axes));
@@ -2525,10 +2723,15 @@ function extractFromSource(source: ts.SourceFile, program: ts.Program): Componen
       // attribute written for one (`aria-label={label}`) is neither stated
       // nor noted.
       // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-axes
-      const body = shape.form === 'body' ? candidateBody : undefined;
-      if (param && body !== undefined) {
+      if (param && defaultsBody !== undefined) {
         const propNames = new Set([...Object.keys(axes), ...[...ownProps, ...apiProps].map((prop) => prop.name)]);
-        for (const [name, value] of Object.entries(bodyDefaults(param, body, checker, propNames, cannotExtract))) {
+        for (const [name, value] of Object.entries(bodyDefaults(param, defaultsBody, checker, propNames, cannotExtract))) {
+          if (!Object.prototype.hasOwnProperty.call(propDefaults, name)) propDefaults[name] = value;
+        }
+        const own = new Set(Object.keys(propDefaults));
+        for (const [name, value] of Object.entries(
+          inheritedDefaults(param, defaultsBody, checker, propNames, own, cannotExtract, 0),
+        )) {
           if (!Object.prototype.hasOwnProperty.call(propDefaults, name)) propDefaults[name] = value;
         }
       }

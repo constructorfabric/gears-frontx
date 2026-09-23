@@ -57,7 +57,7 @@
       {
         "title": "The actions folded into the header",
         "code": "<AlertDialogHeader>\n  <AlertDialogTitle>Delete this project?</AlertDialogTitle>\n  <AlertDialogAction>Delete</AlertDialogAction>\n</AlertDialogHeader>\n",
-        "why": "The actions belong in AlertDialogFooter, which pins them to the bottom of the popup and lays them out by `size`; inside the header they are centered under the text instead."
+        "why": "The actions belong in AlertDialogFooter, which pins them to the bottom of the popup and lays them out by `size`; inside the header they sit under the text in the header's alignment instead, centered, or at the start from a 640px-wide viewport at the default size."
       }
     ]
   },

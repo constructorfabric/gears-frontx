@@ -71,7 +71,8 @@ examples:
       why: >-
         The actions belong in AlertDialogFooter, which pins them to the
         bottom of the popup and lays them out by `size`; inside the header
-        they are centered under the text instead.
+        they sit under the text in the header's alignment instead, centered,
+        or at the start from a 640px-wide viewport at the default size.
 
 family_membership:
   name: alert_dialog

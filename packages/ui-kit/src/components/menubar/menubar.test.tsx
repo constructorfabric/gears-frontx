@@ -192,19 +192,20 @@ describe('Menubar', () => {
 
   // Native Base UI hover-switch: once one top-level menu is open, moving the
   // pointer onto an adjacent trigger opens THAT menu directly — no click, and
-  // no need to close the first one first. delay={0} keeps this deterministic
-  // with real timers, same rationale as popover.test.tsx's openOnHover case.
+  // no need to close the first one first. Inside a bar the trigger's `delay`
+  // has no effect (the primitive sets no rest time for a menu whose parent is
+  // a menubar), so the switch is immediate with real timers.
   it('switches to an adjacent top-level menu on pointer hover while staying open', async () => {
     render(
       <Menubar>
         <MenubarMenu>
-          <MenubarTrigger delay={0}>File</MenubarTrigger>
+          <MenubarTrigger>File</MenubarTrigger>
           <MenubarContent>
             <MenubarItem>New Tab</MenubarItem>
           </MenubarContent>
         </MenubarMenu>
         <MenubarMenu>
-          <MenubarTrigger delay={0}>Edit</MenubarTrigger>
+          <MenubarTrigger>Edit</MenubarTrigger>
           <MenubarContent>
             <MenubarItem>Undo</MenubarItem>
           </MenubarContent>

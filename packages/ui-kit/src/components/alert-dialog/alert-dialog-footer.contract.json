@@ -31,7 +31,7 @@
     },
     {
       "id": "layout-follows-the-popup-size",
-      "text": "The footer reads its layout off the enclosing popup's `size`, not off a prop of its own; its source order is also its row order, so the cancel placed first sits at the start of the row."
+      "text": "The footer reads its layout off the enclosing popup's `size` and the viewport width, not off a prop of its own. At the `sm` size it is two equal columns at every width; at the default size it is one row ending at the inline end from a 640px-wide viewport, and a reversed column below that width. In a row its source order is its row order, so the cancel placed first sits at the start of the row; in the reversed column the action placed last sits on top."
     }
   ],
   "anti_patterns": [

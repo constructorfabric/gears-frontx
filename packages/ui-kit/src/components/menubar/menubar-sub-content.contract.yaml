@@ -72,9 +72,9 @@ attestations:
 
 unexposed_parts:
   - part: Menu.Portal
-    reason: Composed through MenubarContent; only its `container` is exposed, as a prop of the submenu popup itself.
+    reason: Composed inside DropdownMenuContent, which DropdownMenuSubContent renders; only its `container` is exposed, as a prop of the submenu popup itself.
   - part: Menu.Positioner
-    reason: Composed through MenubarContent; its placement and collision props are exposed on the submenu popup itself.
+    reason: Composed inside DropdownMenuContent, which DropdownMenuSubContent renders; its placement and collision props are exposed on the submenu popup itself.
 
 prop_statements:
   children:

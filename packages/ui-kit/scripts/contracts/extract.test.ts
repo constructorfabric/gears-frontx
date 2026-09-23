@@ -969,3 +969,92 @@ describe('extractComponent: key sets and index keys the checker resolves', () =>
     for (const name of ['UnionHandlers', 'NoHandlerButton', 'Generic']) expect(byName(name).admitsUnlistedProps, name).toBe(false);
   });
 });
+
+describe('extractComponent: defaults read from a kit component an alias or a wrapper renders', () => {
+  const extractions = extractComponent(fixture('kit-alias-defaults.fixture.tsx'));
+  const byName = (name: string) => extractions.find((e) => e.name === name)!;
+  const contentDefaults = { side: 'bottom', align: 'start', offset: 4 };
+  const passedThrough = /^default: prop "tone" reaches \S+ untouched, whose contract notes its default rather than stating one/;
+
+  it("reads an alias of a kit component, named through a const chain, as that component's own body", () => {
+    expect(byName('Item').propDefaults).toEqual({ indicatorSide: 'end' });
+    expect(byName('ItemAlias').propDefaults).toEqual({ indicatorSide: 'end' });
+    expect(byName('ItemAliasTwice').propDefaults).toEqual({ indicatorSide: 'end' });
+    expect(byName('ItemAlias').hasBody).toBe(false);
+  });
+
+  it("carries the aliased body's notes onto the alias", () => {
+    expect(byName('NotedItem').cannotExtract).toEqual([expect.stringMatching(/prop "label" defaults to "fallbackLabel"/)]);
+    expect(byName('NotedItemAlias').propDefaults).toEqual({ indicatorSide: 'end' });
+    expect(byName('NotedItemAlias').cannotExtract).toEqual(byName('NotedItem').cannotExtract);
+  });
+
+  it('reads a re-export of a kit component from the file that writes it', () => {
+    const reexports = extractComponent(fixture('kit-alias-defaults.reexport.fixture.tsx'));
+    expect(reexports.find((e) => e.name === 'ReItem')?.propDefaults).toEqual({ indicatorSide: 'end' });
+  });
+
+  it('reads nothing for an alias whose value is not a kit component through a const chain, whatever its type says', () => {
+    for (const name of ['LibraryAlias', 'ChosenAlias', 'CastAlias', 'HocAlias', 'MemoAlias', 'LetAlias']) {
+      expect(byName(name).propDefaults, name).toEqual({});
+      expect(byName(name).cannotExtract, name).toEqual([]);
+    }
+  });
+
+  it("takes the inner kit component's defaults for props a wrapper passes through one spread untouched", () => {
+    expect(byName('Wrapper').propDefaults).toEqual({ ...contentDefaults, align: 'end' });
+    expect(byName('WrapperOfWrapper').propDefaults).toEqual({ ...contentDefaults, align: 'end' });
+  });
+
+  it('takes no default for a prop the wrapper writes, destructures or reads through the rest', () => {
+    for (const name of ['NoWrittenAgain', 'NoDestructured', 'NoRestRead']) {
+      expect(byName(name).propDefaults, name).toEqual({ align: 'start', offset: 4 });
+    }
+  });
+
+  it('takes nothing when the element shape, the props object or the inner value leaves the rendered defaults unread', () => {
+    for (const name of [
+      'NoTwoSpreads',
+      'NoTwoReturns',
+      'NoWholeUse',
+      'NoLibrary',
+      'NoIntrinsic',
+      'NoMemo',
+      'NoForwardRef',
+      'NoChosen',
+      'NoCast',
+      'NoHoc',
+      'NoObjectMember',
+      'NoLet',
+    ]) {
+      expect(byName(name).propDefaults, name).toEqual({});
+      expect(byName(name).cannotExtract, name).toEqual([]);
+    }
+  });
+
+  it("leaves the inner component's notes with its own contract and notes the pass-through once on the wrapper", () => {
+    expect(byName('Content').cannotExtract).toEqual([expect.stringMatching(/prop "tone" defaults to "fallbackTone"/)]);
+    for (const name of ['Wrapper', 'WrapperOfWrapper', 'NoWrittenAgain', 'NoDestructured', 'NoRestRead', 'Level1']) {
+      expect(byName(name).cannotExtract, name).toEqual([expect.stringMatching(passedThrough)]);
+      expect(byName(name).cannotExtract.join('\n'), name).not.toContain('fallbackTone');
+    }
+  });
+
+  it("states no inherited default the wrapper's own type for the prop does not accept, and notes it", () => {
+    expect(byName('NarrowWrapper').propDefaults).toEqual({});
+    expect(byName('NarrowWrapper').cannotExtract).toEqual([
+      expect.stringMatching(/^default: prop "side" reaches Content untouched, whose default "bottom" .* does not accept/),
+    ]);
+  });
+
+  it('follows inner components four levels down and no further', () => {
+    expect(byName('Level4').propDefaults).toEqual(contentDefaults);
+    expect(byName('Level5').propDefaults).toEqual({});
+    expect(byName('Level5').cannotExtract).toEqual([]);
+  });
+
+  it('ends on two components that render each other', () => {
+    expect(byName('CycleA').propDefaults).toEqual({ side: 'top' });
+    expect(byName('CycleB').propDefaults).toEqual({ side: 'top' });
+  });
+});
