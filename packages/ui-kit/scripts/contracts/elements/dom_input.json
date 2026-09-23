@@ -1,0 +1,97 @@
+{
+  "$id": "gts://gts.frontx.uikit.element.dom_input.v1~",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UiKit dom_input element",
+  "description": "What a kit component forwards to the <input> element it renders: React's own DOM attributes for that element, declared once here by hand rather than re-derived per component. Hand-written on purpose - React's input attributes are the same surface for every component that renders one, and the roughly 303 individually-named attributes and event handlers React's own types declare for the element carry no kit-specific fact, so listing them per component produced a file no reader ever opened. A prop the primitive library declares for its own part is NOT here: that is the component's own API and lives in its contract's `properties` (see extract.ts's declaration-site classification). Completeness is deliberately unverified: nothing compares this file against what a component actually forwards, so an attribute it does not name is classified as unknown rather than rejected, and the enrollment report prints the ones no surface declares. `type` is left out on purpose. An attribute more than one element declares has to be declared identically in every file that declares it, and dom_button.json already states `type` as the submit/reset/button enum a <button> takes - a set that would reject every value an <input> uses. Left out, the attribute reaches a consumer as unchecked, which is the same answer this file's completeness note gives for everything else it does not name.",
+  "type": "object",
+  "properties": {
+    "children": {
+      "description": "TS: ReactNode. Not expressible in JSON Schema, checked by tsc."
+    },
+    "className": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string"
+    },
+    "style": {
+      "description": "TS: CSSProperties. Not expressible in JSON Schema, checked by tsc. A component wrapping a primitive part widens this to accept a function of the part's state, which is why nothing is asserted here."
+    },
+    "tabIndex": {
+      "type": "number"
+    },
+    "title": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "value": {
+      "description": "TS: string | number | readonly string[]. Not expressible in JSON Schema, checked by tsc."
+    },
+    "defaultValue": {
+      "description": "TS: string | number | readonly string[]. The compiler emits one JSON type per property, so this union is left to tsc."
+    },
+    "placeholder": {
+      "type": "string"
+    },
+    "disabled": {
+      "type": "boolean"
+    },
+    "readOnly": {
+      "type": "boolean"
+    },
+    "required": {
+      "type": "boolean"
+    },
+    "autoComplete": {
+      "type": "string"
+    },
+    "autoFocus": {
+      "type": "boolean"
+    },
+    "min": {
+      "description": "TS: number | string. The compiler emits one JSON type per property, so this union is left to tsc."
+    },
+    "max": {
+      "description": "TS: number | string. The compiler emits one JSON type per property, so this union is left to tsc."
+    },
+    "step": {
+      "description": "TS: number | string. The compiler emits one JSON type per property, so this union is left to tsc."
+    },
+    "maxLength": {
+      "type": "number"
+    },
+    "pattern": {
+      "type": "string"
+    },
+    "inputMode": {
+      "type": "string",
+      "enum": [
+        "none",
+        "text",
+        "tel",
+        "url",
+        "email",
+        "numeric",
+        "decimal",
+        "search"
+      ]
+    }
+  },
+  "patternProperties": {
+    "^aria-": {
+      "description": "Any ARIA attribute passes. Enumerating the WAI-ARIA set here would go stale against the spec and buy nothing: a contract's job is to stop typos in KIT props, and the a11y rules that actually matter (icon-only needs aria-label) are invariants, not a property list."
+    },
+    "^data-": {
+      "description": "Any data attribute passes: they are open by construction, and consumers add their own (data-testid being the common one)."
+    },
+    "^on[A-Z]": {
+      "description": "Any React event handler passes. React declares roughly 150 of them by literal name per element; a contract that named each one would restate React's own type definitions and go stale against them, and no kit fact lives in any single entry."
+    }
+  },
+  "$comment": "Intentionally NOT closed (no unevaluatedProperties/additionalProperties): a component's contract does not derive from this type, it HOLDS its id in its own forwards_to field, and whoever needs the surface applies it beside the contract - so this schema cannot know what else applies to the same props object. The component's own props surface is what classifies a prop nothing here or there evaluates."
+}

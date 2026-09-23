@@ -1,0 +1,142 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.tabs_list.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "tabs-list",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Group a Tabs root's triggers into one row (or column) and draw the indicator that marks which one is active.",
+  "typical_uses": [
+    "The single row (or column) of triggers that sits above, or beside, a Tabs root's panels"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A segmented, bordered row of mutually exclusive options with no panel to show per choice",
+      "instead": {
+        "target": "ToggleGroup",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.toggle_group.v1",
+        "note": "TabsList draws only its own filled-track or trackless-line looks; the bordered segmented-control look belongs to ToggleGroup, not to a Tabs variant."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.tabs_trigger.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Tabs",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.tabs.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "variant-and-size-inherited-by-every-trigger",
+      "text": "TabsList's `variant` and `size` govern every TabsTrigger inside it; a trigger takes no prop of its own for either axis, so a list cannot hold two triggers that disagree."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Style a TabsList to look like a bordered segmented control",
+      "do_instead": "Reach for ToggleGroup - the segmented look is its variant, not a Tabs one"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "Base UI's Tabs.List - tablist role and roving-tabindex arrow-key navigation between triggers - exercised by tabs.test.tsx's \"keeps a disabled tab reachable by arrow-key navigation without activating it\" assertion"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the list's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+    },
+    "style": {
+      "states": "style accepts a function of the list's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (orientation, tabActivationDirection). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through tabs.module.css, not through this."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "Base UI's Tabs.Indicator",
+      "reason": "TabsList renders exactly one Tabs.Indicator itself, right after its children, to draw the single bar that travels to the active trigger under the `line` variant; there is no exported part for it, and a list never holds more than one. The `default` variant marks its active trigger with a fill and a hairline instead and draws no bar at all."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "A list of two triggers, default variant",
+        "code": "<TabsList>\n  <TabsTrigger value=\"account\">Account</TabsTrigger>\n  <TabsTrigger value=\"password\">Password</TabsTrigger>\n</TabsList>\n"
+      },
+      {
+        "title": "A flat, line-variant list at the small size",
+        "code": "<TabsList variant=\"line\" size=\"sm\">\n  <TabsTrigger value=\"general\">General</TabsTrigger>\n  <TabsTrigger value=\"billing\">Billing</TabsTrigger>\n</TabsList>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A TabsList with no Tabs root around it",
+        "code": "<TabsList>\n  <TabsTrigger value=\"a\">A</TabsTrigger>\n</TabsList>\n",
+        "why": "TabsList reads and writes the nearest Tabs root's state through Base UI context; outside one, its triggers have no shared value to select or report."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "tabs",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof tabsListVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit TabsList",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "line"
+        ],
+        "default": "default"
+      },
+      "size": {
+        "type": "string",
+        "enum": [
+          "sm",
+          "default"
+        ],
+        "default": "default"
+      },
+      "className": {
+        "type": "string"
+      },
+      "activateOnFocus": {
+        "type": "boolean"
+      },
+      "loopFocus": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, TabsListState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the list's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: TabsListState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the list's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (orientation, tabActivationDirection). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through tabs.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

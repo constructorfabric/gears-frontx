@@ -1,0 +1,138 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.tabs_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "tabs-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The panel shown when its matching TabsTrigger is the active tab.",
+  "typical_uses": [
+    "One panel of a Tabs root's content, shown only while its own TabsTrigger is active"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Panels that should be able to show at the same time",
+      "instead": {
+        "target": "Accordion",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.accordion.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "Tabs",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.tabs.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "value-required-to-match-its-trigger",
+      "text": "`value` identifies which TabsTrigger's activation shows this panel; the root matches a panel to a tab by exact value equality, not by position."
+    },
+    {
+      "id": "animate-reduced-motion-drops-travel-keeps-fade",
+      "text": "Under `prefers-reduced-motion`, an animated panel's entrance drops the 4px travel (motion under WCAG 2.3.3) but keeps the fade (not motion under that criterion) - tabs.module.css collapses the translate to none while the opacity transition still runs."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Rely on an inactive panel keeping component state (scroll position, uncommitted input)",
+      "do_instead": "Pass `keepMounted` if the panel must stay in the DOM while inactive - by default it unmounts and remounts from scratch when reselected"
+    },
+    {
+      "dont": "Add a wrapper keyed on the active value to replay an enter animation",
+      "do_instead": "Leave `animate` at its default - TabsContent already replays its own enter animation on becoming active, and a keyed wrapper on top of it stacks a second enter animation on the panel's own"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "Base UI's Tabs.Panel - tabpanel role and a keyboard-focusable open panel (tabIndex 0) - exercised by tabs.test.tsx's \"keeps the open panel keyboard-focusable\" assertion"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "value": {
+      "states": "value is an opaque identifier, typed any by Base UI, required and matched against a TabsTrigger's own value",
+      "because": "Base UI's Tabs.Panel declares `value: TabsTab.Value` with no `?` - required, and typed `any` by the primitive itself - so no JSON Schema type can state what it holds. It is matched by identity against the TabsTrigger whose activation shows this panel."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the panel's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+    },
+    "style": {
+      "states": "style accepts a function of the panel's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (hidden, transitionStatus, orientation, tabActivationDirection). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through tabs.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A panel matched to its trigger's value",
+        "code": "<TabsContent value=\"account\">\n  <p>Update your account details here.</p>\n</TabsContent>\n"
+      },
+      {
+        "title": "A panel that animates its own content, opting out of the enter fade",
+        "code": "<TabsContent value=\"chart\" animate={false}>\n  <LiveChart />\n</TabsContent>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A panel with no Tabs root around it",
+        "code": "<TabsContent value=\"account\">Account settings</TabsContent>",
+        "why": "TabsContent reads the nearest Tabs root's active value through Base UI context to decide whether to render; outside one, it has nothing to read."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "tabs",
+    "role": "part"
+  },
+  "capabilities": [
+    {
+      "name": "enter_animation",
+      "enabled_by": "animate",
+      "description": "Default true: the panel replays a short enter animation - a fade up over 4px - each time it becomes the active tab's panel. Set false to opt out for a panel that animates its own content, or one whose content must not move at all."
+    }
+  ],
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit TabsContent",
+    "type": "object",
+    "properties": {
+      "animate": {
+        "type": "boolean"
+      },
+      "className": {
+        "type": "string"
+      },
+      "keepMounted": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, TabsPanelState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the panel's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: TabsPanelState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the panel's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (hidden, transitionStatus, orientation, tabActivationDirection). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through tabs.module.css, not through this."
+      },
+      "value": {
+        "description": "TS: any. Not expressible in JSON Schema, checked by tsc. value is an opaque identifier, typed any by Base UI, required and matched against a TabsTrigger's own value. Base UI's Tabs.Panel declares `value: TabsTab.Value` with no `?` - required, and typed `any` by the primitive itself - so no JSON Schema type can state what it holds. It is matched by identity against the TabsTrigger whose activation shows this panel."
+      }
+    },
+    "required": [
+      "value"
+    ],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

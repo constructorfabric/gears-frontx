@@ -1,0 +1,121 @@
+# Semantic overlay for Alert (the root) - the hand-written half of one of
+# four contracts describing this family. See alert-title.contract.yaml,
+# alert-description.contract.yaml and alert-action.contract.yaml for the
+# other three, and `family_membership` below for how a reader (or the
+# conformance test) walks between them.
+#
+# Machine-extractable facts (prop list, defaults, forwarded surface) do NOT
+# belong here: the compiler takes those from alert.tsx, and rejects an
+# overlay that tries to restate them - one fact, one owner. This file
+# carries only what the code cannot express: intent, boundaries,
+# invariants. Alert wraps no primitive at all (a plain styled div, see
+# alert.tsx's own comment), so unlike a Base UI wrapper this overlay carries
+# no prop_statements: every prop is either the `variant` axis (stated fully
+# by the schema as an enum) or a native div attribute the element surface
+# already covers.
+component: alert
+
+intent: Show a page-level status message that sits in the flow of the page rather than interrupting it.
+
+typical_uses:
+  - A status message tied to the current page or section
+  - Pairing a short instruction with an optional action the user can take without leaving the page
+
+dont_use_when:
+  - situation: A message the user must acknowledge or dismiss before continuing
+    instead:
+      target: AlertDialog
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog.v1
+  - situation: A transient, self-dismissing notification
+    instead:
+      target: toast() rendered by a mounted Toaster
+      note: >-
+        No component reference resolves here: the toast directory's
+        component export is Toaster, whose name does not extend the
+        directory name, so no reference names it.
+  - situation: A validation message tied to one form control
+    instead:
+      target: FieldError
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.field_error.v1
+
+# The ONE authored statement of a nesting relationship: the compiler fills
+# every other contract's `mounted_in` from lists like this one, so the two
+# directions cannot disagree. Alert's children are its three parts; no
+# text flag, because its text belongs in AlertTitle and AlertDescription.
+# The optional icon has no prop (so no `icons_via`): it is a direct <svg>
+# child, and the invariant `leading-svg-child-switches-to-icon-layout` below
+# is the statement of that slot.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.alert_title.v1 # AlertTitle
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.alert_description.v1 # AlertDescription
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.alert_action.v1 # AlertAction
+
+invariants:
+  - id: role-alert-announces-on-mount
+    text: >-
+      The root renders role="alert" by default, so assistive tech announces
+      it as soon as it mounts.
+  - id: leading-svg-child-switches-to-icon-layout
+    text: >-
+      Any direct <svg> child switches Alert to the two-column icon layout,
+      and every direct <svg> child is placed as an icon: sized to the small
+      icon box and spanning both rows. An <svg> nested deeper, inside a
+      part, is not detected.
+  - id: alert-action-reserves-right-padding
+    text: >-
+      When an AlertAction is present as a direct child, the alert reserves
+      a fixed amount of additional padding on its own right edge so body
+      text never runs under it.
+
+anti_patterns:
+  - dont: Put more than one direct <svg> child in an Alert
+    do_instead: >-
+      Use one leading <svg>; every direct <svg> is laid out as an icon, so a
+      second one takes a grid cell meant for the title or description
+
+deprecations: {}
+
+# One outcome per claim. "failed" (looked at, does not hold) and "unknown"
+# (nobody looked) are different answers - say which.
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      alert.test.tsx asserts screen.getByRole('alert') resolves the
+      rendered root, confirming role="alert" is present by default
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: An icon-led alert with a destructive variant and a corner action
+      code: |
+        <Alert variant="destructive">
+          <WarningIcon />
+          <AlertTitle>Payment failed</AlertTitle>
+          <AlertDescription>We couldn't charge your card ending in 4242.</AlertDescription>
+          <AlertAction>
+            <Button size="sm" variant="outline">Retry</Button>
+          </AlertAction>
+        </Alert>
+  bad:
+    - title: Two leading icons on one alert
+      code: |
+        <Alert>
+          <WarningIcon />
+          <InfoIcon />
+          <AlertTitle>Two icons</AlertTitle>
+        </Alert>
+      why: >-
+        Every direct <svg> child is sized and placed as an icon spanning both
+        rows, so the second icon lands in the column the title and
+        description need and pushes them out of line.
+
+# Family membership. Every member names the same family and states its own
+# role; `members` is filled by the compiler on the root from every contract
+# naming this family as a part, so nothing here points at a sibling.
+family_membership:
+  name: alert
+  role: root

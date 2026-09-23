@@ -1,0 +1,225 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.input.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "input",
+  "forwards_to": "gts.frontx.uikit.element.dom_input.v1~",
+  "intent": "Capture a single line of typed text in a styled native input.",
+  "typical_uses": [
+    "A single-line value in a form (name, email, number, filename)"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Multi-line text",
+      "instead": {
+        "target": "Textarea",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.textarea.v1"
+      }
+    },
+    {
+      "situation": "One option picked from a small fixed set",
+      "instead": {
+        "target": "RadioGroup",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group.v1"
+      }
+    },
+    {
+      "situation": "One option picked from a long fixed set",
+      "instead": {
+        "target": "Select",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.select.v1"
+      }
+    },
+    {
+      "situation": "A field with text addons, several adornments on one side, or several controls in one frame",
+      "instead": {
+        "target": "InputGroup",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "invariants": [
+    {
+      "id": "value-wins-over-default-value",
+      "text": "`value` and `defaultValue` are both accepted; `defaultValue` seeds the initial state and is ignored afterwards, and when `value` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "no-slots-no-wrapper",
+      "text": "With neither `icon` nor `end` present the rendered element is a bare native input with nothing around it; when a slot is given the input is wrapped in a presentational span, and the consumer `className` is merged onto the input itself either way."
+    },
+    {
+      "id": "disabled-inerts-the-end-slot",
+      "text": "`disabled` given to Input also sets `inert` on the `end` wrapper, so a control left there leaves the tab order and cannot be activated while the field is disabled. The dimming of both slots is stylesheet-driven and follows the native input's disabled state however it got there; the `inert` is wired only from the `disabled` prop given to Input directly, so a disable that reaches the native input by another path does not apply it."
+    },
+    {
+      "id": "semantics-stay-on-the-native-type",
+      "text": "Nothing renders automatically and no slot adds role or name: a search field is `type=\"search\"` with a magnifier in `icon`, and its searchbox role comes from the native type, never from the slot."
+    },
+    {
+      "id": "aria-invalid-restyles-destructive",
+      "text": "`aria-invalid` is forwarded unchanged and input.module.css keys the destructive border and ring off it; there is no separate error prop and no invalid state of the component's own."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Expect label, description or error wiring to happen by itself",
+      "do_instead": "Pair Input with Field and wire `id` and `aria-describedby` by hand - the kit ships no component that connects them automatically"
+    },
+    {
+      "dont": "Put live content or an interactive control in `icon`",
+      "do_instead": "Keep `icon` decorative; a clear or reveal action and other live content go in `end`"
+    },
+    {
+      "dont": "Read the value out of `onChange`'s event target",
+      "do_instead": "Use `onValueChange`, which hands over the next string directly"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "input.test.tsx asserts the icon slot carries aria-hidden=\"true\", that a disabled input's end slot carries the inert attribute while an enabled one does not, that the end slot renders as the input's next sibling in the DOM, and that the rendered element is a native input"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "icon": {
+      "states": "icon is a React node, not a value",
+      "because": "`ReactNode` has no JSON Schema representation - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. The slot exists so the leading icon gets sized, positioned and marked aria-hidden; what may go in it is \"anything React renders\", which is the whole assertion."
+    },
+    "end": {
+      "states": "end is a React node, not a value",
+      "because": "`ReactNode` has no JSON Schema representation - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. The slot is live trailing content that is never aria-hidden, so its name and keyboard behavior are the consumer's; what may go in it is \"anything React renders\", which is the whole assertion."
+    },
+    "value": {
+      "states": "value is the controlled field value, a string, a number or a readonly array of strings",
+      "because": "React types a native input's value as this three-way union; the schema asserts nothing for it, so the TypeScript type is the statement and tsc is the checker."
+    },
+    "defaultValue": {
+      "states": "defaultValue is the uncontrolled field's initial value, a string, a number or a readonly array of strings",
+      "because": "React types a native input's value as this three-way union; the schema asserts nothing for it, so the TypeScript type is the statement and tsc is the checker."
+    },
+    "onValueChange": {
+      "states": "onValueChange is a function called with the next value and event details, not a value",
+      "because": "A function type has no JSON Schema representation. Its second argument carries Base UI's own change-event-details shape (a reason, the triggering native event, and controls to cancel the change or allow it to propagate), which only tsc can check."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the input's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+    },
+    "style": {
+      "states": "style accepts a function of the input's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, focused, filled, valid, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through input.module.css, not through this."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "the presentational wrapper span",
+      "reason": "Exists only when a slot is given, because a native input is a replaced element with no way to host positioned children; it carries no behavior of its own."
+    },
+    {
+      "part": "the icon slot span",
+      "reason": "Decorative by construction - aria-hidden with pointer events off - so there is nothing for a consumer to reach or replace."
+    },
+    {
+      "part": "the end slot span",
+      "reason": "A positioning wrapper only; content passed there keeps its own behavior and refs, so the span is never what a consumer wants."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "Uncontrolled with a placeholder",
+        "code": "<Input placeholder=\"Project name\" />"
+      },
+      {
+        "title": "Search field with a decorative icon and a clear action",
+        "code": "<Input\n  type=\"search\"\n  placeholder=\"Search projects\"\n  icon={<MagnifierIcon />}\n  end={<Button size=\"sm\" icon={<CrossIcon />} aria-label=\"Clear\" />}\n/>\n"
+      },
+      {
+        "title": "Controlled value",
+        "code": "<Input type=\"email\" value={email} onValueChange={setEmail} />"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Content passed as children",
+        "code": "<Input>typed text</Input>",
+        "why": "Input renders a native input element and takes no content: nothing inside the tag reaches the DOM. The label and helper text belong beside the field, and the value is a prop, not markup."
+      },
+      {
+        "title": "Interactive control in the decorative icon slot",
+        "code": "<Input placeholder=\"Find\" icon={<button aria-label=\"Clear\" />} />",
+        "why": "The icon slot is aria-hidden with pointer events off, so the control is invisible to assistive tech and dead to a click. Live content goes in `end`, which keeps its tab stop and its own name."
+      },
+      {
+        "title": "Reading the value from the native change event",
+        "code": "<Input onChange={(event) => setValue(event.target.value)} />",
+        "why": "`onValueChange` hands over the next string directly; the native event detour is extra code for the same value."
+      }
+    ]
+  },
+  "slots": [
+    {
+      "prop": "icon",
+      "description": "Decorative leading icon inside the field: rendered aria-hidden with pointer events off, so it never carries the field's name and never takes a click."
+    },
+    {
+      "prop": "end",
+      "description": "Live trailing slot rendered after the input in the DOM, sized for a compact icon-only control; wider content is the consumer's own padding to extend."
+    }
+  ],
+  "x-uikit": {
+    "partially_typed_props": {
+      "end": {
+        "typeText": "ReactNode",
+        "optional": true
+      },
+      "icon": {
+        "typeText": "ReactNode",
+        "optional": true
+      }
+    },
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Input",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "end": {
+        "description": "Partially typed: ReactNode. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. end is a React node, not a value. `ReactNode` has no JSON Schema representation - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. The slot is live trailing content that is never aria-hidden, so its name and keyboard behavior are the consumer's; what may go in it is \"anything React renders\", which is the whole assertion."
+      },
+      "icon": {
+        "description": "Partially typed: ReactNode. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. icon is a React node, not a value. `ReactNode` has no JSON Schema representation - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. The slot exists so the leading icon gets sized, positioned and marked aria-hidden; what may go in it is \"anything React renders\", which is the whole assertion."
+      },
+      "defaultValue": {
+        "description": "TS: string | number | readonly string[] | undefined. Not expressible in JSON Schema, checked by tsc. defaultValue is the uncontrolled field's initial value, a string, a number or a readonly array of strings. React types a native input's value as this three-way union; the schema asserts nothing for it, so the TypeScript type is the statement and tsc is the checker."
+      },
+      "onValueChange": {
+        "description": "TS: ((value: string, eventDetails: { reason: \"none\"; event: Event; cancel: () => void; allowPropagation: () => void; isCanceled: boolean; isPropagationAllowed: boolean; trigger: Element | undefined; }) => void) | undefined. Not expressible in JSON Schema, checked by tsc. onValueChange is a function called with the next value and event details, not a value. A function type has no JSON Schema representation. Its second argument carries Base UI's own change-event-details shape (a reason, the triggering native event, and controls to cancel the change or allow it to propagate), which only tsc can check."
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, InputState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the input's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: InputState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the input's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, focused, filled, valid, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through input.module.css, not through this."
+      },
+      "value": {
+        "description": "TS: string | number | readonly string[] | undefined. Not expressible in JSON Schema, checked by tsc. value is the controlled field value, a string, a number or a readonly array of strings. React types a native input's value as this three-way union; the schema asserts nothing for it, so the TypeScript type is the statement and tsc is the checker."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

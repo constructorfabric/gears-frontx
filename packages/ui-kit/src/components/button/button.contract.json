@@ -30,6 +30,12 @@
     "text": true,
     "icons_via": "icon"
   },
+  "mounted_in": [
+    {
+      "container": "AlertAction",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_action.v1"
+    }
+  ],
   "invariants": [
     {
       "id": "icon-only-needs-label",

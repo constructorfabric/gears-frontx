@@ -2,8 +2,10 @@
   "button",
   "accordion",
   "data-table",
+  "alert",
   "aspect-ratio",
   "checkbox",
+  "input",
   "kbd",
   "label",
   "radio-group",
@@ -12,5 +14,7 @@
   "slider",
   "spinner",
   "switch",
+  "tabs",
+  "textarea",
   "toggle"
 ]

@@ -1,0 +1,176 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.tabs.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "tabs",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Switch between panels that share the same screen space, showing exactly one at a time.",
+  "typical_uses": [
+    "Grouping related views that do not need to be compared side by side",
+    "Switching between differently-shaped content behind a shared header, where only one need be visible or interactive at once"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Sequential, gated steps that need validation before the user may move to the next one",
+      "instead": {
+        "target": "a purpose-built stepper",
+        "note": "This kit ships no stepper component. Tabs imply free jumping between every panel; a gated wizard must prevent that, which nothing here does."
+      }
+    },
+    {
+      "situation": "Content the user needs to compare at a glance",
+      "instead": {
+        "target": "a layout that keeps every section visible at once (a row or grid of Card, for instance)",
+        "note": "Tabs hide every panel but the active one, so nothing behind the active tab is ever visible beside it."
+      }
+    },
+    {
+      "situation": "Picking a mode or option with no panel to show per choice",
+      "instead": {
+        "target": "ToggleGroup",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.toggle_group.v1"
+      }
+    },
+    {
+      "situation": "Navigating between pages or routes",
+      "instead": {
+        "target": "NavigationMenu",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu.v1"
+      }
+    },
+    {
+      "situation": "Sections that may be open at the same time",
+      "instead": {
+        "target": "Accordion",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.accordion.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.tabs_list.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.tabs_content.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "value-wins-over-default-value",
+      "text": "`value` and `defaultValue` are both accepted; `defaultValue` seeds the initial state and is ignored afterwards, and when `value` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "orientation-drives-layout-and-keyboard-axis",
+      "text": "With `orientation` at its default of `horizontal`, every part - the root, the list, each trigger and the open panel - stamps a matching `data-orientation` attribute that lays the list above its panel and moves focus between triggers with the left/right arrow keys; switching to `vertical` puts the list beside its panel and moves focus with up/down instead. No other prop needs to change to switch it."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Give two TabsTrigger/TabsContent pairs the same value",
+      "do_instead": "Give every pair a unique value - Base UI matches a panel to its tab by exact value equality, and a duplicate leaves one panel unreachable"
+    },
+    {
+      "dont": "Omit defaultValue/value while leaving the first TabsTrigger disabled",
+      "do_instead": "Set defaultValue (or value) explicitly to an enabled tab's value - Base UI falls back to the next enabled tab client-side, but it cannot do that during server-side rendering, so the server- and client-rendered output would disagree"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "Base UI's Tabs.Root - tablist/tab/tabpanel role wiring and keyboard navigation between triggers - exercised by tabs.test.tsx's \"stamps data-orientation on every part, defaulting to horizontal\" and \"switches every part to vertical orientation and keeps arrow-key navigation on its own axis\" assertions"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "value": {
+      "states": "value is an opaque identifier, typed any by Base UI, compared by identity against a TabsTrigger's own value",
+      "because": "Base UI's TabsRootProps types `value` as `TabsTab.Value | undefined`, where `TabsTab.Value` is `any | null` - not interpreted, only compared by identity, so no JSON Schema type can state what it holds beyond \"present or null\". tabs.md's example uses string values (`defaultValue=\"account\"`), which is what a reader should reach for."
+    },
+    "defaultValue": {
+      "states": "defaultValue is the same opaque any-typed identifier as value, seeding the initial selection",
+      "because": "Same `TabsTab.Value` type as `value` above, unchecked in the same half - the uncontrolled starting selection is compared by identity against each trigger's own `value`, and no schema can state what a caller's own identifier looks like."
+    },
+    "onValueChange": {
+      "states": "onValueChange is a callback, not a value",
+      "because": "`(value: TabsTab.Value, eventDetails) => void` - a function of the opaque value type plus Base UI's own event-details object. No JSON Schema type covers a function."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the root's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+    },
+    "style": {
+      "states": "style accepts a function of the root's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (orientation, tabActivationDirection). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through tabs.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Uncontrolled, two panels",
+        "code": "<Tabs defaultValue=\"account\">\n  <TabsList>\n    <TabsTrigger value=\"account\">Account</TabsTrigger>\n    <TabsTrigger value=\"password\">Password</TabsTrigger>\n  </TabsList>\n  <TabsContent value=\"account\">\n    <p>Update your account details here.</p>\n  </TabsContent>\n  <TabsContent value=\"password\">\n    <p>Change your password here.</p>\n  </TabsContent>\n</Tabs>\n"
+      },
+      {
+        "title": "Vertical, flat line list sized to a sidebar",
+        "code": "<Tabs defaultValue=\"general\" orientation=\"vertical\">\n  <TabsList variant=\"line\">\n    <TabsTrigger value=\"general\">General</TabsTrigger>\n    <TabsTrigger value=\"billing\">Billing</TabsTrigger>\n  </TabsList>\n  <TabsContent value=\"general\">\n    <p>General settings.</p>\n  </TabsContent>\n  <TabsContent value=\"billing\">\n    <p>Billing settings.</p>\n  </TabsContent>\n</Tabs>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Two panels sharing the same value",
+        "code": "<Tabs defaultValue=\"account\">\n  <TabsList>\n    <TabsTrigger value=\"account\">Account</TabsTrigger>\n    <TabsTrigger value=\"account\">Duplicate</TabsTrigger>\n  </TabsList>\n  <TabsContent value=\"account\">One panel, two triggers pointing at it.</TabsContent>\n</Tabs>\n",
+        "why": "Base UI matches a panel to its tab by exact value equality; a duplicate value leaves the second trigger with no panel of its own to activate."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "tabs",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.tabs_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.tabs_list.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.tabs_trigger.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Tabs",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "defaultValue": {
+        "description": "TS: any. Not expressible in JSON Schema, checked by tsc. defaultValue is the same opaque any-typed identifier as value, seeding the initial selection. Same `TabsTab.Value` type as `value` above, unchecked in the same half - the uncontrolled starting selection is compared by identity against each trigger's own `value`, and no schema can state what a caller's own identifier looks like."
+      },
+      "onValueChange": {
+        "description": "TS: ((value: any, eventDetails: TabsRootChangeEventDetails) => void) | undefined. Not expressible in JSON Schema, checked by tsc. onValueChange is a callback, not a value. `(value: TabsTab.Value, eventDetails) => void` - a function of the opaque value type plus Base UI's own event-details object. No JSON Schema type covers a function."
+      },
+      "orientation": {
+        "type": "string",
+        "enum": [
+          "horizontal",
+          "vertical"
+        ]
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, TabsRootState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the root's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: TabsRootState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the root's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (orientation, tabActivationDirection). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through tabs.module.css, not through this."
+      },
+      "value": {
+        "description": "TS: any. Not expressible in JSON Schema, checked by tsc. value is an opaque identifier, typed any by Base UI, compared by identity against a TabsTrigger's own value. Base UI's TabsRootProps types `value` as `TabsTab.Value | undefined`, where `TabsTab.Value` is `any | null` - not interpreted, only compared by identity, so no JSON Schema type can state what it holds beyond \"present or null\". tabs.md's example uses string values (`defaultValue=\"account\"`), which is what a reader should reach for."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

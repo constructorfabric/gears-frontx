@@ -1,0 +1,76 @@
+# Semantic overlay for AlertAction - part of the Alert family, see
+# alert.contract.yaml's `family_membership` for how the four contracts
+# relate. `mounted_in` is filled from Alert's own accepted components, not
+# authored here.
+component: alert-action
+
+intent: A single compact action positioned in the alert's top-right corner - something the user can do right there without leaving the page.
+
+typical_uses:
+  - One button (or icon button) that responds directly to what the alert reports (retry, dismiss, view details)
+
+dont_use_when:
+  - situation: More than one action, or an action that needs more room than a corner-positioned control
+    instead:
+      target: a custom layout inside AlertDescription, or a heavier surface entirely for anything beyond one compact control
+      note: >-
+        AlertAction reserves a fixed amount of padding sized for a single
+        control; this kit has no dedicated multi-action row component for
+        inside an Alert today.
+
+# The code does not police what goes inside, but alert.md sizes the slot
+# for one compact action, a button or an icon-only button, and both are
+# the kit's Button.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1 # Button
+
+invariants:
+  - id: always-positions-in-the-top-right-corner
+    text: >-
+      AlertAction always renders absolutely positioned in its nearest
+      Alert's top-right corner; it does not take part in the normal
+      document flow beside the title and description text.
+
+anti_patterns:
+  - dont: Put more than one interactive control inside AlertAction expecting them to lay out side by side
+    do_instead: >-
+      Keep AlertAction to a single compact control - its fixed corner
+      position and the padding Alert reserves for it are both sized for
+      one
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A single retry button in the corner
+      code: |
+        <Alert variant="destructive">
+          <AlertTitle>Payment failed</AlertTitle>
+          <AlertDescription>We couldn't charge your card ending in 4242.</AlertDescription>
+          <AlertAction>
+            <Button size="sm" variant="outline">Retry</Button>
+          </AlertAction>
+        </Alert>
+  bad:
+    - title: Two actions crammed into one AlertAction
+      code: |
+        <AlertAction>
+          <Button size="sm">Retry</Button>
+          <Button size="sm" variant="ghost">Dismiss</Button>
+        </AlertAction>
+      why: >-
+        AlertAction reserves a fixed amount of corner padding sized for one
+        compact control; a second button overflows or overlaps it instead
+        of laying out side by side.
+
+family_membership:
+  name: alert
+  role: part
