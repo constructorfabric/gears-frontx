@@ -131,14 +131,19 @@ describe('input-otp family: what nests where', () => {
     ]);
   });
 
-  it('gives the root no mount point at all - nothing in the kit mounts an InputOtp', () => {
-    expect(units[DIRECTORY].contract.mounted_in).toBeUndefined();
+  it("the root's one mount point is FILLED from Field, and from nothing else", () => {
+    // A family root may be mounted in another directory's container; only
+    // parts are held to their own family. The entry is filled from Field's
+    // own overlay, which accepts InputOtp among its controls.
+    expect(units[DIRECTORY].contract.mounted_in).toEqual([{ container: 'Field', component: componentRef('field', contractMajor('field', 'field')) }]);
   });
 
-  it('every nesting reference in the family points inside the family', () => {
+  it('every accepts reference and every part mount point points inside the family', () => {
+    // The root's own mount point is left out: it is Field, asserted above.
     const familyRefs = new Set(Object.values(units).map(({ contract }) => bareGtsId(String(contract.$id))));
     for (const { stem, contract } of Object.values(units)) {
-      for (const ref of nestingRefs(contract)) {
+      const refs = stem === DIRECTORY ? (contract.accepts.components ?? []) : nestingRefs(contract);
+      for (const ref of refs) {
         expect(familyRefs.has(ref), `${stem}: it names "${ref}", which is not a member of this family`).toBe(true);
       }
     }

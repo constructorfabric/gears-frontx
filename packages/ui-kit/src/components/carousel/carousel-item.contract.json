@@ -1,0 +1,92 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.carousel_item.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "carousel-item",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "One slide of a Carousel, taking the full length of the viewport along the scroll axis.",
+  "typical_uses": [
+    "One card, image or panel in a Carousel's track"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "One entry of a plain list or grid that does not step or scroll",
+      "instead": {
+        "target": "Item",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "CarouselContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.carousel_content.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "slide-group-roledescription",
+      "text": "Every slide renders `role=\"group\"` with `aria-roledescription=\"slide\"`; a consumer `aria-label` (for example \"2 of 5\") lands on that group."
+    },
+    {
+      "id": "leading-edge-padding-only",
+      "text": "A slide pads only its leading edge along the scroll axis (inline start when horizontal, block start when vertical), which produces the gap between slides; its trailing and cross-axis edges carry no padding, so a bordered child placed directly inside sits flush against the viewport's clipped edge."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Place a bordered element (a Card, a framed image) directly inside CarouselItem",
+      "do_instead": "Wrap it in a padding element (`var(--space-1)` is enough) inside the slide, so its outline or shadow is not clipped by the viewport"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "carousel.test.tsx asserts role=\"group\" and aria-roledescription=\"slide\" on a CarouselItem"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A bordered card inside a padded slide",
+        "code": "<CarouselItem>\n  <div style={{ padding: 'var(--space-1)' }}>\n    <Card>...</Card>\n  </div>\n</CarouselItem>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A slide placed straight in the Carousel root",
+        "code": "<Carousel aria-label=\"Photos\">\n  <CarouselItem>1</CarouselItem>\n</Carousel>\n",
+        "why": "Slides belong inside CarouselContent, the track the engine measures and moves; outside it a slide is never scrolled."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "carousel",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit CarouselItem",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -74,22 +74,21 @@ prop_statements:
     states: inputRef is a ref to the hidden native input Base UI renders for form submission
     because: >-
       `React.Ref<HTMLInputElement>` is a union of a ref object and a
-      callback function - neither is expressible in JSON Schema. It exists
+      callback function - the compiler emits one JSON type per property. It exists
       so a consumer can read or focus this item's own hidden input
       directly.
   render:
     states: render replaces the rendered element with one the caller supplies
     because: >-
       Base UI's render prop takes an element or a function of the item's own
-      state, so its type is a union of a React element and a callback -
-      neither expressible in JSON Schema.
+      state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
   style:
     states: style accepts a function of the item's state as well as a plain style object
     because: >-
       Base UI widens React's `CSSProperties` to
       `CSSProperties | ((state) => CSSProperties)` so a caller can style off
       the primitive's own state (checked, disabled, readOnly, required,
-      ...). A JSON Schema `object` would reject the function form, so
+      ...). The compiler emits one JSON type per property, so
       nothing is asserted; the kit's own styling goes through
       radio-group.module.css, not through this.
 

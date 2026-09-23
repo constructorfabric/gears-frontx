@@ -1,0 +1,196 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.carousel.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "carousel",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Show a set of slides one viewport at a time and let the user step through them, backed by a third-party carousel engine.",
+  "typical_uses": [
+    "A strip of cards, images or panels where only one or a few are visible at once and the user steps between them",
+    "An engine-driven slide sequence a custom control reads and drives through useCarousel"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Switching between labelled panels where the user picks a panel by its name",
+      "instead": {
+        "target": "Tabs",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.tabs.v1"
+      }
+    },
+    {
+      "situation": "A long panel or row the user free-scrolls, with no snapping and no step controls",
+      "instead": {
+        "target": "ScrollArea",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.scroll_area.v1"
+      }
+    },
+    {
+      "situation": "Stepping through pages of a result set that is loaded page by page",
+      "instead": {
+        "target": "Pagination",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true,
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.carousel_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.carousel_previous.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.carousel_next.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "orientation-overrides-opts-axis",
+      "text": "The scroll axis always follows `orientation` (`horizontal` scrolls on x, `vertical` on y); an `axis` passed inside `opts` is overwritten before the options reach the engine."
+    },
+    {
+      "id": "orientation-reaches-every-part",
+      "text": "`orientation` is set once on the root and reaches CarouselContent, CarouselItem, CarouselPrevious and CarouselNext through context, each of which mirrors it as `data-orientation`; the parts take no orientation of their own."
+    },
+    {
+      "id": "arrow-keys-left-right-only",
+      "text": "The root handles ArrowLeft (previous slide) and ArrowRight (next slide) in the capture phase for every keydown inside it, calling `preventDefault` on both, in either orientation; ArrowUp and ArrowDown are not handled, even when `orientation` is `vertical`."
+    },
+    {
+      "id": "set-api-receives-engine-instance",
+      "text": "`setApi` is called with the engine's CarouselApi once the engine is ready, and again whenever that instance or the `setApi` function itself changes (an inline arrow re-runs it on every render); it is not called before the engine is ready."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Render the carousel with no accessible name",
+      "do_instead": "Pass `aria-label`, or `aria-labelledby` pointing at a visible heading; the root renders `role=\"region\"` with no name of its own, and an unnamed region is not announced as a landmark"
+    },
+    {
+      "dont": "Put a text input or another arrow-key widget inside a slide",
+      "do_instead": "Keep such controls outside the Carousel; the root captures ArrowLeft and ArrowRight from every descendant (see arrow-keys-left-right-only), so the caret in a text field inside a slide cannot move left or right"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "opts": {
+      "states": "opts is the carousel engine's own options object (CarouselOptions), passed through to the engine",
+      "because": "Its type is the engine's `Partial<OptionsType>`, an object of many engine-defined fields the compiler does not expand into a schema; only tsc checks it."
+    },
+    "plugins": {
+      "states": "plugins is a list of the carousel engine's plugin instances (CarouselPlugin)",
+      "because": "Its items are the engine's own plugin objects, carrying functions, so the compiler states only that it is an array and leaves each item's shape to tsc."
+    },
+    "setApi": {
+      "states": "setApi is a callback that receives the engine instance (CarouselApi), not a value",
+      "because": "`(api: CarouselApi) => void` is a function, and no JSON Schema type covers a function."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A named horizontal carousel with step buttons",
+        "code": "<Carousel aria-label=\"Featured products\">\n  <CarouselContent>\n    <CarouselItem>Slide 1</CarouselItem>\n    <CarouselItem>Slide 2</CarouselItem>\n    <CarouselItem>Slide 3</CarouselItem>\n  </CarouselContent>\n  <CarouselPrevious />\n  <CarouselNext />\n</Carousel>\n"
+      },
+      {
+        "title": "Vertical, looping, with the engine instance captured",
+        "code": "<Carousel orientation=\"vertical\" opts={{ loop: true }} setApi={setApi} aria-label=\"Announcements\">\n  <CarouselContent>\n    <CarouselItem>First</CarouselItem>\n    <CarouselItem>Second</CarouselItem>\n  </CarouselContent>\n</Carousel>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Vertical scrolling requested through the engine options",
+        "code": "<Carousel opts={{ axis: 'y' }}>\n  <CarouselContent>\n    <CarouselItem>First</CarouselItem>\n  </CarouselContent>\n</Carousel>\n",
+        "why": "The root overwrites `opts.axis` from `orientation`, so this still scrolls horizontally. Pass `orientation=\"vertical\"` instead."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "carousel",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.carousel_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.carousel_item.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.carousel_next.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.carousel_previous.v1"
+    ]
+  },
+  "companions": [
+    {
+      "export": "useCarousel",
+      "typed_by": "() => { carouselRef, api: CarouselApi, orientation, scrollPrev, scrollNext, canScrollPrev, canScrollNext }",
+      "description": "The context hook every part reads; call it inside a Carousel to build a custom control (a slide counter, dot indicators) from `scrollPrev`, `scrollNext`, `canScrollPrev`, `canScrollNext` and the raw `api`. It throws \"useCarousel must be used within a <Carousel />\" outside one."
+    },
+    {
+      "export": "CarouselApi",
+      "typed_by": "the second element of the carousel engine hook result (UseEmblaCarouselType[1])",
+      "description": "The engine instance `setApi` receives and `useCarousel` returns as `api`, undefined until the engine is ready; used for imperative control such as reading the selected slide or jumping to one."
+    },
+    {
+      "export": "CarouselOptions",
+      "typed_by": "the first parameter of the carousel engine hook (Parameters<typeof useEmblaCarousel>[0])",
+      "description": "The engine options object the root's `opts` takes (for example `loop`, `align`)."
+    },
+    {
+      "export": "CarouselPlugin",
+      "typed_by": "the second parameter of the carousel engine hook (Parameters<typeof useEmblaCarousel>[1])",
+      "description": "The engine plugin list the root's `plugins` takes."
+    }
+  ],
+  "x-uikit": {
+    "partially_typed_props": {
+      "opts": {
+        "typeText": "Partial<OptionsType> | undefined",
+        "optional": true
+      },
+      "plugins": {
+        "typeText": "CreatePluginType<LoosePluginType, {}>[] | undefined",
+        "optional": true
+      },
+      "setApi": {
+        "typeText": "((api: EmblaCarouselType | undefined) => void) | undefined",
+        "optional": true
+      }
+    },
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Carousel",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "opts": {
+        "description": "Partially typed: Partial<OptionsType> | undefined. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. opts is the carousel engine's own options object (CarouselOptions), passed through to the engine. Its type is the engine's `Partial<OptionsType>`, an object of many engine-defined fields the compiler does not expand into a schema; only tsc checks it."
+      },
+      "orientation": {
+        "type": "string",
+        "enum": [
+          "horizontal",
+          "vertical"
+        ],
+        "default": "horizontal"
+      },
+      "plugins": {
+        "type": "array",
+        "description": "Partially typed: CreatePluginType<LoosePluginType, {}>[] | undefined. No JSON Schema type covers it beyond the kind above; shape checked by tsc, see x-uikit.partially_typed_props. plugins is a list of the carousel engine's plugin instances (CarouselPlugin). Its items are the engine's own plugin objects, carrying functions, so the compiler states only that it is an array and leaves each item's shape to tsc."
+      },
+      "setApi": {
+        "description": "Partially typed: ((api: EmblaCarouselType | undefined) => void) | undefined. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. setApi is a callback that receives the engine instance (CarouselApi), not a value. `(api: CarouselApi) => void` is a function, and no JSON Schema type covers a function."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

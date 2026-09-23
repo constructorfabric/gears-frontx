@@ -1,0 +1,70 @@
+# Semantic overlay for FieldContent - part of the Field family, see
+# field.contract.yaml's `family_membership`. Its mount point (Field) is
+# filled from Field's accepted components, not authored here.
+component: field-content
+
+intent: Stack a control's caption, description and message in one column beside the control.
+
+typical_uses:
+  - The label and description column beside a Switch or a Checkbox in a horizontal Field
+
+dont_use_when:
+  - situation: A vertical Field where the caption, the control and the description already stack
+    instead:
+      target: Field
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1
+      note: Put FieldLabel, the control and FieldDescription directly inside the Field.
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.field_label.v1 # FieldLabel
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.field_title.v1 # FieldTitle
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.field_description.v1 # FieldDescription
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.field_error.v1 # FieldError
+
+invariants:
+  - id: column-that-takes-the-free-space
+    text: >-
+      FieldContent stacks its children in a column with a --space-1 gap and
+      grows to take the row's free space.
+
+anti_patterns:
+  - dont: Put the control itself inside FieldContent
+    do_instead: Keep the control a direct child of the Field, beside the FieldContent
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A checkbox with its label and description beside it
+      code: |
+        <Field orientation="horizontal">
+          <Checkbox id="terms" />
+          <FieldContent>
+            <FieldLabel htmlFor="terms">Accept the terms</FieldLabel>
+            <FieldDescription>You can withdraw at any time.</FieldDescription>
+          </FieldContent>
+        </Field>
+  bad:
+    - title: The control wrapped into the content column
+      code: |
+        <Field orientation="horizontal">
+          <FieldContent>
+            <FieldLabel htmlFor="terms">Accept the terms</FieldLabel>
+            <Checkbox id="terms" />
+          </FieldContent>
+        </Field>
+      why: >-
+        The column stacks the checkbox under its caption instead of beside
+        it; the control belongs directly in the Field.
+
+family_membership:
+  name: field
+  role: part

@@ -1,0 +1,73 @@
+# Semantic overlay for FieldLabel - part of the Field family, see
+# field.contract.yaml's `family_membership`. Its mount points (Field,
+# FieldContent) are filled from their accepted components, not authored here.
+component: field-label
+
+intent: Caption the control of a Field, as the kit Label styled for the Field layout.
+
+typical_uses:
+  - The caption of a Field's control, associated with it via htmlFor
+
+dont_use_when:
+  - situation: A caption for a control outside any Field composition
+    instead:
+      target: Label
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.label.v1
+  - situation: The title of a FieldSet
+    instead:
+      target: FieldLegend
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.field_legend.v1
+  - situation: A title that names no control, inside a FieldContent
+    instead:
+      target: FieldTitle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.field_title.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: renders-the-kit-label
+    text: >-
+      FieldLabel renders the kit Label (a native label element) with its
+      width shrunk to its content, so every Label behaviour holds,
+      including that it adds no association of its own: htmlFor pointing
+      at the control's id is set by the consumer.
+  - id: follows-the-field-state-attributes
+    text: >-
+      Inside a Field carrying data-disabled="true" it is dimmed to the
+      disabled opacity, and inside a Field carrying data-invalid="true" it
+      inherits the --danger text color. As a direct child of a horizontal
+      Field it grows to fill the row.
+
+anti_patterns:
+  - dont: Leave htmlFor off and expect the Field to connect the caption
+    do_instead: Pass htmlFor naming the control's id; nothing in the family wires it
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: field.test.tsx asserts that getByLabelText("Email") finds the Input whose id the FieldLabel's htmlFor names
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A caption associated with its control
+      code: |
+        <Field>
+          <FieldLabel htmlFor="email">Email</FieldLabel>
+          <Input id="email" />
+        </Field>
+  bad:
+    - title: A caption prop the component does not have
+      code: <FieldLabel label="Email" htmlFor="email" />
+      why: >-
+        FieldLabel forwards the native label attributes and declares none of
+        its own - there is no label prop. The caption is children.
+
+family_membership:
+  name: field
+  role: part

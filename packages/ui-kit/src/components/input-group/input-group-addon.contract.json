@@ -1,0 +1,118 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_addon.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "input-group-addon",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Hold the icons, text and compact actions attached to one side of an InputGroup's field.",
+  "typical_uses": [
+    "A leading or trailing cluster on the field's row (an icon, a prefix, a clear button)",
+    "A full-width row above or below a multi-line field (a recipient line, a character counter, a toolbar)"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A caption naming the field, outside its frame",
+      "instead": {
+        "target": "FieldLabel",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_label.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true,
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_button.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_text.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.kbd.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "InputGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "click-outside-a-button-focuses-the-field",
+      "text": "A click in the addon that does not land inside a button focuses the first input or textarea in the addon's parent element, then calls the consumer's `onClick`; a click inside a button is not redirected, and the consumer's `onClick` is called either way."
+    },
+    {
+      "id": "align-moves-visually-not-in-the-dom",
+      "text": "`align` places the addon with CSS `order`: `inline-start` and `inline-end` share the field's row on either side, `block-start` and `block-end` take a full-width row above or below it, and both axes can be used in one group. The DOM order, and so the reading and tab order, stays the order the consumer wrote."
+    },
+    {
+      "id": "direct-svg-sized-by-the-group",
+      "text": "An svg that is a direct child of the addon is sized to the group's step icon box (16px at `sm` and `default`, 20px at `lg`); an icon nested deeper, inside a Kbd or an InputGroupButton, keeps its own size."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Place an `inline-end` addon before the field in the markup",
+      "do_instead": "Write addons in the order they read - leading addon, field, trailing addon; `align` only moves the box visually, so a trailing action written first is reached by Tab before the field it follows"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Trailing shortcut hint",
+        "code": "<InputGroup>\n  <InputGroupInput type=\"search\" placeholder=\"Search\" aria-label=\"Search\" />\n  <InputGroupAddon align=\"inline-end\">\n    <Kbd>Ctrl K</Kbd>\n  </InputGroupAddon>\n</InputGroup>\n"
+      },
+      {
+        "title": "Counter row under a multi-line field",
+        "code": "<InputGroup>\n  <InputGroupTextarea placeholder=\"Notes\" aria-label=\"Notes\" />\n  <InputGroupAddon align=\"block-end\">\n    <InputGroupText>0/280</InputGroupText>\n  </InputGroupAddon>\n</InputGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Alignment named after physical sides",
+        "code": "<InputGroupAddon align=\"right\">USD</InputGroupAddon>",
+        "why": "`align` takes logical values only (`inline-start`, `inline-end`, `block-start`, `block-end`); a trailing addon is `inline-end`."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "input_group",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof addonVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit InputGroupAddon",
+    "type": "object",
+    "properties": {
+      "align": {
+        "type": "string",
+        "enum": [
+          "inline-start",
+          "inline-end",
+          "block-start",
+          "block-end"
+        ],
+        "default": "inline-start"
+      },
+      "className": {
+        "type": "string"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

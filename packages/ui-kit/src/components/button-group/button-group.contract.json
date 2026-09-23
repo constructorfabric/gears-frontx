@@ -1,0 +1,127 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.button_group.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "button-group",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Join adjacent controls into one visual strip, rounding only the strip's outer corners and collapsing the borders between them.",
+  "typical_uses": [
+    "A segmented row of related actions",
+    "A split button (a primary action beside an icon-only trigger for more options)"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A set of options where exactly one or several stay pressed as a persistent value",
+      "instead": {
+        "target": "ToggleGroup",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.toggle_group.v1"
+      }
+    },
+    {
+      "situation": "One text field with its own leading or trailing icon, text or button inside the field",
+      "instead": {
+        "target": "InputGroup",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.select.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.button_group_text.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.button_group_separator.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "joins-direct-children-only",
+      "text": "The corner and border rules reach only the group's direct element children (and, one level down, an `<input>` inside a direct child that wraps it); a child nested deeper, including the children of an inner ButtonGroup, is not joined by this group."
+    },
+    {
+      "id": "no-shared-keyboard-behaviour",
+      "text": "The group renders `role=\"group\"` and adds no keyboard handling: every child keeps its own tab stop, and arrow keys do not move between children."
+    },
+    {
+      "id": "child-heights-not-normalized",
+      "text": "The group does not size its children; each child keeps the height its own `size` resolves to, so children of different default heights join at different heights."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Leave a group of related actions without an accessible name",
+      "do_instead": "Pass `aria-label`, or `aria-labelledby` pointing at a visible heading; it lands on the `role=\"group\"` element"
+    },
+    {
+      "dont": "Join a default-size Button to an Input or a Select trigger",
+      "do_instead": "Size the Button to the neighbour's height (`size=\"lg\"` for a default-size Input), since the group does not normalize heights (see child-heights-not-normalized)"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "button-group.test.tsx asserts role=\"group\" on the root and that a consumer aria-label names it (getByRole('group', { name: 'Actions' }))"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A named segmented row",
+        "code": "<ButtonGroup aria-label=\"Text alignment\">\n  <Button variant=\"outline\">Left</Button>\n  <Button variant=\"outline\">Center</Button>\n  <Button variant=\"outline\">Right</Button>\n</ButtonGroup>\n"
+      },
+      {
+        "title": "A split button",
+        "code": "<ButtonGroup aria-label=\"Save\">\n  <Button>Save</Button>\n  <ButtonGroupSeparator />\n  <Button aria-label=\"More save options\" icon={<CaretDownIcon />} />\n</ButtonGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Buttons wrapped one level below the group",
+        "code": "<ButtonGroup>\n  <span><Button>One</Button></span>\n  <span><Button>Two</Button></span>\n</ButtonGroup>\n",
+        "why": "The join reaches direct children only, so its rules land on the wrapping spans, which draw no border of their own, while the Buttons inside keep their own corners and borders."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "button_group",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.button_group_separator.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.button_group_text.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof buttonGroupVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ButtonGroup",
+    "type": "object",
+    "properties": {
+      "orientation": {
+        "type": "string",
+        "enum": [
+          "horizontal",
+          "vertical"
+        ],
+        "default": "horizontal"
+      },
+      "className": {
+        "type": "string"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

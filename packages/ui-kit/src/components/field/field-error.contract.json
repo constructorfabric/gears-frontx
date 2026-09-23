@@ -1,0 +1,125 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_error.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "field-error",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Announce why the value of a field is invalid.",
+  "typical_uses": [
+    "A validation message under a control, from the consumer's own validation",
+    "The list of messages a form library reports for one field, passed as `errors`"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Helper text shown before anything goes wrong",
+      "instead": {
+        "target": "FieldDescription",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_description.v1"
+      }
+    },
+    {
+      "situation": "A failure that concerns the whole form or page rather than one field",
+      "instead": {
+        "target": "Alert",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "FieldContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_content.v1"
+    },
+    {
+      "container": "Field",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "children-win-over-errors",
+      "text": "When children are given they are rendered and `errors` is ignored. Otherwise `errors` is reduced to one entry per distinct message: a single message renders as plain text, several render as a bulleted list, and entries with no message render nothing."
+    },
+    {
+      "id": "renders-nothing-when-empty",
+      "text": "With neither children nor a message to show, FieldError renders no element at all, so no empty role=\"alert\" node is left in the page."
+    },
+    {
+      "id": "alert-in-the-danger-color",
+      "text": "When it renders, it is a div with role=\"alert\" in the --danger color at the label size. It is not tied to the control: the control's aria-describedby naming its id is set by the consumer."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Show the FieldError and leave the control itself unmarked",
+      "do_instead": "Set aria-invalid on the control and point its aria-describedby at the FieldError's id, so the message is read with the control and not only when it appears"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "field.test.tsx asserts getByRole(\"alert\") on the rendered FieldError for children, a single error and a deduplicated list, and that nothing renders with neither"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "errors": {
+      "states": "errors is a list of objects each carrying an optional string message, with undefined entries allowed",
+      "because": "`Array<{ message?: string } | undefined>` - the compiler emits one JSON type per property, so only the array kind is asserted and the item shape is left to tsc. It matches the error objects form libraries report, and only `message` is read."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A message from the consumer's own validation",
+        "code": "<Field data-invalid>\n  <FieldLabel htmlFor=\"slug\">Slug</FieldLabel>\n  <Input id=\"slug\" aria-invalid aria-describedby=\"slug-error\" />\n  <FieldError id=\"slug-error\">This slug is taken.</FieldError>\n</Field>\n"
+      },
+      {
+        "title": "Messages from a form library",
+        "code": "<FieldError errors={[{ message: 'Too short.' }, { message: 'Must include a number.' }]} />\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A message prop from another library",
+        "code": "<FieldError message=\"Required.\" />",
+        "why": "FieldError takes `errors`, a list of objects with a `message`, or the message as children; there is no `message` prop."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "field",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {
+      "errors": {
+        "typeText": "({ message?: string | undefined; } | undefined)[] | undefined",
+        "optional": true
+      }
+    },
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit FieldError",
+    "type": "object",
+    "properties": {
+      "errors": {
+        "type": "array",
+        "description": "Partially typed: ({ message?: string | undefined; } | undefined)[] | undefined. No JSON Schema type covers it beyond the kind above; shape checked by tsc, see x-uikit.partially_typed_props. errors is a list of objects each carrying an optional string message, with undefined entries allowed. `Array<{ message?: string } | undefined>` - the compiler emits one JSON type per property, so only the array kind is asserted and the item shape is left to tsc. It matches the error objects form libraries report, and only `message` is read."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -152,17 +152,32 @@ describe('select directory: what nests where', () => {
     expect(units['select-item'].contract.mounted_in).toEqual([mountOf('select-content'), mountOf('select-group')]);
   });
 
-  it('the root and the two scroll buttons have no mount point: nothing in the kit accepts them', () => {
-    for (const stem of [DIRECTORY, ...SCROLL_STEMS]) {
+  it("the root's mount points are FILLED from ButtonGroup and Field, and from nothing else", () => {
+    // A family root may be mounted in another directory's container; only
+    // parts are held to their own family. Both entries are filled from the
+    // containers' own overlays.
+    expect(units[DIRECTORY].contract.mounted_in).toEqual([
+      { container: 'ButtonGroup', component: componentRef('button-group', contractMajor('button-group', 'button-group')) },
+      { container: 'Field', component: componentRef('field', contractMajor('field', 'field')) },
+    ]);
+  });
+
+  it('the two scroll buttons have no mount point: nothing in the kit accepts them', () => {
+    for (const stem of SCROLL_STEMS) {
       expect(units[stem].contract.mounted_in, stem).toBeUndefined();
     }
   });
 
-  it('every nesting reference in the family points inside the family', () => {
+  it('every accepts reference and every part mount point points inside the family', () => {
+    // The root's own mount points are left out: they are ButtonGroup and
+    // Field, asserted above.
     const familyRefs = new Set(ALL_STEMS.map((stem) => bareGtsId(String(units[stem].contract.$id))));
     for (const stem of ALL_STEMS) {
       const { contract } = units[stem];
-      const mounts = (contract.mounted_in ?? []).map((entry) => entry.component).filter((r): r is string => r !== undefined);
+      const mounts =
+        stem === DIRECTORY
+          ? []
+          : (contract.mounted_in ?? []).map((entry) => entry.component).filter((r): r is string => r !== undefined);
       for (const nested of [...(contract.accepts.components ?? []), ...mounts]) {
         expect(familyRefs.has(nested), `${stem}: it names "${nested}", which is not a member of this family`).toBe(true);
       }

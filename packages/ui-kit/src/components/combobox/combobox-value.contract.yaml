@@ -49,13 +49,12 @@ prop_statements:
   children:
     states: children is either React nodes or a function of the current value returning React nodes
     because: >-
-      `ReactNode | ((selectedValue: any) => ReactNode)` - a React node and a
-      function have no JSON Schema representation.
+      `ReactNode | ((selectedValue: any) => ReactNode)` - the compiler emits one JSON type per property, and a function has no JSON Schema representation.
   placeholder:
     states: placeholder is the React content shown while nothing is chosen and no children are given
     because: >-
       `ReactNode` is a union of elements, strings, numbers, fragments and
-      more, which the compiler cannot state as one JSON type.
+      more; the compiler emits one JSON type per property.
 
 examples:
   good:

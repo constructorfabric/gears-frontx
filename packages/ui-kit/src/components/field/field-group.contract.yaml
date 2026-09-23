@@ -1,0 +1,87 @@
+# Semantic overlay for FieldGroup - part of the Field family, see
+# field.contract.yaml's `family_membership`. Its kit mount point (FieldSet)
+# is filled from FieldSet's accepted components; the outside-the-kit one is
+# stated below.
+component: field-group
+
+intent: Stack several fields and field sets in one column and give responsive Fields the width they lay out by.
+
+typical_uses:
+  - The body of a form, stacking its Fields
+  - The fields inside a FieldSet, under its legend
+
+dont_use_when:
+  - situation: Several fields that share one title
+    instead:
+      target: FieldSet
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.field_set.v1
+  - situation: Joining a control with addons or buttons into one bordered unit
+    instead:
+      target: InputGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.input_group.v1
+  - situation: Joining separate buttons into one attached row
+    instead:
+      target: ButtonGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button_group.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1 # Field
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.field_set.v1 # FieldSet
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.field_separator.v1 # FieldSeparator
+
+mounted_in:
+  - container: the consuming application's own form or section element
+    note: The usual outermost part of a form built from this family.
+
+invariants:
+  - id: container-query-root
+    text: >-
+      FieldGroup is an inline-size container named field-group: a
+      responsive Field inside it switches to the horizontal layout when
+      this element, the nearest such ancestor, is at least 28rem wide,
+      whatever the viewport width.
+  - id: full-width-column
+    text: >-
+      FieldGroup takes the full width of its container and stacks its
+      direct children in a column with a --space-6 gap. It renders no role.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Fields stacked in a group, one of them responsive
+      code: |
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="name">Name</FieldLabel>
+            <Input id="name" />
+          </Field>
+          <Field orientation="responsive">
+            <FieldLabel htmlFor="newsletter">Newsletter</FieldLabel>
+            <Switch id="newsletter" />
+          </Field>
+        </FieldGroup>
+  bad:
+    - title: A FieldGroup used as a titled section
+      code: |
+        <FieldGroup aria-label="Shipping address">
+          <Field>...</Field>
+        </FieldGroup>
+      why: >-
+        FieldGroup renders a plain div with no role, so the aria-label names
+        nothing a screen reader announces as a group. A titled section is a
+        FieldSet with a FieldLegend.
+
+family_membership:
+  name: field
+  role: part

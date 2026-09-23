@@ -1,0 +1,107 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_legend.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "field-legend",
+  "forwards_to": "gts.frontx.uikit.element.dom_legend.v1~",
+  "intent": "Title a FieldSet, as the native legend that names the group.",
+  "typical_uses": [
+    "The title of a FieldSet grouping related fields",
+    "The question a set of checkboxes or a RadioGroup inside a FieldSet answers"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The caption of one control",
+      "instead": {
+        "target": "FieldLabel",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_label.v1"
+      }
+    },
+    {
+      "situation": "A title beside a control that is not a native label, inside a FieldContent",
+      "instead": {
+        "target": "FieldTitle",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_title.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "FieldSet",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_set.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "variant-sets-the-type-size",
+      "text": "Both variants set the label weight and a --space-3 bottom margin; `legend` sets the heading-2 size, and `label` sets the label size so the title reads as a plain field label."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Render FieldLegend outside a FieldSet",
+      "do_instead": "Put it first inside a FieldSet; a legend outside a fieldset names nothing"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A section title",
+        "code": "<FieldLegend>Shipping address</FieldLegend>"
+      },
+      {
+        "title": "A title that reads as a field label",
+        "code": "<FieldLegend variant=\"label\">Subscription plan</FieldLegend>"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A variant the component does not have",
+        "code": "<FieldLegend variant=\"heading\">Shipping address</FieldLegend>",
+        "why": "`variant` takes `legend` or `label` only; `legend` is already the heading-size title."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "field",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof fieldLegendVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit FieldLegend",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "legend",
+          "label"
+        ],
+        "default": "legend"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

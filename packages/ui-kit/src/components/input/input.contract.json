@@ -41,6 +41,16 @@
   "accepts": {
     "content": "nothing"
   },
+  "mounted_in": [
+    {
+      "container": "ButtonGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button_group.v1"
+    },
+    {
+      "container": "Field",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1"
+    }
+  ],
   "invariants": [
     {
       "id": "value-wins-over-default-value",
@@ -90,11 +100,11 @@
   "prop_statements": {
     "icon": {
       "states": "icon is a React node, not a value",
-      "because": "`ReactNode` has no JSON Schema representation - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. The slot exists so the leading icon gets sized, positioned and marked aria-hidden; what may go in it is \"anything React renders\", which is the whole assertion."
+      "because": "`ReactNode` is a union, and the compiler emits one JSON type per property - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. The slot exists so the leading icon gets sized, positioned and marked aria-hidden; what may go in it is \"anything React renders\", which is the whole assertion."
     },
     "end": {
       "states": "end is a React node, not a value",
-      "because": "`ReactNode` has no JSON Schema representation - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. The slot is live trailing content that is never aria-hidden, so its name and keyboard behavior are the consumer's; what may go in it is \"anything React renders\", which is the whole assertion."
+      "because": "`ReactNode` is a union, and the compiler emits one JSON type per property - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. The slot is live trailing content that is never aria-hidden, so its name and keyboard behavior are the consumer's; what may go in it is \"anything React renders\", which is the whole assertion."
     },
     "value": {
       "states": "value is the controlled field value, a string, a number or a readonly array of strings",
@@ -110,11 +120,11 @@
     },
     "render": {
       "states": "render replaces the rendered element with one the caller supplies",
-      "because": "Base UI's render prop takes an element or a function of the input's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      "because": "Base UI's render prop takes an element or a function of the input's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
     },
     "style": {
       "states": "style accepts a function of the input's state as well as a plain style object",
-      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, focused, filled, valid, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through input.module.css, not through this."
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, focused, filled, valid, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through input.module.css, not through this."
     }
   },
   "unexposed_parts": [
@@ -196,10 +206,10 @@
         "type": "string"
       },
       "end": {
-        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. end is a React node, not a value. `ReactNode` has no JSON Schema representation - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. The slot is live trailing content that is never aria-hidden, so its name and keyboard behavior are the consumer's; what may go in it is \"anything React renders\", which is the whole assertion."
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. end is a React node, not a value. `ReactNode` is a union, and the compiler emits one JSON type per property - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. The slot is live trailing content that is never aria-hidden, so its name and keyboard behavior are the consumer's; what may go in it is \"anything React renders\", which is the whole assertion."
       },
       "icon": {
-        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. icon is a React node, not a value. `ReactNode` has no JSON Schema representation - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. The slot exists so the leading icon gets sized, positioned and marked aria-hidden; what may go in it is \"anything React renders\", which is the whole assertion."
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. icon is a React node, not a value. `ReactNode` is a union, and the compiler emits one JSON type per property - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. The slot exists so the leading icon gets sized, positioned and marked aria-hidden; what may go in it is \"anything React renders\", which is the whole assertion."
       },
       "defaultValue": {
         "description": "TS: string | number | readonly string[] | undefined. The compiler emits one JSON type per property; this type is left to tsc. defaultValue is the uncontrolled field's initial value, a string, a number or a readonly array of strings. React types a native input's value as this three-way union; the schema asserts nothing for it, so the TypeScript type is the statement and tsc is the checker."
@@ -208,10 +218,10 @@
         "description": "TS: ((value: string, eventDetails: { reason: \"none\"; event: Event; cancel: () => void; allowPropagation: () => void; isCanceled: boolean; isPropagationAllowed: boolean; trigger: Element | undefined; }) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onValueChange is a function called with the next value and event details, not a value. A function type has no JSON Schema representation. Its second argument carries Base UI's own change-event-details shape (a reason, the triggering native event, and controls to cancel the change or allow it to propagate), which only tsc can check."
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, InputState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the input's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, InputState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the input's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: InputState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the input's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, focused, filled, valid, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through input.module.css, not through this."
+        "description": "TS: CSSProperties | ((state: InputState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the input's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, focused, filled, valid, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through input.module.css, not through this."
       },
       "value": {
         "description": "TS: string | number | readonly string[] | undefined. The compiler emits one JSON type per property; this type is left to tsc. value is the controlled field value, a string, a number or a readonly array of strings. React types a native input's value as this three-way union; the schema asserts nothing for it, so the TypeScript type is the statement and tsc is the checker."

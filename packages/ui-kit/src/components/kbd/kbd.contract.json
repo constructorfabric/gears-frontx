@@ -31,6 +31,10 @@
   },
   "mounted_in": [
     {
+      "container": "InputGroupAddon",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_addon.v1"
+    },
+    {
       "container": "KbdGroup",
       "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.kbd_group.v1"
     },

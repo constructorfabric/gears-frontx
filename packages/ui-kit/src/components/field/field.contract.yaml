@@ -1,0 +1,162 @@
+# Semantic overlay for Field (the root) - the hand-written half of one of
+# ten contracts describing this family. The parts are field-set,
+# field-legend, field-group, field-content, field-label, field-title,
+# field-description, field-separator and field-error; `family_membership`
+# below is how a reader (or the conformance test) walks between them.
+#
+# Machine-extractable facts (the prop list, the `orientation` axis and its
+# default, the forwarded div surface) do NOT belong here: the compiler takes
+# them from field.tsx and rejects an overlay that restates them. Field wraps
+# no primitive (every export is a plain styled element or the kit's own
+# Label/Separator, see field.tsx), and it wires nothing by itself: ids,
+# htmlFor, aria-describedby and the invalid/disabled attributes are all set
+# by the consumer.
+component: field
+
+intent: Lay out one form control together with its label, its description and its validation message.
+
+typical_uses:
+  - A labelled text entry with helper text below it
+  - A switch or checkbox with its caption and description beside it, in the horizontal orientation
+
+dont_use_when:
+  - situation: A caption for a control outside any Field composition
+    instead:
+      target: Label
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.label.v1
+  - situation: Several related fields presented under one shared title
+    instead:
+      target: FieldSet
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.field_set.v1
+  - situation: A multi-step form answered one question at a time
+    instead:
+      target: Questionnaire
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire.v1
+
+# The ONE authored statement of a nesting relationship: the compiler fills
+# every other contract's `mounted_in` from lists like this one. Field hosts
+# the caption parts of its family and the one control they describe; the
+# controls listed are the kit's form controls (roots of their own families
+# where they have one). No text flag: a Field's text belongs in its parts.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.field_label.v1 # FieldLabel
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.field_content.v1 # FieldContent
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.field_description.v1 # FieldDescription
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.field_error.v1 # FieldError
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.input.v1 # Input
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.textarea.v1 # Textarea
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.input_group.v1 # InputGroup
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.native_select.v1 # NativeSelect
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.select.v1 # Select
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.combobox.v1 # Combobox
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.checkbox.v1 # Checkbox
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.switch.v1 # Switch
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group.v1 # RadioGroup
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.slider.v1 # Slider
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.input_otp.v1 # InputOTP
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.date_picker.v1 # DatePicker
+
+# Mounted directly in the consuming application's own form markup as well as
+# inside FieldGroup and FieldSet (those two are filled from their accepts).
+mounted_in:
+  - container: the consuming application's own form or section element
+    note: >-
+      A Field needs no FieldGroup or FieldSet around it; only the
+      responsive orientation depends on a FieldGroup ancestor.
+
+invariants:
+  - id: group-role-and-orientation-attribute
+    text: >-
+      Field always renders a div with role="group" and a data-orientation
+      attribute carrying the orientation, "vertical" when none is given.
+  - id: wires-nothing-by-itself
+    text: >-
+      Field and its parts create no ids and no associations: FieldLabel's
+      htmlFor, the control's id and the control's aria-describedby
+      pointing at a FieldDescription or FieldError id are all set by the
+      consumer.
+  - id: data-invalid-tints-text-danger
+    text: >-
+      data-invalid="true" on Field sets its text color to --danger, which
+      FieldLabel, FieldTitle and every other descendant that declares no
+      color of its own inherit. It sets nothing on the control: the
+      control's own aria-invalid is set separately.
+  - id: data-disabled-dims-captions-only
+    text: >-
+      data-disabled="true" on Field dims every FieldLabel and FieldTitle
+      inside it to the disabled opacity. It does not disable the control;
+      the control's own disabled prop does that.
+  - id: orientation-layout
+    text: >-
+      vertical stacks the direct children in a column at full width;
+      horizontal lays them in a row centered on the cross axis, a direct
+      FieldLabel child growing to fill the row, and switches to top
+      alignment when a direct child is a FieldContent; responsive stays
+      stacked until the nearest FieldGroup ancestor is at least 28rem wide
+      and then lays out as horizontal does. It measures that FieldGroup,
+      not the viewport, and with no FieldGroup ancestor it stays stacked.
+
+anti_patterns:
+  - dont: Put two controls in one Field
+    do_instead: Give each control its own Field, and group the Fields with FieldGroup or FieldSet
+  - dont: Name the group with a label pointing at the Field
+    do_instead: >-
+      Point FieldLabel's htmlFor at the control's id; a `<label for>`
+      cannot name the Field's div, which is not a labelable element
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: field.test.tsx asserts role="group" on the rendered Field, and that getByLabelText finds the Input whose id a FieldLabel's htmlFor names
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A text field wired by hand to its label and description
+      code: |
+        <Field>
+          <FieldLabel htmlFor="email">Email</FieldLabel>
+          <Input id="email" type="email" aria-describedby="email-desc" />
+          <FieldDescription id="email-desc">We only use it for the invoice.</FieldDescription>
+        </Field>
+    - title: An invalid field showing a validation message
+      code: |
+        <Field data-invalid={Boolean(error)}>
+          <FieldLabel htmlFor="slug">Slug</FieldLabel>
+          <Input id="slug" aria-invalid={Boolean(error)} aria-describedby="slug-error" />
+          <FieldError id="slug-error">{error}</FieldError>
+        </Field>
+    - title: A switch with its label and description beside it
+      code: |
+        <Field orientation="horizontal">
+          <FieldContent>
+            <FieldLabel htmlFor="updates">Product updates</FieldLabel>
+            <FieldDescription>Release notes and roadmap changes.</FieldDescription>
+          </FieldContent>
+          <Switch id="updates" />
+        </Field>
+  bad:
+    - title: Expecting the label to find the control by itself
+      code: |
+        <Field>
+          <FieldLabel>Email</FieldLabel>
+          <Input />
+        </Field>
+      why: >-
+        Field wires nothing: with no htmlFor on FieldLabel and no id on the
+        Input the caption names nothing and clicking it focuses nothing.
+    - title: A disabled prop on Field
+      code: <Field disabled><Input id="email" /></Field>
+      why: >-
+        Field is a div and has no disabled prop: tsc refuses it, and at
+        runtime the attribute reaches the div and does nothing. Set `disabled` on the control, and
+        data-disabled on Field to dim its captions.
+
+family_membership:
+  name: field
+  role: root

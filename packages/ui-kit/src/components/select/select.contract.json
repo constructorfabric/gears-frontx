@@ -45,6 +45,16 @@
       "gts.frontx.uikit._.component.v1~frontx.uikit._.select_content.v1"
     ]
   },
+  "mounted_in": [
+    {
+      "container": "ButtonGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button_group.v1"
+    },
+    {
+      "container": "Field",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1"
+    }
+  ],
   "invariants": [
     {
       "id": "value-wins-over-default-value",
@@ -141,11 +151,11 @@
     },
     "inputRef": {
       "states": "inputRef is a ref to the hidden input the root renders for form submission",
-      "because": "`React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - neither is expressible in JSON Schema."
+      "because": "`React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - the compiler emits one JSON type per property."
     },
     "children": {
       "states": "children is the root's content, the parts listed under accepts",
-      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
     }
   },
   "examples": {
@@ -198,7 +208,7 @@
         "type": "string"
       },
       "children": {
-        "description": "TS: React.ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the root's content, the parts listed under accepts. `React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+        "description": "TS: React.ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the root's content, the parts listed under accepts. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
       },
       "defaultOpen": {
         "type": "boolean"
@@ -219,7 +229,7 @@
         "type": "string"
       },
       "inputRef": {
-        "description": "TS: React.Ref<HTMLInputElement> | undefined. The compiler emits one JSON type per property; this type is left to tsc. inputRef is a ref to the hidden input the root renders for form submission. `React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - neither is expressible in JSON Schema."
+        "description": "TS: React.Ref<HTMLInputElement> | undefined. The compiler emits one JSON type per property; this type is left to tsc. inputRef is a ref to the hidden input the root renders for form submission. `React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - the compiler emits one JSON type per property."
       },
       "isItemEqualToValue": {
         "description": "TS: ((itemValue: Value, value: Value) => boolean) | undefined. The compiler emits one JSON type per property; this type is left to tsc. isItemEqualToValue is a function deciding whether an item's value matches the chosen value; without it the root compares with Object.is. `(itemValue: Value, value: Value) => boolean` - a function, which no JSON Schema type covers. It is meant for object values that are equal without being the same object."

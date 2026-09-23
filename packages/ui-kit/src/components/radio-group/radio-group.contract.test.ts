@@ -131,22 +131,27 @@ describe('radio-group family: what nests where', () => {
     ]);
   });
 
-  it('gives the root no mount point at all - nothing in the kit mounts a RadioGroup', () => {
-    // Absent, not an empty list: no contract accepts the root inside it, and
-    // an empty list would read as "may be mounted nowhere".
-    expect(units[DIRECTORY].contract.mounted_in).toBeUndefined();
+  it("the root's one mount point is FILLED from Field, and from nothing else", () => {
+    // A family root may be mounted in another directory's container; only
+    // parts are held to their own family. The entry is filled from Field's
+    // own overlay, which accepts RadioGroup among its controls.
+    expect(units[DIRECTORY].contract.mounted_in).toEqual([{ container: 'Field', component: componentRef('field', contractMajor('field', 'field')) }]);
   });
 
-  it('every nesting reference in the family points inside the family, except the caption Label', () => {
+  it('every accepts reference and every part mount point points inside the family, except the caption Label', () => {
     // Resolution itself is the shared suite's check. What this asserts is
     // the family's own shape: the item may only nest under the root, and
     // the root's only other accepted component is Label, which belongs to no
     // family and captions an item from beside it - a reference to any other
     // component would make a part independently mountable, which is exactly
-    // what a compound component is not.
+    // what a compound component is not. The root's own mount point is left
+    // out: it is Field, asserted above.
     const familyRefs = new Set(Object.values(units).map(({ contract }) => bareGtsId(String(contract.$id))));
     for (const { stem, contract } of Object.values(units)) {
-      const mounts = (contract.mounted_in ?? []).map((entry) => entry.component).filter((ref): ref is string => ref !== undefined);
+      const mounts =
+        stem === DIRECTORY
+          ? []
+          : (contract.mounted_in ?? []).map((entry) => entry.component).filter((ref): ref is string => ref !== undefined);
       for (const ref of [...(contract.accepts.components ?? []), ...mounts]) {
         if (stem === DIRECTORY && ref === LABEL_REF) continue;
         expect(familyRefs.has(ref), `${stem}: it names "${ref}", which is not a member of this family`).toBe(true);

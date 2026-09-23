@@ -36,6 +36,10 @@
   },
   "mounted_in": [
     {
+      "container": "Field",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1"
+    },
+    {
       "container": "Label",
       "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.label.v1"
     }
@@ -77,15 +81,15 @@
     },
     "inputRef": {
       "states": "inputRef is a ref to the hidden native input Base UI renders for form submission",
-      "because": "`React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - neither is expressible in JSON Schema. It exists so a consumer can read or focus the native input directly, the same input `name`/`value`/`uncheckedValue` submit through."
+      "because": "`React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - the compiler emits one JSON type per property. It exists so a consumer can read or focus the native input directly, the same input `name`/`value`/`uncheckedValue` submit through."
     },
     "render": {
       "states": "render replaces the rendered element with one the caller supplies",
-      "because": "Base UI's render prop takes an element or a function of the switch's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      "because": "Base UI's render prop takes an element or a function of the switch's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
     },
     "style": {
       "states": "style accepts a function of the switch's state as well as a plain style object",
-      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (checked, disabled, readOnly, required). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through switch.module.css, not through this."
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (checked, disabled, readOnly, required). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through switch.module.css, not through this."
     }
   },
   "unexposed_parts": [
@@ -156,7 +160,7 @@
         "type": "string"
       },
       "inputRef": {
-        "description": "TS: Ref<HTMLInputElement> | undefined. The compiler emits one JSON type per property; this type is left to tsc. inputRef is a ref to the hidden native input Base UI renders for form submission. `React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - neither is expressible in JSON Schema. It exists so a consumer can read or focus the native input directly, the same input `name`/`value`/`uncheckedValue` submit through."
+        "description": "TS: Ref<HTMLInputElement> | undefined. The compiler emits one JSON type per property; this type is left to tsc. inputRef is a ref to the hidden native input Base UI renders for form submission. `React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - the compiler emits one JSON type per property. It exists so a consumer can read or focus the native input directly, the same input `name`/`value`/`uncheckedValue` submit through."
       },
       "name": {
         "type": "string"
@@ -171,13 +175,13 @@
         "type": "boolean"
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, SwitchRootState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the switch's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, SwitchRootState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the switch's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
       },
       "required": {
         "type": "boolean"
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: SwitchRootState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the switch's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (checked, disabled, readOnly, required). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through switch.module.css, not through this."
+        "description": "TS: CSSProperties | ((state: SwitchRootState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the switch's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (checked, disabled, readOnly, required). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through switch.module.css, not through this."
       },
       "uncheckedValue": {
         "type": "string"

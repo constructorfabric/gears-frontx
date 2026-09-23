@@ -71,20 +71,18 @@ prop_statements:
     states: children is the trigger's caption, a SelectValue or text the caller composes
     because: >-
       `React.ReactNode` is a union of elements, strings, numbers, fragments
-      and more, which the compiler cannot state as one JSON type.
+      and more; the compiler emits one JSON type per property.
   render:
     states: render replaces the rendered element with one the caller supplies
     because: >-
       Base UI's render prop takes an element or a function of the trigger's
-      own state, so its type is a union of a React element and a callback -
-      neither expressible in JSON Schema.
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
   style:
     states: style accepts a function of the trigger's state as well as a plain style object
     because: >-
       Base UI widens React's `CSSProperties` to
       `CSSProperties | ((state) => CSSProperties)` so a caller can style off
-      the primitive's own state (open, disabled, placeholder, ...). A JSON
-      Schema `object` would reject the function form, so nothing is
+      the primitive's own state (open, disabled, placeholder, ...). The compiler emits one JSON type per property, so nothing is
       asserted; the kit's own styling goes through select.module.css, not
       through this.
 

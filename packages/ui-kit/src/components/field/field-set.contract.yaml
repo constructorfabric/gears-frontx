@@ -1,0 +1,97 @@
+# Semantic overlay for FieldSet - part of the Field family, see
+# field.contract.yaml's `family_membership` for how the ten contracts
+# relate. Its kit mount point (FieldGroup) is filled from FieldGroup's
+# accepted components; the outside-the-kit one is stated below.
+component: field-set
+
+intent: Group several related fields under one shared title as a native fieldset.
+
+typical_uses:
+  - A titled section of a form (an address, a set of notification settings)
+  - The group of options a set of checkboxes or a RadioGroup offers, titled by a FieldLegend
+
+dont_use_when:
+  - situation: Stacking fields with no shared title and no shared meaning
+    instead:
+      target: FieldGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.field_group.v1
+  - situation: One question per step of a multi-step form
+    instead:
+      target: Questionnaire
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire.v1
+  - situation: A bordered panel that frames content visually
+    instead:
+      target: Card
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.field_legend.v1 # FieldLegend
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.field_description.v1 # FieldDescription
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.field_group.v1 # FieldGroup
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1 # Field
+
+mounted_in:
+  - container: the consuming application's own form or section element
+    note: A FieldSet may stand directly in a form; a FieldGroup around it is optional.
+
+invariants:
+  - id: native-fieldset-without-chrome
+    text: >-
+      FieldSet renders a native fieldset with the user agent's border,
+      padding, margin and min-width removed, laying its direct children out
+      in a column with a --space-6 gap. It draws no border of its own.
+  - id: native-disabled-reaches-every-control
+    text: >-
+      `disabled` is the native fieldset attribute: it disables every native
+      form control inside the fieldset except those inside its first
+      legend. It does not set data-disabled on the Fields inside, so their
+      captions are not dimmed by it. The kit controls rooted in a span
+      (Checkbox, Switch, RadioGroupItem) do not read it either: their
+      disabled state comes only from their own `disabled` prop and the
+      primitive's own field and group contexts, so inside a disabled
+      FieldSet they render no data-disabled or aria-disabled and keep
+      their enabled styling. Pass `disabled` to those controls as well.
+
+anti_patterns:
+  - dont: Title the set with a heading element or a FieldTitle
+    do_instead: Make a FieldLegend the fieldset's first child, which gives the group its accessible name
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A titled set of fields
+      code: |
+        <FieldSet>
+          <FieldLegend>Shipping address</FieldLegend>
+          <FieldDescription>Where the order is delivered.</FieldDescription>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="street">Street</FieldLabel>
+              <Input id="street" />
+            </Field>
+          </FieldGroup>
+        </FieldSet>
+  bad:
+    - title: A set titled by a label instead of a legend
+      code: |
+        <FieldSet>
+          <FieldLabel>Shipping address</FieldLabel>
+          <Field>...</Field>
+        </FieldSet>
+      why: >-
+        A label names one control, not the fieldset; only a legend as the
+        fieldset's first child names the group. Use FieldLegend, with
+        `variant="label"` when it should read as a plain label.
+
+family_membership:
+  name: field
+  role: part

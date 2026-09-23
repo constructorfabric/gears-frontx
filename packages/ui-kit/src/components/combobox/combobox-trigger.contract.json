@@ -63,15 +63,15 @@
   "prop_statements": {
     "children": {
       "states": "children is any React content, shown in place of the default chevron",
-      "because": "`ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+      "because": "`ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
     },
     "render": {
       "states": "render replaces the rendered element with one the caller supplies",
-      "because": "Base UI's render prop takes an element or a function of the button's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      "because": "Base UI's render prop takes an element or a function of the button's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
     },
     "style": {
       "states": "style accepts a function of the button's state as well as a plain style object",
-      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, disabled, popupSide, listEmpty, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through combobox.module.css, not through this."
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, disabled, popupSide, listEmpty, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through combobox.module.css, not through this."
     }
   },
   "examples": {
@@ -108,7 +108,7 @@
     "type": "object",
     "properties": {
       "children": {
-        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. children is any React content, shown in place of the default chevron. `ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. children is any React content, shown in place of the default chevron. `ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
       },
       "className": {
         "type": "string"
@@ -120,10 +120,10 @@
         "type": "boolean"
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ComboboxTriggerState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the button's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ComboboxTriggerState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the button's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: ComboboxTriggerState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the button's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, disabled, popupSide, listEmpty, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through combobox.module.css, not through this."
+        "description": "TS: CSSProperties | ((state: ComboboxTriggerState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the button's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, disabled, popupSide, listEmpty, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through combobox.module.css, not through this."
       }
     },
     "required": [],

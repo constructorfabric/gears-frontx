@@ -25,6 +25,12 @@
       "gts.frontx.uikit._.component.v1~frontx.uikit._.input_otp_separator.v1"
     ]
   },
+  "mounted_in": [
+    {
+      "container": "Field",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1"
+    }
+  ],
   "invariants": [
     {
       "id": "value-wins-over-default-value",
@@ -78,11 +84,11 @@
     },
     "render": {
       "states": "render replaces the rendered element with one the caller supplies",
-      "because": "Base UI's render prop takes an element or a function of the field's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      "because": "Base UI's render prop takes an element or a function of the field's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
     },
     "style": {
       "states": "style accepts a function of the field's state as well as a plain style object",
-      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (complete, disabled, readOnly, required, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through input-otp.module.css, not through this."
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (complete, disabled, readOnly, required, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through input-otp.module.css, not through this."
     }
   },
   "unexposed_parts": [
@@ -187,13 +193,13 @@
         "type": "boolean"
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, OTPFieldRootState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the field's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, OTPFieldRootState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the field's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
       },
       "required": {
         "type": "boolean"
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: OTPFieldRootState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the field's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (complete, disabled, readOnly, required, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through input-otp.module.css, not through this."
+        "description": "TS: CSSProperties | ((state: OTPFieldRootState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the field's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (complete, disabled, readOnly, required, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through input-otp.module.css, not through this."
       },
       "validationType": {
         "type": "string",

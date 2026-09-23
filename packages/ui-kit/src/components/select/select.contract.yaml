@@ -172,12 +172,12 @@ prop_statements:
     states: inputRef is a ref to the hidden input the root renders for form submission
     because: >-
       `React.Ref<HTMLInputElement>` is a union of a ref object and a
-      callback function - neither is expressible in JSON Schema.
+      callback function - the compiler emits one JSON type per property.
   children:
     states: children is the root's content, the parts listed under accepts
     because: >-
       `React.ReactNode` is a union of elements, strings, numbers, fragments
-      and more, which the compiler cannot state as one JSON type.
+      and more; the compiler emits one JSON type per property.
 
 examples:
   good:

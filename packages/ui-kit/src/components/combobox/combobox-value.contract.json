@@ -49,11 +49,11 @@
   "prop_statements": {
     "children": {
       "states": "children is either React nodes or a function of the current value returning React nodes",
-      "because": "`ReactNode | ((selectedValue: any) => ReactNode)` - a React node and a function have no JSON Schema representation."
+      "because": "`ReactNode | ((selectedValue: any) => ReactNode)` - the compiler emits one JSON type per property, and a function has no JSON Schema representation."
     },
     "placeholder": {
       "states": "placeholder is the React content shown while nothing is chosen and no children are given",
-      "because": "`ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+      "because": "`ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
     }
   },
   "examples": {
@@ -85,10 +85,10 @@
     "type": "object",
     "properties": {
       "children": {
-        "description": "TS: ReactNode | ((selectedValue: any) => ReactNode). The compiler emits one JSON type per property; this type is left to tsc. children is either React nodes or a function of the current value returning React nodes. `ReactNode | ((selectedValue: any) => ReactNode)` - a React node and a function have no JSON Schema representation."
+        "description": "TS: ReactNode | ((selectedValue: any) => ReactNode). The compiler emits one JSON type per property; this type is left to tsc. children is either React nodes or a function of the current value returning React nodes. `ReactNode | ((selectedValue: any) => ReactNode)` - the compiler emits one JSON type per property, and a function has no JSON Schema representation."
       },
       "placeholder": {
-        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. placeholder is the React content shown while nothing is chosen and no children are given. `ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. placeholder is the React content shown while nothing is chosen and no children are given. `ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
       }
     },
     "required": [],

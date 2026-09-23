@@ -1,0 +1,85 @@
+# Semantic overlay for FieldSeparator - part of the Field family, see
+# field.contract.yaml's `family_membership`. Its mount point (FieldGroup) is
+# filled from FieldGroup's accepted components, not authored here.
+component: field-separator
+
+intent: Divide the groups of a form with a horizontal rule, optionally carrying a short caption in its middle.
+
+typical_uses:
+  - A divider between two ways of completing a form, captioned "or continue with"
+
+dont_use_when:
+  - situation: A divider outside a Field composition, or one with no caption
+    instead:
+      target: Separator
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.separator.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: rule-with-optional-caption
+    text: >-
+      FieldSeparator renders a div holding the kit Separator, which keeps
+      its role="separator", drawn across the middle; its children, when
+      given, sit centered over the rule in a span painted with the
+      --background color so the rule appears to stop around them. With no
+      children only the rule renders.
+  - id: pulls-into-the-group-gap
+    text: >-
+      It is --space-5 tall with a negative --space-2 margin above and below,
+      so it sits closer to its neighbours than the group's own gap.
+
+anti_patterns:
+  - dont: Place a captioned FieldSeparator on a surface other than the page background
+    do_instead: >-
+      Keep it on the page background; the caption span always paints
+      --background and takes no className of its own, so on any other
+      surface it shows as a box
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: field.test.tsx asserts that the rendered FieldSeparator contains an element with role="separator"
+  rtl:
+    outcome: unknown
+
+unexposed_parts:
+  - part: The kit Separator and the caption span
+    reason: >-
+      FieldSeparator composes the kit's own Separator and a fixed caption
+      span into one exported component; neither takes props from the
+      consumer, and the className and other forwarded attributes land on
+      the outer div.
+
+prop_statements:
+  children:
+    states: children is the caption shown in the middle of the rule, any React content
+    because: >-
+      `ReactNode` is a union of elements, strings, numbers, fragments and
+      more; the compiler emits one JSON type per property. Omitted, null,
+      false or an empty string render no caption span.
+
+examples:
+  good:
+    - title: A captioned divider between two groups
+      code: |
+        <FieldGroup>
+          <Field>...</Field>
+          <FieldSeparator>Or continue with</FieldSeparator>
+          <Field>...</Field>
+        </FieldGroup>
+  bad:
+    - title: Separator props passed to FieldSeparator
+      code: <FieldSeparator orientation="vertical" />
+      why: >-
+        FieldSeparator is a div around a fixed horizontal Separator; it has
+        no orientation prop and does not pass one to the Separator. Use
+        Separator for a vertical divider.
+
+family_membership:
+  name: field
+  role: part

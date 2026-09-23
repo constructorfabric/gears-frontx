@@ -1,0 +1,169 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_input.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "input-group-input",
+  "forwards_to": "gts.frontx.uikit.element.dom_input.v1~",
+  "intent": "The single-line text field an InputGroup frames, drawn without chrome of its own.",
+  "typical_uses": [
+    "The field of an InputGroup with a prefix, suffix or attached action"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A single-line field with no InputGroup around it",
+      "instead": {
+        "target": "Input",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.input.v1"
+      }
+    },
+    {
+      "situation": "Multi-line text inside an InputGroup",
+      "instead": {
+        "target": "InputGroupTextarea",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_textarea.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "InputGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "value-wins-over-default-value",
+      "text": "`value` and `defaultValue` are both accepted; `defaultValue` seeds the initial state and is ignored afterwards, and when `value` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "chrome-belongs-to-the-group",
+      "text": "Inside an InputGroup the field's own border, background, radius and focus or invalid ring are removed and it stretches to fill the row; its `:focus-visible`, `aria-invalid=\"true\"` and `:disabled` states are what the surrounding group draws."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Pass `icon` or `end` to InputGroupInput",
+      "do_instead": "Put the icon or action in an InputGroupAddon; with a slot, Input wraps the field in a span that input-group.module.css does not lay out as the group's flexible field"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "input-group.test.tsx resolves the field by getByRole('textbox', { name: 'Amount' }) from its aria-label, and asserts that clicking an addon moves document.activeElement to it"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "icon": {
+      "states": "icon is a React node, not a value",
+      "because": "`ReactNode` is a union, and the compiler emits one JSON type per property - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. It is Input's decorative leading slot, reaching this part unchanged."
+    },
+    "end": {
+      "states": "end is a React node, not a value",
+      "because": "`ReactNode` is a union, and the compiler emits one JSON type per property - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. It is Input's live trailing slot, reaching this part unchanged."
+    },
+    "value": {
+      "states": "value is the controlled field value, a string, a number or a readonly array of strings",
+      "because": "React types a native input's value as this three-way union; the schema asserts nothing for it, so the TypeScript type is the statement and tsc is the checker."
+    },
+    "defaultValue": {
+      "states": "defaultValue is the uncontrolled field's initial value, a string, a number or a readonly array of strings",
+      "because": "React types a native input's value as this three-way union; the schema asserts nothing for it, so the TypeScript type is the statement and tsc is the checker."
+    },
+    "onValueChange": {
+      "states": "onValueChange is a function called with the next value and event details, not a value",
+      "because": "A function type has no JSON Schema representation. Its second argument carries Base UI's own change-event-details shape (a reason, the triggering native event, and controls to cancel the change or allow it to propagate), which only tsc can check."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the input's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the input's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, focused, filled, valid, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through input.module.css and input-group.module.css, not through this."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "Input's presentational wrapper, icon and end spans",
+      "reason": "InputGroupInput renders the kit's Input, which adds these spans only when `icon` or `end` is given; they carry no behavior a consumer reaches, and inside a group addons replace them."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "Controlled field with a unit suffix",
+        "code": "<InputGroup>\n  <InputGroupInput type=\"number\" value={width} onValueChange={setWidth} aria-label=\"Width\" />\n  <InputGroupAddon align=\"inline-end\">\n    <InputGroupText>px</InputGroupText>\n  </InputGroupAddon>\n</InputGroup>\n"
+      },
+      {
+        "title": "Invalid field, the group draws the error border",
+        "code": "<InputGroup>\n  <InputGroupAddon>\n    <InputGroupText>@</InputGroupText>\n  </InputGroupAddon>\n  <InputGroupInput aria-label=\"Email\" aria-invalid aria-describedby=\"email-error\" />\n</InputGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Icon passed through Input's slot instead of an addon",
+        "code": "<InputGroup>\n  <InputGroupInput icon={<SearchIcon />} aria-label=\"Search\" />\n  <InputGroupAddon align=\"inline-end\">\n    <InputGroupButton icon={<XIcon />} aria-label=\"Clear\" />\n  </InputGroupAddon>\n</InputGroup>\n",
+        "why": "The slot wraps the field in a span that takes a full row of the group, so the trailing addon no longer shares the field's line. Put the icon in a leading InputGroupAddon."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "input_group",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {
+      "end": {
+        "typeText": "ReactNode",
+        "optional": true
+      },
+      "icon": {
+        "typeText": "ReactNode",
+        "optional": true
+      }
+    },
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit InputGroupInput",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "end": {
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. end is a React node, not a value. `ReactNode` is a union, and the compiler emits one JSON type per property - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. It is Input's live trailing slot, reaching this part unchanged."
+      },
+      "icon": {
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. icon is a React node, not a value. `ReactNode` is a union, and the compiler emits one JSON type per property - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. It is Input's decorative leading slot, reaching this part unchanged."
+      },
+      "defaultValue": {
+        "description": "TS: string | number | readonly string[] | undefined. The compiler emits one JSON type per property; this type is left to tsc. defaultValue is the uncontrolled field's initial value, a string, a number or a readonly array of strings. React types a native input's value as this three-way union; the schema asserts nothing for it, so the TypeScript type is the statement and tsc is the checker."
+      },
+      "onValueChange": {
+        "description": "TS: ((value: string, eventDetails: { reason: \"none\"; event: Event; cancel: () => void; allowPropagation: () => void; isCanceled: boolean; isPropagationAllowed: boolean; trigger: Element | undefined; }) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onValueChange is a function called with the next value and event details, not a value. A function type has no JSON Schema representation. Its second argument carries Base UI's own change-event-details shape (a reason, the triggering native event, and controls to cancel the change or allow it to propagate), which only tsc can check."
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, InputState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the input's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: InputState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the input's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, focused, filled, valid, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through input.module.css and input-group.module.css, not through this."
+      },
+      "value": {
+        "description": "TS: string | number | readonly string[] | undefined. The compiler emits one JSON type per property; this type is left to tsc. value is the controlled field value, a string, a number or a readonly array of strings. React types a native input's value as this three-way union; the schema asserts nothing for it, so the TypeScript type is the statement and tsc is the checker."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

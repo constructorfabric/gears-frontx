@@ -96,7 +96,7 @@ prop_statements:
   icon:
     states: icon is a React node, not a value
     because: >-
-      `ReactNode` has no JSON Schema representation - an element, a string,
+      `ReactNode` is a union, and the compiler emits one JSON type per property - an element, a string,
       a fragment and `false` are all valid and only tsc can tell them from a
       mistake. The slot exists so the leading icon gets sized, positioned
       and marked aria-hidden; what may go in it is "anything React renders",
@@ -104,7 +104,7 @@ prop_statements:
   end:
     states: end is a React node, not a value
     because: >-
-      `ReactNode` has no JSON Schema representation - an element, a string,
+      `ReactNode` is a union, and the compiler emits one JSON type per property - an element, a string,
       a fragment and `false` are all valid and only tsc can tell them from a
       mistake. The slot is live trailing content that is never aria-hidden,
       so its name and keyboard behavior are the consumer's; what may go in
@@ -132,15 +132,13 @@ prop_statements:
     states: render replaces the rendered element with one the caller supplies
     because: >-
       Base UI's render prop takes an element or a function of the input's
-      own state, so its type is a union of a React element and a callback -
-      neither expressible in JSON Schema.
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
   style:
     states: style accepts a function of the input's state as well as a plain style object
     because: >-
       Base UI widens React's `CSSProperties` to
       `CSSProperties | ((state) => CSSProperties)` so a caller can style off
-      the primitive's own state (disabled, focused, filled, valid, ...). A JSON Schema `object` would
-      reject the function form, so nothing is asserted; the kit's own
+      the primitive's own state (disabled, focused, filled, valid, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own
       styling goes through input.module.css, not through this.
 
 # The props that take React nodes.

@@ -1,0 +1,144 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "input-group",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Frame one text field and its addons (icons, text, compact actions) as a single visually unified field.",
+  "typical_uses": [
+    "A field with a fixed text prefix or suffix (a currency sign, a domain, a unit)",
+    "A field with several adornments on one side, or an icon on one side and an action on the other",
+    "A multi-line field with a full-width addon row above or below it"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A single decorative leading icon or one compact trailing action on a single-line field",
+      "instead": {
+        "target": "Input",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.input.v1",
+        "note": "Input's own `icon` and `end` slots cover this without the extra parts."
+      }
+    },
+    {
+      "situation": "Joining independent controls that are not one logical field (a segmented control, a split button, an input beside a popup trigger)",
+      "instead": {
+        "target": "ButtonGroup",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button_group.v1"
+      }
+    },
+    {
+      "situation": "A caption, description or error message for the field",
+      "instead": {
+        "target": "Field",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1",
+        "note": "InputGroup draws only the field's frame; the label, helper text and error sit beside it in a Field, wired to the control by hand."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_addon.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_input.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_textarea.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Field",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "group-draws-the-field-chrome",
+      "text": "The group draws the field's border, background, focus ring and error border; a wrapped InputGroupInput or InputGroupTextarea has its own border, background, radius and ring removed by input-group.module.css and fills the row."
+    },
+    {
+      "id": "state-is-read-off-the-control",
+      "text": "The group's states come from the wrapped control, never from the group: its focus ring shows while an InputGroupInput or InputGroupTextarea inside it matches `:focus-visible` (a focused button in an addon does not light it), `aria-invalid=\"true\"` on that control turns the group border destructive, and a disabled control dims the whole group once. `aria-invalid` or `disabled` set on InputGroup itself changes nothing."
+    },
+    {
+      "id": "size-is-a-height-floor",
+      "text": "`size` sets the group's minimum height and its addon inset, gap and direct-icon box; a block-start or block-end addon or a wrapped InputGroupTextarea grows the group past that floor."
+    },
+    {
+      "id": "role-group-without-a-name",
+      "text": "The group renders a div with `role=\"group\"` and no accessible name of its own; an `aria-label` given to InputGroup names that group, not the field, so the field's own name goes on InputGroupInput or InputGroupTextarea."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put two text fields in one InputGroup",
+      "do_instead": "Give each field its own InputGroup; one group frames one field with one focus ring and one error border"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "input-group.test.tsx asserts the group resolves by getByRole('group'), and that an aria-label passed to InputGroup names it (getByRole('group', { name: 'Amount field' }))"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Prefixed amount field",
+        "code": "<InputGroup>\n  <InputGroupAddon>\n    <InputGroupText>$</InputGroupText>\n  </InputGroupAddon>\n  <InputGroupInput type=\"number\" placeholder=\"0.00\" aria-label=\"Amount\" />\n</InputGroup>\n"
+      },
+      {
+        "title": "Search field with a leading icon and a trailing clear action",
+        "code": "<InputGroup size=\"sm\">\n  <InputGroupAddon>\n    <SearchIcon />\n  </InputGroupAddon>\n  <InputGroupInput type=\"search\" placeholder=\"Search\" aria-label=\"Search\" />\n  <InputGroupAddon align=\"inline-end\">\n    <InputGroupButton icon={<XIcon />} aria-label=\"Clear\" onClick={clear} />\n  </InputGroupAddon>\n</InputGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Error state set on the group",
+        "code": "<InputGroup aria-invalid>\n  <InputGroupInput aria-label=\"Email\" />\n</InputGroup>\n",
+        "why": "The group keys its destructive border off the wrapped control's `aria-invalid`, and on a div the attribute means nothing to assistive tech either; put `aria-invalid` on InputGroupInput."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "input_group",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_addon.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_input.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_text.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_textarea.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof groupVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit InputGroup",
+    "type": "object",
+    "properties": {
+      "size": {
+        "type": "string",
+        "enum": [
+          "sm",
+          "default",
+          "lg"
+        ],
+        "default": "default"
+      },
+      "className": {
+        "type": "string"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

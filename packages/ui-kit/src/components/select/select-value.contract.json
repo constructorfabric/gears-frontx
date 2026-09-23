@@ -56,19 +56,19 @@
   "prop_statements": {
     "children": {
       "states": "children replaces the shown label, as React nodes or a function of the current value that returns them",
-      "because": "`ReactNode | ((value: any) => ReactNode)` - a React node and a function have no JSON Schema representation."
+      "because": "`ReactNode | ((value: any) => ReactNode)` - the compiler emits one JSON type per property, and a function has no JSON Schema representation."
     },
     "placeholder": {
       "states": "placeholder is the content shown while nothing is chosen",
-      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
     },
     "render": {
       "states": "render replaces the rendered element with one the caller supplies",
-      "because": "Base UI's render prop takes an element or a function of the value's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      "because": "Base UI's render prop takes an element or a function of the value's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
     },
     "style": {
       "states": "style accepts a function of the value's state as well as a plain style object",
-      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (value, placeholder). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through select.module.css, not through this."
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (value, placeholder). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through select.module.css, not through this."
     }
   },
   "examples": {
@@ -107,16 +107,16 @@
         "type": "string"
       },
       "children": {
-        "description": "TS: ReactNode | ((value: any) => ReactNode). The compiler emits one JSON type per property; this type is left to tsc. children replaces the shown label, as React nodes or a function of the current value that returns them. `ReactNode | ((value: any) => ReactNode)` - a React node and a function have no JSON Schema representation."
+        "description": "TS: ReactNode | ((value: any) => ReactNode). The compiler emits one JSON type per property; this type is left to tsc. children replaces the shown label, as React nodes or a function of the current value that returns them. `ReactNode | ((value: any) => ReactNode)` - the compiler emits one JSON type per property, and a function has no JSON Schema representation."
       },
       "placeholder": {
-        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. placeholder is the content shown while nothing is chosen. `React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. placeholder is the content shown while nothing is chosen. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, SelectValueState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the value's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, SelectValueState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the value's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: SelectValueState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the value's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (value, placeholder). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through select.module.css, not through this."
+        "description": "TS: CSSProperties | ((state: SelectValueState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the value's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (value, placeholder). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through select.module.css, not through this."
       }
     },
     "required": [],
