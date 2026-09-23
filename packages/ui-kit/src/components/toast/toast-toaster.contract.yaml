@@ -105,8 +105,11 @@ companions:
     description: >-
       The shared manager every Toaster renders by default. `toast.add({ title,
       description, type, actionProps })` shows a toast and returns its id;
-      `close`, `update` and `promise` act on toasts already shown. It can be
-      called from anywhere, without a hook or a Toaster ancestor.
+      `close` and `update` act on a toast already shown, by its id;
+      `promise(promise, { loading, success, error })` shows a loading toast
+      for the promise and updates it to a success or an error toast when the
+      promise settles. It can be called from anywhere, without a hook or a
+      Toaster ancestor.
   - export: createToastManager
     typed_by: '() => ToastManager'
     description: >-

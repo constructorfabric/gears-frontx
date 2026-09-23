@@ -26,9 +26,10 @@ accepts:
 invariants:
   - id: drawn-below-the-rows
     text: >-
-      The table sets caption-side bottom, so the caption paints below the
-      rows wherever it sits among Table's children; it stays the <table>'s
-      caption in the accessibility tree either way.
+      HTML requires a <caption> to be the first child of its <table>, so
+      TableCaption is written first among Table's children; the table sets
+      caption-side bottom, which only changes where it is painted, below the
+      rows. It is the <table>'s caption in the accessibility tree.
 
 anti_patterns:
   - dont: Put the table's title in a heading above Table with nothing linking the two
