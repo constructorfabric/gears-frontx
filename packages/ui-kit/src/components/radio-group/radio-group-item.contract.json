@@ -119,7 +119,7 @@
         "type": "boolean"
       },
       "inputRef": {
-        "description": "TS: Ref<HTMLInputElement> | undefined. Not expressible in JSON Schema, checked by tsc. inputRef is a ref to the hidden native input Base UI renders for form submission. `React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - neither is expressible in JSON Schema. It exists so a consumer can read or focus this item's own hidden input directly."
+        "description": "TS: Ref<HTMLInputElement> | undefined. The compiler emits one JSON type per property; this type is left to tsc. inputRef is a ref to the hidden native input Base UI renders for form submission. `React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - neither is expressible in JSON Schema. It exists so a consumer can read or focus this item's own hidden input directly."
       },
       "nativeButton": {
         "type": "boolean"
@@ -128,16 +128,16 @@
         "type": "boolean"
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, RadioRootState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the item's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, RadioRootState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the item's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
       },
       "required": {
         "type": "boolean"
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: RadioRootState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the item's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (checked, disabled, readOnly, required, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through radio-group.module.css, not through this."
+        "description": "TS: CSSProperties | ((state: RadioRootState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the item's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (checked, disabled, readOnly, required, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through radio-group.module.css, not through this."
       },
       "value": {
-        "description": "TS: any. Not expressible in JSON Schema, checked by tsc. value is the item's own generic Value type parameter, required and typed by the caller. Base UI's Radio.Root declares `value: Value` with no `?` - required, and typed by the caller's own generic parameter, so no JSON Schema type can state what it holds, only that it must be present. It is compared by identity against the nearest RadioGroup's own `value`/`defaultValue`."
+        "description": "TS: any. The compiler emits one JSON type per property; this type is left to tsc. value is the item's own generic Value type parameter, required and typed by the caller. Base UI's Radio.Root declares `value: Value` with no `?` - required, and typed by the caller's own generic parameter, so no JSON Schema type can state what it holds, only that it must be present. It is compared by identity against the nearest RadioGroup's own `value`/`defaultValue`."
       }
     },
     "required": [

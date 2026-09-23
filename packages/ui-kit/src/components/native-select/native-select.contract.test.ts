@@ -13,22 +13,19 @@ import { describe, expect, it } from 'vitest';
 import {
   addContractTypes,
   buildComponentType,
-  compileContract,
   contractMajor,
   familyRoster,
   liftPropsSchema,
-  loadElementSurface,
   partlyCheckedPropertyNames,
   pascalCase,
-  registerContractTypes,
-  resolveTargetExtraction,
-  type CompiledContract,
 } from '../../../scripts/contracts/compile';
 import { bareGtsId, componentRef, elementTypeRef } from '../../../scripts/contracts/ids';
 import {
   applyContractTestTimeout,
   assertContractFreshness,
+  compileUnits,
   resolveComponentRef,
+  unitStore,
   validateContractInstance,
 } from '../../../scripts/contracts/testing';
 
@@ -46,26 +43,7 @@ const ALL_STEMS = [DIRECTORY, ...PART_STEMS] as const;
 
 for (const stem of ALL_STEMS) assertContractFreshness(DIRECTORY, stem);
 
-interface CompiledUnit {
-  stem: string;
-  contract: CompiledContract;
-  elementSurface: Record<string, unknown>;
-}
-
-function compileUnit(stem: string): CompiledUnit {
-  const extraction = resolveTargetExtraction(DIRECTORY, stem);
-  const contract = compileContract(DIRECTORY, stem);
-  // Every export here renders a real native element (this component wraps no
-  // primitive - it is pure styling translation over native markup), so
-  // elementKind is never undefined - a defensive message beats a bare
-  // "Cannot read properties of undefined" if that ever changes.
-  if (!extraction.elementKind) {
-    throw new Error(`${stem}: expected a host element kind, extraction resolved none`);
-  }
-  return { stem, contract, elementSurface: loadElementSurface(extraction.elementKind) };
-}
-
-const units: Record<string, CompiledUnit> = Object.fromEntries(ALL_STEMS.map((stem) => [stem, compileUnit(stem)]));
+const units = compileUnits(DIRECTORY, ALL_STEMS);
 const componentType = buildComponentType();
 
 // The ref every pointer at NativeSelect itself should agree on - built once
@@ -212,7 +190,7 @@ describe('native-select family: what the schema cannot assert', () => {
     // API props.
     const rootProps = units[DIRECTORY].contract.props.properties;
     expect(rootProps.className).toEqual({ type: 'string' });
-    expect(rootProps.size).toEqual({ type: 'string', enum: ['sm', 'default'] });
+    expect(rootProps.size).toEqual({ type: 'string', enum: ['default', 'sm'] });
     for (const stem of ALL_STEMS) {
       for (const prop of ['children', 'disabled', 'role', 'onClick', 'value']) {
         expect(units[stem].contract.props.properties, `${stem}.${prop}`).not.toHaveProperty(prop);
@@ -223,20 +201,7 @@ describe('native-select family: what the schema cannot assert', () => {
 
 describe('native-select family in a GTS store', () => {
   function registeredStore(): GTS {
-    const gts = new GTS();
-    gts.register(componentType);
-    // The vocabulary the component type references: a store missing one
-    // fails every entity in it rather than one field.
-    registerContractTypes((entity) => gts.register(entity));
-    // The element surfaces this family's three components name: the root
-    // renders a <select>, the option an <option> and the group an
-    // <optgroup>, so there are three distinct schemas across three
-    // components - de-duplicated by $id, because registering the same one
-    // twice is not a fact about the family.
-    const byId = new Map(Object.values(units).map(({ elementSurface }) => [String(elementSurface.$id), elementSurface]));
-    for (const elementSurface of byId.values()) gts.register(elementSurface);
-    for (const { contract } of Object.values(units)) gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
-    return gts;
+    return unitStore(Object.values(units));
   }
 
   it('every component in the family validates as an instance of the component type', () => {
@@ -262,10 +227,7 @@ describe('native-select family in a GTS store', () => {
   });
 
   it('fails when the component type is not registered - negative control', () => {
-    const gts = new GTS();
-    const byId = new Map(Object.values(units).map(({ elementSurface }) => [String(elementSurface.$id), elementSurface]));
-    for (const elementSurface of byId.values()) gts.register(elementSurface);
-    for (const { contract } of Object.values(units)) gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
+    const gts = unitStore(Object.values(units), { componentType: false, vocabulary: false });
     const result = gts.validateInstance(units[DIRECTORY].contract.$id);
     expect(result.ok).toBe(false);
     expect(result.error).toContain('Schema not found');

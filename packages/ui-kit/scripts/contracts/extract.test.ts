@@ -50,7 +50,16 @@ describe('extractComponent: type alias and intersection props (F15)', () => {
     // compiler puts in `properties` comes from here, so this is the layer
     // that owns the fact.
     const tone = banner.ownProps.find((p) => p.name === 'tone');
-    expect(tone?.expressed).toEqual({ schema: { type: 'string', enum: ['info', 'warning', 'critical'] }, complete: true });
+    expect(tone?.expressed).toEqual({ schema: { type: 'string', enum: ['critical', 'info', 'warning'] }, complete: true });
+  });
+
+  it('orders the enum by value rather than in the order the checker hands the members over', () => {
+    // The fixture writes `'info' | 'warning' | 'critical'`; the checker's
+    // own order follows its internal type ids, which follow what the program
+    // bound first, so only a sorted list is the same in every program.
+    const tone = banner.ownProps.find((p) => p.name === 'tone');
+    const values = tone?.expressed?.schema.enum ?? [];
+    expect(values).toEqual([...values].sort());
   });
 
   it('classifies the ComponentProps<\'div\'> half as forwarded DOM surface, not own', () => {
@@ -175,6 +184,32 @@ describe('extractComponent: cva resolution through the checker (F16)', () => {
     expect(badge.axes).toEqual({ weight: ['light', 'bold'] });
     expect(badge.defaults).toEqual({ weight: 'light' });
     expect(badge.cannotExtract).toEqual([]);
+  });
+
+  it("follows a shared const passed as cva's `variants` to its object literal", () => {
+    // avatar.tsx's shape: one `fillAxes` object behind two cva calls. Read
+    // only as an inline literal, both axes reached the contract with no
+    // values and no default, and nothing said so.
+    const extractions = extractComponent(fixture('cva-shared-variants.fixture.tsx'));
+    const inline = extractions.find((e) => e.name === 'InlineDefaults')!;
+    expect(inline.axes).toEqual({ tone: ['neutral', 'accent'], variant: ['solid', 'soft'] });
+    expect(inline.defaults).toEqual({ tone: 'neutral', variant: 'soft' });
+    expect(inline.cannotExtract).toEqual([]);
+  });
+
+  it("follows a shared const passed as cva's `defaultVariants` the same way", () => {
+    const extractions = extractComponent(fixture('cva-shared-variants.fixture.tsx'));
+    const shared = extractions.find((e) => e.name === 'SharedDefaults')!;
+    expect(shared.axes).toEqual({ tone: ['neutral', 'accent'], variant: ['solid', 'soft'] });
+    expect(shared.defaults).toEqual({ tone: 'accent' });
+    expect(shared.cannotExtract).toEqual([]);
+  });
+
+  it('reports a `cva:` cannotExtract entry when `variants` cannot be followed to an object literal', () => {
+    const extractions = extractComponent(fixture('cva-shared-variants.fixture.tsx'));
+    const unresolvable = extractions.find((e) => e.name === 'Unresolvable')!;
+    expect(unresolvable.axes).toEqual({});
+    expect(unresolvable.cannotExtract.some((msg) => msg.startsWith('cva:') && msg.includes('variants'))).toBe(true);
   });
 
   it('reports a `cva:` cannotExtract entry, not silence, when VariantProps names an unresolvable config', () => {
@@ -362,6 +397,72 @@ describe('extractComponent: components that render through Base UI useRender', (
     const aliased = extractions.find((e) => e.name === 'AliasedTag');
     expect(aliased).toBeDefined();
     expect(aliased?.ownProps.map((p) => p.name)).toContain('label');
+  });
+
+  it("reads the host element from useRender.ComponentProps<'span'>, with nothing left unread", () => {
+    // The hook's props helper is `ComponentPropsWithRef<ElementType>` plus
+    // `render`; unwrapped instead of recognised, the walk reached React's
+    // helper holding the unbound `ElementType` and lost the tag, so every
+    // such component forwarded a DOM surface with no element to name it.
+    for (const name of ['Tag', 'AliasedTag']) {
+      const extraction = extractions.find((e) => e.name === name);
+      expect(extraction?.elementKind, name).toBe('span');
+      expect(extraction?.forwardedProps.length, name).toBeGreaterThan(0);
+      expect(extraction?.cannotExtract, name).toEqual([]);
+    }
+  });
+});
+
+describe('extractComponent: an element argument that is not a tag', () => {
+  it('records the argument it could not read instead of returning with nothing said', () => {
+    // `ComponentProps<'h1' | 'h2'>` names two tags, so no single host
+    // element resolves; the forwarded props are still there, which is what
+    // makes the silence worth breaking - the compiler refuses the component,
+    // and the note is what says why.
+    const [heading] = extractComponent(fixture('host-element-argument.fixture.tsx'));
+    expect(heading.elementKind).toBeUndefined();
+    expect(heading.forwardedProps.length).toBeGreaterThan(0);
+    const note = heading.cannotExtract.find((msg) => msg.includes('host element'));
+    expect(note).toContain(`"'h1' | 'h2'"`);
+    expect(note).toContain('UnionType');
+    expect(note?.startsWith('cva:')).toBe(false);
+  });
+});
+
+describe('extractComponent: an element argument that names a component with typeof', () => {
+  const extractions = extractComponent(fixture('queried-component-props.fixture.tsx'));
+  const byName = (name: string) => extractions.find((e) => e.name === name)!;
+
+  it("continues into a kit-style component's own props type", () => {
+    expect(byName('QueriesLocal').elementKind).toBe('section');
+    expect(byName('QueriesLocal').cannotExtract).toEqual([]);
+  });
+
+  it("continues into a primitive part's props, which only its instantiated type carries", () => {
+    // `ComponentPropsWithRef<typeof AccordionPrimitive.Trigger>`: the part is
+    // a ForwardRefExoticComponent, whose parameter is React's unbound `P`,
+    // so the tag is read off the part's own BaseUIComponentProps<'button'>.
+    const primitive = byName('QueriesPrimitive');
+    expect(primitive.elementKind).toBe('button');
+    expect(primitive.cannotExtract).toEqual([]);
+    expect(primitive.apiProps.map((p) => p.name)).toContain('nativeButton');
+  });
+
+  it('reads Parameters<typeof X>[0] as the same props type', () => {
+    expect(byName('QueriesByParameters').elementKind).toBe('section');
+    expect(byName('QueriesByParameters').cannotExtract).toEqual([]);
+  });
+
+  it('walks the last overload of an overloaded component and names the ones it passed over', () => {
+    // TypeScript infers `ComponentProps<typeof X>` from the last overload,
+    // so that is the host element; the earlier overload's `article` is a
+    // props type the walk did not read, and the note is what says so.
+    const overloaded = byName('QueriesOverloaded');
+    expect(overloaded.elementKind).toBe('aside');
+    const note = overloaded.cannotExtract.find((msg) => msg.includes('overloads'));
+    expect(note).toContain('"Overloaded"');
+    expect(note).toContain('2 overloads');
+    expect(note?.startsWith('heritage:')).toBe(true);
   });
 });
 

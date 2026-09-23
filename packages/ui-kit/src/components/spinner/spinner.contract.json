@@ -147,10 +147,10 @@
         "type": "boolean"
       },
       "description": {
-        "description": "Partially typed: ReactNode. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. description is a React node, not a string. `ReactNode`, for the same reason as `label`. It is the second line under the label, announced together with it once the block is composed."
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. description is a React node, not a string. `ReactNode`, for the same reason as `label`. It is the second line under the label, announced together with it once the block is composed."
       },
       "label": {
-        "description": "Partially typed: ReactNode. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. label is a React node, not a string. `ReactNode` has no JSON Schema representation - a string, a number, a fragment or `false`/`null`/`undefined` (all of which count as absent, see the label-or-description-composes-the-block invariant) are all valid and only tsc can tell them apart. Its presence is what switches the component to the composed block, whose live region announces it."
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. label is a React node, not a string. `ReactNode` has no JSON Schema representation - a string, a number, a fragment or `false`/`null`/`undefined` (all of which count as absent, see the label-or-description-composes-the-block invariant) are all valid and only tsc can tell them apart. Its presence is what switches the component to the composed block, whose live region announces it."
       }
     },
     "required": [],

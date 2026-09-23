@@ -145,13 +145,13 @@
         "type": "string"
       },
       "format": {
-        "description": "TS: Intl.NumberFormatOptions | undefined. Not expressible in JSON Schema, checked by tsc. format is an Intl.NumberFormatOptions object controlling how the value is formatted. An object type with the full breadth of Intl's own formatting options is not something this schema restates; the kit forwards it to Base UI unchanged."
+        "description": "TS: Intl.NumberFormatOptions | undefined. The compiler emits one JSON type per property; this type is left to tsc. format is an Intl.NumberFormatOptions object controlling how the value is formatted. An object type with the full breadth of Intl's own formatting options is not something this schema restates; the kit forwards it to Base UI unchanged."
       },
       "getAriaValueText": {
-        "description": "TS: ((formattedValue: string | null, value: number | null) => string) | undefined. Not expressible in JSON Schema, checked by tsc. getAriaValueText is a function the root calls for the value's text alternative, not a value. `(formattedValue: string | null, value: number | null) => string` - a function of the formatted readout and the raw value. No JSON Schema type covers a function."
+        "description": "TS: ((formattedValue: string | null, value: number | null) => string) | undefined. The compiler emits one JSON type per property; this type is left to tsc. getAriaValueText is a function the root calls for the value's text alternative, not a value. `(formattedValue: string | null, value: number | null) => string` - a function of the formatted readout and the raw value. No JSON Schema type covers a function."
       },
       "locale": {
-        "description": "TS: Intl.LocalesArgument. Not expressible in JSON Schema, checked by tsc. locale is a BCP 47 locale string, an Intl.Locale object, or a readonly array of either, passed to Intl.NumberFormat. Intl.LocalesArgument is a union of those shapes; the compiler emits one JSON type per property, so this union is left to tsc."
+        "description": "TS: Intl.LocalesArgument. The compiler emits one JSON type per property; this type is left to tsc. locale is a BCP 47 locale string, an Intl.Locale object, or a readonly array of either, passed to Intl.NumberFormat. Intl.LocalesArgument is a union of those shapes; the compiler emits one JSON type per property, so this union is left to tsc."
       },
       "max": {
         "type": "number"
@@ -160,13 +160,13 @@
         "type": "number"
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ProgressRootState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the root's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ProgressRootState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the root's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: ProgressRootState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the root's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (status). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through progress.module.css, not through this."
+        "description": "TS: CSSProperties | ((state: ProgressRootState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the root's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (status). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through progress.module.css, not through this."
       },
       "value": {
-        "description": "TS: number | null. Not expressible in JSON Schema, checked by tsc. value is a number or null. `number | null` - the compiler emits one JSON type per property, so a number-or-null union is left unasserted."
+        "description": "TS: number | null. The compiler emits one JSON type per property; this type is left to tsc. value is a number or null. `number | null` - the compiler emits one JSON type per property, so a number-or-null union is left unasserted."
       }
     },
     "required": [

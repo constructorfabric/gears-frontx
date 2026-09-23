@@ -4,28 +4,24 @@
 // the interesting assertions are about how the six relate - two families
 // in one directory, and a group that hosts Avatar roots without naming
 // them; the per-component shape comes from testing.ts's assertContractFreshness.
-import { GTS } from '@globaltypesystem/gts-ts';
 import Ajv2020 from 'ajv/dist/2020';
 import { describe, expect, it } from 'vitest';
 
 import {
   addContractTypes,
   buildComponentType,
-  compileContract,
   contractMajor,
   familyRoster,
   liftPropsSchema,
-  loadElementSurface,
   pascalCase,
-  registerContractTypes,
-  resolveTargetExtraction,
-  type CompiledContract,
 } from '../../../scripts/contracts/compile';
 import { bareGtsId, componentRef, elementTypeRef } from '../../../scripts/contracts/ids';
 import {
   applyContractTestTimeout,
   assertContractFreshness,
+  compileUnits,
   resolveComponentRef,
+  unitStore,
   validateContractInstance,
 } from '../../../scripts/contracts/testing';
 
@@ -43,26 +39,7 @@ const ALL_STEMS = [...AVATAR_FAMILY, ...GROUP_FAMILY] as const;
 
 for (const stem of ALL_STEMS) assertContractFreshness(DIRECTORY, stem);
 
-interface CompiledUnit {
-  stem: string;
-  contract: CompiledContract;
-  elementSurface: Record<string, unknown>;
-}
-
-function compileUnit(stem: string): CompiledUnit {
-  const extraction = resolveTargetExtraction(DIRECTORY, stem);
-  const contract = compileContract(DIRECTORY, stem);
-  // Every export here renders a real element (three wrap a Base UI Avatar
-  // part, three are plain span/div markup), so elementKind is never
-  // undefined - a defensive message beats a bare "Cannot read properties of
-  // undefined" if that ever changes.
-  if (!extraction.elementKind) {
-    throw new Error(`${stem}: expected a host element kind, extraction resolved none`);
-  }
-  return { stem, contract, elementSurface: loadElementSurface(extraction.elementKind) };
-}
-
-const units: Record<string, CompiledUnit> = Object.fromEntries(ALL_STEMS.map((stem) => [stem, compileUnit(stem)]));
+const units = compileUnits(DIRECTORY, ALL_STEMS);
 const componentType = buildComponentType();
 const ref = (stem: string) => componentRef(stem, contractMajor(DIRECTORY, stem));
 
@@ -209,19 +186,21 @@ describe('avatar directory: what the schema cannot assert', () => {
     expect(Object.keys(fallback.prop_statements ?? {})).not.toContain('delay');
   });
 
-  it('the fill axes of the fallback and the count carry prop statements while the extractor cannot type them', () => {
-    // avatar.tsx builds both cva calls from one shared `fillAxes` object,
-    // and the extractor reads `variants` only as an inline object literal,
-    // so `tone` and `variant` reach the contract untyped. Once the
-    // extractor follows the identifier, both props are typed in full and
-    // the shared suite fails on these statements until they are removed.
+  it('the fill axes of the fallback and the count are typed enums with their defaults and no prop statements', () => {
+    // avatar.tsx builds both cva calls from one shared `fillAxes` object;
+    // the extractor follows that identifier to its initializer, so `tone`
+    // and `variant` reach the contract as the axes they are.
     for (const stem of ['avatar-fallback', 'avatar-group-count']) {
       const contract = units[stem].contract;
+      expect(contract.props.properties.tone, stem).toEqual({
+        type: 'string',
+        enum: ['neutral', 'accent', 'info', 'success', 'warning', 'danger'],
+        default: 'neutral',
+      });
+      expect(contract.props.properties.variant, stem).toEqual({ type: 'string', enum: ['solid', 'soft'], default: 'soft' });
       for (const prop of ['tone', 'variant']) {
-        expect(Object.keys(contract['x-uikit'].partially_typed_props), `${stem}.${prop}`).toContain(prop);
-        expect(contract.props.properties[prop].description, `${stem}.${prop}`).toContain(
-          contract.prop_statements?.[prop]?.states,
-        );
+        expect(Object.keys(contract['x-uikit'].partially_typed_props), `${stem}.${prop}`).not.toContain(prop);
+        expect(Object.keys(contract.prop_statements ?? {}), `${stem}.${prop}`).not.toContain(prop);
       }
     }
   });
@@ -235,17 +214,8 @@ describe('avatar directory: what the schema cannot assert', () => {
 });
 
 describe('avatar directory in a GTS store', () => {
-  function register(gts: GTS): void {
-    const surfaces = new Map(Object.values(units).map(({ elementSurface }) => [String(elementSurface.$id), elementSurface]));
-    for (const surface of surfaces.values()) gts.register(surface);
-    for (const { contract } of Object.values(units)) gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
-  }
-
   it('every component validates as an instance of the component type', () => {
-    const gts = new GTS();
-    gts.register(componentType);
-    registerContractTypes((entity) => gts.register(entity));
-    register(gts);
+    const gts = unitStore(Object.values(units));
     for (const { stem, contract } of Object.values(units)) {
       const result = gts.validateInstance(contract.$id);
       expect(result.ok, `${stem}: ${result.error}`).toBe(true);
@@ -272,8 +242,7 @@ describe('avatar directory in a GTS store', () => {
   });
 
   it('fails when the component type is not registered - negative control', () => {
-    const gts = new GTS();
-    register(gts);
+    const gts = unitStore(Object.values(units), { componentType: false, vocabulary: false });
     const result = gts.validateInstance(units[DIRECTORY].contract.$id);
     expect(result.ok).toBe(false);
     expect(result.error).toContain('Schema not found');

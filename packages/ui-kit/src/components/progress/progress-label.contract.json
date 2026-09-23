@@ -91,10 +91,10 @@
         "type": "string"
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ProgressLabelState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the label's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ProgressLabelState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the label's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: ProgressLabelState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the label's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (status). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through progress.module.css, not through this."
+        "description": "TS: CSSProperties | ((state: ProgressLabelState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the label's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (status). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through progress.module.css, not through this."
       }
     },
     "required": [],

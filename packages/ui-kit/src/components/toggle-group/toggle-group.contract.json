@@ -187,7 +187,7 @@
         "type": "number"
       },
       "style": {
-        "description": "Partially typed: CSSProperties | undefined. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. style is a plain React style object; when `spacing` is set, its gap replaces any gap given here. ToggleGroupProps omits Base UI's `CSSProperties | ((state) => CSSProperties)` style and redeclares it as React's `CSSProperties`, so the function form is not accepted; the compiler has no JSON type for `CSSProperties`, so nothing is asserted. The kit's own styling goes through toggle-group.module.css, not through this."
+        "description": "Partially typed: CSSProperties | undefined. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. style is a plain React style object; when `spacing` is set, its gap replaces any gap given here. ToggleGroupProps omits Base UI's `CSSProperties | ((state) => CSSProperties)` style and redeclares it as React's `CSSProperties`, so the function form is not accepted; the compiler has no JSON type for `CSSProperties`, so nothing is asserted. The kit's own styling goes through toggle-group.module.css, not through this."
       },
       "defaultValue": {
         "type": "array",
@@ -203,7 +203,7 @@
         "type": "boolean"
       },
       "onValueChange": {
-        "description": "TS: ((groupValue: Value[], eventDetails: { reason: \"none\"; event: Event; cancel: () => void; allowPropagation: () => void; isCanceled: boolean; isPropagationAllowed: boolean; trigger: Element | undefined; }) => void) | undefined. Not expressible in JSON Schema, checked by tsc. onValueChange is a callback of the next array of pressed item values and event details. Base UI types it as `(groupValue: Value[], eventDetails) => void`; a function has no JSON Schema representation, so nothing beyond its presence is asserted."
+        "description": "TS: ((groupValue: Value[], eventDetails: { reason: \"none\"; event: Event; cancel: () => void; allowPropagation: () => void; isCanceled: boolean; isPropagationAllowed: boolean; trigger: Element | undefined; }) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onValueChange is a callback of the next array of pressed item values and event details. Base UI types it as `(groupValue: Value[], eventDetails) => void`; a function has no JSON Schema representation, so nothing beyond its presence is asserted."
       },
       "orientation": {
         "type": "string",
@@ -213,7 +213,7 @@
         ]
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ToggleGroupState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the group's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ToggleGroupState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the group's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
       },
       "value": {
         "type": "array",

@@ -145,13 +145,13 @@
         "type": "boolean"
       },
       "onValueChange": {
-        "description": "TS: ((value: AccordionValue<Value>, eventDetails: AccordionRootChangeEventDetails) => void) | undefined. Not expressible in JSON Schema, checked by tsc. onValueChange is a callback, not a value. `(value: AccordionValue<Value>, eventDetails) => void` - a function of the generic above plus Base UI's own event-details object. No JSON Schema type covers a function."
+        "description": "TS: ((value: AccordionValue<Value>, eventDetails: AccordionRootChangeEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onValueChange is a callback, not a value. `(value: AccordionValue<Value>, eventDetails) => void` - a function of the generic above plus Base UI's own event-details object. No JSON Schema type covers a function."
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, AccordionPrimitive.Root.State<Value>> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the root element with one the caller supplies. Base UI's render prop takes an element or a function of the root's state; neither is expressible in JSON Schema. Replacing the root element means taking over the wrapper the kit's own layout styles (`.root`) are attached to."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, AccordionPrimitive.Root.State<Value>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the root element with one the caller supplies. Base UI's render prop takes an element or a function of the root's state; neither is expressible in JSON Schema. Replacing the root element means taking over the wrapper the kit's own layout styles (`.root`) are attached to."
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: AccordionPrimitive.Root.State<Value>) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the root's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`; a JSON Schema `object` would reject the function form."
+        "description": "TS: CSSProperties | ((state: AccordionPrimitive.Root.State<Value>) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the root's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`; a JSON Schema `object` would reject the function form."
       },
       "value": {
         "type": "array",

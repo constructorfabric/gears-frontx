@@ -58,20 +58,6 @@ attestations:
     outcome: unknown
 
 prop_statements:
-  tone:
-    states: tone is one of neutral, accent, info, success, warning or danger, and neutral when omitted
-    because: >-
-      avatar.tsx builds this cva axis from the shared `fillAxes` object,
-      which the extractor does not follow, so the prop reaches the contract
-      through its VariantProps type, a string union with `null` and
-      `undefined`, and the compiler emits one JSON type per property.
-  variant:
-    states: variant is solid or soft, and soft when omitted
-    because: >-
-      avatar.tsx builds this cva axis from the shared `fillAxes` object,
-      which the extractor does not follow, so the prop reaches the contract
-      through its VariantProps type, a string union with `null` and
-      `undefined`, and the compiler emits one JSON type per property.
   render:
     states: render replaces the rendered element with one the caller supplies
     because: >-

@@ -89,11 +89,67 @@ describe('the hand-written element surface', () => {
   });
 });
 
+describe('the surfaces for <img> and <option>', () => {
+  const img = loadElementSurface('img').properties as Record<string, { type?: string; enum?: string[] }>;
+
+  it("states the img element's own attributes, the enumerated ones as enums", () => {
+    expect(img.loading).toEqual({ type: 'string', enum: ['eager', 'lazy'] });
+    expect(img.decoding).toEqual({ type: 'string', enum: ['async', 'auto', 'sync'] });
+    expect(img.crossOrigin).toEqual({ type: 'string', enum: ['', 'anonymous', 'use-credentials'] });
+    expect(img.referrerPolicy?.enum).toContain('strict-origin-when-cross-origin');
+    for (const name of ['srcSet', 'sizes']) expect(img[name], name).toEqual({ type: 'string' });
+  });
+
+  it('leaves children out of the img surface, since a void element cannot take any', () => {
+    expect(Object.keys(img)).not.toContain('children');
+  });
+
+  it("states the option element's label", () => {
+    expect((loadElementSurface('option').properties as Record<string, unknown>).label).toEqual({ type: 'string' });
+  });
+
+  it('says of a union of JSON types that the compiler left it to tsc, not that JSON Schema cannot state it', () => {
+    const union = /^TS: (?:string|number|boolean|readonly string\[\])(?: \| (?:string|number|boolean|readonly string\[\]))+\./;
+    let matched = 0;
+    for (const surface of loadElementSurfaces()) {
+      for (const [name, schema] of Object.entries(surface.properties as Record<string, { description?: string }>)) {
+        if (schema.description === undefined || !union.test(schema.description)) continue;
+        matched += 1;
+        expect(schema.description, `${String(surface.$id)} ${name}`).toContain('The compiler emits one JSON type per property');
+        expect(schema.description, `${String(surface.$id)} ${name}`).not.toContain('Not expressible');
+      }
+    }
+    // `value` and img's `width`/`height` are such unions today; a pattern
+    // that stopped matching them would pass this test by checking nothing.
+    expect(matched).toBeGreaterThan(0);
+  });
+});
+
+describe('an enum the element surface also declares', () => {
+  const extractions = extractComponent(fixture('button-type-enum.fixture.tsx'));
+  const buttonSurface = loadElementSurface('button');
+
+  it('agrees with the surface as a set, whatever order either side lists the values in', () => {
+    // The surface writes `type` as submit, reset, button; the extractor
+    // sorts. Compared as written, the two were reported as a conflict over
+    // the one prop they agree about.
+    const action = extractions.find((e) => e.name === 'Action')!;
+    const { properties } = buildPropsAndRequired('action', action, buttonSurface);
+    expect(properties.type).toEqual({ type: 'string', enum: ['button', 'reset', 'submit'] });
+  });
+
+  it('still refuses an enum whose values differ from the surface, naming the prop', () => {
+    const narrow = extractions.find((e) => e.name === 'NarrowAction')!;
+    expect(() => buildPropsAndRequired('narrow-action', narrow, buttonSurface)).toThrow(/prop "type".*one prop, one\s+shape/s);
+  });
+});
+
 describe('what two element kinds both declare', () => {
   it('is declared identically by every committed surface', () => {
     // The files are hand-written, so nothing constructs this agreement: the
-    // global attributes (className, id, style, title, role, tabIndex,
-    // children) and the three patterns are typed out per file. The
+    // global attributes (className, id, style, title, role, tabIndex, and
+    // children in every surface but the void <img>'s) and the three
+    // patterns are typed out per file. The
     // compatibility check reads a difference between two surfaces as a
     // narrowing a consumer feels, which is only true while what they share
     // they state the same way.
@@ -160,8 +216,17 @@ describe('a declared prop the schema cannot state in full', () => {
 describe('describeUnexpressedType', () => {
   it('describes a type the schema states nothing about', () => {
     expect(describeUnexpressedType({}, 'Value[]', false)).toEqual({
-      description: 'TS: Value[]. Not expressible in JSON Schema, checked by tsc.',
+      description: 'TS: Value[]. The compiler emits one JSON type per property; this type is left to tsc.',
     });
+  });
+
+  it('names the compiler rule rather than a limit of JSON Schema, which a union does not have', () => {
+    // `string | number` is a JSON Schema `type` list; saying JSON Schema
+    // cannot express it was false, and the reason nothing is asserted is
+    // the compiler's own one-type rule.
+    const described = describeUnexpressedType({}, 'string | number', false);
+    expect(described.description).toContain('The compiler emits one JSON type per property');
+    expect(described.description).not.toContain('Not expressible');
   });
 
   it('describes what is left of a type the schema states only in part', () => {

@@ -2,28 +2,24 @@
 // HoverCard family (root, trigger, content). One file because the
 // interesting assertions are about how the three relate; the per-component
 // shape comes from testing.ts's assertContractFreshness.
-import { GTS } from '@globaltypesystem/gts-ts';
 import Ajv2020 from 'ajv/dist/2020';
 import { describe, expect, it } from 'vitest';
 
 import {
   addContractTypes,
   buildComponentType,
-  compileContract,
   contractMajor,
   familyRoster,
   liftPropsSchema,
-  loadElementSurface,
   pascalCase,
-  registerContractTypes,
-  resolveTargetExtraction,
-  type CompiledContract,
 } from '../../../scripts/contracts/compile';
 import { bareGtsId, componentRef, elementTypeRef } from '../../../scripts/contracts/ids';
 import {
   applyContractTestTimeout,
   assertContractFreshness,
+  compileUnits,
   resolveComponentRef,
+  unitStore,
   validateContractInstance,
 } from '../../../scripts/contracts/testing';
 
@@ -38,27 +34,9 @@ const ALL_STEMS = [DIRECTORY, ...PART_STEMS] as const;
 
 for (const stem of ALL_STEMS) assertContractFreshness(DIRECTORY, stem);
 
-interface CompiledUnit {
-  stem: string;
-  contract: CompiledContract;
-  elementKind: string | undefined;
-  elementSurface: Record<string, unknown> | undefined;
-}
-
-function compileUnit(stem: string): CompiledUnit {
-  const extraction = resolveTargetExtraction(DIRECTORY, stem);
-  const contract = compileContract(DIRECTORY, stem);
-  // The root renders no element of its own (Base UI's PreviewCard.Root only
-  // provides context), so it carries no surface; the trigger and the content do.
-  return {
-    stem,
-    contract,
-    elementKind: extraction.elementKind,
-    elementSurface: extraction.elementKind === undefined ? undefined : loadElementSurface(extraction.elementKind),
-  };
-}
-
-const units: Record<string, CompiledUnit> = Object.fromEntries(ALL_STEMS.map((stem) => [stem, compileUnit(stem)]));
+// The root renders no element of its own (Base UI's PreviewCard.Root only
+// provides context), so it names no surface; the trigger and the content do.
+const units = compileUnits(DIRECTORY, ALL_STEMS, { allowNoHostElement: true });
 const componentType = buildComponentType();
 const ref = (stem: string) => componentRef(stem, contractMajor(DIRECTORY, stem));
 
@@ -176,9 +154,9 @@ describe('hover-card directory: what the schema cannot assert', () => {
     const content = units['hover-card-content'].contract;
     expect(content.props.properties.side).toEqual({
       type: 'string',
-      enum: ['top', 'right', 'bottom', 'left', 'inline-end', 'inline-start'],
+      enum: ['bottom', 'inline-end', 'inline-start', 'left', 'right', 'top'],
     });
-    expect(content.props.properties.align).toEqual({ type: 'string', enum: ['center', 'start', 'end'] });
+    expect(content.props.properties.align).toEqual({ type: 'string', enum: ['center', 'end', 'start'] });
     for (const prop of ['container', 'sideOffset', 'alignOffset', 'collisionBoundary', 'collisionPadding']) {
       expect(Object.keys(content.prop_statements ?? {}), prop).toContain(prop);
     }
@@ -191,20 +169,8 @@ describe('hover-card directory: what the schema cannot assert', () => {
 });
 
 describe('hover-card directory in a GTS store', () => {
-  function register(gts: GTS): void {
-    const surfaces = new Map<string, Record<string, unknown>>();
-    for (const { elementSurface } of Object.values(units)) {
-      if (elementSurface) surfaces.set(String(elementSurface.$id), elementSurface);
-    }
-    for (const surface of surfaces.values()) gts.register(surface);
-    for (const { contract } of Object.values(units)) gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
-  }
-
   it('every component validates as an instance of the component type', () => {
-    const gts = new GTS();
-    gts.register(componentType);
-    registerContractTypes((entity) => gts.register(entity));
-    register(gts);
+    const gts = unitStore(Object.values(units));
     for (const { stem, contract } of Object.values(units)) {
       const result = gts.validateInstance(contract.$id);
       expect(result.ok, `${stem}: ${result.error}`).toBe(true);
@@ -222,8 +188,7 @@ describe('hover-card directory in a GTS store', () => {
   });
 
   it('fails when the component type is not registered - negative control', () => {
-    const gts = new GTS();
-    register(gts);
+    const gts = unitStore(Object.values(units), { componentType: false, vocabulary: false });
     const result = gts.validateInstance(units[DIRECTORY].contract.$id);
     expect(result.ok).toBe(false);
     expect(result.error).toContain('Schema not found');

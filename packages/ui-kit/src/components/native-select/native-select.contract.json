@@ -128,8 +128,8 @@
       "size": {
         "type": "string",
         "enum": [
-          "sm",
-          "default"
+          "default",
+          "sm"
         ]
       }
     },

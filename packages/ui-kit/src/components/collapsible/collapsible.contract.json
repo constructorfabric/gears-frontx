@@ -124,16 +124,16 @@
         "type": "boolean"
       },
       "onOpenChange": {
-        "description": "TS: ((open: boolean, eventDetails: CollapsibleRootChangeEventDetails) => void) | undefined. Not expressible in JSON Schema, checked by tsc. onOpenChange is a function called with the next open value and event details, not a value. A function type has no JSON Schema representation. Its second argument carries Base UI's own change-event-details shape (a reason, the triggering native event, and controls to cancel the change or allow it to propagate), which only tsc can check."
+        "description": "TS: ((open: boolean, eventDetails: CollapsibleRootChangeEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChange is a function called with the next open value and event details, not a value. A function type has no JSON Schema representation. Its second argument carries Base UI's own change-event-details shape (a reason, the triggering native event, and controls to cancel the change or allow it to propagate), which only tsc can check."
       },
       "open": {
         "type": "boolean"
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, CollapsibleRootState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the root's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, CollapsibleRootState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the root's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: CollapsibleRootState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the root's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, disabled, transitionStatus). A JSON Schema `object` would reject the function form, so nothing is asserted; the root carries no class from collapsible.module.css, so nothing of the kit's own styling rides on it."
+        "description": "TS: CSSProperties | ((state: CollapsibleRootState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the root's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, disabled, transitionStatus). A JSON Schema `object` would reject the function form, so nothing is asserted; the root carries no class from collapsible.module.css, so nothing of the kit's own styling rides on it."
       }
     },
     "required": [],

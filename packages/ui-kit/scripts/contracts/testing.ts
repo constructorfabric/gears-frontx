@@ -23,8 +23,10 @@ import {
   forwardsToRef,
   liftPropsSchema,
   loadComponentType,
+  loadElementSurface,
   loadElementSurfaces,
   registerContractTypes,
+  resolveTargetExtraction,
   type CompiledContract,
 } from './compile';
 import {
@@ -471,6 +473,114 @@ export function assertContractFreshness(directory: string, exportStem: string = 
     });
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-instance-ref
   });
+}
+
+// One export of a directory as the directory's own suite asserts it: its
+// compiled contract beside the surface of the element it renders. Every
+// `<dir>.contract.test.ts` needs the same pair for its cross-component
+// checks and its store's negative controls, which is why it is built here
+// once rather than copied into each of them.
+export interface CompiledUnit {
+  stem: string;
+  contract: CompiledContract;
+  elementSurface: Record<string, unknown>;
+}
+
+// The same pair for a directory where some export renders no element of its
+// own - a root or a provider that only supplies context - so it names no
+// surface, and the element kind is kept to say which ones do.
+export interface HostOptionalUnit {
+  stem: string;
+  contract: CompiledContract;
+  elementKind: string | undefined;
+  elementSurface: Record<string, unknown> | undefined;
+}
+
+export interface CompileUnitOptions {
+  // Without it an export resolving no host element fails by name: in a
+  // directory whose every export renders an element, that is a changed
+  // extraction worth stopping on, not an absence to carry quietly.
+  allowNoHostElement?: boolean;
+}
+
+export function compileUnit(directory: string, stem: string): CompiledUnit;
+export function compileUnit(directory: string, stem: string, options: { allowNoHostElement: true }): HostOptionalUnit;
+export function compileUnit(directory: string, stem: string, options: CompileUnitOptions = {}): CompiledUnit | HostOptionalUnit {
+  const extraction = resolveTargetExtraction(directory, stem);
+  const contract = compileContract(directory, stem);
+  const elementKind = extraction.elementKind;
+  if (options.allowNoHostElement === true) {
+    return {
+      stem,
+      contract,
+      elementKind,
+      elementSurface: elementKind === undefined ? undefined : loadElementSurface(elementKind),
+    };
+  }
+  // A defensive message beats a bare "Cannot read properties of undefined".
+  if (!elementKind) throw new Error(`${stem}: expected a host element kind, extraction resolved none`);
+  return { stem, contract, elementSurface: loadElementSurface(elementKind) };
+}
+
+export function compileUnits(directory: string, stems: readonly string[]): Record<string, CompiledUnit>;
+export function compileUnits(
+  directory: string,
+  stems: readonly string[],
+  options: { allowNoHostElement: true },
+): Record<string, HostOptionalUnit>;
+export function compileUnits(
+  directory: string,
+  stems: readonly string[],
+  options: CompileUnitOptions = {},
+): Record<string, CompiledUnit | HostOptionalUnit> {
+  return Object.fromEntries(
+    stems.map((stem) => [
+      stem,
+      options.allowNoHostElement === true ? compileUnit(directory, stem, { allowNoHostElement: true }) : compileUnit(directory, stem),
+    ]),
+  );
+}
+
+// What a directory's own store is built from: each contract, and the surface
+// it names when it names one.
+export interface StoreUnit {
+  contract: CompiledContract;
+  elementSurface?: Record<string, unknown> | undefined;
+}
+
+// Registers the surfaces the units name, once each by `$id` (two components
+// rendering one element name one surface, and registering it twice is not a
+// fact about them), then each contract JSON round-tripped, for the reason
+// validateContractInstance gives below.
+export function registerUnits(gts: GTS, units: Iterable<StoreUnit>): void {
+  const list = [...units];
+  const surfaces = new Map<string, Record<string, unknown>>();
+  for (const { elementSurface } of list) {
+    if (elementSurface !== undefined) surfaces.set(String(elementSurface.$id), elementSurface);
+  }
+  for (const surface of surfaces.values()) gts.register(surface);
+  for (const { contract } of list) gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
+}
+
+export interface UnitStoreOptions {
+  // Both are registered unless set to false. A negative control leaves one
+  // out on purpose, to show the validation that passes with it is the one
+  // that needed it. The component type is the freshly built one unless a
+  // suite hands over the one it validates against (button's, the committed
+  // copy).
+  componentType?: false | Record<string, unknown>;
+  vocabulary?: false;
+}
+
+// A fresh store holding the component type, the vocabulary it references and
+// the given units - the registry a directory's suite validates its own
+// components in, and, with a part left out, each of its negative controls.
+export function unitStore(units: Iterable<StoreUnit>, options: UnitStoreOptions = {}): GTS {
+  const gts = new GTS();
+  if (options.componentType !== false) gts.register(options.componentType ?? buildComponentType());
+  if (options.vocabulary !== false) registerContractTypes((entity) => gts.register(entity));
+  registerUnits(gts, units);
+  return gts;
 }
 
 // Registers the committed component type plus a JSON-round-tripped copy of a

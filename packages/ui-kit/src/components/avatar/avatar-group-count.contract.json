@@ -40,16 +40,6 @@
       "outcome": "unknown"
     }
   },
-  "prop_statements": {
-    "tone": {
-      "states": "tone is one of neutral, accent, info, success, warning or danger, and neutral when omitted",
-      "because": "avatar.tsx builds this cva axis from the shared `fillAxes` object, which the extractor does not follow, so the prop reaches the contract through its VariantProps type, a string union with `null` and `undefined`, and the compiler emits one JSON type per property."
-    },
-    "variant": {
-      "states": "variant is solid or soft, and soft when omitted",
-      "because": "avatar.tsx builds this cva axis from the shared `fillAxes` object, which the extractor does not follow, so the prop reaches the contract through its VariantProps type, a string union with `null` and `undefined`, and the compiler emits one JSON type per property."
-    }
-  },
   "examples": {
     "good": [
       {
@@ -74,16 +64,7 @@
     "role": "part"
   },
   "x-uikit": {
-    "partially_typed_props": {
-      "tone": {
-        "typeText": "\"neutral\" | \"accent\" | \"info\" | \"success\" | \"warning\" | \"danger\" | null | undefined",
-        "optional": true
-      },
-      "variant": {
-        "typeText": "\"soft\" | \"solid\" | null | undefined",
-        "optional": true
-      }
-    },
+    "partially_typed_props": {},
     "variant_sources": [
       "VariantProps<typeof avatarGroupCountVariants>"
     ],
@@ -93,14 +74,28 @@
     "title": "UiKit AvatarGroupCount",
     "type": "object",
     "properties": {
-      "className": {
-        "type": "string"
-      },
       "tone": {
-        "description": "Partially typed: \"neutral\" | \"accent\" | \"info\" | \"success\" | \"warning\" | \"danger\" | null | undefined. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. tone is one of neutral, accent, info, success, warning or danger, and neutral when omitted. avatar.tsx builds this cva axis from the shared `fillAxes` object, which the extractor does not follow, so the prop reaches the contract through its VariantProps type, a string union with `null` and `undefined`, and the compiler emits one JSON type per property."
+        "type": "string",
+        "enum": [
+          "neutral",
+          "accent",
+          "info",
+          "success",
+          "warning",
+          "danger"
+        ],
+        "default": "neutral"
       },
       "variant": {
-        "description": "Partially typed: \"soft\" | \"solid\" | null | undefined. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. variant is solid or soft, and soft when omitted. avatar.tsx builds this cva axis from the shared `fillAxes` object, which the extractor does not follow, so the prop reaches the contract through its VariantProps type, a string union with `null` and `undefined`, and the compiler emits one JSON type per property."
+        "type": "string",
+        "enum": [
+          "solid",
+          "soft"
+        ],
+        "default": "soft"
+      },
+      "className": {
+        "type": "string"
       }
     },
     "required": [],

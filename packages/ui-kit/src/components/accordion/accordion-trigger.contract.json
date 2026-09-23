@@ -100,10 +100,10 @@
         "type": "boolean"
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, AccordionTriggerState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the trigger element with one the caller supplies. Base UI's render prop takes an element or a function of the trigger's state; neither is expressible in JSON Schema. The trailing chevron is rendered as a child, so it survives a replaced element."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, AccordionTriggerState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the trigger element with one the caller supplies. Base UI's render prop takes an element or a function of the trigger's state; neither is expressible in JSON Schema. The trailing chevron is rendered as a child, so it survives a replaced element."
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: AccordionTriggerState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the trigger's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`; a JSON Schema `object` would reject the function form."
+        "description": "TS: CSSProperties | ((state: AccordionTriggerState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the trigger's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`; a JSON Schema `object` would reject the function form."
       }
     },
     "required": [],

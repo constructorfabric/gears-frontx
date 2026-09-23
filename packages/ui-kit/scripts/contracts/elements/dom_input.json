@@ -30,7 +30,7 @@
       "type": "string"
     },
     "value": {
-      "description": "TS: string | number | readonly string[]. Not expressible in JSON Schema, checked by tsc."
+      "description": "TS: string | number | readonly string[]. The compiler emits one JSON type per property, so this union is left to tsc."
     },
     "defaultValue": {
       "description": "TS: string | number | readonly string[]. The compiler emits one JSON type per property, so this union is left to tsc."

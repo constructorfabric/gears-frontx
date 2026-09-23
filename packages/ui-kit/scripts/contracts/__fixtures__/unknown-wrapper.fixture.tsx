@@ -1,6 +1,7 @@
 // Fixture for extract.test.ts (M1): a heritage member wrapped in a generic
-// type helper that is none of the six recognized shapes (Omit/Pick/
-// VariantProps/ComponentProps/ComponentPropsWithRef/BaseUIComponentProps).
+// type helper that is none of the recognized shapes (Omit/Pick/
+// VariantProps/ComponentProps/ComponentPropsWithRef/BaseUIComponentProps/
+// the render hook's props helper).
 // `Readonly<T>` IS a real, resolvable type alias (declared in TypeScript's
 // own lib.es5.d.ts), so the walk correctly unwraps into it - but its
 // underlying type is a MappedTypeNode, a node kind walkPropsType/

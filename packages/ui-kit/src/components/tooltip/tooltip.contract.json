@@ -141,16 +141,16 @@
     "type": "object",
     "properties": {
       "actionsRef": {
-        "description": "TS: React.RefObject<TooltipRootActions | null> | undefined. Not expressible in JSON Schema, checked by tsc. actionsRef is a ref the root fills with imperative `close` and `unmount` actions. `React.RefObject<TooltipRootActions | null>` - a ref object holding functions, which no JSON Schema type covers."
+        "description": "TS: React.RefObject<TooltipRootActions | null> | undefined. The compiler emits one JSON type per property; this type is left to tsc. actionsRef is a ref the root fills with imperative `close` and `unmount` actions. `React.RefObject<TooltipRootActions | null>` - a ref object holding functions, which no JSON Schema type covers."
       },
       "children": {
-        "description": "TS: React.ReactNode | PayloadChildRenderFunction<Payload>. Not expressible in JSON Schema, checked by tsc. children is the root's content, either React nodes or a function of the active trigger's payload that returns them. `React.ReactNode | PayloadChildRenderFunction<Payload>` - the function form receives `{ payload }` from whichever trigger opened the tooltip. A React node and a function have no JSON Schema representation."
+        "description": "TS: React.ReactNode | PayloadChildRenderFunction<Payload>. The compiler emits one JSON type per property; this type is left to tsc. children is the root's content, either React nodes or a function of the active trigger's payload that returns them. `React.ReactNode | PayloadChildRenderFunction<Payload>` - the function form receives `{ payload }` from whichever trigger opened the tooltip. A React node and a function have no JSON Schema representation."
       },
       "defaultOpen": {
         "type": "boolean"
       },
       "defaultTriggerId": {
-        "description": "TS: string | null | undefined. Not expressible in JSON Schema, checked by tsc. defaultTriggerId is the id of the trigger an initially open tooltip is open for, or null. `string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
+        "description": "TS: string | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. defaultTriggerId is the id of the trigger an initially open tooltip is open for, or null. `string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
       },
       "disableHoverablePopup": {
         "type": "boolean"
@@ -159,13 +159,13 @@
         "type": "boolean"
       },
       "handle": {
-        "description": "TS: TooltipHandle<Payload> | undefined. Not expressible in JSON Schema, checked by tsc. handle is an opaque object from the primitive's Tooltip.createHandle(), shared with a trigger placed outside this root. `TooltipHandle<Payload>` is a class instance holding the tooltip's store, not data; the kit re-exports no createHandle, so a caller imports it from the primitive."
+        "description": "TS: TooltipHandle<Payload> | undefined. The compiler emits one JSON type per property; this type is left to tsc. handle is an opaque object from the primitive's Tooltip.createHandle(), shared with a trigger placed outside this root. `TooltipHandle<Payload>` is a class instance holding the tooltip's store, not data; the kit re-exports no createHandle, so a caller imports it from the primitive."
       },
       "onOpenChange": {
-        "description": "TS: ((open: boolean, eventDetails: TooltipRootChangeEventDetails) => void) | undefined. Not expressible in JSON Schema, checked by tsc. onOpenChange is a callback called with the next open state and event details, not a value. `(open: boolean, eventDetails) => void`; the second argument carries Base UI's change-event details, including the reason (such as a trigger hover, focus or press, an outside press or Escape). No JSON Schema type covers a function."
+        "description": "TS: ((open: boolean, eventDetails: TooltipRootChangeEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChange is a callback called with the next open state and event details, not a value. `(open: boolean, eventDetails) => void`; the second argument carries Base UI's change-event details, including the reason (such as a trigger hover, focus or press, an outside press or Escape). No JSON Schema type covers a function."
       },
       "onOpenChangeComplete": {
-        "description": "TS: ((open: boolean) => void) | undefined. Not expressible in JSON Schema, checked by tsc. onOpenChangeComplete is a callback called with the open state once the open or close animation has finished. `(open: boolean) => void` - a function, which no JSON Schema type covers."
+        "description": "TS: ((open: boolean) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChangeComplete is a callback called with the open state once the open or close animation has finished. `(open: boolean) => void` - a function, which no JSON Schema type covers."
       },
       "open": {
         "type": "boolean"
@@ -173,14 +173,14 @@
       "trackCursorAxis": {
         "type": "string",
         "enum": [
+          "both",
           "none",
           "x",
-          "y",
-          "both"
+          "y"
         ]
       },
       "triggerId": {
-        "description": "TS: string | null | undefined. Not expressible in JSON Schema, checked by tsc. triggerId is the id of the trigger a controlled tooltip is open for, or null. `string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
+        "description": "TS: string | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. triggerId is the id of the trigger a controlled tooltip is open for, or null. `string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
       }
     },
     "required": [],

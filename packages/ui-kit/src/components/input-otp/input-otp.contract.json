@@ -152,14 +152,14 @@
       "inputMode": {
         "type": "string",
         "enum": [
-          "search",
-          "text",
-          "none",
+          "decimal",
           "email",
-          "tel",
-          "url",
+          "none",
           "numeric",
-          "decimal"
+          "search",
+          "tel",
+          "text",
+          "url"
         ]
       },
       "length": {
@@ -172,36 +172,36 @@
         "type": "string"
       },
       "normalizeValue": {
-        "description": "TS: ((value: string) => string) | undefined. Not expressible in JSON Schema, checked by tsc. normalizeValue is a function from a string to a string, applied after whitespace and validationType filtering. A function type has no JSON Schema representation. Its result is filtered by `validationType` again and clamped to `length`, and it may run more than once on the same value, so it has to be idempotent."
+        "description": "TS: ((value: string) => string) | undefined. The compiler emits one JSON type per property; this type is left to tsc. normalizeValue is a function from a string to a string, applied after whitespace and validationType filtering. A function type has no JSON Schema representation. Its result is filtered by `validationType` again and clamped to `length`, and it may run more than once on the same value, so it has to be idempotent."
       },
       "onValueChange": {
-        "description": "TS: ((value: string, eventDetails: OTPFieldRootChangeEventDetails) => void) | undefined. Not expressible in JSON Schema, checked by tsc. onValueChange is a function called with the next code string and event details, not a value. A function type has no JSON Schema representation. Its second argument carries Base UI's own change-event-details shape, whose reason names what changed the value (typing, clearing, pasting or a key), which only tsc can check."
+        "description": "TS: ((value: string, eventDetails: OTPFieldRootChangeEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onValueChange is a function called with the next code string and event details, not a value. A function type has no JSON Schema representation. Its second argument carries Base UI's own change-event-details shape, whose reason names what changed the value (typing, clearing, pasting or a key), which only tsc can check."
       },
       "onValueComplete": {
-        "description": "TS: ((value: string, eventDetails: OTPFieldRootCompleteEventDetails) => void) | undefined. Not expressible in JSON Schema, checked by tsc. onValueComplete is a function called with the full code string once every slot is filled, not a value. A function type has no JSON Schema representation. It also fires when a complete value is pasted over an already complete one, and runs right before the owning form is submitted when `autoSubmit` is on."
+        "description": "TS: ((value: string, eventDetails: OTPFieldRootCompleteEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onValueComplete is a function called with the full code string once every slot is filled, not a value. A function type has no JSON Schema representation. It also fires when a complete value is pasted over an already complete one, and runs right before the owning form is submitted when `autoSubmit` is on."
       },
       "onValueInvalid": {
-        "description": "TS: ((value: string, eventDetails: OTPFieldRootInvalidEventDetails) => void) | undefined. Not expressible in JSON Schema, checked by tsc. onValueInvalid is a function called with the attempted text when validation or normalization rejects characters, not a value. A function type has no JSON Schema representation. Its first argument is the raw text the user typed or pasted, before normalization."
+        "description": "TS: ((value: string, eventDetails: OTPFieldRootInvalidEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onValueInvalid is a function called with the attempted text when validation or normalization rejects characters, not a value. A function type has no JSON Schema representation. Its first argument is the raw text the user typed or pasted, before normalization."
       },
       "readOnly": {
         "type": "boolean"
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, OTPFieldRootState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the field's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, OTPFieldRootState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the field's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
       },
       "required": {
         "type": "boolean"
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: OTPFieldRootState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the field's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (complete, disabled, readOnly, required, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through input-otp.module.css, not through this."
+        "description": "TS: CSSProperties | ((state: OTPFieldRootState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the field's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (complete, disabled, readOnly, required, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through input-otp.module.css, not through this."
       },
       "validationType": {
         "type": "string",
         "enum": [
-          "none",
-          "numeric",
           "alpha",
-          "alphanumeric"
+          "alphanumeric",
+          "none",
+          "numeric"
         ]
       },
       "value": {

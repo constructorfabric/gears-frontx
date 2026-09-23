@@ -733,9 +733,10 @@ export function loadHostSurface(contract: unknown): Record<string, unknown> | un
 
 // One attribute, one shape - across element kinds as well as inside one.
 // The surfaces are hand-written, so what two of them state in common they
-// state by hand: `children`, `className`, `id`, `role`, `style`, `tabIndex`,
-// `title` and the three families are in every file, and only this comparison
-// keeps the copies in step. The compatibility check depends on it - it reads
+// state by hand: `className`, `id`, `role`, `style`, `tabIndex`, `title`, the
+// three families and (in every surface but a void element's) `children` are
+// shared, and only this comparison keeps the copies in step. The
+// compatibility check depends on it - it reads
 // a change of host element as a real difference between two surfaces, which
 // is only a real difference while the attributes both kinds declare are
 // declared identically.
@@ -847,9 +848,15 @@ export function describeUnexpressedType(schema: ContractProperty, typeText: stri
 // one sentence that has to stay true of the schema it sits next to. A
 // property carrying `type: "array"` is not "not expressible"; that claim,
 // made of a type that partly is, is what this rule was written to stop.
+//
+// A property with no `type` at all is not "not expressible" either: a
+// `string | number` union is a JSON Schema `type` list, which this compiler
+// chooses not to emit (extract.ts's expressUnion). So the sentence names the
+// compiler's own rule, which is true of a union, a function and an object
+// alike, rather than a limit of JSON Schema that is true of only some.
 function unexpressedClause(schema: ContractProperty): string {
   return schema.type === undefined
-    ? 'Not expressible in JSON Schema, checked by tsc.'
+    ? 'The compiler emits one JSON type per property; this type is left to tsc.'
     : 'Not fully expressible in JSON Schema; what the type states beyond the kind above is checked by tsc.';
 }
 
@@ -2113,7 +2120,9 @@ export function buildPropsAndRequired(
       properties[prop.name] = {
         ...expressedSchemaOf(prop),
         description: `Partially typed: ${prop.typeText}. ${
-          prop.expressed === undefined ? 'No JSON Schema type exists for it' : 'No JSON Schema type covers it beyond the kind above'
+          prop.expressed === undefined
+            ? 'The compiler emits one JSON type per property and none for this one'
+            : 'No JSON Schema type covers it beyond the kind above'
         }; shape checked by tsc, see x-uikit.partially_typed_props.`,
       };
     }
@@ -2195,11 +2204,13 @@ function assertAgreesWithElementSurface(
   // is stated in full: a prop the surface declares `array` and the component
   // types as an array of something Ajv cannot check agrees about the only
   // thing either of them enforces.
+  // An enum is compared as a set: the two sides are written in different
+  // orders (a hand-written surface in the order the attribute is documented,
+  // the extractor in sorted order), and order is not something either one
+  // asserts about the value.
   const expressed = prop.expressed;
   const agrees =
-    expressed !== undefined &&
-    expressed.type === declared.type &&
-    JSON.stringify(expressed.enum) === JSON.stringify(declared.enum);
+    expressed !== undefined && expressed.type === declared.type && sameEnumValues(expressed.enum, declared.enum);
   if (agrees) return;
   // Both shapes, spelled out: the message a reader acts on has to say what
   // the two sides each assert, not only that they differ.
@@ -2211,6 +2222,15 @@ function assertAgreesWithElementSurface(
       `shape, and the two disagree`,
   );
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-owner-conflict-refuse
+}
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-owner-conflict
+
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-owner-conflict
+function sameEnumValues(a: readonly unknown[] | undefined, b: readonly unknown[] | undefined): boolean {
+  if (a === undefined || b === undefined) return a === b;
+  const left = new Set(a);
+  const right = new Set(b);
+  return left.size === right.size && [...left].every((value) => right.has(value));
 }
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-owner-conflict
 

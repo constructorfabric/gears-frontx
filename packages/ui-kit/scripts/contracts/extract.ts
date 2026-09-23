@@ -102,8 +102,10 @@ export interface ComponentExtraction {
   // guessing (see the module comment).
   unclassifiedProps: ExtractedProp[];
   // The host element this component renders (`button`, `div`, `table`, ...),
-  // resolved through Omit/Pick and BaseUIComponentProps / ComponentProps
-  // generic arguments - undefined when the props type has no such anchor (a
+  // resolved through Omit/Pick and the element argument of
+  // BaseUIComponentProps / ComponentProps / the render hook's props helper,
+  // followed through a `typeof` component to that component's own props
+  // type - undefined when the props type has no such anchor (a
   // from-scratch interface with no DOM/Base UI heritage, e.g. DataTable's).
   // It decides WHICH hand-written element surface the contract names,
   // so a component with forwarded DOM props and no resolvable element kind
@@ -266,7 +268,12 @@ function expressUnion(type: ts.UnionType, checker: ts.TypeChecker, depth: number
   if (jsonTypes.size !== 1) return undefined;
   const [jsonType] = jsonTypes;
   if (everyMemberIsAStringLiteral && enumValues.length > 0) {
-    return { schema: { type: 'string', enum: enumValues }, complete };
+    // Sorted for the reason the prop lists are (see extractFromSource): the
+    // checker hands a union's members over in the order of its internal type
+    // ids, which follows what the program happened to bind first, so the
+    // same union read in two programs came back in two orders and a
+    // committed enum could move with no change behind it.
+    return { schema: { type: 'string', enum: [...enumValues].sort() }, complete };
   }
   // `boolean` reaches here as the `false | true` union TypeScript models it
   // as; both members are literals, and together they are the whole type.
@@ -470,8 +477,19 @@ function extractVariants(
       cannotExtract.push(`cva: "${label}"'s cva(...) second argument is not a resolvable object literal`);
       continue;
     }
-    for (const { name, initializer } of literalKeys(config, 'cva config', cannotExtract)) {
-      if (name === 'variants' && ts.isObjectLiteralExpression(initializer)) {
+    for (const { name, initializer: written } of literalKeys(config, 'cva config', cannotExtract)) {
+      if (name !== 'variants' && name !== 'defaultVariants') continue;
+      // Either block may be a shared const rather than an inline literal
+      // (`variants: fillAxes`, one axis set for two cva calls), so it is
+      // followed to its initializer the way the config itself is. One that
+      // cannot be followed refuses the compile: read as absent, its axes or
+      // its defaults vanish from the contract without a word.
+      const initializer = traceToObjectLiteral(written, checker, new Set(), 0);
+      if (initializer === undefined) {
+        cannotExtract.push(`cva: "${label}"'s ${name} is not a resolvable object literal - it would be silently lost`);
+        continue;
+      }
+      if (name === 'variants') {
         for (const axis of literalKeys(initializer, 'variants', cannotExtract)) {
           if (!ts.isObjectLiteralExpression(axis.initializer)) {
             cannotExtract.push(`axis "${axis.name}": value map is not an object literal`);
@@ -496,7 +514,7 @@ function extractVariants(
           axisSourceLabel[axis.name] = label;
         }
       }
-      if (name === 'defaultVariants' && ts.isObjectLiteralExpression(initializer)) {
+      if (name === 'defaultVariants') {
         for (const def of literalKeys(initializer, 'defaultVariants', cannotExtract)) {
           // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-boolean-axis
           // A boolean axis's default is written as a boolean, not as the
@@ -576,7 +594,10 @@ function typeRefParts(
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
 }
 
-// The six heritage shapes walkPropsType/resolveTopLevelMembers special-case,
+// The heritage shapes walkPropsType/resolveTopLevelMembers special-case, one
+// per kind below and each recognised under every name it answers to (Omit
+// and Pick; ComponentProps and ComponentPropsWithRef; the render hook's
+// `useRender.ComponentProps` and the `UseRenderComponentProps` it aliases),
 // resolved by what they actually declare (isCvaCall's own technique,
 // generalized to every heritage shape rather than just cva()): the
 // checker-resolved symbol's real name and the file that declares it, never
@@ -591,7 +612,24 @@ type HeritageShape =
   | { readonly kind: 'omit-pick' }
   | { readonly kind: 'variant-props' }
   | { readonly kind: 'component-props' }
-  | { readonly kind: 'base-ui-component-props' };
+  | { readonly kind: 'base-ui-component-props' }
+  // The props helper of the primitive library's render hook - the kit's own
+  // polymorphism mechanism. It is `ComponentPropsWithRef<ElementType>` plus
+  // the `render` prop, so its first type argument is the host element the
+  // same way the other two element helpers' is. Recognised here rather than
+  // unwrapped: unwrapped, the walk reaches `ComponentPropsWithRef` holding
+  // the helper's own unbound `ElementType`, and the tag the kit wrote at the
+  // use site is gone.
+  | { readonly kind: 'use-render-component-props' };
+
+// The shapes whose first type argument names the host element.
+function namesHostElement(shape: HeritageShape | undefined): boolean {
+  return (
+    shape?.kind === 'component-props' ||
+    shape?.kind === 'base-ui-component-props' ||
+    shape?.kind === 'use-render-component-props'
+  );
+}
 
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
 function declaredUnder(declarations: readonly ts.Declaration[], pattern: RegExp): boolean {
@@ -602,7 +640,14 @@ function declaredUnder(declarations: readonly ts.Declaration[], pattern: RegExp)
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
 function classifyHeritageReference(location: ts.Node, checker: ts.TypeChecker): HeritageShape | undefined {
   const symbol = checker.getSymbolAtLocation(location);
-  if (!symbol) return undefined;
+  return symbol ? classifyHeritageSymbol(symbol, checker) : undefined;
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+}
+
+// The same classification asked of a symbol directly, for a caller that holds
+// a resolved type rather than a node at a use site (see walkResolvedType).
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+function classifyHeritageSymbol(symbol: ts.Symbol, checker: ts.TypeChecker): HeritageShape | undefined {
   const resolved = symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
   const name = resolved.getName();
   const declarations = resolved.getDeclarations() ?? [];
@@ -622,14 +667,21 @@ function classifyHeritageReference(location: ts.Node, checker: ts.TypeChecker): 
   if (name === 'BaseUIComponentProps' && declaredUnder(declarations, /[\\/]node_modules[\\/]@base-ui[\\/]react[\\/]/)) {
     return { kind: 'base-ui-component-props' };
   }
+  if (
+    (name === 'ComponentProps' || name === 'UseRenderComponentProps') &&
+    declaredUnder(declarations, /[\\/]node_modules[\\/]@base-ui[\\/]react[\\/]use-render[\\/]/)
+  ) {
+    return { kind: 'use-render-component-props' };
+  }
   return undefined;
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
 }
 
 // Walks a props type's composition graph - Omit/Pick, intersections, and
 // named interfaces/aliases followed to their own heritage - looking for two
-// things at once: the element kind a BaseUIComponentProps<'tag', ...> or
-// ComponentProps<'tag'> generic argument names, and every VariantProps<typeof
+// things at once: the element kind a BaseUIComponentProps<'tag', ...>,
+// ComponentProps<'tag'> or useRender.ComponentProps<'tag'> generic argument
+// names, and every VariantProps<typeof
 // X> entity along the way. One walk instead of two because both anchors live
 // on the same graph and a component's real heritage is rarely more than two
 // or three levels deep, so re-walking it twice would mostly repeat itself.
@@ -656,6 +708,13 @@ function walkPropsType(
   // is nothing more for THIS walk (kind/variant discovery) to resolve here.
   // Not an error, unlike the node kinds below it has no typeRefParts either.
   if (ts.isTypeLiteralNode(node)) return;
+  // `Parameters<typeof X>[0]` is the props type of X spelled another way, so
+  // it continues the walk exactly where `ComponentProps<typeof X>` would.
+  const parametersQuery = ts.isIndexedAccessTypeNode(node) ? firstParameterQuery(node, checker) : undefined;
+  if (parametersQuery !== undefined) {
+    walkQueriedComponentProps(parametersQuery, node, checker, result, visited, depth);
+    return;
+  }
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
 
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
@@ -688,11 +747,8 @@ function walkPropsType(
     result.variantSources.push(args[0].exprName);
     return;
   }
-  if ((shape?.kind === 'base-ui-component-props' || shape?.kind === 'component-props') && args?.length) {
-    const first = args[0];
-    if (ts.isLiteralTypeNode(first) && ts.isStringLiteral(first.literal) && result.kind === undefined) {
-      result.kind = first.literal.text;
-    }
+  if (namesHostElement(shape) && args?.length) {
+    readHostElementArgument(node, args[0], checker, result, visited, depth);
     return;
   }
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
@@ -740,11 +796,218 @@ function walkPropsType(
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
 }
 
+// The element argument of a helper that names the host element. A string
+// literal is the tag itself. A type query (`ComponentProps<typeof Trigger>`)
+// names a component instead of a tag, and that component's own props type is
+// where the tag is written, so the walk continues there. Anything else - a
+// type parameter, a union of tags, an attributes interface - is recorded
+// rather than dropped: the walk stopping here with nothing said is how a
+// component came to forward a whole DOM surface with no element to name it.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+function readHostElementArgument(
+  node: ts.TypeNode,
+  first: ts.TypeNode,
+  checker: ts.TypeChecker,
+  result: PropsTypeWalkResult,
+  visited: Set<ts.Symbol>,
+  depth: number,
+): void {
+  if (ts.isLiteralTypeNode(first) && ts.isStringLiteral(first.literal)) {
+    if (result.kind === undefined) result.kind = first.literal.text;
+    return;
+  }
+  if (ts.isTypeQueryNode(first)) {
+    walkQueriedComponentProps(first, node, checker, result, visited, depth);
+    return;
+  }
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+  result.cannotExtract.push(
+    `heritage: "${node.getText()}" names its host element with "${first.getText()}", a ${
+      ts.SyntaxKind[first.kind]
+    } rather than a string literal - the host element cannot be read from it`,
+  );
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+}
+
+// The type query inside `Parameters<typeof X>[0]`, when that is what the node
+// is - TypeScript's own `Parameters`, by symbol, indexed at the first
+// parameter. Any other indexed access answers undefined and is left to the
+// walk's ordinary "cannot classify" note.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+function firstParameterQuery(node: ts.IndexedAccessTypeNode, checker: ts.TypeChecker): ts.TypeQueryNode | undefined {
+  const index = node.indexType;
+  if (!ts.isLiteralTypeNode(index) || !ts.isNumericLiteral(index.literal) || index.literal.text !== '0') return undefined;
+  const object = node.objectType;
+  if (!ts.isTypeReferenceNode(object)) return undefined;
+  const query = object.typeArguments?.length === 1 ? object.typeArguments[0] : undefined;
+  if (query === undefined || !ts.isTypeQueryNode(query)) return undefined;
+  const symbol = checker.getSymbolAtLocation(object.typeName);
+  if (!symbol) return undefined;
+  const resolved = symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
+  if (resolved.getName() !== 'Parameters') return undefined;
+  return declaredUnder(resolved.getDeclarations() ?? [], /[\\/]node_modules[\\/]typescript[\\/]lib[\\/]/) ? query : undefined;
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+}
+
+// The props type of the component a type query names: its first parameter,
+// read off the call signature the checker resolves for it. Walked from the
+// parameter's own type annotation where that annotation IS the type the
+// signature takes - a component written in the kit, whose `LabelProps` the
+// checker would otherwise hand over already expanded past the
+// `ComponentProps<'label'>` it was written as, tag and all. A primitive part
+// is declared as `ForwardRefExoticComponent<Props & ...>`, whose parameter is
+// annotated with React's own unbound `P`, so there only the instantiated type
+// carries the part's props and the walk continues on the type.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+function walkQueriedComponentProps(
+  query: ts.TypeQueryNode,
+  node: ts.TypeNode,
+  checker: ts.TypeChecker,
+  result: PropsTypeWalkResult,
+  visited: Set<ts.Symbol>,
+  depth: number,
+): void {
+  const candidates = checker
+    .getTypeAtLocation(query)
+    .getCallSignatures()
+    .filter((signature) => signature.getParameters()[0] !== undefined);
+  // An overloaded component has one props type per overload, and TypeScript's
+  // own inference (`ComponentProps`, `Parameters`) reads the LAST one, so
+  // that is the one walked; the others are named rather than passed over, for
+  // the same reason every other shape this walk skips is.
+  const signature = candidates[candidates.length - 1];
+  if (signature !== undefined) {
+    // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+    // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+    if (candidates.length > 1) {
+      result.cannotExtract.push(
+        `heritage: "${node.getText()}" queries "${query.exprName.getText()}", which has ${candidates.length} overloads ` +
+          `taking a props parameter - only the last, the one TypeScript infers from, was walked`,
+      );
+    }
+    // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+    // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+    const parameter = signature.getParameters()[0];
+    const propsType = checker.getTypeOfSymbolAtLocation(parameter, query);
+    const declaration = parameter.valueDeclaration;
+    const annotation = declaration && ts.isParameter(declaration) ? declaration.type : undefined;
+    if (annotation !== undefined && checker.getTypeFromTypeNode(annotation) === propsType) {
+      walkPropsType(annotation, checker, result, visited, depth + 1);
+    } else {
+      walkResolvedType(propsType, node, checker, result, visited, depth + 1);
+    }
+    return;
+  }
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+  result.cannotExtract.push(
+    `heritage: "${node.getText()}" queries "${query.exprName.getText()}", which has no call signature taking a props ` +
+      `parameter - cannot extract`,
+  );
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+}
+
+// walkPropsType's walk over a resolved type rather than a node, for the one
+// place a node does not exist: the props type behind a type query. An
+// instantiated helper is recognised by the alias it was written through
+// (`Omit<X, 'ref'>` keeps `Omit` and its arguments), and a named type hands
+// the walk back to its own declaration's nodes, so the two walks classify
+// every shape by one rule.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+function walkResolvedType(
+  type: ts.Type,
+  node: ts.TypeNode,
+  checker: ts.TypeChecker,
+  result: PropsTypeWalkResult,
+  visited: Set<ts.Symbol>,
+  depth: number,
+): void {
+  if (depth > 12) return;
+  if (type.isIntersection()) {
+    for (const member of type.types) walkResolvedType(member, node, checker, result, visited, depth + 1);
+    return;
+  }
+  const alias = type.aliasSymbol;
+  const shape = alias ? classifyHeritageSymbol(alias, checker) : undefined;
+  const typeArguments = type.aliasTypeArguments ?? [];
+  if (shape?.kind === 'omit-pick' && typeArguments.length > 0) {
+    walkResolvedType(typeArguments[0], node, checker, result, visited, depth + 1);
+    return;
+  }
+  if (namesHostElement(shape) && typeArguments.length > 0) {
+    const first = typeArguments[0];
+    if (first.isStringLiteral()) {
+      if (result.kind === undefined) result.kind = first.value;
+      return;
+    }
+    // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+    // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+    result.cannotExtract.push(
+      `heritage: "${node.getText()}" reaches a props helper naming its host element with "${stripModuleSpecifiers(checker.typeToString(first))}" rather than a string literal - the host element cannot be read from it`,
+    );
+    return;
+    // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+    // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+  }
+  if (shape?.kind === 'variant-props') {
+    // Prefixed `cva:` so the compiler refuses: an instantiated VariantProps
+    // no longer holds the `typeof X` it was written with, so its axes cannot
+    // be traced to a cva call, and a contract compiled without them would
+    // ship a component whose variants silently vanished.
+    result.cannotExtract.push(
+      `cva: "${node.getText()}" reaches VariantProps through a type query, where its cva(...) call cannot be traced - ` +
+        `variant axes would be silently lost`,
+    );
+    return;
+  }
+  const symbol = alias ?? type.getSymbol();
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+  if (!symbol) {
+    result.cannotExtract.push(
+      `heritage: "${node.getText()}" reaches "${stripModuleSpecifiers(checker.typeToString(type))}", which has no declaration to walk - cannot extract`,
+    );
+    return;
+  }
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+  const resolved = symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
+  if (visited.has(resolved)) return;
+  visited.add(resolved);
+  let unwrapped = false;
+  for (const decl of resolved.getDeclarations() ?? []) {
+    if (ts.isInterfaceDeclaration(decl)) {
+      unwrapped = true;
+      for (const clause of decl.heritageClauses ?? []) {
+        for (const member of clause.types) walkPropsType(member, checker, result, visited, depth + 1);
+      }
+    } else if (ts.isTypeAliasDeclaration(decl)) {
+      unwrapped = true;
+      walkPropsType(decl.type, checker, result, visited, depth + 1);
+    } else if (ts.isTypeLiteralNode(decl)) {
+      // An anonymous object type: a terminal, for the reason an inline one
+      // is in walkPropsType - its members reach the extraction through the
+      // checker's own property list.
+      unwrapped = true;
+    }
+  }
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+  if (!unwrapped) {
+    result.cannotExtract.push(
+      `heritage: "${node.getText()}" reaches "${stripModuleSpecifiers(checker.typeToString(type))}", whose declaration this walk cannot unwrap ` +
+        `(not an interface or type alias) - cannot extract`,
+    );
+  }
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+}
+
 // Unwraps a props type node down to the constituents that actually carry
 // meaning for a reader: an intersection's members, and a plain named
 // reference (`ButtonProps`, `AlertProps`, ...) followed into whatever ITS
 // interface `extends` or type alias underlying type is. Stops at the same
-// six shapes walkPropsType stops at (classifyHeritageReference, resolved by
+// shapes walkPropsType stops at (classifyHeritageReference, resolved by
 // symbol - not a hand-kept name list, so the two functions can never
 // disagree about where "the component's own heritage" ends and "a
 // well-known type helper's internals" begins) - one for kind/variant
@@ -770,6 +1033,9 @@ function resolveTopLevelMembers(
     return resolveTopLevelMembers(node.type, checker, visited, depth + 1, cannotExtract);
   }
   if (ts.isTypeLiteralNode(node)) return [node];
+  // A leaf here for the reason a recognised helper is: walkPropsType reads
+  // what `Parameters<typeof X>[0]` names, and a label has nothing to add.
+  if (ts.isIndexedAccessTypeNode(node) && firstParameterQuery(node, checker) !== undefined) return [node];
 
   const parts = typeRefParts(node);
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage

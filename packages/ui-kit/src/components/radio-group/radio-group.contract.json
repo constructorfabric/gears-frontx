@@ -129,7 +129,7 @@
         "type": "string"
       },
       "defaultValue": {
-        "description": "TS: any. Not expressible in JSON Schema, checked by tsc. defaultValue is the root's own generic Value type parameter, not a JSON Schema type. Same generic type as `value` above, unchecked in the same half - the uncontrolled starting selection is one of the caller's own `Value` type, which no schema can state because the caller chooses it."
+        "description": "TS: any. The compiler emits one JSON type per property; this type is left to tsc. defaultValue is the root's own generic Value type parameter, not a JSON Schema type. Same generic type as `value` above, unchecked in the same half - the uncontrolled starting selection is one of the caller's own `Value` type, which no schema can state because the caller chooses it."
       },
       "disabled": {
         "type": "boolean"
@@ -138,28 +138,28 @@
         "type": "string"
       },
       "inputRef": {
-        "description": "TS: Ref<HTMLInputElement> | undefined. Not expressible in JSON Schema, checked by tsc. inputRef is a ref to the hidden native input Base UI renders for form submission. `React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - neither is expressible in JSON Schema. It exists so a consumer can read or focus the native input directly, the same input `name`/`form` submit through."
+        "description": "TS: Ref<HTMLInputElement> | undefined. The compiler emits one JSON type per property; this type is left to tsc. inputRef is a ref to the hidden native input Base UI renders for form submission. `React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - neither is expressible in JSON Schema. It exists so a consumer can read or focus the native input directly, the same input `name`/`form` submit through."
       },
       "name": {
         "type": "string"
       },
       "onValueChange": {
-        "description": "TS: ((value: any, eventDetails: { reason: \"none\"; event: Event; cancel: () => void; allowPropagation: () => void; isCanceled: boolean; isPropagationAllowed: boolean; trigger: Element | undefined; }) => void) | undefined. Not expressible in JSON Schema, checked by tsc. onValueChange is a callback, not a value. `(value: Value, eventDetails) => void` - a function of the root's own generic `Value` plus Base UI's own event-details object. No JSON Schema type covers a function."
+        "description": "TS: ((value: any, eventDetails: { reason: \"none\"; event: Event; cancel: () => void; allowPropagation: () => void; isCanceled: boolean; isPropagationAllowed: boolean; trigger: Element | undefined; }) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onValueChange is a callback, not a value. `(value: Value, eventDetails) => void` - a function of the root's own generic `Value` plus Base UI's own event-details object. No JSON Schema type covers a function."
       },
       "readOnly": {
         "type": "boolean"
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, RadioGroupState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the group's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, RadioGroupState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the group's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
       },
       "required": {
         "type": "boolean"
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: RadioGroupState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the group's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, readOnly, required, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through radio-group.module.css, not through this."
+        "description": "TS: CSSProperties | ((state: RadioGroupState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the group's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, readOnly, required, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through radio-group.module.css, not through this."
       },
       "value": {
-        "description": "TS: any. Not expressible in JSON Schema, checked by tsc. value is the root's own generic Value type parameter, not a JSON Schema type. Base UI's `RadioGroup<Value>` types `value` as `Value | undefined`, where `Value` is the caller's own choice - no JSON Schema type can state it, only that something is accepted. radio-group.md's example uses string item values (`value=\"free\"` on the item), so a group value is typically one of those strings."
+        "description": "TS: any. The compiler emits one JSON type per property; this type is left to tsc. value is the root's own generic Value type parameter, not a JSON Schema type. Base UI's `RadioGroup<Value>` types `value` as `Value | undefined`, where `Value` is the caller's own choice - no JSON Schema type can state it, only that something is accepted. radio-group.md's example uses string item values (`value=\"free\"` on the item), so a group value is typically one of those strings."
       }
     },
     "required": [],

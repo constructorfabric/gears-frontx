@@ -164,16 +164,16 @@
         "type": "boolean"
       },
       "onPressedChange": {
-        "description": "TS: ((pressed: boolean, eventDetails: { reason: \"none\"; event: Event; cancel: () => void; allowPropagation: () => void; isCanceled: boolean; isPropagationAllowed: boolean; trigger: Element | undefined; }) => void) | undefined. Not expressible in JSON Schema, checked by tsc. onPressedChange is a callback of the next pressed state and event details, not a plain change handler. Base UI types the callback as `(pressed: boolean, eventDetails) => void`, where eventDetails carries the triggering event, its reason and controls for cancelling or allowing propagation; a function type has no JSON Schema representation, so nothing beyond its presence is asserted."
+        "description": "TS: ((pressed: boolean, eventDetails: { reason: \"none\"; event: Event; cancel: () => void; allowPropagation: () => void; isCanceled: boolean; isPropagationAllowed: boolean; trigger: Element | undefined; }) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onPressedChange is a callback of the next pressed state and event details, not a plain change handler. Base UI types the callback as `(pressed: boolean, eventDetails) => void`, where eventDetails carries the triggering event, its reason and controls for cancelling or allowing propagation; a function type has no JSON Schema representation, so nothing beyond its presence is asserted."
       },
       "pressed": {
         "type": "boolean"
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ToggleState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the toggle's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ToggleState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the toggle's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: ToggleState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the toggle's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (pressed, disabled). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through toggle.module.css, not through this."
+        "description": "TS: CSSProperties | ((state: ToggleState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the toggle's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (pressed, disabled). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through toggle.module.css, not through this."
       },
       "value": {
         "type": "string",

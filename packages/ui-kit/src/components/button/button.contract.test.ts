@@ -28,32 +28,31 @@ import {
   buildComponentType,
   buildOverlaySchema,
   buildPropsAndRequired,
+  CLASSIFICATION_KEY,
   compileContract,
+  type CompiledContract,
   compilePropsValidator,
   liftPropsSchema,
   loadComponentType,
   loadElementSurface,
   OPEN_UNEVALUATED,
-  parseOverlay,
-  registerContractTypes,
-  resolveTargetExtraction,
-  CLASSIFICATION_KEY,
-  partlyCheckedPropertyNames,
-  type CompiledContract,
   type Overlay,
+  parseOverlay,
+  partlyCheckedPropertyNames,
+  resolveTargetExtraction,
 } from '../../../scripts/contracts/compile';
 import type { ComponentExtraction } from '../../../scripts/contracts/extract';
 import { classifyProps } from '../../../scripts/contracts/check-lib';
 import { contractMajor } from '../../../scripts/contracts/compile';
 import {
   bareGtsId,
+  COMPONENT_TYPE_ID_BARE,
   componentRef,
   componentRefPattern,
-  COMPONENT_TYPE_ID_BARE,
   domElementToken,
-  METAMODEL_VERSION,
   elementTypeId,
   elementTypeRef,
+  METAMODEL_VERSION,
   propsSchemaId,
 } from '../../../scripts/contracts/ids';
 import {
@@ -61,6 +60,7 @@ import {
   assertContractFreshness,
   registeredKitStore,
   resolveComponentRef,
+  unitStore,
   validateContractInstance,
 } from '../../../scripts/contracts/testing';
 
@@ -231,7 +231,7 @@ describe('button contract conformance', () => {
     // overlay's own `prop_statements.render` entry (states/because), which the
     // compiler emits into the same description beside the `TS:` text.
     expect(contract.props.properties.render.type).toBeUndefined();
-    expect(contract.props.properties.render.description).toMatch(/^TS: .*Not expressible in JSON Schema, checked by tsc\./s);
+    expect(contract.props.properties.render.description).toMatch(/^TS: .*The compiler emits one JSON type per property; this type is left to tsc\./s);
     expect(contract.props.properties.render.description).toContain('ComponentRenderFn');
     expect(contract.props.properties.render.description).toContain('render replaces the rendered element with one the caller supplies');
   });
@@ -914,16 +914,12 @@ describe('button in a GTS store', () => {
   // it claims exists, so the claim would stay unverified until something
   // happened to resolve it at runtime. GTS.validateInstance resolves the type
   // and validates against it, which turns that into a build-time failure.
+  // The vocabulary the component type references is registered with it. A
+  // store missing one of them cannot compile the type at all - see "fails
+  // when a vocabulary type is not registered" below, which is that failure
+  // asserted deliberately.
   function registeredStore(): GTS {
-    const gts = new GTS();
-    gts.register(componentType);
-    // The vocabulary the component type references. A store missing one of
-    // them cannot compile the type at all - see "fails when a vocabulary type
-    // is not registered" below, which is that failure asserted deliberately.
-    registerContractTypes((entity) => gts.register(entity));
-    gts.register(elementSurface);
-    gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
-    return gts;
+    return unitStore([{ contract, elementSurface }], { componentType });
   }
 
   it('validates as an instance of the component type, and its element surface as a type', () => {
@@ -938,9 +934,7 @@ describe('button in a GTS store', () => {
   it('fails when the component type is not registered', () => {
     // Negative control for the check above: without it, a passing
     // validateInstance would prove nothing about whether the type resolves.
-    const gts = new GTS();
-    gts.register(elementSurface);
-    gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
+    const gts = unitStore([{ contract, elementSurface }], { componentType: false, vocabulary: false });
     const result = gts.validateInstance(contract.$id);
     expect(result.ok).toBe(false);
     expect(result.error).toContain('Schema not found');
@@ -985,10 +979,7 @@ describe('button in a GTS store', () => {
     // type names its concepts by reference, so a registry missing one has not
     // checked a component against a smaller schema - it has not checked it at
     // all, and says so.
-    const gts = new GTS();
-    gts.register(componentType);
-    gts.register(elementSurface);
-    gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
+    const gts = unitStore([{ contract, elementSurface }], { componentType, vocabulary: false });
     const result = gts.validateInstance(contract.$id);
     expect(result.ok).toBe(false);
     expect(result.error).toMatch(/resolve|reference/i);

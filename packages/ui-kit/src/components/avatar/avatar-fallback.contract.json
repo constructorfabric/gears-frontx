@@ -57,14 +57,6 @@
     }
   },
   "prop_statements": {
-    "tone": {
-      "states": "tone is one of neutral, accent, info, success, warning or danger, and neutral when omitted",
-      "because": "avatar.tsx builds this cva axis from the shared `fillAxes` object, which the extractor does not follow, so the prop reaches the contract through its VariantProps type, a string union with `null` and `undefined`, and the compiler emits one JSON type per property."
-    },
-    "variant": {
-      "states": "variant is solid or soft, and soft when omitted",
-      "because": "avatar.tsx builds this cva axis from the shared `fillAxes` object, which the extractor does not follow, so the prop reaches the contract through its VariantProps type, a string union with `null` and `undefined`, and the compiler emits one JSON type per property."
-    },
     "render": {
       "states": "render replaces the rendered element with one the caller supplies",
       "because": "Base UI's render prop takes an element or a function of the fallback's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
@@ -98,16 +90,7 @@
     "role": "part"
   },
   "x-uikit": {
-    "partially_typed_props": {
-      "tone": {
-        "typeText": "\"neutral\" | \"accent\" | \"info\" | \"success\" | \"warning\" | \"danger\" | null | undefined",
-        "optional": true
-      },
-      "variant": {
-        "typeText": "\"soft\" | \"solid\" | null | undefined",
-        "optional": true
-      }
-    },
+    "partially_typed_props": {},
     "variant_sources": [
       "VariantProps<typeof avatarFallbackVariants>"
     ],
@@ -117,23 +100,37 @@
     "title": "UiKit AvatarFallback",
     "type": "object",
     "properties": {
-      "className": {
-        "type": "string"
-      },
       "tone": {
-        "description": "Partially typed: \"neutral\" | \"accent\" | \"info\" | \"success\" | \"warning\" | \"danger\" | null | undefined. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. tone is one of neutral, accent, info, success, warning or danger, and neutral when omitted. avatar.tsx builds this cva axis from the shared `fillAxes` object, which the extractor does not follow, so the prop reaches the contract through its VariantProps type, a string union with `null` and `undefined`, and the compiler emits one JSON type per property."
+        "type": "string",
+        "enum": [
+          "neutral",
+          "accent",
+          "info",
+          "success",
+          "warning",
+          "danger"
+        ],
+        "default": "neutral"
       },
       "variant": {
-        "description": "Partially typed: \"soft\" | \"solid\" | null | undefined. No JSON Schema type exists for it; shape checked by tsc, see x-uikit.partially_typed_props. variant is solid or soft, and soft when omitted. avatar.tsx builds this cva axis from the shared `fillAxes` object, which the extractor does not follow, so the prop reaches the contract through its VariantProps type, a string union with `null` and `undefined`, and the compiler emits one JSON type per property."
+        "type": "string",
+        "enum": [
+          "solid",
+          "soft"
+        ],
+        "default": "soft"
+      },
+      "className": {
+        "type": "string"
       },
       "delay": {
         "type": "number"
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, AvatarFallbackState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the fallback's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, AvatarFallbackState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the fallback's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: AvatarFallbackState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the fallback's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (imageLoadingStatus). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through avatar.module.css, not through this."
+        "description": "TS: CSSProperties | ((state: AvatarFallbackState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the fallback's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (imageLoadingStatus). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through avatar.module.css, not through this."
       }
     },
     "required": [],
