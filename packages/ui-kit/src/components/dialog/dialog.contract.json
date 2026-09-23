@@ -118,7 +118,7 @@
   "examples": {
     "good": [
       {
-        "title": "A confirmation with a composed cancel action",
+        "title": "A short task with a composed cancel action",
         "code": "<Dialog>\n  <DialogTrigger render={<Button variant=\"outline\" />}>Rename</DialogTrigger>\n  <DialogContent>\n    <DialogHeader>\n      <DialogTitle>Rename project</DialogTitle>\n      <DialogDescription>The new name is visible to everyone on the team.</DialogDescription>\n    </DialogHeader>\n    <DialogFooter>\n      <DialogClose render={<Button variant=\"outline\" />}>Cancel</DialogClose>\n      <Button onClick={handleRename}>Save</Button>\n    </DialogFooter>\n  </DialogContent>\n</Dialog>\n"
       },
       {

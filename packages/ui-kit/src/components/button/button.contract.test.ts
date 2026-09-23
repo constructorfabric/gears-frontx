@@ -494,6 +494,7 @@ describe('overlay and extraction safety', () => {
       unclassifiedProps: [],
       elementKind: 'button',
       hasBody: true,
+      admitsUnlistedProps: false,
       variantSourceLabels: [],
       cannotExtract: [],
     };

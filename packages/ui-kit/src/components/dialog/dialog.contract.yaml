@@ -129,7 +129,7 @@ prop_statements:
 
 examples:
   good:
-    - title: A confirmation with a composed cancel action
+    - title: A short task with a composed cancel action
       code: |
         <Dialog>
           <DialogTrigger render={<Button variant="outline" />}>Rename</DialogTrigger>

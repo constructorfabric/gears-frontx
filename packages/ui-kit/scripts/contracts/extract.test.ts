@@ -767,3 +767,195 @@ describe('extractComponent: whether a component has a body of its own', () => {
     expect(byName('Aliased').hasBody).toBe(false);
   });
 });
+
+describe('extractComponent: defaults a body gives other than as a destructured default', () => {
+  const extractions = extractComponent(fixture('body-defaults.fixture.tsx'));
+  const byName = (name: string) => extractions.find((e) => e.name === name)!;
+
+  it('reads `binding ?? <literal>` as the default, over the reused variant default', () => {
+    expect(byName('Coalesced').defaults).toEqual({ variant: 'default' });
+    expect(byName('Coalesced').propDefaults).toEqual({ variant: 'ghost' });
+  });
+
+  it('notes a binding read both through `??` and as its own value', () => {
+    expect(byName('CoalescedRaw').propDefaults).toEqual({});
+    expect(byName('CoalescedRaw').cannotExtract[0]).toMatch(/read through `\?\?` and also as its own value/);
+  });
+
+  it('reads literal attributes written before the rest spread, or the whole-props spread, for props the spread carries', () => {
+    for (const name of ['AttributeFirst', 'AttributeFirstBound']) {
+      expect(byName(name).propDefaults, name).toEqual({ variant: 'ghost', size: 2, disabled: true });
+    }
+  });
+
+  it('reads no default from an attribute written after the spread, which overrides the caller', () => {
+    expect(byName('AttributeAfter').propDefaults).toEqual({});
+  });
+
+  it('notes a spread on one of several returned elements rather than stating its attributes', () => {
+    expect(byName('TwoElements').propDefaults).toEqual({});
+    expect(byName('TwoElements').cannotExtract[0]).toMatch(/not the one element the body returns/);
+  });
+});
+
+describe('extractComponent: an Omit or Pick whose keys it cannot list', () => {
+  it('refuses the axes reached through it, rather than keeping ones it may have removed', () => {
+    const [omitted] = extractComponent(fixture('body-defaults.fixture.tsx')).filter((e) => e.name === 'OmitGeneric');
+    expect(omitted.cannotExtract).toEqual([
+      'cva: "typeof baseVariants" is reached through an Omit or Pick whose keys (K) are not string literals - which of its axes the component takes cannot be read',
+    ]);
+  });
+
+  it('reads `keyof X` through the checker where it resolves to literal keys', () => {
+    const [keyof] = extractComponent(fixture('body-defaults.fixture.tsx')).filter((e) => e.name === 'OmitKeyof');
+    expect(keyof.axes).toEqual({});
+    expect(keyof.cannotExtract).toEqual([]);
+  });
+});
+
+describe('extractComponent: the edges of a body-written default', () => {
+  const extractions = extractComponent(fixture('body-defaults-edges.fixture.tsx'));
+  const byName = (name: string) => extractions.find((e) => e.name === name)!;
+  const notOnlyReturn = /not the one element the body returns/;
+
+  it('counts a shorthand property as a raw read of the binding, so `??` there is no default', () => {
+    expect(byName('ShorthandRaw').propDefaults).toEqual({});
+    expect(byName('ShorthandRaw').cannotExtract[0]).toMatch(/also as its own value/);
+  });
+
+  it('reads no default where another return renders a fragment or a call, and notes it', () => {
+    for (const name of ['FragmentPath', 'CallPath']) {
+      expect(byName(name).propDefaults, name).toEqual({});
+      expect(byName(name).cannotExtract[0], name).toMatch(notOnlyReturn);
+    }
+  });
+
+  it('reads no default from a spread under a conditional, an `as` expression or a nested element, and notes it', () => {
+    for (const name of ['Ternary', 'AsExpr', 'NestedSpread']) {
+      expect(byName(name).propDefaults, name).toEqual({});
+      expect(byName(name).cannotExtract[0], name).toMatch(notOnlyReturn);
+    }
+  });
+
+  it("reads no return of an object method or getter as the component's own", () => {
+    for (const name of ['MethodReturn', 'GetterReturn']) {
+      expect(byName(name).propDefaults, name).toEqual({});
+      expect(byName(name).cannotExtract, name).toEqual([]);
+    }
+  });
+
+  it('reads no default where another spread follows the rest, and notes it', () => {
+    expect(byName('LaterSpread').propDefaults).toEqual({});
+    expect(byName('LaterSpread').cannotExtract[0]).toMatch(/another spread follows the rest spread/);
+  });
+
+  it('reads a `null` early return as rendering nothing, so the element stays the only one', () => {
+    expect(byName('NullPath').propDefaults).toEqual({ variant: 'ghost' });
+  });
+
+  it('reads no default from `||` or a re-bound rest', () => {
+    for (const name of ['OrDefault', 'Rebound']) expect(byName(name).propDefaults, name).toEqual({});
+  });
+
+  it('notes a binding the body reassigns, `??=` included, rather than stating a default', () => {
+    for (const name of ['Reassigned', 'NullishAssign']) {
+      expect(byName(name).propDefaults, name).toEqual({});
+      expect(byName(name).cannotExtract[0], name).toMatch(/is reassigned in the body/);
+    }
+  });
+
+  it('reads a literal `??` wherever every read of the binding is one, a closure included', () => {
+    expect(byName('ClosureOnly').propDefaults).toEqual({ size: 5 });
+    expect(byName('CoalescedElsewhere').propDefaults).toEqual({ size: 4 });
+  });
+
+  it('reads through forwardRef and memo', () => {
+    expect(byName('Forwarded').propDefaults).toEqual({ variant: 'ghost' });
+    expect(byName('Memoed').propDefaults).toEqual({ size: 3 });
+  });
+
+  it('records nothing for a computed fallback alone', () => {
+    const [chained] = extractComponent(fixture('body-defaults.fixture.tsx')).filter((e) => e.name === 'CoalescedComputed');
+    expect(chained.propDefaults).toEqual({});
+    expect(chained.cannotExtract).toEqual([]);
+  });
+});
+
+describe('extractComponent: Omit key sets the checker lists another way', () => {
+  const extractions = extractComponent(fixture('omit-key-sets.fixture.tsx'));
+  const byName = (name: string) => extractions.find((e) => e.name === name)!;
+
+  it('reads keys named through a type alias, so the axis they remove is not refused', () => {
+    expect(byName('AliasKeys').axes).toEqual({});
+    expect(byName('AliasKeys').cannotExtract).toEqual([]);
+  });
+
+  it('reads a key set that resolves to never as removing nothing', () => {
+    for (const name of ['OmitNever', 'OmitKeyofEmpty']) {
+      expect(byName(name).axes, name).toEqual({ variant: ['a', 'b'] });
+      expect(byName(name).cannotExtract, name).toEqual([]);
+    }
+  });
+
+  it('reads an Omit instantiated inside a generic factory through a type query', () => {
+    expect(byName('ViaQuery').axes).toEqual({ variant: ['a', 'b'] });
+    expect(byName('ViaQuery').cannotExtract).toEqual([]);
+  });
+});
+
+describe('extractComponent: the rest or props object used beyond its spread', () => {
+  const extractions = extractComponent(fixture('rest-uses.fixture.tsx'));
+  const byName = (name: string) => extractions.find((e) => e.name === name)!;
+  const touched = /is also read or written through the rest binding in the body/;
+
+  it('states no default for a prop the body reads or writes through the rest or the whole props, and notes it', () => {
+    for (const name of ['WholeRawRead', 'RestRawRead', 'MutateRest', 'AssignRest', 'RestReassigned', 'WholeNullishAssign']) {
+      expect(byName(name).propDefaults, name).toEqual({});
+      expect(byName(name).cannotExtract, name).toEqual([expect.stringMatching(touched)]);
+    }
+  });
+
+  it('notes a rest spread under a conditional, twice on the element, or returned through `satisfies`', () => {
+    expect(byName('CondSpread').propDefaults).toEqual({});
+    expect(byName('CondSpread').cannotExtract[0]).toMatch(/spread conditionally on the returned element/);
+    expect(byName('RestTwice').cannotExtract[0]).toMatch(/another spread follows the rest spread/);
+    expect(byName('Satisfies').cannotExtract[0]).toMatch(/not the one element the body returns/);
+  });
+
+  it('reads a default through try/finally, and none through a copy of the props', () => {
+    expect(byName('TryFinally').propDefaults).toEqual({ variant: 'ghost' });
+    expect(byName('ComputedSpread').propDefaults).toEqual({});
+  });
+
+  it('reads a coalesced default only for a prop the contract states', () => {
+    expect(byName('CoalescedForwarded').propDefaults).toEqual({});
+    expect(byName('CoalescedForwarded').cannotExtract).toEqual([]);
+    for (const name of ['CoalescedTone', 'Tmpl', 'Shadow']) expect(byName(name).propDefaults, name).toEqual({ tone: 'warm' });
+  });
+
+  it('records nothing for a binding the body reassigns but never coalesces', () => {
+    expect(byName('ReassignedOnly').propDefaults).toEqual({});
+    expect(byName('ReassignedOnly').cannotExtract).toEqual([]);
+  });
+});
+
+describe('extractComponent: key sets and index keys the checker resolves', () => {
+  const extractions = extractComponent(fixture('key-sets-and-indexes.fixture.tsx'));
+  const byName = (name: string) => extractions.find((e) => e.name === name)!;
+
+  it('reads never, an alias, keyof and Exclude key sets, and Pick of never keeps nothing', () => {
+    expect(byName('OmitNone').axes).toEqual({ variant: ['a', 'b'], size: ['s', 'm'] });
+    expect(byName('OmitExclude').axes).toEqual({ variant: ['a', 'b'], size: ['s', 'm'] });
+    expect(byName('OmitAlias').axes).toEqual({ variant: ['a', 'b'] });
+    expect(byName('OmitKeyofOther').axes).toEqual({ variant: ['a', 'b'] });
+    expect(byName('PickNever').axes).toEqual({});
+    for (const name of ['OmitNone', 'OmitExclude', 'OmitAlias', 'OmitKeyofOther', 'PickNever']) {
+      expect(byName(name).cannotExtract, name).toEqual([]);
+    }
+  });
+
+  it('counts a StringMapping or template-literal index key as admitting unlisted names, and nothing else', () => {
+    for (const name of ['MappedIdx', 'MappedOverButton', 'TemplateOverButton']) expect(byName(name).admitsUnlistedProps, name).toBe(true);
+    for (const name of ['UnionHandlers', 'NoHandlerButton', 'Generic']) expect(byName(name).admitsUnlistedProps, name).toBe(false);
+  });
+});

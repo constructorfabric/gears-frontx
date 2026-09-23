@@ -131,6 +131,15 @@ export interface PropStatement {
   because: string;
 }
 
+// One statement about a SET of partially typed props, named by a pattern
+// over their names: the event handlers a library adapts all state the same
+// fact, and one entry per handler would state it over a hundred times.
+export interface PropStatementGroup {
+  match: string;
+  states: string;
+  because: string;
+}
+
 // One sentence's worth of punctuation, for text that is joined to more text.
 // An author writes `states` as a phrase - "icon is a React node, not a value"
 // - and reads it back inside a description that continues with `because`, so
@@ -296,8 +305,8 @@ export interface Overlay {
   // Absent means the stem in PascalCase, which is every other component.
   export?: string;
   // What the overlay states about the host element where the source names
-  // none: that the component renders the React attributes its props type
-  // admits onto no element at all, and why. Admitted only where the
+  // none: that no element surface describes the React attributes its props
+  // type admits, and why. Admitted only where the
   // extraction resolved no element, the component forwards something, and
   // it has no body of its own (see assertHostElementStatement).
   host_element?: HostElementStatement;
@@ -327,6 +336,9 @@ export interface Overlay {
   // in full and forbidden for one it does - the compiler emits it into that
   // property's own description, checked both ways by the conformance suite.
   prop_statements?: Record<string, PropStatement>;
+  // Statements about sets of props at once, each covering the partially
+  // typed props its pattern matches and no explicit statement names.
+  prop_statement_groups?: PropStatementGroup[];
   examples: Examples;
   // Absent for every component that is not part of a compound one (Button,
   // ...): a family only exists where a directory's public surface is more
@@ -406,6 +418,7 @@ const SEMANTIC_FIELDS = [
   'deprecations',
   'attestations',
   'prop_statements',
+  'prop_statement_groups',
   'unexposed_parts',
   'examples',
   'family_membership',
@@ -439,6 +452,11 @@ const COMPILER_WRITTEN_FIELDS = ['forwards_to'] as const;
 // liftPropsSchema at the moment something registers or diffs the surface, so
 // the document holds exactly one identifier, at its root, rather than a second
 // one nested a level down.
+export interface ClosedFamily {
+  not: Record<string, never>;
+  description: string;
+}
+
 export interface PropsSchema {
   title: string;
   type: 'object';
@@ -448,6 +466,12 @@ export interface PropsSchema {
   // set - so a component with no required own props (Button, today) still
   // emits `required: []`, not an absent field.
   required: string[];
+  // The attribute families of the named element surface that the props type
+  // admits no name of, each closed: the surface admits `^on[A-Z]` for every
+  // component rendering the element, and a component whose type takes no
+  // handler would otherwise be read as accepting all of them. Absent where
+  // the type admits a name of every family it could close.
+  patternProperties?: Record<string, ClosedFamily>;
   // What a prop nothing else in this schema evaluates means. Not `false`:
   // see OPEN_UNEVALUATED for why a schema is the wrong place to decide that
   // an unrecognized prop is an error.
@@ -1217,6 +1241,34 @@ export const buildVocabularyTypes = memoizeSchema((): Record<string, unknown>[] 
       },
     ),
     vocabularyType(
+      'prop_statement_group',
+      'UiKit prop statement group',
+      "One statement about every partially typed property whose name a pattern matches, for a set of properties that all state the same fact - a library's adapted event handlers. It covers a matched property no explicit statement names; an explicit statement about a property wins over it. A property two groups match and no explicit statement names is covered by neither, and a group that covers no property is an orphan, both reported by the same pairing that checks single statements. A fully typed property the pattern also matches is left alone: the pattern names a shape of name, not a claim about that property.",
+      {
+        type: 'object',
+        properties: {
+          match: {
+            type: 'string',
+            minLength: 2,
+            pattern: '^\\^',
+            description: 'A regular expression over property names, written anchored at the start (`^on[A-Z]`), in the syntax the element surfaces use for their attribute families but not their anchoring: here the anchor applies to every alternative, so `^a|b` is read as `^(?:a|b)`.',
+          },
+          states: {
+            type: 'string',
+            minLength: 1,
+            description: 'What every matched property holds, said once for all of them.',
+          },
+          because: {
+            type: 'string',
+            minLength: 1,
+            description: 'Why nothing checks them further.',
+          },
+        },
+        required: ['match', 'states', 'because'],
+        additionalProperties: false,
+      },
+    ),
+    vocabularyType(
       'unexposed_part',
       'UiKit unexposed part',
       'Internal structure of the primitive underneath that the kit does not expose as a component of its own - a Header glued onto a Trigger inside one exported component. The other half of "what the kit deliberately does not offer" beside `withheld`: that field names a PROP the kit does not advertise, this names a PART.',
@@ -1480,6 +1532,17 @@ export const buildMeaningFields = memoizeSchema((): { properties: Record<string,
         propertyNames: { $ref: vocabularyTypeId('prop_name') },
         description:
           "What each property that reaches this contract asserting nothing (or only part of its shape) actually states, and why nothing checks it further - a generic, a function, a live object, a React node. Absent for a component whose whole surface the provider-safe subset can express, which no described component is today.",
+      },
+      // One statement for a set of such properties, named by a pattern: the
+      // fact a library's adapted event handlers all state, said once rather
+      // than once per handler. Paired by the same conformance check as the
+      // map above.
+      prop_statement_groups: {
+        type: 'array',
+        items: { $ref: vocabularyTypeId('prop_statement_group') },
+        minItems: 1,
+        description:
+          'Statements about sets of partially typed properties at once, each carried here once and emitted into the description of every property it covers. Absent for a component whose statements are each about one property.',
       },
       // Internal structure of the primitive underneath that the kit does not
       // expose as a component of its own - the dissolved `untyped`
@@ -1773,13 +1836,13 @@ export function buildOverlaySchema(): Record<string, unknown> {
         type: 'string',
         minLength: 1,
         description:
-          'Why the React attributes the props type admits reach no element: the library the component comes from renders them onto nothing the kit can name.',
+          "Why no element surface describes the React attributes the props type admits: where the library the component comes from sends them - onto nothing, or to a renderer of the caller's - is not an element the kit can name.",
       },
     },
     required: ['none'],
     additionalProperties: false,
     description:
-      "Stated only where the source names no host element, the component forwards React attributes, and it has no body of its own - an alias or a re-export of a callable declared elsewhere: that those attributes are rendered onto no element, and why. The contract then names no element surface and records the forwarded attributes and this reason among what the extraction could not read. Which element a component renders is otherwise a fact of its source, which is why `forwards_to` is never authored.",
+      "Stated only where the source names no host element, the component forwards React attributes, and it has no body of its own - an alias or a re-export of a callable declared elsewhere: that no element surface describes those attributes, and why. The contract then names no element surface and records the forwarded attributes and this reason among what the extraction could not read. Which element a component renders is otherwise a fact of its source, which is why `forwards_to` is never authored.",
   };
   properties.export = {
     type: 'string',
@@ -2240,7 +2303,9 @@ export function buildPropsAndRequired(
   // to that element's surface, which states no defaults.
   const notes: string[] = [];
   for (const [name, value] of Object.entries(extraction.propDefaults)) {
-    const property = properties[name];
+    // Own properties only: a prop named `toString` must not find the
+    // prototype's method.
+    const property = Object.prototype.hasOwnProperty.call(properties, name) ? properties[name] : undefined;
     if (property === undefined) {
       notes.push(
         `default: prop "${name}" defaults to ${JSON.stringify(value)}, but the contract states no property for it - the ` +
@@ -2400,11 +2465,48 @@ export function assertHostElementStatement(
   }
   const names = extraction.forwardedProps.map((prop) => prop.name);
   return (
-    `host element: none - ${names.length} React attribute(s) the props type admits are rendered onto no element ` +
+    `host element: none - ${names.length} React attribute(s) the props type admits are not described by an element surface ` +
     `(${names.join(', ')}): ${statement.none.trim()}`
   );
 }
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-orphan-inherited
+
+// The families of the named element surface the props type admits no name
+// of. A surface states its attribute families by pattern for every component
+// rendering its element, and a contract naming it is read as accepting what
+// the surface admits; a component whose type takes no event handler at all
+// (its type omits them, its body drops them) would then be read as accepting
+// every `on*` name, which the type system rejects. Closed only for a family
+// the type system checks: a hyphenated attribute (`aria-*`, `data-*`) is
+// admitted on any component whatever its props type declares, so a family
+// whose pattern spells a hyphen is never closed by this.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-close
+export function closedFamiliesOf(
+  extraction: Pick<ComponentExtraction, 'axes' | 'ownProps' | 'apiProps' | 'forwardedProps' | 'admitsUnlistedProps'>,
+  surface: Record<string, unknown> | undefined,
+): { patternProperties?: Record<string, ClosedFamily> } {
+  // A type that admits names it does not list (an index signature, an
+  // `on${string}` key) may accept any name of any family.
+  if (surface === undefined || extraction.admitsUnlistedProps) return {};
+  const names = [
+    ...Object.keys(extraction.axes),
+    ...[...extraction.ownProps, ...extraction.apiProps, ...extraction.forwardedProps].map((prop) => prop.name),
+  ];
+  const closed: Record<string, ClosedFamily> = {};
+  for (const source of Object.keys((surface.patternProperties ?? {}) as Record<string, unknown>)) {
+    // A literal hyphen in the name, outside a character class (`[A-Z]` is a
+    // range, not a hyphen in the name).
+    if (source.replace(/\[[^\]]*\]/g, '').includes('-')) continue;
+    const pattern = new RegExp(source);
+    if (names.some((name) => pattern.test(name))) continue;
+    closed[source] = {
+      not: {},
+      description: `The props type admits no name this family of the element surface matches, so none is accepted here.`,
+    };
+  }
+  return Object.keys(closed).length === 0 ? {} : { patternProperties: closed };
+}
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-close
 
 // The extracted-prop adapter: the two prop loops hold an ExtractedProp, and
 // what the check needs off it is its name, its printed type and whatever the
@@ -2459,10 +2561,26 @@ export function partlyCheckedPropertyNames(contract: CompiledContract): string[]
 export function findUntypedPropMismatches(contract: CompiledContract): string[] {
   const partlyChecked = new Set(partlyCheckedPropertyNames(contract));
   const named = new Set(Object.keys(contract.prop_statements ?? {}));
+  const groups = contract.prop_statement_groups ?? [];
+  const covered = groupCoverage(contract.props.properties, contract.prop_statements ?? {}, groups);
   const problems: string[] = [];
+  // A group whose only matches are shared with another group is not an
+  // orphan: the overlap is its problem, and is reported once, as such.
+  const overlapping = new Set<PropStatementGroup>();
   for (const name of [...partlyChecked].sort()) {
-    if (!named.has(name)) {
-      problems.push(`"${name}" is not fully checked by its schema but no prop statement about it exists`);
+    if (named.has(name) || covered.has(name)) continue;
+    const matching = groups.filter((group) => groupMatches(group, name));
+    if (matching.length > 1) for (const group of matching) overlapping.add(group);
+    problems.push(
+      matching.length > 1
+        ? `"${name}" is matched by ${matching.length} prop statement groups (${matching.map((g) => g.match).join(', ')}) and named by no statement of its own - no one of them covers it`
+        : `"${name}" is not fully checked by its schema but no prop statement about it exists`,
+    );
+  }
+  const coveringGroups = new Set(covered.values());
+  for (const group of groups) {
+    if (!coveringGroups.has(group) && !overlapping.has(group)) {
+      problems.push(`the prop statement group "${group.match}" covers no property: it matches none the schema leaves to tsc that no statement of its own names`);
     }
   }
   for (const name of [...named].sort()) {
@@ -2471,6 +2589,48 @@ export function findUntypedPropMismatches(contract: CompiledContract): string[] 
     }
   }
   return problems;
+}
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-untyped-props:p1:inst-up-pair
+
+// Which property each group covers: a property the schema leaves to tsc,
+// that no explicit statement names, and that exactly one group's pattern
+// matches. A fully typed property the pattern also matches is left alone - a
+// pattern names a shape of name, not a claim about that property, so it
+// states nothing false about one it happens to match, and refusing it would
+// have every group spell out the typed names it must avoid.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-untyped-props:p1:inst-up-pair
+export function groupCoverage(
+  properties: Record<string, ContractProperty>,
+  statements: Record<string, PropStatement>,
+  groups: readonly PropStatementGroup[],
+): Map<string, PropStatementGroup> {
+  const covered = new Map<string, PropStatementGroup>();
+  if (groups.length === 0) return covered;
+  for (const [name, schema] of Object.entries(properties)) {
+    if (Object.prototype.hasOwnProperty.call(statements, name) || !leavesTypeToTsc(schema)) continue;
+    const matching = groups.filter((group) => groupMatches(group, name));
+    if (matching.length === 1) covered.set(name, matching[0]);
+  }
+  return covered;
+}
+
+function groupMatches(group: PropStatementGroup, name: string): boolean {
+  return groupPattern(group).test(name);
+}
+
+// A group's pattern as it is applied: its leading `^` anchors every
+// alternative, not only the first, so `^onClick|Close` matches `Close` and
+// not `onClose` - the pattern is read as `^(?:onClick|Close)`. Compiled once
+// per group; a pattern that does not parse throws here, which is what
+// admission refuses.
+const groupPatterns = new WeakMap<PropStatementGroup, RegExp>();
+export function groupPattern(group: PropStatementGroup): RegExp {
+  let pattern = groupPatterns.get(group);
+  if (pattern === undefined) {
+    pattern = new RegExp(`^(?:${group.match.replace(/^\^/, '')})`);
+    groupPatterns.set(group, pattern);
+  }
+  return pattern;
 }
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-untyped-props:p1:inst-up-pair
 
@@ -2610,6 +2770,21 @@ export function assertOverlayReferencesRealProps(component: string, overlay: Ove
   for (const prop of Object.keys(overlay.prop_statements ?? {})) {
     if (!declared.has(prop) && !api.has(prop)) {
       refuse(`overlay prop_statements references "${prop}", which is not a real prop`);
+    }
+  }
+  // A group names props by pattern, so what it can reference wrongly is its
+  // pattern: one that does not parse, or one no prop of the component has a
+  // name for.
+  for (const group of overlay.prop_statement_groups ?? []) {
+    let pattern: RegExp;
+    try {
+      pattern = groupPattern(group);
+    } catch {
+      refuse(`overlay prop_statement_groups match "${group.match}" is not a regular expression`);
+      continue;
+    }
+    if (![...declared, ...api].some((prop) => pattern.test(prop))) {
+      refuse(`overlay prop_statement_groups match "${group.match}" names no prop the component or the primitive declares`);
     }
   }
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-overlay-admission:p1:inst-oa-absent-prop
@@ -3026,6 +3201,12 @@ export function compileContractFrom(
     // is punctuation of the emitted text, not part of what the author states.
     properties[name] = { ...existing, description: `${existing.description} ${terminate(statement.states)} ${statement.because}` };
   }
+  // A group's statement goes into each property it covers, the same way:
+  // one property, one description, read once.
+  for (const [name, group] of groupCoverage(properties, overlay.prop_statements ?? {}, overlay.prop_statement_groups ?? [])) {
+    const existing = properties[name];
+    properties[name] = { ...existing, description: `${existing.description} ${terminate(group.states)} ${group.because}` };
+  }
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-untyped-props:p1:inst-up-emit
 
   const major = overlay.major ?? DEFAULT_CONTRACT_MAJOR;
@@ -3068,6 +3249,7 @@ export function compileContractFrom(
       type: 'object',
       properties,
       required,
+      ...closedFamiliesOf(extraction, elementSurface),
       unevaluatedProperties: OPEN_UNEVALUATED,
     },
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-close

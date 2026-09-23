@@ -174,6 +174,10 @@ describe('attachment: what the schema states', () => {
   it("the action's size default is the `sm` it writes into its own props, over Button's", () => {
     expect(units['attachment-action'].contract.props.properties.size.default).toBe('sm');
   });
+
+  it("the action's variant default is the `ghost` it reads through `??`, over Button's", () => {
+    expect(units['attachment-action'].contract.props.properties.variant.default).toBe('ghost');
+  });
 });
 
 describe('attachment: what the schema cannot assert', () => {

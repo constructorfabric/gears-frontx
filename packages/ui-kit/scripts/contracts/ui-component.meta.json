@@ -105,6 +105,14 @@
       },
       "description": "What each property that reaches this contract asserting nothing (or only part of its shape) actually states, and why nothing checks it further - a generic, a function, a live object, a React node. Absent for a component whose whole surface the provider-safe subset can express, which no described component is today."
     },
+    "prop_statement_groups": {
+      "type": "array",
+      "items": {
+        "$ref": "gts://gts.frontx.uikit.vocabulary.prop_statement_group.v1~"
+      },
+      "minItems": 1,
+      "description": "Statements about sets of partially typed properties at once, each carried here once and emitted into the description of every property it covers. Absent for a component whose statements are each about one property."
+    },
     "unexposed_parts": {
       "type": "array",
       "items": {

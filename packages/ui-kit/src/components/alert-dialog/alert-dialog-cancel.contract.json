@@ -81,7 +81,9 @@
   "x-uikit": {
     "partially_typed_props": {},
     "variant_sources": [],
-    "cannot_extract": []
+    "cannot_extract": [
+      "default: prop \"render\" is written before the rest spread as \"{<Button variant={variant} size={size} />}\", which is not a literal - the contract states no default for it"
+    ]
   },
   "props": {
     "title": "UiKit AlertDialogCancel",

@@ -35,8 +35,8 @@
   ],
   "invariants": [
     {
-      "id": "renders-a-ghost-small-button",
-      "text": "SidebarTrigger is the kit's Button rendered with `variant=\"ghost\"`, `size=\"sm\"` and a fixed panel icon; a `variant` or `size` passed to it replaces those two values."
+      "id": "renders-a-button-with-a-fixed-icon",
+      "text": "SidebarTrigger is the kit's Button with a fixed panel icon; a `variant` or `size` passed to it replaces the defaults."
     },
     {
       "id": "label-is-the-accessible-name",
@@ -123,7 +123,7 @@
           "avatar",
           "utility"
         ],
-        "default": "default"
+        "default": "ghost"
       },
       "size": {
         "type": "string",
@@ -132,7 +132,7 @@
           "sm",
           "lg"
         ],
-        "default": "default"
+        "default": "sm"
       },
       "className": {
         "type": "string"

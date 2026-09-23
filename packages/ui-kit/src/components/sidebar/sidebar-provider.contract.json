@@ -145,7 +145,9 @@
       }
     },
     "variant_sources": [],
-    "cannot_extract": []
+    "cannot_extract": [
+      "default: prop \"defaultOpen\" is read through `??` and also as its own value, so no one literal is its default - the contract states no default for it"
+    ]
   },
   "props": {
     "title": "UiKit SidebarProvider",

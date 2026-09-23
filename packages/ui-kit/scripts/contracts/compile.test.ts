@@ -22,19 +22,25 @@ import Ajv2020 from 'ajv/dist/2020';
 import { parse as parseYaml } from 'yaml';
 import { describe, expect, it } from 'vitest';
 
+import { classifyProps, diffOwnPropsSchema } from './check-lib';
 import {
   addContractTypes,
   assertHostElementStatement,
+  assertOverlayReferencesRealProps,
   buildComponentType,
   buildFamilyRoster,
   buildOverlaySchema,
   buildPropsAndRequired,
   buildVocabularyTypes,
+  closedFamiliesOf,
   collectOverlays,
   compileContractFrom,
   describeBranches,
   describeUnexpressedType,
   exportNameOf,
+  findUntypedPropMismatches,
+  groupCoverage,
+  groupPattern,
   leavesTypeToTsc,
   mountPointsAccepting,
   loadElementSurface,
@@ -681,7 +687,7 @@ describe('an overlay stating that nothing renders the forwarded attributes', () 
 
   it('is admitted for a component with no body of its own whose source names no element, and names what it leaves out', () => {
     expect(assertHostElementStatement('legend', statement, noBody)).toBe(
-      'host element: none - 1 React attribute(s) the props type admits are rendered onto no element (aria-label): the library renders them onto no element.',
+      'host element: none - 1 React attribute(s) the props type admits are not described by an element surface (aria-label): the library renders them onto no element.',
     );
   });
 
@@ -733,12 +739,186 @@ describe('a library alias compiled with the statement, end to end', () => {
     expect(contract.props.properties.align).toMatchObject({ type: 'string', enum: ['left', 'right'] });
     const notes = contract['x-uikit'].cannot_extract;
     expect(notes[notes.length - 1]).toMatch(
-      /^host element: none - \d+ React attribute\(s\) the props type admits are rendered onto no element \(aria-[a-z]+.*\): the library passes them/,
+      /^host element: none - \d+ React attribute\(s\) the props type admits are not described by an element surface \(aria-[a-z]+.*\): the library passes them/,
     );
   });
 
   it('is refused without the statement, naming the forwarded props', () => {
     const { host_element: _dropped, ...withoutStatement } = overlay;
     expect(() => compileContractFrom('legendish', 'legendish', legendish, withoutStatement)).toThrow(/no host element kind could be resolved/);
+  });
+});
+
+describe('a prop statement group', () => {
+  const untyped = { description: 'TS: () => void. The compiler emits one JSON type per property; this type is left to tsc.' };
+  const properties = { onAbort: untyped, onBlur: untyped, onClick: untyped, open: { type: 'boolean' } };
+  const handlers = { match: '^on[A-Z]', states: 'An event handler passed through', because: 'A function.' };
+  const clicks = { match: '^onClick$', states: 'The click handler', because: 'A function.' };
+  const contract = (statements: Record<string, { states: string; because: string }>, groups: (typeof handlers)[]) =>
+    ({ props: { properties }, prop_statements: statements, prop_statement_groups: groups }) as unknown as CompiledContract;
+
+  it('covers every partially typed prop it alone matches', () => {
+    // `open` is typed in full; `^on[A-Z]` does not reach it here, and a
+    // pattern that did would state nothing about it - the check is on what
+    // the schema leaves to tsc.
+    expect([...groupCoverage(properties, {}, [handlers]).keys()]).toEqual(['onAbort', 'onBlur', 'onClick']);
+    expect(findUntypedPropMismatches(contract({}, [handlers]))).toEqual([]);
+  });
+
+  it('skips a fully typed prop its pattern matches rather than refusing it', () => {
+    const everything = { match: '^o', states: 'Something', because: 'A reason.' };
+    expect([...groupCoverage(properties, {}, [everything]).keys()]).not.toContain('open');
+    expect(findUntypedPropMismatches(contract({}, [everything]))).toEqual([]);
+  });
+
+  it('gives way to an explicit statement about a prop it matches', () => {
+    const explicit = { onClick: { states: 'onClick is its own fact', because: 'A function.' } };
+    expect(groupCoverage(properties, explicit, [handlers]).has('onClick')).toBe(false);
+    expect(findUntypedPropMismatches(contract(explicit, [handlers]))).toEqual([]);
+  });
+
+  it('covers nothing two groups both match, and reports that overlap alone', () => {
+    // `^onClick$` covers nothing else, but it is no orphan: the overlap is
+    // its whole problem, reported once.
+    expect(findUntypedPropMismatches(contract({}, [handlers, clicks]))).toEqual([
+      '"onClick" is matched by 2 prop statement groups (^on[A-Z], ^onClick$) and named by no statement of its own - no one of them covers it',
+    ]);
+  });
+
+  it("does not take a prop named like an object's own built-ins as explicitly stated", () => {
+    const withBuiltins = { ...properties, constructor: untyped };
+    expect(groupCoverage(withBuiltins, {}, [{ match: '^constructor$', states: 's', because: 'b' }]).has('constructor')).toBe(true);
+  });
+
+  it('is an orphan when it covers no property, the way a statement about a typed prop is', () => {
+    const explicit = { onClick: { states: 'onClick is its own fact', because: 'A function.' } };
+    expect(findUntypedPropMismatches(contract(explicit, [handlers, clicks]))).toEqual([
+      'the prop statement group "^onClick$" covers no property: it matches none the schema leaves to tsc that no statement of its own names',
+    ]);
+  });
+
+  it('is refused at admission when its pattern does not parse or names no prop the component has', () => {
+    const extraction = extractComponent(fixture('untypeable-props.fixture.tsx'))[0];
+    const base = { deprecations: {}, accepts: { content: 'nothing' }, prop_statements: {} } as unknown as Parameters<typeof assertOverlayReferencesRealProps>[1];
+    expect(() =>
+      assertOverlayReferencesRealProps('picker', { ...base, prop_statement_groups: [{ match: '^(on', states: 's', because: 'b' }] }, extraction),
+    ).toThrow(/is not a regular expression/);
+    expect(() =>
+      assertOverlayReferencesRealProps('picker', { ...base, prop_statement_groups: [{ match: '^zzz', states: 's', because: 'b' }] }, extraction),
+    ).toThrow(/names no prop/);
+  });
+
+  it('anchors every alternative of its pattern, not only the first', () => {
+    const pattern = groupPattern({ match: '^onClick|Close', states: 's', because: 'b' });
+    expect(pattern.test('Close')).toBe(true);
+    expect(pattern.test('onClose')).toBe(false);
+    expect(pattern.test('onClick')).toBe(true);
+  });
+
+  it("is carried once in the contract and emitted into each covered property's description", () => {
+    const [extraction] = extractComponent(fixture('handler-props.fixture.tsx'));
+    const kbd = parseYaml(readFileSync(join(process.cwd(), 'src/components/kbd/kbd.contract.yaml'), 'utf8')) as Record<string, unknown>;
+    const overlay = parseOverlay('handlers', {
+      ...kbd,
+      component: 'handlers',
+      prop_statement_groups: [{ match: '^on[A-Z]', states: 'An event handler passed through', because: 'A function.' }],
+    });
+    const contract = compileContractFrom('handlers', 'handlers', extraction, overlay);
+    expect(contract.prop_statement_groups).toEqual([{ match: '^on[A-Z]', states: 'An event handler passed through', because: 'A function.' }]);
+    expect(contract.prop_statements).toBeUndefined();
+    for (const prop of ['onAbort', 'onBlur']) {
+      expect(contract.props.properties[prop].description, prop).toMatch(/An event handler passed through\. A function\.$/);
+    }
+    expect(findUntypedPropMismatches(contract)).toEqual([]);
+  });
+
+  it('must be anchored at the start, in the grammar of the element surfaces', () => {
+    const kbd = parseYaml(readFileSync(join(process.cwd(), 'src/components/kbd/kbd.contract.yaml'), 'utf8')) as Record<string, unknown>;
+    expect(() => parseOverlay('kbd', { ...kbd, prop_statement_groups: [{ match: 'on[A-Z]', states: 's', because: 'b' }] })).toThrow(/match/);
+  });
+});
+
+describe('a default the body gives through `??` or an attribute before the spread', () => {
+  const extractions = extractComponent(fixture('body-defaults.fixture.tsx'));
+  const byName = (name: string) => extractions.find((e) => e.name === name)!;
+
+  it("is the property's default, over the reused variant declaration's", () => {
+    expect(buildPropsAndRequired('coalesced', byName('Coalesced'), {}).properties.variant).toEqual({
+      type: 'string',
+      enum: ['default', 'ghost', 'solid'],
+      default: 'ghost',
+    });
+    const { properties } = buildPropsAndRequired('attribute-first', byName('AttributeFirst'), {});
+    expect(properties.variant.default).toBe('ghost');
+    expect(properties.size).toEqual({ type: 'number', default: 2 });
+    expect(properties.disabled).toEqual({ type: 'boolean', default: true });
+  });
+
+  it("leaves the variant declaration's default where the attribute follows the spread", () => {
+    expect(buildPropsAndRequired('attribute-after', byName('AttributeAfter'), {}).properties.variant.default).toBe('default');
+  });
+});
+
+describe('an element surface family the props type admits no name of', () => {
+  const divSurface = loadElementSurface('div');
+  const prop = (name: string) => ({ name, optional: true, typeText: 'string', expressed: undefined, declarationFile: '@types/react/index.d.ts' });
+  const noHandlers = {
+    axes: {},
+    ownProps: [prop('label')],
+    apiProps: [],
+    forwardedProps: [prop('id'), prop('title')],
+    admitsUnlistedProps: false,
+  };
+
+  it('is closed in the props body where no prop the type admits matches it', () => {
+    expect(Object.keys(closedFamiliesOf(noHandlers, divSurface).patternProperties ?? {})).toEqual(['^on[A-Z]']);
+  });
+
+  it('stays open where the type admits one of its names', () => {
+    expect(closedFamiliesOf({ ...noHandlers, forwardedProps: [prop('onClick')] }, divSurface)).toEqual({});
+  });
+
+  it('never closes a hyphenated family, which any component admits whatever its type declares', () => {
+    const closed = Object.keys(closedFamiliesOf(noHandlers, divSurface).patternProperties ?? {});
+    expect(closed).not.toContain('^aria-');
+    expect(closed).not.toContain('^data-');
+  });
+
+  it('closes nothing for a props type that admits names it does not list', () => {
+    const extractions = extractComponent(fixture('handler-props.fixture.tsx'));
+    const indexed = extractions.find((e) => e.name === 'Indexed')!;
+    expect(indexed.admitsUnlistedProps).toBe(true);
+    for (const name of ['TemplateIndexed', 'IntersectionIndexed']) {
+      expect(extractions.find((e) => e.name === name)!.admitsUnlistedProps, name).toBe(true);
+    }
+    // A number index admits no attribute name, so it leaves the families closable.
+    for (const name of ['Handlers', 'NumberIndexed']) {
+      expect(extractions.find((e) => e.name === name)!.admitsUnlistedProps, name).toBe(false);
+    }
+    expect(closedFamiliesOf({ ...noHandlers, admitsUnlistedProps: true }, divSurface)).toEqual({});
+  });
+
+  it('makes a closed name unchecked even where the surface declares it outright', () => {
+    const surface = { ...divSurface, properties: { ...(divSurface.properties as object), onClick: { description: 'x' } } };
+    const contract = { properties: {}, ...closedFamiliesOf(noHandlers, divSurface) };
+    expect(classifyProps({ onClick: () => undefined }, contract, surface).unchecked).toEqual(['onClick']);
+  });
+
+  it('closes nothing where the contract names no surface', () => {
+    expect(closedFamiliesOf(noHandlers, undefined)).toEqual({});
+  });
+
+  it('makes a name of the closed family unchecked rather than known in the classification report', () => {
+    const contract = { properties: { label: {} }, ...closedFamiliesOf(noHandlers, divSurface) };
+    const report = classifyProps({ label: 'x', onClick: () => undefined, 'aria-label': 'y' }, contract, divSurface);
+    expect(report.unchecked).toContain('onClick');
+    expect(report.known).toEqual(['aria-label', 'label']);
+  });
+
+  it('is a narrowing when a later revision closes it', () => {
+    const closed = { properties: {}, required: [], ...closedFamiliesOf(noHandlers, divSurface) };
+    const diff = diffOwnPropsSchema({ properties: {}, required: [] }, closed);
+    expect(diff.compatible).toBe(false);
+    expect(diff.narrowedProps).toEqual([{ prop: '^on[A-Z]', reason: 'the attribute family ^on[A-Z] is closed: its names are no longer accepted' }]);
   });
 });

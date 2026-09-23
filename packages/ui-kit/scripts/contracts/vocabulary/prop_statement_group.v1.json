@@ -1,0 +1,31 @@
+{
+  "$id": "gts://gts.frontx.uikit.vocabulary.prop_statement_group.v1~",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UiKit prop statement group",
+  "description": "One statement about every partially typed property whose name a pattern matches, for a set of properties that all state the same fact - a library's adapted event handlers. It covers a matched property no explicit statement names; an explicit statement about a property wins over it. A property two groups match and no explicit statement names is covered by neither, and a group that covers no property is an orphan, both reported by the same pairing that checks single statements. A fully typed property the pattern also matches is left alone: the pattern names a shape of name, not a claim about that property.",
+  "type": "object",
+  "properties": {
+    "match": {
+      "type": "string",
+      "minLength": 2,
+      "pattern": "^\\^",
+      "description": "A regular expression over property names, written anchored at the start (`^on[A-Z]`), in the syntax the element surfaces use for their attribute families but not their anchoring: here the anchor applies to every alternative, so `^a|b` is read as `^(?:a|b)`."
+    },
+    "states": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What every matched property holds, said once for all of them."
+    },
+    "because": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Why nothing checks them further."
+    }
+  },
+  "required": [
+    "match",
+    "states",
+    "because"
+  ],
+  "additionalProperties": false
+}

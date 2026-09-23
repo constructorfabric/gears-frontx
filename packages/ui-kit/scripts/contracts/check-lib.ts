@@ -241,6 +241,7 @@ export function diffElementSurface(oldSchema: ElementSurfaceSchemaLike, newSchem
 export interface OwnPropsSchemaLike {
   properties?: Record<string, ElementSurfacePropertyLike>;
   required?: string[];
+  patternProperties?: Record<string, unknown>;
 }
 
 export interface OwnPropsDiff {
@@ -337,6 +338,15 @@ export function diffOwnPropsSchema(
   }
 
   const newlyRequiredProps = [...newRequired].filter((name) => !oldRequired.has(name));
+
+  // A surface family closed now and open at the base rejects every name it
+  // matched, the same narrowing a removed pattern family on the surface is.
+  const oldClosed = new Set(Object.keys(oldSchema.patternProperties ?? {}));
+  for (const source of Object.keys(newSchema.patternProperties ?? {})) {
+    if (!oldClosed.has(source)) {
+      narrowedProps.push({ prop: source, reason: `the attribute family ${source} is closed: its names are no longer accepted` });
+    }
+  }
 
   return {
     removedProps,
@@ -954,6 +964,9 @@ export interface DirectoryExportEnrollment {
 // distance.
 export interface ContractPropsLike {
   properties?: Record<string, unknown>;
+  // Surface families the contract closes because its props type admits no
+  // name of them: a name one of them matches is not admitted by the surface.
+  patternProperties?: Record<string, unknown>;
 }
 
 export interface ElementSurfacePropsLike {
@@ -1009,7 +1022,16 @@ export function classifyProps(
 ): PropsClassification {
   const contractProps = Object.keys(contract.properties ?? {});
   const elementProps = new Set(Object.keys(surface?.properties ?? {}));
-  const patterns = Object.keys(surface?.patternProperties ?? {}).map((source) => new RegExp(source));
+  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-props-classification:p1:inst-pc-closed
+  // A family the contract closes admits none of its names, whether the
+  // surface admits them by that pattern or declares one outright.
+  const closedSources = Object.keys(contract.patternProperties ?? {});
+  const closedPatterns = closedSources.map((source) => new RegExp(source));
+  const isClosed = (name: string): boolean => closedPatterns.some((pattern) => pattern.test(name));
+  const patterns = Object.keys(surface?.patternProperties ?? {})
+    .filter((source) => !closedSources.includes(source))
+    .map((source) => new RegExp(source));
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-props-classification:p1:inst-pc-closed
   const declared = new Set(contractProps);
 
   const known: string[] = [];
@@ -1018,7 +1040,7 @@ export function classifyProps(
 
   for (const name of Object.keys(props).sort()) {
     // An exact declaration on either side accounts for the name outright.
-    if (declared.has(name) || elementProps.has(name)) {
+    if (declared.has(name) || (elementProps.has(name) && !isClosed(name))) {
       known.push(name);
       continue;
     }

@@ -137,6 +137,11 @@ export interface ComponentExtraction {
   // to check an overlay's host-element statement, which a bodied component
   // answers with its own props type instead.
   hasBody: boolean;
+  // Whether the props type admits names it does not list - a string index
+  // signature, or a template-literal key such as `on${string}` - on any
+  // branch. Such a type accepts a name no listed prop matches, so no pattern
+  // family of the element surface can be closed for it.
+  admitsUnlistedProps: boolean;
   // Human-readable labels for the VariantProps<typeof X> heritage this
   // component's own Props type declares - where its cva axes come from,
   // kept for readers of the compiled contract, not consumed by the compiler.
@@ -619,14 +624,22 @@ interface PropsTypeWalkResult {
 interface KeyFilter {
   readonly omitted: ReadonlySet<string>;
   readonly picked?: ReadonlySet<string>;
+  // A helper on the path whose key set this walk could not list (a type
+  // parameter): what it removes or keeps is unknown, so no axis below
+  // it can be told apart from one it removed. The text of that key argument.
+  readonly unreadable?: string;
 }
 
 const NO_KEY_FILTER: KeyFilter = { omitted: new Set() };
 
 function narrowFilter(filter: KeyFilter, kind: 'omit' | 'pick', keys: readonly string[]): KeyFilter {
-  if (kind === 'omit') return { omitted: new Set([...filter.omitted, ...keys]), picked: filter.picked };
+  if (kind === 'omit') return { ...filter, omitted: new Set([...filter.omitted, ...keys]) };
   const picked = filter.picked === undefined ? new Set(keys) : new Set(keys.filter((key) => filter.picked!.has(key)));
-  return { omitted: filter.omitted, picked };
+  return { ...filter, picked };
+}
+
+function unreadableFilter(filter: KeyFilter, keyText: string): KeyFilter {
+  return { ...filter, unreadable: filter.unreadable ?? keyText };
 }
 
 function keyAllowed(filter: KeyFilter | undefined, key: string): boolean {
@@ -637,6 +650,8 @@ function keyAllowed(filter: KeyFilter | undefined, key: string): boolean {
 // The same keys read off an instantiated helper's key argument: a string
 // literal type or a union of them.
 function literalKeysOfType(type: ts.Type): string[] | undefined {
+  // `never` (`Omit<X, never>`, `keyof {}`) names no key: it removes nothing.
+  if (type.flags & ts.TypeFlags.Never) return [];
   const members = type.isUnion() ? type.types : [type];
   const keys: string[] = [];
   for (const member of members) {
@@ -647,8 +662,8 @@ function literalKeysOfType(type: ts.Type): string[] | undefined {
 }
 
 // The keys a helper's key argument names, where it names them as string
-// literals (`'size'`, `'size' | 'type'`); undefined for `keyof X` or anything
-// else, which removes or keeps what this walk cannot list.
+// literals (`'size'`, `'size' | 'type'`); undefined for any other node, whose
+// keys the caller then asks the checker for.
 function literalKeysOf(node: ts.TypeNode): string[] | undefined {
   const members = ts.isUnionTypeNode(node) ? node.types : [node];
   const keys: string[] = [];
@@ -900,14 +915,35 @@ function walkPropsType(
     // What the helper removes (Omit) or keeps (Pick) is not an axis of this
     // component, whatever a variant declaration further down says: an axis
     // removed and redeclared is the component's own prop.
-    const keys = args.length > 1 ? literalKeysOf(args[1]) : undefined;
-    const narrowed = keys === undefined ? filter : narrowFilter(filter, shape.helper === 'Pick' ? 'pick' : 'omit', keys);
+    // Read off the node, and through the checker where the node names the
+    // keys another way (`type Keys = 'variant'`); only a key set neither can
+    // list - a type parameter, say - is unreadable.
+    const keys = args.length > 1 ? (literalKeysOf(args[1]) ?? literalKeysOfType(checker.getTypeFromTypeNode(args[1]))) : undefined;
+    const narrowed =
+      keys !== undefined
+        ? narrowFilter(filter, shape.helper === 'Pick' ? 'pick' : 'omit', keys)
+        : args.length > 1
+          ? unreadableFilter(filter, args[1].getText())
+          : filter;
     walkPropsType(args[0], checker, result, visited, depth + 1, narrowed);
     return;
   }
   if (shape?.kind === 'variant-props' && args && args.length > 0 && ts.isTypeQueryNode(args[0])) {
     result.variantSources.push(args[0].exprName);
     if (filter !== NO_KEY_FILTER) result.axisFilters.set(args[0].exprName, filter);
+    // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
+    // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+    if (filter.unreadable !== undefined) {
+      // Prefixed `cva:` so the compile is refused: with the key set unknown,
+      // an axis the path removed would be stated as the component's, the
+      // same loss the axis rules exist to prevent, in the other direction.
+      result.cannotExtract.push(
+        `cva: "${args[0].getText()}" is reached through an Omit or Pick whose keys (${filter.unreadable}) are not ` +
+          `string literals - which of its axes the component takes cannot be read`,
+      );
+    }
+    // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
+    // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
     return;
   }
   if (namesHostElement(shape) && args?.length) {
@@ -1200,8 +1236,17 @@ function walkResolvedType(
   if (shape?.kind === 'omit-pick' && typeArguments.length > 0) {
     // The instantiated helper's key argument is the same keys as types, and
     // narrows what later axes may be taken exactly as walkPropsType's does.
+    // Defensive: an instantiated Omit or Pick reaching here holds its keys as
+    // resolved literal types, so an unreadable set would take a type argument
+    // still open at this point, which a component's own props type does not
+    // leave. Kept so that such a set refuses rather than keeps every axis.
     const keys = typeArguments.length > 1 ? literalKeysOfType(typeArguments[1]) : undefined;
-    const narrowed = keys === undefined ? filter : narrowFilter(filter, shape.helper === 'Pick' ? 'pick' : 'omit', keys);
+    const narrowed =
+      keys !== undefined
+        ? narrowFilter(filter, shape.helper === 'Pick' ? 'pick' : 'omit', keys)
+        : typeArguments.length > 1
+          ? unreadableFilter(filter, stripModuleSpecifiers(checker.typeToString(typeArguments[1])))
+          : filter;
     walkResolvedType(typeArguments[0], node, checker, result, visited, depth + 1, narrowed);
     return;
   }
@@ -1917,6 +1962,355 @@ function destructuredDefaults(param: ts.ParameterDeclaration, cannotExtract: str
   return defaults;
 }
 
+// The two other ways a body gives a prop its default, read only where the
+// source leaves no doubt that the literal is what a caller who passes nothing
+// gets, and the caller's own value what one who passes it gets:
+//
+//   - a destructured binding with no initializer that the body reads only as
+//     `binding ?? <literal>` - every read, so no path sees the raw value;
+//   - a literal attribute on the element the body returns, written before the
+//     spread of the rest binding (or of the whole props parameter), for a prop
+//     that is not destructured and so reaches the element only through that
+//     spread - and not written again after it, which would override the caller.
+//
+// A read of the same shape that falls short - a `??` whose right side is not
+// a literal, a binding read raw somewhere as well, an attribute on an element
+// that is not the one returned - is noted rather than stated.
+function bodyDefaults(
+  param: ts.ParameterDeclaration,
+  body: ts.Node,
+  checker: ts.TypeChecker,
+  propNames: ReadonlySet<string>,
+  cannotExtract: string[],
+): Record<string, PropDefault> {
+  const defaults: Record<string, PropDefault> = {};
+  // A parameter taken whole (`props`) and spread whole: every prop arrives
+  // through it, as through a rest binding, and none is destructured.
+  if (ts.isIdentifier(param.name)) {
+    const whole = checker.getSymbolAtLocation(param.name);
+    return whole === undefined ? defaults : attributesBeforeRest(body, whole, new Set(), propNames, checker, cannotExtract);
+  }
+  if (!ts.isObjectBindingPattern(param.name)) return defaults;
+  const destructured = new Set<string>();
+  let rest: ts.Symbol | undefined;
+  for (const element of param.name.elements) {
+    if (element.dotDotDotToken !== undefined) {
+      if (ts.isIdentifier(element.name)) rest = checker.getSymbolAtLocation(element.name);
+      continue;
+    }
+    const key = element.propertyName ?? element.name;
+    const name = ts.isIdentifier(key) || ts.isStringLiteral(key) ? key.text : undefined;
+    if (name === undefined) continue;
+    destructured.add(name);
+    if (element.initializer !== undefined || !ts.isIdentifier(element.name)) continue;
+    // A default only for a prop the contract states, as for an attribute:
+    // one coalesced for a forwarded attribute belongs to the element's
+    // surface, which states no defaults.
+    if (!propNames.has(name)) continue;
+    const binding = checker.getSymbolAtLocation(element.name);
+    if (binding === undefined) continue;
+    const coalesced = coalescedDefault(binding, element.name, body, checker);
+    if (coalesced === undefined) continue;
+    if (coalesced.kind === 'literal') defaults[name] = coalesced.value;
+    else cannotExtract.push(`default: prop "${name}" ${coalesced.why} - the contract states no default for it`);
+  }
+  if (rest !== undefined) {
+    for (const [name, value] of Object.entries(attributesBeforeRest(body, rest, destructured, propNames, checker, cannotExtract))) {
+      defaults[name] = value;
+    }
+  }
+  return defaults;
+}
+
+type CoalescedDefault = { kind: 'literal'; value: PropDefault } | { kind: 'unsure'; why: string };
+
+// How the body reads one destructured binding: undefined when it never reads
+// it through `??`, the literal when every read is `binding ?? <that literal>`.
+function coalescedDefault(
+  binding: ts.Symbol,
+  declaration: ts.Identifier,
+  body: ts.Node,
+  checker: ts.TypeChecker,
+): CoalescedDefault | undefined {
+  const values: PropDefault[] = [];
+  let raw = false;
+  let reassigned: string | undefined;
+  let coalescingAssignment = false;
+  let unreadable: string | undefined;
+  const visit = (node: ts.Node): void => {
+    // A shorthand property (`cva({ variant })`) reads the binding too, but
+    // the checker's symbol at that name is the property's, not the binding's.
+    const symbol =
+      ts.isIdentifier(node) && ts.isShorthandPropertyAssignment(node.parent) && node.parent.name === node
+        ? checker.getShorthandAssignmentValueSymbol(node.parent)
+        : ts.isIdentifier(node)
+          ? checker.getSymbolAtLocation(node)
+          : undefined;
+    if (ts.isIdentifier(node) && node !== declaration && symbol === binding) {
+      const parent = node.parent;
+      const operator = ts.isBinaryExpression(parent) && parent.left === node ? parent.operatorToken.kind : undefined;
+      if (
+        operator !== undefined &&
+        operator >= ts.SyntaxKind.FirstAssignment &&
+        operator <= ts.SyntaxKind.LastAssignment
+      ) {
+        // `variant = ...`, `variant ??= 'solid'`: the body gives the binding a
+        // value of its own, which a read of the parameter no longer shows. A
+        // `??=` is itself a default written for the binding.
+        reassigned = parent.getText();
+        if (operator === ts.SyntaxKind.QuestionQuestionEqualsToken) coalescingAssignment = true;
+      } else if (operator === ts.SyntaxKind.QuestionQuestionToken && ts.isBinaryExpression(parent)) {
+        const value = literalValue(parent.right);
+        if (value === undefined) unreadable = parent.right.getText();
+        else values.push(value.value);
+      } else {
+        raw = true;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(body);
+  // Noted only where a default was read or written at all: a binding the
+  // body reassigns and never coalesces (`if (size === undefined) size = 2`)
+  // has no default to doubt, while `size ??= 2` writes one.
+  if (reassigned !== undefined && (values.length > 0 || unreadable !== undefined || coalescingAssignment)) {
+    return { kind: 'unsure', why: `is reassigned in the body (\`${reassigned}\`), so no read of the parameter is its default` };
+  }
+  if (reassigned !== undefined) return undefined;
+  // Only literal fallbacks make a default. A computed one alone (`?? other`,
+  // `?? defaultValue`) is a fallback chain or a controlled-value lookup, not a
+  // default, so it records nothing; beside a literal one it leaves no single
+  // default, which is noted.
+  if (values.length === 0) return undefined;
+  if (unreadable !== undefined) {
+    return { kind: 'unsure', why: `is read through \`??\` with a literal and with \`?? ${unreadable}\`, so no one literal is its default` };
+  }
+  if (raw) return { kind: 'unsure', why: 'is read through `??` and also as its own value, so no one literal is its default' };
+  const distinct = [...new Set(values.map((value) => JSON.stringify(value)))];
+  if (distinct.length > 1) return { kind: 'unsure', why: `is read through \`??\` with ${distinct.length} different literals` };
+  return { kind: 'literal', value: values[0] };
+}
+
+// The literal attributes written before the rest spread on the element the
+// body returns, for props the rest carries. The element must be the one
+// every return renders, so its attributes are what the component renders.
+function attributesBeforeRest(
+  body: ts.Node,
+  rest: ts.Symbol,
+  destructured: ReadonlySet<string>,
+  propNames: ReadonlySet<string>,
+  checker: ts.TypeChecker,
+  cannotExtract: string[],
+): Record<string, PropDefault> {
+  const defaults: Record<string, PropDefault> = {};
+  const { elements: returned, ambiguous } = returnedElements(body);
+  const spreadsRest = (attribute: ts.JsxAttributeLike): boolean =>
+    ts.isJsxSpreadAttribute(attribute) &&
+    ts.isIdentifier(attribute.expression) &&
+    checker.getSymbolAtLocation(attribute.expression) === rest;
+  // An attribute that could be a default: one naming a prop the contract
+  // states, the rest carries, and that is written before the rest spread.
+  const candidateBeforeRest = (element: ts.JsxElement | ts.JsxSelfClosingElement): boolean => {
+    const attributes = attributesOf(element);
+    const restAt = attributes.findIndex(spreadsRest);
+    return attributes
+      .slice(0, Math.max(restAt, 0))
+      .some(
+        (attribute) =>
+          ts.isJsxAttribute(attribute) &&
+          ts.isIdentifier(attribute.name) &&
+          propNames.has(attribute.name.text) &&
+          !destructured.has(attribute.name.text),
+      );
+  };
+  // Every element in the body's own markup that spreads the rest after a
+  // candidate attribute - under a conditional, an `as` expression, a nested
+  // element - not only those returned outright, so one the walk cannot state
+  // is still noted.
+  const spreading = elementsIn(body).filter(candidateBeforeRest);
+  const onlyReturned = returned.length === 1 && !ambiguous ? returned[0] : undefined;
+  if (onlyReturned === undefined || spreading.some((element) => element !== onlyReturned)) {
+    if (spreading.length > 0) {
+      cannotExtract.push(
+        'default: the rest props are spread on an element that is not the one element the body returns - under a ' +
+          'conditional, beside another return, or nested inside it - so literal attributes written before the spread ' +
+          'are not stated as defaults',
+      );
+    }
+    return defaults;
+  }
+  const attributes = attributesOf(onlyReturned);
+  const restAt = attributes.findIndex(spreadsRest);
+  if (restAt === -1) {
+    // The rest spread under a conditional (`{...(off ? {} : props)}`): what
+    // reaches the element depends on the condition, so nothing before it is
+    // a default, and a candidate there is noted.
+    const conditional = attributes.findIndex((attribute) => ts.isJsxSpreadAttribute(attribute) && mentions(attribute, rest, checker));
+    const candidates = attributes
+      .slice(0, Math.max(conditional, 0))
+      .some((attribute) => ts.isJsxAttribute(attribute) && ts.isIdentifier(attribute.name) && propNames.has(attribute.name.text));
+    if (conditional !== -1 && candidates) {
+      cannotExtract.push(
+        'default: the rest props are spread conditionally on the returned element - literal attributes written before ' +
+          'that spread are not stated as defaults',
+      );
+    }
+    return defaults;
+  }
+  // Another spread after the rest may carry any of the names written before
+  // it, and then it, not the caller, decides the value.
+  if (attributes.slice(restAt + 1).some(ts.isJsxSpreadAttribute)) {
+    if (candidateBeforeRest(onlyReturned)) {
+      cannotExtract.push(
+        'default: another spread follows the rest spread on the returned element - literal attributes written before ' +
+          'the rest are not stated as defaults',
+      );
+    }
+    return defaults;
+  }
+  const touched = otherUses(body, rest, attributes[restAt], checker);
+  for (const attribute of attributes.slice(0, restAt)) {
+    if (!ts.isJsxAttribute(attribute) || !ts.isIdentifier(attribute.name)) continue;
+    const name = attribute.name.text;
+    // Not a prop of the component (removed with Omit, say): the rest cannot
+    // carry it, so the attribute is the element's own and no default.
+    if (destructured.has(name) || !propNames.has(name)) continue;
+    // The body reads or writes the prop through the rest (or the whole props
+    // object) somewhere else, or hands the object to something that can: the
+    // value the element receives, or what the component does with it, is not
+    // settled by the attribute alone.
+    if (touched === 'all' || touched.has(name)) {
+      cannotExtract.push(
+        `default: prop "${name}" is also read or written through the rest binding in the body - the literal attribute ` +
+          `before the spread is not stated as its default`,
+      );
+      continue;
+    }
+    const writtenAgain = attributes
+      .slice(restAt + 1)
+      .some((later) => ts.isJsxAttribute(later) && ts.isIdentifier(later.name) && later.name.text === name);
+    if (writtenAgain) continue;
+    const initializer = attribute.initializer;
+    const expression =
+      initializer === undefined
+        ? undefined
+        : ts.isStringLiteral(initializer)
+          ? initializer
+          : ts.isJsxExpression(initializer)
+            ? initializer.expression
+            : undefined;
+    const value = initializer === undefined ? { value: true } : expression === undefined ? undefined : literalValue(expression);
+    if (value === undefined) {
+      cannotExtract.push(
+        `default: prop "${name}" is written before the rest spread as "${initializer?.getText() ?? ''}", which is not a ` +
+          `literal - the contract states no default for it`,
+      );
+      continue;
+    }
+    defaults[name] = value.value;
+  }
+  return defaults;
+}
+
+// The JSX elements the body's own returns render as their outermost element
+// (a concise arrow body counts as a return), and whether every return is one.
+// Only a return that renders nothing - none at all, `null`, `undefined`,
+// `false` - may sit beside the element without casting doubt on it: a
+// fragment, a call, an identifier, a conditional or an `as` expression renders
+// something this walk does not read, and on that path the literal attribute
+// is not what a caller gets.
+function returnedElements(body: ts.Node): { elements: (ts.JsxElement | ts.JsxSelfClosingElement)[]; ambiguous: boolean } {
+  const expressions: (ts.Expression | undefined)[] = [];
+  if (!ts.isBlock(body)) expressions.push(ts.isExpression(body) ? body : undefined);
+  else {
+    const visit = (node: ts.Node): void => {
+      // Every nested function-like body - an arrow, a method, an accessor or a
+      // class member - and every class returns for itself, not for the component.
+      if (ts.isFunctionLike(node) || ts.isClassLike(node)) return;
+      if (ts.isReturnStatement(node)) expressions.push(node.expression);
+      ts.forEachChild(node, visit);
+    };
+    ts.forEachChild(body, visit);
+  }
+  const elements: (ts.JsxElement | ts.JsxSelfClosingElement)[] = [];
+  let ambiguous = false;
+  for (const expression of expressions) {
+    let inner = expression;
+    while (inner !== undefined && ts.isParenthesizedExpression(inner)) inner = inner.expression;
+    if (inner !== undefined && (ts.isJsxElement(inner) || ts.isJsxSelfClosingElement(inner))) elements.push(inner);
+    else if (!rendersNothing(inner)) ambiguous = true;
+  }
+  return { elements, ambiguous };
+}
+
+function rendersNothing(expr: ts.Expression | undefined): boolean {
+  if (expr === undefined) return true;
+  if (expr.kind === ts.SyntaxKind.NullKeyword || expr.kind === ts.SyntaxKind.FalseKeyword) return true;
+  return ts.isIdentifier(expr) && expr.text === 'undefined';
+}
+
+// Whether a node mentions a symbol anywhere inside it.
+function mentions(node: ts.Node, symbol: ts.Symbol, checker: ts.TypeChecker): boolean {
+  let found = false;
+  const visit = (child: ts.Node): void => {
+    if (found) return;
+    if (ts.isIdentifier(child) && checker.getSymbolAtLocation(child) === symbol) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(child, visit);
+  };
+  visit(node);
+  return found;
+}
+
+// Every use of the rest (or whole props) binding other than its spread onto
+// the returned element: the prop names read or written through it
+// (`rest.variant`, `rest['variant']`), or `all` when the body uses the object
+// itself - reassigns it, hands it to a call, copies it, or reads it in a way
+// that names no single prop - since then any prop it carries may be read or
+// changed. Nested functions count: a closure over the object is a use of it.
+function otherUses(body: ts.Node, rest: ts.Symbol, spread: ts.JsxAttributeLike, checker: ts.TypeChecker): Set<string> | 'all' {
+  const names = new Set<string>();
+  let all = false;
+  const visit = (node: ts.Node): void => {
+    if (all || node === spread) return;
+    if (ts.isIdentifier(node) && checker.getSymbolAtLocation(node) === rest && !ts.isBindingElement(node.parent) && !ts.isParameter(node.parent)) {
+      const parent = node.parent;
+      if (ts.isPropertyAccessExpression(parent) && parent.expression === node) names.add(parent.name.text);
+      else if (
+        ts.isElementAccessExpression(parent) &&
+        parent.expression === node &&
+        (ts.isStringLiteral(parent.argumentExpression) || ts.isNoSubstitutionTemplateLiteral(parent.argumentExpression))
+      ) {
+        names.add(parent.argumentExpression.text);
+      } else all = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  ts.forEachChild(body, visit);
+  return all ? 'all' : names;
+}
+
+// Every JSX element in the body's own markup, outside nested function-like
+// bodies and classes, which render for themselves.
+function elementsIn(body: ts.Node): (ts.JsxElement | ts.JsxSelfClosingElement)[] {
+  const elements: (ts.JsxElement | ts.JsxSelfClosingElement)[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isFunctionLike(node) || ts.isClassLike(node)) return;
+    if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) elements.push(node);
+    ts.forEachChild(node, visit);
+  };
+  ts.forEachChild(body, visit);
+  if (ts.isJsxElement(body) || ts.isJsxSelfClosingElement(body)) elements.unshift(body);
+  return elements;
+}
+
+function attributesOf(element: ts.JsxElement | ts.JsxSelfClosingElement): readonly ts.JsxAttributeLike[] {
+  return (ts.isJsxElement(element) ? element.openingElement : element).attributes.properties;
+}
+
 function literalValue(expr: ts.Expression): { value: PropDefault } | undefined {
   if (ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr)) return { value: expr.text };
   if (ts.isNumericLiteral(expr)) return { value: Number(expr.text) };
@@ -1977,7 +2371,9 @@ function extractFromSource(source: ts.SourceFile, program: ts.Program): Componen
       let defaults: Record<string, string> = {};
       let propDefaults: Record<string, PropDefault> = {};
       // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
-      const hasBody = componentBody(candidate, checker) !== undefined;
+      const candidateBody = componentBody(candidate, checker);
+      const hasBody = candidateBody !== undefined;
+      let admitsUnlistedProps = false;
       // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
 
       if (param) {
@@ -1989,6 +2385,16 @@ function extractFromSource(source: ts.SourceFile, program: ts.Program): Componen
         const instantiated =
           shape.form === 'alias' ? checker.getTypeOfSymbolAtLocation(shape.signature.getParameters()[0], param) : declaredType;
         const paramType = instantiated;
+        const nonNullable = checker.getNonNullableType(paramType);
+        // Only a key a name can be - a string, or a template literal such as
+        // `on${string}`; a number or symbol index admits no attribute name.
+        admitsUnlistedProps = (nonNullable.isUnion() ? nonNullable.types : [nonNullable]).some((branch) =>
+          checker
+            .getIndexInfosOfType(branch)
+            .some(
+              (info) => (info.keyType.flags & (ts.TypeFlags.String | ts.TypeFlags.TemplateLiteral | ts.TypeFlags.StringMapping)) !== 0,
+            ),
+        );
         const walk: PropsTypeWalkResult = { kind: undefined, variantSources: [], axisFilters: new Map(), cannotExtract: [] };
         if (param.type && instantiated !== declaredType) {
           walkResolvedType(instantiated, param.type, checker, walk, new Set(), 0);
@@ -2096,6 +2502,23 @@ function extractFromSource(source: ts.SourceFile, program: ts.Program): Componen
         }
       }
 
+      // The defaults the body gives props other than by a destructured
+      // default, read once the props are known: an attribute the returned
+      // element carries is a default only for a prop the contract states - an
+      // axis, a declared prop, a wrapped library's. A forwarded attribute
+      // belongs to the element's surface, which states no defaults, so an
+      // attribute written for one (`aria-label={label}`) is neither stated
+      // nor noted.
+      // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-axes
+      const body = shape.form === 'body' ? candidateBody : undefined;
+      if (param && body !== undefined) {
+        const propNames = new Set([...Object.keys(axes), ...[...ownProps, ...apiProps].map((prop) => prop.name)]);
+        for (const [name, value] of Object.entries(bodyDefaults(param, body, checker, propNames, cannotExtract))) {
+          if (!Object.prototype.hasOwnProperty.call(propDefaults, name)) propDefaults[name] = value;
+        }
+      }
+      // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-axes
+
       // Sorted by name before returning - N3: `checker.getPropertiesOfType`'s
       // iteration order is an undocumented TypeScript-internal detail (its
       // own symbol-table/intersection-merge order), not a fact about the
@@ -2122,6 +2545,7 @@ function extractFromSource(source: ts.SourceFile, program: ts.Program): Componen
         unclassifiedProps,
         elementKind,
         hasBody,
+        admitsUnlistedProps,
         variantSourceLabels,
         cannotExtract,
       });

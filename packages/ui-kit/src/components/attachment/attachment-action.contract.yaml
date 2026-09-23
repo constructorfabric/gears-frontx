@@ -26,10 +26,9 @@ accepts:
   icons_via: icon
 
 invariants:
-  - id: ghost-when-unset
+  - id: null-variant-is-ghost
     text: >-
-      AttachmentAction renders Button's `ghost` variant when `variant` is
-      not given or is null.
+      An explicit `variant={null}` also renders Button's `ghost` variant.
   - id: icon-only-needs-the-icon-prop-and-a-label
     text: >-
       The button is squared as icon-only only when the icon is passed

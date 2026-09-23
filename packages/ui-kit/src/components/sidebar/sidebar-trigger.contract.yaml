@@ -22,11 +22,10 @@ accepts:
   content: nothing
 
 invariants:
-  - id: renders-a-ghost-small-button
+  - id: renders-a-button-with-a-fixed-icon
     text: >-
-      SidebarTrigger is the kit's Button rendered with `variant="ghost"`,
-      `size="sm"` and a fixed panel icon; a `variant` or `size` passed to it
-      replaces those two values.
+      SidebarTrigger is the kit's Button with a fixed panel icon; a
+      `variant` or `size` passed to it replaces the defaults.
   - id: label-is-the-accessible-name
     text: >-
       `label` becomes the button's `aria-label`; an explicit `aria-label`

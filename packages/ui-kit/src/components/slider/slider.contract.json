@@ -207,7 +207,8 @@
           "center",
           "edge",
           "edge-client-only"
-        ]
+        ],
+        "default": "edge"
       },
       "thumbCollisionBehavior": {
         "type": "string",

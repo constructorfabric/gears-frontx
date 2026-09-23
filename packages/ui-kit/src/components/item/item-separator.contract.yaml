@@ -22,12 +22,10 @@ accepts:
   content: nothing
 
 invariants:
-  - id: horizontal-with-block-margin
+  - id: block-margin-on-top-of-the-gap
     text: >-
-      ItemSeparator passes `orientation="horizontal"` to Separator before
-      the consumer's own props, so it is horizontal unless the consumer
-      passes an `orientation` of its own; it adds a var(--space-2) margin
-      above and below on top of the group's gap.
+      ItemSeparator adds a var(--space-2) margin above and below on top of
+      the group's gap.
 
 anti_patterns:
   - dont: Leave a separator exposed to assistive technology inside the group's list
