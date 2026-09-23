@@ -5,11 +5,12 @@
 # how a reader (or the conformance test) walks between them.
 #
 # Machine-extractable facts (prop list, the `variant` axis and its default,
-# `density` and `label`, the forwarded surface) do NOT belong here: the
-# compiler takes those from table.tsx and rejects an overlay that restates
-# them. Table wraps no primitive: every part renders its matching native
-# element, so every kit prop in the family is stated fully by the schema
-# and no member carries prop_statements.
+# `density`, `label` and the two container props, the forwarded surface) do
+# NOT belong here: the compiler takes those from table.tsx and rejects an
+# overlay that restates them. Table wraps no primitive: every part renders
+# its matching native element, so the schema states every kit prop in the
+# family fully except `containerStyle`, whose CSSProperties type has no JSON
+# type; that one prop is the only prop_statement in the family.
 component: table
 
 intent: Lay out tabular data as a styled native HTML table, rows that share the same columns.
@@ -46,10 +47,12 @@ accepts:
 invariants:
   - id: props-land-on-the-table-not-the-wrapper
     text: >-
-      Table renders a horizontally scrolling div around the <table>. Every
-      prop other than `label`, `density` and `variant` - className,
-      style, aria attributes, event handlers - lands on the inner <table>;
-      the wrapper takes none of them.
+      Table renders a scrolling div around the <table>: it scrolls
+      horizontally when the table is wider than it, and vertically once it
+      is given a height. `label`, `containerClassName` (merged after the
+      wrapper's kit class) and `containerStyle` land on that wrapper. Every
+      other prop apart from `density` and `variant` - className, style,
+      aria attributes, event handlers - lands on the inner <table>.
   - id: wrapper-is-always-a-focus-stop
     text: >-
       The wrapper always carries tabIndex 0, whether or not the table
@@ -72,10 +75,14 @@ anti_patterns:
     do_instead: >-
       Pass `label` to Table - the focusable scroll wrapper is Table's own,
       and a name on an outer div lands on an element that never takes focus
-  - dont: Pass a max-height or overflow-y through Table's style to cap a long table
+  - dont: Cap a long table through Table's style or through an outer div of your own
     do_instead: >-
-      Wrap Table in your own div with max-height and overflow-y; that div
-      scrolls vertically while Table's wrapper scrolls horizontally
+      Put the max-height on Table's own scroll wrapper through
+      `containerStyle` or `containerClassName`. `style` lands on the
+      <table>, which does not scroll, and a sticky header sticks to its
+      nearest scrolling ancestor, which is that wrapper; with the height on
+      an outer div the wrapper never scrolls vertically, so the collection
+      view's header scrolls away with the rows
 
 deprecations: {}
 
@@ -89,12 +96,20 @@ attestations:
   rtl:
     outcome: unknown
 
+prop_statements:
+  containerStyle:
+    states: containerStyle is a plain React style object applied to the scroll wrapper, not to the <table>
+    because: >-
+      TableProps types it as React's `CSSProperties`; the compiler has no
+      JSON type for `CSSProperties`, so nothing is asserted. The wrapper's
+      own styling goes through table.module.css, not through this.
+
 unexposed_parts:
-  - part: the horizontal scroll wrapper div
+  - part: the scroll wrapper div
     reason: >-
-      Table renders a div around its <table> with overflow-x auto and
-      tabIndex 0; it is not exported, and `label` is the only prop that
-      reaches it.
+      Table renders a div around its <table> with overflow auto and
+      tabIndex 0; it is not exported, and `label`, `containerClassName`
+      and `containerStyle` are the only props that reach it.
 
 examples:
   good:

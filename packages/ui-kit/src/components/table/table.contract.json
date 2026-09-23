@@ -44,7 +44,7 @@
   "invariants": [
     {
       "id": "props-land-on-the-table-not-the-wrapper",
-      "text": "Table renders a horizontally scrolling div around the <table>. Every prop other than `label`, `density` and `variant` - className, style, aria attributes, event handlers - lands on the inner <table>; the wrapper takes none of them."
+      "text": "Table renders a scrolling div around the <table>: it scrolls horizontally when the table is wider than it, and vertically once it is given a height. `label`, `containerClassName` (merged after the wrapper's kit class) and `containerStyle` land on that wrapper. Every other prop apart from `density` and `variant` - className, style, aria attributes, event handlers - lands on the inner <table>."
     },
     {
       "id": "wrapper-is-always-a-focus-stop",
@@ -61,8 +61,8 @@
       "do_instead": "Pass `label` to Table - the focusable scroll wrapper is Table's own, and a name on an outer div lands on an element that never takes focus"
     },
     {
-      "dont": "Pass a max-height or overflow-y through Table's style to cap a long table",
-      "do_instead": "Wrap Table in your own div with max-height and overflow-y; that div scrolls vertically while Table's wrapper scrolls horizontally"
+      "dont": "Cap a long table through Table's style or through an outer div of your own",
+      "do_instead": "Put the max-height on Table's own scroll wrapper through `containerStyle` or `containerClassName`. `style` lands on the <table>, which does not scroll, and a sticky header sticks to its nearest scrolling ancestor, which is that wrapper; with the height on an outer div the wrapper never scrolls vertically, so the collection view's header scrolls away with the rows"
     }
   ],
   "deprecations": {},
@@ -75,10 +75,16 @@
       "outcome": "unknown"
     }
   },
+  "prop_statements": {
+    "containerStyle": {
+      "states": "containerStyle is a plain React style object applied to the scroll wrapper, not to the <table>",
+      "because": "TableProps types it as React's `CSSProperties`; the compiler has no JSON type for `CSSProperties`, so nothing is asserted. The wrapper's own styling goes through table.module.css, not through this."
+    }
+  },
   "unexposed_parts": [
     {
-      "part": "the horizontal scroll wrapper div",
-      "reason": "Table renders a div around its <table> with overflow-x auto and tabIndex 0; it is not exported, and `label` is the only prop that reaches it."
+      "part": "the scroll wrapper div",
+      "reason": "Table renders a div around its <table> with overflow auto and tabIndex 0; it is not exported, and `label`, `containerClassName` and `containerStyle` are the only props that reach it."
     }
   ],
   "examples": {
@@ -114,7 +120,12 @@
     ]
   },
   "x-uikit": {
-    "partially_typed_props": {},
+    "partially_typed_props": {
+      "containerStyle": {
+        "typeText": "CSSProperties | undefined",
+        "optional": true
+      }
+    },
     "variant_sources": [
       "VariantProps<typeof tableVariants>"
     ],
@@ -131,6 +142,12 @@
           "collection"
         ],
         "default": "default"
+      },
+      "containerClassName": {
+        "type": "string"
+      },
+      "containerStyle": {
+        "description": "Partially typed: CSSProperties | undefined. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. containerStyle is a plain React style object applied to the scroll wrapper, not to the <table>. TableProps types it as React's `CSSProperties`; the compiler has no JSON type for `CSSProperties`, so nothing is asserted. The wrapper's own styling goes through table.module.css, not through this."
       },
       "density": {
         "type": "string",
