@@ -207,6 +207,27 @@ describe('Table', () => {
     expect(screen.getByRole('table').className).not.toContain(styles.densityCompact);
   });
 
+  it('puts containerClassName and containerStyle on the scroll wrapper, not on the table', () => {
+    // The wrapper is the sticky header's scroll container, so a height has
+    // to land on it for the header to stay in place.
+    render(
+      <Table containerClassName="capped" containerStyle={{ maxHeight: 220 }}>
+        <TableBody>
+          <TableRow>
+            <TableCell>a</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
+    );
+    const table = screen.getByRole('table');
+    const wrapper = table.parentElement;
+    expect(wrapper?.className).toContain(styles.tableContainer);
+    expect(wrapper?.className).toContain('capped');
+    expect(wrapper?.style.maxHeight).toBe('220px');
+    expect(table.className).not.toContain('capped');
+    expect(table.style.maxHeight).toBe('');
+  });
+
   it('keeps the table an accessible grid: role=table with the expected row/cell counts', () => {
     // Guards against a wrapper or a display value quietly breaking the
     // table's implicit ARIA roles — none of the parts here use flexbox or

@@ -3,6 +3,7 @@
 import { cva, cx, type VariantProps } from 'class-variance-authority';
 import {
   type ComponentProps,
+  type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   useCallback,
@@ -322,11 +323,14 @@ function TableColumnResizer({ minWidth }: TableColumnResizerProps) {
  * here. This is styled markup, nothing more.
  *
  * Table renders two elements, matching the source exactly: its own
- * horizontal-scroll wrapper div around the <table>, rather than asking
- * every consumer to remember to add one. A consumer who also wants a
- * *vertical* scroll region (e.g. capping a long table's height) wraps
- * their own div with `overflow-y` around <Table> — it composes fine, since
- * the two wrappers scroll orthogonal axes (see table.md).
+ * scroll wrapper div around the <table>, rather than asking every consumer
+ * to remember to add one. That wrapper is also the one to cap the table's
+ * height with (`containerClassName` / `containerStyle`), not a div of the
+ * consumer's own around <Table>: a sticky header sticks to its NEAREST
+ * scrolling ancestor, and since the wrapper already scrolls horizontally it
+ * is that ancestor. An outer div would scroll while the wrapper, having no
+ * height of its own, never did, and the collection header would scroll
+ * away with the rows.
  *
  * That wrapper is `tabIndex={0}`, a deliberate addition over the source,
  * which has none. A horizontally-overflowing region with no scrollbar
@@ -380,12 +384,29 @@ export interface TableProps extends ComponentProps<'table'>, VariantProps<typeof
    * feature: no virtualization, no row model, purely the cells' padding.
    */
   density?: 'default' | 'compact';
+  /**
+   * className for the scroll wrapper around the table, merged after the
+   * kit class. Give it a `max-height` to scroll the table vertically inside
+   * the wrapper, which is what keeps a sticky header in place.
+   */
+  containerClassName?: string;
+  /** Inline style for the same scroll wrapper, e.g. `{ maxHeight: 320 }`. */
+  containerStyle?: CSSProperties;
 }
 
-export function Table({ className, label, density, variant, ...props }: TableProps) {
+export function Table({
+  className,
+  label,
+  density,
+  variant,
+  containerClassName,
+  containerStyle,
+  ...props
+}: TableProps) {
   return (
     <div
-      className={styles.tableContainer}
+      className={cx(styles.tableContainer, containerClassName)}
+      style={containerStyle}
       tabIndex={0}
       role={label === undefined ? undefined : 'region'}
       aria-label={label}

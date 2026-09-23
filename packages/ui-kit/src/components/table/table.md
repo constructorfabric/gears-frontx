@@ -32,7 +32,8 @@ no kit-specific props of its own.
 ## The scroll wrapper
 
 `Table` renders two elements: a wrapper `div` around the `<table>`, scrolling
-horizontally when the table is wider than its container. This matches the
+horizontally when the table is wider than its container, and vertically
+once you give it a height. This matches the
 upstream source exactly, which takes the same view — a table that can
 overflow needs *something* to scroll, and it's simpler for that to be
 Table's own responsibility than to ask every consumer to remember to add a
@@ -50,9 +51,13 @@ kind of runtime behavior is exactly what this "primitive markup" component
 intentionally does not have.
 
 If you need a *vertical* scroll region too (capping a long table's height),
-wrap your own `div` with `overflow-y` and a `max-height` around `<Table>` —
-it composes cleanly, since your wrapper scrolls the vertical axis and
-Table's own wrapper scrolls the horizontal one (see Examples).
+give the wrapper itself a `max-height` through `containerClassName` or
+`containerStyle` (see Examples). Do not put a `div` of your own with
+`overflow-y` around `<Table>` instead: a sticky header sticks to its nearest
+scrolling ancestor, which is Table's own wrapper since it already scrolls
+horizontally. Your outer div would scroll while the wrapper, with no height
+of its own, never does, so the collection view's header would scroll away
+with the rows.
 
 A focus stop should announce something: pass `label` to name the wrapper
 (`role="region"` + `aria-label` — a bare `div`'s `aria-label` is ignored
@@ -61,9 +66,9 @@ labelling your own outer `div` doesn't work: the name lands on a
 non-focusable element while the focusable wrapper stays nameless).
 Without `label` the wrapper is roleless and nameless as before. Prefer
 passing it whenever the surrounding page doesn't make the table's purpose
-obvious the moment focus lands. Beyond `label`, the wrapper takes no
-props of its own — it isn't a separate export, so there's no `max-height`
-you can pass it; for that, put your own `div` around `<Table>` (as above).
+obvious the moment focus lands. Beyond `label`, the wrapper takes
+`containerClassName` and `containerStyle`, merged after its kit class; it
+isn't a separate export.
 
 ## Semantics and accessibility
 
@@ -204,6 +209,8 @@ its separator, since the body is then no longer the last section.
 | `label` | `string` - names the focusable scroll wrapper with `role="region"` + `aria-label` (see above) | - |
 | `density` | `'default'` \| `'compact'` - tightens cell padding for operational views; purely cell metrics, not a data-table feature | `'default'` |
 | `variant` | `'default'` \| `'collection'` - collection is the fixed-layout view with a sticky 40 px header and 64 px rows | `'default'` |
+| `containerClassName` | `string` - className for the scroll wrapper; give it a `max-height` to scroll the rows under a sticky header | - |
+| `containerStyle` | `CSSProperties` - inline style for the same wrapper, e.g. `{ maxHeight: 320 }` | - |
 
 `TableHead`:
 
@@ -307,21 +314,25 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 </Table>;
 ```
 
-A vertical scroll region, composed around `Table`'s own horizontal one (see
-"The scroll wrapper" above):
+A vertical scroll region on `Table`'s own wrapper, with the collection
+view's header staying in place over the rows (see "The scroll wrapper"
+above):
 
 ```tsx
-import { Table, TableBody, TableCell, TableRow } from '@gears-frontx/ui-kit';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@gears-frontx/ui-kit';
 
-<div style={{ maxHeight: '20rem', overflowY: 'auto' }}>
-  <Table>
-    <TableBody>
-      <TableRow>
-        <TableCell>Row 1</TableCell>
-      </TableRow>
-    </TableBody>
-  </Table>
-</div>;
+<Table variant="collection" containerStyle={{ maxHeight: '20rem' }}>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Name</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow>
+      <TableCell>Row 1</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>;
 ```
 
 A row with a leading checkbox column, sized flush against the cell edge by

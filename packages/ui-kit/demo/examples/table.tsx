@@ -177,7 +177,9 @@ export default function TableExample() {
       </Section>
 
       {/* The collection view: a fixed layout, a sticky header on its own
-          fill, 64px rows that wrap, and the two row states. */}
+          fill, 64px rows that wrap, and the two row states. The height cap
+          sits on Table's own wrapper, the header's scroll container, so the
+          header stays put while the rows scroll under it. */}
       <Section title="Collection view">
         <Measure
           of={{
@@ -187,33 +189,32 @@ export default function TableExample() {
             'pending row': '#table-collection tbody tr[data-pending]',
           }}
         >
-          <div style={{ maxHeight: 220, overflow: 'auto' }}>
-            <Table id="table-collection" variant="collection" label="Invoices, collection">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Invoice</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Amount</TableHead>
+          <Table
+            id="table-collection"
+            variant="collection"
+            label="Invoices, collection"
+            containerStyle={{ maxHeight: 220 }}
+          >
+            <TableHeader>
+              <TableRow>
+                <TableHead resizable>Invoice</TableHead>
+                <TableHead resizable>Status</TableHead>
+                <TableHead resizable>Amount</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {INVOICES.map((invoice, index) => (
+                <TableRow key={invoice.id} tabIndex={0} data-pending={index === 1 ? '' : undefined}>
+                  <TableCell>
+                    {invoice.id} - a long value that wraps onto a second line in a collection row
+                    instead of being cut off
+                  </TableCell>
+                  <TableCell>{invoice.status}</TableCell>
+                  <TableCell>{invoice.amount}</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {INVOICES.map((invoice, index) => (
-                  <TableRow
-                    key={invoice.id}
-                    tabIndex={0}
-                    data-pending={index === 1 ? '' : undefined}
-                  >
-                    <TableCell>
-                      {invoice.id} - a long value that wraps onto a second line in a
-                      collection row instead of being cut off
-                    </TableCell>
-                    <TableCell>{invoice.status}</TableCell>
-                    <TableCell>{invoice.amount}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+              ))}
+            </TableBody>
+          </Table>
         </Measure>
       </Section>
     </>

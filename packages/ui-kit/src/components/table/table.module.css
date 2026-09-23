@@ -8,10 +8,17 @@
  * classes (.tableContainer, .table) matching the two real elements.
  */
 
+/*
+ * `overflow: auto` on both axes, not just x: a scroll container on one axis
+ * already computes to `auto` on the other, so this only states what the
+ * browser does anyway, and it is what a consumer's `max-height` on this
+ * wrapper (Table's `containerClassName` / `containerStyle`) relies on to
+ * scroll the rows under a sticky header.
+ */
 .tableContainer {
   position: relative;
   width: 100%;
-  overflow-x: auto;
+  overflow: auto;
 }
 
 /*

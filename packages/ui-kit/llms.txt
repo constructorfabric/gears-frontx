@@ -380,8 +380,9 @@ Rules for generated code:
   primitive markup only; `density` compact|default on Table; row-state
   rings via `data-state="selected|stale|restricted"` on TableRow (your
   logic sets the attribute, the kit paints it); Table's own wrapper
-  scrolls horizontally and is keyboard-reachable (`tabIndex`); size a
-  column via `className`/`style` width on TableHead/TableCell; no portal.
+  scrolls horizontally and is keyboard-reachable (`tabIndex`); cap the
+  height on that wrapper (`containerClassName`/`containerStyle`), never on
+  an outer div, or a sticky header will not stick; size a column via `className`/`style` width on TableHead/TableCell; no portal.
 - [Tabs](dist/docs/tabs.md): switch between panels sharing the same
   space (Tabs/TabsList/TabsTrigger/TabsContent); list variants
   default|line; orientation horizontal|vertical (default horizontal);
