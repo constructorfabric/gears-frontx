@@ -11,18 +11,13 @@
 import { GTS } from '@globaltypesystem/gts-ts';
 import { describe, expect, it } from 'vitest';
 
-import {
-  buildComponentType,
-  compileContract,
-  loadElementSurface,
-  registerContractTypes,
-  resolveTargetExtraction,
-} from '../../../scripts/contracts/compile';
+import { compileContract, loadElementSurface, resolveTargetExtraction } from '../../../scripts/contracts/compile';
 import { bareGtsId, domElementToken, elementTypeId } from '../../../scripts/contracts/ids';
 import {
   applyContractTestTimeout,
   assertContractFreshness,
   resolveComponentRef,
+  unitStore,
   validateContractInstance,
 } from '../../../scripts/contracts/testing';
 
@@ -39,7 +34,6 @@ assertContractFreshness('aspect-ratio');
 
 const contract = compileContract('aspect-ratio');
 const extraction = resolveTargetExtraction('aspect-ratio');
-const componentType = buildComponentType();
 
 // The element AspectRatio renders, and the hand-written surface shared with
 // every other component that renders a <div>.
@@ -113,14 +107,7 @@ describe('aspect-ratio contract conformance', () => {
 
 describe('aspect-ratio in a GTS store', () => {
   function registeredStore(): GTS {
-    const gts = new GTS();
-    gts.register(componentType);
-    // The vocabulary the component type references: a store missing one of
-    // them cannot compile the type at all.
-    registerContractTypes((entity) => gts.register(entity));
-    gts.register(elementSurface);
-    gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
-    return gts;
+    return unitStore([{ contract, elementSurface }]);
   }
 
   it('validates as an instance of the component type', () => {

@@ -15,14 +15,18 @@ import {
   addContractTypes,
   buildComponentType,
   compileContract,
-  liftPropsSchema,
-  registerContractTypes,
-  resolveTargetExtraction,
   type CompiledContract,
+  liftPropsSchema,
+  resolveTargetExtraction,
 } from '../../../scripts/contracts/compile';
 import { listExportedDeclarationNames } from '../../../scripts/contracts/extract';
 import { componentRef } from '../../../scripts/contracts/ids';
-import { applyContractTestTimeout, assertContractFreshness, validateContractInstance } from '../../../scripts/contracts/testing';
+import {
+  applyContractTestTimeout,
+  assertContractFreshness,
+  unitStore,
+  validateContractInstance,
+} from '../../../scripts/contracts/testing';
 
 // resolveTargetExtraction and listExportedDeclarationNames below each build a
 // real TypeScript program - several seconds on a CI-class runner, comfortably
@@ -233,13 +237,7 @@ describe('data-table: what the schema cannot assert', () => {
 
 describe('data-table in a GTS store', () => {
   function registeredStore(): GTS {
-    const gts = new GTS();
-    gts.register(componentType);
-    // The vocabulary the component type references: a store missing one
-    // cannot compile the type at all.
-    registerContractTypes((entity) => gts.register(entity));
-    for (const { contract } of Object.values(units)) gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
-    return gts;
+    return unitStore(Object.values(units));
   }
 
   it('both components validate as instances of the component type', () => {
@@ -251,8 +249,7 @@ describe('data-table in a GTS store', () => {
   });
 
   it('fails when the component type is not registered - negative control', () => {
-    const gts = new GTS();
-    for (const { contract } of Object.values(units)) gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
+    const gts = unitStore(Object.values(units), { componentType: false, vocabulary: false });
     const result = gts.validateInstance(units[DIRECTORY].contract.$id);
     expect(result.ok).toBe(false);
     expect(result.error).toContain('Schema not found');

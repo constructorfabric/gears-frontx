@@ -11,21 +11,19 @@ import { describe, expect, it } from 'vitest';
 import {
   addContractTypes,
   buildComponentType,
-  compileContract,
+  type CompiledContract,
   contractMajor,
   familyRoster,
   liftPropsSchema,
-  loadElementSurface,
   pascalCase,
-  registerContractTypes,
-  resolveTargetExtraction,
-  type CompiledContract,
 } from '../../../scripts/contracts/compile';
 import { bareGtsId, componentRef, elementTypeRef } from '../../../scripts/contracts/ids';
 import {
   applyContractTestTimeout,
   assertContractFreshness,
+  compileUnits,
   resolveComponentRef,
+  unitStore,
   validateContractInstance,
 } from '../../../scripts/contracts/testing';
 
@@ -43,26 +41,7 @@ const ALL_STEMS = [DIRECTORY, ...PART_STEMS] as const;
 
 for (const stem of ALL_STEMS) assertContractFreshness(DIRECTORY, stem);
 
-interface CompiledUnit {
-  stem: string;
-  contract: CompiledContract;
-  elementSurface: Record<string, unknown>;
-}
-
-function compileUnit(stem: string): CompiledUnit {
-  const extraction = resolveTargetExtraction(DIRECTORY, stem);
-  const contract = compileContract(DIRECTORY, stem);
-  // Every export here renders a real element (the group a plain <div>, the
-  // other three a Base UI part), so elementKind is never undefined - a
-  // defensive message beats a bare "Cannot read properties of undefined" if
-  // that ever changes.
-  if (!extraction.elementKind) {
-    throw new Error(`${stem}: expected a host element kind, extraction resolved none`);
-  }
-  return { stem, contract, elementSurface: loadElementSurface(extraction.elementKind) };
-}
-
-const units: Record<string, CompiledUnit> = Object.fromEntries(ALL_STEMS.map((stem) => [stem, compileUnit(stem)]));
+const units = compileUnits(DIRECTORY, ALL_STEMS);
 const componentType = buildComponentType();
 
 const ROOT_REF = componentRef(DIRECTORY, contractMajor(DIRECTORY, DIRECTORY));
@@ -210,17 +189,7 @@ describe('input-otp family: what the schema cannot assert', () => {
 
 describe('input-otp family in a GTS store', () => {
   function registeredStore(): GTS {
-    const gts = new GTS();
-    gts.register(componentType);
-    registerContractTypes((entity) => gts.register(entity));
-    // Three of the four render a <div> and the slot renders an <input>, so
-    // there are two distinct schemas across four components - de-duplicated
-    // by $id, because registering the same one twice is not a fact about the
-    // family.
-    const byId = new Map(Object.values(units).map(({ elementSurface }) => [String(elementSurface.$id), elementSurface]));
-    for (const elementSurface of byId.values()) gts.register(elementSurface);
-    for (const { contract } of Object.values(units)) gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
-    return gts;
+    return unitStore(Object.values(units));
   }
 
   it('every component in the family validates as an instance of the component type', () => {
@@ -242,10 +211,7 @@ describe('input-otp family in a GTS store', () => {
   });
 
   it('fails when the component type is not registered - negative control', () => {
-    const gts = new GTS();
-    const byId = new Map(Object.values(units).map(({ elementSurface }) => [String(elementSurface.$id), elementSurface]));
-    for (const elementSurface of byId.values()) gts.register(elementSurface);
-    for (const { contract } of Object.values(units)) gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
+    const gts = unitStore(Object.values(units), { componentType: false, vocabulary: false });
     const result = gts.validateInstance(units[DIRECTORY].contract.$id);
     expect(result.ok).toBe(false);
     expect(result.error).toContain('Schema not found');
