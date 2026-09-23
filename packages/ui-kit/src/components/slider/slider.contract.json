@@ -160,10 +160,12 @@
         "description": "TS: Intl.LocalesArgument. The compiler emits one JSON type per property; this type is left to tsc. locale is a BCP 47 locale string, an array of them, or an Intl.Locale object, passed to Intl.NumberFormat. Intl.LocalesArgument is a union of a string, a string array and an Intl.Locale instance; the compiler emits one JSON type per property, so this union is left to tsc."
       },
       "max": {
-        "type": "number"
+        "type": "number",
+        "default": 100
       },
       "min": {
-        "type": "number"
+        "type": "number",
+        "default": 0
       },
       "minStepsBetweenValues": {
         "type": "number"

@@ -177,7 +177,8 @@
         "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. label is a React node, not a string. `ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
       },
       "live": {
-        "type": "boolean"
+        "type": "boolean",
+        "default": false
       },
       "render": {
         "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, {}> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. useRender's render prop takes an element or a function that receives the props to spread (StatusDot passes no state of its own), so its type is a union of a React element and a callback - the compiler emits one JSON type per property. It is for the wrapping element, such as `render={<li />}` inside a status list."

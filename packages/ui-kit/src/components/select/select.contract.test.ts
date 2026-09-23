@@ -215,9 +215,10 @@ describe('select directory: what the schema cannot assert', () => {
     expect(content.props.properties.side).toEqual({
       type: 'string',
       enum: ['bottom', 'inline-end', 'inline-start', 'left', 'right', 'top'],
+      default: 'bottom',
     });
-    expect(content.props.properties.align).toEqual({ type: 'string', enum: ['center', 'end', 'start'] });
-    expect(content.props.properties.alignItemWithTrigger).toEqual({ type: 'boolean' });
+    expect(content.props.properties.align).toEqual({ type: 'string', enum: ['center', 'end', 'start'], default: 'center' });
+    expect(content.props.properties.alignItemWithTrigger).toEqual({ type: 'boolean', default: true });
     for (const prop of ['container', 'sideOffset', 'alignOffset', 'collisionBoundary', 'collisionPadding', 'finalFocus']) {
       expect(Object.keys(content.prop_statements ?? {}), prop).toContain(prop);
     }

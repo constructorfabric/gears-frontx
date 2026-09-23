@@ -110,7 +110,8 @@
     "type": "object",
     "properties": {
       "animate": {
-        "type": "boolean"
+        "type": "boolean",
+        "default": true
       },
       "className": {
         "type": "string"

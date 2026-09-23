@@ -159,10 +159,12 @@
           "center",
           "end",
           "start"
-        ]
+        ],
+        "default": "center"
       },
       "alignOffset": {
-        "description": "TS: number | OffsetFunction | undefined. The compiler emits one JSON type per property; this type is left to tsc. alignOffset is the shift in pixels along the alignment axis, as a number or a function of side, align and both boxes' sizes. `number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation."
+        "description": "TS: number | OffsetFunction | undefined. The compiler emits one JSON type per property; this type is left to tsc. alignOffset is the shift in pixels along the alignment axis, as a number or a function of side, align and both boxes' sizes. `number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation.",
+        "default": 4
       },
       "collisionBoundary": {
         "description": "TS: Boundary | undefined. The compiler emits one JSON type per property; this type is left to tsc. collisionBoundary is the area the card is kept inside, `clipping-ancestors`, an element, a list of elements or a rectangle. `'clipping-ancestors' | Element | Element[] | Rect` mixes a string with live DOM elements, which no JSON Schema type covers."
@@ -189,10 +191,12 @@
           "left",
           "right",
           "top"
-        ]
+        ],
+        "default": "bottom"
       },
       "sideOffset": {
-        "description": "TS: number | OffsetFunction | undefined. The compiler emits one JSON type per property; this type is left to tsc. sideOffset is the gap in pixels between trigger and card, as a number or a function of side, align and both boxes' sizes. `number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation."
+        "description": "TS: number | OffsetFunction | undefined. The compiler emits one JSON type per property; this type is left to tsc. sideOffset is the gap in pixels between trigger and card, as a number or a function of side, align and both boxes' sizes. `number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation.",
+        "default": 4
       },
       "style": {
         "description": "TS: CSSProperties | ((state: PreviewCardPopupState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the popup's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, side, align, instant, transitionStatus). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through hover-card.module.css, not through this."

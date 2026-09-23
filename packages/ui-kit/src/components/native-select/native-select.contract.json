@@ -130,7 +130,8 @@
         "enum": [
           "default",
           "sm"
-        ]
+        ],
+        "default": "default"
       }
     },
     "required": [],

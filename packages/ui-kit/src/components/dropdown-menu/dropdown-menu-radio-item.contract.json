@@ -139,7 +139,8 @@
         "enum": [
           "end",
           "start"
-        ]
+        ],
+        "default": "end"
       },
       "closeOnClick": {
         "type": "boolean"

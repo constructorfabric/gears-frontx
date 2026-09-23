@@ -155,8 +155,9 @@ describe('hover-card directory: what the schema cannot assert', () => {
     expect(content.props.properties.side).toEqual({
       type: 'string',
       enum: ['bottom', 'inline-end', 'inline-start', 'left', 'right', 'top'],
+      default: 'bottom',
     });
-    expect(content.props.properties.align).toEqual({ type: 'string', enum: ['center', 'end', 'start'] });
+    expect(content.props.properties.align).toEqual({ type: 'string', enum: ['center', 'end', 'start'], default: 'center' });
     for (const prop of ['container', 'sideOffset', 'alignOffset', 'collisionBoundary', 'collisionPadding']) {
       expect(Object.keys(content.prop_statements ?? {}), prop).toContain(prop);
     }

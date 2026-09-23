@@ -165,10 +165,12 @@
           "center",
           "end",
           "start"
-        ]
+        ],
+        "default": "start"
       },
       "alignOffset": {
-        "description": "TS: number | OffsetFunction | undefined. The compiler emits one JSON type per property; this type is left to tsc. alignOffset is the shift in pixels along the alignment axis, as a number or a function of side, align and both boxes' sizes. `number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation."
+        "description": "TS: number | OffsetFunction | undefined. The compiler emits one JSON type per property; this type is left to tsc. alignOffset is the shift in pixels along the alignment axis, as a number or a function of side, align and both boxes' sizes. `number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation.",
+        "default": -3
       },
       "children": {
         "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the submenu popup's rows, the parts listed under accepts. `React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
@@ -204,10 +206,12 @@
           "left",
           "right",
           "top"
-        ]
+        ],
+        "default": "right"
       },
       "sideOffset": {
-        "description": "TS: number | OffsetFunction | undefined. The compiler emits one JSON type per property; this type is left to tsc. sideOffset is the gap in pixels between the anchor and the popup, as a number or a function of side, align and both boxes' sizes. `number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation."
+        "description": "TS: number | OffsetFunction | undefined. The compiler emits one JSON type per property; this type is left to tsc. sideOffset is the gap in pixels between the anchor and the popup, as a number or a function of side, align and both boxes' sizes. `number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation.",
+        "default": 0
       },
       "style": {
         "description": "TS: CSSProperties | ((state: MenuPopupState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the popup's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, side, align, nested, instant, transitionStatus). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through dropdown-menu.module.css, not through this."

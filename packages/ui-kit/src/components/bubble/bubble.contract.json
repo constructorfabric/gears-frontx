@@ -172,7 +172,8 @@
         "enum": [
           "end",
           "start"
-        ]
+        ],
+        "default": "start"
       }
     },
     "required": [],

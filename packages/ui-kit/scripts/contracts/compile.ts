@@ -75,7 +75,7 @@ import Ajv2020 from 'ajv/dist/2020';
 // the line that caused it.
 import { parse as parseYaml } from 'yaml';
 
-import { extractComponent, type ComponentExtraction, type ExtractedProp } from './extract';
+import { extractComponent, type ComponentExtraction, type ExtractedProp, type PropDefault } from './extract';
 import {
   bareGtsId,
   COMPONENT_REF_TARGET,
@@ -277,6 +277,10 @@ export interface WithheldProp {
   reason: string;
 }
 
+export interface HostElementStatement {
+  none: string;
+}
+
 export interface Overlay {
   component: string;
   // The contract major this component's identifiers carry. Authored, and
@@ -291,6 +295,12 @@ export interface Overlay {
   // under the directory's name (`toast-toaster`) and names the export here.
   // Absent means the stem in PascalCase, which is every other component.
   export?: string;
+  // What the overlay states about the host element where the source names
+  // none: that the component renders the React attributes its props type
+  // admits onto no element at all, and why. Admitted only where the
+  // extraction resolved no element, the component forwards something, and
+  // it has no body of its own (see assertHostElementStatement).
+  host_element?: HostElementStatement;
   intent: string;
   // A handful of archetypal scenarios, not an exhaustive selection rule -
   // capped at 3 by the metamodel so the field stays a quick read rather than
@@ -364,7 +374,8 @@ export interface ContractProperty {
   // Schema default has to be a value of the property's own type, and a cva
   // boolean variant's default really is `false`, not the string "false" its
   // variant map is keyed by.
-  default?: string | boolean;
+  // A component's own destructured default may also be a number or null.
+  default?: string | number | boolean | null;
   description?: string;
 }
 
@@ -1755,6 +1766,21 @@ export function buildOverlaySchema(): Record<string, unknown> {
   // (and of the props type id lifted out of it), so declaring it on the
   // component type as well would be the same fact written twice with nothing
   // keeping the two in step.
+  properties.host_element = {
+    type: 'object',
+    properties: {
+      none: {
+        type: 'string',
+        minLength: 1,
+        description:
+          'Why the React attributes the props type admits reach no element: the library the component comes from renders them onto nothing the kit can name.',
+      },
+    },
+    required: ['none'],
+    additionalProperties: false,
+    description:
+      "Stated only where the source names no host element, the component forwards React attributes, and it has no body of its own - an alias or a re-export of a callable declared elsewhere: that those attributes are rendered onto no element, and why. The contract then names no element surface and records the forwarded attributes and this reason among what the extraction could not read. Which element a component renders is otherwise a fact of its source, which is why `forwards_to` is never authored.",
+  };
   properties.export = {
     type: 'string',
     pattern: '^[A-Z][A-Za-z0-9]*$',
@@ -2054,6 +2080,9 @@ export interface PropsAndRequired {
   properties: Record<string, ContractProperty>;
   required: string[];
   partiallyTypedProps: CompiledContract['x-uikit']['partially_typed_props'];
+  // What the props half read and could not state: a default the component
+  // writes for a prop the contract has no property for.
+  notes: string[];
 }
 
 // The machine-owned half of a component's props schema: cva axes, the props
@@ -2203,9 +2232,48 @@ export function buildPropsAndRequired(
   }
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-api
 
+  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-axes
+  // The default the component's own body writes is the value a caller who
+  // passes nothing gets, so it is the one stated, over a variant
+  // declaration's default for the same axis. Only for a property the contract
+  // states: a default for an attribute forwarded to the host element belongs
+  // to that element's surface, which states no defaults.
+  const notes: string[] = [];
+  for (const [name, value] of Object.entries(extraction.propDefaults)) {
+    const property = properties[name];
+    if (property === undefined) {
+      notes.push(
+        `default: prop "${name}" defaults to ${JSON.stringify(value)}, but the contract states no property for it - the ` +
+          `default is not stated`,
+      );
+      continue;
+    }
+    assertDefaultFitsProperty(component, name, value, property);
+    properties[name] = { ...property, default: value };
+  }
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-axes
+
   required.sort();
-  return { properties, required, partiallyTypedProps };
+  return { properties, required, partiallyTypedProps, notes };
 }
+
+// A default the property's own schema would reject. TypeScript holds a
+// default to the prop's TS type, which is not the schema's: a variant axis
+// typed `| null` admits a `null` default its enum does not list. Stated
+// anyway, the contract would carry a default no validator of it accepts, so
+// the compile is refused naming both.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-axes
+function assertDefaultFitsProperty(component: string, name: string, value: PropDefault, property: ContractProperty): void {
+  const kind = value === null ? 'null' : typeof value;
+  const typeFits = property.type === undefined ? true : property.type === kind;
+  const enumFits = property.enum === undefined || (typeof value === 'string' && property.enum.includes(value));
+  if (typeFits && enumFits) return;
+  throw new Error(
+    `${component}: prop "${name}" defaults to ${JSON.stringify(value)}, which its own property ` +
+      `${JSON.stringify({ type: property.type, enum: property.enum })} rejects - the component's default and its schema disagree`,
+  );
+}
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-axes
 
 // How a cva axis reads when the conflict message has to name it: the shape
 // VariantProps gives the prop, in the words a reader of the component's
@@ -2293,6 +2361,47 @@ export function noHostElementRefusal(directory: string, exportStem: string, extr
         ? `. Nothing in its heritage was left unread: no helper it is built from names an element, by tag or by DOM ` +
           `interface, so the library's own types do not say which element it renders`
         : `. The props type's heritage could not be read at:\n  ${unread.join('\n  ')}`),
+  );
+}
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-orphan-inherited
+
+// The overlay's `host_element` statement, admitted or refused, and the note
+// the contract carries for it. Refused wherever the statement would stand in
+// for a fact the source holds: when the props type names an element, when
+// the component forwards nothing, and when it has a body of its own -
+// in each case the source already answers, and a statement beside it would
+// be a second answer that could disagree. Admitted, it returns the note that
+// goes among what the extraction could not read, naming the attributes the
+// type admits and the reason nothing renders them, so the contract says
+// what it leaves out rather than claiming the component forwards nothing.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-orphan-inherited
+export function assertHostElementStatement(
+  exportStem: string,
+  overlay: Pick<Overlay, 'host_element'>,
+  extraction: Pick<ComponentExtraction, 'elementKind' | 'forwardedProps' | 'hasBody'>,
+): string | undefined {
+  const statement = overlay.host_element;
+  if (statement === undefined) return undefined;
+  if (extraction.elementKind !== undefined) {
+    throw new Error(
+      `${exportStem}: the overlay states host_element, but the props type names "${extraction.elementKind}" - the ` +
+        `host element is read from the source wherever the source names one`,
+    );
+  }
+  if (extraction.forwardedProps.length === 0) {
+    throw new Error(`${exportStem}: the overlay states host_element, but the component forwards no React attributes to explain`);
+  }
+  if (extraction.hasBody) {
+    throw new Error(
+      `${exportStem}: the overlay states that no element renders the forwarded attributes, but the component has a ` +
+        `body of its own - what it renders is in that body, so type its props with the helper of the element it ` +
+        `spreads them onto instead`,
+    );
+  }
+  const names = extraction.forwardedProps.map((prop) => prop.name);
+  return (
+    `host element: none - ${names.length} React attribute(s) the props type admits are rendered onto no element ` +
+    `(${names.join(', ')}): ${statement.none.trim()}`
   );
 }
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-orphan-inherited
@@ -2525,8 +2634,12 @@ export function assertOverlayReferencesRealProps(component: string, overlay: Ove
 // component.
 // @cpt-algo:cpt-frontx-ui-kit-algo-component-contracts-structure-derivation:p1
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-structure-derivation:p1:inst-co-derive
-export function deriveMountPoints(directory: string, exportStem: string): MountPoint[] {
-  const self = componentRef(exportStem, contractMajor(directory, exportStem));
+export function deriveMountPoints(
+  directory: string,
+  exportStem: string,
+  major: number = contractMajor(directory, exportStem),
+): MountPoint[] {
+  const self = componentRef(exportStem, major);
   // What an unreadable overlay would have to say to be one of this
   // component's containers: the reference every `accepts.components` entry
   // naming it carries, up to the major - the stale-major refusal matches by
@@ -2589,7 +2702,9 @@ export function mountPointsAccepting(exportStem: string, self: string, overlays:
 // carries `component`, so every entry `overlay.mounted_in` holds by the time
 // this runs IS the outside-the-kit half.
 export function compileMountedIn(directory: string, exportStem: string, overlay: Overlay): MountPoint[] | undefined {
-  const points: MountPoint[] = [...deriveMountPoints(directory, exportStem), ...(overlay.mounted_in ?? [])];
+  // The major from the overlay in hand, which is the one being compiled.
+  const major = overlay.major ?? DEFAULT_CONTRACT_MAJOR;
+  const points: MountPoint[] = [...deriveMountPoints(directory, exportStem, major), ...(overlay.mounted_in ?? [])];
   return points.length > 0 ? points : undefined;
 }
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-structure-derivation:p1:inst-co-derive
@@ -2791,11 +2906,10 @@ export function compileFamilyMembership(exportStem: string, overlay: Overlay): F
 }
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-structure-derivation:p1:inst-co-family
 
-// @cpt-algo:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1
-// @cpt-dod:cpt-frontx-ui-kit-dod-component-contracts-compilation:p1
-export function compileContract(directory: string, exportStem: string = directory): CompiledContract {
-  const extraction = resolveTargetExtraction(directory, exportStem);
-
+// A variant declaration the extractor could not trace, refused before
+// anything else is read: a contract compiled without its axes would claim the
+// component has none.
+function assertVariantsResolved(exportStem: string, extraction: ComponentExtraction): void {
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-axis-failure
   const unresolvedVariants = extraction.cannotExtract.filter((msg) => msg.startsWith('cva:'));
   if (unresolvedVariants.length > 0) {
@@ -2808,10 +2922,29 @@ export function compileContract(directory: string, exportStem: string = director
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-axis-failure-refuse
   }
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-axis-failure
+}
 
+// @cpt-algo:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1
+// @cpt-dod:cpt-frontx-ui-kit-dod-component-contracts-compilation:p1
+export function compileContract(directory: string, exportStem: string = directory): CompiledContract {
+  const extraction = resolveTargetExtraction(directory, exportStem);
+  assertVariantsResolved(exportStem, extraction);
   // @cpt-begin:cpt-frontx-ui-kit-flow-component-contracts-compile:p1:inst-author-overlay
   const overlay = loadOverlay(directory, exportStem);
   // @cpt-end:cpt-frontx-ui-kit-flow-component-contracts-compile:p1:inst-author-overlay
+  return compileContractFrom(directory, exportStem, extraction, overlay);
+}
+
+// The compile itself, over an extraction and an admitted overlay already in
+// hand: compileContract reads both from the component's directory, and a test
+// hands them over directly to exercise a shape no committed component has.
+export function compileContractFrom(
+  directory: string,
+  exportStem: string,
+  extraction: ComponentExtraction,
+  overlay: Overlay,
+): CompiledContract {
+  assertVariantsResolved(exportStem, extraction);
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-overlay-admission:p1:inst-oa-absent-prop
   assertOverlayReferencesRealProps(exportStem, overlay, extraction);
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-overlay-admission:p1:inst-oa-absent-prop
@@ -2839,7 +2972,10 @@ export function compileContract(directory: string, exportStem: string = director
   // The id of that surface, bare: an id-VALUED field holds an id, and gts-ts's
   // reference validator rejects the URI form outright (Gts.isValidGtsID).
   let forwardsToId: string | undefined;
-  if (extraction.forwardedProps.length > 0) {
+  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-orphan-inherited
+  const statedNoHost = assertHostElementStatement(exportStem, overlay, extraction);
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-orphan-inherited
+  if (extraction.forwardedProps.length > 0 && statedNoHost === undefined) {
     // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-orphan-inherited
     if (!extraction.elementKind) {
       // Props forwarded to a host element, and no host element resolved for
@@ -2858,7 +2994,7 @@ export function compileContract(directory: string, exportStem: string = director
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-close
   }
 
-  const { properties, required, partiallyTypedProps } = buildPropsAndRequired(
+  const { properties, required, partiallyTypedProps, notes: propsNotes } = buildPropsAndRequired(
     exportStem,
     extraction,
     elementSurface ?? { properties: {} },
@@ -2920,7 +3056,7 @@ export function compileContract(directory: string, exportStem: string = director
       partially_typed_props: partiallyTypedProps,
       // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-slots
       variant_sources: extraction.variantSourceLabels,
-      cannot_extract: extraction.cannotExtract,
+      cannot_extract: [...extraction.cannotExtract, ...propsNotes, ...(statedNoHost === undefined ? [] : [statedNoHost])],
     },
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-route
     // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compilation:p1:inst-cc-close

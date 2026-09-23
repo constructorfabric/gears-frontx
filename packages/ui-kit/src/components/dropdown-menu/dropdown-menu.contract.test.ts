@@ -197,13 +197,18 @@ describe('dropdown-menu directory: what the schema cannot assert', () => {
   });
 
   it("both popups' placement enums are typed and their offset and container unions carry prop statements", () => {
-    for (const stem of ['dropdown-menu-content', 'dropdown-menu-sub-content']) {
+    // The defaults are the ones each popup writes for itself.
+    for (const [stem, side] of [
+      ['dropdown-menu-content', 'bottom'],
+      ['dropdown-menu-sub-content', 'right'],
+    ] as const) {
       const { contract } = units[stem];
       expect(contract.props.properties.side, stem).toEqual({
         type: 'string',
         enum: ['bottom', 'inline-end', 'inline-start', 'left', 'right', 'top'],
+        default: side,
       });
-      expect(contract.props.properties.align, stem).toEqual({ type: 'string', enum: ['center', 'end', 'start'] });
+      expect(contract.props.properties.align, stem).toEqual({ type: 'string', enum: ['center', 'end', 'start'], default: 'start' });
       expect(contract.props.properties.positionMethod, stem).toEqual({ type: 'string', enum: ['absolute', 'fixed'] });
       for (const prop of ['container', 'sideOffset', 'alignOffset', 'collisionBoundary', 'collisionPadding', 'finalFocus']) {
         expect(Object.keys(contract.prop_statements ?? {}), `${stem}.${prop}`).toContain(prop);

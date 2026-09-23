@@ -703,3 +703,67 @@ describe('isBooleanAxis', () => {
     }
   });
 });
+
+describe('extractComponent: defaults a component writes into its own destructured props', () => {
+  const extractions = extractComponent(fixture('prop-defaults.fixture.tsx'));
+  const byName = (name: string) => extractions.find((e) => e.name === name)!;
+
+  it('reads every literal kind: string, number, negative number, boolean and null', () => {
+    expect(byName('Chip').propDefaults).toEqual({ tone: 'info', count: 3, dense: false, hint: null, offset: -1 });
+    expect(byName('Chip').cannotExtract).toEqual([]);
+  });
+
+  it('reads a default written over a reused variant axis beside the variant declaration it overrides', () => {
+    const outline = byName('OutlineAction');
+    expect(outline.defaults).toEqual({ variant: 'default' });
+    expect(outline.propDefaults).toEqual({ variant: 'outline' });
+  });
+
+  it('does not take an axis the path removes with Omit, so the component own declaration of it is read', () => {
+    const quiet = byName('QuietAction');
+    expect(quiet.axes).toEqual({});
+    expect(quiet.defaults).toEqual({});
+    expect(quiet.ownProps.find((p) => p.name === 'variant')?.expressed).toEqual({
+      schema: { type: 'string', enum: ['loud', 'quiet'] },
+      complete: true,
+    });
+    expect(quiet.propDefaults).toEqual({ variant: 'quiet' });
+  });
+
+  it('does not take an axis an Omit removes on the instantiated type an alias is read from', () => {
+    const aliased = byName('OmitAliased');
+    expect(aliased.hasBody).toBe(false);
+    expect(aliased.axes).toEqual({});
+    expect(aliased.ownProps.map((p) => p.name)).toEqual(['label']);
+  });
+
+  it('does not take an axis a Pick leaves out', () => {
+    expect(byName('LabelOnly').axes).toEqual({});
+    expect(byName('LabelOnly').defaults).toEqual({});
+  });
+
+  it('reads a renamed binding under the prop name it reads', () => {
+    expect(byName('Renamed').propDefaults).toEqual({ tone: 'info' });
+  });
+
+  it('notes a computed default instead of evaluating or dropping it', () => {
+    const sized = byName('Sized');
+    expect(sized.propDefaults).toEqual({});
+    expect(sized.cannotExtract).toEqual([
+      'default: prop "size" defaults to "DEFAULT_SIZE", which is not a literal - the contract states no default for it',
+    ]);
+  });
+});
+
+describe('extractComponent: whether a component has a body of its own', () => {
+  const extractions = extractComponent(fixture('rendered-root.fixture.tsx'));
+  const byName = (name: string) => extractions.find((e) => e.name === name)!;
+
+  it('is true for a body whatever it returns first - null, a fragment, one of two elements', () => {
+    for (const name of ['NullFirst', 'InFragment', 'EitherTag']) expect(byName(name).hasBody, name).toBe(true);
+  });
+
+  it('is false for an alias of a callable declared elsewhere', () => {
+    expect(byName('Aliased').hasBody).toBe(false);
+  });
+});

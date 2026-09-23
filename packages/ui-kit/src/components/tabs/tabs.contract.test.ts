@@ -214,6 +214,7 @@ describe('tabs family: what the schema cannot assert', () => {
     expect(animateCapability, 'animate capability').toBeDefined();
     expect(units['tabs-content'].contract.props.properties.animate, 'animate schema').toEqual({
       type: 'boolean',
+      default: true,
     });
   });
 

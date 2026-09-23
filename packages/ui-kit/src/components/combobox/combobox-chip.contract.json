@@ -121,10 +121,12 @@
         "type": "string"
       },
       "removeLabel": {
-        "type": "string"
+        "type": "string",
+        "default": "Remove"
       },
       "showRemove": {
-        "type": "boolean"
+        "type": "boolean",
+        "default": true
       },
       "render": {
         "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ComboboxChipState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the chip's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."

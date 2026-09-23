@@ -21,7 +21,7 @@
       "situation": "A transient, self-dismissing notification",
       "instead": {
         "target": "toast() rendered by a mounted Toaster",
-        "note": "No component reference resolves here: the toast directory's component export is Toaster, whose name does not extend the directory name, so no reference names it."
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.toast_toaster.v1"
       }
     },
     {

@@ -167,7 +167,7 @@ describe('message family: what nests where', () => {
 
 describe('message directory: what the schema states', () => {
   it("types the root's align fully, so no member needs a prop statement", () => {
-    expect(units[DIRECTORY].contract.props.properties.align).toEqual({ type: 'string', enum: ['end', 'start'] });
+    expect(units[DIRECTORY].contract.props.properties.align).toEqual({ type: 'string', enum: ['end', 'start'], default: 'start' });
     for (const { stem, contract } of Object.values(units)) {
       expect(contract.prop_statements ?? {}, stem).toEqual({});
     }

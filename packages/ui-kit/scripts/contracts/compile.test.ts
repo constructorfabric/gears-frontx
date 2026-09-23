@@ -24,12 +24,14 @@ import { describe, expect, it } from 'vitest';
 
 import {
   addContractTypes,
+  assertHostElementStatement,
   buildComponentType,
   buildFamilyRoster,
   buildOverlaySchema,
   buildPropsAndRequired,
   buildVocabularyTypes,
   collectOverlays,
+  compileContractFrom,
   describeBranches,
   describeUnexpressedType,
   exportNameOf,
@@ -143,7 +145,8 @@ describe('an enum the element surface also declares', () => {
     // the one prop they agree about.
     const action = extractions.find((e) => e.name === 'Action')!;
     const { properties } = buildPropsAndRequired('action', action, buttonSurface);
-    expect(properties.type).toEqual({ type: 'string', enum: ['button', 'reset', 'submit'] });
+    // `default` is the one the component writes, `type = 'button'`.
+    expect(properties.type).toEqual({ type: 'string', enum: ['button', 'reset', 'submit'], default: 'button' });
   });
 
   it('still refuses an enum whose values differ from the surface, naming the prop', () => {
@@ -619,5 +622,120 @@ describe('where a family member may be mounted', () => {
     // its own right, so nothing becomes independently mountable.
     const root = { family_membership: { name: 'menu', role: 'root' as const }, mounted_in: [{ container: 'Toolbar', component: elsewhere }] };
     expect(mountPointsOutsideFamily(root, roster)).toEqual([]);
+  });
+});
+
+describe('a default the component writes for itself', () => {
+  const extractions = extractComponent(fixture('prop-defaults.fixture.tsx'));
+  const byName = (name: string) => extractions.find((e) => e.name === name)!;
+
+  it('is the default of the property it names', () => {
+    const { properties } = buildPropsAndRequired('chip', byName('Chip'), {});
+    expect(properties.tone).toMatchObject({ type: 'string', default: 'info' });
+    expect(properties.count).toMatchObject({ type: 'number', default: 3 });
+    expect(properties.dense).toMatchObject({ type: 'boolean', default: false });
+    expect(properties.offset).toMatchObject({ default: -1 });
+    expect(properties.hint.default).toBeNull();
+  });
+
+  it("wins over a reused variant declaration's default for the same axis", () => {
+    const { properties } = buildPropsAndRequired('outline-action', byName('OutlineAction'), {});
+    expect(properties.variant).toEqual({ type: 'string', enum: ['default', 'outline'], default: 'outline' });
+  });
+
+  it('leaves the variant default in place where the component writes none', () => {
+    const { properties } = buildPropsAndRequired('action', byName('Action'), {});
+    expect(properties.variant.default).toBe('default');
+  });
+
+  it("states an axis removed with Omit as the component's own prop, with the component's own default", () => {
+    const { properties } = buildPropsAndRequired('quiet-action', byName('QuietAction'), {});
+    expect(properties.variant).toEqual({ type: 'string', enum: ['loud', 'quiet'], default: 'quiet' });
+  });
+
+  it('is noted, not stated, where the contract has no property for the prop it names', () => {
+    const { properties, notes } = buildPropsAndRequired('submit-button', byName('SubmitButton'), loadElementSurface('button'));
+    expect(properties.type).toBeUndefined();
+    expect(notes).toEqual(['default: prop "type" defaults to "submit", but the contract states no property for it - the default is not stated']);
+  });
+
+  it("refuses a default its own property's schema rejects, naming both", () => {
+    expect(() => buildPropsAndRequired('reset-action', byName('ResetAction'), {})).toThrow(
+      /prop "variant" defaults to null, which its own property .* rejects/,
+    );
+  });
+
+  it('is not stated where the written default is computed', () => {
+    const { properties } = buildPropsAndRequired('sized', byName('Sized'), {});
+    expect(properties.size).toEqual({ type: 'string' });
+  });
+});
+
+describe('an overlay stating that nothing renders the forwarded attributes', () => {
+  const forwarded = [{ name: 'aria-label', optional: true, typeText: 'string', expressed: undefined, declarationFile: '@types/react/index.d.ts' }];
+  const statement = { host_element: { none: 'the library renders them onto no element.' } };
+  const noBody = { elementKind: undefined, forwardedProps: forwarded, hasBody: false };
+
+  it('is admitted for a component with no body of its own whose source names no element, and names what it leaves out', () => {
+    expect(assertHostElementStatement('legend', statement, noBody)).toBe(
+      'host element: none - 1 React attribute(s) the props type admits are rendered onto no element (aria-label): the library renders them onto no element.',
+    );
+  });
+
+  it('is refused where the props type names an element', () => {
+    expect(() => assertHostElementStatement('legend', statement, { ...noBody, elementKind: 'div' })).toThrow(/names "div"/);
+  });
+
+  it('is refused where nothing is forwarded', () => {
+    expect(() => assertHostElementStatement('legend', statement, { ...noBody, forwardedProps: [] })).toThrow(/forwards no React attributes/);
+  });
+
+  it('is refused for every bodied component, whatever its body returns first', () => {
+    // An early `return null`, a fragment, one of two elements: each still
+    // renders an element on some path, so the body - not a statement - says
+    // where the props go.
+    for (const component of extractComponent(fixture('rendered-root.fixture.tsx')).filter((e) => e.hasBody)) {
+      expect(() => assertHostElementStatement(component.name, statement, component), component.name).toThrow(/body of its own/);
+    }
+  });
+
+  it('is absent from a contract whose overlay does not state it', () => {
+    expect(assertHostElementStatement('legend', {}, noBody)).toBeUndefined();
+  });
+});
+
+describe('a library alias compiled with the statement, end to end', () => {
+  const [legendish] = extractComponent(fixture('library-alias.fixture.tsx'));
+  const overlay = parseOverlay('legendish', {
+    component: 'legendish',
+    intent: 'Show which series a chart draws, as the library lays it out.',
+    typical_uses: ['A legend under a chart'],
+    dont_use_when: [{ situation: 'A legend the kit lays out itself', instead: { target: 'a list of kit Badges', note: 'The kit ships no legend of its own.' } }],
+    accepts: { content: 'nothing' },
+    host_element: { none: 'the library passes them to its content renderer as props, not to an element.' },
+    invariants: [],
+    anti_patterns: [],
+    deprecations: {},
+    attestations: { a11y: { outcome: 'unknown' }, rtl: { outcome: 'unknown' } },
+    examples: {
+      good: [{ title: 'Under a chart', code: '<Legendish align="left" />' }],
+      bad: [{ title: 'Aligned where the legend has no side', code: '<Legendish align="center" />', why: 'align takes left or right.' }],
+    },
+  });
+
+  it('names no element surface and records what it leaves undescribed and why', () => {
+    expect(legendish.hasBody).toBe(false);
+    const contract = compileContractFrom('legendish', 'legendish', legendish, overlay);
+    expect(contract.forwards_to).toBeUndefined();
+    expect(contract.props.properties.align).toMatchObject({ type: 'string', enum: ['left', 'right'] });
+    const notes = contract['x-uikit'].cannot_extract;
+    expect(notes[notes.length - 1]).toMatch(
+      /^host element: none - \d+ React attribute\(s\) the props type admits are rendered onto no element \(aria-[a-z]+.*\): the library passes them/,
+    );
+  });
+
+  it('is refused without the statement, naming the forwarded props', () => {
+    const { host_element: _dropped, ...withoutStatement } = overlay;
+    expect(() => compileContractFrom('legendish', 'legendish', legendish, withoutStatement)).toThrow(/no host element kind could be resolved/);
   });
 });

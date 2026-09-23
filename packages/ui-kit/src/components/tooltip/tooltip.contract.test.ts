@@ -151,8 +151,13 @@ describe('tooltip directory: what the schema cannot assert', () => {
       expect(Object.keys(root.prop_statements ?? {}), prop).not.toContain(prop);
     }
     const provider = units[PROVIDER].contract;
-    for (const prop of ['delay', 'closeDelay', 'timeout']) {
-      expect(provider.props.properties[prop], prop).toEqual({ type: 'number' });
+    // `delay` carries the default the provider writes for itself.
+    for (const [prop, schema] of [
+      ['delay', { type: 'number', default: 0 }],
+      ['closeDelay', { type: 'number' }],
+      ['timeout', { type: 'number' }],
+    ] as const) {
+      expect(provider.props.properties[prop], prop).toEqual(schema);
       expect(Object.keys(provider.prop_statements ?? {}), prop).not.toContain(prop);
     }
   });
@@ -162,8 +167,9 @@ describe('tooltip directory: what the schema cannot assert', () => {
     expect(content.props.properties.side).toEqual({
       type: 'string',
       enum: ['bottom', 'inline-end', 'inline-start', 'left', 'right', 'top'],
+      default: 'top',
     });
-    expect(content.props.properties.align).toEqual({ type: 'string', enum: ['center', 'end', 'start'] });
+    expect(content.props.properties.align).toEqual({ type: 'string', enum: ['center', 'end', 'start'], default: 'center' });
     for (const prop of ['container', 'sideOffset', 'alignOffset', 'collisionBoundary', 'collisionPadding']) {
       expect(Object.keys(content.prop_statements ?? {}), prop).toContain(prop);
     }

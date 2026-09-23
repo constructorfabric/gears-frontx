@@ -1744,3 +1744,17 @@ authored rule on `mount_point` is what the answer has to fit.
 **Decisions taken along the way.** The schema cannot tell the branches apart, so it admits a branch-only prop whichever branch a caller is on; the description is where the narrowing is stated. Adding an optional prop is compatible, so a union reaching the contract this way moves no major.
 
 **Cost.** The enumeration was a small function; the care went into keeping "has a description" and "leaves part of the type to tsc" from meaning the same thing any longer.
+
+## A component's own defaults
+
+A prop's default is the one a caller who passes nothing gets. The extractor reads it from two places: a variant declaration's `defaultVariants`, and the literal defaults the component's body writes into its destructured props parameter (`{ variant = 'outline' }`). Where both name the same prop, the component's own wins: a wrapper that reuses another component's variant axis and writes its own default for it renders that default, whatever the reused declaration says. The compiler states it as the schema `default` of whichever property it names, an axis, a declared prop or a wrapped library's prop. Literals only - a string, a number, a boolean, null. A computed default is noted in `cannot_extract` and not stated, because nothing a schema holds says what it evaluates to. A default for a prop the contract has no property for, such as an attribute forwarded to the host element, is noted and not stated too: the element's surface states no defaults. A default the property's own schema rejects - `null` for an axis whose enum does not list it, which the variant types admit - fails the compile, since a contract carrying it would state a default no validator of it accepts.
+
+An axis a component removes with Omit, or leaves out with Pick, on the way to a reused variant declaration is not one of its axes: an in-group button that omits the kit button's `size` and declares `size?: 'xs' | 'sm'` has that prop as its own, typed as it declares it, and not the reused axis's values and default.
+
+A default on a property is a compatible addition, so it moves no major.
+
+## A component whose forwarded attributes reach no element
+
+A component taken whole from a library can admit React attributes in its type and render them onto nothing: the chart legend's type admits the ARIA attributes, and the library passes them to the legend's content renderer as props rather than onto the wrapper it renders. Its type names no element, it has no body of the kit's to read, and naming the wrapper's element would state that the attributes reach it, which they do not.
+
+For that case the overlay may state `host_element: { none: <reason> }`. The compiler admits it only where the source cannot answer: the extraction resolved no element, the component forwards something, and it has no body of its own. The contract then names no element surface and records, among what the extraction could not read, every attribute it leaves undescribed and the stated reason. A component with a body is refused the statement whatever the body returns first - null, a fragment, one of two elements - because the body is where its props go, and it is typed with the helper of the element it spreads them onto instead.

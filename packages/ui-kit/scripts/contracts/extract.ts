@@ -77,6 +77,8 @@ export interface ExtractedProp {
   branches?: string[];
 }
 
+export type PropDefault = string | number | boolean | null;
+
 export interface ComponentExtraction {
   // The exported identifier (PascalCase) - compileContract matches this
   // against the directory name in PascalCase to pick one extraction out of
@@ -90,6 +92,13 @@ export interface ComponentExtraction {
   // wrote and the compiler decides how to express them.
   booleanAxes: string[];
   defaults: Record<string, string>;
+  // The defaults the component writes for itself, in the destructured props
+  // parameter of its own body (`{ variant = 'outline' }`), by prop name. They
+  // are the value a caller who passes nothing actually gets, so where one
+  // names a variant axis too it is the default the contract states, over the
+  // variant declaration's. Literals only (string, number, boolean, null); a
+  // computed default is noted in `cannotExtract` and left out.
+  propDefaults: Record<string, PropDefault>;
   // Declared in this package's own source: the component's own file, or a
   // sibling kit file whose props type it reuses.
   ownProps: ExtractedProp[];
@@ -120,6 +129,14 @@ export interface ComponentExtraction {
   // so a component with forwarded DOM props and no resolvable element kind
   // is refused rather than compiled without them.
   elementKind?: string;
+  // Whether the component is written with a body of the kit's own - a
+  // function, an arrow or a function expression - rather than as an alias or
+  // a re-export of a callable declared elsewhere. Not a reading of what the
+  // body renders: a body may return null first, a fragment, a component or
+  // one of two elements, and none of that says where its props go. Used only
+  // to check an overlay's host-element statement, which a bodied component
+  // answers with its own props type instead.
+  hasBody: boolean;
   // Human-readable labels for the VariantProps<typeof X> heritage this
   // component's own Props type declares - where its cva axes come from,
   // kept for readers of the compiled contract, not consumed by the compiler.
@@ -453,6 +470,7 @@ function extractVariants(
   variantSources: ts.EntityName[],
   checker: ts.TypeChecker,
   cannotExtract: string[],
+  axisFilters: ReadonlyMap<ts.EntityName, KeyFilter> = new Map(),
 ): { axes: Record<string, string[]>; booleanAxes: string[]; defaults: Record<string, string> } {
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-axes
   const axes: Record<string, string[]> = {};
@@ -468,6 +486,7 @@ function extractVariants(
 
   for (const entityName of variantSources) {
     const label = lastEntityName(entityName);
+    const filter = axisFilters.get(entityName);
     const symbol = checker.getSymbolAtLocation(entityName);
     const call = symbol ? traceSymbolToCvaCall(symbol, checker, new Set(), 0) : undefined;
     if (!call) {
@@ -500,6 +519,9 @@ function extractVariants(
       }
       if (name === 'variants') {
         for (const axis of literalKeys(initializer, 'variants', cannotExtract)) {
+          // Removed on the way here (Omit) or not kept (Pick): the component
+          // does not take this axis from this declaration.
+          if (!keyAllowed(filter, axis.name)) continue;
           if (!ts.isObjectLiteralExpression(axis.initializer)) {
             cannotExtract.push(`axis "${axis.name}": value map is not an object literal`);
             continue;
@@ -525,6 +547,7 @@ function extractVariants(
       }
       if (name === 'defaultVariants') {
         for (const def of literalKeys(initializer, 'defaultVariants', cannotExtract)) {
+          if (!keyAllowed(filter, def.name)) continue;
           // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-boolean-axis
           // A boolean axis's default is written as a boolean, not as the
           // string key it indexes the variant map by (`fullWidth: false`, not
@@ -578,6 +601,10 @@ function extractVariants(
 interface PropsTypeWalkResult {
   kind: string | undefined;
   variantSources: ts.EntityName[];
+  // The keys an Omit or a Pick on the path to a variant source removed or
+  // kept, for the sources reached through one. An axis the path removes is
+  // not an axis of this component.
+  axisFilters: Map<ts.EntityName, KeyFilter>;
   // Threaded alongside kind/variantSources rather than returned separately:
   // a heritage node this walk cannot classify (a mapped type, a conditional
   // type, a generic wrapper resolving to neither an interface nor a type alias)
@@ -585,6 +612,51 @@ interface PropsTypeWalkResult {
   // belongs on the same result so extractComponent merges it into the
   // component's cannotExtract list the same way.
   cannotExtract: string[];
+}
+
+// The prop names an Omit removes or a Pick keeps on the way down a props
+// type, accumulated: Omit adds to what is removed, Pick narrows what is kept.
+interface KeyFilter {
+  readonly omitted: ReadonlySet<string>;
+  readonly picked?: ReadonlySet<string>;
+}
+
+const NO_KEY_FILTER: KeyFilter = { omitted: new Set() };
+
+function narrowFilter(filter: KeyFilter, kind: 'omit' | 'pick', keys: readonly string[]): KeyFilter {
+  if (kind === 'omit') return { omitted: new Set([...filter.omitted, ...keys]), picked: filter.picked };
+  const picked = filter.picked === undefined ? new Set(keys) : new Set(keys.filter((key) => filter.picked!.has(key)));
+  return { omitted: filter.omitted, picked };
+}
+
+function keyAllowed(filter: KeyFilter | undefined, key: string): boolean {
+  if (filter === undefined) return true;
+  return !filter.omitted.has(key) && (filter.picked === undefined || filter.picked.has(key));
+}
+
+// The same keys read off an instantiated helper's key argument: a string
+// literal type or a union of them.
+function literalKeysOfType(type: ts.Type): string[] | undefined {
+  const members = type.isUnion() ? type.types : [type];
+  const keys: string[] = [];
+  for (const member of members) {
+    if (!member.isStringLiteral()) return undefined;
+    keys.push(member.value);
+  }
+  return keys;
+}
+
+// The keys a helper's key argument names, where it names them as string
+// literals (`'size'`, `'size' | 'type'`); undefined for `keyof X` or anything
+// else, which removes or keeps what this walk cannot list.
+function literalKeysOf(node: ts.TypeNode): string[] | undefined {
+  const members = ts.isUnionTypeNode(node) ? node.types : [node];
+  const keys: string[] = [];
+  for (const member of members) {
+    if (!ts.isLiteralTypeNode(member) || !ts.isStringLiteral(member.literal)) return undefined;
+    keys.push(member.literal.text);
+  }
+  return keys;
 }
 
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
@@ -618,7 +690,7 @@ function typeRefParts(
 // utility type - exactly the M1 defect (F-class silent loss reintroduced
 // through import aliasing, not file relocation).
 type HeritageShape =
-  | { readonly kind: 'omit-pick' }
+  | { readonly kind: 'omit-pick'; readonly helper: 'Omit' | 'Pick' }
   | { readonly kind: 'variant-props' }
   | { readonly kind: 'component-props' }
   | { readonly kind: 'base-ui-component-props' }
@@ -699,7 +771,7 @@ function classifyHeritageSymbol(symbol: ts.Symbol, checker: ts.TypeChecker): Her
   const declarations = resolved.getDeclarations() ?? [];
 
   if ((name === 'Omit' || name === 'Pick') && declaredUnder(declarations, /[\\/]node_modules[\\/]typescript[\\/]lib[\\/]/)) {
-    return { kind: 'omit-pick' };
+    return { kind: 'omit-pick', helper: name };
   }
   if (name === 'VariantProps' && declaredUnder(declarations, /[\\/]node_modules[\\/]class-variance-authority[\\/]/)) {
     return { kind: 'variant-props' };
@@ -746,15 +818,16 @@ function walkPropsType(
   result: PropsTypeWalkResult,
   visited: Set<ts.Symbol>,
   depth: number,
+  filter: KeyFilter = NO_KEY_FILTER,
 ): void {
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
   if (depth > 12) return;
   if (ts.isIntersectionTypeNode(node)) {
-    for (const member of node.types) walkPropsType(member, checker, result, visited, depth + 1);
+    for (const member of node.types) walkPropsType(member, checker, result, visited, depth + 1, filter);
     return;
   }
   if (ts.isParenthesizedTypeNode(node)) {
-    walkPropsType(node.type, checker, result, visited, depth + 1);
+    walkPropsType(node.type, checker, result, visited, depth + 1, filter);
     return;
   }
   // A union of props types is walked branch by branch, the way its props are
@@ -764,11 +837,15 @@ function walkPropsType(
   if (ts.isUnionTypeNode(node)) {
     const kinds: string[] = [];
     for (const member of node.types.filter((type) => !isNullishTypeNode(type))) {
-      const branch: PropsTypeWalkResult = { kind: undefined, variantSources: [], cannotExtract: [] };
-      walkPropsType(member, checker, branch, new Set(visited), depth + 1);
+      const branch: PropsTypeWalkResult = { kind: undefined, variantSources: [], axisFilters: new Map(), cannotExtract: [] };
+      walkPropsType(member, checker, branch, new Set(visited), depth + 1, filter);
       if (branch.kind !== undefined && !kinds.includes(branch.kind)) kinds.push(branch.kind);
       for (const source of branch.variantSources) {
-        if (!result.variantSources.some((known) => known.getText() === source.getText())) result.variantSources.push(source);
+        if (!result.variantSources.some((known) => known.getText() === source.getText())) {
+          result.variantSources.push(source);
+          const sourceFilter = branch.axisFilters.get(source);
+          if (sourceFilter !== undefined) result.axisFilters.set(source, sourceFilter);
+        }
       }
       result.cannotExtract.push(...branch.cannotExtract);
     }
@@ -795,7 +872,7 @@ function walkPropsType(
   // it continues the walk exactly where `ComponentProps<typeof X>` would.
   const parametersQuery = ts.isIndexedAccessTypeNode(node) ? firstParameterQuery(node, checker) : undefined;
   if (parametersQuery !== undefined) {
-    walkQueriedComponentProps(parametersQuery, node, checker, result, visited, depth);
+    walkQueriedComponentProps(parametersQuery, node, checker, result, visited, depth, filter);
     return;
   }
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
@@ -820,15 +897,21 @@ function walkPropsType(
   const shape = classifyHeritageReference(location, checker);
 
   if (shape?.kind === 'omit-pick' && args && args.length > 0) {
-    walkPropsType(args[0], checker, result, visited, depth + 1);
+    // What the helper removes (Omit) or keeps (Pick) is not an axis of this
+    // component, whatever a variant declaration further down says: an axis
+    // removed and redeclared is the component's own prop.
+    const keys = args.length > 1 ? literalKeysOf(args[1]) : undefined;
+    const narrowed = keys === undefined ? filter : narrowFilter(filter, shape.helper === 'Pick' ? 'pick' : 'omit', keys);
+    walkPropsType(args[0], checker, result, visited, depth + 1, narrowed);
     return;
   }
   if (shape?.kind === 'variant-props' && args && args.length > 0 && ts.isTypeQueryNode(args[0])) {
     result.variantSources.push(args[0].exprName);
+    if (filter !== NO_KEY_FILTER) result.axisFilters.set(args[0].exprName, filter);
     return;
   }
   if (namesHostElement(shape) && args?.length) {
-    readHostElementArgument(node, args[0], checker, result, visited, depth);
+    readHostElementArgument(node, args[0], checker, result, visited, depth, filter);
     return;
   }
   if (shape?.kind === 'dom-attributes' && args !== undefined && args.length > shape.argument) {
@@ -865,11 +948,11 @@ function walkPropsType(
     if (ts.isInterfaceDeclaration(decl)) {
       unwrapped = true;
       for (const clause of decl.heritageClauses ?? []) {
-        for (const member of clause.types) walkPropsType(member, checker, result, visited, depth + 1);
+        for (const member of clause.types) walkPropsType(member, checker, result, visited, depth + 1, filter);
       }
     } else if (ts.isTypeAliasDeclaration(decl)) {
       unwrapped = true;
-      walkPropsType(decl.type, checker, result, visited, depth + 1);
+      walkPropsType(decl.type, checker, result, visited, depth + 1, filter);
     }
   }
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
@@ -897,13 +980,14 @@ function readHostElementArgument(
   result: PropsTypeWalkResult,
   visited: Set<ts.Symbol>,
   depth: number,
+  filter: KeyFilter = NO_KEY_FILTER,
 ): void {
   if (ts.isLiteralTypeNode(first) && ts.isStringLiteral(first.literal)) {
     if (result.kind === undefined) result.kind = first.literal.text;
     return;
   }
   if (ts.isTypeQueryNode(first)) {
-    walkQueriedComponentProps(first, node, checker, result, visited, depth);
+    walkQueriedComponentProps(first, node, checker, result, visited, depth, filter);
     return;
   }
   const tags = literalTagsOf(first);
@@ -1039,6 +1123,7 @@ function walkQueriedComponentProps(
   result: PropsTypeWalkResult,
   visited: Set<ts.Symbol>,
   depth: number,
+  filter: KeyFilter = NO_KEY_FILTER,
 ): void {
   const candidates = checker
     .getTypeAtLocation(query)
@@ -1065,9 +1150,9 @@ function walkQueriedComponentProps(
     const declaration = parameter.valueDeclaration;
     const annotation = declaration && ts.isParameter(declaration) ? declaration.type : undefined;
     if (annotation !== undefined && checker.getTypeFromTypeNode(annotation) === propsType) {
-      walkPropsType(annotation, checker, result, visited, depth + 1);
+      walkPropsType(annotation, checker, result, visited, depth + 1, filter);
     } else {
-      walkResolvedType(propsType, node, checker, result, visited, depth + 1);
+      walkResolvedType(propsType, node, checker, result, visited, depth + 1, filter);
     }
     return;
   }
@@ -1094,10 +1179,11 @@ function walkResolvedType(
   result: PropsTypeWalkResult,
   visited: Set<ts.Symbol>,
   depth: number,
+  filter: KeyFilter = NO_KEY_FILTER,
 ): void {
   if (depth > 12) return;
   if (type.isIntersection()) {
-    for (const member of type.types) walkResolvedType(member, node, checker, result, visited, depth + 1);
+    for (const member of type.types) walkResolvedType(member, node, checker, result, visited, depth + 1, filter);
     return;
   }
   const alias = type.aliasSymbol;
@@ -1112,7 +1198,11 @@ function walkResolvedType(
     if (shape !== undefined) typeArguments = checker.getTypeArguments(type as ts.TypeReference);
   }
   if (shape?.kind === 'omit-pick' && typeArguments.length > 0) {
-    walkResolvedType(typeArguments[0], node, checker, result, visited, depth + 1);
+    // The instantiated helper's key argument is the same keys as types, and
+    // narrows what later axes may be taken exactly as walkPropsType's does.
+    const keys = typeArguments.length > 1 ? literalKeysOfType(typeArguments[1]) : undefined;
+    const narrowed = keys === undefined ? filter : narrowFilter(filter, shape.helper === 'Pick' ? 'pick' : 'omit', keys);
+    walkResolvedType(typeArguments[0], node, checker, result, visited, depth + 1, narrowed);
     return;
   }
   if (namesHostElement(shape) && typeArguments.length > 0) {
@@ -1165,11 +1255,11 @@ function walkResolvedType(
     if (ts.isInterfaceDeclaration(decl)) {
       unwrapped = true;
       for (const clause of decl.heritageClauses ?? []) {
-        for (const member of clause.types) walkPropsType(member, checker, result, visited, depth + 1);
+        for (const member of clause.types) walkPropsType(member, checker, result, visited, depth + 1, filter);
       }
     } else if (ts.isTypeAliasDeclaration(decl)) {
       unwrapped = true;
-      walkPropsType(decl.type, checker, result, visited, depth + 1);
+      walkPropsType(decl.type, checker, result, visited, depth + 1, filter);
     } else if (ts.isTypeLiteralNode(decl)) {
       // An anonymous object type: a terminal, for the reason an inline one
       // is in walkPropsType - its members reach the extraction through the
@@ -1646,6 +1736,18 @@ function firstParameter(
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
 }
 
+// The body of a component written with one - a function declaration's, or an
+// arrow's or function expression's under the wrappers unwrapComponentInitializer
+// sees through - and undefined for an alias or a re-export, which have none.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
+function componentBody(node: CandidateDeclaration, checker: ts.TypeChecker): ts.Node | undefined {
+  if (ts.isFunctionDeclaration(node)) return node.body;
+  if (ts.isExportSpecifier(node)) return undefined;
+  const inner = unwrapComponentInitializer(node.initializer, checker);
+  return inner && (ts.isArrowFunction(inner) || ts.isFunctionExpression(inner)) ? inner.body : undefined;
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
+}
+
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
 function isNodeExported(node: ts.Node): boolean {
   const modifiers = ts.canHaveModifiers(node) ? ts.getModifiers(node) : undefined;
@@ -1788,6 +1890,46 @@ function branchLabel(branch: ts.Type, branches: readonly ts.Type[], checker: ts.
 }
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-props
 
+// The literal defaults a component's body writes into its destructured props
+// parameter, by the prop name each binding reads (`{ tone: t = 'info' }` is
+// `tone`). A default that is not a literal - a call, a constant, a template
+// with a substitution - says nothing a schema can hold, so it is named in
+// `cannotExtract` rather than evaluated or dropped in silence.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-axes
+function destructuredDefaults(param: ts.ParameterDeclaration, cannotExtract: string[]): Record<string, PropDefault> {
+  const defaults: Record<string, PropDefault> = {};
+  if (!ts.isObjectBindingPattern(param.name)) return defaults;
+  for (const element of param.name.elements) {
+    if (element.dotDotDotToken !== undefined || element.initializer === undefined) continue;
+    const key = element.propertyName ?? element.name;
+    const name = ts.isIdentifier(key) || ts.isStringLiteral(key) ? key.text : undefined;
+    if (name === undefined) continue;
+    const value = literalValue(element.initializer);
+    if (value === undefined) {
+      cannotExtract.push(
+        `default: prop "${name}" defaults to "${element.initializer.getText()}", which is not a literal - the contract ` +
+          `states no default for it`,
+      );
+      continue;
+    }
+    defaults[name] = value.value;
+  }
+  return defaults;
+}
+
+function literalValue(expr: ts.Expression): { value: PropDefault } | undefined {
+  if (ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr)) return { value: expr.text };
+  if (ts.isNumericLiteral(expr)) return { value: Number(expr.text) };
+  if (ts.isPrefixUnaryExpression(expr) && expr.operator === ts.SyntaxKind.MinusToken && ts.isNumericLiteral(expr.operand)) {
+    return { value: -Number(expr.operand.text) };
+  }
+  if (expr.kind === ts.SyntaxKind.TrueKeyword) return { value: true };
+  if (expr.kind === ts.SyntaxKind.FalseKeyword) return { value: false };
+  if (expr.kind === ts.SyntaxKind.NullKeyword) return { value: null };
+  return undefined;
+}
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-axes
+
 // The walk itself, over one already-resolved source file. Split from the
 // program building below so the same walk can serve a per-file program (the
 // artifact path) and a shared one (the counting path) without either being a
@@ -1833,6 +1975,10 @@ function extractFromSource(source: ts.SourceFile, program: ts.Program): Componen
       let axes: Record<string, string[]> = {};
       let booleanAxes: string[] = [];
       let defaults: Record<string, string> = {};
+      let propDefaults: Record<string, PropDefault> = {};
+      // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
+      const hasBody = componentBody(candidate, checker) !== undefined;
+      // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-candidates
 
       if (param) {
         // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
@@ -1843,7 +1989,7 @@ function extractFromSource(source: ts.SourceFile, program: ts.Program): Componen
         const instantiated =
           shape.form === 'alias' ? checker.getTypeOfSymbolAtLocation(shape.signature.getParameters()[0], param) : declaredType;
         const paramType = instantiated;
-        const walk: PropsTypeWalkResult = { kind: undefined, variantSources: [], cannotExtract: [] };
+        const walk: PropsTypeWalkResult = { kind: undefined, variantSources: [], axisFilters: new Map(), cannotExtract: [] };
         if (param.type && instantiated !== declaredType) {
           walkResolvedType(instantiated, param.type, checker, walk, new Set(), 0);
           // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
@@ -1861,10 +2007,13 @@ function extractFromSource(source: ts.SourceFile, program: ts.Program): Componen
         // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-cannot
 
         // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-axes
-        const variantsResult = extractVariants(walk.variantSources, checker, cannotExtract);
+        const variantsResult = extractVariants(walk.variantSources, checker, cannotExtract, walk.axisFilters);
         axes = variantsResult.axes;
         booleanAxes = variantsResult.booleanAxes;
         defaults = variantsResult.defaults;
+        // An alias's parameter is declared by the callable type it aliases,
+        // with no body and so no default of the kit's to read.
+        if (shape.form === 'body') propDefaults = destructuredDefaults(param, cannotExtract);
         // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-axes
         // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-props
         const axisNames = new Set(Object.keys(axes));
@@ -1966,11 +2115,13 @@ function extractFromSource(source: ts.SourceFile, program: ts.Program): Componen
         axes,
         booleanAxes,
         defaults,
+        propDefaults,
         ownProps,
         apiProps,
         forwardedProps,
         unclassifiedProps,
         elementKind,
+        hasBody,
         variantSourceLabels,
         cannotExtract,
       });

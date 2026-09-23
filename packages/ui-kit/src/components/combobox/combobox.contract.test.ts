@@ -215,18 +215,19 @@ describe('combobox directory: what the schema cannot assert', () => {
       expect(Object.keys(root.prop_statements ?? {}), prop).not.toContain(prop);
     }
     const input = units['combobox-input'].contract;
-    for (const [prop, type] of [
-      ['showTrigger', 'boolean'],
-      ['showClear', 'boolean'],
-      ['toggleLabel', 'string'],
-      ['clearLabel', 'string'],
+    // Each with the default combobox.tsx writes for it.
+    for (const [prop, type, value] of [
+      ['showTrigger', 'boolean', true],
+      ['showClear', 'boolean', false],
+      ['toggleLabel', 'string', 'Toggle options'],
+      ['clearLabel', 'string', 'Clear value'],
     ] as const) {
-      expect(input.props.properties[prop], prop).toEqual({ type });
+      expect(input.props.properties[prop], prop).toEqual({ type, default: value });
       expect(Object.keys(input.prop_statements ?? {}), prop).not.toContain(prop);
     }
     const chip = units['combobox-chip'].contract;
-    expect(chip.props.properties.showRemove).toEqual({ type: 'boolean' });
-    expect(chip.props.properties.removeLabel).toEqual({ type: 'string' });
+    expect(chip.props.properties.showRemove).toEqual({ type: 'boolean', default: true });
+    expect(chip.props.properties.removeLabel).toEqual({ type: 'string', default: 'Remove' });
   });
 
   it("the list's, the value's and the collection's function children carry prop statements", () => {

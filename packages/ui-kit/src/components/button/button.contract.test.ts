@@ -487,11 +487,13 @@ describe('overlay and extraction safety', () => {
       axes: {},
       booleanAxes: [],
       defaults: {},
+      propDefaults: {},
       ownProps,
       apiProps,
       forwardedProps: [],
       unclassifiedProps: [],
       elementKind: 'button',
+      hasBody: true,
       variantSourceLabels: [],
       cannotExtract: [],
     };

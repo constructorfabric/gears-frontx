@@ -190,7 +190,7 @@ describe('native-select family: what the schema cannot assert', () => {
     // API props.
     const rootProps = units[DIRECTORY].contract.props.properties;
     expect(rootProps.className).toEqual({ type: 'string' });
-    expect(rootProps.size).toEqual({ type: 'string', enum: ['default', 'sm'] });
+    expect(rootProps.size).toEqual({ type: 'string', enum: ['default', 'sm'], default: 'default' });
     for (const stem of ALL_STEMS) {
       for (const prop of ['children', 'disabled', 'role', 'onClick', 'value']) {
         expect(units[stem].contract.props.properties, `${stem}.${prop}`).not.toHaveProperty(prop);
