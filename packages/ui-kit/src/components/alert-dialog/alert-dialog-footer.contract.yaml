@@ -1,0 +1,74 @@
+# Semantic overlay for AlertDialogFooter - a part of the AlertDialog family,
+# see alert-dialog.contract.yaml's `family_membership` for how the ten
+# contracts relate. AlertDialogContent accepts anything, so no kit container
+# names this part and it carries no `mounted_in`; it belongs directly inside
+# AlertDialogContent.
+component: alert-dialog-footer
+
+intent: Lay out an alert dialog's cancel and confirm actions at the bottom of the popup.
+
+typical_uses:
+  - The row holding AlertDialogCancel and AlertDialogAction
+
+dont_use_when:
+  - situation: The footer of a dismissible modal
+    instead:
+      target: DialogFooter
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_footer.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_cancel.v1 # AlertDialogCancel
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_action.v1 # AlertDialogAction
+
+invariants:
+  - id: pinned-while-the-popup-scrolls
+    text: >-
+      The footer is sticky at the bottom of the popup with an opaque
+      background matching it, so content scrolling inside AlertDialogContent
+      passes under it rather than through it.
+  - id: layout-follows-the-popup-size
+    text: >-
+      The footer reads its layout off the enclosing popup's `size`, not off a
+      prop of its own; its source order is also its row order, so the cancel
+      placed first sits at the start of the row.
+
+anti_patterns:
+  - dont: Put the confirming action before the cancel
+    do_instead: >-
+      Place AlertDialogCancel first and AlertDialogAction last, so the
+      action ends the row at the default size and tops the stacked layout
+      of a narrow viewport
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Cancel first, the confirming action last
+      code: |
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={deleteProject}>Delete</AlertDialogAction>
+        </AlertDialogFooter>
+  bad:
+    - title: Plain Buttons in place of the close parts
+      code: |
+        <AlertDialogFooter>
+          <Button variant="outline">Cancel</Button>
+          <Button onClick={deleteProject}>Delete</Button>
+        </AlertDialogFooter>
+      why: >-
+        A plain Button does not close the alert dialog; AlertDialogCancel and
+        AlertDialogAction are the primitive's Close rendered as a Button, so
+        pressing either one closes it.
+
+family_membership:
+  name: alert_dialog
+  role: part

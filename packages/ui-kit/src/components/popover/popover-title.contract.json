@@ -1,0 +1,117 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.popover_title.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "popover-title",
+  "forwards_to": "gts.frontx.uikit.element.dom_h2.v1~",
+  "intent": "The heading that gives its Popover's panel its accessible name.",
+  "typical_uses": [
+    "The one heading of a popover, stating what its controls set"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The heading of a dialog's popup",
+      "instead": {
+        "target": "DialogTitle",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_title.v1"
+      }
+    },
+    {
+      "situation": "The heading of a card on the page",
+      "instead": {
+        "target": "CardTitle",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_title.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "PopoverHeader",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.popover_header.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "heading-at-label-weight",
+      "text": "PopoverTitle renders an h2 unless `render` replaces it; popover.module.css sets only its font weight, to the label weight, so the browser's own heading size and margins still apply."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Render a second PopoverTitle in the same popup",
+      "do_instead": "Keep one PopoverTitle per popover and use plain headings for any subheadings; the popup's `aria-labelledby` points at one title's id"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the title's state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property; the primitive passes an empty state object."
+    },
+    "style": {
+      "states": "style accepts a function as well as a plain style object; the primitive passes that function an empty state object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`, and the title's state carries no fields. The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through popover.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A title in the header",
+        "code": "<PopoverHeader>\n  <PopoverTitle>Dimensions</PopoverTitle>\n</PopoverHeader>\n"
+      },
+      {
+        "title": "A title rendered as a third-level heading",
+        "code": "<PopoverTitle render={<h3 />}>Dimensions</PopoverTitle>"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A plain heading in place of PopoverTitle",
+        "code": "<PopoverContent>\n  <h2>Dimensions</h2>\n</PopoverContent>\n",
+        "why": "A plain heading carries no id the primitive knows about, so the popup gets no `aria-labelledby` and a screen reader announces an unnamed dialog."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "popover",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": [
+      "heritage: \"BaseUIComponentProps<'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6', PopoverTitleState>\" admits 6 host elements (h1, h2, h3, h4, h5, h6); the contract names \"h2\", the element the declaring file documents the component as rendering - a caller may render another"
+    ]
+  },
+  "props": {
+    "title": "UiKit PopoverTitle",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, PopoverTitleState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the title's state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property; the primitive passes an empty state object."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: PopoverTitleState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function as well as a plain style object; the primitive passes that function an empty state object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`, and the title's state carries no fields. The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through popover.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

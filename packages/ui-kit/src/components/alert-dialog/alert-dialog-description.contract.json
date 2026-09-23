@@ -1,0 +1,99 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_description.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "alert-dialog-description",
+  "forwards_to": "gts.frontx.uikit.element.dom_p.v1~",
+  "intent": "The paragraph that states what confirming an alert dialog will do, read out as the popup's description.",
+  "typical_uses": [
+    "The consequence of a confirmation, such as \"This cannot be undone.\""
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The description of a dismissible modal",
+      "instead": {
+        "target": "DialogDescription",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_description.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "AlertDialogHeader",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_header.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "muted-paragraph",
+      "text": "AlertDialogDescription renders a p in the body type ramp with the muted foreground color."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the description's state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property; the primitive passes an empty state object."
+    },
+    "style": {
+      "states": "style accepts a function as well as a plain style object; the primitive passes that function an empty state object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`, and the description's state carries no fields. The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through alert-dialog.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "The consequence under the question",
+        "code": "<AlertDialogHeader>\n  <AlertDialogTitle>Delete this project?</AlertDialogTitle>\n  <AlertDialogDescription>Its files and history are removed for everyone.</AlertDialogDescription>\n</AlertDialogHeader>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A list nested in the description",
+        "code": "<AlertDialogDescription>\n  <ul>\n    <li>All files</li>\n  </ul>\n</AlertDialogDescription>\n",
+        "why": "The description renders a p, and a list inside a paragraph is invalid HTML; keep the description to a sentence of text."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "alert_dialog",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit AlertDialogDescription",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, DialogDescriptionState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the description's state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property; the primitive passes an empty state object."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: DialogDescriptionState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function as well as a plain style object; the primitive passes that function an empty state object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`, and the description's state carries no fields. The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through alert-dialog.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

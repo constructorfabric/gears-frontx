@@ -1,0 +1,162 @@
+# Semantic overlay for Popover (the root) - the hand-written half of one of
+# six contracts describing this compound component. See the other
+# popover-*.contract.yaml files for the rest of the family, and
+# `family_membership` below for how a reader walks between them.
+#
+# Machine-extractable facts (prop list, forwarded surface) do NOT belong
+# here: the compiler takes those from popover.tsx and the Base UI Popover
+# primitive it re-exports. The root renders no element of its own, so it
+# names no element surface.
+component: popover
+
+intent: Hold the open state of one popover and tie its trigger to the floating panel it opens beside it.
+
+typical_uses:
+  - A small panel of controls opened from a button, such as a filter or the settings of one field
+  - Supplementary interactive content the user opens deliberately and dismisses when done
+
+dont_use_when:
+  - situation: A list of actions anchored to a trigger
+    instead:
+      target: DropdownMenu
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu.v1
+  - situation: A short, non-interactive label for a control
+    instead:
+      target: Tooltip
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.tooltip.v1
+  - situation: A preview of what a link points to, shown on hover
+    instead:
+      target: HoverCard
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.hover_card.v1
+  - situation: A task that must block the rest of the page until the user finishes it
+    instead:
+      target: Dialog
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog.v1
+
+# The ONE authored statement of the root's nesting: the compiler fills the
+# trigger's and the content's `mounted_in` from this list.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.popover_trigger.v1 # PopoverTrigger
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.popover_content.v1 # PopoverContent
+
+invariants:
+  - id: open-wins-over-default-open
+    text: >-
+      `open` and `defaultOpen` are both accepted; `defaultOpen` seeds the
+      initial state and is ignored afterwards, and when `open` is given it
+      wins and the component follows it on every render.
+  - id: non-modal-by-default
+    text: >-
+      With `modal` at its default `false` the page stays scrollable and
+      interactive while the popover is open. `true` locks page scroll and
+      lays the primitive's transparent blocking layer over the page, except
+      when the popover was opened by hover; `'trap-focus'` does neither.
+      Either value traps focus in the popup only while a close part of the
+      primitive (Popover.Close) is rendered inside it, and the kit exports
+      none, so a popover built from kit parts alone never traps focus.
+  - id: escape-and-outside-press-close
+    text: >-
+      Escape and a press outside the popup close the popover, reporting the
+      reason to `onOpenChange`; while focus is not trapped, focus moving
+      from the trigger or the popup to an element outside both closes it
+      too, unless the popover was opened by hover.
+
+anti_patterns: []
+
+deprecations: {}
+
+# The root renders nothing and wires no ARIA of its own; the popup's role is
+# PopoverContent's.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  children:
+    states: children is the root's content, either React nodes or a function of the active trigger's payload that returns them
+    because: >-
+      `React.ReactNode | PayloadChildRenderFunction<Payload>` - the function
+      form receives `{ payload }` from whichever trigger opened the popover.
+      The compiler emits one JSON type per property, and a function has no JSON Schema representation.
+  onOpenChange:
+    states: onOpenChange is a callback called with the next open state and event details, not a value
+    because: >-
+      `(open: boolean, eventDetails) => void`; the second argument carries
+      Base UI's change-event details, including the reason (a trigger
+      press, hover or focus, an outside press, Escape, a close press, focus
+      moving out or an imperative action). No JSON Schema type covers a
+      function.
+  onOpenChangeComplete:
+    states: onOpenChangeComplete is a callback called with the open state once the open or close animation has finished
+    because: >-
+      `(open: boolean) => void` - a function, which no JSON Schema type
+      covers.
+  actionsRef:
+    states: actionsRef is a ref the root fills with imperative `close` and `unmount` actions
+    because: >-
+      `React.RefObject<PopoverRootActions | null>` - a ref object holding
+      functions, which no JSON Schema type covers.
+  handle:
+    states: handle is an opaque object from the primitive's Popover.createHandle(), shared with a trigger placed outside this root
+    because: >-
+      `PopoverHandle<Payload>` is a class instance holding the popover's
+      store, not data; the kit re-exports no createHandle, so a caller
+      imports it from the primitive.
+  modal:
+    states: modal is true, false or the string 'trap-focus'
+    because: >-
+      `boolean | 'trap-focus'` - the compiler emits one JSON type per
+      property, so a boolean-or-string union is left unasserted.
+  triggerId:
+    states: triggerId is the id of the trigger a controlled popover is open for, or null
+    because: >-
+      `string | null` - the compiler emits one JSON type per property, so a
+      string-or-null union is left unasserted.
+  defaultTriggerId:
+    states: defaultTriggerId is the id of the trigger an initially open popover is open for, or null
+    because: >-
+      `string | null` - the compiler emits one JSON type per property, so a
+      string-or-null union is left unasserted.
+
+examples:
+  good:
+    - title: A panel of settings opened from a button
+      code: |
+        <Popover>
+          <PopoverTrigger render={<Button variant="outline" />}>Dimensions</PopoverTrigger>
+          <PopoverContent>
+            <PopoverHeader>
+              <PopoverTitle>Dimensions</PopoverTitle>
+              <PopoverDescription>Set the dimensions for the layer.</PopoverDescription>
+            </PopoverHeader>
+            <Input aria-label="Width" defaultValue="100%" />
+          </PopoverContent>
+        </Popover>
+    - title: A popover opened from state the caller owns
+      code: |
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger render={<Button variant="outline" />}>Filters</PopoverTrigger>
+          <PopoverContent>
+            <PopoverTitle>Filters</PopoverTitle>
+          </PopoverContent>
+        </Popover>
+  bad:
+    - title: A controlled popover nothing can close
+      code: |
+        <Popover open={open}>
+          <PopoverTrigger render={<Button variant="outline" />}>Filters</PopoverTrigger>
+          <PopoverContent>
+            <PopoverTitle>Filters</PopoverTitle>
+          </PopoverContent>
+        </Popover>
+      why: >-
+        Without `onOpenChange` nothing turns `open` false, so neither the
+        trigger, Escape nor an outside press closes the popover.
+
+family_membership:
+  name: popover
+  role: root

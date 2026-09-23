@@ -1,0 +1,76 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_footer.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sheet-footer",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The action region at the bottom of a sheet's panel.",
+  "typical_uses": [
+    "The primary action stacked with a Cancel"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The action region of a centered dialog",
+      "instead": {
+        "target": "DialogFooter",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_footer.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "invariants": [
+    {
+      "id": "stacked-column-at-every-width",
+      "text": "SheetFooter stacks its children in source order in a column spaced var(--space-2) apart at every viewport width, with a var(--space-4) padding on every side that replaces the panel's var(--space-6) inset for this child, and a `margin-top: auto`, which pushes it to the panel's bottom when the content is shorter than the panel."
+    },
+    {
+      "id": "pinned-while-the-popup-scrolls",
+      "text": "SheetFooter is sticky at the bottom of the panel with the panel's own opaque background, so content scrolling under it stays hidden."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Save with a Cancel that closes the sheet",
+        "code": "<SheetFooter>\n  <SheetClose render={<Button variant=\"outline\" />}>Cancel</SheetClose>\n  <Button onClick={save}>Save</Button>\n</SheetFooter>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A footer placed outside the panel",
+        "code": "<Sheet>\n  <SheetTrigger>Edit</SheetTrigger>\n  <SheetFooter>\n    <Button onClick={save}>Save</Button>\n  </SheetFooter>\n  <SheetContent>\n    <SheetTitle>Edit</SheetTitle>\n  </SheetContent>\n</Sheet>\n",
+        "why": "Only SheetContent is portalled into the panel; a footer beside it renders in the page, visible whether the sheet is open or not."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sheet",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SheetFooter",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_header.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sheet-header",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The heading region at the top of a sheet's panel, holding its title and description.",
+  "typical_uses": [
+    "The panel's title with a one-line description under it"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The heading region of a centered dialog",
+      "instead": {
+        "target": "DialogHeader",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_header.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_title.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_description.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "stacked-column",
+      "text": "SheetHeader is a flex column whose children are spaced var(--space-1) apart, with a var(--space-4) padding on every side that replaces the panel's var(--space-6) inset for this child."
+    },
+    {
+      "id": "pinned-while-the-popup-scrolls",
+      "text": "SheetHeader is sticky at the top of the panel with the panel's own opaque background, so content scrolling under it stays hidden."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A title with its description",
+        "code": "<SheetHeader>\n  <SheetTitle>Edit profile</SheetTitle>\n  <SheetDescription>Changes apply when you save.</SheetDescription>\n</SheetHeader>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Footer actions placed in the header",
+        "code": "<SheetHeader>\n  <SheetTitle>Edit profile</SheetTitle>\n  <Button onClick={save}>Save</Button>\n</SheetHeader>\n",
+        "why": "The header stacks its children in a column under the title; actions belong in SheetFooter, which stays pinned to the panel's bottom."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sheet",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SheetHeader",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

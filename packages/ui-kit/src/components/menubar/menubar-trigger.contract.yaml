@@ -1,0 +1,129 @@
+# Semantic overlay for MenubarTrigger - a part of the Menubar family, see
+# menubar.contract.yaml's `family_membership` for how the contracts relate.
+# MenubarTrigger is the kit's own wrapper around DropdownMenuTrigger that adds
+# menubar.module.css's trigger class; the forwarded surface is the primitive's
+# native button.
+component: menubar-trigger
+
+intent: The button in a Menubar that opens and closes its MenubarMenu's popup, captioned with the menu's name.
+
+typical_uses:
+  - A top-level menu name in the bar, such as File, Edit or View
+
+dont_use_when:
+  - situation: The trigger of a single menu outside any bar, such as a "more actions" button
+    instead:
+      target: DropdownMenuTrigger
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_trigger.v1
+  - situation: A button that performs one action directly
+    instead:
+      target: Button
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+
+# `mounted_in` is filled from the MenubarMenu root's accepted components.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: a-menuitem-of-the-bar
+    text: >-
+      Inside a Menubar the trigger renders a native `<button>` with
+      `role="menuitem"` and `aria-haspopup="menu"`, and it is one stop of the
+      bar's roving focus rather than a tab stop of its own.
+  - id: press-toggles-hover-only-switches
+    text: >-
+      Pressing the trigger toggles its menu; while no menu of the bar is
+      open, hovering the trigger opens nothing whatever `openOnHover` says,
+      and `delay` has no effect inside a bar.
+  - id: styled-as-a-bar-button
+    text: >-
+      menubar.module.css fills the trigger with the accent color while it is
+      hovered and while its own menu is open, draws an inset ring on keyboard
+      focus, and dims it while it is disabled.
+
+anti_patterns:
+  - dont: Nest a Button inside the trigger to style it
+    do_instead: >-
+      Put the caption straight in the trigger; it already renders a styled
+      `<button>`, and a button inside it is a second button nested in the
+      first, which HTML does not allow
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Menu.Trigger sets role="menuitem" and
+      aria-haspopup="menu" inside a Menubar; menubar.test.tsx asserts the
+      triggers are found by the menuitem role and the names 'File' and 'Edit'
+      and carry the kit's trigger class
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  children:
+    states: children is the trigger's caption, or the caption of the element passed through render
+    because: >-
+      `React.ReactNode` is a union of elements, strings, numbers, fragments
+      and more; the compiler emits one JSON type per property.
+  handle:
+    states: handle is an opaque object from the primitive's Menu.createHandle(), tying this trigger to a MenubarMenu it is not placed inside
+    because: >-
+      `MenuHandle<Payload>` is a class instance holding the menu's store, not
+      data; the kit re-exports no createHandle, so a caller imports it from
+      the primitive.
+  payload:
+    states: payload is any value handed to the root's function children when this trigger opens the menu
+    because: >-
+      Typed by the caller's own `Payload` type parameter (`unknown` here), so
+      no JSON Schema type can state what it holds.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the trigger's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the trigger's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open, disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own
+      styling goes through menubar.module.css, not through this.
+
+examples:
+  good:
+    - title: Two top-level menus in a bar
+      code: |
+        <Menubar>
+          <MenubarMenu>
+            <MenubarTrigger>File</MenubarTrigger>
+            <MenubarContent>
+              <MenubarItem>New tab</MenubarItem>
+            </MenubarContent>
+          </MenubarMenu>
+          <MenubarMenu>
+            <MenubarTrigger>Edit</MenubarTrigger>
+            <MenubarContent>
+              <MenubarItem>Undo</MenubarItem>
+            </MenubarContent>
+          </MenubarMenu>
+        </Menubar>
+  bad:
+    - title: A trigger placed straight in the bar
+      code: |
+        <Menubar>
+          <MenubarTrigger>File</MenubarTrigger>
+          <MenubarContent>
+            <MenubarItem>New tab</MenubarItem>
+          </MenubarContent>
+        </Menubar>
+      why: >-
+        The trigger and its popup read the menu they belong to from context,
+        and the primitive throws when no MenubarMenu encloses them; wrap each
+        trigger and its content in a MenubarMenu.
+
+family_membership:
+  name: menubar
+  role: part

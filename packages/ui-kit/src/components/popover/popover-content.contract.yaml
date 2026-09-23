@@ -1,0 +1,197 @@
+# Semantic overlay for PopoverContent - a part of the Popover family, see
+# popover.contract.yaml's `family_membership` for how the contracts relate.
+# It composes the primitive's Portal, Positioner and Popup; the forwarded
+# surface is the Popup's div.
+component: popover-content
+
+intent: The floating panel of a Popover, portalled and positioned beside its trigger or another anchor while the popover is open.
+
+typical_uses:
+  - A heading and a description over a few controls
+  - A small form whose changes apply to the control that opened it
+
+dont_use_when:
+  - situation: A one-line label for its trigger
+    instead:
+      target: TooltipContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.tooltip_content.v1
+  - situation: A list of actions the user picks from
+    instead:
+      target: DropdownMenuContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_content.v1
+  - situation: A read-only preview of what a link points to, shown on hover
+    instead:
+      target: HoverCardContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.hover_card_content.v1
+  - situation: A popup centered on the screen that blocks the page
+    instead:
+      target: DialogContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_content.v1
+
+# PopoverContent examines nothing about what a consumer nests inside it: the
+# family's header, title and description sit here beside fields, buttons and
+# any other content.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: rendered-only-while-open
+    text: >-
+      The popup is in the DOM only while the popover is open or animating
+      closed; the kit passes no `keepMounted` to the portal, so a closed
+      popover renders nothing.
+  - id: portals-to-body-unless-container
+    text: >-
+      Without `container`, the popup portals into the node of the nearest
+      enclosing portal, or the document body when there is none; a theme
+      scoped to a subtree reaches the popup only when that subtree, or a
+      node inside it, is passed as `container`.
+  - id: named-by-its-title-described-by-its-description
+    text: >-
+      The popup has the dialog role and takes its accessible name from the
+      PopoverTitle inside it and its description from the
+      PopoverDescription, through `aria-labelledby` and `aria-describedby`;
+      without a title, pass `aria-label` on PopoverContent.
+  - id: focus-moves-into-the-popup-on-open
+    text: >-
+      Unless `initialFocus` says otherwise, opening by press or keyboard
+      moves focus to the first tabbable element inside the popup, or to the
+      popup itself when it holds none or the popover was opened by touch;
+      opening by hover moves no focus.
+  - id: fixed-width-column
+    text: >-
+      The popup is a flex column 18rem wide that insets its content by 10px
+      and spaces its direct children 10px apart.
+  - id: no-caret
+    text: >-
+      The popup renders no caret pointing at its anchor; there is no prop to
+      add one.
+  - id: reduced-motion-keeps-the-fade
+    text: >-
+      The popup fades, scales and slides from its anchor's side on open and
+      close; under `prefers-reduced-motion` popover.module.css drops the
+      transform transition and keeps the fade.
+
+anti_patterns:
+  - dont: Keep the default positioning when the trigger sits inside a transformed or filtered container, such as an animated panel
+    do_instead: >-
+      Pass `positionMethod="fixed"`; absolute positioning resolves against
+      the transformed container instead of the page and misplaces the popup
+  - dont: Fill the popup with a long article or a wide table
+    do_instead: >-
+      Keep it to a few controls or a short text - popover.module.css fixes
+      the popup at 18rem wide, so wider content overflows or wraps into a
+      tall narrow column; move long content to a Dialog or the page
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Popover.Popup renders role dialog; popover.test.tsx
+      asserts getByRole('dialog') once the trigger is clicked ("opens on
+      trigger click and renders content with kit classes") and that Escape on
+      it removes it ("closes on Escape")
+  rtl:
+    outcome: unknown
+
+unexposed_parts:
+  - part: Popover.Portal
+    reason: Composed inside PopoverContent; only its `container` is exposed, as PopoverContent's own prop.
+  - part: Popover.Positioner
+    reason: Composed inside PopoverContent; its placement props are exposed on PopoverContent itself.
+
+prop_statements:
+  container:
+    states: container is the DOM node, shadow root or ref to one that the popup portals into; an explicit null renders no popup until a node is passed
+    because: >-
+      `HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null`
+      - live DOM nodes and ref objects, which no JSON Schema type covers.
+  anchor:
+    states: anchor is the element, virtual element, ref or function returning one that the popup is placed against instead of the trigger
+    because: >-
+      `Element | VirtualElement | RefObject<Element | null> | (() => Element | VirtualElement | null) | null`
+      - live DOM nodes, refs and functions, which no JSON Schema type
+      covers.
+  sideOffset:
+    states: sideOffset is the gap in pixels between the anchor and the popup, as a number or a function of side, align and both boxes' sizes
+    because: >-
+      `number | OffsetFunction` - the compiler emits one JSON type per
+      property, and the function form has no JSON Schema representation.
+  alignOffset:
+    states: alignOffset is the shift in pixels along the alignment axis, as a number or a function of side, align and both boxes' sizes
+    because: >-
+      `number | OffsetFunction` - the compiler emits one JSON type per
+      property, and the function form has no JSON Schema representation.
+  collisionBoundary:
+    states: collisionBoundary is the area the popup is kept inside, `clipping-ancestors`, an element, a list of elements or a rectangle
+    because: >-
+      `'clipping-ancestors' | Element | Element[] | Rect` mixes a string with
+      live DOM elements, which no JSON Schema type covers.
+  collisionPadding:
+    states: collisionPadding is the space in pixels kept from the collision boundary, one number or a per-side object
+    because: >-
+      `number | { top?, right?, bottom?, left? }` - the compiler emits one
+      JSON type per property.
+  initialFocus:
+    states: initialFocus picks the element focused on open - true for the first tabbable element (the popup itself when opened by touch), false for no move, a ref to an element, or a function of the opening interaction type
+    because: >-
+      `boolean | RefObject<HTMLElement | null> | ((openType) => boolean | HTMLElement | null | void)`
+      - a ref object and a function, which no JSON Schema type covers.
+  finalFocus:
+    states: finalFocus picks the element focused on close - true for the trigger or the previously focused element, false for no move, a ref to an element, or a function of the closing interaction type
+    because: >-
+      `boolean | RefObject<HTMLElement | null> | ((closeType) => boolean | HTMLElement | null | void)`
+      - a ref object and a function, which no JSON Schema type covers.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the popup's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the popup's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open, side, align, instant,
+      transitionStatus). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through
+      popover.module.css, not through this.
+
+examples:
+  good:
+    - title: A panel placed to the right of its trigger
+      code: |
+        <Popover>
+          <PopoverTrigger render={<Button variant="outline" />}>Share</PopoverTrigger>
+          <PopoverContent side="right" align="start">
+            <PopoverTitle>Share link</PopoverTitle>
+          </PopoverContent>
+        </Popover>
+    - title: A panel positioned against another element and portalled into a themed subtree
+      code: |
+        <Popover>
+          <PopoverTrigger render={<Button variant="outline" />}>Edit cell</PopoverTrigger>
+          <PopoverContent anchor={cellRef} container={themedSectionRef}>
+            <PopoverTitle>Cell value</PopoverTitle>
+          </PopoverContent>
+        </Popover>
+  bad:
+    - title: A popup expected to inherit a theme scoped to a section
+      code: |
+        <section data-theme="dark">
+          <Popover>
+            <PopoverTrigger>Filters</PopoverTrigger>
+            <PopoverContent>
+              <PopoverTitle>Filters</PopoverTitle>
+            </PopoverContent>
+          </Popover>
+        </section>
+      why: >-
+        The popup portals to the document body, outside the section, so it
+        renders with the document root's theme; pass the section, or a node
+        inside it, as `container`.
+
+family_membership:
+  name: popover
+  role: part

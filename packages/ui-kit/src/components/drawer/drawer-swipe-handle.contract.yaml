@@ -1,0 +1,74 @@
+# Semantic overlay for DrawerSwipeHandle - a part of the Drawer family, see
+# drawer.contract.yaml's `family_membership` for how the contracts relate.
+component: drawer-swipe-handle
+
+intent: The small grab bar that shows a drawer's panel can be swiped.
+
+typical_uses:
+  - The grab bar at the edge of a bottom drawer's panel
+
+dont_use_when:
+  - situation: Showing the grab bar on a drawer's panel
+    instead:
+      target: Drawer
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.drawer.v1
+      note: Set `showSwipeHandle` on the root.
+
+# The bar is an empty visual. No kit container names it, so it gains no
+# filled mount point.
+accepts:
+  content: nothing
+
+invariants:
+  - id: hidden-grab-bar
+    text: >-
+      DrawerSwipeHandle is a div hidden from assistive technology
+      (`aria-hidden="true"`), a rounded bar in var(--border-strong) that is
+      2.5rem wide and 0.25rem tall on a top or bottom panel and turned
+      upright on a left or right one; it is an affordance only, since the
+      whole panel responds to a swipe.
+  - id: sits-at-the-edge-facing-the-page
+    text: >-
+      Rendered through `showSwipeHandle`, it sits outside the panel's padded
+      content region, on the panel's edge that faces the page.
+
+anti_patterns: []
+
+deprecations: {}
+
+# Hidden from assistive technology by design; drawer.test.tsx asserts only
+# that its kit class appears with showSwipeHandle and not without it.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: The bar switched on from the root
+      code: |
+        <Drawer showSwipeHandle>
+          <DrawerTrigger>Open</DrawerTrigger>
+          <DrawerContent>
+            <DrawerTitle>Filters</DrawerTitle>
+          </DrawerContent>
+        </Drawer>
+  bad:
+    - title: The bar placed by hand inside the panel
+      code: |
+        <Drawer>
+          <DrawerTrigger>Open</DrawerTrigger>
+          <DrawerContent>
+            <DrawerSwipeHandle />
+            <DrawerTitle>Filters</DrawerTitle>
+          </DrawerContent>
+        </Drawer>
+      why: >-
+        Children of DrawerContent land in its padded content region, so the
+        bar sits inside the padding rather than at the panel's edge; set
+        `showSwipeHandle` on the root instead.
+
+family_membership:
+  name: drawer
+  role: part

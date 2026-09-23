@@ -1,0 +1,154 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_sub.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "menubar-sub",
+  "intent": "Hold the open state of one submenu and tie its MenubarSubTrigger row to the MenubarSubContent it opens.",
+  "typical_uses": [
+    "A nested list of related actions, such as sharing targets behind a Share row"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A handful of actions that fit in the parent menu",
+      "instead": {
+        "target": "MenubarGroup",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_group.v1",
+        "note": "A captioned group keeps every action one level deep, reachable without opening a second popup."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_sub_trigger.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_sub_content.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "MenubarContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_content.v1"
+    },
+    {
+      "container": "MenubarGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_group.v1"
+    },
+    {
+      "container": "MenubarSubContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_sub_content.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "open-wins-over-default-open",
+      "text": "`open` and `defaultOpen` are both accepted; `defaultOpen` seeds the initial state and is ignored afterwards, and when `open` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "escape-closes-only-the-submenu",
+      "text": "Escape inside the submenu closes only the submenu and returns to the parent menu, unless `closeParentOnEsc` is true, which closes the whole menu."
+    },
+    {
+      "id": "disabled-disables-the-trigger",
+      "text": "Setting `disabled` on the submenu disables its MenubarSubTrigger, as does a disabled parent menu."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is the submenu's sub-trigger and sub-content",
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+    },
+    "onOpenChange": {
+      "states": "onOpenChange is a callback called with the submenu's next open state and event details, not a value",
+      "because": "`(open: boolean, eventDetails) => void` - a function, which no JSON Schema type covers."
+    },
+    "onOpenChangeComplete": {
+      "states": "onOpenChangeComplete is a callback called with the open state once the submenu's open or close animation has finished",
+      "because": "`(open: boolean) => void` - a function, which no JSON Schema type covers."
+    },
+    "actionsRef": {
+      "states": "actionsRef is a ref the submenu fills with imperative `close` and `unmount` actions",
+      "because": "`React.RefObject<MenuRoot.Actions | null>` - a ref object holding functions, which no JSON Schema type covers."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A Share submenu",
+        "code": "<MenubarSub>\n  <MenubarSubTrigger>Share</MenubarSubTrigger>\n  <MenubarSubContent>\n    <MenubarItem>Email</MenubarItem>\n    <MenubarItem>Copy link</MenubarItem>\n  </MenubarSubContent>\n</MenubarSub>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A second MenubarMenu nested as the submenu",
+        "code": "<MenubarContent>\n  <MenubarMenu>\n    <MenubarTrigger>Share</MenubarTrigger>\n    <MenubarContent>\n      <MenubarItem>Email</MenubarItem>\n    </MenubarContent>\n  </MenubarMenu>\n</MenubarContent>\n",
+        "why": "The popup does not accept a MenubarMenu, and a MenubarTrigger is a button of the bar, not a row of a menu; a submenu is opened by a MenubarSubTrigger row inside a MenubarSub."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "menubar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit MenubarSub",
+    "type": "object",
+    "properties": {
+      "actionsRef": {
+        "description": "TS: React.RefObject<MenuRootActions | null> | undefined. The compiler emits one JSON type per property; this type is left to tsc. actionsRef is a ref the submenu fills with imperative `close` and `unmount` actions. `React.RefObject<MenuRoot.Actions | null>` - a ref object holding functions, which no JSON Schema type covers."
+      },
+      "children": {
+        "description": "TS: React.ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the submenu's sub-trigger and sub-content. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+      },
+      "closeParentOnEsc": {
+        "type": "boolean"
+      },
+      "defaultOpen": {
+        "type": "boolean"
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "highlightItemOnHover": {
+        "type": "boolean"
+      },
+      "loopFocus": {
+        "type": "boolean"
+      },
+      "onOpenChange": {
+        "description": "TS: ((open: boolean, eventDetails: MenuRootChangeEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChange is a callback called with the submenu's next open state and event details, not a value. `(open: boolean, eventDetails) => void` - a function, which no JSON Schema type covers."
+      },
+      "onOpenChangeComplete": {
+        "description": "TS: ((open: boolean) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChangeComplete is a callback called with the open state once the submenu's open or close animation has finished. `(open: boolean) => void` - a function, which no JSON Schema type covers."
+      },
+      "open": {
+        "type": "boolean"
+      },
+      "orientation": {
+        "type": "string",
+        "enum": [
+          "horizontal",
+          "vertical"
+        ]
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

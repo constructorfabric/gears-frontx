@@ -1,0 +1,97 @@
+# Semantic overlay for DrawerClose - a part of the Drawer family, see
+# drawer.contract.yaml's `family_membership` for how the contracts relate.
+component: drawer-close
+
+intent: A button inside the panel that closes its Drawer; the panel has no built-in close button, so this is its only close button.
+
+typical_uses:
+  - A Cancel or Done action in the drawer's footer
+
+dont_use_when:
+  - situation: A close action in an edge panel with no swipe gesture
+    instead:
+      target: SheetClose
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_close.v1
+  - situation: A close action in a centered dialog
+    instead:
+      target: DialogClose
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_close.v1
+
+# DrawerContent and DrawerFooter accept any content, so no kit container
+# names this part and it gains no filled mount point; it works anywhere
+# inside the Drawer root, and is meaningful inside the panel.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: unstyled-native-button
+    text: >-
+      DrawerClose renders a native button with no kit class of its own; its
+      look comes from `className` or from the element passed through
+      `render`.
+  - id: closes-the-enclosing-drawer
+    text: >-
+      A press closes the Drawer whose root encloses it, reporting a close
+      press as the reason to that root's `onOpenChange`, unless its own
+      `onClick` calls `event.preventBaseUIHandler()`.
+
+anti_patterns:
+  - dont: Render a non-button element through `render` while `nativeButton` stays at its default
+    do_instead: >-
+      Pass `nativeButton={false}` together with a `render` element that is
+      not a native button, so the primitive adds the button role and keyboard
+      handling itself
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Drawer.Close (Base UI's Dialog.Close) renders a native
+      button; drawer.test.tsx asserts getByRole('button', { name: 'Cancel' })
+      on it and that clicking it removes the dialog ("closes via a
+      consumer-composed DrawerClose")
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the close
+      button's own state, so its type is a union of a React element and a
+      callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the close button's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit sets no style
+      of its own on this button.
+
+examples:
+  good:
+    - title: A Cancel action stacked with the primary action
+      code: |
+        <DrawerFooter>
+          <Button onClick={save}>Save</Button>
+          <DrawerClose render={<Button variant="outline" />}>Cancel</DrawerClose>
+        </DrawerFooter>
+  bad:
+    - title: A kit Button nested inside the close button
+      code: |
+        <DrawerFooter>
+          <DrawerClose>
+            <Button variant="outline">Cancel</Button>
+          </DrawerClose>
+        </DrawerFooter>
+      why: >-
+        DrawerClose already renders a native button, so this nests a button
+        inside a button, which HTML does not allow; pass the Button through
+        `render` instead.
+
+family_membership:
+  name: drawer
+  role: part

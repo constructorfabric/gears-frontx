@@ -1,0 +1,78 @@
+# Semantic overlay for AlertDialogHeader - a part of the AlertDialog family,
+# see alert-dialog.contract.yaml's `family_membership` for how the ten
+# contracts relate. AlertDialogContent accepts anything, so no kit container
+# names this part and it carries no `mounted_in`; it belongs directly inside
+# AlertDialogContent.
+component: alert-dialog-header
+
+intent: Group an alert dialog's media, title and description into one block at the top of the popup.
+
+typical_uses:
+  - The block at the top of an AlertDialogContent holding the question and its consequence
+
+dont_use_when:
+  - situation: The header of a dismissible modal
+    instead:
+      target: DialogHeader
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_header.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_media.v1 # AlertDialogMedia
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_title.v1 # AlertDialogTitle
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_description.v1 # AlertDialogDescription
+
+invariants:
+  - id: pinned-while-the-popup-scrolls
+    text: >-
+      The header is sticky at the top of the popup with an opaque background
+      matching it, so content scrolling inside AlertDialogContent passes
+      under it rather than through it.
+  - id: centered-until-a-wide-default-popup
+    text: >-
+      The header centers its children and their text; only inside a
+      `size="default"` popup from a 640px viewport does it align them to the
+      start and the text to the left.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: failed
+    by: >-
+      alert-dialog.module.css sets a physical `text-align: left` on the
+      header inside a wide default popup, so in a right-to-left page the
+      text keeps to the left while `place-items: start` moves the items to
+      the right
+
+examples:
+  good:
+    - title: A warning glyph, a title and a description
+      code: |
+        <AlertDialogHeader>
+          <AlertDialogMedia>
+            <WarningIcon />
+          </AlertDialogMedia>
+          <AlertDialogTitle>Delete this project?</AlertDialogTitle>
+          <AlertDialogDescription>Its files and history are removed for everyone.</AlertDialogDescription>
+        </AlertDialogHeader>
+  bad:
+    - title: The actions folded into the header
+      code: |
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete this project?</AlertDialogTitle>
+          <AlertDialogAction>Delete</AlertDialogAction>
+        </AlertDialogHeader>
+      why: >-
+        The actions belong in AlertDialogFooter, which pins them to the
+        bottom of the popup and lays them out by `size`; inside the header
+        they are centered under the text instead.
+
+family_membership:
+  name: alert_dialog
+  role: part

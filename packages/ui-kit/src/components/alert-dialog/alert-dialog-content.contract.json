@@ -1,0 +1,198 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "alert-dialog-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The centered modal popup of an AlertDialog, portalled above a dimming backdrop, holding the question and its two answers.",
+  "typical_uses": [
+    "The panel carrying a confirmation's title, its consequence and the confirm and cancel actions"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A modal panel holding a form or other content the user works in",
+      "instead": {
+        "target": "DialogContent",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_content.v1"
+      }
+    },
+    {
+      "situation": "A panel anchored beside a trigger rather than centered over the page",
+      "instead": {
+        "target": "PopoverContent",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.popover_content.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "AlertDialog",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "rendered-only-while-open",
+      "text": "The popup and its backdrop are in the DOM only while the alert dialog is open or animating closed; the kit passes no `keepMounted` to the portal, so a closed alert dialog renders nothing."
+    },
+    {
+      "id": "portals-to-body-unless-container",
+      "text": "Without `container`, the popup portals into the node of the nearest enclosing portal, or the document body when there is none; a theme scoped to a subtree reaches the popup only when that subtree, or a node inside it, is passed as `container`."
+    },
+    {
+      "id": "named-by-its-title-described-by-its-description",
+      "text": "The popup takes its accessible name from the AlertDialogTitle inside it and its description from the AlertDialogDescription, through `aria-labelledby` and `aria-describedby`; without a title, pass `aria-label` on AlertDialogContent."
+    },
+    {
+      "id": "focus-moves-into-the-popup-on-open",
+      "text": "Unless `initialFocus` says otherwise, opening moves focus to the first tabbable element inside the popup, or to the popup itself when it holds none or the dialog was opened by touch."
+    },
+    {
+      "id": "internal-backdrop-blocks-while-modal",
+      "text": "With `showBackdrop={false}` the primitive still renders a transparent backdrop of its own, because an alert dialog is always modal, so the page behind stays blocked."
+    },
+    {
+      "id": "size-sets-width-and-footer-layout",
+      "text": "`size` is stamped on the popup as `data-size`. Below 640px the popup is capped at 20rem, or at the viewport width minus var(--space-8) when that is narrower. At `default` it widens to a 32rem cap from 640px, where the footer lines its actions up at the end of one row; below 640px the footer stacks them with the last one on top. At `sm` the popup stays capped at 20rem at every width, and the footer lays out two equal columns."
+    },
+    {
+      "id": "scrolls-when-taller-than-the-viewport",
+      "text": "The popup's height is capped at the viewport height minus var(--space-8) and it scrolls its own content past that. The popup carries no padding: the inset sits on its direct children, and a `className` setting padding on one of them replaces that inset rather than adding to it."
+    },
+    {
+      "id": "reduced-motion-keeps-the-fade",
+      "text": "The popup fades and scales on open and close; under `prefers-reduced-motion` alert-dialog.module.css drops the transform transition and keeps the fade."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Leave out AlertDialogTitle",
+      "do_instead": "Always render an AlertDialogTitle, hidden visually through `className` when the design shows none, so the popup has an accessible name"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "the primitive's Dialog.Popup sets role `alertdialog`; alert-dialog.test.tsx asserts the open popup is found by role `alertdialog` and that an outside press leaves it open"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "container": {
+      "states": "container is the DOM node, shadow root or ref to one that the popup portals into; an explicit null renders no popup until a node is passed",
+      "because": "`HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null` - live DOM nodes and ref objects, which no JSON Schema type covers."
+    },
+    "initialFocus": {
+      "states": "initialFocus picks the element focused on open - true for the first tabbable element (the popup itself when opened by touch), false for no move, a ref to an element, or a function of the opening interaction type",
+      "because": "`boolean | RefObject<HTMLElement | null> | ((openType) => boolean | HTMLElement | null | void)` - a ref object and a function, which no JSON Schema type covers."
+    },
+    "finalFocus": {
+      "states": "finalFocus picks the element focused on close - true for the trigger or the previously focused element, false for no move, a ref to an element, or a function of the closing interaction type",
+      "because": "`boolean | RefObject<HTMLElement | null> | ((closeType) => boolean | HTMLElement | null | void)` - a ref object and a function, which no JSON Schema type covers."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the popup's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the popup's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, nested, transitionStatus, nestedDialogOpen). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through alert-dialog.module.css, not through this."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "AlertDialog.Portal",
+      "reason": "Composed inside AlertDialogContent; only its `container` is exposed, as AlertDialogContent's own prop."
+    },
+    {
+      "part": "AlertDialog.Backdrop",
+      "reason": "Composed inside AlertDialogContent and rendered unless `showBackdrop` is false; it takes no props from the caller."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "A narrow confirmation with side-by-side actions",
+        "code": "<AlertDialog>\n  <AlertDialogTrigger>Sign out</AlertDialogTrigger>\n  <AlertDialogContent size=\"sm\">\n    <AlertDialogHeader>\n      <AlertDialogTitle>Sign out of every device?</AlertDialogTitle>\n    </AlertDialogHeader>\n    <AlertDialogFooter>\n      <AlertDialogCancel>Cancel</AlertDialogCancel>\n      <AlertDialogAction onClick={signOutEverywhere}>Sign out</AlertDialogAction>\n    </AlertDialogFooter>\n  </AlertDialogContent>\n</AlertDialog>\n"
+      },
+      {
+        "title": "A popup portalled into a themed subtree",
+        "code": "<AlertDialog>\n  <AlertDialogTrigger>Delete</AlertDialogTrigger>\n  <AlertDialogContent container={themedSectionRef}>\n    <AlertDialogTitle>Delete this file?</AlertDialogTitle>\n  </AlertDialogContent>\n</AlertDialog>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Content with no AlertDialog root around it",
+        "code": "<AlertDialogContent>\n  <AlertDialogTitle>Delete this file?</AlertDialogTitle>\n</AlertDialogContent>\n",
+        "why": "The primitive's Portal and Popup read the nearest AlertDialog root's state through context and throw when there is none."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "alert_dialog",
+    "role": "part"
+  },
+  "capabilities": [
+    {
+      "name": "backdrop",
+      "enabled_by": "showBackdrop",
+      "description": "Default true: a fixed layer behind the popup dims the page with the var(--overlay-modal) scrim and fades in and out with it."
+    }
+  ],
+  "x-uikit": {
+    "partially_typed_props": {
+      "container": {
+        "typeText": "HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null | undefined",
+        "optional": true
+      }
+    },
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit AlertDialogContent",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "container": {
+        "description": "Partially typed: HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null | undefined. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. container is the DOM node, shadow root or ref to one that the popup portals into; an explicit null renders no popup until a node is passed. `HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null` - live DOM nodes and ref objects, which no JSON Schema type covers."
+      },
+      "showBackdrop": {
+        "type": "boolean",
+        "default": true
+      },
+      "size": {
+        "type": "string",
+        "enum": [
+          "default",
+          "sm"
+        ],
+        "default": "default"
+      },
+      "finalFocus": {
+        "description": "TS: boolean | RefObject<HTMLElement | null> | ((closeType: InteractionType) => boolean | void | HTMLElement | null) | undefined. The compiler emits one JSON type per property; this type is left to tsc. finalFocus picks the element focused on close - true for the trigger or the previously focused element, false for no move, a ref to an element, or a function of the closing interaction type. `boolean | RefObject<HTMLElement | null> | ((closeType) => boolean | HTMLElement | null | void)` - a ref object and a function, which no JSON Schema type covers."
+      },
+      "initialFocus": {
+        "description": "TS: boolean | RefObject<HTMLElement | null> | ((openType: InteractionType) => boolean | void | HTMLElement | null) | undefined. The compiler emits one JSON type per property; this type is left to tsc. initialFocus picks the element focused on open - true for the first tabbable element (the popup itself when opened by touch), false for no move, a ref to an element, or a function of the opening interaction type. `boolean | RefObject<HTMLElement | null> | ((openType) => boolean | HTMLElement | null | void)` - a ref object and a function, which no JSON Schema type covers."
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, DialogPopupState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the popup's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: DialogPopupState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the popup's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, nested, transitionStatus, nestedDialogOpen). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through alert-dialog.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

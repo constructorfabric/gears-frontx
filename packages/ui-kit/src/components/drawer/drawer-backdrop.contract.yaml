@@ -1,0 +1,99 @@
+# Semantic overlay for DrawerBackdrop - a part of the Drawer family, see
+# drawer.contract.yaml's `family_membership` for how the contracts relate.
+# The kit-styled Drawer.Backdrop; DrawerContent renders one itself while
+# the root's `modal` is `true`.
+component: drawer-backdrop
+
+intent: The veil drawn over the page behind a drawer's panel, fading as the panel is swiped away.
+
+typical_uses:
+  - A visible veil behind a drawer whose `modal` is `false` or `'trap-focus'`, where DrawerContent draws none, placed inside a DrawerPortal
+
+dont_use_when:
+  - situation: The backdrop of an ordinary modal drawer
+    instead:
+      target: DrawerContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.drawer_content.v1
+      note: DrawerContent renders this backdrop itself while the root's `modal` is `true`.
+
+# The backdrop is an empty layer. Its `mounted_in` is filled from the
+# Drawer root's accepted components.
+accepts:
+  content: nothing
+
+invariants:
+  - id: panel-veil
+    text: >-
+      DrawerBackdrop is a layer covering the whole viewport with the role
+      `presentation`, a light var(--overlay-panel) tint and, where the
+      browser supports `backdrop-filter`, a blur of
+      var(--overlay-panel-blur) over what is behind it.
+  - id: fades-with-the-swipe
+    text: >-
+      Its opacity falls as the panel is swiped toward its edge, never below
+      0.5 while the drawer is open and has `snapPoints`, when DrawerContent
+      draws it (only that backdrop is stamped `data-snap-points`); it fades
+      in over 450ms and out over at most 400ms, which a faster dismiss
+      swipe shortens.
+  - id: not-drawn-for-a-nested-drawer
+    text: >-
+      The primitive renders it only for a drawer that is not nested inside
+      another one, unless `forceRender` is set.
+
+anti_patterns: []
+
+deprecations: {}
+
+# drawer.test.tsx asserts only that the backdrop's kit class is present by
+# default and absent with `modal={false}`.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the
+      backdrop's own state, so its type is a union of a React element and a
+      callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the backdrop's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open, transitionStatus). The compiler emits one JSON type per property, so nothing is asserted; the
+      kit's own styling goes through drawer.module.css, not through this.
+
+examples:
+  good:
+    - title: A veil behind a drawer that traps focus without blocking the page
+      code: |
+        <Drawer modal="trap-focus">
+          <DrawerTrigger>Open</DrawerTrigger>
+          <DrawerPortal>
+            <DrawerBackdrop />
+          </DrawerPortal>
+          <DrawerContent>
+            <DrawerTitle>Filters</DrawerTitle>
+          </DrawerContent>
+        </Drawer>
+  bad:
+    - title: A second backdrop added to a modal drawer
+      code: |
+        <Drawer>
+          <DrawerTrigger>Open</DrawerTrigger>
+          <DrawerBackdrop />
+          <DrawerContent>
+            <DrawerTitle>Filters</DrawerTitle>
+          </DrawerContent>
+        </Drawer>
+      why: >-
+        DrawerContent already draws a backdrop while `modal` is `true`, so
+        this stacks a second tint and blur over the page.
+
+family_membership:
+  name: drawer
+  role: part

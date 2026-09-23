@@ -1,0 +1,104 @@
+# Semantic overlay for MenubarSub - a part of the Menubar family, see
+# menubar.contract.yaml's `family_membership` for how the contracts relate.
+# MenubarSub is DropdownMenuSub re-exported under this name, so its behaviour
+# and its styling in dropdown-menu.module.css are that part's. It re-exports
+# the primitive's SubmenuRoot, which renders no element of its own, so it
+# names no element surface.
+component: menubar-sub
+
+intent: Hold the open state of one submenu and tie its MenubarSubTrigger row to the MenubarSubContent it opens.
+
+typical_uses:
+  - A nested list of related actions, such as sharing targets behind a Share row
+
+dont_use_when:
+  - situation: A handful of actions that fit in the parent menu
+    instead:
+      target: MenubarGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_group.v1
+      note: A captioned group keeps every action one level deep, reachable without opening a second popup.
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_sub_trigger.v1 # MenubarSubTrigger
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_sub_content.v1 # MenubarSubContent
+
+invariants:
+  - id: open-wins-over-default-open
+    text: >-
+      `open` and `defaultOpen` are both accepted; `defaultOpen` seeds the
+      initial state and is ignored afterwards, and when `open` is given it
+      wins and the component follows it on every render.
+  - id: escape-closes-only-the-submenu
+    text: >-
+      Escape inside the submenu closes only the submenu and returns to the
+      parent menu, unless `closeParentOnEsc` is true, which closes the
+      whole menu.
+  - id: disabled-disables-the-trigger
+    text: >-
+      Setting `disabled` on the submenu disables its MenubarSubTrigger,
+      as does a disabled parent menu.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  children:
+    states: children is the submenu's sub-trigger and sub-content
+    because: >-
+      `React.ReactNode` is a union of elements, strings, numbers, fragments
+      and more; the compiler emits one JSON type per property.
+  onOpenChange:
+    states: onOpenChange is a callback called with the submenu's next open state and event details, not a value
+    because: >-
+      `(open: boolean, eventDetails) => void` - a function, which no JSON
+      Schema type covers.
+  onOpenChangeComplete:
+    states: onOpenChangeComplete is a callback called with the open state once the submenu's open or close animation has finished
+    because: >-
+      `(open: boolean) => void` - a function, which no JSON Schema type
+      covers.
+  actionsRef:
+    states: actionsRef is a ref the submenu fills with imperative `close` and `unmount` actions
+    because: >-
+      `React.RefObject<MenuRoot.Actions | null>` - a ref object holding
+      functions, which no JSON Schema type covers.
+
+examples:
+  good:
+    - title: A Share submenu
+      code: |
+        <MenubarSub>
+          <MenubarSubTrigger>Share</MenubarSubTrigger>
+          <MenubarSubContent>
+            <MenubarItem>Email</MenubarItem>
+            <MenubarItem>Copy link</MenubarItem>
+          </MenubarSubContent>
+        </MenubarSub>
+  bad:
+    - title: A second MenubarMenu nested as the submenu
+      code: |
+        <MenubarContent>
+          <MenubarMenu>
+            <MenubarTrigger>Share</MenubarTrigger>
+            <MenubarContent>
+              <MenubarItem>Email</MenubarItem>
+            </MenubarContent>
+          </MenubarMenu>
+        </MenubarContent>
+      why: >-
+        The popup does not accept a MenubarMenu, and a MenubarTrigger is a
+        button of the bar, not a row of a menu; a submenu is opened by a
+        MenubarSubTrigger row inside a MenubarSub.
+
+family_membership:
+  name: menubar
+  role: part

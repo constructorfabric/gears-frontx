@@ -1,0 +1,83 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.drawer_header.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "drawer-header",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The heading region at the top of a drawer's panel, holding its title and description.",
+  "typical_uses": [
+    "The panel's title with a one-line description under it"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The heading region of an edge panel with no swipe gesture",
+      "instead": {
+        "target": "SheetHeader",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_header.v1"
+      }
+    },
+    {
+      "situation": "The heading region of a centered dialog",
+      "instead": {
+        "target": "DialogHeader",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_header.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.drawer_title.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.drawer_description.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "stacked-column",
+      "text": "DrawerHeader is a flex column that does not shrink, with its children spaced var(--space-2) apart; on a `top` or `bottom` drawer its text is centered."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A title with its description",
+        "code": "<DrawerHeader>\n  <DrawerTitle>Edit profile</DrawerTitle>\n  <DrawerDescription>Changes apply when you save.</DrawerDescription>\n</DrawerHeader>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Footer actions placed in the header",
+        "code": "<DrawerHeader>\n  <DrawerTitle>Edit profile</DrawerTitle>\n  <Button onClick={save}>Save</Button>\n</DrawerHeader>\n",
+        "why": "The header stacks its children in a column under the title; actions belong in DrawerFooter, at the bottom of the panel."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "drawer",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit DrawerHeader",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

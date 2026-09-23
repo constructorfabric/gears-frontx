@@ -1,0 +1,104 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_description.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "dialog-description",
+  "forwards_to": "gts.frontx.uikit.element.dom_p.v1~",
+  "intent": "The supporting sentence under a DialogTitle that describes the dialog's popup to assistive technology.",
+  "typical_uses": [
+    "A sentence stating the consequence of the dialog's action"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The supporting text under a card's title on the page",
+      "instead": {
+        "target": "CardDescription",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_description.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "DialogHeader",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_header.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "muted-paragraph",
+      "text": "DialogDescription renders a p in the body type ramp with the muted foreground color."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put the dialog's form fields or long content inside DialogDescription",
+      "do_instead": "Keep it to a short sentence and place fields and long content in DialogContent after the header"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the description's state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property; the primitive passes an empty state object."
+    },
+    "style": {
+      "states": "style accepts a function as well as a plain style object; the primitive passes that function an empty state object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`, and the description's state carries no fields. The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through dialog.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A description under the title",
+        "code": "<DialogHeader>\n  <DialogTitle>Delete project</DialogTitle>\n  <DialogDescription>This permanently deletes the project and its files.</DialogDescription>\n</DialogHeader>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A form inside the description",
+        "code": "<DialogDescription>\n  <Input placeholder=\"Project name\" />\n</DialogDescription>\n",
+        "why": "Everything inside the description becomes the popup's accessible description through `aria-describedby`, announced when the dialog opens, field included."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "dialog",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit DialogDescription",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, DialogDescriptionState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the description's state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property; the primitive passes an empty state object."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: DialogDescriptionState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function as well as a plain style object; the primitive passes that function an empty state object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`, and the description's state carries no fields. The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through dialog.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

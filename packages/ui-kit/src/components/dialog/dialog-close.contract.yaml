@@ -1,0 +1,98 @@
+# Semantic overlay for DialogClose - a part of the Dialog family, see
+# dialog.contract.yaml's `family_membership` for how the contracts relate.
+component: dialog-close
+
+intent: A button that closes its Dialog when pressed, for a close action the consumer composes inside the popup.
+
+typical_uses:
+  - The Cancel action in a DialogFooter
+  - The one close control when DialogContent's built-in close button is turned off
+
+dont_use_when:
+  - situation: A top-right close button for the popup
+    instead:
+      target: DialogContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_content.v1
+      note: >-
+        DialogContent renders one by default through `showCloseButton`,
+        named by `closeLabel`.
+  - situation: An action that must keep the dialog open when it fails, such as a save the server may reject
+    instead:
+      target: Button
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+      note: >-
+        DialogClose closes the dialog on press unless its own `onClick` calls
+        `event.preventBaseUIHandler()`; a Button's handler can instead close
+        it through the root's controlled `open` once the action succeeds.
+
+# DialogContent examines nothing about its children, so no kit container
+# lists this part and it has no filled mount point. Its caption arrives
+# through children; with `render`, the rendered element brings its own.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: unstyled-native-button
+    text: >-
+      DialogClose renders a native button with no kit class of its own; its
+      look comes from `className` or from the element passed through
+      `render`.
+  - id: closes-the-enclosing-dialog
+    text: >-
+      A press closes the Dialog whose root encloses it, reporting a close
+      press as the reason to that root's `onOpenChange`, unless its own
+      `onClick` calls `event.preventBaseUIHandler()`.
+
+anti_patterns:
+  - dont: Render a non-button element through `render` while `nativeButton` stays at its default
+    do_instead: >-
+      Pass `nativeButton={false}` together with a `render` element that is
+      not a native button, so the primitive adds the button role and keyboard
+      handling itself
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Dialog.Close renders a native button; dialog.test.tsx
+      asserts getByRole('button', { name: 'Cancel' }) on it and that clicking
+      it removes the dialog ("closes via a consumer-composed DialogClose")
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the close
+      button's own state, so its type is a union of a React element and a
+      callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the close button's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit sets no style
+      of its own on this button.
+
+examples:
+  good:
+    - title: A Cancel action in the footer
+      code: |
+        <DialogFooter>
+          <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+          <Button onClick={handleSave}>Save</Button>
+        </DialogFooter>
+  bad:
+    - title: A close control outside any Dialog root
+      code: <DialogClose>Cancel</DialogClose>
+      why: >-
+        The primitive's Close reads the nearest Dialog root's state through
+        context and throws when there is none.
+
+family_membership:
+  name: dialog
+  role: part

@@ -1,0 +1,221 @@
+# Semantic overlay for Drawer (the root) - the hand-written half of one of
+# eleven contracts describing this compound component. See the other
+# drawer-*.contract.yaml files for the rest of the family, and
+# `family_membership` below for how a reader walks between them.
+#
+# Machine-extractable facts (prop list, types) do NOT belong here: the
+# compiler takes those from drawer.tsx and the Base UI Drawer.Root it wraps.
+# The root renders no element of its own, so it names no element surface.
+component: drawer
+
+intent: Hold the open state of one edge-anchored panel that the user can swipe away, and tie its trigger to that panel.
+
+typical_uses:
+  - A focused task, form or filter set in a panel rising from the bottom edge that the user flicks away
+  - A panel at a side edge whose drag and release are part of how it is dismissed
+
+dont_use_when:
+  - situation: The same edge panel with no swipe gesture to dismiss it
+    instead:
+      target: Sheet
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.sheet.v1
+  - situation: A short prompt or form shown centered over the page
+    instead:
+      target: Dialog
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog.v1
+  - situation: A confirmation the user must answer before continuing, such as before a destructive action
+    instead:
+      target: AlertDialog
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog.v1
+  - situation: A floating panel anchored to its trigger that leaves the page interactive
+    instead:
+      target: Popover
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.popover.v1
+
+# The ONE authored statement of the root's nesting: the compiler fills the
+# `mounted_in` of the trigger, the content, the portal and the backdrop
+# from this list.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.drawer_trigger.v1 # DrawerTrigger
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.drawer_content.v1 # DrawerContent
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.drawer_portal.v1 # DrawerPortal
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.drawer_backdrop.v1 # DrawerBackdrop
+
+invariants:
+  - id: open-wins-over-default-open
+    text: >-
+      `open` and `defaultOpen` are both accepted; `defaultOpen` seeds the
+      initial state and is ignored afterwards, and when `open` is given it
+      wins and the component follows it on every render.
+  - id: snap-point-wins-over-default-snap-point
+    text: >-
+      `snapPoint` and `defaultSnapPoint` are both accepted; `defaultSnapPoint`
+      seeds the initial state and is ignored afterwards, and when `snapPoint`
+      is given it wins and the component follows it on every render. With
+      neither, the first entry of `snapPoints` is used, and closing the
+      drawer returns an uncontrolled snap point to that initial one.
+  - id: side-sets-the-edge-and-the-dismiss-swipe
+    text: >-
+      `side` names the viewport edge the panel is pinned to and is passed to
+      the primitive as the swipe direction that dismisses it (`top` as up,
+      `bottom` as down, `left` and `right` unchanged).
+  - id: snap-points-apply-to-top-and-bottom-only
+    text: >-
+      `snapPoints` position the panel only when `side` is `top` or `bottom`;
+      on a `left` or `right` drawer the primitive ignores them.
+  - id: modal-sets-focus-scroll-and-pointer
+    text: >-
+      With `modal` at its default `true`, focus is trapped in the panel,
+      page scroll is locked, presses outside the panel reach nothing on the
+      page and DrawerContent draws its backdrop; `'trap-focus'` traps focus
+      but neither locks page scroll, adds the primitive's own blocking layer
+      nor draws the backdrop; `false` does none of these.
+  - id: escape-outside-press-and-swipe-close
+    text: >-
+      Escape, a press outside the panel and a swipe of the panel toward its
+      edge past its last snap point, or past the edge when it has none,
+      close the drawer, reporting the reason to `onOpenChange`; with
+      nested dialogs or drawers open, Escape closes only the topmost one.
+      `disablePointerDismissal` keeps an outside press from closing it, and
+      for a non-modal drawer also keeps focus moving out from closing it.
+
+anti_patterns:
+  - dont: Pass `open` without `onOpenChange`
+    do_instead: >-
+      Update the state `open` reads from inside `onOpenChange`; a controlled
+      drawer closes only when `open` turns false, so Escape, an outside
+      press, a swipe and every DrawerClose otherwise leave it open
+
+deprecations: {}
+
+# The root renders nothing and wires no ARIA of its own; the panel's role is
+# DrawerContent's. drawer.test.tsx asserts that Escape and an outside press
+# close the drawer, but nothing in it asserts focus trapping, and nothing
+# checks the physical left and right edges under a right-to-left direction.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+capabilities:
+  - name: swipe_handle
+    enabled_by: showSwipeHandle
+    description: >-
+      Default false: DrawerContent renders a DrawerSwipeHandle, hidden from
+      assistive technology.
+
+prop_statements:
+  children:
+    states: children is the root's content, either React nodes or a function of the active trigger's payload that returns them
+    because: >-
+      `React.ReactNode | PayloadChildRenderFunction<Payload>` - the function
+      form receives `{ payload }` from whichever trigger opened the drawer.
+      The compiler emits one JSON type per property, and a function has no JSON Schema representation.
+  modal:
+    states: modal is true, false or the string 'trap-focus'
+    because: >-
+      `boolean | 'trap-focus'` - the compiler emits one JSON type per
+      property, so a boolean-or-string union is left unasserted.
+  onOpenChange:
+    states: onOpenChange is a callback called with the next open state and event details, not a value
+    because: >-
+      `(open: boolean, eventDetails) => void`; the second argument carries
+      Base UI's change-event details, including the reason (a trigger
+      press, an outside press, Escape, a close press, a swipe, focus moving
+      out or an imperative action). No JSON Schema type covers a function.
+  onOpenChangeComplete:
+    states: onOpenChangeComplete is a callback called with the open state once the open or close animation has finished
+    because: >-
+      `(open: boolean) => void` - a function, which no JSON Schema type
+      covers.
+  actionsRef:
+    states: actionsRef is a ref the root fills with imperative `close` and `unmount` actions
+    because: >-
+      `React.RefObject<DrawerRootActions | null>` - a ref object holding
+      functions, which no JSON Schema type covers.
+  handle:
+    states: handle is an opaque object from the primitive's Drawer.createHandle(), shared with a trigger placed outside this root
+    because: >-
+      `DrawerHandle<Payload>` is a class instance holding the drawer's store,
+      not data; the kit re-exports no createHandle, so a caller imports it
+      from the primitive.
+  triggerId:
+    states: triggerId is the id of the trigger a controlled drawer is open for, or null
+    because: >-
+      `string | null` - the compiler emits one JSON type per property, so a
+      string-or-null union is left unasserted.
+  defaultTriggerId:
+    states: defaultTriggerId is the id of the trigger an initially open drawer is open for, or null
+    because: >-
+      `string | null` - the compiler emits one JSON type per property, so a
+      string-or-null union is left unasserted.
+  snapPoints:
+    states: snapPoints lists the heights the panel can rest at - a number from 0 to 1 is a fraction of the viewport height, a larger number is pixels, and a string gives px or rem
+    because: >-
+      `DrawerSnapPoint[]` where `DrawerSnapPoint` is `number | string` - the
+      compiler emits one JSON type per property, so an array of a
+      number-or-string union is left unasserted.
+  snapPoint:
+    states: snapPoint is the active snap point, one of the values in snapPoints, or null
+    because: >-
+      `number | string | null` - the compiler emits one JSON type per
+      property, so the union is left unasserted.
+  defaultSnapPoint:
+    states: defaultSnapPoint is the snap point an uncontrolled drawer starts at, or null
+    because: >-
+      `number | string | null` - the compiler emits one JSON type per
+      property, so the union is left unasserted.
+  onSnapPointChange:
+    states: onSnapPointChange is a callback called with the next snap point and event details, not a value
+    because: >-
+      `(snapPoint: DrawerSnapPoint | null, eventDetails) => void` - a
+      function, which no JSON Schema type covers.
+
+examples:
+  good:
+    - title: A bottom drawer opened by a kit Button, with a title and footer actions
+      code: |
+        <Drawer>
+          <DrawerTrigger render={<Button variant="outline" />}>Edit profile</DrawerTrigger>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Edit profile</DrawerTitle>
+              <DrawerDescription>Changes apply when you save.</DrawerDescription>
+            </DrawerHeader>
+            <DrawerFooter>
+              <Button onClick={save}>Save</Button>
+              <DrawerClose render={<Button variant="outline" />}>Cancel</DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        </Drawer>
+    - title: A controlled right-edge drawer with its grab bar shown
+      code: |
+        <Drawer open={open} onOpenChange={setOpen} side="right" showSwipeHandle>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Filters</DrawerTitle>
+            </DrawerHeader>
+          </DrawerContent>
+        </Drawer>
+  bad:
+    - title: The primitive's swipe direction passed to the root
+      code: |
+        <Drawer swipeDirection="right">
+          <DrawerTrigger>Open</DrawerTrigger>
+          <DrawerContent>
+            <DrawerTitle>Filters</DrawerTitle>
+          </DrawerContent>
+        </Drawer>
+      why: >-
+        The kit's Drawer types no `swipeDirection` (the edge is `side`), so
+        this fails type checking; at runtime it still reaches the primitive
+        and overrides the direction `side` set, while DrawerContent keeps
+        its border, axis and `data-side` for the default `bottom`, so the
+        panel's position and its styling disagree.
+
+family_membership:
+  name: drawer
+  role: root

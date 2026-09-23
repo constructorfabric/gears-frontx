@@ -1,0 +1,132 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_cancel.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "alert-dialog-cancel",
+  "forwards_to": "gts.frontx.uikit.element.dom_button.v1~",
+  "intent": "The button that backs out of an alert dialog without confirming, closing it.",
+  "typical_uses": [
+    "The answer that leaves things as they were, such as Cancel or Keep editing"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The answer that confirms the question",
+      "instead": {
+        "target": "AlertDialogAction",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_action.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "AlertDialogFooter",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_footer.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "closes-the-dialog",
+      "text": "AlertDialogCancel is the primitive's Close rendered as the kit's Button: a press runs the caller's `onClick` and closes the alert dialog."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Look for `loading` or `icon` on the cancel",
+      "do_instead": "Keep the cancel a plain caption; it takes only Button's `variant` and `size`, and the busy state belongs to AlertDialogAction"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "the primitive's Dialog.Close rendered through the kit's Button; alert-dialog.test.tsx asserts the cancel is found by role button under its caption (\"Cancel\") and that pressing it removes the alertdialog"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies, including the kit Button the part renders by default",
+      "because": "Base UI's render prop takes an element or a function of the button's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property. alert-dialog.tsx spreads the caller's props after its own `render`, so a caller's `render` drops the Button and with it `variant` and `size`."
+    },
+    "style": {
+      "states": "style accepts a function of the button's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through `variant`/`size` and button.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A cancel with its own caption",
+        "code": "<AlertDialogFooter>\n  <AlertDialogCancel>Keep editing</AlertDialogCancel>\n  <AlertDialogAction onClick={discard}>Discard</AlertDialogAction>\n</AlertDialogFooter>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A made-up onCancel prop on the root",
+        "code": "<AlertDialog onCancel={reset}>\n  <AlertDialogContent>\n    <AlertDialogTitle>Discard changes?</AlertDialogTitle>\n    <AlertDialogFooter>\n      <AlertDialogCancel>Cancel</AlertDialogCancel>\n    </AlertDialogFooter>\n  </AlertDialogContent>\n</AlertDialog>\n",
+        "why": "No part takes `onCancel`; give the cancel its own `onClick`, or read the close through the root's `onOpenChange`."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "alert_dialog",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit AlertDialogCancel",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "destructive",
+          "outline",
+          "secondary",
+          "ghost",
+          "link",
+          "navigation",
+          "avatar",
+          "utility"
+        ],
+        "default": "outline"
+      },
+      "size": {
+        "type": "string",
+        "enum": [
+          "default",
+          "sm",
+          "lg"
+        ],
+        "default": "default"
+      },
+      "className": {
+        "type": "string"
+      },
+      "nativeButton": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, DialogCloseState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies, including the kit Button the part renders by default. Base UI's render prop takes an element or a function of the button's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property. alert-dialog.tsx spreads the caller's props after its own `render`, so a caller's `render` drops the Button and with it `variant` and `size`."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: DialogCloseState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the button's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through `variant`/`size` and button.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

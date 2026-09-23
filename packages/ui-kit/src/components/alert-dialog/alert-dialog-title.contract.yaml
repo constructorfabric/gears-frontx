@@ -1,0 +1,74 @@
+# Semantic overlay for AlertDialogTitle - a part of the AlertDialog family,
+# see alert-dialog.contract.yaml's `family_membership` for how the ten
+# contracts relate. `mounted_in` is filled from AlertDialogHeader's accepted
+# components, not authored here; it may also sit straight in
+# AlertDialogContent, which accepts anything.
+component: alert-dialog-title
+
+intent: The heading that asks an alert dialog's question and gives the popup its accessible name.
+
+typical_uses:
+  - The question a confirmation asks, such as "Delete this project?"
+
+dont_use_when:
+  - situation: The title of a dismissible modal
+    instead:
+      target: DialogTitle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_title.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: heading-level-two
+    text: >-
+      AlertDialogTitle renders an h2 with no margin, set at the heading-2
+      size, line height and tracking with the label weight.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the title's
+      state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property; the primitive passes an empty
+      state object.
+  style:
+    states: style accepts a function as well as a plain style object; the primitive passes that function an empty state object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)`, and the title's state
+      carries no fields. The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through
+      alert-dialog.module.css, not through this.
+
+examples:
+  good:
+    - title: The question in the header
+      code: |
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete this project?</AlertDialogTitle>
+        </AlertDialogHeader>
+  bad:
+    - title: A plain heading in place of the title
+      code: |
+        <AlertDialogHeader>
+          <h2>Delete this project?</h2>
+        </AlertDialogHeader>
+      why: >-
+        A plain h2 registers with nothing, so the popup gets no
+        `aria-labelledby` and assistive tech announces an alert dialog with
+        no name.
+
+family_membership:
+  name: alert_dialog
+  role: part

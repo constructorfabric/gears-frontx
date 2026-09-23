@@ -1,0 +1,85 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_header.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "dialog-header",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The heading region at the top of a DialogContent, stacking the dialog's title over its description and staying pinned while the popup scrolls.",
+  "typical_uses": [
+    "A DialogTitle over a one-line DialogDescription"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The heading region of a card on the page",
+      "instead": {
+        "target": "CardHeader",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_title.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_description.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "stacked-column",
+      "text": "DialogHeader is a flex column whose children are spaced var(--space-2) apart."
+    },
+    {
+      "id": "pinned-while-the-popup-scrolls",
+      "text": "DialogHeader is sticky at the top of its scroll container with the popup's own opaque background, so as a direct child of DialogContent it stays in view and masks the content scrolling under it."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Give DialogHeader a transparent background through `className`",
+      "do_instead": "Keep the header's background opaque; content scrolling in the popup paints through a transparent header while it stays pinned"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A title over its description",
+        "code": "<DialogHeader>\n  <DialogTitle>Invite members</DialogTitle>\n  <DialogDescription>Invitations expire after seven days.</DialogDescription>\n</DialogHeader>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A header used outside a dialog popup",
+        "code": "<Card>\n  <DialogHeader>\n    <DialogTitle>Usage</DialogTitle>\n  </DialogHeader>\n</Card>\n",
+        "why": "DialogTitle needs an enclosing Dialog root and throws without one, and the header's sticky, opaque styling is built for the popup; use CardHeader and CardTitle in a card."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "dialog",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit DialogHeader",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

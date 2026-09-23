@@ -1,0 +1,83 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.popover_header.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "popover-header",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The heading region of a PopoverContent, stacking the popover's title over its description.",
+  "typical_uses": [
+    "A PopoverTitle over a one-line PopoverDescription"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The heading region of a dialog's popup",
+      "instead": {
+        "target": "DialogHeader",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_header.v1"
+      }
+    },
+    {
+      "situation": "The heading region of a card on the page",
+      "instead": {
+        "target": "CardHeader",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.popover_title.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.popover_description.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "stacked-column",
+      "text": "PopoverHeader is a flex column whose children are spaced var(--space-1) apart."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A title over its description",
+        "code": "<PopoverHeader>\n  <PopoverTitle>Dimensions</PopoverTitle>\n  <PopoverDescription>Set the dimensions for the layer.</PopoverDescription>\n</PopoverHeader>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A header used outside a popover's panel",
+        "code": "<Card>\n  <PopoverHeader>\n    <PopoverTitle>Usage</PopoverTitle>\n  </PopoverHeader>\n</Card>\n",
+        "why": "PopoverTitle needs an enclosing Popover root and throws without one; use CardHeader and CardTitle in a card."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "popover",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit PopoverHeader",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

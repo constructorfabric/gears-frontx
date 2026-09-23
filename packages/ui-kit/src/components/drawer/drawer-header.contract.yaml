@@ -1,0 +1,70 @@
+# Semantic overlay for DrawerHeader - a part of the Drawer family, see
+# drawer.contract.yaml's `family_membership` for how the contracts relate.
+component: drawer-header
+
+intent: The heading region at the top of a drawer's panel, holding its title and description.
+
+typical_uses:
+  - The panel's title with a one-line description under it
+
+dont_use_when:
+  - situation: The heading region of an edge panel with no swipe gesture
+    instead:
+      target: SheetHeader
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_header.v1
+  - situation: The heading region of a centered dialog
+    instead:
+      target: DialogHeader
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_header.v1
+
+# The ONE authored statement of what the header hosts: the compiler fills
+# the title's and the description's `mounted_in` from this list.
+# DrawerContent accepts any content, so this part gains no filled mount
+# point from it.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.drawer_title.v1 # DrawerTitle
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.drawer_description.v1 # DrawerDescription
+
+invariants:
+  - id: stacked-column
+    text: >-
+      DrawerHeader is a flex column that does not shrink, with its children
+      spaced var(--space-2) apart; on a `top` or `bottom` drawer its text is
+      centered.
+
+anti_patterns: []
+
+deprecations: {}
+
+# A plain div with no role; drawer.test.tsx renders it but asserts nothing
+# about it.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A title with its description
+      code: |
+        <DrawerHeader>
+          <DrawerTitle>Edit profile</DrawerTitle>
+          <DrawerDescription>Changes apply when you save.</DrawerDescription>
+        </DrawerHeader>
+  bad:
+    - title: Footer actions placed in the header
+      code: |
+        <DrawerHeader>
+          <DrawerTitle>Edit profile</DrawerTitle>
+          <Button onClick={save}>Save</Button>
+        </DrawerHeader>
+      why: >-
+        The header stacks its children in a column under the title; actions
+        belong in DrawerFooter, at the bottom of the panel.
+
+family_membership:
+  name: drawer
+  role: part

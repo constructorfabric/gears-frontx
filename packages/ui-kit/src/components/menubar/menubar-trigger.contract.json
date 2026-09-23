@@ -1,0 +1,156 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_trigger.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "menubar-trigger",
+  "forwards_to": "gts.frontx.uikit.element.dom_button.v1~",
+  "intent": "The button in a Menubar that opens and closes its MenubarMenu's popup, captioned with the menu's name.",
+  "typical_uses": [
+    "A top-level menu name in the bar, such as File, Edit or View"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The trigger of a single menu outside any bar, such as a \"more actions\" button",
+      "instead": {
+        "target": "DropdownMenuTrigger",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_trigger.v1"
+      }
+    },
+    {
+      "situation": "A button that performs one action directly",
+      "instead": {
+        "target": "Button",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "MenubarMenu",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_menu.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "a-menuitem-of-the-bar",
+      "text": "Inside a Menubar the trigger renders a native `<button>` with `role=\"menuitem\"` and `aria-haspopup=\"menu\"`, and it is one stop of the bar's roving focus rather than a tab stop of its own."
+    },
+    {
+      "id": "press-toggles-hover-only-switches",
+      "text": "Pressing the trigger toggles its menu; while no menu of the bar is open, hovering the trigger opens nothing whatever `openOnHover` says, and `delay` has no effect inside a bar."
+    },
+    {
+      "id": "styled-as-a-bar-button",
+      "text": "menubar.module.css fills the trigger with the accent color while it is hovered and while its own menu is open, draws an inset ring on keyboard focus, and dims it while it is disabled."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Nest a Button inside the trigger to style it",
+      "do_instead": "Put the caption straight in the trigger; it already renders a styled `<button>`, and a button inside it is a second button nested in the first, which HTML does not allow"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "the primitive's Menu.Trigger sets role=\"menuitem\" and aria-haspopup=\"menu\" inside a Menubar; menubar.test.tsx asserts the triggers are found by the menuitem role and the names 'File' and 'Edit' and carry the kit's trigger class"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is the trigger's caption, or the caption of the element passed through render",
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+    },
+    "handle": {
+      "states": "handle is an opaque object from the primitive's Menu.createHandle(), tying this trigger to a MenubarMenu it is not placed inside",
+      "because": "`MenuHandle<Payload>` is a class instance holding the menu's store, not data; the kit re-exports no createHandle, so a caller imports it from the primitive."
+    },
+    "payload": {
+      "states": "payload is any value handed to the root's function children when this trigger opens the menu",
+      "because": "Typed by the caller's own `Payload` type parameter (`unknown` here), so no JSON Schema type can state what it holds."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the trigger's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the trigger's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through menubar.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Two top-level menus in a bar",
+        "code": "<Menubar>\n  <MenubarMenu>\n    <MenubarTrigger>File</MenubarTrigger>\n    <MenubarContent>\n      <MenubarItem>New tab</MenubarItem>\n    </MenubarContent>\n  </MenubarMenu>\n  <MenubarMenu>\n    <MenubarTrigger>Edit</MenubarTrigger>\n    <MenubarContent>\n      <MenubarItem>Undo</MenubarItem>\n    </MenubarContent>\n  </MenubarMenu>\n</Menubar>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A trigger placed straight in the bar",
+        "code": "<Menubar>\n  <MenubarTrigger>File</MenubarTrigger>\n  <MenubarContent>\n    <MenubarItem>New tab</MenubarItem>\n  </MenubarContent>\n</Menubar>\n",
+        "why": "The trigger and its popup read the menu they belong to from context, and the primitive throws when no MenubarMenu encloses them; wrap each trigger and its content in a MenubarMenu."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "menubar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit MenubarTrigger",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "children": {
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the trigger's caption, or the caption of the element passed through render. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+      },
+      "closeDelay": {
+        "type": "number"
+      },
+      "delay": {
+        "type": "number"
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "handle": {
+        "description": "TS: MenuHandle<unknown> | undefined. The compiler emits one JSON type per property; this type is left to tsc. handle is an opaque object from the primitive's Menu.createHandle(), tying this trigger to a MenubarMenu it is not placed inside. `MenuHandle<Payload>` is a class instance holding the menu's store, not data; the kit re-exports no createHandle, so a caller imports it from the primitive."
+      },
+      "nativeButton": {
+        "type": "boolean"
+      },
+      "openOnHover": {
+        "type": "boolean"
+      },
+      "payload": {
+        "description": "TS: unknown. The compiler emits one JSON type per property; this type is left to tsc. payload is any value handed to the root's function children when this trigger opens the menu. Typed by the caller's own `Payload` type parameter (`unknown` here), so no JSON Schema type can state what it holds."
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, MenuTriggerState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the trigger's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: MenuTriggerState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the trigger's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through menubar.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

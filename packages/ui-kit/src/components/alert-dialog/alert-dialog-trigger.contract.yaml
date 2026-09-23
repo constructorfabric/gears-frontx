@@ -1,0 +1,110 @@
+# Semantic overlay for AlertDialogTrigger - a part of the AlertDialog family,
+# see alert-dialog.contract.yaml's `family_membership` for how the ten
+# contracts relate.
+component: alert-dialog-trigger
+
+intent: The button that opens its AlertDialog.
+
+typical_uses:
+  - The action a user presses before a destructive step is confirmed, such as a Delete button
+
+dont_use_when:
+  - situation: An action that runs at once, with nothing to confirm
+    instead:
+      target: Button
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+  - situation: A button that opens a dismissible modal
+    instead:
+      target: DialogTrigger
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_trigger.v1
+
+# `mounted_in` is filled from the AlertDialog root's accepted components, not
+# authored here. The trigger's caption arrives through children; with
+# `render`, the rendered element brings its own.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: unstyled-native-button
+    text: >-
+      AlertDialogTrigger renders a native button with no kit class of its
+      own; its look comes from `className` or from the element passed
+      through `render`.
+  - id: announces-the-popup-it-opens
+    text: >-
+      The trigger carries `aria-haspopup="dialog"` and an `aria-expanded`
+      that is true while the alert dialog is open and was opened by this
+      trigger; while the alert dialog is open, the trigger that opened it,
+      or the only trigger when none is recorded as the opener, also carries
+      `aria-controls` with the popup's id.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's AlertDialog.Trigger (Dialog.Trigger re-exported) renders a native button with
+      `aria-haspopup="dialog"` and `aria-expanded`; alert-dialog.test.tsx asserts the trigger is found by role
+      button under its caption ("Delete account")
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  handle:
+    states: handle is an opaque object from the primitive's AlertDialog.createHandle(), tying this trigger to an AlertDialog root it is not placed inside
+    because: >-
+      `AlertDialogHandle<Payload>` is a class instance holding the dialog's
+      store, not data; the kit re-exports no createHandle, so a caller imports it
+      from the primitive.
+  payload:
+    states: payload is any value handed to the root's function children when this trigger opens the dialog
+    because: >-
+      Typed by the caller's own `Payload` type parameter (`unknown` here), so
+      no JSON Schema type can state what it holds.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the trigger's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the trigger's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (disabled, open). The compiler emits one JSON type per property, so nothing is asserted;
+      alert-dialog.module.css styles no trigger, so the button keeps the
+      look the caller gives it.
+
+examples:
+  good:
+    - title: The kit's Button rendered as the trigger
+      code: |
+        <AlertDialog>
+          <AlertDialogTrigger render={<Button variant="destructive" />}>Delete account</AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogTitle>Delete this account?</AlertDialogTitle>
+          </AlertDialogContent>
+        </AlertDialog>
+  bad:
+    - title: A kit Button nested inside the trigger
+      code: |
+        <AlertDialog>
+          <AlertDialogTrigger>
+            <Button variant="destructive">Delete account</Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogTitle>Delete this account?</AlertDialogTitle>
+          </AlertDialogContent>
+        </AlertDialog>
+      why: >-
+        The trigger already renders a native button, so this nests a button
+        inside a button, which HTML does not allow; pass the Button through
+        `render` instead.
+
+family_membership:
+  name: alert_dialog
+  role: part

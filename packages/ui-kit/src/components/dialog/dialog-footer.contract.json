@@ -1,0 +1,81 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_footer.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "dialog-footer",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The action row at the bottom of a DialogContent, staying pinned while the popup scrolls.",
+  "typical_uses": [
+    "A cancel action beside the action that completes the dialog's task"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The action row of a card on the page",
+      "instead": {
+        "target": "CardFooter",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_footer.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "invariants": [
+    {
+      "id": "stacks-narrow-row-from-640px",
+      "text": "Below 640px DialogFooter stacks its children in a column in reverse source order, so the last child sits on top; from 640px up it lays them out in a row aligned to the end, spaced var(--space-2) apart either way."
+    },
+    {
+      "id": "pinned-while-the-popup-scrolls",
+      "text": "DialogFooter is sticky at the bottom of its scroll container with the popup's own opaque background, so as a direct child of DialogContent it stays in view and masks the content scrolling under it."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Order the footer's actions with the primary action first",
+      "do_instead": "Put the cancel action first and the primary action last; the row ends with the last child and the narrow column shows it on top"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Cancel and confirm",
+        "code": "<DialogFooter>\n  <DialogClose render={<Button variant=\"outline\" />}>Cancel</DialogClose>\n  <Button onClick={handleInvite}>Send invitations</Button>\n</DialogFooter>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The primary action first",
+        "code": "<DialogFooter>\n  <Button onClick={handleInvite}>Send invitations</Button>\n  <DialogClose render={<Button variant=\"outline\" />}>Cancel</DialogClose>\n</DialogFooter>\n",
+        "why": "The row ends with Cancel, and on a narrow screen the reversed column puts Cancel above the primary action."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "dialog",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit DialogFooter",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,72 @@
+# Semantic overlay for DrawerFooter - a part of the Drawer family, see
+# drawer.contract.yaml's `family_membership` for how the contracts relate.
+component: drawer-footer
+
+intent: The action region at the bottom of a drawer's panel.
+
+typical_uses:
+  - The primary action stacked with a DrawerClose
+
+dont_use_when:
+  - situation: The action region of an edge panel with no swipe gesture
+    instead:
+      target: SheetFooter
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_footer.v1
+  - situation: The action region of a centered dialog
+    instead:
+      target: DialogFooter
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_footer.v1
+
+# The footer holds the drawer's actions - kit Buttons, a DrawerClose, or
+# any other control a caller chooses - so its children are not constrained
+# to a list.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: stacked-column-at-every-width
+    text: >-
+      DrawerFooter stacks its children in source order in a column spaced
+      var(--space-2) apart at every viewport width, and does not shrink; its
+      `margin-top: auto` pushes it to the bottom of the panel's content
+      region when the panel is taller than its content.
+
+anti_patterns: []
+
+deprecations: {}
+
+# A plain div with no role; drawer.test.tsx renders it but asserts nothing
+# about it.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Save with a Cancel that closes the drawer
+      code: |
+        <DrawerFooter>
+          <Button onClick={save}>Save</Button>
+          <DrawerClose render={<Button variant="outline" />}>Cancel</DrawerClose>
+        </DrawerFooter>
+  bad:
+    - title: A footer placed outside the panel
+      code: |
+        <Drawer>
+          <DrawerTrigger>Edit</DrawerTrigger>
+          <DrawerFooter>
+            <Button onClick={save}>Save</Button>
+          </DrawerFooter>
+          <DrawerContent>
+            <DrawerTitle>Edit</DrawerTitle>
+          </DrawerContent>
+        </Drawer>
+      why: >-
+        Only DrawerContent is portalled into the panel; a footer beside it
+        renders in the page, visible whether the drawer is open or not.
+
+family_membership:
+  name: drawer
+  role: part

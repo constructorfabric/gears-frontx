@@ -1,0 +1,119 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_label.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "menubar-label",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The caption of a MenubarGroup or MenubarRadioGroup, shown above its items and used as the group's accessible name.",
+  "typical_uses": [
+    "A section caption such as \"Account\" or \"Sort by\""
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The caption of a form control outside a menu",
+      "instead": {
+        "target": "Label",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.label.v1"
+      }
+    },
+    {
+      "situation": "A menu row the user can activate",
+      "instead": {
+        "target": "MenubarItem",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_item.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "MenubarGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_group.v1"
+    },
+    {
+      "container": "MenubarRadioGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_radio_group.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "throws-outside-a-group",
+      "text": "Rendering the label outside a MenubarGroup or MenubarRadioGroup throws; the primitive looks up the group it labels from context."
+    },
+    {
+      "id": "names-the-group-not-itself",
+      "text": "The label renders `role=\"presentation\"` and gives its id to the enclosing group's `aria-labelledby`; it is not focusable and is skipped by arrow-key navigation."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Style a MenubarItem with `disabled` to act as a caption",
+      "do_instead": "Use a MenubarLabel inside a group; a disabled item is still reached by arrow keys and announced as a menu item"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the label's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the label's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (an empty object for a label). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through dropdown-menu.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A caption over a sort choice",
+        "code": "<MenubarRadioGroup value={sort} onValueChange={setSort}>\n  <MenubarLabel>Sort by</MenubarLabel>\n  <MenubarRadioItem value=\"name\">Name</MenubarRadioItem>\n  <MenubarRadioItem value=\"date\">Date</MenubarRadioItem>\n</MenubarRadioGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A label straight under the popup",
+        "code": "<MenubarContent>\n  <MenubarLabel>Account</MenubarLabel>\n  <MenubarItem>Profile</MenubarItem>\n</MenubarContent>\n",
+        "why": "There is no group for the label to name, so the primitive throws; wrap both in a MenubarGroup."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "menubar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit MenubarLabel",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, MenuGroupLabelState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the label's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: MenuGroupLabelState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the label's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (an empty object for a label). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through dropdown-menu.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}
