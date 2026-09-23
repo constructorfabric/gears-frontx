@@ -1,0 +1,72 @@
+# Semantic overlay for MessageContent - part of the Message family, see
+# message.contract.yaml's `family_membership` for how the five contracts
+# relate. `mounted_in` is filled from Message's own accepted components, not
+# authored here.
+component: message-content
+
+intent: Stack a message's header, visible surface and footer in one column beside the avatar.
+
+typical_uses:
+  - The column holding a Bubble, optionally with a MessageHeader above it and a MessageFooter below it
+
+dont_use_when:
+  - situation: The visible surface of the message, its fill, frame and text
+    instead:
+      target: Bubble, placed inside this column
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.bubble.v1
+
+# The column examines nothing about its children. It hosts MessageHeader, a
+# Bubble and MessageFooter. Bubble ships no contract yet, but its directory
+# exports BubbleContent, BubbleGroup and BubbleReactions beside it, so once
+# described it is a family member, and the conformance suite requires every
+# kit mount point of a family member to lie inside that member's own family.
+# Listing only the header and footer would leave out the surface the column
+# exists for, so the column stays unconstrained.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: column-in-source-order
+    text: >-
+      The column fills the rest of the row, stacks its children in source
+      order var(--space-3) apart and wraps long unbroken words
+      (`overflow-wrap: break-word`), so header, surface and footer appear in
+      the order they are written.
+
+anti_patterns:
+  - dont: Put the message text directly inside MessageContent
+    do_instead: Wrap it in a Bubble with a BubbleContent, which draws the surface the text sits on
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Header, surface and footer in one column
+      code: |
+        <MessageContent>
+          <MessageHeader>Assistant</MessageHeader>
+          <Bubble>
+            <BubbleContent>Four files changed.</BubbleContent>
+          </Bubble>
+          <MessageFooter>Delivered</MessageFooter>
+        </MessageContent>
+  bad:
+    - title: The message text with no surface around it
+      code: |
+        <Message>
+          <MessageContent>How can I help you today?</MessageContent>
+        </Message>
+      why: >-
+        MessageContent draws no fill, frame or padding of its own; the text
+        renders bare beside the avatar, and only a Bubble gives it the
+        message surface.
+
+family_membership:
+  name: message
+  role: part

@@ -1,0 +1,78 @@
+# Semantic overlay for MessageFooter - part of the Message family, see
+# message.contract.yaml's `family_membership` for how the five contracts
+# relate. It belongs inside MessageContent, whose `accepts` is unconstrained
+# (see message-content.contract.yaml), so no kit mount point is filled here.
+component: message-footer
+
+intent: Show a short line below a message's surface, such as its delivery status or actions on the message.
+
+typical_uses:
+  - A delivery or read status below the bubble
+  - A row of icon-only actions on the message
+
+dont_use_when:
+  - situation: Reactions attached to the edge of the surface
+    instead:
+      target: BubbleReactions inside the Bubble
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.bubble_reactions.v1
+
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: muted-meta-line
+    text: >-
+      The footer is a flex row that centers its children vertically, is
+      inset var(--space-3) on the inline sides and renders in the meta text
+      size at the label weight in var(--muted-foreground).
+  - id: follows-the-message-side
+    text: >-
+      Under `align="end"` on the row the footer, as a direct child of
+      MessageContent, is aligned to the end edge and justifies its own content to the end as well.
+  - id: ghost-bubble-removes-the-inset
+    text: >-
+      When anything in the row carries `data-variant="ghost"` (a Bubble with
+      `variant="ghost"` stamps it), the footer's inline inset drops to zero
+      so it sits flush with the frameless surface.
+
+anti_patterns:
+  - dont: Render icon-only actions in the footer with no accessible name
+    do_instead: Give each icon-only Button an `aria-label`
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A status line and a named icon-only action below the surface
+      code: |
+        <MessageContent>
+          <Bubble>
+            <BubbleContent>Four files changed.</BubbleContent>
+          </Bubble>
+          <MessageFooter>
+            Delivered
+            <Button variant="ghost" size="sm" icon={<CopyIcon />} aria-label="Copy message" />
+          </MessageFooter>
+        </MessageContent>
+  bad:
+    - title: The footer placed above the surface
+      code: |
+        <MessageContent>
+          <MessageFooter>Delivered</MessageFooter>
+          <Bubble>
+            <BubbleContent>Four files changed.</BubbleContent>
+          </Bubble>
+        </MessageContent>
+      why: >-
+        MessageContent stacks its children in source order, so the footer
+        renders above the bubble; it belongs after the surface.
+
+family_membership:
+  name: message
+  role: part

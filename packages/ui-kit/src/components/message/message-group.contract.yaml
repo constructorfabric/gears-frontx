@@ -1,0 +1,102 @@
+# Semantic overlay for MessageGroup - a plain div that stacks whole Message
+# rows. It wraps the message family's root, so it is not a part of that
+# family, and it has no parts of its own.
+component: message-group
+
+intent: Stack consecutive messages from the same sender into one column.
+
+typical_uses:
+  - A run of consecutive messages from one sender, shown as one block
+
+dont_use_when:
+  - situation: Consecutive bubbles with no avatar, header or footer of their own
+    instead:
+      target: BubbleGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.bubble_group.v1
+  - situation: The scrolling frame around a whole transcript
+    instead:
+      target: MessageScroller
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller.v1
+
+# The group examines nothing about its children: it is a plain div laid out
+# as a column. Listing Message under `specified` is not possible while the
+# conformance suite requires every kit mount point of a family member, the
+# root included, to lie inside that member's own family.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: column-spaced-space-2
+    text: >-
+      The group is a flex column that spaces its children var(--space-2)
+      apart and adds nothing else: no role, no alignment of its own and no
+      avatar handling; each Message keeps its own `align`.
+
+anti_patterns:
+  - dont: Leave the avatar slot out of the earlier messages of a group
+    do_instead: >-
+      Render an empty MessageAvatar on every message but the one that shows
+      the avatar, so the surfaces of all messages in the group line up
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Two messages from one sender, the avatar on the last one
+      code: |
+        <MessageGroup>
+          <Message>
+            <MessageAvatar />
+            <MessageContent>
+              <Bubble>
+                <BubbleContent>I checked the build output.</BubbleContent>
+              </Bubble>
+            </MessageContent>
+          </Message>
+          <Message>
+            <MessageAvatar>
+              <Avatar>
+                <AvatarFallback>AS</AvatarFallback>
+              </Avatar>
+            </MessageAvatar>
+            <MessageContent>
+              <Bubble>
+                <BubbleContent>The stale route is gone.</BubbleContent>
+              </Bubble>
+            </MessageContent>
+          </Message>
+        </MessageGroup>
+  bad:
+    - title: The avatar slot left out of the earlier message
+      code: |
+        <MessageGroup>
+          <Message>
+            <MessageContent>
+              <Bubble>
+                <BubbleContent>I checked the build output.</BubbleContent>
+              </Bubble>
+            </MessageContent>
+          </Message>
+          <Message>
+            <MessageAvatar>
+              <Avatar>
+                <AvatarFallback>AS</AvatarFallback>
+              </Avatar>
+            </MessageAvatar>
+            <MessageContent>
+              <Bubble>
+                <BubbleContent>The stale route is gone.</BubbleContent>
+              </Bubble>
+            </MessageContent>
+          </Message>
+        </MessageGroup>
+      why: >-
+        Without its avatar slot the first message's bubble starts at the row's
+        edge while the second one's starts after the avatar, so the two
+        surfaces of one sender do not line up.

@@ -1,0 +1,148 @@
+# Semantic overlay for Card (the root) - the hand-written half of one of
+# seven contracts describing this family. The parts are card-header,
+# card-title, card-description, card-action, card-content and card-footer;
+# `family_membership` below is how a reader (or the conformance test) walks
+# between them.
+#
+# Machine-extractable facts (prop list, the `size` axis and its default,
+# the forwarded surface) do NOT belong here: the compiler takes those from
+# card.tsx and rejects an overlay that restates them. Card wraps no
+# primitive (every export is a plain styled div, see card.tsx), so no
+# member carries prop_statements or unexposed_parts: the only kit props in
+# the family are Card's `size` and the text parts' `typography` axes, which
+# the schema states fully as enums.
+component: card
+
+intent: Frame one self-contained unit of related content and its actions on a flat bordered surface.
+
+typical_uses:
+  - A settings section or a summary panel with a title, its content and its actions
+  - One stat or preview shown with a clear visual boundary
+  - A media card whose image runs to the card's edges
+
+dont_use_when:
+  - situation: A focused task that must block the rest of the page until it is done
+    instead:
+      target: Dialog
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog.v1
+  - situation: One row in a list of many rows that share the same shape
+    instead:
+      target: Item
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1
+  - situation: Tabular data read across rows and columns
+    instead:
+      target: Table
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.table.v1
+  - situation: A status or error message about the page or a section
+    instead:
+      target: Alert
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.alert.v1
+  - situation: A region that has settled with nothing to show
+    instead:
+      target: Empty
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.empty.v1
+  - situation: A section the user opens and closes
+    instead:
+      target: Collapsible
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.collapsible.v1
+
+# The ONE authored statement of a nesting relationship: the compiler fills
+# every other contract's `mounted_in` from lists like this one. The root
+# hosts the header, the content and the footer, as card.md's composition
+# line states. No text flag: the root's text belongs in its parts. A
+# full-bleed image is a direct <img> child, not a kit component, so it has
+# no reference here; the invariant `direct-img-runs-to-the-edges` below is
+# the statement of that slot.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1 # CardHeader
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.card_content.v1 # CardContent
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.card_footer.v1 # CardFooter
+
+invariants:
+  - id: no-role-or-landmark
+    text: >-
+      Card and every part render a plain div with no role and no aria
+      attribute of their own, so a card is not a landmark or a region to
+      assistive tech.
+  - id: size-sets-the-shared-inset-and-title-step
+    text: >-
+      `size` sets the inset every part shares: the root's gap between its
+      direct children, its top and bottom padding and the horizontal
+      padding of CardHeader, CardContent and CardFooter all read
+      --card-spacing (var(--space-4) at default, var(--space-3) at sm), and
+      sm steps CardTitle down from the heading-2 size to the body size.
+      Every Card declares these values itself, so a nested Card follows its
+      own size, not an ancestor's.
+  - id: direct-img-runs-to-the-edges
+    text: >-
+      A direct <img> child sits against the card's side edges, because the
+      root has no horizontal padding of its own; when it is the first child
+      the root drops its top padding and the image's top corners are
+      rounded to the card's radius, and when it is the last child its
+      bottom corners are rounded (the bottom padding stays). An <img>
+      nested inside a part is not treated this way.
+  - id: clips-overflow-at-the-border
+    text: >-
+      The root sets overflow hidden, so anything a child draws past the
+      card's rounded border box is clipped.
+
+anti_patterns:
+  - dont: Nest a Card inside another Card's content to group items within one surface
+    do_instead: >-
+      Lay the items out with a grid or flex wrapper inside CardContent; a
+      nested Card draws a second border inside the first
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Header with a title, a description and a corner action, then content and a footer
+      code: |
+        <Card>
+          <CardHeader>
+            <CardTitle>Team plan</CardTitle>
+            <CardDescription>Billed monthly, 5 seats in use.</CardDescription>
+            <CardAction>
+              <Button variant="ghost" size="sm">Manage</Button>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            <p>Next invoice on the 1st.</p>
+          </CardContent>
+          <CardFooter style={{ gap: 'var(--space-2)' }}>
+            <Button variant="outline">Cancel</Button>
+            <Button>Upgrade</Button>
+          </CardFooter>
+        </Card>
+    - title: A compact card sized down as a unit
+      code: |
+        <Card size="sm">
+          <CardHeader>
+            <CardTitle>Storage</CardTitle>
+            <CardDescription>12 GB of 20 GB used</CardDescription>
+          </CardHeader>
+        </Card>
+  bad:
+    - title: A size set on a part instead of the card
+      code: |
+        <Card>
+          <CardHeader>
+            <CardTitle size="sm">Storage</CardTitle>
+          </CardHeader>
+        </Card>
+      why: >-
+        `size` is Card's own prop; CardTitle has none, and its size follows
+        the nearest Card's `size`. Set `size="sm"` on Card, or
+        `typography="panel"` on CardTitle for the denser title alone.
+
+family_membership:
+  name: card
+  role: root

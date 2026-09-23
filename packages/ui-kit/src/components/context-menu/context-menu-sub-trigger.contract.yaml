@@ -1,0 +1,126 @@
+# Semantic overlay for ContextMenuSubTrigger - a part of the ContextMenu
+# family, see context-menu.contract.yaml's `family_membership` for how the
+# fourteen contracts relate.
+component: context-menu-sub-trigger
+
+intent: The menu row that opens its ContextMenuSub's nested popup.
+
+typical_uses:
+  - A row naming a further level of actions, such as Share or Move to
+
+dont_use_when:
+  - situation: A row that runs an action directly
+    instead:
+      target: ContextMenuItem
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_item.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: hover-and-press-open
+    text: >-
+      While `openOnHover` is on, which it is unless set to false, a mouse
+      pointer resting on the row opens the submenu after `delay`
+      milliseconds (100 when not given) and leaving closes it after
+      `closeDelay` milliseconds (0 when not given); with `openOnHover` false,
+      pressing the row toggles the submenu instead.
+  - id: trailing-chevron
+    text: >-
+      The row always ends in a right-pointing chevron; there is no prop to
+      leave it out, and it does not mirror in a right-to-left layout.
+  - id: stays-highlighted-while-open
+    text: >-
+      context-menu.module.css keeps the row highlighted while its submenu is
+      open.
+  - id: descendant-svg-sized
+    text: >-
+      context-menu.module.css sizes every descendant `svg` of the row to the
+      small icon size and keeps it from shrinking or taking pointer events,
+      so a leading icon passed in children needs no size of its own.
+  - id: inset-lines-up-with-icon-rows
+    text: >-
+      `inset` indents the row's text by the width of the icon column (the
+      small icon size plus two spacing steps), so it lines up with rows that
+      start with an icon.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      context-menu.test.tsx asserts the sub-trigger is found by role
+      menuitem and its accessible name, and that clicking it renders the
+      submenu's item inside an element with role menu
+  rtl:
+    outcome: unknown
+
+unexposed_parts:
+  - part: the trailing chevron icon
+    reason: Rendered by ContextMenuSubTrigger after the children; the kit exposes no prop to replace or hide it.
+
+prop_statements:
+  onClick:
+    states: onClick is a callback called with the click event when the row is pressed
+    because: >-
+      A React event handler - a function, which no JSON Schema type covers.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the
+      sub-trigger's own state, so its type is a union of a React element and a
+      callback - neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the sub-trigger's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (disabled, highlighted, open). A JSON Schema
+      `object` would reject the function form, so nothing is asserted; the
+      kit's own styling goes through context-menu.module.css, not through
+      this.
+
+examples:
+  good:
+    - title: A sub-trigger with a leading icon
+      code: |
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>
+            <ShareIcon />
+            Share
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem onClick={onCopyLink}>Copy link</ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+    - title: A sub-trigger that opens only on press
+      code: |
+        <ContextMenuSub>
+          <ContextMenuSubTrigger openOnHover={false}>Move to</ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem onClick={onMoveToArchive}>Archive</ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+  bad:
+    - title: A second chevron in the caption
+      code: |
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>
+            Share
+            <ChevronRightIcon />
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem onClick={onCopyLink}>Copy link</ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+      why: >-
+        The row already renders its own trailing chevron after the children,
+        so the caption's chevron shows as a second one beside it.
+
+family_membership:
+  name: context_menu
+  role: part

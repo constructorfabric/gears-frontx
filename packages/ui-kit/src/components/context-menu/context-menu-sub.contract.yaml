@@ -1,0 +1,109 @@
+# Semantic overlay for ContextMenuSub - a part of the ContextMenu family, see
+# context-menu.contract.yaml's `family_membership` for how the fourteen
+# contracts relate. Like the root it renders no element of its own, so it
+# names no element surface.
+component: context-menu-sub
+
+intent: Hold the open state of one nested submenu and tie its ContextMenuSubTrigger to its ContextMenuSubContent.
+
+typical_uses:
+  - A second level of related actions behind one row, such as Share or Move to
+
+dont_use_when:
+  - situation: A handful of related actions that fit in the menu itself
+    instead:
+      target: ContextMenuGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_group.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_sub_trigger.v1 # ContextMenuSubTrigger
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_sub_content.v1 # ContextMenuSubContent
+
+invariants:
+  - id: open-wins-over-default-open
+    text: >-
+      `open` and `defaultOpen` are both accepted; `defaultOpen` seeds the
+      initial state and is ignored afterwards, and when `open` is given it
+      wins and the component follows it on every render.
+  - id: escape-closes-only-the-submenu
+    text: >-
+      Escape inside the submenu closes only the submenu and returns to the
+      parent menu, unless `closeParentOnEsc` is true, which closes the
+      whole menu.
+  - id: disabled-disables-the-trigger
+    text: >-
+      Setting `disabled` on the submenu disables its ContextMenuSubTrigger,
+      as does a disabled parent menu.
+
+anti_patterns: []
+
+deprecations: {}
+
+# The submenu renders no element; context-menu.test.tsx asserts its trigger
+# and popup, not the submenu itself.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  children:
+    states: children is the submenu's sub-trigger and sub-content
+    because: >-
+      `React.ReactNode` is a union of elements, strings, numbers, fragments
+      and more, which the compiler cannot state as one JSON type.
+  onOpenChange:
+    states: onOpenChange is a callback called with the submenu's next open state and event details, not a value
+    because: >-
+      `(open: boolean, eventDetails) => void` - a function, which no JSON
+      Schema type covers.
+  onOpenChangeComplete:
+    states: onOpenChangeComplete is a callback called with the open state once the submenu's open or close animation has finished
+    because: >-
+      `(open: boolean) => void` - a function, which no JSON Schema type
+      covers.
+  actionsRef:
+    states: actionsRef is a ref the submenu fills with imperative `close` and `unmount` actions
+    because: >-
+      `React.RefObject<MenuRoot.Actions | null>` - a ref object holding
+      functions, which no JSON Schema type covers.
+
+examples:
+  good:
+    - title: A submenu of share targets
+      code: |
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>Share</ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem onClick={onShareByEmail}>Email</ContextMenuItem>
+            <ContextMenuItem onClick={onCopyLink}>Copy link</ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+    - title: A disabled submenu
+      code: |
+        <ContextMenuSub disabled>
+          <ContextMenuSubTrigger>Move to</ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem onClick={onMoveToArchive}>Archive</ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+  bad:
+    - title: A sub trigger with no submenu around it
+      code: |
+        <ContextMenuContent>
+          <ContextMenuSubTrigger>Share</ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem onClick={onCopyLink}>Copy link</ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuContent>
+      why: >-
+        ContextMenuSubTrigger must sit inside a ContextMenuSub, and the
+        primitive throws without one; the submenu is what holds the nested
+        open state.
+
+family_membership:
+  name: context_menu
+  role: part

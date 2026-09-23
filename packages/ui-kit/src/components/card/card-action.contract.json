@@ -1,0 +1,81 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_action.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "card-action",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Place one action in the top corner of a card's header, beside its title and description.",
+  "typical_uses": [
+    "One button that acts on the whole card, such as manage or edit"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A row of actions at the foot of the card",
+      "instead": {
+        "target": "CardFooter",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_footer.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "CardHeader",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "occupies-the-header-end-column",
+      "text": "CardAction is placed in CardHeader's second grid column from the first row, spans two rows, and aligns to the top and the end of that column, so it stays level with the title while a description wraps beneath it."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "One button beside the title",
+        "code": "<CardHeader>\n  <CardTitle>Team plan</CardTitle>\n  <CardAction>\n    <Button variant=\"ghost\" size=\"sm\">Manage</Button>\n  </CardAction>\n</CardHeader>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "CardAction placed in the footer",
+        "code": "<CardFooter>\n  <CardAction>\n    <Button>Upgrade</Button>\n  </CardAction>\n</CardFooter>\n",
+        "why": "CardAction's column and row placement only works in CardHeader's grid; the footer is a flex row, which ignores its grid placement. Put footer buttons directly in CardFooter."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "card",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit CardAction",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

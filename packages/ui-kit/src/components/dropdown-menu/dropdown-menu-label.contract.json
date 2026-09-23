@@ -1,0 +1,119 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_label.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "dropdown-menu-label",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The caption of a DropdownMenuGroup or DropdownMenuRadioGroup, shown above its items and used as the group's accessible name.",
+  "typical_uses": [
+    "A section caption such as \"Account\" or \"Sort by\""
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The caption of a form control outside a menu",
+      "instead": {
+        "target": "Label",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.label.v1"
+      }
+    },
+    {
+      "situation": "A menu row the user can activate",
+      "instead": {
+        "target": "DropdownMenuItem",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_item.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "DropdownMenuGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_group.v1"
+    },
+    {
+      "container": "DropdownMenuRadioGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_radio_group.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "throws-outside-a-group",
+      "text": "Rendering the label outside a DropdownMenuGroup or DropdownMenuRadioGroup throws; the primitive looks up the group it labels from context."
+    },
+    {
+      "id": "names-the-group-not-itself",
+      "text": "The label renders `role=\"presentation\"` and gives its id to the enclosing group's `aria-labelledby`; it is not focusable and is skipped by arrow-key navigation."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Style a DropdownMenuItem with `disabled` to act as a caption",
+      "do_instead": "Use a DropdownMenuLabel inside a group; a disabled item is still reached by arrow keys and announced as a menu item"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the label's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+    },
+    "style": {
+      "states": "style accepts a function of the label's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (an empty object for a label). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through dropdown-menu.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A caption over a sort choice",
+        "code": "<DropdownMenuRadioGroup value={sort} onValueChange={setSort}>\n  <DropdownMenuLabel>Sort by</DropdownMenuLabel>\n  <DropdownMenuRadioItem value=\"name\">Name</DropdownMenuRadioItem>\n  <DropdownMenuRadioItem value=\"date\">Date</DropdownMenuRadioItem>\n</DropdownMenuRadioGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A label straight under the popup",
+        "code": "<DropdownMenuContent>\n  <DropdownMenuLabel>Account</DropdownMenuLabel>\n  <DropdownMenuItem>Profile</DropdownMenuItem>\n</DropdownMenuContent>\n",
+        "why": "There is no group for the label to name, so the primitive throws; wrap both in a DropdownMenuGroup."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "dropdown_menu",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit DropdownMenuLabel",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, MenuGroupLabelState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the label's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: MenuGroupLabelState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the label's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (an empty object for a label). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through dropdown-menu.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

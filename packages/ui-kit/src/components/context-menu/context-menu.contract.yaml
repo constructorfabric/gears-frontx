@@ -1,0 +1,161 @@
+# Semantic overlay for ContextMenu (the root) - the hand-written half of one
+# of fourteen contracts describing this compound component. Every other
+# contract in this directory is a part of the same family; see
+# `family_membership` below for how a reader walks between them.
+#
+# Machine-extractable facts (prop list, forwarded surface) do NOT belong
+# here: the compiler takes those from context-menu.tsx and the primitive's
+# ContextMenu.Root it re-exports. The root renders no element of its own, so
+# it names no element surface.
+component: context-menu
+
+intent: Hold the open state of one context menu and tie an area of the page to the menu of actions it opens on right click or long press.
+
+typical_uses:
+  - Actions that apply to the one element the user right-clicks, such as a table row, a file in a list or an object on a canvas
+
+dont_use_when:
+  - situation: A menu of actions opened from a visible button or other clickable trigger
+    instead:
+      target: DropdownMenu
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu.v1
+  - situation: A persistent row of menus across the top of an application or editor
+    instead:
+      target: Menubar
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.menubar.v1
+  - situation: Picking one value for a form field
+    instead:
+      target: Select
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.select.v1
+  - situation: A searchable list of commands
+    instead:
+      target: Command
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.command.v1
+
+# The ONE authored statement of the family's top-level nesting: the compiler
+# fills the trigger's and the content's `mounted_in` from this list.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_trigger.v1 # ContextMenuTrigger
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_content.v1 # ContextMenuContent
+
+invariants:
+  - id: open-wins-over-default-open
+    text: >-
+      `open` and `defaultOpen` are both accepted; `defaultOpen` seeds the
+      initial state and is ignored afterwards, and when `open` is given it
+      wins and the component follows it on every render.
+  - id: always-modal
+    text: >-
+      A context menu is always modal: while it is open the primitive places
+      a backdrop under the popup and keeps focus inside the menu. The root
+      takes no `modal` prop to change this.
+  - id: escape-and-outside-press-close
+    text: >-
+      While open, pressing Escape or pressing outside the popup closes the
+      menu and reports the change through `onOpenChange`.
+  - id: disabled-leaves-the-native-menu
+    text: >-
+      With `disabled` set, a right click or long press on the trigger opens
+      nothing, and the browser's own context menu is no longer suppressed
+      over the trigger.
+
+anti_patterns:
+  - dont: Put an action only in a context menu
+    do_instead: >-
+      Offer every action somewhere visible as well, such as a DropdownMenu
+      behind a button or a toolbar; a right click or long press has no
+      visual affordance, so users who do not know the menu exists never
+      find it
+
+deprecations: {}
+
+# context-menu.test.tsx asserts that a right click opens an element with
+# role menu and that Escape and an outside press close it; the root itself
+# renders no element to assert anything on.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  children:
+    states: children is the root's content, either React nodes or a function of the active trigger's payload that returns them
+    because: >-
+      `React.ReactNode | PayloadChildRenderFunction<Payload>` - a React node
+      and a function have no JSON Schema representation. ContextMenuTrigger
+      carries no payload, so in this family the function form receives an
+      undefined payload.
+  onOpenChange:
+    states: onOpenChange is a callback called with the next open state and event details, not a value
+    because: >-
+      `(open: boolean, eventDetails) => void`; the second argument carries
+      Base UI's change-event details, including the reason (such as a
+      trigger press, an item press, an outside press or Escape). No JSON
+      Schema type covers a function.
+  onOpenChangeComplete:
+    states: onOpenChangeComplete is a callback called with the open state once the open or close animation has finished
+    because: >-
+      `(open: boolean) => void` - a function, which no JSON Schema type
+      covers.
+  actionsRef:
+    states: actionsRef is a ref the root fills with imperative `close` and `unmount` actions
+    because: >-
+      `React.RefObject<MenuRoot.Actions | null>` - a ref object holding
+      functions, which no JSON Schema type covers.
+  handle:
+    states: handle is an opaque object from the primitive's Menu.createHandle(); ContextMenuTrigger accepts no handle, so nothing in this family pairs with it
+    because: >-
+      `MenuHandle<Payload>` is a class instance holding the menu's store,
+      not data; the kit re-exports no createHandle, so a caller imports it
+      from the primitive.
+  triggerId:
+    states: triggerId is the id of the trigger a controlled menu is open for, or null; ContextMenuTrigger registers no trigger id, so it selects nothing in this family
+    because: >-
+      `string | null` - the compiler emits one JSON type per property, so a
+      string-or-null union is left unasserted.
+  defaultTriggerId:
+    states: defaultTriggerId is the id of the trigger an initially open menu is open for, or null; ContextMenuTrigger registers no trigger id, so it selects nothing in this family
+    because: >-
+      `string | null` - the compiler emits one JSON type per property, so a
+      string-or-null union is left unasserted.
+
+examples:
+  good:
+    - title: Row actions behind a right click
+      code: |
+        <ContextMenu>
+          <ContextMenuTrigger>{row}</ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem onClick={onRename}>Rename</ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem variant="destructive" onClick={onDelete}>Delete</ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+    - title: A menu whose open state the caller owns
+      code: |
+        <ContextMenu open={open} onOpenChange={setOpen}>
+          <ContextMenuTrigger>{canvas}</ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem onClick={onPaste}>Paste</ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+  bad:
+    - title: A modal prop on the root
+      code: |
+        <ContextMenu modal={false}>
+          <ContextMenuTrigger>{row}</ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem>Rename</ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+      why: >-
+        The root takes no `modal` prop (nor `openOnHover`, `delay` or
+        `closeDelay`); a context menu is always modal and opens only from
+        its trigger.
+
+family_membership:
+  name: context_menu
+  role: root

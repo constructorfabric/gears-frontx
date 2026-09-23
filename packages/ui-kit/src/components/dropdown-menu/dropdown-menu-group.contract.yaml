@@ -1,0 +1,99 @@
+# Semantic overlay for DropdownMenuGroup - a part of the DropdownMenu family,
+# see dropdown-menu.contract.yaml's `family_membership` for how the contracts
+# relate. The forwarded surface is the primitive's div.
+component: dropdown-menu-group
+
+intent: A set of related items in a DropdownMenu, labelled for assistive technology by the DropdownMenuLabel inside it.
+
+typical_uses:
+  - A captioned section of a menu, such as the account entries under the user's name
+
+dont_use_when:
+  - situation: A set of mutually exclusive options of which one is chosen
+    instead:
+      target: DropdownMenuRadioGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_radio_group.v1
+  - situation: A visual break between items with no caption
+    instead:
+      target: DropdownMenuSeparator
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_separator.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_label.v1 # DropdownMenuLabel
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_item.v1 # DropdownMenuItem
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_checkbox_item.v1 # DropdownMenuCheckboxItem
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_sub.v1 # DropdownMenuSub
+
+invariants:
+  - id: named-by-its-label
+    text: >-
+      The group renders `role="group"` and takes its accessible name from the
+      DropdownMenuLabel inside it, through `aria-labelledby`, unless the
+      caller passes its own `aria-labelledby`; a group with neither has no
+      name.
+  - id: no-styling-of-its-own
+    text: >-
+      dropdown-menu.module.css gives the group no class; it adds no spacing
+      or divider around its items.
+
+anti_patterns: []
+
+deprecations: {}
+
+# dropdown-menu.test.tsx renders a group only to assert the label's class;
+# nothing asserts the group role or its aria-labelledby.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  children:
+    states: children is the group's label and rows
+    because: >-
+      `React.ReactNode` is a union of elements, strings, numbers, fragments
+      and more, which the compiler cannot state as one JSON type.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the group's
+      own state, so its type is a union of a React element and a callback -
+      neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the group's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (an empty object for a group). A JSON Schema `object` would
+      reject the function form, so nothing is asserted; the kit's own
+      styling goes through dropdown-menu.module.css, not through this.
+
+examples:
+  good:
+    - title: A captioned group of account entries
+      code: |
+        <DropdownMenuContent>
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Account</DropdownMenuLabel>
+            <DropdownMenuItem>Profile</DropdownMenuItem>
+            <DropdownMenuItem>Billing</DropdownMenuItem>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+  bad:
+    - title: Radio items grouped by a plain group
+      code: |
+        <DropdownMenuGroup>
+          <DropdownMenuRadioItem value="list">List</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="grid">Grid</DropdownMenuRadioItem>
+        </DropdownMenuGroup>
+      why: >-
+        A radio item reads its selection from the DropdownMenuRadioGroup
+        around it and the primitive throws when there is none; a plain group
+        holds no value.
+
+family_membership:
+  name: dropdown_menu
+  role: part

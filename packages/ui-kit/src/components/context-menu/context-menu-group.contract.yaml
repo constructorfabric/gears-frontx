@@ -1,0 +1,109 @@
+# Semantic overlay for ContextMenuGroup - a part of the ContextMenu family,
+# see context-menu.contract.yaml's `family_membership` for how the fourteen
+# contracts relate.
+component: context-menu-group
+
+intent: Group related rows of a context menu under one optional ContextMenuLabel.
+
+typical_uses:
+  - A captioned block of related actions inside a menu popup
+
+dont_use_when:
+  - situation: A set of options of which exactly one is selected
+    instead:
+      target: ContextMenuRadioGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_radio_group.v1
+  - situation: A visual break between items with no caption
+    instead:
+      target: ContextMenuSeparator
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_separator.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_label.v1 # ContextMenuLabel
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_item.v1 # ContextMenuItem
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_checkbox_item.v1 # ContextMenuCheckboxItem
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_sub.v1 # ContextMenuSub
+
+invariants:
+  - id: named-by-its-label
+    text: >-
+      The group renders `role="group"` and takes its accessible name from the
+      ContextMenuLabel inside it, through `aria-labelledby`, unless the
+      caller passes its own `aria-labelledby`; a group with neither has no
+      name.
+  - id: no-styling-of-its-own
+    text: >-
+      context-menu.module.css gives the group no class; it adds no spacing
+      or divider around its items.
+
+anti_patterns: []
+
+deprecations: {}
+
+# context-menu.test.tsx renders a group only to assert the label's and the
+# separator's kit classes; it asserts no role on the group.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  children:
+    states: children is the group's label and rows
+    because: >-
+      `React.ReactNode` is a union of elements, strings, numbers, fragments
+      and more, which the compiler cannot state as one JSON type.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the group's
+      own state, so its type is a union of a React element and a callback -
+      neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the group's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (an empty object for a group). A JSON Schema `object` would
+      reject the function form, so nothing is asserted; the kit's own
+      styling goes through context-menu.module.css, not through this.
+
+examples:
+  good:
+    - title: A captioned group of edit actions
+      code: |
+        <ContextMenuGroup>
+          <ContextMenuLabel>Edit</ContextMenuLabel>
+          <ContextMenuItem onClick={onCopy}>Copy</ContextMenuItem>
+          <ContextMenuItem onClick={onPaste}>Paste</ContextMenuItem>
+        </ContextMenuGroup>
+    - title: Two groups divided by a separator
+      code: |
+        <ContextMenuContent>
+          <ContextMenuGroup>
+            <ContextMenuItem onClick={onCopy}>Copy</ContextMenuItem>
+          </ContextMenuGroup>
+          <ContextMenuSeparator />
+          <ContextMenuGroup>
+            <ContextMenuItem onClick={onRename}>Rename</ContextMenuItem>
+          </ContextMenuGroup>
+        </ContextMenuContent>
+  bad:
+    - title: A group used to hold a single-choice setting
+      code: |
+        <ContextMenuGroup>
+          <ContextMenuLabel>View</ContextMenuLabel>
+          <ContextMenuRadioItem value="list">List</ContextMenuRadioItem>
+          <ContextMenuRadioItem value="grid">Grid</ContextMenuRadioItem>
+        </ContextMenuGroup>
+      why: >-
+        ContextMenuRadioItem reads its selection from the nearest
+        ContextMenuRadioGroup and the primitive throws without one; a plain
+        group holds no value. Use ContextMenuRadioGroup instead.
+
+family_membership:
+  name: context_menu
+  role: part

@@ -1,0 +1,79 @@
+# Semantic overlay for CardHeader - part of the Card family, see
+# card.contract.yaml's `family_membership` for how the seven contracts
+# relate. `mounted_in` is filled from Card's own accepted components, not
+# authored here.
+component: card-header
+
+intent: Group a card's title, description and optional corner action into the block at its top.
+
+typical_uses:
+  - The top block of a Card holding its title, its description and one action beside them
+
+dont_use_when:
+  - situation: The top block of a placeholder for a region with nothing to show
+    instead:
+      target: EmptyHeader
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.empty_header.v1
+  - situation: The title block of a modal dialog
+    instead:
+      target: DialogHeader
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_header.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.card_title.v1 # CardTitle
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.card_description.v1 # CardDescription
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.card_action.v1 # CardAction
+
+invariants:
+  - id: layout-follows-its-direct-parts
+    text: >-
+      CardHeader is a grid spaced var(--space-1) apart that switches layout
+      on which parts are its direct children: a direct CardAction adds a
+      second, content-sized column for the action, and a direct
+      CardDescription gives the grid two rows, title then description.
+      There is no prop for either; a part wrapped in another element is not
+      detected.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Title, description and a corner action
+      code: |
+        <CardHeader>
+          <CardTitle>Team plan</CardTitle>
+          <CardDescription>Billed monthly</CardDescription>
+          <CardAction>
+            <Button variant="ghost" size="sm">Manage</Button>
+          </CardAction>
+        </CardHeader>
+  bad:
+    - title: The text parts wrapped in an extra element
+      code: |
+        <CardHeader>
+          <div>
+            <CardTitle>Team plan</CardTitle>
+            <CardDescription>Billed monthly</CardDescription>
+          </div>
+          <CardAction>
+            <Button variant="ghost" size="sm">Manage</Button>
+          </CardAction>
+        </CardHeader>
+      why: >-
+        The header looks for CardDescription among its direct children only,
+        so the wrapped description does not get its own grid row; the
+        wrapper also puts a non-part element into the header.
+
+family_membership:
+  name: card
+  role: part

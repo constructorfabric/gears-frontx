@@ -1,0 +1,86 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.message_footer.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "message-footer",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Show a short line below a message's surface, such as its delivery status or actions on the message.",
+  "typical_uses": [
+    "A delivery or read status below the bubble",
+    "A row of icon-only actions on the message"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Reactions attached to the edge of the surface",
+      "instead": {
+        "target": "BubbleReactions inside the Bubble",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.bubble_reactions.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "invariants": [
+    {
+      "id": "muted-meta-line",
+      "text": "The footer is a flex row that centers its children vertically, is inset var(--space-3) on the inline sides and renders in the meta text size at the label weight in var(--muted-foreground)."
+    },
+    {
+      "id": "follows-the-message-side",
+      "text": "Under `align=\"end\"` on the row the footer, as a direct child of MessageContent, is aligned to the end edge and justifies its own content to the end as well."
+    },
+    {
+      "id": "ghost-bubble-removes-the-inset",
+      "text": "When anything in the row carries `data-variant=\"ghost\"` (a Bubble with `variant=\"ghost\"` stamps it), the footer's inline inset drops to zero so it sits flush with the frameless surface."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Render icon-only actions in the footer with no accessible name",
+      "do_instead": "Give each icon-only Button an `aria-label`"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A status line and a named icon-only action below the surface",
+        "code": "<MessageContent>\n  <Bubble>\n    <BubbleContent>Four files changed.</BubbleContent>\n  </Bubble>\n  <MessageFooter>\n    Delivered\n    <Button variant=\"ghost\" size=\"sm\" icon={<CopyIcon />} aria-label=\"Copy message\" />\n  </MessageFooter>\n</MessageContent>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The footer placed above the surface",
+        "code": "<MessageContent>\n  <MessageFooter>Delivered</MessageFooter>\n  <Bubble>\n    <BubbleContent>Four files changed.</BubbleContent>\n  </Bubble>\n</MessageContent>\n",
+        "why": "MessageContent stacks its children in source order, so the footer renders above the bubble; it belongs after the surface."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "message",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit MessageFooter",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

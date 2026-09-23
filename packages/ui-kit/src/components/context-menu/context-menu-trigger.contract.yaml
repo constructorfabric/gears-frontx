@@ -1,0 +1,107 @@
+# Semantic overlay for ContextMenuTrigger - a part of the ContextMenu family,
+# see context-menu.contract.yaml's `family_membership` for how the fourteen
+# contracts relate.
+component: context-menu-trigger
+
+intent: The area of the page whose right click or long press opens its ContextMenu at the pointer.
+
+typical_uses:
+  - A wrapper around the content the menu's actions apply to, such as a table row, a list entry or a canvas
+
+dont_use_when:
+  - situation: A visible button that opens a menu when clicked
+    instead:
+      target: DropdownMenuTrigger
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_trigger.v1
+
+# `mounted_in` is filled from the ContextMenu root's accepted components, not
+# authored here. The trigger wraps whatever content the menu applies to and
+# examines none of it.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: opens-at-the-pointer-on-right-click-or-long-press
+    text: >-
+      A right click (the `contextmenu` event) opens the menu at the pointer,
+      and a single-finger touch held for 500 ms that moves no more than 10 px
+      opens it at the touch point; the browser's own context menu is
+      suppressed over the trigger while the root is enabled.
+  - id: no-role-and-no-keyboard-entry
+    text: >-
+      The trigger renders a plain `<div>` with no role and no tabindex, and
+      the primitive attaches no key handler to it; the menu opens only
+      through the `contextmenu` event or a touch long press.
+  - id: text-inside-is-not-selectable
+    text: >-
+      context-menu.module.css sets `user-select: none` on the trigger, so
+      text inside it cannot be selected by dragging.
+
+anti_patterns: []
+
+deprecations: {}
+
+# context-menu.test.tsx fires a contextmenu event on the trigger and asserts
+# the menu opens; it asserts no role or ARIA attribute on the trigger, and
+# the primitive gives it none.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the trigger's
+      own state, so its type is a union of a React element and a callback -
+      neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the trigger's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open). A JSON Schema `object` would reject
+      the function form, so nothing is asserted; the kit's own styling goes
+      through context-menu.module.css, not through this.
+
+examples:
+  good:
+    - title: A file entry that opens the menu on right click
+      code: |
+        <ContextMenu>
+          <ContextMenuTrigger className={styles.fileRow}>report.pdf</ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem onClick={onOpenFile}>Open</ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+    - title: A table row rendered as the trigger
+      code: |
+        <ContextMenu>
+          <ContextMenuTrigger render={<tr />}>
+            <td>report.pdf</td>
+          </ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem onClick={onOpenFile}>Open</ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+  bad:
+    - title: A made-up asChild prop to reuse the child element
+      code: |
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <tr><td>report.pdf</td></tr>
+          </ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem onClick={onOpenFile}>Open</ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+      why: >-
+        The trigger has no `asChild`; it falls through to the forwarded
+        `<div>`, which still wraps the row. Pass the element through `render`
+        instead.
+
+family_membership:
+  name: context_menu
+  role: part

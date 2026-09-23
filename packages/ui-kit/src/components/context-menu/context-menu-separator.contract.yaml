@@ -1,0 +1,98 @@
+# Semantic overlay for ContextMenuSeparator - a part of the ContextMenu
+# family, see context-menu.contract.yaml's `family_membership` for how the
+# fourteen contracts relate.
+component: context-menu-separator
+
+intent: A thin rule dividing groups of rows inside a context menu popup.
+
+typical_uses:
+  - The divider between two groups of related actions, or before a destructive action
+
+dont_use_when:
+  - situation: A divider in page layout or inside a card, outside any menu
+    instead:
+      target: Separator
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.separator.v1
+
+accepts:
+  content: nothing
+
+invariants:
+  - id: spans-the-popup-padding
+    text: >-
+      context-menu.module.css pulls the rule out by the popup's padding on
+      both sides, so it runs edge to edge across the popup, and gives it
+      vertical margin of its own.
+  - id: horizontal-only
+    text: >-
+      context-menu.module.css draws only a horizontal rule; `orientation`
+      changes the announced orientation, not the drawing.
+  - id: not-a-row
+    text: >-
+      The separator renders with role `separator`, takes no pointer events
+      and is not a row that arrow keys land on.
+
+anti_patterns: []
+
+deprecations: {}
+
+# context-menu.test.tsx finds the separator by test id and asserts its kit
+# class; it asserts no role.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the
+      separator's own state, so its type is a union of a React element and a
+      callback - neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the separator's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (orientation). A JSON Schema `object` would
+      reject the function form, so nothing is asserted; the kit's own
+      styling goes through context-menu.module.css, not through this.
+
+examples:
+  good:
+    - title: A separator before a destructive action
+      code: |
+        <ContextMenuContent>
+          <ContextMenuItem onClick={onRename}>Rename</ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem variant="destructive" onClick={onDelete}>Delete</ContextMenuItem>
+        </ContextMenuContent>
+    - title: Separators between groups
+      code: |
+        <ContextMenuContent>
+          <ContextMenuGroup>
+            <ContextMenuItem onClick={onCopy}>Copy</ContextMenuItem>
+          </ContextMenuGroup>
+          <ContextMenuSeparator />
+          <ContextMenuGroup>
+            <ContextMenuItem onClick={onRename}>Rename</ContextMenuItem>
+          </ContextMenuGroup>
+        </ContextMenuContent>
+  bad:
+    - title: The page-level Separator used inside the menu
+      code: |
+        <ContextMenuContent>
+          <ContextMenuItem onClick={onRename}>Rename</ContextMenuItem>
+          <Separator />
+          <ContextMenuItem variant="destructive" onClick={onDelete}>Delete</ContextMenuItem>
+        </ContextMenuContent>
+      why: >-
+        ContextMenuContent does not accept Separator; the page-level
+        separator carries none of this menu's spacing and stops at the
+        popup's padding instead of running edge to edge.
+
+family_membership:
+  name: context_menu
+  role: part

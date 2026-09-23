@@ -1,0 +1,117 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.message.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "message",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Lay out one message of a conversation as a row, placing an avatar beside a column that holds the message's header, visible surface and footer, on the side the message belongs to.",
+  "typical_uses": [
+    "One message in a conversation thread, from either side, with or without an avatar",
+    "A message that carries a sender name above it or a status line or actions below it"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The visible surface of the message itself, its fill, frame and text",
+      "instead": {
+        "target": "Bubble, placed inside MessageContent",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.bubble.v1"
+      }
+    },
+    {
+      "situation": "A one-line status or event in the conversation with no avatar, header or footer",
+      "instead": {
+        "target": "Marker",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.marker.v1"
+      }
+    },
+    {
+      "situation": "The scrolling frame around a whole transcript",
+      "instead": {
+        "target": "MessageScroller",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.message_avatar.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.message_content.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "align-is-stamped-as-data-align",
+      "text": "`align` is written to the row as `data-align` and is the only alignment input of the family; no part takes an `align` of its own, each reacts to the row's attribute through message.module.css. A Bubble inside the row takes its own `align`, which the row does not set; the Bubble's notched speaker-side corner follows the Bubble's own `align`, so an end-side row needs `align=\"end\"` on its Bubble as well."
+    },
+    {
+      "id": "end-alignment-mirrors-the-row",
+      "text": "With `align=\"end\"` the row lays its children out in reverse (`flex-direction: row-reverse`), so a MessageAvatar written first sits after MessageContent on the inline axis, and every direct child of a MessageContent inside the row aligns to the end edge."
+    },
+    {
+      "id": "no-role-or-live-region",
+      "text": "Message and every part render a plain div with no role, no aria attribute and no live region of their own; a message appearing announces nothing to assistive tech."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A message from the other side with an avatar, a sender name and a status line",
+        "code": "<Message>\n  <MessageAvatar>\n    <Avatar>\n      <AvatarFallback>AS</AvatarFallback>\n    </Avatar>\n  </MessageAvatar>\n  <MessageContent>\n    <MessageHeader>Assistant</MessageHeader>\n    <Bubble>\n      <BubbleContent>How can I help you today?</BubbleContent>\n    </Bubble>\n    <MessageFooter>Delivered</MessageFooter>\n  </MessageContent>\n</Message>\n"
+      },
+      {
+        "title": "The current user's own message on the end side",
+        "code": "<Message align=\"end\">\n  <MessageContent>\n    <Bubble variant=\"secondary\" align=\"end\">\n      <BubbleContent>What did the last deploy change?</BubbleContent>\n    </Bubble>\n  </MessageContent>\n</Message>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The sender name written as a direct child of the row",
+        "code": "<Message>\n  <MessageHeader>Assistant</MessageHeader>\n  <MessageContent>\n    <Bubble>\n      <BubbleContent>How can I help you today?</BubbleContent>\n    </Bubble>\n  </MessageContent>\n</Message>\n",
+        "why": "Message is a flex row, so the header is laid out to the side of the content column rather than above the bubble; inside MessageContent it stacks above the surface."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "message",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.message_avatar.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.message_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.message_footer.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.message_header.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Message",
+    "type": "object",
+    "properties": {
+      "align": {
+        "type": "string",
+        "enum": [
+          "end",
+          "start"
+        ]
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

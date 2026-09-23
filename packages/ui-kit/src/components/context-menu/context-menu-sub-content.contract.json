@@ -1,0 +1,225 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_sub_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "context-menu-sub-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The popup of a nested submenu, placed beside the ContextMenuSubTrigger that opens it.",
+  "typical_uses": [
+    "The rows of one ContextMenuSub, such as a list of targets to send an item to"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The first popup a right click opens",
+      "instead": {
+        "target": "ContextMenuContent",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_content.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_group.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_item.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_checkbox_item.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_radio_group.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_separator.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_sub.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "ContextMenuSub",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_sub.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "rendered-only-while-open",
+      "text": "The submenu popup is in the DOM only while its submenu is open or animating closed; the kit passes no `keepMounted` to the portal."
+    },
+    {
+      "id": "inherits-the-parent-container",
+      "text": "Without `container`, the submenu popup portals into the container its enclosing ContextMenuContent or ContextMenuSubContent resolved, so a theme passed to the first-level popup holds in the submenu; its own `container` wins when given."
+    },
+    {
+      "id": "sized-to-its-content",
+      "text": "context-menu.module.css sizes the submenu popup to its own content with an 8rem floor, not to the width of its sub-trigger."
+    },
+    {
+      "id": "opens-on-the-physical-right",
+      "text": "The submenu opens on the physical right of its sub-trigger unless `side` says otherwise; the default does not flip in a right-to-left layout."
+    },
+    {
+      "id": "reduced-motion-keeps-the-fade",
+      "text": "The popup fades and scales on open and close; under `prefers-reduced-motion` context-menu.module.css drops the transform transition and keeps the fade."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Chain submenus more than one level deep",
+      "do_instead": "Flatten the deeper level into a ContextMenuGroup or ContextMenuRadioGroup inside this popup; each extra level is another popup to reach by hover or arrow keys"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "context-menu.test.tsx asserts that clicking the sub trigger renders the submenu's item inside an element with role menu that carries the subPopup class"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is the submenu popup's rows, the parts listed under accepts",
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+    },
+    "container": {
+      "states": "container is the DOM node, shadow root or ref to one that the popup portals into; null and undefined both mean no container of its own",
+      "because": "`HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null` - live DOM nodes and ref objects, which no JSON Schema type covers. The kit resolves it as `container ?? <the enclosing content's container>`, so an explicit null falls through like an absent prop."
+    },
+    "sideOffset": {
+      "states": "sideOffset is the gap in pixels between the anchor and the popup, as a number or a function of side, align and both boxes' sizes",
+      "because": "`number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation."
+    },
+    "alignOffset": {
+      "states": "alignOffset is the shift in pixels along the alignment axis, as a number or a function of side, align and both boxes' sizes",
+      "because": "`number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation."
+    },
+    "collisionBoundary": {
+      "states": "collisionBoundary is the area the popup is kept inside, `clipping-ancestors`, an element, a list of elements or a rectangle",
+      "because": "`'clipping-ancestors' | Element | Element[] | Rect` mixes a string with live DOM elements, which no JSON Schema type covers."
+    },
+    "collisionPadding": {
+      "states": "collisionPadding is the space in pixels kept from the collision boundary, one number or a per-side object",
+      "because": "`number | { top?, right?, bottom?, left? }` - the compiler emits one JSON type per property."
+    },
+    "finalFocus": {
+      "states": "finalFocus decides where focus goes when the popup closes - true for the default, false for nowhere, a ref, or a function of the interaction type",
+      "because": "`boolean | RefObject<HTMLElement | null> | ((closeType) => boolean | HTMLElement | null | void)` mixes a boolean with a ref object and a callback; the compiler emits one JSON type per property."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the popup's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+    },
+    "style": {
+      "states": "style accepts a function of the popup's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, side, align, nested, instant, transitionStatus). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through context-menu.module.css, not through this."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "ContextMenu.Portal",
+      "reason": "Composed through ContextMenuContent; only its `container` is exposed, as a prop of the submenu popup itself."
+    },
+    {
+      "part": "ContextMenu.Positioner",
+      "reason": "Composed through ContextMenuContent; its placement and collision props are exposed on the submenu popup itself."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "A submenu of share targets",
+        "code": "<ContextMenuSub>\n  <ContextMenuSubTrigger>Share</ContextMenuSubTrigger>\n  <ContextMenuSubContent>\n    <ContextMenuItem onClick={onShareByEmail}>Email</ContextMenuItem>\n    <ContextMenuItem onClick={onCopyLink}>Copy link</ContextMenuItem>\n  </ContextMenuSubContent>\n</ContextMenuSub>\n"
+      },
+      {
+        "title": "A submenu popup with its own container",
+        "code": "<ContextMenuSub>\n  <ContextMenuSubTrigger>Move to</ContextMenuSubTrigger>\n  <ContextMenuSubContent container={panelRef}>\n    <ContextMenuItem onClick={onMoveToArchive}>Archive</ContextMenuItem>\n  </ContextMenuSubContent>\n</ContextMenuSub>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A ContextMenuContent used as the submenu popup",
+        "code": "<ContextMenuSub>\n  <ContextMenuSubTrigger>Share</ContextMenuSubTrigger>\n  <ContextMenuContent>\n    <ContextMenuItem onClick={onCopyLink}>Copy link</ContextMenuItem>\n  </ContextMenuContent>\n</ContextMenuSub>\n",
+        "why": "ContextMenuSub accepts ContextMenuSubContent, not ContextMenuContent; the popup renders but carries only the root popup's class, with the 9rem floor meant for the first popup instead of the submenu's own 8rem sizing."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "context_menu",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {
+      "container": {
+        "typeText": "HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null | undefined",
+        "optional": true
+      }
+    },
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ContextMenuSubContent",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "container": {
+        "description": "Partially typed: HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null | undefined. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. container is the DOM node, shadow root or ref to one that the popup portals into; null and undefined both mean no container of its own. `HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null` - live DOM nodes and ref objects, which no JSON Schema type covers. The kit resolves it as `container ?? <the enclosing content's container>`, so an explicit null falls through like an absent prop."
+      },
+      "align": {
+        "type": "string",
+        "enum": [
+          "center",
+          "end",
+          "start"
+        ]
+      },
+      "alignOffset": {
+        "description": "TS: number | OffsetFunction | undefined. The compiler emits one JSON type per property; this type is left to tsc. alignOffset is the shift in pixels along the alignment axis, as a number or a function of side, align and both boxes' sizes. `number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation."
+      },
+      "children": {
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the submenu popup's rows, the parts listed under accepts. `React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+      },
+      "collisionBoundary": {
+        "description": "TS: Boundary | undefined. The compiler emits one JSON type per property; this type is left to tsc. collisionBoundary is the area the popup is kept inside, `clipping-ancestors`, an element, a list of elements or a rectangle. `'clipping-ancestors' | Element | Element[] | Rect` mixes a string with live DOM elements, which no JSON Schema type covers."
+      },
+      "collisionPadding": {
+        "description": "TS: Padding | undefined. The compiler emits one JSON type per property; this type is left to tsc. collisionPadding is the space in pixels kept from the collision boundary, one number or a per-side object. `number | { top?, right?, bottom?, left? }` - the compiler emits one JSON type per property."
+      },
+      "finalFocus": {
+        "description": "TS: boolean | RefObject<HTMLElement | null> | ((closeType: InteractionType) => boolean | void | HTMLElement | null) | undefined. The compiler emits one JSON type per property; this type is left to tsc. finalFocus decides where focus goes when the popup closes - true for the default, false for nowhere, a ref, or a function of the interaction type. `boolean | RefObject<HTMLElement | null> | ((closeType) => boolean | HTMLElement | null | void)` mixes a boolean with a ref object and a callback; the compiler emits one JSON type per property."
+      },
+      "id": {
+        "type": "string"
+      },
+      "positionMethod": {
+        "type": "string",
+        "enum": [
+          "absolute",
+          "fixed"
+        ]
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, MenuPopupState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the popup's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      },
+      "side": {
+        "type": "string",
+        "enum": [
+          "bottom",
+          "inline-end",
+          "inline-start",
+          "left",
+          "right",
+          "top"
+        ]
+      },
+      "sideOffset": {
+        "description": "TS: number | OffsetFunction | undefined. The compiler emits one JSON type per property; this type is left to tsc. sideOffset is the gap in pixels between the anchor and the popup, as a number or a function of side, align and both boxes' sizes. `number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: MenuPopupState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the popup's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, side, align, nested, instant, transitionStatus). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through context-menu.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

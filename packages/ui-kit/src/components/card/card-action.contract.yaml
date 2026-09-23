@@ -1,0 +1,68 @@
+# Semantic overlay for CardAction - part of the Card family, see
+# card.contract.yaml's `family_membership` for how the seven contracts
+# relate. `mounted_in` is filled from CardHeader's accepted components, not
+# authored here.
+component: card-action
+
+intent: Place one action in the top corner of a card's header, beside its title and description.
+
+typical_uses:
+  - One button that acts on the whole card, such as manage or edit
+
+dont_use_when:
+  - situation: A row of actions at the foot of the card
+    instead:
+      target: CardFooter
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_footer.v1
+
+# The code does not police what goes inside; card.md describes the slot as
+# one action, and its example puts the kit's Button there.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1 # Button
+
+invariants:
+  - id: occupies-the-header-end-column
+    text: >-
+      CardAction is placed in CardHeader's second grid column from the
+      first row, spans two rows, and aligns to the top and the end of that
+      column, so it stays level with the title while a description wraps
+      beneath it.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: One button beside the title
+      code: |
+        <CardHeader>
+          <CardTitle>Team plan</CardTitle>
+          <CardAction>
+            <Button variant="ghost" size="sm">Manage</Button>
+          </CardAction>
+        </CardHeader>
+  bad:
+    - title: CardAction placed in the footer
+      code: |
+        <CardFooter>
+          <CardAction>
+            <Button>Upgrade</Button>
+          </CardAction>
+        </CardFooter>
+      why: >-
+        CardAction's column and row placement only works in CardHeader's
+        grid; the footer is a flex row, which ignores its grid placement. Put footer buttons
+        directly in CardFooter.
+
+family_membership:
+  name: card
+  role: part

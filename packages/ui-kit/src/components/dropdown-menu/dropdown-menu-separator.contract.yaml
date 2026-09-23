@@ -1,0 +1,89 @@
+# Semantic overlay for DropdownMenuSeparator - a part of the DropdownMenu
+# family, see dropdown-menu.contract.yaml's `family_membership` for how the
+# contracts relate. The forwarded surface is the primitive's div.
+component: dropdown-menu-separator
+
+intent: A horizontal rule between two sets of rows in a DropdownMenu.
+
+typical_uses:
+  - A break between everyday actions and a destructive one at the end of the menu
+
+dont_use_when:
+  - situation: A rule between sections of a page or a card, outside any menu
+    instead:
+      target: Separator
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.separator.v1
+
+accepts:
+  content: nothing
+
+invariants:
+  - id: spans-the-popup-padding
+    text: >-
+      dropdown-menu.module.css pulls the rule out by the popup's padding on
+      both sides, so it runs edge to edge across the popup, and gives it
+      vertical margin of its own.
+  - id: horizontal-only
+    text: >-
+      dropdown-menu.module.css draws only a horizontal rule; `orientation`
+      changes the announced orientation, not the drawing.
+  - id: not-a-row
+    text: >-
+      The separator renders with role `separator`, takes no pointer events
+      and is not a row that arrow keys land on.
+
+anti_patterns:
+  - dont: Put a separator first or last in the popup, or two in a row
+    do_instead: Place separators only between rows; a rule at an edge or doubled draws a break with nothing on one side
+
+deprecations: {}
+
+# dropdown-menu.test.tsx finds the separator by a test id and asserts its
+# class; nothing asserts the separator role.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the separator's
+      own state, so its type is a union of a React element and a callback -
+      neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the separator's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (orientation). A JSON Schema `object` would
+      reject the function form, so nothing is asserted; the kit's own
+      styling goes through dropdown-menu.module.css, not through this.
+
+examples:
+  good:
+    - title: A rule before a destructive action
+      code: |
+        <DropdownMenuContent>
+          <DropdownMenuItem>Rename</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
+        </DropdownMenuContent>
+  bad:
+    - title: A general Separator used inside the popup
+      code: |
+        <DropdownMenuContent>
+          <DropdownMenuItem>Rename</DropdownMenuItem>
+          <Separator />
+          <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
+        </DropdownMenuContent>
+      why: >-
+        The popup accepts DropdownMenuSeparator, whose margins are set for
+        the popup's padding; a general Separator stops short of the popup's
+        edges.
+
+family_membership:
+  name: dropdown_menu
+  role: part

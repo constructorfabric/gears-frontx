@@ -1,0 +1,154 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_sub.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "dropdown-menu-sub",
+  "intent": "Hold the open state of one submenu and tie its DropdownMenuSubTrigger row to the DropdownMenuSubContent it opens.",
+  "typical_uses": [
+    "A nested list of related actions, such as sharing targets behind a Share row"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A handful of actions that fit in the parent menu",
+      "instead": {
+        "target": "DropdownMenuGroup",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_group.v1",
+        "note": "A captioned group keeps every action one level deep, reachable without opening a second popup."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_sub_trigger.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_sub_content.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "DropdownMenuContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_content.v1"
+    },
+    {
+      "container": "DropdownMenuGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_group.v1"
+    },
+    {
+      "container": "DropdownMenuSubContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_sub_content.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "open-wins-over-default-open",
+      "text": "`open` and `defaultOpen` are both accepted; `defaultOpen` seeds the initial state and is ignored afterwards, and when `open` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "escape-closes-only-the-submenu",
+      "text": "Escape inside the submenu closes only the submenu and returns to the parent menu, unless `closeParentOnEsc` is true, which closes the whole menu."
+    },
+    {
+      "id": "disabled-disables-the-trigger",
+      "text": "Setting `disabled` on the submenu disables its DropdownMenuSubTrigger, as does a disabled parent menu."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is the submenu's sub-trigger and sub-content",
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+    },
+    "onOpenChange": {
+      "states": "onOpenChange is a callback called with the submenu's next open state and event details, not a value",
+      "because": "`(open: boolean, eventDetails) => void` - a function, which no JSON Schema type covers."
+    },
+    "onOpenChangeComplete": {
+      "states": "onOpenChangeComplete is a callback called with the open state once the submenu's open or close animation has finished",
+      "because": "`(open: boolean) => void` - a function, which no JSON Schema type covers."
+    },
+    "actionsRef": {
+      "states": "actionsRef is a ref the submenu fills with imperative `close` and `unmount` actions",
+      "because": "`React.RefObject<MenuRoot.Actions | null>` - a ref object holding functions, which no JSON Schema type covers."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A Share submenu",
+        "code": "<DropdownMenuSub>\n  <DropdownMenuSubTrigger>Share</DropdownMenuSubTrigger>\n  <DropdownMenuSubContent>\n    <DropdownMenuItem>Email</DropdownMenuItem>\n    <DropdownMenuItem>Copy link</DropdownMenuItem>\n  </DropdownMenuSubContent>\n</DropdownMenuSub>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A second DropdownMenu nested as the submenu",
+        "code": "<DropdownMenuContent>\n  <DropdownMenu>\n    <DropdownMenuTrigger>Share</DropdownMenuTrigger>\n    <DropdownMenuContent>\n      <DropdownMenuItem>Email</DropdownMenuItem>\n    </DropdownMenuContent>\n  </DropdownMenu>\n</DropdownMenuContent>\n",
+        "why": "A nested root puts a plain button among the rows and opens an unrelated menu from it, which the popup does not accept; a submenu is opened by a DropdownMenuSubTrigger row inside a DropdownMenuSub."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "dropdown_menu",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit DropdownMenuSub",
+    "type": "object",
+    "properties": {
+      "actionsRef": {
+        "description": "TS: React.RefObject<MenuRootActions | null> | undefined. The compiler emits one JSON type per property; this type is left to tsc. actionsRef is a ref the submenu fills with imperative `close` and `unmount` actions. `React.RefObject<MenuRoot.Actions | null>` - a ref object holding functions, which no JSON Schema type covers."
+      },
+      "children": {
+        "description": "TS: React.ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the submenu's sub-trigger and sub-content. `React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+      },
+      "closeParentOnEsc": {
+        "type": "boolean"
+      },
+      "defaultOpen": {
+        "type": "boolean"
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "highlightItemOnHover": {
+        "type": "boolean"
+      },
+      "loopFocus": {
+        "type": "boolean"
+      },
+      "onOpenChange": {
+        "description": "TS: ((open: boolean, eventDetails: MenuRootChangeEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChange is a callback called with the submenu's next open state and event details, not a value. `(open: boolean, eventDetails) => void` - a function, which no JSON Schema type covers."
+      },
+      "onOpenChangeComplete": {
+        "description": "TS: ((open: boolean) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChangeComplete is a callback called with the open state once the submenu's open or close animation has finished. `(open: boolean) => void` - a function, which no JSON Schema type covers."
+      },
+      "open": {
+        "type": "boolean"
+      },
+      "orientation": {
+        "type": "string",
+        "enum": [
+          "horizontal",
+          "vertical"
+        ]
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

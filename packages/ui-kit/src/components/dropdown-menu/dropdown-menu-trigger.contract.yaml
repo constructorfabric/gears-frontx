@@ -1,0 +1,134 @@
+# Semantic overlay for DropdownMenuTrigger - a part of the DropdownMenu
+# family, see dropdown-menu.contract.yaml's `family_membership` for how the
+# contracts relate. The forwarded surface is the primitive's native button.
+component: dropdown-menu-trigger
+
+intent: The button that opens and closes its DropdownMenu's popup.
+
+typical_uses:
+  - An icon-only "more" button beside a row or a card
+  - A labelled button, such as an account name, that opens a menu of actions
+
+dont_use_when:
+  - situation: A button that performs one action directly
+    instead:
+      target: Button
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+  - situation: An area that opens a menu on right-click
+    instead:
+      target: ContextMenuTrigger
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_trigger.v1
+
+# `mounted_in` is filled from the DropdownMenu root's accepted components.
+# The caption arrives through children; with `render`, the rendered element
+# is the button and the children become its caption.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: unstyled-native-button
+    text: >-
+      The trigger renders a native `<button>` with no kit styling of its own;
+      a styled trigger comes from passing a Button through `render`.
+  - id: announces-the-menu
+    text: >-
+      The trigger carries `aria-haspopup="menu"`, so assistive technology
+      announces it as a button that opens a menu.
+  - id: hover-opens-only-with-open-on-hover
+    text: >-
+      Pressing the trigger toggles the menu; hovering opens it only when
+      `openOnHover` is set, and `delay` and `closeDelay` take effect only
+      then.
+
+anti_patterns:
+  - dont: Leave an icon-only trigger without an accessible name
+    do_instead: >-
+      Pass `aria-label` to the trigger; it reaches the rendered button, and
+      an icon alone gives the button no name
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Menu.Trigger renders a native <button> and sets
+      aria-haspopup="menu"; dropdown-menu.test.tsx asserts the trigger is
+      found by the button role and its accessible name 'Open'
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  children:
+    states: children is the trigger's caption, or the caption of the element passed through render
+    because: >-
+      `React.ReactNode` is a union of elements, strings, numbers, fragments
+      and more, which the compiler cannot state as one JSON type.
+  handle:
+    states: handle is an opaque object from the primitive's Menu.createHandle(), tying this trigger to a DropdownMenu root it is not placed inside
+    because: >-
+      `MenuHandle<Payload>` is a class instance holding the menu's store, not
+      data; the kit re-exports no createHandle, so a caller imports it from
+      the primitive.
+  payload:
+    states: payload is any value handed to the root's function children when this trigger opens the menu
+    because: >-
+      Typed by the caller's own `Payload` type parameter (`unknown` here), so
+      no JSON Schema type can state what it holds.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the trigger's
+      own state, so its type is a union of a React element and a callback -
+      neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the trigger's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open, disabled). A JSON Schema `object`
+      would reject the function form, so nothing is asserted;
+      dropdown-menu.module.css styles no trigger, so the button keeps the
+      look the caller gives it.
+
+examples:
+  good:
+    - title: An outline Button as the trigger
+      code: |
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="outline" />}>Options</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem>Duplicate</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+    - title: An icon-only trigger with an accessible name
+      code: |
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            aria-label="More actions"
+            render={<Button variant="ghost" icon={<MoreHorizontalIcon />} />}
+          />
+          <DropdownMenuContent>
+            <DropdownMenuItem>Duplicate</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+  bad:
+    - title: A kit Button nested inside the trigger
+      code: |
+        <DropdownMenu>
+          <DropdownMenuTrigger>
+            <Button variant="outline">Options</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem>Duplicate</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      why: >-
+        The trigger already renders a `<button>`, so this nests a button
+        inside a button, which HTML does not allow; pass the Button through
+        `render` instead.
+
+family_membership:
+  name: dropdown_menu
+  role: part

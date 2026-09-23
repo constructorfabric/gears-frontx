@@ -1,0 +1,92 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.message_avatar.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "message-avatar",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Hold the sender's picture at the bottom of a message row, or reserve its width when left empty.",
+  "typical_uses": [
+    "The sender's Avatar beside the message",
+    "An empty slot on the earlier messages of a MessageGroup, keeping their surfaces aligned"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A person's picture anywhere outside a message row",
+      "instead": {
+        "target": "Avatar",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "Message",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.message.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "fixed-bottom-anchored-column",
+      "text": "The slot never shrinks, is at least var(--space-8) wide, centers its content and sits at the bottom of the row; left empty it still reserves that width."
+    },
+    {
+      "id": "lifts-when-the-row-has-a-footer",
+      "text": "When the row contains a MessageFooter, the slot is shifted up by var(--space-8) so it lines up with the message surface rather than with the footer below it."
+    },
+    {
+      "id": "slot-does-not-clip",
+      "text": "The slot draws a round var(--muted) background but clips nothing, so an AvatarBadge overhanging the Avatar's circle stays visible."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put the sender's name inside MessageAvatar",
+      "do_instead": "Put the name in a MessageHeader inside MessageContent and keep the slot for the picture"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "The sender's Avatar in the slot",
+        "code": "<MessageAvatar>\n  <Avatar>\n    <AvatarImage src=\"/assistant.png\" alt=\"Assistant\" />\n    <AvatarFallback>AS</AvatarFallback>\n  </Avatar>\n</MessageAvatar>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The sender's name placed in the avatar slot",
+        "code": "<Message>\n  <MessageAvatar>Assistant</MessageAvatar>\n  <MessageContent>\n    <Bubble>\n      <BubbleContent>How can I help you today?</BubbleContent>\n    </Bubble>\n  </MessageContent>\n</Message>\n",
+        "why": "The slot is a round, muted, bottom-anchored cell sized for a picture; a name placed there sits beside the bubble on a pill background instead of above it in the muted header style."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "message",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit MessageAvatar",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

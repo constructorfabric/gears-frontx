@@ -1,0 +1,65 @@
+# Semantic overlay for CardContent - part of the Card family, see
+# card.contract.yaml's `family_membership` for how the seven contracts
+# relate. `mounted_in` is filled from Card's own accepted components, not
+# authored here.
+component: card-content
+
+intent: Hold the body of a card between its header and its footer, inset to the card's padding.
+
+typical_uses:
+  - The main body of a Card
+
+dont_use_when:
+  - situation: The card's title and the line that describes it
+    instead:
+      target: CardHeader
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1
+
+# Arbitrary content by design (text, a list, a form), so it is not
+# constrained to a list of components.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: horizontal-inset-only
+    text: >-
+      CardContent sets only a horizontal padding of --card-spacing and no
+      layout of its own; the distance to the header and footer comes from
+      the root Card's gap.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Body text between header and footer
+      code: |
+        <Card>
+          <CardHeader>
+            <CardTitle>Team plan</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>Next invoice on the 1st.</p>
+          </CardContent>
+        </Card>
+  bad:
+    - title: A margin added to separate the body from the header
+      code: |
+        <CardContent style={{ marginTop: 16 }}>
+          <p>Next invoice on the 1st.</p>
+        </CardContent>
+      why: >-
+        The root Card's gap already puts --card-spacing between its direct
+        children; a margin adds to it and no longer follows the card's
+        `size`.
+
+family_membership:
+  name: card
+  role: part

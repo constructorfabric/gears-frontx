@@ -1,0 +1,115 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_description.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "card-description",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Give the supporting line beneath a card's title in muted text.",
+  "typical_uses": [
+    "The muted sentence under CardTitle that qualifies what the card shows"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The explanation in a placeholder for a region with nothing to show",
+      "instead": {
+        "target": "EmptyDescription",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_description.v1"
+      }
+    },
+    {
+      "situation": "The supporting text of a modal dialog",
+      "instead": {
+        "target": "DialogDescription",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_description.v1"
+      }
+    },
+    {
+      "situation": "The body text of a status message",
+      "instead": {
+        "target": "AlertDescription",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_description.v1"
+      }
+    },
+    {
+      "situation": "The supporting line of one row in a list of similar rows",
+      "instead": {
+        "target": "ItemDescription",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.item_description.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "CardHeader",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "muted-body-text",
+      "text": "CardDescription renders a div in the muted foreground color at the body size; `typography=\"panel\"` steps it down to the meta size, line height and weight."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A description under the title",
+        "code": "<CardHeader>\n  <CardTitle>Storage</CardTitle>\n  <CardDescription>12 GB of 20 GB used</CardDescription>\n</CardHeader>\n"
+      },
+      {
+        "title": "The denser pair used in a panel header",
+        "code": "<CardHeader>\n  <CardTitle typography=\"panel\">Storage</CardTitle>\n  <CardDescription typography=\"panel\">12 GB of 20 GB used</CardDescription>\n</CardHeader>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A description placed in the content instead of the header",
+        "code": "<Card>\n  <CardHeader>\n    <CardTitle>Storage</CardTitle>\n  </CardHeader>\n  <CardContent>\n    <CardDescription>12 GB of 20 GB used</CardDescription>\n  </CardContent>\n</Card>\n",
+        "why": "CardDescription belongs in CardHeader, where the header gives it the row under the title; inside CardContent it sits a whole card gap away from the title it describes."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "card",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof cardDescriptionVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit CardDescription",
+    "type": "object",
+    "properties": {
+      "typography": {
+        "type": "string",
+        "enum": [
+          "default",
+          "panel"
+        ],
+        "default": "default"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

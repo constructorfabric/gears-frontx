@@ -1,0 +1,72 @@
+# Semantic overlay for ContextMenuShortcut - a part of the ContextMenu
+# family, see context-menu.contract.yaml's `family_membership` for how the
+# fourteen contracts relate. It is the kit's own span, not a primitive part.
+component: context-menu-shortcut
+
+intent: The keyboard shortcut hint shown at the end of a context menu row.
+
+typical_uses:
+  - The key combination that runs the same action outside the menu, such as Ctrl+C beside Copy
+
+dont_use_when:
+  - situation: A key or key combination shown in running text or outside a menu row
+    instead:
+      target: Kbd
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.kbd.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: display-only
+    text: >-
+      The shortcut is text only: it registers no key handler and adds no
+      `aria-keyshortcuts`, so the application binds the keys itself.
+  - id: pushed-to-the-row-end
+    text: >-
+      context-menu.module.css pushes the shortcut to the inline end of its
+      row and renders it in the muted foreground color, switching to the
+      accent foreground while a ContextMenuItem, ContextMenuCheckboxItem or
+      ContextMenuRadioItem holding it is highlighted.
+
+anti_patterns: []
+
+deprecations: {}
+
+# The shortcut is a plain span; context-menu.test.tsx does not render it.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A shortcut hint on an action
+      code: |
+        <ContextMenuItem onClick={onCopy}>
+          Copy
+          <ContextMenuShortcut>Ctrl+C</ContextMenuShortcut>
+        </ContextMenuItem>
+    - title: A shortcut hint on a setting
+      code: |
+        <ContextMenuCheckboxItem checked={showRuler} onCheckedChange={setShowRuler}>
+          Show ruler
+          <ContextMenuShortcut>Ctrl+R</ContextMenuShortcut>
+        </ContextMenuCheckboxItem>
+  bad:
+    - title: A Kbd used as the row's shortcut hint
+      code: |
+        <ContextMenuItem onClick={onCopy}>
+          Copy
+          <Kbd>Ctrl+C</Kbd>
+        </ContextMenuItem>
+      why: >-
+        ContextMenuItem accepts ContextMenuShortcut, not Kbd; a Kbd is not
+        pushed to the end of the row and keeps its muted chip colors when the
+        row is highlighted.
+
+family_membership:
+  name: context_menu
+  role: part

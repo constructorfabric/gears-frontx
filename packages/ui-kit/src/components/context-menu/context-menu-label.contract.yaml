@@ -1,0 +1,101 @@
+# Semantic overlay for ContextMenuLabel - a part of the ContextMenu family,
+# see context-menu.contract.yaml's `family_membership` for how the fourteen
+# contracts relate.
+component: context-menu-label
+
+intent: The caption of a ContextMenuGroup or ContextMenuRadioGroup, naming the rows beneath it.
+
+typical_uses:
+  - A heading over a block of related menu rows, such as "Edit" or "Sort by"
+
+dont_use_when:
+  - situation: A caption for a form control
+    instead:
+      target: Label
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.label.v1
+  - situation: A menu row the user can activate
+    instead:
+      target: ContextMenuItem
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_item.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: throws-outside-a-group
+    text: >-
+      Rendering the label outside a ContextMenuGroup or ContextMenuRadioGroup
+      throws; the primitive looks up the group it labels from context.
+  - id: names-the-group-not-itself
+    text: >-
+      The label renders `role="presentation"` and gives its id to the
+      enclosing group's `aria-labelledby`; it is not focusable and is
+      skipped by arrow-key navigation.
+  - id: inset-lines-up-with-icon-rows
+    text: >-
+      `inset` indents the label by the width of the icon column (the small
+      icon size plus two spacing steps), so it lines up with the text of
+      rows that start with an icon.
+
+anti_patterns: []
+
+deprecations: {}
+
+# context-menu.test.tsx finds the label by its text and asserts its kit
+# class and data-inset; it asserts no role or aria relationship.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the label's
+      own state, so its type is a union of a React element and a callback -
+      neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the label's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (an empty object for a label). A JSON Schema `object` would
+      reject the function form, so nothing is asserted; the kit's own
+      styling goes through context-menu.module.css, not through this.
+
+examples:
+  good:
+    - title: A label over a single-choice group
+      code: |
+        <ContextMenuRadioGroup value={sort} onValueChange={setSort}>
+          <ContextMenuLabel>Sort by</ContextMenuLabel>
+          <ContextMenuRadioItem value="name">Name</ContextMenuRadioItem>
+          <ContextMenuRadioItem value="date">Date</ContextMenuRadioItem>
+        </ContextMenuRadioGroup>
+    - title: An inset label over rows that start with an icon
+      code: |
+        <ContextMenuGroup>
+          <ContextMenuLabel inset>Edit</ContextMenuLabel>
+          <ContextMenuItem onClick={onCopy}>
+            <CopyIcon />
+            Copy
+          </ContextMenuItem>
+        </ContextMenuGroup>
+  bad:
+    - title: A label with no group around it
+      code: |
+        <ContextMenuContent>
+          <ContextMenuLabel>Edit</ContextMenuLabel>
+          <ContextMenuItem onClick={onCopy}>Copy</ContextMenuItem>
+        </ContextMenuContent>
+      why: >-
+        ContextMenuContent does not accept a label, and the primitive throws
+        when neither a ContextMenuGroup nor a ContextMenuRadioGroup encloses
+        it.
+
+family_membership:
+  name: context_menu
+  role: part

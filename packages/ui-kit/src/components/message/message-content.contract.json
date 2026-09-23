@@ -1,0 +1,83 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.message_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "message-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Stack a message's header, visible surface and footer in one column beside the avatar.",
+  "typical_uses": [
+    "The column holding a Bubble, optionally with a MessageHeader above it and a MessageFooter below it"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The visible surface of the message, its fill, frame and text",
+      "instead": {
+        "target": "Bubble, placed inside this column",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.bubble.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "Message",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.message.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "column-in-source-order",
+      "text": "The column fills the rest of the row, stacks its children in source order var(--space-3) apart and wraps long unbroken words (`overflow-wrap: break-word`), so header, surface and footer appear in the order they are written."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put the message text directly inside MessageContent",
+      "do_instead": "Wrap it in a Bubble with a BubbleContent, which draws the surface the text sits on"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Header, surface and footer in one column",
+        "code": "<MessageContent>\n  <MessageHeader>Assistant</MessageHeader>\n  <Bubble>\n    <BubbleContent>Four files changed.</BubbleContent>\n  </Bubble>\n  <MessageFooter>Delivered</MessageFooter>\n</MessageContent>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The message text with no surface around it",
+        "code": "<Message>\n  <MessageContent>How can I help you today?</MessageContent>\n</Message>\n",
+        "why": "MessageContent draws no fill, frame or padding of its own; the text renders bare beside the avatar, and only a Bubble gives it the message surface."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "message",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit MessageContent",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}
