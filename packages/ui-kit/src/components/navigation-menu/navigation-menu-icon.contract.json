@@ -86,7 +86,7 @@
     "partially_typed_props": {},
     "variant_sources": [],
     "cannot_extract": [
-      "default: prop \"render\" is written before the rest spread as \"{<ChevronDownIcon className={cx(styles.svgIcon, styles.triggerIcon, className)} />}\", which is not a literal - the contract states no default for it"
+      "default: prop \"render\" is written before the rest spread as \"{<ChevronDownIcon className={cx(styles.svgIcon, styles.triggerIcon, className)} />}\", which is not a literal - the body gives no single literal default for it"
     ]
   },
   "props": {

@@ -108,7 +108,7 @@
     },
     "variant_sources": [],
     "cannot_extract": [
-      "default: prop \"render\" is written before the rest spread as \"{<Button variant={variant} size={size} loading={loading} icon={icon} />}\", which is not a literal - the contract states no default for it"
+      "default: prop \"render\" is written before the rest spread as \"{<Button variant={variant} size={size} loading={loading} icon={icon} />}\", which is not a literal - the body gives no single literal default for it"
     ]
   },
   "props": {

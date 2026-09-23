@@ -111,7 +111,7 @@
   "companions": [
     {
       "export": "ChartConfig",
-      "typed_by": "Record<string, { label?: ReactNode; icon?: ComponentType } & ({ color?: string } | { theme: Record<\"light\" | \"dark\", string> })>",
+      "typed_by": "Record<string, { label?: ReactNode; icon?: ComponentType } & ({ color?: string; theme?: never } | { color?: never; theme: Record<\"light\" | \"dark\", string> })>",
       "description": "The type of `config`, shared by ChartContainer and ChartStyle; declare a config with `satisfies ChartConfig`."
     }
   ],
@@ -132,7 +132,7 @@
     },
     "variant_sources": [],
     "cannot_extract": [
-      "default: prop \"initialDimension\" defaults to \"INITIAL_DIMENSION\", which is not a literal - the contract states no default for it"
+      "default: prop \"initialDimension\" defaults to \"INITIAL_DIMENSION\", which is not a literal - the body gives no single literal default for it"
     ]
   },
   "props": {

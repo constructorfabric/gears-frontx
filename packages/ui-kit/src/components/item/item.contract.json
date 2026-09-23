@@ -151,8 +151,8 @@
       "VariantProps<typeof itemVariants>"
     ],
     "cannot_extract": [
-      "default: prop \"variant\" is read through `??` and also as its own value, so no one literal is its default - the contract states no default for it",
-      "default: prop \"size\" is read through `??` and also as its own value, so no one literal is its default - the contract states no default for it"
+      "default: prop \"variant\" is read through `??` and also as its own value, so no one literal is its default - the body gives no single literal default for it",
+      "default: prop \"size\" is read through `??` and also as its own value, so no one literal is its default - the body gives no single literal default for it"
     ]
   },
   "props": {

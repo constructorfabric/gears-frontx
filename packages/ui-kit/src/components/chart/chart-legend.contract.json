@@ -64,7 +64,7 @@
       "because": "`{ __html: string }` - an object type the compiler emits no JSON type for."
     },
     "formatter": {
-      "states": "formatter is called per item with its value, entry and index, and the library's default content shows its return as the item's text; ChartLegendContent does not read it",
+      "states": "formatter is passed to the legend's content; the library's default content calls it per item with its value, entry and index and shows its return as the item's text, and ChartLegendContent's contract says whether it reads it",
       "because": "A function, which no JSON Schema type covers."
     },
     "height": {
@@ -155,7 +155,7 @@
         "description": "TS: { __html: string; } | undefined. The compiler emits one JSON type per property; this type is left to tsc. dangerouslySetInnerHTML is passed to the legend's content with its other props; ChartLegendContent keeps it off its root. `{ __html: string }` - an object type the compiler emits no JSON type for."
       },
       "formatter": {
-        "description": "TS: Formatter | undefined. The compiler emits one JSON type per property; this type is left to tsc. formatter is called per item with its value, entry and index, and the library's default content shows its return as the item's text; ChartLegendContent does not read it. A function, which no JSON Schema type covers."
+        "description": "TS: Formatter | undefined. The compiler emits one JSON type per property; this type is left to tsc. formatter is passed to the legend's content; the library's default content calls it per item with its value, entry and index and shows its return as the item's text, and ChartLegendContent's contract says whether it reads it. A function, which no JSON Schema type covers."
       },
       "height": {
         "description": "TS: string | number | undefined. The compiler emits one JSON type per property; this type is left to tsc. height is the legend box's height, a number of pixels or a CSS length. `string | number` - the compiler emits one JSON type per property."

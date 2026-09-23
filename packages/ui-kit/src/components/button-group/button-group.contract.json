@@ -102,7 +102,7 @@
       "VariantProps<typeof buttonGroupVariants>"
     ],
     "cannot_extract": [
-      "default: prop \"orientation\" is read through `??` and also as its own value, so no one literal is its default - the contract states no default for it"
+      "default: prop \"orientation\" is read through `??` and also as its own value, so no one literal is its default - the body gives no single literal default for it"
     ]
   },
   "props": {

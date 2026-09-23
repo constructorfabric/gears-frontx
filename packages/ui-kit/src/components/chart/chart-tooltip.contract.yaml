@@ -102,19 +102,19 @@ prop_statements:
     states: 'defaultIndex is the data index the tooltip shows before any interaction, a number or a string'
     because: '`number | string | null` - the compiler emits one JSON type per property.'
   formatter:
-    states: 'formatter customises each row: the library''s default content calls it with the value, name, row, index and the whole payload array, and shows its return as the row''s value, or a value and name pair; ChartTooltipContent calls it only for a row with a value and a name, passes that row''s own data point as the fifth argument in place of the payload array its type declares, and shows the return in place of the whole row'
+    states: 'formatter customises each row: the tooltip passes it to its content, and the library''s default content calls it with the value, name, row, index and the whole payload array and shows its return as the row''s value, or a value and name pair; how ChartTooltipContent calls it is stated in its own contract'
     because: 'A function, which no JSON Schema type covers.'
   isAnimationActive:
     states: 'isAnimationActive turns the tooltip''s movement animation on or off, or `auto` to follow the reduced-motion preference and skip it in server rendering'
     because: '`boolean | ''auto''` - the compiler emits one JSON type per property.'
   itemSorter:
-    states: 'itemSorter orders the rows by `dataKey`, `value`, `name` or a function of the row; the library''s default content applies it and ChartTooltipContent keeps the payload''s order'
+    states: 'itemSorter orders the rows by `dataKey`, `value`, `name` or a function of the row; the library''s default content applies it, and whether another content does is up to that content - ChartTooltipContent''s contract says what it does'
     because: 'A union of strings and a function, which no JSON Schema type covers.'
   itemStyle:
     states: 'itemStyle is a style object the library''s default content applies to each row; ChartTooltipContent does not read it'
     because: '`CSSProperties` - an object type the compiler emits no JSON type for.'
   labelFormatter:
-    states: 'labelFormatter returns the label''s content: the library''s default content calls it with the category label and the payload; ChartTooltipContent calls it with the label it resolved from the config, which may be undefined, and does not call it under `hideLabel`'
+    states: 'labelFormatter returns the label''s content: the tooltip passes it to its content, and the library''s default content calls it with the category label and the payload; how ChartTooltipContent calls it is stated in its own contract'
     because: 'A function, which no JSON Schema type covers.'
   labelStyle:
     states: 'labelStyle is a style object the library''s default content applies to the label; ChartTooltipContent does not read it'

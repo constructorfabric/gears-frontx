@@ -750,7 +750,7 @@ describe('extractComponent: defaults a component writes into its own destructure
     const sized = byName('Sized');
     expect(sized.propDefaults).toEqual({});
     expect(sized.cannotExtract).toEqual([
-      'default: prop "size" defaults to "DEFAULT_SIZE", which is not a literal - the contract states no default for it',
+      'default: prop "size" defaults to "DEFAULT_SIZE", which is not a literal - the body gives no single literal default for it',
     ]);
   });
 });
@@ -920,6 +920,16 @@ describe('extractComponent: the rest or props object used beyond its spread', ()
     expect(byName('CondSpread').cannotExtract[0]).toMatch(/spread conditionally on the returned element/);
     expect(byName('RestTwice').cannotExtract[0]).toMatch(/another spread follows the rest spread/);
     expect(byName('Satisfies').cannotExtract[0]).toMatch(/not the one element the body returns/);
+  });
+
+  it('counts the rest handed on as a shorthand property as a use of the whole object', () => {
+    expect(byName('ShorthandHook').propDefaults).toEqual({});
+    expect(byName('ShorthandHook').cannotExtract).toEqual([expect.stringMatching(touched)]);
+  });
+
+  it('notes no conditional spread whose only attribute before it is destructured', () => {
+    expect(byName('CondSpreadDestructured').propDefaults).toEqual({});
+    expect(byName('CondSpreadDestructured').cannotExtract).toEqual([]);
   });
 
   it('reads a default through try/finally, and none through a copy of the props', () => {

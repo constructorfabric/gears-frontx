@@ -41,7 +41,7 @@ export function ReassignedOnly({ size, ...rest }: BaseProps) {
   if (size === undefined) size = 2;
   return <Base size={size} {...rest} />;
 }
-// 6. switch return in a nested block with an element inside a labelled try/finally
+// 6. the element returned from inside a try block with a finally
 export function TryFinally(props: BaseProps) {
   try {
     return <Base variant="ghost" {...props} />;
@@ -57,11 +57,11 @@ export function Satisfies(props: BaseProps) {
 export function RestTwice(props: BaseProps) {
   return <Base variant="ghost" {...props} size={1} {...props} />;
 }
-// 9. rest spread inside a conditional spread expression {...(cond ? props : {})}
+// 9. rest spread inside a conditional spread expression {...(cond ? {} : props)}
 export function CondSpread(props: BaseProps & { off?: boolean }) {
   return <Base variant="ghost" {...(props.off ? {} : props)} />;
 }
-// 10. object spread in JSX attr computed
+// 10. a copy of the props spread instead of the props themselves
 export function ComputedSpread(props: BaseProps) {
   const p = { ...props };
   return <Base variant="ghost" {...p} />;
@@ -75,7 +75,7 @@ export function Shadow({ tone, ...rest }: BaseProps) {
   const f = (tone: string | undefined) => tone;
   return <Base data-tone={(tone ?? 'warm') + f('x')} {...rest} />;
 }
-// 13. delete/ mutate rest before spread
+// 13. a prop written through the rest before the spread
 export function MutateRest({ label, ...rest }: BaseProps) {
   rest.variant = rest.variant ?? 'solid';
   return <Base variant="ghost" data-l={label} {...rest} />;
@@ -93,4 +93,21 @@ export function RestReassigned({ label, ...rest }: BaseProps) {
 export function WholeNullishAssign(props: BaseProps) {
   props.variant ??= 'solid';
   return <Base variant="ghost" {...props} />;
+}
+
+// The rest handed on as a shorthand property: the hook may read or change any
+// prop it carries.
+function useThing(input: { rest: BaseProps }): BaseProps {
+  return input.rest;
+}
+
+export function ShorthandHook({ label, ...rest }: BaseProps) {
+  const seen = useThing({ rest });
+  return <Base variant="ghost" data-l={label} data-s={seen.size} {...rest} />;
+}
+
+// A conditional rest spread whose attribute before it is destructured: that
+// attribute is the component's own, so there is nothing to note.
+export function CondSpreadDestructured({ variant, ...rest }: BaseProps & { off?: boolean }) {
+  return <Base variant={variant} {...(rest.off ? {} : rest)} />;
 }

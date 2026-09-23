@@ -1952,8 +1952,8 @@ function destructuredDefaults(param: ts.ParameterDeclaration, cannotExtract: str
     const value = literalValue(element.initializer);
     if (value === undefined) {
       cannotExtract.push(
-        `default: prop "${name}" defaults to "${element.initializer.getText()}", which is not a literal - the contract ` +
-          `states no default for it`,
+        `default: prop "${name}" defaults to "${element.initializer.getText()}", which is not a literal - the body ` +
+          `gives no single literal default for it`,
       );
       continue;
     }
@@ -2012,7 +2012,7 @@ function bodyDefaults(
     const coalesced = coalescedDefault(binding, element.name, body, checker);
     if (coalesced === undefined) continue;
     if (coalesced.kind === 'literal') defaults[name] = coalesced.value;
-    else cannotExtract.push(`default: prop "${name}" ${coalesced.why} - the contract states no default for it`);
+    else cannotExtract.push(`default: prop "${name}" ${coalesced.why} - the body gives no single literal default for it`);
   }
   if (rest !== undefined) {
     for (const [name, value] of Object.entries(attributesBeforeRest(body, rest, destructured, propNames, checker, cannotExtract))) {
@@ -2148,7 +2148,13 @@ function attributesBeforeRest(
     const conditional = attributes.findIndex((attribute) => ts.isJsxSpreadAttribute(attribute) && mentions(attribute, rest, checker));
     const candidates = attributes
       .slice(0, Math.max(conditional, 0))
-      .some((attribute) => ts.isJsxAttribute(attribute) && ts.isIdentifier(attribute.name) && propNames.has(attribute.name.text));
+      .some(
+        (attribute) =>
+          ts.isJsxAttribute(attribute) &&
+          ts.isIdentifier(attribute.name) &&
+          propNames.has(attribute.name.text) &&
+          !destructured.has(attribute.name.text),
+      );
     if (conditional !== -1 && candidates) {
       cannotExtract.push(
         'default: the rest props are spread conditionally on the returned element - literal attributes written before ' +
@@ -2203,7 +2209,7 @@ function attributesBeforeRest(
     if (value === undefined) {
       cannotExtract.push(
         `default: prop "${name}" is written before the rest spread as "${initializer?.getText() ?? ''}", which is not a ` +
-          `literal - the contract states no default for it`,
+          `literal - the body gives no single literal default for it`,
       );
       continue;
     }
@@ -2249,12 +2255,21 @@ function rendersNothing(expr: ts.Expression | undefined): boolean {
   return ts.isIdentifier(expr) && expr.text === 'undefined';
 }
 
+// The symbol an identifier refers to as a value. A shorthand property
+// (`useThing({ rest })`) refers to the binding it copies, while the
+// checker's symbol at that name is the new property's.
+function symbolOfReference(node: ts.Identifier, checker: ts.TypeChecker): ts.Symbol | undefined {
+  return ts.isShorthandPropertyAssignment(node.parent) && node.parent.name === node
+    ? checker.getShorthandAssignmentValueSymbol(node.parent)
+    : checker.getSymbolAtLocation(node);
+}
+
 // Whether a node mentions a symbol anywhere inside it.
 function mentions(node: ts.Node, symbol: ts.Symbol, checker: ts.TypeChecker): boolean {
   let found = false;
   const visit = (child: ts.Node): void => {
     if (found) return;
-    if (ts.isIdentifier(child) && checker.getSymbolAtLocation(child) === symbol) {
+    if (ts.isIdentifier(child) && symbolOfReference(child, checker) === symbol) {
       found = true;
       return;
     }
@@ -2275,7 +2290,7 @@ function otherUses(body: ts.Node, rest: ts.Symbol, spread: ts.JsxAttributeLike, 
   let all = false;
   const visit = (node: ts.Node): void => {
     if (all || node === spread) return;
-    if (ts.isIdentifier(node) && checker.getSymbolAtLocation(node) === rest && !ts.isBindingElement(node.parent) && !ts.isParameter(node.parent)) {
+    if (ts.isIdentifier(node) && symbolOfReference(node, checker) === rest && !ts.isBindingElement(node.parent) && !ts.isParameter(node.parent)) {
       const parent = node.parent;
       if (ts.isPropertyAccessExpression(parent) && parent.expression === node) names.add(parent.name.text);
       else if (

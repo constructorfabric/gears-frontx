@@ -159,7 +159,7 @@
     },
     "variant_sources": [],
     "cannot_extract": [
-      "default: prop \"selectionSummary\" defaults to \"defaultSelectionSummary\", which is not a literal - the contract states no default for it"
+      "default: prop \"selectionSummary\" defaults to \"defaultSelectionSummary\", which is not a literal - the body gives no single literal default for it"
     ]
   },
   "props": {

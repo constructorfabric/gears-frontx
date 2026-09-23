@@ -90,7 +90,7 @@ export function ClosureOnly({ size, ...props }: BaseProps) {
   return <Base data-x={read()} {...props} />;
 }
 
-// switch with null returns
+// an early `null` return beside the one returned element
 export function NullPath(props: BaseProps) {
   if (props.inline) return null;
   return <Base variant="ghost" {...props} />;
@@ -113,12 +113,12 @@ export function Rebound({ label, ...rest }: BaseProps) {
   return <Base variant="ghost" {...other} label={label} />;
 }
 
-// typed conditional (as expression inside parens) with element
+// the element returned through an `as` expression
 export function AsExpr(props: BaseProps) {
   return (<Base variant="ghost" {...props} />) as ReactElement;
 }
 
-// P: the only element sits in an object method or a getter that is never
+// the only element sits in an object method or a getter that is never
 // rendered - its return is the method's, not the component's
 export function MethodReturn(props: BaseProps) {
   const unused = {
