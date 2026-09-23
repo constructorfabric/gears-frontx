@@ -1,0 +1,150 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group_item.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "radio-group-item",
+  "forwards_to": "gts.frontx.uikit.element.dom_span.v1~",
+  "intent": "One selectable option of a RadioGroup, identified by a value unique within that group.",
+  "typical_uses": [
+    "One entry in a RadioGroup's set of mutually exclusive options"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "An independent yes/no control with no sibling options to choose between",
+      "instead": {
+        "target": "Checkbox",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.checkbox.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "RadioGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "value-identifies-item-within-its-group",
+      "text": "`value` identifies this item within its nearest RadioGroup; the group selects by comparing this value against its own `value`/`defaultValue` by identity, not by which item renders first or how many precede it."
+    },
+    {
+      "id": "aria-invalid-tints-border-destructive",
+      "text": "Setting `aria-invalid=\"true\"` on an item tints its border to the destructive color; a checked item's border stays the primary checked color even while invalid - the checked state wins over the invalid one."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Render a RadioGroupItem outside any RadioGroup",
+      "do_instead": "Mount it inside a RadioGroup - the group holds the shared value, arrow-key navigation and the single-selection contract; an item outside one has no state to read or write"
+    },
+    {
+      "dont": "Reuse the same `value` for two items under one RadioGroup",
+      "do_instead": "Give every item a unique `value` within its own group - the group selects by value identity (see value-identifies-item-within-its-group), so items sharing a value show as checked together and cannot be told apart"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "Base UI's own Radio primitive (role=\"radio\", a hidden native input for form submission, aria-checked and data-checked/data-unchecked wiring) plus radio-group.test.tsx's own role/aria-checked/data-disabled assertions"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "value": {
+      "states": "value is the item's own generic Value type parameter, required and typed by the caller",
+      "because": "Base UI's Radio.Root declares `value: Value` with no `?` - required, and typed by the caller's own generic parameter, so no JSON Schema type can state what it holds, only that it must be present. It is compared by identity against the nearest RadioGroup's own `value`/`defaultValue`."
+    },
+    "inputRef": {
+      "states": "inputRef is a ref to the hidden native input Base UI renders for form submission",
+      "because": "`React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - neither is expressible in JSON Schema. It exists so a consumer can read or focus this item's own hidden input directly."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the item's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+    },
+    "style": {
+      "states": "style accepts a function of the item's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (checked, disabled, readOnly, required, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through radio-group.module.css, not through this."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "Base UI's Radio.Indicator and the kit's own fixed inner dot",
+      "reason": "The kit's RadioGroupItem composes Base UI's Radio.Root around Radio.Indicator and a fixed decorative dot into one exported component; this contract describes the exported Root surface, not the internal indicator composition, so Indicator's own props are not part of it."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "An item captioned by a sibling Label, inside a group",
+        "code": "<RadioGroup value={tier} onValueChange={setTier} aria-label=\"Plan tier\">\n  <RadioGroupItem value=\"pro\" id=\"tier-pro\" />\n  <Label htmlFor=\"tier-pro\">Pro</Label>\n</RadioGroup>\n"
+      },
+      {
+        "title": "A disabled item, named directly for assistive tech",
+        "code": "<RadioGroupItem value=\"enterprise\" aria-label=\"Enterprise\" disabled />"
+      }
+    ],
+    "bad": [
+      {
+        "title": "An item with no RadioGroup around it",
+        "code": "<RadioGroupItem value=\"pro\" aria-label=\"Pro\" />",
+        "why": "RadioGroupItem has no selection state of its own - it reads and writes the nearest RadioGroup's value through Base UI context, so mounting it outside one renders a control that never checks itself."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "radio_group",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit RadioGroupItem",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "inputRef": {
+        "description": "TS: Ref<HTMLInputElement> | undefined. Not expressible in JSON Schema, checked by tsc. inputRef is a ref to the hidden native input Base UI renders for form submission. `React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - neither is expressible in JSON Schema. It exists so a consumer can read or focus this item's own hidden input directly."
+      },
+      "nativeButton": {
+        "type": "boolean"
+      },
+      "readOnly": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, RadioRootState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the item's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      },
+      "required": {
+        "type": "boolean"
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: RadioRootState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the item's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (checked, disabled, readOnly, required, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through radio-group.module.css, not through this."
+      },
+      "value": {
+        "description": "TS: any. Not expressible in JSON Schema, checked by tsc. value is the item's own generic Value type parameter, required and typed by the caller. Base UI's Radio.Root declares `value: Value` with no `?` - required, and typed by the caller's own generic parameter, so no JSON Schema type can state what it holds, only that it must be present. It is compared by identity against the nearest RadioGroup's own `value`/`defaultValue`."
+      }
+    },
+    "required": [
+      "value"
+    ],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.separator.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "separator",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Draw a thin visual line between two sections or items of content, oriented to match how they are laid out.",
+  "typical_uses": [
+    "A horizontal rule between stacked sections of a page or panel",
+    "A vertical rule between items in a horizontal toolbar"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Inside a kit container that ships its own separator part (a menu or select popup, a combobox or command list, a button group, a sidebar)",
+      "instead": {
+        "target": "that container's own separator part, for example DropdownMenuSeparator or SelectSeparator",
+        "note": "Each of those containers exports a separator part styled for its own layout (a popup's list bleeds it into the popup's padding); there are several, so no single reference names them all."
+      }
+    },
+    {
+      "situation": "Marking the edge of a framed region",
+      "instead": {
+        "target": "the container's own border, for example Card",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1"
+      }
+    },
+    {
+      "situation": "Invisible spacing between elements",
+      "instead": {
+        "target": "the surrounding layout's own CSS gap or margin",
+        "note": "Separator always renders a visible line; it is not a spacer, and this kit ships no spacer component. Reserve empty space with layout, not with a divider made to look invisible."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "invariants": [
+    {
+      "id": "role-separator-and-orientation-attributes-are-always-stamped",
+      "text": "The rendered div carries role=\"separator\" unless the consumer passes its own role, with data-orientation and aria-orientation both set to the orientation prop's resolved value - horizontal when the prop is omitted, since Base UI defaults it internally rather than through a schema-visible default. The kit's CSS switches the div's width and height off data-orientation."
+    },
+    {
+      "id": "aria-hidden-overrides-the-default-role-for-a-decorative-divider",
+      "text": "Base UI's Separator has no separate decorative flag; role=\"separator\" and aria-orientation are Base UI's own defaults, merged before the consumer's own props, so a consumer's own aria-hidden=\"true\" always wins on the DOM node and removes the element from the accessibility tree entirely - the role and aria-orientation stay on the node but stop mattering once aria-hidden takes effect. role=\"none\" alone does not achieve the same result: aria-orientation stays set regardless of role, and aria-orientation on a role that does not permit it is an aria-allowed-attr violation."
+    },
+    {
+      "id": "vertical-orientation-needs-a-flex-or-grid-cross-axis-to-stretch-into",
+      "text": "The vertical orientation is drawn with align-self: stretch, which only has an effect inside a flex or grid parent with a real cross-axis size. In a plain block parent, or in a flex row whose other items are themselves all zero-height, the divider collapses to zero height regardless of the parent's own align-items setting."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Expect a vertical separator to render inside a plain block parent, or a flex row whose other items are themselves zero-height",
+      "do_instead": "Give the parent a real flex or grid cross-axis size (or set a height on the Separator directly) - align-self:stretch has nothing to stretch into otherwise"
+    },
+    {
+      "dont": "Restyle the divider through an inline style prop for a brand or theme change",
+      "do_instead": "Change the kit's --border theme token instead - brand changes belong in tokens, not per-instance overrides"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "Base UI's own Separator primitive (role=\"separator\", data-orientation and aria-orientation stamped from the orientation prop, elementProps merged last so a consumer's own aria-hidden always wins) plus separator.test.tsx's own role/aria-orientation/data-orientation assertions and its check that queryByRole('separator') returns null once aria-hidden=\"true\" is set"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the separator's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+    },
+    "style": {
+      "states": "style accepts a function of the separator's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (orientation). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through separator.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Between two stacked sections",
+        "code": "<div>\n  <p>Account settings</p>\n  <Separator />\n  <p>Danger zone</p>\n</div>"
+      },
+      {
+        "title": "Vertical, inside a flex row with a real cross-axis height",
+        "code": "<div style={{ display: 'flex', alignItems: 'center', height: '1.5rem', gap: '0.5rem' }}>\n  <span>Bold</span>\n  <Separator orientation=\"vertical\" />\n  <span>Italic</span>\n</div>"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Used inside a DropdownMenuContent list",
+        "code": "<DropdownMenuContent>\n  <DropdownMenuItem>Cut</DropdownMenuItem>\n  <Separator />\n  <DropdownMenuItem>Paste</DropdownMenuItem>\n</DropdownMenuContent>",
+        "why": "Separator carries no popup-scoped styling (no bleed margin into the popup's padding); DropdownMenuSeparator wraps the same primitive with that styling applied."
+      },
+      {
+        "title": "A vertical separator placed in a plain block parent",
+        "code": "<div>\n  <span>Bold</span>\n  <Separator orientation=\"vertical\" />\n</div>",
+        "why": "align-self: stretch has no flex or grid context to act in here, so the divider collapses to zero height and renders nothing visible - make the parent display:flex (or grid), or give the Separator its own height."
+      }
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Separator",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "orientation": {
+        "type": "string",
+        "enum": [
+          "horizontal",
+          "vertical"
+        ]
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, SeparatorState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the separator's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: SeparatorState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the separator's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (orientation). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through separator.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,103 @@
+# Semantic overlay for Kbd - the hand-written half of one of two contracts
+# describing this directory. See kbd-group.contract.yaml for the other. The
+# two form no family: Kbd stands alone in running text, so it is not a part
+# only KbdGroup may mount, and KbdGroup's `accepts` is the one statement of
+# how they nest.
+#
+# Machine-extractable facts (the prop list, the host element) do NOT belong
+# here: the compiler takes those from kbd.tsx, and rejects an overlay that
+# tries to restate them - one fact, one owner. Kbd declares no kit-specific
+# props at all: every prop is the native kbd element's, carried by the
+# element surface this contract names.
+component: kbd
+
+intent: Mark up a key cap or short label so it reads as a key on screen.
+
+typical_uses:
+  - A single key named in running help text or a menu item (Esc closes the dialog)
+  - One key of a chorded shortcut, grouped by KbdGroup (Ctrl, K)
+
+# Each entry names the alternative - a "don't" without "instead" is banned.
+# `target` is what a reader acts on, always written. `component` is added
+# when the kit ships the alternative; its absence says the kit ships nothing
+# for this case and the `note` names the outside target.
+dont_use_when:
+  - situation: An interactive control that happens to look like a key
+    instead:
+      target: Button
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+  - situation: A command line or other text the user types verbatim
+    instead:
+      target: the consuming application's own code or monospace text styling
+      note: >-
+        This kit ships no code text component, and no kit component is a
+        substitute for one: Kbd marks key caps and short chords, not
+        typed-out command lines.
+
+# The ONE authored statement of what may appear inside a Kbd. A key cap is
+# a short label: text, or a non-component node such as an inline glyph. No
+# kit component belongs inside a single key.
+accepts:
+  content: specified
+  text: true
+
+# Outside the kit a key cap sits in the consuming application's own text;
+# the mount inside KbdGroup is filled from KbdGroup's `accepts`.
+mounted_in:
+  - container: running text in the consuming application
+    note: >-
+      A single key is named inline in a paragraph or a hint, with no kit
+      container around it.
+
+invariants:
+  - id: display-only
+    text: >-
+      Kbd is display-only decoration: the kit's stylesheet renders it with
+      `pointer-events: none` and `user-select: none`, so it never receives
+      clicks, focus or selection, and it carries no ARIA role of its own -
+      the semantics are the native kbd element's alone.
+
+anti_patterns:
+  - dont: Attach the shortcut's click or key handler to the Kbd itself
+    do_instead: >-
+      Wire the handler on the real control (a Button, a menu item, a window
+      keydown listener) and keep Kbd purely to name the key in text
+
+# None yet.
+deprecations: {}
+
+# One outcome per claim. "failed" (looked at, does not hold) and "unknown"
+# (nobody looked) are different answers - say which. kbd.test.tsx asserts
+# the tag, the class merge and id forwarding only, nothing about how
+# assistive tech reads a key.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+# Canonical snippets. `good` is what to copy, `bad` is what generation
+# actually produces when it guesses; every `bad` states why.
+examples:
+  good:
+    - title: A key cap named in running text
+      code: <p>Press <Kbd>Esc</Kbd> to close.</p>
+    - title: One key of a chord, grouped by KbdGroup
+      code: |
+        <KbdGroup>
+          <Kbd>Ctrl</Kbd>
+          <Kbd>K</Kbd>
+        </KbdGroup>
+  bad:
+    - title: Making the key cap itself clickable
+      code: <Kbd onClick={openPalette}>Esc</Kbd>
+      why: >-
+        Kbd renders with `pointer-events: none` and carries no interaction
+        of its own, so a handler on it never fires from a click on the
+        glyph. Put the handler on a real control and keep Kbd for display.
+    - title: A variant prop guessed from another component
+      code: <Kbd variant="solid">Esc</Kbd>
+      why: >-
+        Kbd takes no kit-specific props; every prop is the native kbd
+        element's. There is no variant axis here - the look is fixed by the
+        kit's stylesheet.

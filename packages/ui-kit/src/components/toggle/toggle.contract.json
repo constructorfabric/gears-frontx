@@ -1,0 +1,188 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.toggle.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "toggle",
+  "forwards_to": "gts.frontx.uikit.element.dom_button.v1~",
+  "intent": "Let the user flip one independent on/off state with a control that looks and behaves like a button.",
+  "typical_uses": [
+    "A toolbar button that stays pressed until pressed again (a formatting mark such as bold)",
+    "A button that flips one independent display or marking state on and off"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A labelled settings switch whose change applies immediately",
+      "instead": {
+        "target": "Switch",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.switch.v1"
+      }
+    },
+    {
+      "situation": "A set of related, usually mutually-exclusive options",
+      "instead": {
+        "target": "ToggleGroup",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.toggle_group.v1",
+        "note": "ToggleGroup holds the shared pressed state across its items."
+      }
+    },
+    {
+      "situation": "A one-shot action with no pressed state",
+      "instead": {
+        "target": "Button",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "invariants": [
+    {
+      "id": "pressed-wins-over-default-pressed",
+      "text": "`pressed` and `defaultPressed` are both accepted; `defaultPressed` seeds the initial state and is ignored afterwards, and when `pressed` is given it wins and the component follows it on every render."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Render an icon-only toggle with no visible label or aria-label",
+      "do_instead": "Pass `aria-label` naming the action the glyph performs"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "Base UI's own Toggle primitive (a native button element carrying aria-pressed bound to the pressed state, with the button's own keyboard activation) plus toggle.test.tsx's own button-role and accessible-name assertions and its data-pressed assertions"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "onPressedChange": {
+      "states": "onPressedChange is a callback of the next pressed state and event details, not a plain change handler",
+      "because": "Base UI types the callback as `(pressed: boolean, eventDetails) => void`, where eventDetails carries the triggering event, its reason and controls for cancelling or allowing propagation; a function type has no JSON Schema representation, so nothing beyond its presence is asserted."
+    },
+    "value": {
+      "states": "value is typed by the caller's own Value type parameter, not a plain string",
+      "because": "`ToggleProps<Value extends string = string>` lets a caller narrow the value to its own literal union - the set of ids a ToggleGroup manages, typically. JSON Schema cannot express a type parameter, so only its base shape (a string) is asserted and the caller's own narrowing is checked by tsc, not by Ajv."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the toggle's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+    },
+    "style": {
+      "states": "style accepts a function of the toggle's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (pressed, disabled). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through toggle.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Standalone, uncontrolled",
+        "code": "<Toggle aria-label=\"Bold\" defaultPressed>\n  <BoldIcon />\n</Toggle>"
+      },
+      {
+        "title": "Controlled",
+        "code": "<Toggle pressed={starred} onPressedChange={setStarred} aria-label=\"Favorite\">\n  <StarIcon />\n</Toggle>"
+      },
+      {
+        "title": "Icon-only, named for assistive tech",
+        "code": "<Toggle iconOnly variant=\"outline\" size=\"sm\" aria-label=\"Grid view\">\n  <GridIcon />\n</Toggle>"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Icon-only with no accessible name",
+        "code": "<Toggle iconOnly variant=\"outline\" size=\"sm\">\n  <GridIcon />\n</Toggle>",
+        "why": "An icon-only toggle carries no accessible name of its own; without `aria-label` a screen reader announces nothing for the control."
+      },
+      {
+        "title": "Several toggles wired by hand for an exclusive set",
+        "code": "<>\n  <Toggle pressed={view === 'grid'} onPressedChange={() => setView('grid')} aria-label=\"Grid\">\n    <GridIcon />\n  </Toggle>\n  <Toggle pressed={view === 'list'} onPressedChange={() => setView('list')} aria-label=\"List\">\n    <ListIcon />\n  </Toggle>\n</>",
+        "why": "This hand-rolls the exclusive selection ToggleGroup already holds, so use ToggleGroup instead."
+      }
+    ]
+  },
+  "capabilities": [
+    {
+      "name": "icon_only",
+      "enabled_by": "iconOnly",
+      "description": "The toggle draws its glyph alone: it squares to its own size step (a 32px box at `sm`) and fixes the glyph at 18px regardless of the active size step, instead of the ordinary padded row a label sits in."
+    }
+  ],
+  "companions": [
+    {
+      "export": "toggleVariants",
+      "typed_by": "cva(...), returns (props: VariantProps<typeof toggleVariants> & { className?: string }) => string",
+      "description": "The variant/size class-name builder Toggle itself uses, exported so ToggleGroupItem can apply the identical classes to the Base UI Toggle it renders inside a group - kept here because Toggle has to exist before ToggleGroup can import it."
+    }
+  ],
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof toggleVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Toggle",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "outline",
+          "steel"
+        ],
+        "default": "default"
+      },
+      "size": {
+        "type": "string",
+        "enum": [
+          "default",
+          "sm",
+          "lg"
+        ],
+        "default": "default"
+      },
+      "className": {
+        "type": "string"
+      },
+      "iconOnly": {
+        "type": "boolean"
+      },
+      "defaultPressed": {
+        "type": "boolean"
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "nativeButton": {
+        "type": "boolean"
+      },
+      "onPressedChange": {
+        "description": "TS: ((pressed: boolean, eventDetails: { reason: \"none\"; event: Event; cancel: () => void; allowPropagation: () => void; isCanceled: boolean; isPropagationAllowed: boolean; trigger: Element | undefined; }) => void) | undefined. Not expressible in JSON Schema, checked by tsc. onPressedChange is a callback of the next pressed state and event details, not a plain change handler. Base UI types the callback as `(pressed: boolean, eventDetails) => void`, where eventDetails carries the triggering event, its reason and controls for cancelling or allowing propagation; a function type has no JSON Schema representation, so nothing beyond its presence is asserted."
+      },
+      "pressed": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ToggleState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the toggle's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: ToggleState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the toggle's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (pressed, disabled). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through toggle.module.css, not through this."
+      },
+      "value": {
+        "type": "string",
+        "description": "TS: Value | undefined. Not fully expressible in JSON Schema; what the type states beyond the kind above is checked by tsc. value is typed by the caller's own Value type parameter, not a plain string. `ToggleProps<Value extends string = string>` lets a caller narrow the value to its own literal union - the set of ids a ToggleGroup manages, typically. JSON Schema cannot express a type parameter, so only its base shape (a string) is asserted and the caller's own narrowing is checked by tsc, not by Ajv."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,170 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "radio-group",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Let a user pick exactly one option from a small visible set, tracked as one shared value.",
+  "typical_uses": [
+    "A short list of mutually exclusive options where every choice stays visible at once (plan tier, delivery method, sort order)"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "More options than fit comfortably on screen at once, or the space is constrained",
+      "instead": {
+        "target": "Select",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.select.v1"
+      }
+    },
+    {
+      "situation": "Independent options where more than one may be on at once",
+      "instead": {
+        "target": "Checkbox",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.checkbox.v1"
+      }
+    },
+    {
+      "situation": "A single on/off setting with no sibling options",
+      "instead": {
+        "target": "Switch",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.switch.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group_item.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.label.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "value-wins-over-default-value",
+      "text": "`value` and `defaultValue` are both accepted; `defaultValue` seeds the initial state and is ignored afterwards, and when `value` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "disabled-cascades-to-every-item",
+      "text": "Setting `disabled` on the group disables every item inside it; an item's own `disabled` can disable that one item further but cannot re-enable it against a disabled group."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Render the group with no accessible name",
+      "do_instead": "Pass `aria-label`, or `aria-labelledby` pointing at a visible heading (or at a FieldLegend inside a FieldSet); a `<label htmlFor>` cannot name the group, because the group is not a labelable element"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "Base UI's own RadioGroup primitive (role=\"radiogroup\", arrow-key navigation between items, a hidden native input for form submission) plus radio-group.test.tsx's own role/aria-checked/data-checked assertions"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "value": {
+      "states": "value is the root's own generic Value type parameter, not a JSON Schema type",
+      "because": "Base UI's `RadioGroup<Value>` types `value` as `Value | undefined`, where `Value` is the caller's own choice - no JSON Schema type can state it, only that something is accepted. radio-group.md's example uses string item values (`value=\"free\"` on the item), so a group value is typically one of those strings."
+    },
+    "defaultValue": {
+      "states": "defaultValue is the root's own generic Value type parameter, not a JSON Schema type",
+      "because": "Same generic type as `value` above, unchecked in the same half - the uncontrolled starting selection is one of the caller's own `Value` type, which no schema can state because the caller chooses it."
+    },
+    "onValueChange": {
+      "states": "onValueChange is a callback, not a value",
+      "because": "`(value: Value, eventDetails) => void` - a function of the root's own generic `Value` plus Base UI's own event-details object. No JSON Schema type covers a function."
+    },
+    "inputRef": {
+      "states": "inputRef is a ref to the hidden native input Base UI renders for form submission",
+      "because": "`React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - neither is expressible in JSON Schema. It exists so a consumer can read or focus the native input directly, the same input `name`/`form` submit through."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the group's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+    },
+    "style": {
+      "states": "style accepts a function of the group's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, readOnly, required, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through radio-group.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Controlled group, each item captioned by a sibling Label",
+        "code": "<RadioGroup value={tier} onValueChange={setTier} aria-label=\"Plan tier\">\n  <RadioGroupItem value=\"free\" id=\"tier-free\" />\n  <Label htmlFor=\"tier-free\">Free</Label>\n  <RadioGroupItem value=\"pro\" id=\"tier-pro\" />\n  <Label htmlFor=\"tier-pro\">Pro</Label>\n  <RadioGroupItem value=\"enterprise\" id=\"tier-enterprise\" disabled />\n  <Label htmlFor=\"tier-enterprise\">Enterprise (contact us)</Label>\n</RadioGroup>\n"
+      },
+      {
+        "title": "Uncontrolled group with a default selection",
+        "code": "<RadioGroup defaultValue=\"pro\" name=\"tier\" aria-label=\"Plan tier\">\n  <RadioGroupItem value=\"free\" aria-label=\"Free\" />\n  <RadioGroupItem value=\"pro\" aria-label=\"Pro\" />\n</RadioGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A single yes/no option modeled as a one-item group",
+        "code": "<RadioGroup value={agreed ? 'yes' : 'no'} onValueChange={(v) => setAgreed(v === 'yes')}>\n  <RadioGroupItem value=\"yes\" /> I agree\n</RadioGroup>\n",
+        "why": "One option is not a choice - the group's arrow-key navigation and single-selection machinery have nothing to coordinate. Reach for `Checkbox` instead."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "radio_group",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group_item.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit RadioGroup",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "defaultValue": {
+        "description": "TS: any. Not expressible in JSON Schema, checked by tsc. defaultValue is the root's own generic Value type parameter, not a JSON Schema type. Same generic type as `value` above, unchecked in the same half - the uncontrolled starting selection is one of the caller's own `Value` type, which no schema can state because the caller chooses it."
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "form": {
+        "type": "string"
+      },
+      "inputRef": {
+        "description": "TS: Ref<HTMLInputElement> | undefined. Not expressible in JSON Schema, checked by tsc. inputRef is a ref to the hidden native input Base UI renders for form submission. `React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - neither is expressible in JSON Schema. It exists so a consumer can read or focus the native input directly, the same input `name`/`form` submit through."
+      },
+      "name": {
+        "type": "string"
+      },
+      "onValueChange": {
+        "description": "TS: ((value: any, eventDetails: { reason: \"none\"; event: Event; cancel: () => void; allowPropagation: () => void; isCanceled: boolean; isPropagationAllowed: boolean; trigger: Element | undefined; }) => void) | undefined. Not expressible in JSON Schema, checked by tsc. onValueChange is a callback, not a value. `(value: Value, eventDetails) => void` - a function of the root's own generic `Value` plus Base UI's own event-details object. No JSON Schema type covers a function."
+      },
+      "readOnly": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, RadioGroupState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the group's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      },
+      "required": {
+        "type": "boolean"
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: RadioGroupState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the group's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, readOnly, required, ...). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through radio-group.module.css, not through this."
+      },
+      "value": {
+        "description": "TS: any. Not expressible in JSON Schema, checked by tsc. value is the root's own generic Value type parameter, not a JSON Schema type. Base UI's `RadioGroup<Value>` types `value` as `Value | undefined`, where `Value` is the caller's own choice - no JSON Schema type can state it, only that something is accepted. radio-group.md's example uses string item values (`value=\"free\"` on the item), so a group value is typically one of those strings."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

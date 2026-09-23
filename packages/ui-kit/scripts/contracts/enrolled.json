@@ -1,1 +1,16 @@
-["button", "accordion", "data-table"]
+[
+  "button",
+  "accordion",
+  "data-table",
+  "aspect-ratio",
+  "checkbox",
+  "kbd",
+  "label",
+  "radio-group",
+  "separator",
+  "skeleton",
+  "slider",
+  "spinner",
+  "switch",
+  "toggle"
+]

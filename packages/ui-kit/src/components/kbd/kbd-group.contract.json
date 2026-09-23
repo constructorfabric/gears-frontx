@@ -1,0 +1,89 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.kbd_group.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "kbd-group",
+  "forwards_to": "gts.frontx.uikit.element.dom_kbd.v1~",
+  "intent": "Group several key caps into one chorded shortcut so they read as pressed together.",
+  "typical_uses": [
+    "A chord at the end of a menu item or tooltip (Ctrl + K opens the palette)",
+    "A shortcut hint under an empty state (Space to preview)"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A single key with nothing to group",
+      "instead": {
+        "target": "Kbd",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.kbd.v1"
+      }
+    },
+    {
+      "situation": "Keys listed as alternatives or in a legend rather than pressed together",
+      "instead": {
+        "target": "separate Kbd elements, each placed in the surrounding text",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.kbd.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.kbd.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "gap-only-separation",
+      "text": "KbdGroup separates its children with a fixed visual gap and nothing else - there is no separator glyph and no prop to add one."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put plain text keys inside a group expecting spacing between them",
+      "do_instead": "Give each key its own Kbd - the gap applies between the Kbd elements, while contiguous text collapses into one unspaced run"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A chorded shortcut",
+        "code": "<KbdGroup>\n  <Kbd>Ctrl</Kbd>\n  <Kbd>K</Kbd>\n</KbdGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A separator prop guessed from an older library version",
+        "code": "<KbdGroup separator=\"+\">\n  <Kbd>Ctrl</Kbd>\n  <Kbd>K</Kbd>\n</KbdGroup>\n",
+        "why": "KbdGroup takes no kit-specific props; the visual gap is fixed styling and there is no separator prop - every prop here is the native kbd element's."
+      },
+      {
+        "title": "One key alone",
+        "code": "<KbdGroup>Esc</KbdGroup>",
+        "why": "A group exists to space several keys apart; a single key is what Kbd itself renders, and the group carries none of the key-cap styling on its own."
+      }
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit KbdGroup",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,103 @@
+# Semantic overlay for Label - the hand-written half of the contract.
+#
+# Machine-extractable facts stay out: the compiler reads Label's props from
+# label.tsx (a full native label attribute set, forwarded) and refuses an
+# overlay that restates them. This file carries only what the code cannot
+# express: intent, boundaries, invariants.
+component: label
+
+intent: Name a form control so the name is announced to assistive tech and clicking the caption drives the control.
+
+typical_uses:
+  - A caption naming one control, associated with it via htmlFor
+  - An inline caption wrapped around a checkbox or a switch, where the label itself is the click target
+
+# Each entry names the alternative. `target` is what a reader acts on, always
+# written. `component` is present only where the kit ships the alternative;
+# its absence is the honest statement that the kit ships nothing for the case.
+dont_use_when:
+  - situation: Headings and free-standing text that name no control
+    instead:
+      target: the consuming application's own text markup (a heading or paragraph element)
+      note: >-
+        The kit ships no generic text component, and a label with no control
+        attached contributes nothing to assistive tech: a caption belongs to a
+        control.
+  - situation: A caption inside a Field composition
+    instead:
+      target: FieldLabel
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.field_label.v1
+      note: >-
+        FieldLabel is this Label with Field's spacing, and Field's own
+        data-disabled dims it; the htmlFor association is still wired by hand.
+
+# What may appear inside. The inline-caption pattern nests the control, so
+# the kit components a Label hosts are named here; a raw control element is
+# a non-component node and rides on text.
+accepts:
+  content: specified
+  text: true
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.checkbox.v1
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.switch.v1
+
+invariants:
+  - id: no-association-without-htmlfor-or-nesting
+    text: >-
+      The component adds no association of its own: a Label with neither
+      htmlFor nor a nested control names nothing. Both accepted forms - htmlFor
+      pointing at the control's id, and the control nested inside - produce the
+      same native association, and either one makes the caption the control's
+      click target.
+  - id: data-disabled-dims-and-blocks-pointer
+    text: >-
+      A data-disabled attribute dims the label to the controls' own disabled
+      opacity and stops pointer events. Nothing sets it automatically: a
+      consumer sets it by hand. Inside a Field, Field's own data-disabled dims
+      FieldLabel instead.
+  - id: color-is-inherited
+    text: >-
+      The label declares no color of its own: it inherits from its context, so
+      a Field carrying data-invalid tints the caption destructive.
+
+anti_patterns:
+  - dont: Render a label with no control associated with it
+    do_instead: Pass htmlFor pointing at the control's id, or nest the control inside the label
+  - dont: Let an input's placeholder stand in for a name
+    do_instead: Caption the control with Label and keep the placeholder for an example value
+
+# None yet. Shape when one appears:
+#   props:
+#     text: { since: "1.0.0", replacement: "children", hint: "the caption is children" }
+deprecations: {}
+
+# One outcome per claim. `verified` carries a `by` a later reader can re-check;
+# rtl has nobody having looked at it, and says so.
+attestations:
+  a11y:
+    outcome: verified
+    by: label.test.tsx - getByLabelText finds the control associated via htmlFor, and a className merge with a data-disabled attribute is asserted on the rendered label
+  rtl:
+    outcome: unknown
+
+# Canonical snippets. Every Label prop named below is a native label
+# attribute the component forwards, or children; Label declares no props of
+# its own.
+examples:
+  good:
+    - title: Associate a caption with its control
+      code: <Label htmlFor="email">Email</Label>
+    - title: Inline caption as the control's click target
+      code: <Label><Checkbox /> Remember me</Label>
+  bad:
+    - title: An orphan label
+      code: <Label>Email address</Label>
+      why: >-
+        Neither htmlFor nor a nested control associates it with anything, so
+        assistive tech gets no name and clicking it activates nothing. Pass
+        htmlFor, or nest the control.
+    - title: A caption prop the component does not have
+      code: <Label text="Email" />
+      why: >-
+        Label forwards the native label attributes and declares none of its
+        own - there is no text prop. The caption is children.

@@ -1,0 +1,81 @@
+# Semantic overlay for Skeleton - the hand-written half of the contract.
+#
+# Machine-extractable facts (the prop list, the host element) do NOT belong
+# here: the compiler takes those from skeleton.tsx, and rejects an overlay
+# that tries to restate them - one fact, one owner. This file carries only
+# what the code cannot express: intent, boundaries, invariants.
+component: skeleton
+
+intent: Stand in for content that is still loading with a pulsing placeholder shape the consumer sizes to match what it replaces.
+
+typical_uses:
+  - A text-line, avatar or media placeholder shown until its data arrives, sized so the layout does not jump when the real content lands
+  - A loading region composed of several Skeletons arranged like the content they stand in for
+
+# `target` is what a reader acts on, always written. `component` is added when
+# the kit ships one: it is a GTS component type id, checked against what the
+# kit actually ships, and its ABSENCE is the honest statement that the kit
+# ships nothing for this case.
+dont_use_when:
+  - situation: A small inline loading indicator, or a busy control that must not be re-triggered while one action is in flight
+    instead:
+      target: Spinner
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.spinner.v1
+  - situation: A finished "nothing here" state, once loading has ended and the region is known to be empty
+    instead:
+      target: Empty
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.empty.v1
+
+# Skeleton renders a plain div and forwards every prop to it, children
+# included: it examines nothing a consumer puts inside, so there is no
+# content rule to state.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: loading-semantics-live-on-the-container
+    text: >-
+      Skeleton renders no ARIA of its own - no role, no aria-busy, no
+      announcement. Loading semantics belong to the surrounding container,
+      which knows when the whole region starts and stops loading.
+  - id: pulse-stops-under-reduced-motion
+    text: >-
+      Under prefers-reduced-motion: reduce the pulse animation is removed and
+      the shape stays at full opacity - the placeholder remains visible, only
+      the continuous motion goes.
+  - id: no-intrinsic-size
+    text: >-
+      The kit styles border-radius, background and the pulse and nothing
+      else: no width or height is baked in, so an instance with no
+      consumer-set dimensions renders at zero height and shows nothing. Size
+      every instance to roughly match the content it stands in for.
+
+anti_patterns:
+  - dont: Render <Skeleton /> bare and expect a visible bar
+    do_instead: Set a width and height per instance, via className or style, roughly matching the content it replaces
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      skeleton.test.tsx asserts the rendered div carries no role, aria-busy or
+      aria-hidden of its own, and that aria-hidden and native div props such as
+      id forward unchanged.
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A text-line placeholder sized like the content it replaces
+      code: "<Skeleton style={{ height: '1rem', width: '250px' }} />"
+    - title: A circular avatar placeholder
+      code: "<Skeleton style={{ height: '3rem', width: '3rem', borderRadius: '9999px' }} />"
+  bad:
+    - title: Variant and animation props from a different library
+      code: <Skeleton variant="text" animation="wave" />
+      why: >-
+        Skeleton declares no props of its own beyond the native div surface -
+        there is no variant or animation prop, and the call fails to compile.
+        Shape and size come from className and style only.

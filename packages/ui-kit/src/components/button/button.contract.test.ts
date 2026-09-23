@@ -6,7 +6,7 @@
 // the invariants that make the contract trustworthy: axes and defaults
 // mirror the cva() call exactly, the overlay only references props that
 // exist, and the $id obeys the GTS segment grammar.
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { GTS, parseGtsID } from '@globaltypesystem/gts-ts';
@@ -102,6 +102,8 @@ function compileValidator(): ReturnType<Ajv2020['compile']> {
   return compilePropsValidator(contract);
 }
 const extraction = resolveTargetExtraction('button');
+// The kit's component directories, one per shipped component.
+const COMPONENTS_DIR = join(process.cwd(), 'src/components');
 const committedComponentType = JSON.parse(
   readFileSync(join(process.cwd(), 'scripts/contracts/ui-component.meta.json'), 'utf8'),
 ) as SchemaObject;
@@ -874,13 +876,22 @@ describe('a component reference names one contract major', () => {
     expect(target.contractId).not.toBe(stale);
   });
 
-  it('resolves a component that ships no contract to its directory alone', () => {
-    // Most components a `don't` rule points at are undescribed; the kit
-    // shipping the component is a directory, not a registration.
+  // A component a `don't` rule points at may have no contract yet; the kit
+  // shipping the component is a directory, not a registration. The example
+  // is picked at test time, so enrolling any one component never breaks the
+  // case, and it is skipped once every directory ships a contract.
+  const undescribed = readdirSync(COMPONENTS_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort()
+    .find((name) => !readdirSync(join(COMPONENTS_DIR, name)).includes(`${name}.contract.json`));
+
+  it.skipIf(undescribed === undefined)('resolves a component that ships no contract to its directory alone', () => {
     // A component that ships no contract has no overlay to state a major, so
     // a reference to one may only name major 1 - see testing.ts's own check.
-    const target = resolveComponentRef(componentRef('switch', 1));
-    expect(target.directory).toBe('switch');
+    const directory = undescribed as string;
+    const target = resolveComponentRef(componentRef(directory, 1));
+    expect(target.directory).toBe(directory);
     expect(target.contractId).toBeUndefined();
   });
 });

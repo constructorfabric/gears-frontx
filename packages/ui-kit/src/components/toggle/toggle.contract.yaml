@@ -1,0 +1,171 @@
+# Semantic overlay for Toggle - the hand-written half of the contract.
+#
+# Machine-extractable facts (axis names, axis values, defaults, prop list)
+# do NOT belong here: the compiler takes those from toggle.tsx, and rejects
+# an overlay that tries to restate them - one fact, one owner. This file
+# carries only what the code cannot express: intent, boundaries, invariants.
+component: toggle
+
+# One sentence, the selection-card headline.
+intent: Let the user flip one independent on/off state with a control that looks and behaves like a button.
+
+typical_uses:
+  - A toolbar button that stays pressed until pressed again (a formatting mark such as bold)
+  - A button that flips one independent display or marking state on and off
+
+# Each entry names the alternative - "don't" without "instead" is banned.
+# `target` is what a reader acts on, always written. `component` is added
+# when the kit ships one: it is a GTS component type id, checked against what
+# the kit actually ships, and its ABSENCE is the honest statement that the kit
+# ships nothing for this case. GTS tokens are snake_case, kit directories
+# kebab-case (navigation_menu -> src/components/navigation-menu).
+dont_use_when:
+  - situation: A labelled settings switch whose change applies immediately
+    instead:
+      target: Switch
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.switch.v1
+  - situation: A set of related, usually mutually-exclusive options
+    instead:
+      target: ToggleGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.toggle_group.v1
+      note: ToggleGroup holds the shared pressed state across its items.
+  - situation: A one-shot action with no pressed state
+    instead:
+      target: Button
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+
+# What may appear inside. `text` says a non-component React node may:
+# a string, a number, a fragment, a formatted inline element - which is
+# also how a glyph reaches a Toggle, since there is no dedicated icon prop.
+accepts:
+  content: specified
+  text: true
+
+# A prop that turns on a distinct rendering mode, and what it does.
+capabilities:
+  - name: icon_only
+    enabled_by: iconOnly
+    description: >-
+      The toggle draws its glyph alone: it squares to its own size step (a
+      32px box at `sm`) and fixes the glyph at 18px regardless of the active
+      size step, instead of the ordinary padded row a label sits in.
+
+invariants:
+  - id: pressed-wins-over-default-pressed
+    text: >-
+      `pressed` and `defaultPressed` are both accepted; `defaultPressed`
+      seeds the initial state and is ignored afterwards, and when `pressed`
+      is given it wins and the component follows it on every render.
+
+anti_patterns:
+  - dont: Render an icon-only toggle with no visible label or aria-label
+    do_instead: Pass `aria-label` naming the action the glyph performs
+
+# None yet. Shape when one appears:
+#   props:
+#     tone: { since: "0.5.0", replacement: "variant", hint: "tone=X maps to variant=X" }
+deprecations: {}
+
+# One outcome per claim. "failed" (looked at, does not hold) and "unknown"
+# (nobody looked) are different answers - say which. `by` names what
+# established a verified outcome, so a later reader can re-check it.
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      Base UI's own Toggle primitive (a native button element carrying
+      aria-pressed bound to the pressed state, with the button's own
+      keyboard activation) plus toggle.test.tsx's own button-role and
+      accessible-name assertions and its data-pressed assertions
+  rtl:
+    outcome: unknown
+
+# What each property that reaches this contract asserting nothing (or only
+# part of its shape) actually states, and why - keyed on the property
+# itself. The compiler emits both halves into that property's own
+# description, beside the `TS:` text; the conformance suite pairs every key
+# here against the properties the schema leaves unasserted, both ways.
+prop_statements:
+  onPressedChange:
+    states: onPressedChange is a callback of the next pressed state and event details, not a plain change handler
+    because: >-
+      Base UI types the callback as `(pressed: boolean, eventDetails) => void`,
+      where eventDetails carries the triggering event, its reason and
+      controls for cancelling or allowing propagation; a function type has no
+      JSON Schema representation, so nothing beyond its presence is asserted.
+  value:
+    states: value is typed by the caller's own Value type parameter, not a plain string
+    because: >-
+      `ToggleProps<Value extends string = string>` lets a caller narrow the
+      value to its own literal union - the set of ids a ToggleGroup manages,
+      typically. JSON Schema cannot express a type parameter, so only its
+      base shape (a string) is asserted and the caller's own narrowing is
+      checked by tsc, not by Ajv.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the toggle's
+      own state, so its type is a union of a React element and a callback -
+      neither expressible in JSON Schema.
+  style:
+    states: style accepts a function of the toggle's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (pressed, disabled). A JSON Schema `object`
+      would reject the function form, so nothing is asserted; the kit's own
+      styling goes through toggle.module.css, not through this.
+
+# The export beside the component that a consumer builds on: not a
+# component itself, so it carries no overlay of its own.
+companions:
+  - export: toggleVariants
+    typed_by: 'cva(...), returns (props: VariantProps<typeof toggleVariants> & { className?: string }) => string'
+    description: >-
+      The variant/size class-name builder Toggle itself uses, exported so
+      ToggleGroupItem can apply the identical classes to the Base UI Toggle
+      it renders inside a group - kept here because Toggle has to exist
+      before ToggleGroup can import it.
+
+# Canonical snippets. `good` is what to copy, `bad` is what generation
+# actually produces when it guesses; every `bad` states why, because a
+# counter-example without its reason teaches the shape, not the rule.
+examples:
+  good:
+    - title: Standalone, uncontrolled
+      code: |-
+        <Toggle aria-label="Bold" defaultPressed>
+          <BoldIcon />
+        </Toggle>
+    - title: Controlled
+      code: |-
+        <Toggle pressed={starred} onPressedChange={setStarred} aria-label="Favorite">
+          <StarIcon />
+        </Toggle>
+    - title: Icon-only, named for assistive tech
+      code: |-
+        <Toggle iconOnly variant="outline" size="sm" aria-label="Grid view">
+          <GridIcon />
+        </Toggle>
+  bad:
+    - title: Icon-only with no accessible name
+      code: |-
+        <Toggle iconOnly variant="outline" size="sm">
+          <GridIcon />
+        </Toggle>
+      why: >-
+        An icon-only toggle carries no accessible name of its own; without
+        `aria-label` a screen reader announces nothing for the control.
+    - title: Several toggles wired by hand for an exclusive set
+      code: |-
+        <>
+          <Toggle pressed={view === 'grid'} onPressedChange={() => setView('grid')} aria-label="Grid">
+            <GridIcon />
+          </Toggle>
+          <Toggle pressed={view === 'list'} onPressedChange={() => setView('list')} aria-label="List">
+            <ListIcon />
+          </Toggle>
+        </>
+      why: >-
+        This hand-rolls the exclusive selection ToggleGroup already holds, so
+        use ToggleGroup instead.

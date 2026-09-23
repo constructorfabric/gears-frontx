@@ -1,0 +1,115 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.label.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "label",
+  "forwards_to": "gts.frontx.uikit.element.dom_label.v1~",
+  "intent": "Name a form control so the name is announced to assistive tech and clicking the caption drives the control.",
+  "typical_uses": [
+    "A caption naming one control, associated with it via htmlFor",
+    "An inline caption wrapped around a checkbox or a switch, where the label itself is the click target"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Headings and free-standing text that name no control",
+      "instead": {
+        "target": "the consuming application's own text markup (a heading or paragraph element)",
+        "note": "The kit ships no generic text component, and a label with no control attached contributes nothing to assistive tech: a caption belongs to a control."
+      }
+    },
+    {
+      "situation": "A caption inside a Field composition",
+      "instead": {
+        "target": "FieldLabel",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_label.v1",
+        "note": "FieldLabel is this Label with Field's spacing, and Field's own data-disabled dims it; the htmlFor association is still wired by hand."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true,
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.checkbox.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.switch.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "RadioGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "no-association-without-htmlfor-or-nesting",
+      "text": "The component adds no association of its own: a Label with neither htmlFor nor a nested control names nothing. Both accepted forms - htmlFor pointing at the control's id, and the control nested inside - produce the same native association, and either one makes the caption the control's click target."
+    },
+    {
+      "id": "data-disabled-dims-and-blocks-pointer",
+      "text": "A data-disabled attribute dims the label to the controls' own disabled opacity and stops pointer events. Nothing sets it automatically: a consumer sets it by hand. Inside a Field, Field's own data-disabled dims FieldLabel instead."
+    },
+    {
+      "id": "color-is-inherited",
+      "text": "The label declares no color of its own: it inherits from its context, so a Field carrying data-invalid tints the caption destructive."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Render a label with no control associated with it",
+      "do_instead": "Pass htmlFor pointing at the control's id, or nest the control inside the label"
+    },
+    {
+      "dont": "Let an input's placeholder stand in for a name",
+      "do_instead": "Caption the control with Label and keep the placeholder for an example value"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "label.test.tsx - getByLabelText finds the control associated via htmlFor, and a className merge with a data-disabled attribute is asserted on the rendered label"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Associate a caption with its control",
+        "code": "<Label htmlFor=\"email\">Email</Label>"
+      },
+      {
+        "title": "Inline caption as the control's click target",
+        "code": "<Label><Checkbox /> Remember me</Label>"
+      }
+    ],
+    "bad": [
+      {
+        "title": "An orphan label",
+        "code": "<Label>Email address</Label>",
+        "why": "Neither htmlFor nor a nested control associates it with anything, so assistive tech gets no name and clicking it activates nothing. Pass htmlFor, or nest the control."
+      },
+      {
+        "title": "A caption prop the component does not have",
+        "code": "<Label text=\"Email\" />",
+        "why": "Label forwards the native label attributes and declares none of its own - there is no text prop. The caption is children."
+      }
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Label",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}
