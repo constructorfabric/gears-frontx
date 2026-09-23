@@ -1,0 +1,73 @@
+# Semantic overlay for SidebarSeparator - a part of the sidebar family, see
+# sidebar-provider.contract.yaml for the root.
+component: sidebar-separator
+
+intent: A divider between regions or sections of the sidebar panel.
+
+typical_uses:
+  - A line between two groups in SidebarContent, or below the header's switcher
+
+dont_use_when:
+  - situation: A divider anywhere outside the sidebar panel
+    instead:
+      target: Separator
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.separator.v1
+
+accepts:
+  content: nothing
+
+invariants:
+  - id: is-the-kit-separator
+    text: >-
+      SidebarSeparator is the kit's Separator with the sidebar border color;
+      horizontal, it is inset 8px from each side instead of spanning the
+      full width.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the
+      separator's own state, so its type is a union of a React element and a
+      callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the separator's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (orientation). The compiler emits one JSON type per property, so nothing is asserted; the kit's own
+      styling goes through sidebar.module.css, not through this.
+
+examples:
+  good:
+    - title: Between two groups
+      code: |
+        <SidebarContent>
+          <SidebarGroup>{projects}</SidebarGroup>
+          <SidebarSeparator />
+          <SidebarGroup>{settings}</SidebarGroup>
+        </SidebarContent>
+  bad:
+    - title: A plain Separator in the panel
+      code: |
+        <SidebarContent>
+          <SidebarGroup>{projects}</SidebarGroup>
+          <Separator />
+        </SidebarContent>
+      why: >-
+        Separator spans the full panel width in the page's border color;
+        SidebarSeparator carries the panel's border color and its 8px inset.
+
+family_membership:
+  name: sidebar
+  role: part

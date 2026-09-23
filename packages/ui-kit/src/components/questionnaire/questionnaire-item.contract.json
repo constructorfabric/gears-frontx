@@ -1,0 +1,144 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_item.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "questionnaire-item",
+  "forwards_to": "gts.frontx.uikit.element.dom_fieldset.v1~",
+  "intent": "One question of a Questionnaire, a fieldset that is shown and interactive only while it is the current item.",
+  "typical_uses": [
+    "A single-choice question",
+    "A multiple-choice question (`multiple`)",
+    "A short freeform answer"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A group of related fields shown together in an ordinary form",
+      "instead": {
+        "target": "FieldSet",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_set.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_title.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_description.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_choices.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_input.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_error.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Questionnaire",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "hidden-and-inert-unless-current",
+      "text": "Every rendered item stays mounted; all but the current one carry the native `hidden` and `inert` attributes, and a `disabled` item is always hidden; it is left out of navigation and progress when its `items` entry is disabled too, or when the root has no `items`."
+    },
+    {
+      "id": "status-follows-the-answer",
+      "text": "The status is `answered` once an enabled choice is checked or the freeform field holds non-blank text, `skipped` after QuestionnaireSkip, and `unanswered` otherwise; it is stamped as `data-status`, and `onStatusChange` is called with each new value."
+    },
+    {
+      "id": "passes-when-answered-or-skipped",
+      "text": "The item passes validation when answered, or when it is optional and skipped; an untouched optional item fails exactly like a required one. `invalid` fails it even when answered, until an optional item is skipped."
+    },
+    {
+      "id": "one-answer-unless-multiple",
+      "text": "Without `multiple` the choices are radios and the item holds one answer: a checked choice and a filled freeform field replace each other. With `multiple` every choice is a checkbox and any number may be checked."
+    },
+    {
+      "id": "name-is-the-form-field",
+      "text": "`name` matches the item's `items` entry and is the form field name its answer submits under; a skipped item submits nothing under it."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Give a QuestionnaireItem a `required` or `disabled` that differs from its `items` entry",
+      "do_instead": "Keep both in step. The root reads the entry for Skip's visibility and the flow, while the item's own props decide its validation and Skip's effect, so a mismatch shows a Skip that does nothing or hides one an optional item needs"
+    },
+    {
+      "dont": "Omit QuestionnaireError from an optional item",
+      "do_instead": "Render a QuestionnaireError in every item; Next never disables itself, so a failed Next on an untouched optional item is otherwise silent"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "questionnaire.test.tsx asserts the inactive item's fieldset has the hidden property and the inert attribute, and that the current item carries data-status \"unanswered\" after a blocked Next"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "onStatusChange": {
+      "states": "onStatusChange is a callback, not a value",
+      "because": "A function type has no JSON Schema representation. It is `(status: 'unanswered' | 'answered' | 'skipped') => void`."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A required single-choice item",
+        "code": "<QuestionnaireItem name=\"role\" required>\n  <QuestionnaireTitle>What is your role?</QuestionnaireTitle>\n  <QuestionnaireDescription>Pick one.</QuestionnaireDescription>\n  <QuestionnaireChoices>\n    <QuestionnaireChoice value=\"engineer\">Engineer</QuestionnaireChoice>\n    <QuestionnaireChoice value=\"designer\">Designer</QuestionnaireChoice>\n  </QuestionnaireChoices>\n  <QuestionnaireError />\n</QuestionnaireItem>\n"
+      },
+      {
+        "title": "An optional freeform item",
+        "code": "<QuestionnaireItem name=\"notes\">\n  <QuestionnaireTitle>Anything else?</QuestionnaireTitle>\n  <QuestionnaireInput placeholder=\"Optional notes\" />\n  <QuestionnaireError />\n</QuestionnaireItem>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Required on the item but not in items",
+        "code": "<Questionnaire items={[{ name: 'role', choices: [{ value: 'engineer' }] }]}>\n  <QuestionnaireItem name=\"role\" required>{question}</QuestionnaireItem>\n</Questionnaire>\n",
+        "why": "The root reads `required` from the `items` entry, so it shows Skip, while the item's own `required` makes that Skip do nothing."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "questionnaire",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit QuestionnaireItem",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "invalid": {
+        "type": "boolean"
+      },
+      "multiple": {
+        "type": "boolean"
+      },
+      "name": {
+        "type": "string"
+      },
+      "onStatusChange": {
+        "description": "TS: ((status: QuestionnaireItemStatus) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onStatusChange is a callback, not a value. A function type has no JSON Schema representation. It is `(status: 'unanswered' | 'answered' | 'skipped') => void`."
+      },
+      "required": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

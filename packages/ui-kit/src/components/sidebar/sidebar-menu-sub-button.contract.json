@@ -1,0 +1,116 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_sub_button.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sidebar-menu-sub-button",
+  "forwards_to": "gts.frontx.uikit.element.dom_a.v1~",
+  "intent": "The clickable row of a nested sub-menu, a link by default.",
+  "typical_uses": [
+    "A link to one child page under a navigation row"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A top-level row of a menu",
+      "instead": {
+        "target": "SidebarMenuButton",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_button.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "SidebarMenuSubItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_sub_item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "renders-an-anchor",
+      "text": "SidebarMenuSubButton renders an `a` unless `render` supplies another element, so `href` makes it a link; without `href` a plain anchor is not focusable."
+    },
+    {
+      "id": "fixed-row-height",
+      "text": "The row is 28px tall at both sizes; `size` changes only the type size. A direct `svg` child is sized to the small icon size and a last `span` child truncates."
+    },
+    {
+      "id": "is-active-is-visual-only",
+      "text": "`isActive` sets a bare `data-active` attribute and the active fill; it sets no `aria-current`."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Rely on `isActive` to tell assistive tech the current page",
+      "do_instead": "Pass `aria-current=\"page\"` beside `isActive` on the current link row"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's useRender takes an element or a function of the row's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property. It is how the row renders as the app's link element."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "The current child page",
+        "code": "<SidebarMenuSubButton isActive aria-current=\"page\" href=\"/docs/intro\">\n  <span>Introduction</span>\n</SidebarMenuSubButton>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A sub-row with no destination",
+        "code": "<SidebarMenuSubButton onClick={openIntro}>Introduction</SidebarMenuSubButton>",
+        "why": "It renders an anchor, and an anchor without `href` is neither a link nor focusable, so a keyboard user cannot reach it; pass `href`, or `render` a button."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sidebar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof sidebarMenuSubButtonVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SidebarMenuSubButton",
+    "type": "object",
+    "properties": {
+      "size": {
+        "type": "string",
+        "enum": [
+          "sm",
+          "md"
+        ],
+        "default": "md"
+      },
+      "isActive": {
+        "type": "boolean",
+        "default": false
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, {}> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's useRender takes an element or a function of the row's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property. It is how the row renders as the app's link element."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

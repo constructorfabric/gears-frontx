@@ -1,0 +1,165 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_trigger.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sidebar-trigger",
+  "forwards_to": "gts.frontx.uikit.element.dom_button.v1~",
+  "intent": "The icon-only button that toggles the nearest SidebarProvider's sidebar.",
+  "typical_uses": [
+    "The toggle at the start of the main area's header"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A toggle that should read as the panel's edge rather than a button",
+      "instead": {
+        "target": "SidebarRail",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_rail.v1"
+      }
+    },
+    {
+      "situation": "Any other icon-only action",
+      "instead": {
+        "target": "Button",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "SidebarProvider",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_provider.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "renders-a-ghost-small-button",
+      "text": "SidebarTrigger is the kit's Button rendered with `variant=\"ghost\"`, `size=\"sm\"` and a fixed panel icon; a `variant` or `size` passed to it replaces those two values."
+    },
+    {
+      "id": "label-is-the-accessible-name",
+      "text": "`label` becomes the button's `aria-label`; an explicit `aria-label` passed alongside it wins."
+    },
+    {
+      "id": "click-runs-then-toggles",
+      "text": "A consumer `onClick` runs first and the sidebar toggles after it on every click; the handler cannot prevent the toggle."
+    },
+    {
+      "id": "works-at-any-depth",
+      "text": "The trigger reads the provider through useSidebar, so it works at any depth inside SidebarProvider and throws outside one."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Restyle SidebarTrigger into a different control",
+      "do_instead": "Build a Button whose onClick calls `toggleSidebar` from useSidebar"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "sidebar.test.tsx finds the trigger by role button with the name \"Toggle Sidebar\" (its default `label`) and asserts a click collapses the sidebar"
+    },
+    "rtl": {
+      "outcome": "failed",
+      "by": "sidebar.tsx renders a fixed PanelLeftIcon with no direction handling, and sidebar.md records that it is not mirrored under a right-to-left direction"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the button's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the button's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through button.module.css and sidebar.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "The default trigger in the main area",
+        "code": "<SidebarInset>\n  <SidebarTrigger />\n  {page}\n</SidebarInset>\n"
+      },
+      {
+        "title": "An accessible name of its own",
+        "code": "<SidebarTrigger label=\"Show or hide navigation\" />"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A caption passed as children",
+        "code": "<SidebarTrigger>Menu</SidebarTrigger>",
+        "why": "SidebarTrigger omits `children` from its props and renders a fixed icon; the caption is a type error, and the accessible name comes from `label`."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sidebar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SidebarTrigger",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "destructive",
+          "outline",
+          "secondary",
+          "ghost",
+          "link",
+          "navigation",
+          "avatar",
+          "utility"
+        ],
+        "default": "default"
+      },
+      "size": {
+        "type": "string",
+        "enum": [
+          "default",
+          "sm",
+          "lg"
+        ],
+        "default": "default"
+      },
+      "className": {
+        "type": "string"
+      },
+      "focusableWhenDisabled": {
+        "type": "boolean"
+      },
+      "label": {
+        "type": "string",
+        "default": "Toggle Sidebar"
+      },
+      "loading": {
+        "type": "boolean"
+      },
+      "nativeButton": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ButtonState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the button's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: ButtonState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the button's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through button.module.css and sidebar.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+# Semantic overlay for SidebarFooter - a part of the sidebar family, see
+# sidebar-provider.contract.yaml for the root.
+component: sidebar-footer
+
+intent: The fixed region at the bottom of the sidebar panel that stays in place while SidebarContent scrolls.
+
+typical_uses:
+  - A user menu or account row below the scrolling sections
+
+dont_use_when:
+  - situation: Navigation sections that should scroll with the rest of the panel
+    instead:
+      target: SidebarContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_content.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu.v1 # SidebarMenu
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_group.v1 # SidebarGroup
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_input.v1 # SidebarInput
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_separator.v1 # SidebarSeparator
+  text: true
+
+invariants:
+  - id: padded-column
+    text: >-
+      SidebarFooter is a plain div laid out as a flex column with an 8px gap
+      and 8px padding; it sets no overflow, so it never scrolls and
+      SidebarContent takes the height left between the header and the
+      footer.
+
+anti_patterns:
+  - dont: Put the long list of navigation sections in SidebarFooter
+    do_instead: Put them in SidebarContent, the only region of the panel that scrolls
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A menu row in the footer
+      code: |
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton size="lg">
+                <UserIcon />
+                <span>Account</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+  bad:
+    - title: A menu item without its menu
+      code: |
+        <SidebarFooter>
+          <SidebarMenuItem>
+            <SidebarMenuButton>Account</SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarFooter>
+      why: >-
+        SidebarMenuItem renders an `li`; outside a SidebarMenu's `ul` it is
+        invalid list markup and loses the menu's column layout and gap.
+
+family_membership:
+  name: sidebar
+  role: part

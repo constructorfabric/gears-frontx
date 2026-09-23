@@ -1,0 +1,99 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_title.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "questionnaire-title",
+  "forwards_to": "gts.frontx.uikit.element.dom_legend.v1~",
+  "intent": "The question's own text, rendered as the legend of its QuestionnaireItem's fieldset.",
+  "typical_uses": [
+    "The question an item asks"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A caption for a group of fields in an ordinary form",
+      "instead": {
+        "target": "FieldLegend inside a FieldSet",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_legend.v1",
+        "note": "A QuestionnaireTitle throws outside a QuestionnaireItem."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "QuestionnaireItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "legend-names-the-item",
+      "text": "It renders a `<legend>`; the first legend child of the item's fieldset is that fieldset's caption and its accessible name."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put the question in a heading or paragraph inside the item instead of QuestionnaireTitle",
+      "do_instead": "Use QuestionnaireTitle, so the question names the item's fieldset for assistive technology"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "questionnaire.test.tsx asserts the title renders as a LEGEND inside the current item's fieldset"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "The questionnaire engine's render prop takes an element or a function of the title's state (an empty state object for this part), so its type is a union of a React element and a callback; the compiler emits one JSON type per property, so nothing is asserted."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "The question of an item",
+        "code": "<QuestionnaireItem name=\"role\" required>\n  <QuestionnaireTitle>What is your role?</QuestionnaireTitle>\n  <QuestionnaireChoices>{choices}</QuestionnaireChoices>\n  <QuestionnaireError />\n</QuestionnaireItem>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A heading in place of the title",
+        "code": "<QuestionnaireItem name=\"role\" required>\n  <h2>What is your role?</h2>\n  <QuestionnaireChoices>{choices}</QuestionnaireChoices>\n</QuestionnaireItem>\n",
+        "why": "A heading does not name the fieldset, so the choices are announced without the question they answer."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "questionnaire",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit QuestionnaireTitle",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "render": {
+        "description": "TS: RenderProp<RenderState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. The questionnaire engine's render prop takes an element or a function of the title's state (an empty state object for this part), so its type is a union of a React element and a callback; the compiler emits one JSON type per property, so nothing is asserted."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

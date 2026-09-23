@@ -1,0 +1,68 @@
+# Semantic overlay for QuestionnaireChoiceLabel - a part of the
+# Questionnaire family, see questionnaire.contract.yaml's
+# `family_membership`.
+component: questionnaire-choice-label
+
+intent: The span inside a QuestionnaireChoice row that holds the answer text and stacks a QuestionnaireChoiceDescription under it.
+
+typical_uses:
+  - The text span a QuestionnaireChoice renders around its children
+
+dont_use_when:
+  - situation: Captioning an answer
+    instead:
+      target: the children of QuestionnaireChoice
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_choice.v1
+
+accepts:
+  content: specified
+  text: true
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_choice_description.v1 # QuestionnaireChoiceDescription
+
+invariants:
+  - id: already-in-every-choice
+    text: >-
+      QuestionnaireChoice renders one QuestionnaireChoiceLabel around its own
+      children and is the only provider of the context this part needs, so
+      a consumer-placed one always nests inside that built-in label.
+
+anti_patterns:
+  - dont: Wrap a choice's text in QuestionnaireChoiceLabel
+    do_instead: Pass the text straight to QuestionnaireChoice, which already wraps it in this span
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      The questionnaire engine's render prop takes an element or a function
+      of the label's state (an empty state object for this part), so its
+      type is a union of a React element and a callback; the compiler emits
+      one JSON type per property, so nothing is asserted.
+
+examples:
+  good:
+    - title: The text span comes with the choice
+      code: <QuestionnaireChoice value="pro">Pro</QuestionnaireChoice>
+  bad:
+    - title: The text wrapped a second time
+      code: |
+        <QuestionnaireChoice value="pro">
+          <QuestionnaireChoiceLabel>Pro</QuestionnaireChoiceLabel>
+        </QuestionnaireChoice>
+      why: >-
+        The choice already wraps its children in this span; the nested one
+        is a label span inside a label span and takes a second copy of its
+        flex layout.
+
+family_membership:
+  name: questionnaire
+  role: part

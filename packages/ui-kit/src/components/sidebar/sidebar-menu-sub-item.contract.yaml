@@ -1,0 +1,57 @@
+# Semantic overlay for SidebarMenuSubItem - a part of the sidebar family, see
+# sidebar-provider.contract.yaml for the root.
+component: sidebar-menu-sub-item
+
+intent: One row of a SidebarMenuSub.
+
+typical_uses:
+  - One child page under a navigation row
+
+dont_use_when:
+  - situation: A top-level row of a menu
+    instead:
+      target: SidebarMenuItem
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_item.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_sub_button.v1 # SidebarMenuSubButton
+
+invariants:
+  - id: plain-list-item
+    text: >-
+      SidebarMenuSubItem renders an `li` with `position: relative` and no styling of its own.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: One child row
+      code: |
+        <SidebarMenuSubItem>
+          <SidebarMenuSubButton href="/docs/intro">
+            <span>Introduction</span>
+          </SidebarMenuSubButton>
+        </SidebarMenuSubItem>
+  bad:
+    - title: A top-level row button in a sub-row
+      code: |
+        <SidebarMenuSubItem>
+          <SidebarMenuButton>Introduction</SidebarMenuButton>
+        </SidebarMenuSubItem>
+      why: >-
+        SidebarMenuButton is sized for a top-level row; a sub-row takes
+        SidebarMenuSubButton, 28px tall and styled for the nested level.
+
+family_membership:
+  name: sidebar
+  role: part

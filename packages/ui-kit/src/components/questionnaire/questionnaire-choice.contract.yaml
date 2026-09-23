@@ -1,0 +1,126 @@
+# Semantic overlay for QuestionnaireChoice - a part of the Questionnaire
+# family, see questionnaire.contract.yaml's `family_membership`.
+component: questionnaire-choice
+
+intent: One fixed answer of a QuestionnaireItem, a label row holding a native radio or checkbox, a drawn indicator, the answer text and its shortcut cap.
+
+typical_uses:
+  - One answer of a single-choice item (a radio)
+  - One answer of a `multiple` item (a checkbox)
+
+dont_use_when:
+  - situation: An option in a single-choice group outside a questionnaire
+    instead:
+      target: RadioGroupItem inside a RadioGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group_item.v1
+  - situation: An independent yes/no option outside a questionnaire
+    instead:
+      target: Checkbox
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.checkbox.v1
+
+# Children are the answer text, placed inside the row's label span, with an
+# optional second line.
+accepts:
+  content: specified
+  text: true
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_choice_description.v1 # QuestionnaireChoiceDescription
+
+invariants:
+  - id: checked-wins-over-default-checked
+    text: >-
+      `checked` and `defaultChecked` are both accepted; `defaultChecked`
+      seeds the initial state and is ignored afterwards, and when `checked`
+      is given it wins and the component follows it on every render, except
+      while its item is skipped, when the choice renders unchecked.
+  - id: type-follows-the-item
+    text: >-
+      The row renders a native radio, or a checkbox when its
+      QuestionnaireItem is `multiple`, and stamps that as `data-type` beside
+      `data-checked`/`data-unchecked`, `data-disabled`, `data-invalid` and
+      `data-shortcut`; the drawn indicator is aria-hidden, so the input is
+      what assistive technology reads.
+  - id: value-must-be-defined-in-items
+    text: >-
+      `value` is what submits under the item's name and must be unique
+      within the item; when the root has `items`, a choice whose value is
+      missing from its item's `choices` gets no shortcut, and with
+      `shortcuts` on the root logs a console warning for it outside
+      production builds.
+  - id: on-change-runs-first
+    text: >-
+      `onChange` is called before the questionnaire records the change;
+      calling `preventDefault` on the event keeps the recorded answer as it
+      was.
+
+anti_patterns:
+  - dont: Nest a QuestionnaireChoiceShortcut, QuestionnaireChoiceInput or QuestionnaireChoiceLabel in the children
+    do_instead: >-
+      Pass only the answer text and an optional QuestionnaireChoiceDescription;
+      the row already renders one of each, so a nested one is a second cap,
+      input or label in the same row
+  - dont: Restyle the indicator by composing the kit Checkbox or RadioGroupItem into the row
+    do_instead: >-
+      Restyle through questionnaire.module.css keyed on the row's data
+      attributes; those kit components render a span with a role rather
+      than the native input the questionnaire validates and submits
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      questionnaire.test.tsx finds each choice by role radio (or checkbox in
+      a multiple item) named by its label text, and asserts a disabled
+      choice's input is disabled and its row carries data-disabled
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  onChange:
+    states: onChange is a callback, not a value
+    because: >-
+      A function type has no JSON Schema representation. It is
+      `React.ChangeEventHandler<HTMLInputElement>`, called with the change
+      event of the row's native input.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      The questionnaire engine's render prop takes an element or a function
+      of the choice's own state (`QuestionnaireChoiceState`: checked,
+      disabled, invalid, shortcut, type), so its type is a union of a React
+      element and a callback; the compiler emits one JSON type per property,
+      so nothing is asserted.
+
+unexposed_parts:
+  - part: The drawn indicator (a span holding a radio dot and a check icon)
+    reason: >-
+      A fixed aria-hidden span the row renders beside its input and styles
+      from data-type and data-checked; it is not exported and takes no
+      props.
+
+examples:
+  good:
+    - title: A choice with a second line
+      code: |
+        <QuestionnaireChoice value="approvals">
+          Approval checkpoints
+          <QuestionnaireChoiceDescription>Ask before sensitive actions.</QuestionnaireChoiceDescription>
+        </QuestionnaireChoice>
+    - title: A disabled choice, disabled in items too
+      code: <QuestionnaireChoice value="enterprise" disabled>Enterprise</QuestionnaireChoice>
+  bad:
+    - title: A second shortcut cap in the children
+      code: |
+        <QuestionnaireChoice value="pro">
+          Pro
+          <QuestionnaireChoiceShortcut />
+        </QuestionnaireChoice>
+      why: >-
+        The row already renders its own shortcut cap, so the nested one draws
+        a second key cap in the same row.
+
+family_membership:
+  name: questionnaire
+  role: part

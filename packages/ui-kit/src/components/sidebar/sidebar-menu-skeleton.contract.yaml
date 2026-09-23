@@ -1,0 +1,63 @@
+# Semantic overlay for SidebarMenuSkeleton - a part of the sidebar family, see
+# sidebar-provider.contract.yaml for the root.
+component: sidebar-menu-skeleton
+
+intent: A placeholder menu row shown while the menu's rows load.
+
+typical_uses:
+  - A few placeholder rows in a menu whose items are still being fetched
+
+dont_use_when:
+  - situation: A loading placeholder outside a sidebar menu
+    instead:
+      target: Skeleton
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.skeleton.v1
+
+# It renders its own placeholders; children are not rendered.
+accepts:
+  content: nothing
+
+invariants:
+  - id: same-geometry-as-a-row
+    text: >-
+      The placeholder is a 32px row with the same 8px inset as a
+      SidebarMenuButton, and collapses to the same 32px square in the icon
+      rail, where only the icon placeholder stays (with `showIcon`; without
+      it the square is empty).
+  - id: width-varies-deterministically
+    text: >-
+      The text placeholder's width is derived from the row's React id, so it
+      varies between rows between 50% and 89% and is identical on the server
+      and after hydration.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Placeholder rows while the projects load
+      code: |
+        <SidebarMenu>
+          {[0, 1, 2].map((index) => (
+            <SidebarMenuItem key={index}>
+              <SidebarMenuSkeleton showIcon />
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+  bad:
+    - title: A caption passed to the placeholder
+      code: <SidebarMenuSkeleton>Loading projects</SidebarMenuSkeleton>
+      why: >-
+        The placeholder renders only its own Skeleton elements and drops
+        children, so the text never appears.
+
+family_membership:
+  name: sidebar
+  role: part

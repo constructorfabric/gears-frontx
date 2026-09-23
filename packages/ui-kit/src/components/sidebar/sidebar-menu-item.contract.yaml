@@ -1,0 +1,73 @@
+# Semantic overlay for SidebarMenuItem - a part of the sidebar family, see
+# sidebar-provider.contract.yaml for the root.
+component: sidebar-menu-item
+
+intent: One row of a SidebarMenu, holding the row's button and what annotates it.
+
+typical_uses:
+  - A navigation row with an optional count, row action or nested sub-menu
+
+dont_use_when:
+  - situation: A row of a nested sub-menu
+    instead:
+      target: SidebarMenuSubItem
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_sub_item.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_button.v1 # SidebarMenuButton
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_action.v1 # SidebarMenuAction
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_badge.v1 # SidebarMenuBadge
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_sub.v1 # SidebarMenuSub
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_skeleton.v1 # SidebarMenuSkeleton
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.collapsible.v1 # Collapsible, around a row and its sub-menu that opens and closes
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu.v1 # DropdownMenu, whose trigger renders as the row's button or action
+
+invariants:
+  - id: positions-action-and-badge
+    text: >-
+      SidebarMenuItem renders an `li` with `position: relative`, the box a
+      SidebarMenuAction or SidebarMenuBadge inside it is pinned against;
+      with either one present, its SidebarMenuButton reserves 32px on the
+      right so the label truncates before them.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A row with a count
+      code: |
+        <SidebarMenuItem>
+          <SidebarMenuButton>
+            <InboxIcon />
+            <span>Inbox</span>
+          </SidebarMenuButton>
+          <SidebarMenuBadge>24</SidebarMenuBadge>
+        </SidebarMenuItem>
+  bad:
+    - title: The badge inside the button
+      code: |
+        <SidebarMenuItem>
+          <SidebarMenuButton>
+            <InboxIcon />
+            <span>Inbox</span>
+            <SidebarMenuBadge>24</SidebarMenuBadge>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      why: >-
+        The badge becomes the button's last child, so the label span no
+        longer truncates and the count joins the button's accessible name;
+        the badge is the button's sibling inside the item.
+
+family_membership:
+  name: sidebar
+  role: part

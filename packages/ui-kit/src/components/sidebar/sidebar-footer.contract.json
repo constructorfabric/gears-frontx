@@ -1,0 +1,90 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_footer.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sidebar-footer",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The fixed region at the bottom of the sidebar panel that stays in place while SidebarContent scrolls.",
+  "typical_uses": [
+    "A user menu or account row below the scrolling sections"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Navigation sections that should scroll with the rest of the panel",
+      "instead": {
+        "target": "SidebarContent",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_content.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_group.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_input.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_separator.v1"
+    ],
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "Sidebar",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "padded-column",
+      "text": "SidebarFooter is a plain div laid out as a flex column with an 8px gap and 8px padding; it sets no overflow, so it never scrolls and SidebarContent takes the height left between the header and the footer."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put the long list of navigation sections in SidebarFooter",
+      "do_instead": "Put them in SidebarContent, the only region of the panel that scrolls"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A menu row in the footer",
+        "code": "<SidebarFooter>\n  <SidebarMenu>\n    <SidebarMenuItem>\n      <SidebarMenuButton size=\"lg\">\n        <UserIcon />\n        <span>Account</span>\n      </SidebarMenuButton>\n    </SidebarMenuItem>\n  </SidebarMenu>\n</SidebarFooter>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A menu item without its menu",
+        "code": "<SidebarFooter>\n  <SidebarMenuItem>\n    <SidebarMenuButton>Account</SidebarMenuButton>\n  </SidebarMenuItem>\n</SidebarFooter>\n",
+        "why": "SidebarMenuItem renders an `li`; outside a SidebarMenu's `ul` it is invalid list markup and loses the menu's column layout and gap."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sidebar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SidebarFooter",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

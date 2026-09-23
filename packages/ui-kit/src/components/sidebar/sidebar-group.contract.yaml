@@ -1,0 +1,64 @@
+# Semantic overlay for SidebarGroup - a part of the sidebar family, see
+# sidebar-provider.contract.yaml for the root.
+component: sidebar-group
+
+intent: One titled section of the sidebar panel.
+
+typical_uses:
+  - A section of related navigation rows under a small caption, optionally with a section action
+
+dont_use_when:
+  - situation: A section a user expands and collapses
+    instead:
+      target: Collapsible
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.collapsible.v1
+      note: Place the group inside a Collapsible in SidebarContent; the group itself has no open state.
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_group_label.v1 # SidebarGroupLabel
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_group_action.v1 # SidebarGroupAction
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_group_content.v1 # SidebarGroupContent
+
+invariants:
+  - id: positions-its-action
+    text: >-
+      SidebarGroup is a plain div with 8px padding and `position: relative`;
+      a SidebarGroupAction inside it is positioned against the group's
+      top-right corner, on the label's row.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A captioned section with an add action
+      code: |
+        <SidebarGroup>
+          <SidebarGroupLabel>Projects</SidebarGroupLabel>
+          <SidebarGroupAction aria-label="Add project">
+            <PlusIcon />
+          </SidebarGroupAction>
+          <SidebarGroupContent>{menu}</SidebarGroupContent>
+        </SidebarGroup>
+  bad:
+    - title: A menu straight in the group
+      code: |
+        <SidebarGroup>
+          <SidebarGroupLabel>Projects</SidebarGroupLabel>
+          <SidebarMenu>{items}</SidebarMenu>
+        </SidebarGroup>
+      why: >-
+        The group's body is SidebarGroupContent; the menu goes inside it.
+
+family_membership:
+  name: sidebar
+  role: part

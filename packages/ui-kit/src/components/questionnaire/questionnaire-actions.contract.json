@@ -1,0 +1,89 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_actions.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "questionnaire-actions",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The row that lays out a Questionnaire's navigation buttons, Previous at the start and Skip plus Next or Submit at the end.",
+  "typical_uses": [
+    "The navigation row under the questions"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A row of buttons outside a questionnaire",
+      "instead": {
+        "target": "the application's own layout",
+        "note": "QuestionnaireActions is a fixed three-cell grid for the four navigation buttons and holds nothing else; ButtonGroup joins buttons into one attached row, which is a different layout."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_previous.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_skip.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_next.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_submit.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Questionnaire",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "fixed-grid-cells",
+      "text": "questionnaire.module.css places each button in a fixed cell of a three-column grid - Previous in the first, Skip in the second, Next and Submit sharing the third - whatever their source order."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Mount only the buttons the current item needs",
+      "do_instead": "Mount all four every time; each hides itself (native `hidden` and `inert`) when it does not apply, and Next and Submit swap within one cell"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "All four buttons",
+        "code": "<QuestionnaireActions>\n  <QuestionnairePrevious />\n  <QuestionnaireSkip />\n  <QuestionnaireNext />\n  <QuestionnaireSubmit />\n</QuestionnaireActions>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Next and Submit chosen by the caller",
+        "code": "<QuestionnaireActions>\n  {isLast ? <QuestionnaireSubmit /> : <QuestionnaireNext />}\n</QuestionnaireActions>\n",
+        "why": "The root already hides whichever of the two does not apply; picking one by hand duplicates that state and drifts when an item is disabled or the flow moves under the caller."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "questionnaire",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit QuestionnaireActions",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

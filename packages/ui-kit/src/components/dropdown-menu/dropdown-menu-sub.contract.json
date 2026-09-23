@@ -65,7 +65,7 @@
   "prop_statements": {
     "children": {
       "states": "children is the submenu's sub-trigger and sub-content",
-      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
     },
     "onOpenChange": {
       "states": "onOpenChange is a callback called with the submenu's next open state and event details, not a value",
@@ -112,7 +112,7 @@
         "description": "TS: React.RefObject<MenuRootActions | null> | undefined. The compiler emits one JSON type per property; this type is left to tsc. actionsRef is a ref the submenu fills with imperative `close` and `unmount` actions. `React.RefObject<MenuRoot.Actions | null>` - a ref object holding functions, which no JSON Schema type covers."
       },
       "children": {
-        "description": "TS: React.ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the submenu's sub-trigger and sub-content. `React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+        "description": "TS: React.ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the submenu's sub-trigger and sub-content. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
       },
       "closeParentOnEsc": {
         "type": "boolean"

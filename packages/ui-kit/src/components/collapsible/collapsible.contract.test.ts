@@ -114,14 +114,25 @@ describe('collapsible family: what nests where', () => {
     }
   });
 
-  it('gives the root no mount point at all - nothing in the kit mounts a Collapsible', () => {
-    expect(units[DIRECTORY].contract.mounted_in).toBeUndefined();
+  it("the root's mount points are FILLED from SidebarContent and SidebarMenuItem, and from nothing else", () => {
+    // A family root may be mounted in another directory's container; only
+    // parts are held to their own family. Both entries are filled from the
+    // sidebar family's own overlays.
+    expect(units[DIRECTORY].contract.mounted_in).toEqual([
+      { container: 'SidebarContent', component: componentRef('sidebar-content', contractMajor('sidebar', 'sidebar-content')) },
+      { container: 'SidebarMenuItem', component: componentRef('sidebar-menu-item', contractMajor('sidebar', 'sidebar-menu-item')) },
+    ]);
   });
 
-  it('every nesting reference in the family points inside the family', () => {
+  it('every accepts reference and every part mount point points inside the family', () => {
+    // The root's own mount points are left out: they are the sidebar
+    // containers asserted above.
     const familyRefs = new Set(Object.values(units).map(({ contract }) => bareGtsId(String(contract.$id))));
     for (const { stem, contract } of Object.values(units)) {
-      const mounts = (contract.mounted_in ?? []).map((entry) => entry.component).filter((ref): ref is string => ref !== undefined);
+      const mounts =
+        stem === DIRECTORY
+          ? []
+          : (contract.mounted_in ?? []).map((entry) => entry.component).filter((ref): ref is string => ref !== undefined);
       for (const ref of [...(contract.accepts.components ?? []), ...mounts]) {
         expect(familyRefs.has(ref), `${stem}: it names "${ref}", which is not a member of this family`).toBe(true);
       }

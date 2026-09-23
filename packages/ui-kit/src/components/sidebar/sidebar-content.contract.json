@@ -1,0 +1,84 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sidebar-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The scrolling middle region of the sidebar panel that holds its sections.",
+  "typical_uses": [
+    "The column of navigation groups between the header and the footer"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Content that must stay visible while the sections scroll",
+      "instead": {
+        "target": "SidebarHeader",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_header.v1",
+        "note": "Or SidebarFooter for the bottom of the panel."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_group.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_separator.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.collapsible.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Sidebar",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "fills-and-scrolls",
+      "text": "SidebarContent grows to fill the panel height left by the header and the footer and scrolls its own overflow; collapsed to the icon rail its overflow is hidden instead."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Groups in the scrolling region",
+        "code": "<SidebarContent>\n  <SidebarGroup>\n    <SidebarGroupLabel>Platform</SidebarGroupLabel>\n    <SidebarGroupContent>{menu}</SidebarGroupContent>\n  </SidebarGroup>\n</SidebarContent>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A menu straight in the content region",
+        "code": "<SidebarContent>\n  <SidebarMenu>{items}</SidebarMenu>\n</SidebarContent>\n",
+        "why": "Without a SidebarGroup around a SidebarMenu the rows lose the group's 8px padding, so they touch the panel edges and do not centre in the icon rail."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sidebar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SidebarContent",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

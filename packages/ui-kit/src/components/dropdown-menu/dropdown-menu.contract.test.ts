@@ -160,15 +160,25 @@ describe('dropdown-menu directory: what nests where', () => {
     }
   });
 
-  it('the root has no mount point of its own', () => {
-    expect(units[DIRECTORY].contract.mounted_in).toBeUndefined();
+  it("the root's one mount point is FILLED from SidebarMenuItem, and from nothing else", () => {
+    // A family root may be mounted in another directory's container; only
+    // parts are held to their own family. The entry is filled from the
+    // sidebar family's own overlay.
+    expect(units[DIRECTORY].contract.mounted_in).toEqual([
+      { container: 'SidebarMenuItem', component: componentRef('sidebar-menu-item', contractMajor('sidebar', 'sidebar-menu-item')) },
+    ]);
   });
 
-  it('every nesting reference in the family points inside the family', () => {
+  it('every accepts reference and every part mount point points inside the family', () => {
+    // The root's own mount point is left out: it is the sidebar container
+    // asserted above.
     const familyRefs = new Set(ALL_STEMS.map((stem) => bareGtsId(String(units[stem].contract.$id))));
     for (const stem of ALL_STEMS) {
       const { contract } = units[stem];
-      const mounts = (contract.mounted_in ?? []).map((entry) => entry.component).filter((r): r is string => r !== undefined);
+      const mounts =
+        stem === DIRECTORY
+          ? []
+          : (contract.mounted_in ?? []).map((entry) => entry.component).filter((r): r is string => r !== undefined);
       for (const nested of [...(contract.accepts.components ?? []), ...mounts]) {
         expect(familyRefs.has(nested), `${stem}: it names "${nested}", which is not a member of this family`).toBe(true);
       }

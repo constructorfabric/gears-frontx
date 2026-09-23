@@ -1,0 +1,95 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_choice_shortcut.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "questionnaire-choice-shortcut",
+  "forwards_to": "gts.frontx.uikit.element.dom_span.v1~",
+  "intent": "The key cap showing the letter or number the root's shortcuts mode assigned to a QuestionnaireChoice.",
+  "typical_uses": [
+    "The key hint a QuestionnaireChoice renders at the end of its row"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Showing a keyboard key in running text or a menu",
+      "instead": {
+        "target": "Kbd",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.kbd.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "invariants": [
+    {
+      "id": "hidden-without-an-assignment",
+      "text": "The cap is aria-hidden always, and carries the native `hidden` attribute and no `data-shortcut` while the root assigned its choice no shortcut (no `shortcuts` mode, a disabled choice, a choice missing from its item's `choices` in `items`, or more choices than letters or digits)."
+    },
+    {
+      "id": "already-in-every-choice",
+      "text": "QuestionnaireChoice renders one QuestionnaireChoiceShortcut itself and is the only provider of the context this part needs, so a consumer-placed one is always a second cap in the row."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Nest a QuestionnaireChoiceShortcut in a QuestionnaireChoice's children",
+      "do_instead": "Rely on the cap the choice renders; set the key assignment with the root's `shortcuts`"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "The questionnaire engine's render prop takes an element or a function of the cap's own state (`QuestionnaireChoiceShortcutState`: shortcut), so its type is a union of a React element and a callback; the compiler emits one JSON type per property, so nothing is asserted."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Letter shortcuts assigned from the root",
+        "code": "<Questionnaire items={items} shortcuts=\"letters\">\n  {children}\n</Questionnaire>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A hand-written cap in the children",
+        "code": "<QuestionnaireChoice value=\"free\">\n  Free\n  <QuestionnaireChoiceShortcut>A</QuestionnaireChoiceShortcut>\n</QuestionnaireChoice>\n",
+        "why": "The row already renders its own cap, and a hand-written letter does not bind the key; only the root's `shortcuts` mode does."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "questionnaire",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit QuestionnaireChoiceShortcut",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "render": {
+        "description": "TS: RenderProp<QuestionnaireChoiceShortcutState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. The questionnaire engine's render prop takes an element or a function of the cap's own state (`QuestionnaireChoiceShortcutState`: shortcut), so its type is a union of a React element and a callback; the compiler emits one JSON type per property, so nothing is asserted."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

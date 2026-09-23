@@ -1,0 +1,83 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_group_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sidebar-group-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The body of a SidebarGroup, below its caption.",
+  "typical_uses": [
+    "The menu or the search field of a sidebar section"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The section's caption or its section-wide action",
+      "instead": {
+        "target": "SidebarGroupLabel",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_group_label.v1",
+        "note": "Or SidebarGroupAction for the action."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_input.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "SidebarGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_group.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "sets-the-body-type",
+      "text": "SidebarGroupContent is a full-width plain div that sets the body type size and line height for what it holds."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A menu in the section body",
+        "code": "<SidebarGroupContent>\n  <SidebarMenu>{items}</SidebarMenu>\n</SidebarGroupContent>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Rows without their menu",
+        "code": "<SidebarGroupContent>\n  <SidebarMenuButton>Home</SidebarMenuButton>\n</SidebarGroupContent>\n",
+        "why": "A row belongs in a SidebarMenuItem inside a SidebarMenu; alone it is not a list item and loses the menu's column layout."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sidebar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SidebarGroupContent",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

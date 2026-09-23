@@ -1,0 +1,117 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_separator.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sidebar-separator",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "A divider between regions or sections of the sidebar panel.",
+  "typical_uses": [
+    "A line between two groups in SidebarContent, or below the header's switcher"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A divider anywhere outside the sidebar panel",
+      "instead": {
+        "target": "Separator",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.separator.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "SidebarContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_content.v1"
+    },
+    {
+      "container": "SidebarFooter",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_footer.v1"
+    },
+    {
+      "container": "SidebarHeader",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_header.v1"
+    },
+    {
+      "container": "Sidebar",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "is-the-kit-separator",
+      "text": "SidebarSeparator is the kit's Separator with the sidebar border color; horizontal, it is inset 8px from each side instead of spanning the full width."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the separator's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the separator's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (orientation). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through sidebar.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Between two groups",
+        "code": "<SidebarContent>\n  <SidebarGroup>{projects}</SidebarGroup>\n  <SidebarSeparator />\n  <SidebarGroup>{settings}</SidebarGroup>\n</SidebarContent>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A plain Separator in the panel",
+        "code": "<SidebarContent>\n  <SidebarGroup>{projects}</SidebarGroup>\n  <Separator />\n</SidebarContent>\n",
+        "why": "Separator spans the full panel width in the page's border color; SidebarSeparator carries the panel's border color and its 8px inset."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sidebar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SidebarSeparator",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "orientation": {
+        "type": "string",
+        "enum": [
+          "horizontal",
+          "vertical"
+        ]
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, SeparatorState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the separator's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: SeparatorState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the separator's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (orientation). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through sidebar.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

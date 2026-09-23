@@ -1,0 +1,92 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_rail.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sidebar-rail",
+  "forwards_to": "gts.frontx.uikit.element.dom_button.v1~",
+  "intent": "An invisible hit strip along the sidebar panel's inner edge that toggles the sidebar when clicked.",
+  "typical_uses": [
+    "A pointer affordance on the panel edge"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The only toggle in the shell",
+      "instead": {
+        "target": "SidebarTrigger",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_trigger.v1",
+        "note": "The rail is out of the tab order and hidden below a 640px viewport, so it cannot be the shell's only toggle."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "Sidebar",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "out-of-the-tab-order",
+      "text": "The rail renders a native button with `tabIndex={-1}`, `aria-label` and `title` \"Toggle Sidebar\"; it is not reachable by Tab, and the three can be overridden by props."
+    },
+    {
+      "id": "click-runs-then-toggles",
+      "text": "A consumer `onClick` runs first and the sidebar toggles after it on every click."
+    },
+    {
+      "id": "shown-only-on-wider-viewports",
+      "text": "The rail is `display: none` below a 640px viewport and is positioned against the panel, so it only lands on the panel's edge as a child of Sidebar."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put the rail in the main area or in a panel section",
+      "do_instead": "Render it as a direct child of Sidebar, beside SidebarContent"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A rail at the end of the panel",
+        "code": "<Sidebar collapsible=\"icon\">\n  <SidebarContent>{groups}</SidebarContent>\n  <SidebarRail />\n</Sidebar>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The rail as the shell's only toggle",
+        "code": "<SidebarProvider>\n  <Sidebar>\n    <SidebarContent>{groups}</SidebarContent>\n    <SidebarRail />\n  </Sidebar>\n  <SidebarInset>{page}</SidebarInset>\n</SidebarProvider>\n",
+        "why": "The rail is out of the tab order and hidden on narrow viewports, leaving a keyboard or mobile user only the Cmd/Ctrl+B shortcut; add a SidebarTrigger."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sidebar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SidebarRail",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

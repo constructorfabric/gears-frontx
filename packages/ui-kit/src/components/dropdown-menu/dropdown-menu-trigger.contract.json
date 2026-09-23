@@ -68,7 +68,7 @@
   "prop_statements": {
     "children": {
       "states": "children is the trigger's caption, or the caption of the element passed through render",
-      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
     },
     "handle": {
       "states": "handle is an opaque object from the primitive's Menu.createHandle(), tying this trigger to a DropdownMenu root it is not placed inside",
@@ -80,11 +80,11 @@
     },
     "render": {
       "states": "render replaces the rendered element with one the caller supplies",
-      "because": "Base UI's render prop takes an element or a function of the trigger's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      "because": "Base UI's render prop takes an element or a function of the trigger's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
     },
     "style": {
       "states": "style accepts a function of the trigger's state as well as a plain style object",
-      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, disabled). A JSON Schema `object` would reject the function form, so nothing is asserted; dropdown-menu.module.css styles no trigger, so the button keeps the look the caller gives it."
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, disabled). The compiler emits one JSON type per property, so nothing is asserted; dropdown-menu.module.css styles no trigger, so the button keeps the look the caller gives it."
     }
   },
   "examples": {
@@ -123,7 +123,7 @@
         "type": "string"
       },
       "children": {
-        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the trigger's caption, or the caption of the element passed through render. `React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the trigger's caption, or the caption of the element passed through render. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
       },
       "closeDelay": {
         "type": "number"
@@ -147,10 +147,10 @@
         "description": "TS: unknown. The compiler emits one JSON type per property; this type is left to tsc. payload is any value handed to the root's function children when this trigger opens the menu. Typed by the caller's own `Payload` type parameter (`unknown` here), so no JSON Schema type can state what it holds."
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, MenuTriggerState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the trigger's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, MenuTriggerState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the trigger's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: MenuTriggerState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the trigger's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, disabled). A JSON Schema `object` would reject the function form, so nothing is asserted; dropdown-menu.module.css styles no trigger, so the button keeps the look the caller gives it."
+        "description": "TS: CSSProperties | ((state: MenuTriggerState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the trigger's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, disabled). The compiler emits one JSON type per property, so nothing is asserted; dropdown-menu.module.css styles no trigger, so the button keeps the look the caller gives it."
       }
     },
     "required": [],

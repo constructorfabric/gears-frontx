@@ -72,7 +72,7 @@
   "prop_statements": {
     "children": {
       "states": "children is the group's label and radio items",
-      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
     },
     "value": {
       "states": "value is the selected item's value, of any type the caller chooses",
@@ -88,11 +88,11 @@
     },
     "render": {
       "states": "render replaces the rendered element with one the caller supplies",
-      "because": "Base UI's render prop takes an element or a function of the group's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+      "because": "Base UI's render prop takes an element or a function of the group's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
     },
     "style": {
       "states": "style accepts a function of the group's state as well as a plain style object",
-      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through dropdown-menu.module.css, not through this."
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through dropdown-menu.module.css, not through this."
     }
   },
   "examples": {
@@ -127,7 +127,7 @@
         "type": "string"
       },
       "children": {
-        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the group's label and radio items. `React.ReactNode` is a union of elements, strings, numbers, fragments and more, which the compiler cannot state as one JSON type."
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the group's label and radio items. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
       },
       "defaultValue": {
         "description": "TS: any. The compiler emits one JSON type per property; this type is left to tsc. defaultValue is the initially selected item's value, of any type the caller chooses. Typed `any` by the primitive, so no JSON Schema type can state what it holds."
@@ -139,10 +139,10 @@
         "description": "TS: ((value: any, eventDetails: MenuRootChangeEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onValueChange is a callback called with the chosen item's value and event details, not a value. `(value: any, eventDetails) => void` - a function, which no JSON Schema type covers."
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, MenuRadioGroupState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the group's own state, so its type is a union of a React element and a callback - neither expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, MenuRadioGroupState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the group's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: MenuRadioGroupState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the group's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled). A JSON Schema `object` would reject the function form, so nothing is asserted; the kit's own styling goes through dropdown-menu.module.css, not through this."
+        "description": "TS: CSSProperties | ((state: MenuRadioGroupState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the group's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through dropdown-menu.module.css, not through this."
       },
       "value": {
         "description": "TS: any. The compiler emits one JSON type per property; this type is left to tsc. value is the selected item's value, of any type the caller chooses. Typed `any` by the primitive, so no JSON Schema type can state what it holds; items are matched against it by their own `value`."

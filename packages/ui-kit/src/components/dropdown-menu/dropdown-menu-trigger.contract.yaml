@@ -64,7 +64,7 @@ prop_statements:
     states: children is the trigger's caption, or the caption of the element passed through render
     because: >-
       `React.ReactNode` is a union of elements, strings, numbers, fragments
-      and more, which the compiler cannot state as one JSON type.
+      and more; the compiler emits one JSON type per property.
   handle:
     states: handle is an opaque object from the primitive's Menu.createHandle(), tying this trigger to a DropdownMenu root it is not placed inside
     because: >-
@@ -80,15 +80,13 @@ prop_statements:
     states: render replaces the rendered element with one the caller supplies
     because: >-
       Base UI's render prop takes an element or a function of the trigger's
-      own state, so its type is a union of a React element and a callback -
-      neither expressible in JSON Schema.
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
   style:
     states: style accepts a function of the trigger's state as well as a plain style object
     because: >-
       Base UI widens React's `CSSProperties` to
       `CSSProperties | ((state) => CSSProperties)` so a caller can style off
-      the primitive's own state (open, disabled). A JSON Schema `object`
-      would reject the function form, so nothing is asserted;
+      the primitive's own state (open, disabled). The compiler emits one JSON type per property, so nothing is asserted;
       dropdown-menu.module.css styles no trigger, so the button keeps the
       look the caller gives it.
 

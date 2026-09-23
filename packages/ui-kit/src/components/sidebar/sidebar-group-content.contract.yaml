@@ -1,0 +1,58 @@
+# Semantic overlay for SidebarGroupContent - a part of the sidebar family, see
+# sidebar-provider.contract.yaml for the root.
+component: sidebar-group-content
+
+intent: The body of a SidebarGroup, below its caption.
+
+typical_uses:
+  - The menu or the search field of a sidebar section
+
+dont_use_when:
+  - situation: The section's caption or its section-wide action
+    instead:
+      target: SidebarGroupLabel
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_group_label.v1
+      note: Or SidebarGroupAction for the action.
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu.v1 # SidebarMenu
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_input.v1 # SidebarInput
+
+invariants:
+  - id: sets-the-body-type
+    text: >-
+      SidebarGroupContent is a full-width plain div that sets the body type
+      size and line height for what it holds.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A menu in the section body
+      code: |
+        <SidebarGroupContent>
+          <SidebarMenu>{items}</SidebarMenu>
+        </SidebarGroupContent>
+  bad:
+    - title: Rows without their menu
+      code: |
+        <SidebarGroupContent>
+          <SidebarMenuButton>Home</SidebarMenuButton>
+        </SidebarGroupContent>
+      why: >-
+        A row belongs in a SidebarMenuItem inside a SidebarMenu; alone it
+        is not a list item and loses the menu's column layout.
+
+family_membership:
+  name: sidebar
+  role: part

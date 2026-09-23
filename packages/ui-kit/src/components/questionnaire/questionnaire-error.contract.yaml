@@ -1,0 +1,76 @@
+# Semantic overlay for QuestionnaireError - a part of the Questionnaire
+# family, see questionnaire.contract.yaml's `family_membership`.
+component: questionnaire-error
+
+intent: The validation message of a QuestionnaireItem, shown and announced only while the item is invalid.
+
+typical_uses:
+  - The message under an item's answers after a blocked Next or Submit
+
+dont_use_when:
+  - situation: A validation message for a field in an ordinary form
+    instead:
+      target: FieldError inside a Field
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.field_error.v1
+      note: A QuestionnaireError throws outside a QuestionnaireItem.
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: shown-only-while-invalid
+    text: >-
+      The element carries the native `hidden` attribute until the item is
+      invalid; while invalid it has role="alert" and its id joins the item
+      fieldset's `aria-describedby`.
+  - id: default-copy-follows-required
+    text: >-
+      Without children it reads "Choose an answer to continue." on a
+      required item and "Choose an answer or skip this question." on an
+      optional one; children replace that text.
+
+anti_patterns:
+  - dont: Render QuestionnaireError only when your own state says the item failed
+    do_instead: >-
+      Render it unconditionally in every item; it shows itself when the
+      item's validation fails
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      questionnaire.test.tsx asserts that a blocked Next shows an element
+      with role="alert" carrying the kit error class and the default text
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      The questionnaire engine's render prop takes an element or a function
+      of the message's own state (invalid), so its type is a union of a
+      React element and a callback; the compiler emits one JSON type per
+      property, so nothing is asserted.
+
+examples:
+  good:
+    - title: The default message
+      code: <QuestionnaireError />
+    - title: A replaced message
+      code: <QuestionnaireError>Pick a role to continue.</QuestionnaireError>
+  bad:
+    - title: The message mounted conditionally
+      code: "{failed && <QuestionnaireError />}"
+      why: >-
+        The item decides when it is invalid and toggles the message itself;
+        a conditional mount misses the failures Next and Submit report and
+        drops the alert the item wires into the fieldset's
+        `aria-describedby`.
+
+family_membership:
+  name: questionnaire
+  role: part

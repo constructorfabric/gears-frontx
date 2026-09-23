@@ -1,0 +1,81 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_sub_item.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sidebar-menu-sub-item",
+  "forwards_to": "gts.frontx.uikit.element.dom_li.v1~",
+  "intent": "One row of a SidebarMenuSub.",
+  "typical_uses": [
+    "One child page under a navigation row"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A top-level row of a menu",
+      "instead": {
+        "target": "SidebarMenuItem",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_item.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_sub_button.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "SidebarMenuSub",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_sub.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "plain-list-item",
+      "text": "SidebarMenuSubItem renders an `li` with `position: relative` and no styling of its own."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "One child row",
+        "code": "<SidebarMenuSubItem>\n  <SidebarMenuSubButton href=\"/docs/intro\">\n    <span>Introduction</span>\n  </SidebarMenuSubButton>\n</SidebarMenuSubItem>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A top-level row button in a sub-row",
+        "code": "<SidebarMenuSubItem>\n  <SidebarMenuButton>Introduction</SidebarMenuButton>\n</SidebarMenuSubItem>\n",
+        "why": "SidebarMenuButton is sized for a top-level row; a sub-row takes SidebarMenuSubButton, 28px tall and styled for the nested level."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sidebar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SidebarMenuSubItem",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

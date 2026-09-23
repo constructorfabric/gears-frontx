@@ -1,0 +1,79 @@
+# Semantic overlay for QuestionnaireChoiceInput - a part of the
+# Questionnaire family, see questionnaire.contract.yaml's
+# `family_membership`.
+component: questionnaire-choice-input
+
+intent: The native radio or checkbox input of a QuestionnaireChoice, invisible and stretched over the whole row so the row is its click target.
+
+typical_uses:
+  - The input a QuestionnaireChoice renders for itself
+
+dont_use_when:
+  - situation: Adding an answer to a question
+    instead:
+      target: QuestionnaireChoice
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_choice.v1
+
+accepts:
+  content: nothing
+
+invariants:
+  - id: state-comes-from-its-choice
+    text: >-
+      Its `checked`, `name`, `type`, `value`, `disabled` and `required`
+      come from the enclosing QuestionnaireChoice and its item, which is why
+      its props omit them; the name is dropped while the item is skipped,
+      so a skipped item submits nothing.
+  - id: already-in-every-choice
+    text: >-
+      QuestionnaireChoice renders one QuestionnaireChoiceInput itself and is
+      the only provider of the context this part needs, so a consumer-placed
+      one always lands beside that built-in input.
+
+anti_patterns:
+  - dont: Render a QuestionnaireChoiceInput to build a custom choice layout
+    do_instead: >-
+      Use QuestionnaireChoice and restyle it through questionnaire.module.css;
+      this part throws outside a QuestionnaireChoice, and inside one it adds
+      a second input to the row
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      questionnaire.test.tsx asserts the input found by role radio has type
+      "radio", and the one found by role checkbox in a multiple item has
+      type "checkbox"
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      The questionnaire engine's render prop takes an element or a function
+      of the input's own state (`QuestionnaireChoiceState`: checked,
+      disabled, invalid, shortcut, type), so its type is a union of a React
+      element and a callback; the compiler emits one JSON type per property,
+      so nothing is asserted.
+
+examples:
+  good:
+    - title: The input comes with the choice
+      code: <QuestionnaireChoice value="engineer">Engineer</QuestionnaireChoice>
+  bad:
+    - title: A second input inside a choice
+      code: |
+        <QuestionnaireChoice value="engineer">
+          <QuestionnaireChoiceInput />
+          Engineer
+        </QuestionnaireChoice>
+      why: >-
+        The row already renders its input; the nested one is a second native
+        radio with the same name and value inside the label.
+
+family_membership:
+  name: questionnaire
+  role: part

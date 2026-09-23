@@ -1,0 +1,74 @@
+# Semantic overlay for SidebarGroupAction - a part of the sidebar family, see
+# sidebar-provider.contract.yaml for the root.
+component: sidebar-group-action
+
+intent: A small icon button on a SidebarGroup's caption row acting on the whole section.
+
+typical_uses:
+  - An add or configure action beside a section's caption
+
+dont_use_when:
+  - situation: An action on one row of a menu
+    instead:
+      target: SidebarMenuAction
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_action.v1
+
+# The icon reaches the button through children.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: pinned-to-the-group-corner
+    text: >-
+      The action is absolutely positioned 12px from the group's right edge,
+      vertically centred on the caption row, as a 20px square sizing a
+      direct `svg` child to the small icon size.
+  - id: hidden-in-the-icon-rail
+    text: Collapsed to the icon rail the action is not displayed.
+  - id: icon-only-needs-a-name
+    text: >-
+      It renders a native button with no accessible name of its own; an
+      icon-only action needs `aria-label`.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: failed
+    by: >-
+      sidebar.module.css positions .groupAction with the physical `right`
+      property, so it stays on the right edge under a right-to-left
+      direction
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's useRender takes an element or a function of the action's own
+      state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+
+examples:
+  good:
+    - title: A named add action
+      code: |
+        <SidebarGroupAction aria-label="Add project">
+          <PlusIcon />
+        </SidebarGroupAction>
+  bad:
+    - title: An icon-only action with no name
+      code: |
+        <SidebarGroupAction>
+          <PlusIcon />
+        </SidebarGroupAction>
+      why: >-
+        The button's only content is the icon, so it is announced as an
+        unnamed button; pass `aria-label`.
+
+family_membership:
+  name: sidebar
+  role: part
