@@ -1,0 +1,610 @@
+.portalAnchor {
+  display: contents;
+}
+
+.dialog {
+  box-sizing: border-box;
+  display: flex;
+  min-block-size: 0;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  font-size: var(--cal-text-label-size);
+  line-height: var(--cal-text-label-line-height);
+  background: var(--cal-color-overlay-surface);
+  color: var(--cal-color-text);
+  font-family: var(--cal-font-family);
+}
+
+.compact {
+  position: fixed;
+  inset-block-start: var(--cal-space-4);
+  inset-inline-end: var(--cal-space-4);
+  inline-size: min(100%, 28rem);
+  max-block-size: calc(100dvh - var(--cal-space-8));
+}
+
+.expanded {
+  composes: expandedDialog from "../../styles/modules/overlay.module.css";
+}
+
+.columns {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
+  min-block-size: 0;
+}
+
+.mainColumn,
+.sideColumn {
+  display: flex;
+  min-block-size: 0;
+  flex-direction: column;
+  gap: var(--cal-space-3);
+}
+
+.mainColumn {
+  padding-inline-end: var(--cal-space-4);
+  border-inline-end: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+}
+
+.sideColumn {
+  padding-inline-start: var(--cal-space-4);
+}
+
+@media (max-width: 720px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mainColumn {
+    padding-inline-end: 0;
+    border-inline-end: 0;
+  }
+
+  .sideColumn {
+    padding-inline-start: 0;
+  }
+}
+
+.form {
+  display: flex;
+  flex: 1;
+  min-block-size: 0;
+  flex-direction: column;
+  padding: var(--cal-space-4);
+}
+
+.header,
+.footer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+}
+
+.heading,
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--cal-space-2);
+}
+
+.heading {
+  min-inline-size: 0;
+  flex: 1;
+  justify-content: space-between;
+  min-block-size: 48px;
+  padding: var(--cal-space-2);
+}
+
+.headerDivider,
+.footerDivider {
+  flex: none;
+}
+
+.footerActions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cal-space-2);
+  justify-content: flex-end;
+  padding: var(--cal-space-2) var(--cal-space-5);
+}
+
+.footerActions > button {
+  border-width: 0;
+}
+
+.footerActions > button:disabled:not([aria-busy="true"]) {
+  color: var(--cal-color-placeholder);
+  opacity: 1;
+}
+
+.title {
+  min-inline-size: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  padding-inline-start: var(--cal-space-2);
+  font-size: var(--cal-text-label-size);
+  line-height: var(--cal-text-label-line-height);
+  font-weight: var(--cal-text-title-weight);
+}
+
+.description {
+  composes: helperText from "../../styles/modules/text.module.css";
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  min-block-size: 0;
+  flex-direction: column;
+  gap: var(--cal-space-3);
+  overflow-y: auto;
+}
+
+.field {
+  min-inline-size: 0;
+}
+
+.control,
+.controlWrap {
+  inline-size: 100%;
+}
+
+.control input[type="date"],
+.control input[type="time"] {
+  appearance: none;
+}
+
+.control input[type="date"]::-webkit-calendar-picker-indicator,
+.control input[type="time"]::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
+.comboboxField {
+  inline-size: 100%;
+}
+
+.comboboxFieldControl {
+  box-sizing: border-box;
+  background: var(--cal-color-surface);
+  border: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  border-radius: var(--cal-radius-md);
+  color: var(--cal-color-text);
+  font-size: var(--cal-text-label-size);
+  gap: var(--cal-space-2);
+  inline-size: 100%;
+  line-height: var(--cal-text-label-line-height);
+  padding-inline: var(--cal-space-3);
+}
+
+.comboboxFieldControl :global(input) {
+  font-size: var(--cal-text-label-size);
+  line-height: var(--cal-text-label-line-height);
+}
+
+.comboboxFieldTags {
+  block-size: auto;
+  min-block-size: calc(var(--cal-space-6) + (var(--cal-space-2) * 2));
+  padding-block: var(--cal-space-2);
+}
+
+.timeRow,
+.dateRow {
+  align-items: center;
+  display: grid;
+  gap: var(--cal-space-2);
+  min-inline-size: 0;
+}
+
+/* Shared tracks keep both rows' columns aligned. */
+.timeRow {
+  grid-template-columns:
+    minmax(0, 1fr) calc(var(--cal-icon-size-sm) - var(--cal-space-2))
+    minmax(0, 1fr) 85px;
+}
+
+.dateRow {
+  grid-template-columns:
+    minmax(0, 1fr) calc(var(--cal-icon-size-sm) - var(--cal-space-2))
+    minmax(0, 1fr) 85px;
+}
+
+.rowField {
+  min-inline-size: 0;
+}
+
+.rowArrow {
+  block-size: var(--cal-icon-size-sm);
+  color: var(--cal-color-muted);
+  inline-size: var(--cal-icon-size-sm);
+  justify-self: center;
+}
+
+.repeatHint {
+  color: var(--cal-color-muted);
+  font-size: var(--cal-text-meta-size);
+  line-height: var(--cal-text-meta-line-height);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.dayCount {
+  color: var(--cal-color-muted);
+  font-size: var(--cal-text-label-size);
+  line-height: var(--cal-text-label-line-height);
+  white-space: nowrap;
+}
+
+.locationButton {
+  justify-content: center;
+  inline-size: 100%;
+}
+
+.locationButton svg {
+  block-size: var(--cal-icon-size-sm);
+  inline-size: var(--cal-icon-size-sm);
+}
+
+.visuallyHidden {
+  composes: srOnly from "../../styles/modules/sr-only.module.css";
+}
+
+.calendarColorDot {
+  block-size: var(--cal-icon-size-sm);
+  border-radius: var(--cal-radius-pill);
+  display: inline-block;
+  flex-shrink: 0;
+  inline-size: var(--cal-icon-size-sm);
+}
+
+.calendarColorTurquoise {
+  background: var(--cal-color-turquoise-accent);
+}
+
+.calendarColorPurple {
+  background: var(--cal-color-purple-accent);
+}
+
+.calendarColorOrange {
+  background: var(--cal-color-orange-accent);
+}
+
+.calendarColorGreen {
+  background: var(--cal-color-success);
+}
+
+.calendarColorBlue {
+  background: var(--cal-color-info);
+}
+
+.calendarColorPink {
+  background: var(--cal-color-error);
+}
+
+.checkboxField {
+  align-items: center;
+}
+
+.separator {
+  flex: none;
+  margin-block: var(--cal-space-1);
+}
+
+/* Centred on the card, like the discard dialog. */
+.repeatBackdrop {
+  background: var(--cal-color-scrim);
+  inset: 0;
+  opacity: 0.72;
+  position: absolute;
+  z-index: calc(var(--cal-layer-overlay) + 1);
+}
+
+.repeatPopover.repeatPopover {
+  box-sizing: border-box;
+  inline-size: 406px;
+  block-size: auto;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  max-block-size: calc(100% - (var(--cal-space-4) * 2));
+  max-inline-size: calc(100% - (var(--cal-space-4) * 2));
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  font-size: var(--cal-text-label-size);
+  line-height: var(--cal-text-label-line-height);
+  border: 0;
+  border-radius: 16px;
+  background: var(--cal-color-overlay-surface);
+  box-shadow:
+    inset 0 0 0 var(--cal-border-width-1) var(--cal-color-overlay-border),
+    var(--cal-shadow-panel);
+  z-index: calc(var(--cal-layer-overlay) + 2);
+}
+
+.repeatView {
+  box-sizing: border-box;
+  background: var(--cal-color-surface);
+  block-size: 100%;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  inline-size: 100%;
+}
+
+.repeatHeader {
+  align-items: center;
+  box-sizing: border-box;
+  display: flex;
+  flex: none;
+  gap: var(--cal-space-2);
+  block-size: 48px;
+  padding-inline: var(--cal-space-2);
+}
+
+.repeatTitle {
+  flex: 1;
+  font-size: var(--cal-text-label-size);
+  font-weight: var(--cal-text-title-weight);
+  line-height: var(--cal-text-label-line-height);
+  margin: 0;
+  min-inline-size: 0;
+}
+
+.customBody {
+  --repeat-row-height: 28px;
+  align-items: flex-start;
+  box-sizing: border-box;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--cal-space-5);
+  inline-size: 100%;
+  overflow: hidden;
+  padding: var(--cal-space-4) var(--cal-space-4) var(--cal-space-6);
+}
+
+.repeatIntervalRow {
+  align-items: center;
+  block-size: var(--repeat-row-height);
+  display: flex;
+  flex: none;
+  gap: var(--cal-space-2);
+  inline-size: 100%;
+}
+
+.repeatInlineLabel {
+  color: var(--cal-color-text);
+  flex: none;
+  inline-size: 40px;
+}
+
+.repeatInterval,
+.repeatUnit {
+  box-sizing: border-box;
+  flex: none;
+  inline-size: 88px;
+}
+
+.repeatInterval :global(button),
+.repeatUnit :global(button) {
+  block-size: var(--repeat-row-height);
+}
+
+.weekdays {
+  align-items: center;
+  border: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex: none;
+  flex-direction: row;
+  gap: var(--cal-space-2);
+  inline-size: 100%;
+  block-size: var(--repeat-row-height);
+  margin: 0;
+  min-inline-size: 0;
+  padding: 0;
+}
+
+.weekdays legend,
+.ends legend {
+  color: var(--cal-color-text);
+  flex: none;
+  inline-size: 40px;
+  padding: 0;
+}
+
+.ends legend {
+  margin-block-end: var(--cal-space-2);
+}
+
+.weekdayButtons {
+  align-items: center;
+  display: flex;
+  flex: none;
+  flex-wrap: nowrap;
+  gap: var(--cal-space-1);
+  inline-size: fit-content;
+}
+
+.weekdayButtons :global(button) {
+  block-size: var(--repeat-row-height);
+  inline-size: auto;
+  padding-inline: var(--cal-space-3);
+}
+
+.ends {
+  align-items: center;
+  border: 0;
+  box-sizing: border-box;
+  column-gap: var(--cal-space-4);
+  display: grid;
+  flex: none;
+  grid-template-columns: max-content minmax(0, 1fr);
+  inline-size: 100%;
+  block-size: auto;
+  margin: 0;
+  min-inline-size: 0;
+  padding: 0;
+  row-gap: var(--cal-space-2);
+}
+
+.endOptions {
+  display: contents;
+}
+
+.endOptions > :global(span) {
+  min-inline-size: max-content;
+}
+
+.endOptions > :global(span):nth-child(1) {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.endOptions > :global(span):nth-child(2) {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  grid-column: 1;
+  grid-row: 2;
+  /* Floored to the control height so switching Never/On does not move the radio. */
+  min-block-size: var(--cal-control-height-sm);
+}
+
+.repeatEndDate {
+  box-sizing: border-box;
+  grid-column: 2;
+  grid-row: 2;
+  inline-size: max-content;
+  margin: 0;
+  max-inline-size: 100%;
+  min-inline-size: 202px;
+}
+
+.repeatFooter {
+  align-items: center;
+  block-size: 52px;
+  border-block-start: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  box-sizing: border-box;
+  display: flex;
+  flex: none;
+  gap: var(--cal-space-2);
+  justify-content: flex-end;
+  padding: var(--cal-space-2) var(--cal-space-3);
+}
+
+.discardBackdrop {
+  background: var(--cal-color-scrim);
+  inset: 0;
+  opacity: 0.72;
+  position: absolute;
+  z-index: 20;
+}
+
+/* Doubled class outranks the primitive's surface rule. */
+.discardDialog.discardDialog {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cal-space-4);
+  inline-size: 340px;
+  padding: var(--cal-space-4);
+  border: var(--cal-border-width-1) solid var(--cal-color-overlay-border);
+  border-radius: 16px;
+  background: var(--cal-color-overlay-surface);
+  box-shadow: var(--cal-shadow-panel);
+  font-size: var(--cal-text-label-size);
+  line-height: var(--cal-text-label-line-height);
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  max-block-size: calc(100% - (var(--cal-space-8) * 2));
+  max-inline-size: calc(100% - (var(--cal-space-8) * 2));
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 21;
+}
+
+@media (max-width: 480px) {
+  .compact {
+    inset-inline: var(--cal-space-2);
+    inline-size: auto;
+  }
+}
+
+.discardHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cal-space-1);
+}
+
+.discardTitle {
+  margin: 0;
+  color: var(--cal-color-text);
+  font-size: var(--cal-text-label-size);
+  line-height: var(--cal-text-label-line-height);
+  font-weight: var(--cal-text-title-weight);
+}
+
+.discardDescription {
+  margin: 0;
+  color: var(--cal-color-muted);
+  font-size: var(--cal-text-label-size);
+  line-height: var(--cal-text-label-line-height);
+}
+
+.discardFooter {
+  display: flex;
+  gap: var(--cal-space-2);
+  justify-content: flex-end;
+}
+
+.discardCancel,
+.discardAction {
+  box-sizing: border-box;
+  block-size: var(--cal-control-height-md);
+  min-block-size: var(--cal-control-height-md);
+  padding-block: 0;
+  padding-inline: var(--cal-space-4);
+  border: 0;
+  border-radius: var(--cal-radius-md);
+  font-size: var(--cal-text-label-size);
+  line-height: var(--cal-text-label-line-height);
+  font-weight: var(--cal-text-label-weight);
+}
+
+.discardCancel {
+  background: var(--cal-state-hover);
+  color: var(--cal-color-text);
+}
+
+.discardAction {
+  background: var(--cal-color-error);
+  color: var(--cal-color-action-foreground);
+}
+
+/* Neutral focus ring; the UA ring would paint the host theme's blue. */
+.discardCancel:focus-visible,
+.discardAction:focus-visible {
+  outline: var(--cal-border-width-focus) solid var(--cal-color-grid-line-strong);
+  outline-offset: var(--cal-border-width-1);
+}
+
+/* ui-kit fills radios grey by default. */
+.ends :global([role="radio"]) {
+  background: var(--cal-color-surface);
+  border-color: var(--cal-color-muted);
+}
+
+.ends :global([role="radio"][aria-checked="true"]) {
+  background: var(--cal-color-surface);
+  border-color: var(--cal-color-text);
+}

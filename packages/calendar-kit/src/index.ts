@@ -259,3 +259,47 @@ export type { WeekGridProps } from "./ui/week-grid/public";
 export type { DayGridProps } from "./ui/day-grid/public";
 
 export type { ConflictIndicatorProps } from "./ui/conflict-indicator/public";
+
+export { AgendaView } from "./ui/agenda-view/public";
+
+export { SearchResults } from "./ui/search-results/public";
+
+
+
+export {
+  useAgendaViewController,
+  useCreateEventController,
+  SEARCH_STATE,
+  useSearchResultsController,
+} from "./react/public";
+
+export type {
+  AgendaAnnouncement,
+  AgendaViewController,
+  AgendaViewControllerInput,
+  CreateEventField,
+  CreateEventValidationError,
+  SearchResultsController,
+  SearchResultsControllerOptions,
+  SearchState,
+} from "./react/public";
+
+export type {
+  SearchResultContext,
+  SearchResultsProps,
+} from "./ui/search-results/public";
+
+export type {
+  CreateEventPopoverProps,
+  CalendarResourceOption,
+  CreateEventSubmitError,
+  UseCreateEventControllerOptions,
+  UseCreateEventControllerResult,
+  CustomRepeatState,
+  RepeatEndKind,
+  RepeatPreset,
+  RepeatUnit,
+  CreateEventErrorTranslate,
+} from "./ui/create-event/public";
+
+export type { AgendaViewProps } from "./ui/agenda-view/public";
