@@ -252,7 +252,7 @@ module.exports = {
       name: 'frontx-single-intra-ecosystem-edge-api-standalone',
       severity: 'error',
       from: { path: '^packages/api/src/' },
-      to: { path: pkgTargets('mfes', 'gts-plugin', 'cli', 'cyber-pilot-kit-frontx', 'telemetry', 'routing', 'routing-tanstack') },
+      to: { path: pkgTargets('mfes', 'gts-plugin', 'cli', 'cyber-pilot-kit-frontx', 'telemetry', 'routing', 'routing-tanstack', 'calendar-kit') },
       comment:
         'cpt-frontx-adr-ai-driven-upgrade-orchestration: @gears-frontx/api holds no intra-ecosystem package dependency.',
     },
@@ -260,7 +260,7 @@ module.exports = {
       name: 'frontx-single-intra-ecosystem-edge-cli-standalone',
       severity: 'error',
       from: { path: '^packages/cli/src/' },
-      to: { path: pkgTargets('mfes', 'gts-plugin', 'api', 'cyber-pilot-kit-frontx', 'telemetry', 'routing', 'routing-tanstack') },
+      to: { path: pkgTargets('mfes', 'gts-plugin', 'api', 'cyber-pilot-kit-frontx', 'telemetry', 'routing', 'routing-tanstack', 'calendar-kit') },
       comment:
         'cpt-frontx-adr-ai-driven-upgrade-orchestration: @gears-frontx/cli holds no intra-ecosystem package dependency.',
     },
@@ -268,7 +268,7 @@ module.exports = {
       name: 'frontx-single-intra-ecosystem-edge-kit-standalone',
       severity: 'error',
       from: { path: '^packages/cyber-pilot-kit-frontx/src/' },
-      to: { path: pkgTargets('mfes', 'gts-plugin', 'api', 'cli', 'telemetry', 'routing', 'routing-tanstack') },
+      to: { path: pkgTargets('mfes', 'gts-plugin', 'api', 'cli', 'telemetry', 'routing', 'routing-tanstack', 'calendar-kit') },
       comment:
         'cpt-frontx-adr-ai-driven-upgrade-orchestration: @gears-frontx/cyber-pilot-kit-frontx holds no intra-ecosystem package dependency — in particular no @gears-frontx/cli edge; it coordinates with the CLI only over its command/invocation surface.',
     },
@@ -276,7 +276,7 @@ module.exports = {
       name: 'frontx-single-intra-ecosystem-edge-mfes-gts-plugin-only',
       severity: 'error',
       from: { path: '^packages/mfes/src/' },
-      to: { path: pkgTargets('api', 'cli', 'cyber-pilot-kit-frontx', 'telemetry', 'routing', 'routing-tanstack') },
+      to: { path: pkgTargets('api', 'cli', 'cyber-pilot-kit-frontx', 'telemetry', 'routing', 'routing-tanstack', 'calendar-kit') },
       comment:
         'cpt-frontx-adr-ai-driven-upgrade-orchestration: the only intra-ecosystem package edge is @gears-frontx/mfes -> @gears-frontx/gts-plugin (via the type-substrate port); @gears-frontx/mfes must not depend on @gears-frontx/api, @gears-frontx/cli, or @gears-frontx/cyber-pilot-kit-frontx.',
     },
@@ -295,7 +295,7 @@ module.exports = {
       name: 'frontx-ui-kit-interim-not-imported-by-ecosystem',
       severity: 'error',
       from: { path: '^packages/(mfes|gts-plugin|api|cli|cyber-pilot-kit-frontx|telemetry)/src/' },
-      to: { path: pkgTargets('ui-kit', 'routing', 'routing-tanstack') },
+      to: { path: pkgTargets('ui-kit', 'routing', 'routing-tanstack', 'calendar-kit') },
       comment:
         'INTERIM (#495): existing ecosystem packages must not acquire an unapproved dependency on @gears-frontx/ui-kit.',
     },
@@ -303,7 +303,7 @@ module.exports = {
       name: 'frontx-ui-kit-interim-no-intra-ecosystem-imports',
       severity: 'error',
       from: { path: '^packages/ui-kit/src/' },
-      to: { path: pkgTargets('mfes', 'gts-plugin', 'api', 'cli', 'cyber-pilot-kit-frontx', 'telemetry', 'routing', 'routing-tanstack') },
+      to: { path: pkgTargets('mfes', 'gts-plugin', 'api', 'cli', 'cyber-pilot-kit-frontx', 'telemetry', 'routing', 'routing-tanstack', 'calendar-kit') },
       comment:
         'INTERIM (#495): @gears-frontx/ui-kit remains isolated until its dependency policy is approved.',
     },
@@ -311,9 +311,41 @@ module.exports = {
       name: 'frontx-single-intra-ecosystem-edge-telemetry-standalone',
       severity: 'error',
       from: { path: '^packages/telemetry/src/' },
-      to: { path: pkgTargets('mfes', 'gts-plugin', 'api', 'cli', 'cyber-pilot-kit-frontx', 'ui-kit', 'routing', 'routing-tanstack') },
+      to: { path: pkgTargets('mfes', 'gts-plugin', 'api', 'cli', 'cyber-pilot-kit-frontx', 'ui-kit', 'routing', 'routing-tanstack', 'calendar-kit') },
       comment:
         'ecosystem-boundaries: @gears-frontx/telemetry holds no intra-ecosystem package dependency.',
+    },
+
+    // ============ CALENDAR-KIT BOUNDARY ENFORCEMENT ============
+    // Interim isolation mirroring the `frontx-ui-kit-interim-*` rules above:
+    // the packaging decision is recorded as the accepted
+    // `cpt-frontx-calendar-kit-adr-calendar-kit-packaging` (cited by
+    // `packages/calendar-kit/architecture/DESIGN.md`), but an ADR carries no
+    // numbered instruction for a marker to bind to, so these rules stay
+    // outside CDSL markers until a traced instruction-bearing policy replaces
+    // them.
+    {
+      name: 'frontx-calendar-kit-1-no-template-content',
+      severity: 'error',
+      from: { path: '^packages/calendar-kit/src/' },
+      // Same `couldNotResolve: false` reasoning as
+      // `frontx-routing-1-no-template-content`: before `@gears-frontx/ui-kit`'s
+      // own `dist` is built, that import keeps its bare specifier as
+      // `resolved`, which would otherwise misdiagnose "not yet built" as
+      // "imports template territory".
+      to: { path: '^(?!packages/|node_modules/|internal/|scripts/).+', couldNotResolve: false },
+      comment:
+        'ecosystem-boundaries: @gears-frontx/calendar-kit is an ecosystem package and must not import template territory at the source level.',
+    },
+    {
+      name: 'frontx-calendar-kit-2-single-ecosystem-edge',
+      severity: 'error',
+      from: { path: '^packages/calendar-kit/src/' },
+      to: {
+        path: pkgTargets('mfes', 'gts-plugin', 'api', 'cli', 'cyber-pilot-kit-frontx', 'telemetry', 'routing', 'routing-tanstack'),
+      },
+      comment:
+        'INTERIM: @gears-frontx/calendar-kit imports exactly one ecosystem package, the component substrate (@gears-frontx/ui-kit), and no other.',
     },
 
     // ============ ROUTING BOUNDARY ENFORCEMENT ============
@@ -341,7 +373,7 @@ module.exports = {
         // ecosystem packages: it depends on `routing` (the navigation
         // substrate), never the reverse — @gears-frontx/routing is the core
         // and must not import its own provider back.
-        path: pkgTargets('mfes', 'gts-plugin', 'api', 'cli', 'cyber-pilot-kit-frontx', 'ui-kit', 'telemetry', 'routing-tanstack'),
+        path: pkgTargets('mfes', 'gts-plugin', 'api', 'cli', 'cyber-pilot-kit-frontx', 'ui-kit', 'telemetry', 'routing-tanstack', 'calendar-kit'),
       },
       comment:
         'cpt-frontx-constraint-routing-no-intra-ecosystem-dependency: @gears-frontx/routing imports no other package in this ecosystem — in particular, not its own provider, @gears-frontx/routing-tanstack.',
@@ -399,7 +431,7 @@ module.exports = {
       severity: 'error',
       from: { path: '^packages/routing-tanstack/src/' },
       to: {
-        path: pkgTargets('mfes', 'gts-plugin', 'api', 'cli', 'cyber-pilot-kit-frontx', 'ui-kit', 'telemetry'),
+        path: pkgTargets('mfes', 'gts-plugin', 'api', 'cli', 'cyber-pilot-kit-frontx', 'ui-kit', 'telemetry', 'calendar-kit'),
       },
       comment:
         'cpt-frontx-routing-tanstack-nfr-single-ecosystem-edge: @gears-frontx/routing-tanstack imports exactly one ecosystem package, the navigation substrate (@gears-frontx/routing), and no other.',
@@ -411,7 +443,7 @@ module.exports = {
       // image of `frontx-routing-3-no-engine-leak` above, but ecosystem-wide
       // rather than scoped to one package's src/.
       from: {
-        path: '^packages/(mfes|gts-plugin|api|cli|cyber-pilot-kit-frontx|ui-kit|telemetry|routing)/src/',
+        path: '^packages/(mfes|gts-plugin|api|cli|cyber-pilot-kit-frontx|ui-kit|telemetry|routing|calendar-kit)/src/',
       },
       to: {
         // Same two resolution shapes as frontx-routing-3-no-engine-leak's

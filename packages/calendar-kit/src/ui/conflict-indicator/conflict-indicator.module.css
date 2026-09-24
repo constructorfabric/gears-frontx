@@ -1,0 +1,58 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cal-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--cal-font-family);
+  font-size: var(--cal-text-meta-size);
+  line-height: var(--cal-text-meta-line-height);
+  font-weight: var(--cal-text-meta-weight);
+  letter-spacing: var(--cal-text-meta-tracking);
+}
+
+.item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--cal-space-1);
+  min-inline-size: 0;
+  color: var(--cal-color-muted);
+}
+
+.item.warning {
+  color: var(--cal-color-warning);
+}
+
+.item.error {
+  color: var(--cal-color-conflict);
+}
+
+.dimension {
+  flex-shrink: 0;
+  font-weight: var(--cal-text-grid-weight);
+  color: var(--cal-color-subtle);
+}
+
+.label {
+  composes: ellipsis from "../../styles/modules/text.module.css";
+  white-space: nowrap;
+}
+
+.compact {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--cal-space-1);
+}
+
+.marker {
+  display: inline-block;
+  inline-size: var(--cal-icon-size-xs);
+  block-size: var(--cal-icon-size-xs);
+  border-radius: var(--cal-radius-pill);
+  background-color: var(--cal-color-conflict);
+}
+
+.item.warning .marker {
+  background-color: var(--cal-color-warning);
+}

@@ -1,0 +1,92 @@
+.backdrop {
+  background: var(--cal-color-scrim);
+  inset: 0;
+  opacity: 0.72;
+  position: fixed;
+  z-index: var(--cal-layer-overlay);
+}
+
+/* Nested in another surface: dims it with an absolute scrim. */
+.noBackdrop {
+  display: none;
+}
+
+.surface {
+  background: var(--cal-color-surface);
+  border: var(--cal-border-width-1) solid var(--cal-color-overlay-border);
+  border-radius: var(--cal-radius-lg);
+  box-shadow: var(--cal-shadow-overlay);
+  color: var(--cal-color-text);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cal-space-4);
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  max-block-size: calc(100vh - (var(--cal-space-8) * 2));
+  max-inline-size: min(32rem, calc(100vw - (var(--cal-space-8) * 2)));
+  outline: none;
+  overflow: auto;
+  padding: var(--cal-space-5);
+  position: fixed;
+  transform: translate(-50%, -50%);
+  z-index: calc(var(--cal-layer-overlay) + 1);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cal-space-1);
+}
+
+.footer {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cal-space-2);
+  justify-content: flex-end;
+}
+
+.title {
+  composes: dialogTitle from "../../../styles/modules/text.module.css";
+}
+
+.description {
+  composes: helperText from "../../../styles/modules/text.module.css";
+}
+
+.closeButton {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--cal-radius-sm);
+  color: var(--cal-color-muted);
+  cursor: pointer;
+  display: inline-flex;
+  inset-block-start: var(--cal-space-3);
+  inset-inline-end: var(--cal-space-3);
+  justify-content: center;
+  padding: var(--cal-space-1);
+  position: absolute;
+}
+
+.closeButton:hover {
+  background: var(--cal-state-hover);
+  color: var(--cal-color-text);
+}
+
+.closeButton:focus-visible {
+  outline: var(--cal-focus-ring-width) solid var(--cal-color-focus-ring);
+  outline-offset: var(--cal-border-width-focus);
+}
+
+.icon {
+  block-size: var(--cal-icon-size-sm);
+  inline-size: var(--cal-icon-size-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .surface {
+    transition: none;
+  }
+}

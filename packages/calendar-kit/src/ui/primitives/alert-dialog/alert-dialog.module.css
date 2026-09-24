@@ -1,0 +1,94 @@
+.backdrop {
+  background: var(--cal-color-scrim);
+  inset: 0;
+  opacity: 0.72;
+  position: fixed;
+  z-index: var(--cal-layer-alert);
+}
+
+.noBackdrop {
+  display: none;
+}
+
+.surface {
+  background: var(--cal-color-surface);
+  border: var(--cal-border-width-1) solid var(--cal-color-overlay-border);
+  border-radius: var(--cal-radius-lg);
+  box-shadow: var(--cal-shadow-overlay);
+  color: var(--cal-color-text);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cal-space-4);
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  max-block-size: calc(100vh - (var(--cal-space-8) * 2));
+  max-inline-size: min(28rem, calc(100vw - (var(--cal-space-8) * 2)));
+  outline: none;
+  overflow: auto;
+  padding: var(--cal-space-5);
+  position: fixed;
+  transform: translate(-50%, -50%);
+  z-index: calc(var(--cal-layer-alert) + 1);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cal-space-1);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cal-space-2);
+  justify-content: flex-end;
+}
+
+.title {
+  composes: dialogTitle from "../../../styles/modules/text.module.css";
+}
+
+.description {
+  composes: helperText from "../../../styles/modules/text.module.css";
+}
+
+.cancel,
+.action {
+  border: var(--cal-border-width-1) solid transparent;
+  border-radius: var(--cal-radius-sm);
+  cursor: pointer;
+  font: inherit;
+  font-weight: var(--cal-text-meta-weight);
+  min-block-size: var(--cal-control-height-md);
+  padding-block: var(--cal-space-2);
+  padding-inline: var(--cal-space-4);
+}
+
+.cancel {
+  background: var(--cal-color-raised);
+  border-color: var(--cal-color-grid-line);
+  color: var(--cal-color-text);
+}
+
+.action {
+  background: var(--cal-color-error);
+  color: var(--cal-color-error-foreground);
+}
+
+.cancel:hover,
+.action:hover {
+  filter: brightness(0.94);
+}
+
+.cancel:focus-visible,
+.action:focus-visible {
+  outline: var(--cal-focus-ring-width) solid var(--cal-color-focus-ring);
+  outline-offset: var(--cal-border-width-focus);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .surface {
+    transition: none;
+  }
+}
