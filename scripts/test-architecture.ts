@@ -219,7 +219,7 @@ function getEcosystemBoundaryChecks(): ArchCheck[] {
     // The source-root list is every ecosystem package's `src/`, not just
     // routing and routing-tanstack: `frontx-routing-tanstack-3-sole-engine-import`'s
     // `from` is ecosystem-wide (mfes|gts-plugin|api|cli|cyber-pilot-kit-frontx|
-    // ui-kit|telemetry|routing) by design — it is the only package allowed
+    // ui-kit|telemetry|calendar-kit|routing) by design — it is the only package allowed
     // to import a concrete router engine, so every OTHER package is where
     // the violation would actually appear. A cruise scoped to routing and
     // routing-tanstack alone never looks at those other packages' files, so
@@ -233,7 +233,7 @@ function getEcosystemBoundaryChecks(): ArchCheck[] {
       command:
         'npx dependency-cruiser packages/mfes/src packages/gts-plugin/src packages/api/src ' +
         'packages/cli/src packages/cyber-pilot-kit-frontx/src packages/ui-kit/src packages/telemetry/src ' +
-        'packages/routing/src packages/routing-tanstack/src --config .dependency-cruiser.cjs --output-type err-long',
+        'packages/calendar-kit/src packages/routing/src packages/routing-tanstack/src --config .dependency-cruiser.cjs --output-type err-long',
       description:
         'ROUTING-1..3 / ROUTING-TANSTACK-1..3 (cpt-frontx-constraint-routing-no-intra-ecosystem-dependency, ' +
         'cpt-frontx-constraint-routing-no-engine-leak, cpt-frontx-routing-tanstack-nfr-single-ecosystem-edge, ' +

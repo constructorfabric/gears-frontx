@@ -487,6 +487,142 @@ export default [
     },
   },
 
+  // @gears-frontx/calendar-kit: React scheduling components with host-supplied i18n/a11y
+  // seams. Modelled on the ui-kit block (component library needing React) with the single
+  // allowed intra-ecosystem edge: `src/ui/primitives/` alone may import
+  // `@gears-frontx/ui-kit`; every other calendar-kit source file holds no intra-ecosystem
+  // edge. ui-kit style imports are forbidden anywhere (calendar-kit ships its own
+  // theme.css from ui-kit-derived component CSS); depcruise's `frontx-calendar-kit-*`
+  // rules and `arch:edges` cover this at the module-graph level — this block gives the
+  // identical parity at lint time.
+  {
+    files: [
+      'packages/calendar-kit/src/**/*.ts',
+      'packages/calendar-kit/src/**/*.tsx',
+    ],
+    rules: {
+      'no-restricted-syntax': 'off',
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@gears-frontx/*', '@gears-frontx/*/*'],
+              message:
+                'ECOSYSTEM VIOLATION: @gears-frontx/calendar-kit holds no intra-ecosystem package dependency here — only files under src/ui/primitives/ may import @gears-frontx/ui-kit.',
+            },
+            {
+              group: ['@gears-frontx-templates/*', '@gears-frontx-templates/*/*'],
+              message:
+                'ECOSYSTEM VIOLATION: @gears-frontx/calendar-kit must not import template territory.',
+            },
+            {
+              group: ['@tanstack/*', '!@tanstack/react-table'],
+              message:
+                'ECOSYSTEM VIOLATION (cpt-frontx-constraint-routing-tanstack-sole-engine-import): only @gears-frontx/routing-tanstack may import a concrete router engine.',
+            },
+            {
+              group: ['@gears-frontx/*/src/**'],
+              message:
+                'MONOREPO VIOLATION: Import from package root, not internal paths.',
+            },
+            {
+              group: ['@/*'],
+              message:
+                'PACKAGE VIOLATION: Use relative imports within packages.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  // `src/ui/primitives/` is the single ui-kit seam: it re-exports
+  // ui-kit-derived primitives so the rest of the kit never imports ui-kit directly.
+  // Placed after the calendar-kit block so its narrower intra-ecosystem pattern wins.
+  {
+    files: ['packages/calendar-kit/src/ui/primitives/**/*.tsx', 'packages/calendar-kit/src/ui/primitives/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '@gears-frontx/*',
+                '@gears-frontx/*/*',
+                '!@gears-frontx/ui-kit',
+                '!@gears-frontx/ui-kit/*',
+              ],
+              message:
+                'ECOSYSTEM VIOLATION: src/ui/primitives/ imports exactly one ecosystem package — @gears-frontx/ui-kit — and no other.',
+            },
+            {
+              group: ['@gears-frontx-templates/*', '@gears-frontx-templates/*/*'],
+              message:
+                'ECOSYSTEM VIOLATION: @gears-frontx/calendar-kit must not import template territory.',
+            },
+            {
+              group: ['@tanstack/*', '!@tanstack/react-table'],
+              message:
+                'ECOSYSTEM VIOLATION (cpt-frontx-constraint-routing-tanstack-sole-engine-import): only @gears-frontx/routing-tanstack may import a concrete router engine.',
+            },
+            {
+              group: ['@gears-frontx/*/src/**'],
+              message:
+                'MONOREPO VIOLATION: Import from package root, not internal paths.',
+            },
+            {
+              group: ['@/*'],
+              message:
+                'PACKAGE VIOLATION: Use relative imports within packages.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  // calendar-kit's demo/tests consume the package by name (the workspace-linked
+  // dist), like the ui-kit demo override above. Only the self-package ban is lifted
+  // (importing @gears-frontx/calendar-kit IS the demo's job); the src-internals and
+  // alias bans stay, so the demo keeps validating the public surface.
+  {
+    files: [
+      'packages/calendar-kit/demo/**/*.ts',
+      'packages/calendar-kit/demo/**/*.tsx',
+      'packages/calendar-kit/__tests__/**/*.ts',
+      'packages/calendar-kit/__tests__/**/*.tsx',
+    ],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '@gears-frontx/calendar-kit/src/**',
+                '@gears-frontx/*/src/**',
+              ],
+              message:
+                'MONOREPO VIOLATION: Import from package root, not internal paths.',
+            },
+            {
+              group: ['@/*'],
+              message:
+                'PACKAGE VIOLATION: Use relative imports within packages.',
+            },
+            {
+              group: ['@tanstack/*', '!@tanstack/react-table'],
+              message:
+                'ECOSYSTEM VIOLATION (cpt-frontx-constraint-routing-tanstack-sole-engine-import): only @gears-frontx/routing-tanstack may import a concrete router engine.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   // The hook signature is variadic so a handler of any shape stays assignable, and the record
   // carries consumer-supplied user data.
   // TODO: type both against a generic payload and drop this block; follow-up PR.

@@ -1,0 +1,27 @@
+:where([data-calendar-kit-reset], .calendar-kit-reset),
+:where([data-calendar-kit-reset], .calendar-kit-reset) *,
+:where([data-calendar-kit-reset], .calendar-kit-reset) *::before,
+:where([data-calendar-kit-reset], .calendar-kit-reset) *::after {
+  box-sizing: border-box;
+}
+
+:where([data-calendar-kit-reset], .calendar-kit-reset) {
+  font-family: var(--cal-font-family);
+  color: var(--cal-color-text);
+  background: var(--cal-color-surface);
+}
+
+:where([data-calendar-kit-reset], .calendar-kit-reset)
+  :where(h1, h2, h3, h4, p) {
+  margin: 0;
+}
+
+:where([data-calendar-kit-reset], .calendar-kit-reset)
+  :where(button, input, select, textarea) {
+  font: inherit;
+}
+
+:where([data-calendar-kit-reset], .calendar-kit-reset)
+  :where(button, input, select, textarea) {
+  color: inherit;
+}

@@ -1,9 +1,12 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
-    "target": "ES2020",
+    // ES2022, not ES2020: every ecosystem package's own tsconfig declares
+    // target/lib ES2022, so this host project would otherwise reject the
+    // baseline those packages legitimately compile against.
+    "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
 
@@ -47,7 +50,9 @@
       "@gears-frontx/telemetry": ["./packages/telemetry/src/index.ts"],
       "@gears-frontx/telemetry/*": ["./packages/telemetry/src/*"],
       "@gears-frontx/ui-kit": ["./packages/ui-kit/src/index.ts"],
-      "@gears-frontx/ui-kit/*": ["./packages/ui-kit/src/*"]
+      "@gears-frontx/ui-kit/*": ["./packages/ui-kit/src/*"],
+      "@gears-frontx/calendar-kit": ["./packages/calendar-kit/src/index.ts"],
+      "@gears-frontx/calendar-kit/*": ["./packages/calendar-kit/src/*"]
     }
   },
   // Ecosystem packages only. The host app + template packages (state, i18n,
