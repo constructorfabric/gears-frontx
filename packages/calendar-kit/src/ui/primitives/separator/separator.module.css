@@ -1,0 +1,17 @@
+.separator {
+  border: 0;
+  background: var(--cal-color-grid-line);
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.horizontal {
+  block-size: var(--cal-border-width-1);
+  inline-size: 100%;
+}
+
+.vertical {
+  align-self: stretch;
+  block-size: auto;
+  inline-size: var(--cal-border-width-1);
+}

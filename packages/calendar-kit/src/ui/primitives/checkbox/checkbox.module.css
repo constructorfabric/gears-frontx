@@ -1,0 +1,28 @@
+.checkbox {
+  appearance: none;
+  background-color: var(--cal-color-surface);
+  block-size: var(--cal-icon-size-sm);
+  border: var(--cal-border-width-1) solid var(--cal-color-grid-line-strong);
+  border-radius: var(--cal-radius-sm);
+  color: var(--cal-color-action-foreground);
+  display: inline-grid;
+  flex: 0 0 auto;
+  inline-size: var(--cal-icon-size-sm);
+  margin: 0;
+  place-content: center;
+}
+
+.checkbox:checked {
+  background-color: var(--cal-color-action);
+  border-color: var(--cal-color-action);
+}
+
+.checkbox:focus-visible {
+  outline: var(--cal-focus-ring-width) solid var(--cal-color-focus-ring);
+  outline-offset: var(--cal-border-width-1);
+}
+
+.checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

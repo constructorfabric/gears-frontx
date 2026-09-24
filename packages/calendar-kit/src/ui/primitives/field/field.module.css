@@ -1,0 +1,58 @@
+.field {
+  composes: field from "../../../styles/modules/field.module.css";
+}
+
+.horizontal {
+  align-items: center;
+  flex-direction: row;
+}
+
+.responsive {
+  flex-direction: column;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cal-space-3);
+}
+
+.fieldSet {
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cal-space-2);
+  margin: 0;
+  min-inline-size: 0;
+  padding: 0;
+}
+
+.label,
+.legend {
+  color: var(--cal-color-text);
+  font-size: var(--cal-text-grid-size);
+  font-weight: var(--cal-text-grid-weight);
+  line-height: var(--cal-text-grid-line-height);
+}
+
+.required {
+  color: var(--cal-color-error);
+  margin-inline-start: var(--cal-space-1);
+}
+
+.description {
+  composes: helperText from "../../../styles/modules/text.module.css";
+}
+
+.error {
+  color: var(--cal-color-error);
+  font-size: var(--cal-text-meta-size);
+  line-height: var(--cal-text-meta-line-height);
+  margin: var(--cal-space-1) 0 0;
+}
+
+@container field-group (min-width: 480px) {
+  .responsive {
+    flex-direction: row;
+  }
+}

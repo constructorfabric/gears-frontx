@@ -1,0 +1,317 @@
+/* :not() guards keep the states exclusive: disabled > invalid > open. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cal-space-1);
+  position: relative;
+}
+
+.rootStandalone {
+  inline-size: 100%;
+}
+
+.rootEmbedded {
+  flex: 1 1 0%;
+  min-inline-size: 0;
+}
+
+.label {
+  color: var(--cal-color-text);
+  font-size: var(--cal-text-grid-size);
+  line-height: var(--cal-text-grid-line-height);
+}
+
+.control {
+  align-items: center;
+  display: flex;
+  position: relative;
+}
+
+.control:has(> .iconLeft) {
+  gap: var(--cal-space-2);
+}
+
+.controlEmbedded {
+  flex: 1 1 0%;
+  min-inline-size: 0;
+}
+
+.controlStandalone {
+  background: var(--cal-color-surface);
+  box-sizing: border-box;
+  border: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  border-radius: var(--cal-radius-md);
+  color: var(--cal-color-text);
+  font-size: var(--cal-text-grid-size);
+  inline-size: 100%;
+  line-height: var(--cal-text-grid-line-height);
+  transition:
+    background-color var(--cal-motion-duration-short) ease,
+    box-shadow var(--cal-motion-duration-short) ease;
+}
+
+.controlSizeXxl {
+  block-size: var(--cal-space-8);
+  gap: var(--cal-space-2);
+  padding-inline: var(--cal-space-3);
+}
+
+.controlSizeXl {
+  block-size: var(--cal-control-height-lg);
+  gap: var(--cal-space-2);
+  padding-inline: var(--cal-space-3);
+}
+
+.controlSizeL {
+  block-size: var(--cal-control-height-md);
+  gap: var(--cal-space-2);
+  padding-inline: var(--cal-space-3);
+}
+
+.controlEmbedded.controlSizeL {
+  block-size: var(--cal-control-height-md);
+  min-block-size: var(--cal-control-height-md);
+}
+
+.controlSizeM {
+  block-size: var(--cal-space-6);
+  gap: var(--cal-space-2);
+  padding-inline: var(--cal-space-2);
+}
+
+/* The field outline is the focus ring; drop ui-kit's inner rings. */
+.controlEmbedded :global(*:focus),
+.controlEmbedded :global(*:focus-visible) {
+  box-shadow: none;
+  outline: none;
+}
+
+.controlResting:hover,
+.controlOpen {
+  box-shadow: inset 0 0 0 var(--cal-border-width-1)
+    var(--cal-color-grid-line-strong);
+}
+
+.controlResting:has(:focus-visible) {
+  box-shadow: inset 0 0 0 var(--cal-border-width-focus)
+    var(--cal-color-grid-line-strong);
+}
+
+.controlInvalid,
+.controlInvalid:focus-within {
+  box-shadow: inset 0 0 0 var(--cal-border-width-1) var(--cal-color-error);
+}
+
+.controlLocked {
+  background: var(--cal-color-input-disabled);
+  border-color: var(--cal-color-grid-line);
+  box-shadow: none;
+  color: var(--cal-color-subtle);
+}
+
+.iconLeft {
+  composes: fieldIcon from "../../../styles/modules/field.module.css";
+}
+
+.iconLeft svg {
+  block-size: 14px;
+  flex-shrink: 0;
+  inline-size: 14px;
+}
+
+.inputWrap {
+  display: block;
+  flex: 1 1 0%;
+  min-inline-size: 0;
+  position: relative;
+}
+
+.inputWrap > span {
+  display: block;
+  inline-size: 100%;
+}
+
+/* Keeps the 32px hit area but aligns the glyph to the field's inset. */
+.inputWrap :global(button) {
+  inset-inline-end: 0;
+  justify-content: flex-end;
+}
+
+.input {
+  block-size: 100%;
+  background: transparent;
+  border-width: 0;
+  color: var(--cal-color-text);
+  flex: 1 1 0%;
+  font-family: inherit;
+  font-size: var(--cal-text-grid-size);
+  line-height: var(--cal-text-grid-line-height);
+  min-inline-size: 0;
+  outline: none;
+  padding: 0;
+}
+
+.input::placeholder {
+  color: var(--cal-color-subtle);
+}
+
+.inputStandalone {
+  block-size: 100%;
+}
+
+.inputStandalone:read-only,
+.inputStandalone:disabled {
+  color: var(--cal-color-subtle);
+}
+
+.inputStandalone:disabled {
+  cursor: not-allowed;
+}
+
+.inputEmbedded,
+.controlEmbedded .input {
+  /* Caret as tall as the line box, matching the chips field. */
+  block-size: var(--cal-space-6);
+}
+
+.chipsEmbedded,
+.chipsEmbedded.chipsEmbedded:focus-within {
+  min-block-size: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.chipsInput {
+  block-size: var(--cal-space-6);
+  padding: 0;
+  color: var(--cal-color-text);
+  font-size: var(--cal-text-grid-size);
+  line-height: var(--cal-text-grid-line-height);
+}
+
+.chipsInput::placeholder {
+  color: var(--cal-color-subtle);
+}
+
+.item {
+  block-size: var(--cal-control-height-sm);
+  min-block-size: var(--cal-control-height-sm);
+  content-visibility: auto;
+  contain-intrinsic-size: 0 32px;
+  padding: var(--cal-space-1) 20px var(--cal-space-1) 0;
+  border-radius: var(--cal-radius-md);
+}
+
+.item > span:last-child {
+  box-sizing: border-box;
+  position: absolute;
+  inset-inline-end: 0;
+  display: flex;
+  inline-size: var(--cal-icon-size-md);
+  block-size: var(--cal-icon-size-lg);
+  align-items: center;
+  justify-content: flex-start;
+  padding-inline-start: var(--cal-space-1);
+}
+
+.itemNoCheck > span:last-child {
+  display: none;
+}
+
+.tag {
+  align-items: center;
+  block-size: var(--cal-space-6);
+  background: var(--cal-color-raised);
+  border-radius: var(--cal-radius-md);
+  color: var(--cal-color-text);
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: var(--cal-text-meta-size);
+  gap: var(--cal-space-1);
+  line-height: var(--cal-text-meta-line-height);
+  max-inline-size: 40%;
+  padding-block: 0;
+  padding-inline: var(--cal-space-2);
+}
+
+.tagActions {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: var(--cal-space-1);
+}
+
+.tagTrigger {
+  position: static;
+  inset: auto;
+  translate: none;
+  justify-content: flex-end;
+}
+
+.tagTrigger.tagTrigger:hover,
+.inputWrap.inputWrap :global(button:hover) {
+  background-color: transparent;
+  color: var(--cal-color-text);
+}
+
+.tagLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tagRemove {
+  align-items: center;
+  background: transparent;
+  block-size: var(--cal-icon-size-sm);
+  border-radius: var(--cal-radius-sm);
+  border-width: 0;
+  color: var(--cal-color-muted);
+  display: inline-flex;
+  flex-shrink: 0;
+  inline-size: var(--cal-icon-size-sm);
+  justify-content: center;
+  padding: 0;
+}
+
+.tagRemove:hover {
+  background: var(--cal-state-hover);
+}
+
+.tagRemove:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.tagRemove svg {
+  block-size: var(--cal-icon-size-xs);
+  inline-size: var(--cal-icon-size-xs);
+}
+
+.chevron {
+  composes: chevron from "../../../styles/modules/field.module.css";
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.panelList:empty {
+  padding: 0;
+}
+
+.panelMessage {
+  composes: panelMessage from "../listbox-internals.module.css";
+}
+
+.message {
+  composes: helperText from "../../../styles/modules/text.module.css";
+}
+
+.messageInvalid {
+  color: var(--cal-color-error);
+}
