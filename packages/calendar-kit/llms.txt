@@ -1,0 +1,55 @@
+# @gears-frontx/calendar-kit
+
+> React 19 calendar UI for Constructor products: week, day, month and agenda views, event card and detail, create-event form, availability painting, and side-panel tools. It renders host data and reports user intent through typed callbacks; the host owns data, permissions, conflicts, persistence and translations.
+
+Rules an assistant should follow when writing code against this package:
+
+- Import `@gears-frontx/calendar-kit/theme.css` once, plus `themes/onecloud.css` for the in-house look. Do not import `@gears-frontx/ui-kit` styles.
+- Import a family subpath (`@gears-frontx/calendar-kit/week-grid`) instead of the root when bundle size matters: the root entry keeps every family's CSS reachable, a subpath only that family's.
+- Build values with the parsers: `calendarDate("2026-09-23")`, `parseLocalTime("09:30")`, `utcInstant(...)`, `parseIanaTimeZone("Europe/Istanbul")`. They throw `RangeError` on bad input. Never cast strings to these branded types.
+- A timed `CalendarEvent` needs `startDate`, `startTime`, `endDate`, `endTime` in its own zone and `start`/`end` instants from `fromViewerDateTime`. An all-day event has an exclusive `endDate` and `null` times.
+- Components never change host data. Handle `onEventSelect`, `onQuickCreate`, `onPaintSelect`, `onMoveRequest` (call `confirm()` or `cancel()`), `onSubmit` (return `{ error }` to keep the form open) and the toolbar callbacks.
+- Stateful props come as `value` / `defaultValue` / `onValueChange`. `undefined` means uncontrolled; `null` means controlled and empty.
+- `CalendarProvider` takes `timeZone`; `CalendarLocalizationProvider` takes `locale`, `direction`, `t`, `messages` and `onMissingTranslation`. A component also takes `locale`, `direction`, `t`, `translations` and `timeZone`, and those override the providers for that component. `t(id, values)` receives canonical `calendar.*` ids, a numeric `count` for plurals and raw values; returning the id falls back to English.
+- Pass `now` to freeze today and the now line in tests and screenshots.
+- Style through `--cal-*` seams, `className`, the grids' `cellClassName`/`columnHeaderClassName`/`gutterClassName`/`weekNumberClassName`, and `data-event-id`. Never target kit CSS Module class names.
+- Pass the third `onEventSelect` argument as `EventDetailPanel`'s `anchorElement` to open a popover beside the card.
+
+## Guides
+
+- [Getting started](dist/docs/getting-started.md): install, styles, a first week, callbacks, providers, import paths
+- [Concepts](dist/docs/concepts.md): ownership, branded values, time zones, the event model, layout vocabulary, drafts
+- [Architecture and data flow](dist/docs/architecture.md): layers, folders, render and interaction flow, design reasons
+- [Customization](dist/docs/customization.md): tokens, dark mode, behaviour props, text, classes, DOM hooks, render slots, composition, headless
+- [Internationalization](dist/docs/i18n.md): provider, per-component overrides, resolution order, plurals, RTL
+- [Theming](dist/docs/theming.md): every seam with its default and OneCloud value
+- [Headless controllers](dist/docs/headless.md): the controller hooks and the React-free core functions
+- [Recipes](dist/docs/recipes.md): compiled examples for common screens
+- [Testing](dist/docs/testing.md): jsdom stubs, frozen time, queries
+- [Troubleshooting](dist/docs/troubleshooting.md): symptoms and fixes
+- [Accessibility](dist/docs/accessibility.md): keyboard and screen-reader behaviour
+- [Message catalog](dist/docs/messages.md): every message id with its English text
+
+## Components
+
+- [WeekGrid](dist/docs/week-grid.md): five- or seven-day time grid with quick-create, painting and drag-to-move
+- [DayGrid](dist/docs/day-grid.md): one-day time grid
+- [MonthGrid](dist/docs/month-grid.md): month with overflow and date-range picking
+- [AgendaView](dist/docs/agenda-view.md): thirty days as a grouped list
+- [CalendarToolbar](dist/docs/calendar-toolbar.md): title, Today, previous/next, view switcher
+- [EventCard](dist/docs/event-card.md): the default event surface
+- [EventDetailPanel](dist/docs/event-detail-panel.md): event preview popover and dialog
+- [CreateEventPopover](dist/docs/create-event.md): create-event form with recurrence and discard guard
+- [ConflictIndicator](dist/docs/conflict-indicator.md): named scheduling conflicts
+- [AvailabilityGrid](dist/docs/availability-grid.md): paint free time
+- [CalendarSidePanel](dist/docs/calendar-side-panel.md): side-panel shell
+- [MonthNavigator](dist/docs/month-navigator.md): mini month
+- [SearchResults](dist/docs/search-results.md): local search grouped by day
+- [TimeZoneList](dist/docs/time-zone-list.md): comparison time zone picker
+- [WorldClocks](dist/docs/world-clocks.md): editable clocks
+- [CalendarList](dist/docs/calendar-list.md): show or hide calendars
+- [CalendarGrid](dist/docs/calendar-grid.md): the accessible grid primitive
+
+## Optional
+
+- [Everything in one file](dist/llms-full.txt)

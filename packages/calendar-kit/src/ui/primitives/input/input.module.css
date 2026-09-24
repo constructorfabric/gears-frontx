@@ -1,0 +1,178 @@
+.field {
+  composes: field from "../../../styles/modules/field.module.css";
+}
+
+.topLabel {
+  composes: topLabel from "../../../styles/modules/field.module.css";
+}
+
+.required {
+  color: var(--cal-color-error);
+}
+
+.shell {
+  /* ui-kit slot CSS reads its own token names. */
+  --space-1: var(--cal-space-1);
+  --space-2: var(--cal-space-2);
+  --space-3: var(--cal-space-3);
+  --control-height-sm: var(--cal-control-height-sm);
+  --icon-size-sm: var(--cal-icon-size-sm);
+  --muted-foreground: var(--cal-color-placeholder);
+  align-items: center;
+  box-sizing: border-box;
+  background: var(--cal-color-surface);
+  border: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  border-radius: var(--cal-radius-md);
+  display: flex;
+  font-size: var(--cal-text-grid-size);
+  gap: var(--cal-space-2);
+  inline-size: 100%;
+  line-height: var(--cal-text-grid-line-height);
+  overflow: clip;
+  position: relative;
+  transition: border-color var(--cal-motion-duration-short) ease;
+}
+
+.shell:hover,
+.shell:focus-within {
+  border-color: var(--cal-color-grid-line-strong);
+}
+
+.sizeXxl {
+  block-size: var(--cal-space-8);
+  padding-inline: var(--cal-space-3) var(--cal-space-1);
+}
+
+.sizeXl {
+  block-size: var(--cal-control-height-lg);
+  padding-inline: var(--cal-space-3) var(--cal-space-1);
+}
+
+.sizeL {
+  block-size: var(--cal-control-height-md);
+  padding-inline: var(--cal-space-3) var(--cal-space-1);
+}
+
+.sizeM {
+  block-size: var(--cal-control-height-sm);
+  padding-inline: var(--cal-space-3) var(--cal-space-1);
+}
+
+.sizeS {
+  block-size: var(--cal-space-6);
+  padding-inline: var(--cal-space-2) var(--cal-space-1);
+}
+
+.shell.shellWithIcon {
+  padding-inline-start: 0;
+}
+
+.shellInvalid,
+.shellInvalid:hover,
+.shellInvalid:focus-within {
+  border-color: var(--cal-color-error);
+}
+
+.shellReadOnly,
+.shellReadOnly:hover,
+.shellReadOnly:focus-within {
+  background: var(--cal-color-input-disabled);
+  border-color: var(--cal-color-grid-line);
+}
+
+.shell:has(:disabled),
+.shell:has(:disabled):hover,
+.shell:has(:disabled):focus-within {
+  background: var(--cal-color-input-disabled);
+  border-color: var(--cal-color-grid-line);
+  cursor: not-allowed;
+}
+
+.controlLabel {
+  align-items: center;
+  block-size: 100%;
+  display: flex;
+  flex: 1;
+  gap: var(--cal-space-2);
+  min-inline-size: 0;
+}
+
+.icon {
+  composes: fieldIcon from "../../../styles/modules/field.module.css";
+}
+
+.icon svg {
+  block-size: 14px;
+  flex-shrink: 0;
+  inline-size: 14px;
+}
+
+.affix {
+  color: var(--cal-color-muted);
+  flex-shrink: 0;
+  font-size: var(--cal-text-grid-size);
+  line-height: var(--cal-text-grid-line-height);
+}
+
+/* Without a height the slot wrapper collapses the text box. */
+.controlLabel > span:has(> .control) {
+  align-items: center;
+  block-size: 100%;
+  display: flex;
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.control {
+  background: transparent;
+  block-size: 100%;
+  border: 0;
+  color: var(--cal-color-text);
+  flex: 1;
+  font-family: inherit;
+  font-size: var(--cal-text-grid-size);
+  font-weight: var(--cal-text-grid-weight);
+  line-height: var(--cal-text-grid-line-height);
+  min-inline-size: 0;
+  outline: none;
+  padding: 0;
+}
+
+/* The shell owns focus through :focus-within; reset the control's native rings. */
+.control:focus,
+.control:focus-visible,
+.control[aria-invalid="true"]:focus,
+.control[aria-invalid="true"]:focus-visible {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.control.controlWithIcon {
+  padding-inline-start: calc(
+    var(--cal-space-3) + var(--cal-icon-size-sm) + var(--cal-space-2)
+  );
+}
+
+.control::placeholder {
+  color: var(--cal-color-subtle);
+}
+
+.control:disabled {
+  cursor: not-allowed;
+}
+
+.action {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+}
+
+.message {
+  color: var(--cal-color-muted);
+  font-size: var(--cal-text-meta-size);
+  line-height: var(--cal-text-meta-line-height);
+}
+
+.messageInvalid {
+  color: var(--cal-color-error);
+}

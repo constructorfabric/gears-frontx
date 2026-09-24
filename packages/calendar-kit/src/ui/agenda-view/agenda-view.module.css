@@ -1,0 +1,513 @@
+.agendaView {
+  composes: viewRoot from "../../styles/modules/layout.module.css";
+}
+
+.groups {
+  composes: listReset from "../../styles/modules/list.module.css";
+  display: flex;
+  min-block-size: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--cal-space-3);
+  overflow: auto;
+}
+
+.dayGroup {
+  min-inline-size: 0;
+  flex: 0 0 auto;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 240px;
+  overflow: hidden;
+  border: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  border-radius: var(--cal-radius-md);
+  background: var(--cal-color-surface);
+}
+
+.dayHeader {
+  display: grid;
+  grid-template-columns: var(--grid-gutter-width) minmax(0, 1fr);
+  min-block-size: 48px;
+  background: var(--cal-color-raised);
+}
+
+.dayGutter {
+  composes: gutterCell from "../../styles/modules/grid.module.css";
+  min-inline-size: 0;
+  padding: var(--cal-space-2) var(--cal-space-2) 0;
+  border-block-end: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  border-inline-end: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  color: var(--cal-color-subtle);
+  font-size: var(--cal-text-caption-size);
+  font-weight: var(--cal-text-caption-weight);
+  line-height: var(--cal-text-caption-line-height);
+}
+
+.dayHeader .dayGutter {
+  padding: var(--cal-space-2) var(--cal-space-2) 0;
+  color: var(--cal-color-subtle);
+  font-size: var(--cal-text-caption-size);
+  line-height: var(--cal-text-caption-line-height);
+}
+
+.dayCell {
+  composes: gutterCell from "../../styles/modules/grid.module.css";
+}
+
+/* Outranks the composed gutterCell's display: block. */
+.dayHeader .dayCell {
+  display: flex;
+  min-inline-size: 0;
+  flex-direction: column;
+  position: relative;
+  padding: var(--cal-space-2) var(--cal-space-2) 0;
+  border-block-end: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.dayHeaderAbsoluteOnly .dayCell {
+  justify-content: center;
+}
+
+.dayRelative {
+  color: var(--cal-color-subtle);
+  font-size: var(--cal-text-caption-size);
+  font-weight: var(--cal-text-caption-weight);
+  line-height: var(--cal-text-caption-line-height);
+  letter-spacing: var(--cal-text-caption-tracking);
+  text-transform: uppercase;
+}
+
+.dayHeader[data-today="true"] .dayRelative,
+.dayHeader[data-today="true"] .dayDate {
+  color: var(--cal-color-now-label);
+}
+
+.dayDate {
+  composes: dayNumber from "../../styles/modules/text.module.css";
+}
+
+/* Outranks the composed dayNumber. */
+.dayHeader .dayDate {
+  font-size: 1rem;
+  font-weight: var(--cal-text-title-weight);
+  line-height: 1.5rem;
+}
+
+.dayCount {
+  position: absolute;
+  inset-block-start: var(--cal-space-2);
+  inset-inline-end: var(--cal-space-2);
+  color: var(--cal-color-subtle);
+  font-size: var(--cal-text-caption-size);
+  font-weight: var(--cal-text-caption-weight);
+  line-height: var(--cal-text-caption-line-height);
+  letter-spacing: var(--cal-text-caption-tracking);
+  white-space: nowrap;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: var(--grid-gutter-width) minmax(0, 1fr);
+  min-block-size: var(--cal-control-height-lg);
+  min-inline-size: 0;
+  position: relative;
+  background: var(--cal-color-surface);
+}
+
+.rowGutter,
+.rowContent {
+  min-inline-size: 0;
+  border-block-end: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+}
+
+.row:last-child .rowGutter,
+.row:last-child .rowContent {
+  border-block-end: 0;
+}
+
+.rowGutter {
+  display: flex;
+  align-items: flex-start;
+  overflow: hidden;
+  padding: var(--cal-space-2);
+  border-inline-end: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  color: var(--cal-color-muted);
+  font-size: var(--cal-text-meta-size);
+  font-weight: var(--cal-text-meta-weight);
+  line-height: var(--cal-text-meta-line-height);
+  letter-spacing: var(--cal-text-meta-tracking);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowContent {
+  display: flex;
+  min-inline-size: 0;
+  flex-direction: column;
+  gap: var(--cal-space-1);
+  padding: var(--cal-space-1);
+  position: relative;
+}
+
+.rowEmpty .rowContent {
+  padding: 0;
+}
+
+.emptyDay {
+  align-self: center;
+  padding: var(--cal-space-3) var(--cal-space-4);
+  color: var(--cal-color-muted);
+  font-size: var(--cal-text-meta-size);
+  line-height: var(--cal-text-meta-line-height);
+}
+
+.agendaEvent {
+  --agenda-slot-accent: #7498f8;
+  display: block;
+  inline-size: 100%;
+  min-inline-size: 0;
+  min-block-size: var(--cal-control-height-sm);
+  box-sizing: border-box;
+  padding: var(--cal-space-1) 0;
+  overflow: hidden;
+  color: var(--cal-color-text);
+  background: var(--cal-color-raised);
+  border: 0;
+  border-radius: 0;
+  font-family: var(--cal-font-family);
+  font-size: var(--cal-text-meta-size);
+  font-weight: var(--cal-text-meta-weight);
+  line-height: var(--cal-text-meta-line-height);
+  text-align: start;
+  white-space: normal;
+}
+
+.agendaEvent {
+  composes: focusRing from "../../styles/modules/focus-ring.module.css";
+}
+
+/* Element-qualified so the slot keeps its chrome regardless of dependency CSS order. */
+button.agendaEvent {
+  background: var(--cal-color-raised);
+  border: 0;
+  border-radius: 0;
+}
+
+/* Button wraps children in spans; keep them transparent to the slot grid. */
+.agendaEvent span:has([data-agenda-slot]) {
+  display: block;
+  gap: 0;
+  inline-size: 100%;
+  min-inline-size: 0;
+  padding: 0;
+}
+
+.slot {
+  display: grid;
+  grid-template-columns: var(--grid-gutter-width) 3px minmax(0, 1fr);
+  column-gap: var(--cal-space-1);
+  align-items: stretch;
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+.slotRow {
+  display: flex;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.slotRow > .agendaEvent {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.joinButton {
+  display: inline-flex;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  block-size: var(--cal-control-height-md);
+  margin-inline: var(--cal-space-4);
+  padding-inline: var(--cal-space-4);
+  border-radius: var(--cal-radius-md);
+  color: var(--cal-color-action-foreground);
+  background: var(--cal-color-error);
+  font-size: var(--cal-text-label-size);
+  font-weight: var(--cal-text-label-weight);
+  line-height: var(--cal-text-label-line-height);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.joinButton:focus-visible {
+  outline: var(--cal-border-width-focus) solid var(--cal-color-grid-line-strong);
+  outline-offset: var(--cal-border-width-1);
+}
+
+.agendaEvent:not(.unavailable):hover {
+  background: var(--cal-state-hover);
+}
+
+.selected {
+  composes: selectedRing from "../../styles/modules/state.module.css";
+}
+
+.agendaEvent.now {
+  --agenda-slot-accent: var(--cal-color-now);
+}
+
+.unavailable {
+  composes: unavailable from "../../styles/modules/state.module.css";
+  border-color: var(--cal-slot-unavailable-ring);
+}
+
+.agendaEvent.colorTurquoise {
+  color: var(--cal-color-turquoise-foreground);
+}
+
+.agendaEvent.colorPurple {
+  --agenda-slot-accent: var(--cal-color-purple-accent);
+  color: var(--cal-color-purple-foreground);
+}
+
+.agendaEvent.colorOrange {
+  --agenda-slot-accent: var(--cal-color-orange-accent);
+  color: var(--cal-color-orange-foreground);
+}
+
+.slotBar {
+  align-self: stretch;
+  margin-block: var(--cal-space-1);
+  background: var(--agenda-slot-accent);
+  border-radius: var(--cal-radius-pill);
+}
+
+.agendaEvent.now .slotBar {
+  background: var(--cal-color-now);
+}
+
+.agendaEvent.unavailable .slotBar {
+  background: var(--cal-slot-unavailable-ring);
+}
+
+.agendaEvent.colorTurquoise .slotBar,
+.agendaEvent.colorPurple .slotBar,
+.agendaEvent.colorOrange .slotBar {
+  background: var(--agenda-slot-accent);
+}
+
+.agendaEvent.past {
+  color: var(--cal-color-muted);
+  background: var(--cal-slot-unavailable);
+  border-color: var(--cal-color-muted);
+  border-style: solid;
+}
+
+/* Outranks the family rules above. */
+.agendaEvent.past .slotBar {
+  background: var(--cal-color-muted);
+}
+
+.segmentStart {
+  composes: segmentStart from "../../styles/modules/state.module.css";
+}
+
+.segmentMiddle {
+  composes: segmentMiddle from "../../styles/modules/state.module.css";
+}
+
+.segmentEnd {
+  composes: segmentEnd from "../../styles/modules/state.module.css";
+}
+
+.eventTitle {
+  composes: truncate from "../../styles/modules/text.module.css";
+  max-inline-size: 100%;
+  color: inherit;
+  font-size: var(--cal-text-meta-size);
+  font-weight: 700;
+  line-height: var(--cal-text-meta-line-height);
+  white-space: nowrap;
+}
+
+.slotTimes {
+  display: flex;
+  min-inline-size: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--cal-space-1) var(--cal-space-2);
+  color: var(--cal-color-muted);
+  font-size: var(--cal-text-caption-size);
+  font-weight: var(--cal-text-meta-weight);
+  line-height: var(--cal-text-caption-line-height);
+  white-space: nowrap;
+}
+
+.slotTimesAllDay {
+  justify-content: center;
+}
+
+.slotTimeStart,
+.slotTimeAllDay {
+  color: var(--cal-color-text);
+  font-size: var(--cal-text-meta-size);
+  font-weight: var(--cal-text-caption-weight);
+  line-height: var(--cal-text-meta-line-height);
+}
+
+.slotTimeEnd {
+  color: var(--cal-color-muted);
+  font-size: var(--cal-text-caption-size);
+  font-weight: var(--cal-text-meta-weight);
+  line-height: var(--cal-text-caption-line-height);
+}
+
+.slotBody {
+  display: flex;
+  min-inline-size: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: var(--cal-space-1) 6px var(--cal-space-1) var(--cal-space-1);
+  border-radius: var(--cal-radius-slot);
+}
+
+.relativeHint {
+  composes: metaText truncate from "../../styles/modules/text.module.css";
+  max-inline-size: 100%;
+  font-size: var(--cal-text-meta-size);
+  font-weight: var(--cal-text-caption-weight);
+  line-height: var(--cal-text-meta-line-height);
+  white-space: nowrap;
+}
+
+/* Two classes to outrank the composed metaText. */
+.agendaEvent.now .relativeHint {
+  color: var(--cal-color-now-label);
+}
+
+.eventMetadata {
+  composes: metaText truncate from "../../styles/modules/text.module.css";
+  display: flex;
+  min-inline-size: 0;
+  flex-direction: column;
+  gap: 0;
+  max-inline-size: 100%;
+  white-space: normal;
+}
+
+.metadataRow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  white-space: nowrap;
+}
+
+.metadataRow[data-agenda-metadata="timing"] {
+  column-gap: var(--cal-space-1);
+}
+
+.metadataGroup {
+  display: inline-flex;
+  align-items: center;
+  min-inline-size: 0;
+  gap: 2px;
+}
+
+.metadataGroup > span {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metadataRow > span {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metadataIcon {
+  flex-shrink: 0;
+  inline-size: var(--cal-icon-size-xs);
+  block-size: var(--cal-icon-size-xs);
+}
+
+.avatars {
+  display: flex;
+  align-items: center;
+  min-inline-size: 0;
+  padding-block: var(--cal-space-1);
+}
+
+.avatars .avatar {
+  block-size: 28px;
+  inline-size: 28px;
+  box-shadow: 0 0 0 3px var(--cal-color-raised);
+  font-weight: var(--cal-text-title-weight);
+}
+
+.avatars .avatar + .avatar {
+  margin-inline-start: -3px;
+}
+
+.nowLine {
+  display: grid;
+  grid-template-columns: var(--grid-gutter-width) minmax(0, 1fr);
+  inset-block-start: 0;
+  inset-inline: 0;
+  align-items: center;
+  min-block-size: var(--cal-text-caption-line-height);
+  pointer-events: none;
+  position: absolute;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.nowGutter {
+  padding-inline: 0 var(--cal-space-1);
+  color: var(--cal-color-now-label);
+  font-size: var(--cal-text-caption-size);
+  font-weight: var(--cal-text-caption-weight);
+  line-height: var(--cal-text-caption-line-height);
+  text-align: end;
+  white-space: nowrap;
+}
+
+.nowRule {
+  display: block;
+  min-inline-size: 0;
+  margin-inline-start: -1px;
+  inline-size: calc(100% + 1px);
+  border-block-start: var(--cal-border-width-1) solid var(--cal-color-now);
+}
+
+.liveRegion {
+  composes: srOnly from "../../styles/modules/sr-only.module.css";
+}
+
+.srOnly {
+  composes: srOnly from "../../styles/modules/sr-only.module.css";
+}
+
+@media (forced-colors: active), (prefers-contrast: more) {
+  .agendaView,
+  .dayHeader,
+  .row {
+    color: CanvasText;
+    background: Canvas;
+  }
+
+  .nowRule {
+    border-color: Highlight;
+  }
+}

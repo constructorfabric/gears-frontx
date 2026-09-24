@@ -29,6 +29,7 @@
   - [2.23 Routing Navigation Substrate - MEDIUM](#223-routing-navigation-substrate---medium)
   - [2.24 Routing Route Ownership Signal - MEDIUM](#224-routing-route-ownership-signal---medium)
   - [2.25 Routing Engine Provider - MEDIUM](#225-routing-engine-provider---medium)
+  - [2.26 Calendar Kit Compatibility Anchor - MEDIUM](#226-calendar-kit-compatibility-anchor---medium)
 - [3. Feature Dependencies](#3-feature-dependencies)
 - [4. Known Validator Debt](#4-known-validator-debt)
 
@@ -349,6 +350,22 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 - `cpt-frontx-component-routing-engine-provider`
 - `cpt-frontx-routing-tanstack-principle-engine-confined`
 - `cpt-frontx-constraint-routing-tanstack-sole-engine-import`
+
+### 2.26 [Calendar Kit Compatibility Anchor](../packages/calendar-kit/architecture/) - MEDIUM
+
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [DESIGN.md](../packages/calendar-kit/architecture/DESIGN.md) and the member FEATURE file.
+
+**Installed-kit coverage references**:
+- `cpt-frontx-calendar-kit-component-ui-data-model`
+- `cpt-frontx-calendar-kit-component-react-free-core`
+- `cpt-frontx-calendar-kit-component-react-adapters`
+- `cpt-frontx-calendar-kit-component-ui-family-units`
+- `cpt-frontx-calendar-kit-component-theme-contract`
+- `cpt-frontx-constraint-calendar-kit-no-solution-content`
+- `cpt-frontx-constraint-calendar-kit-react-free-core`
+- `cpt-frontx-constraint-calendar-kit-single-peer-edge`
+- `cpt-frontx-calendar-kit-principle-host-owned-control`
+- `cpt-frontx-calendar-kit-principle-solution-behavior-via-callbacks-slots`
 
 ## 3. Feature Dependencies
 

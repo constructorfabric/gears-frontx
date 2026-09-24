@@ -1,0 +1,15 @@
+.empty {
+  align-items: center;
+  border: var(--cal-border-width-1) dashed var(--cal-color-grid-line);
+  border-radius: var(--cal-radius-lg);
+  color: var(--cal-color-muted);
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  font-family: var(--cal-font-family);
+  gap: var(--cal-space-4);
+  justify-content: center;
+  min-inline-size: 0;
+  padding: var(--cal-space-6);
+  text-align: center;
+}

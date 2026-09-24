@@ -1,0 +1,148 @@
+.root {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: var(--cal-space-2);
+  min-block-size: 24px;
+}
+
+.labelControl {
+  align-items: center;
+  display: inline-flex;
+  min-block-size: 24px;
+}
+
+.label {
+  align-items: center;
+  color: var(--cal-color-text);
+  display: inline-flex;
+  font-family: var(--cal-font-family);
+  font-size: var(--cal-text-grid-size);
+  font-weight: var(--cal-text-grid-weight);
+  gap: var(--cal-space-1);
+  line-height: var(--cal-text-grid-line-height);
+  letter-spacing: var(--cal-text-grid-tracking);
+  padding-block: 2px;
+}
+
+.labelDisabled {
+  color: var(--cal-color-muted);
+}
+
+.requiredMark {
+  color: var(--cal-color-conflict);
+}
+
+.track {
+  align-items: center;
+
+  background-color: var(--cal-state-hover);
+  border: 0;
+  border-radius: var(--cal-radius-pill);
+  box-sizing: border-box;
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  outline: none;
+  padding: 2px;
+  position: relative;
+  transition:
+    background-color var(--cal-motion-duration-short) ease,
+    box-shadow var(--cal-motion-duration-short) ease;
+}
+
+.track[data-unchecked] {
+  background-color: var(--cal-state-hover);
+}
+
+.trackChecked,
+.track[data-checked] {
+  background-color: var(--cal-color-success);
+}
+
+.track:not(.trackDisabled):not([data-disabled]):hover {
+  box-shadow: inset 0 0 0 var(--cal-border-width-1) var(--cal-color-text);
+}
+
+.track:not(.trackDisabled):not([data-disabled]):focus-visible {
+  box-shadow: inset 0 0 0 var(--cal-border-width-focus)
+    var(--cal-color-focus-ring);
+}
+
+.trackInvalid,
+.track[aria-invalid="true"] {
+  box-shadow: inset 0 0 0 var(--cal-border-width-1) var(--cal-color-conflict);
+}
+
+.trackDisabled,
+.track[data-disabled] {
+  background-color: var(--cal-color-input-disabled);
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 1;
+  pointer-events: none;
+}
+
+/* Logical insets instead of ui-kit's transform, so the travel is exact in LTR and RTL. */
+.track > span:first-child {
+  background-color: var(--cal-color-action-foreground);
+  border-radius: var(--cal-radius-pill);
+  inset-block-start: 2px;
+  inset-inline-start: 2px;
+  margin: 0;
+  position: absolute;
+  transform: none;
+  transition:
+    background-color var(--cal-motion-duration-short) ease,
+    inset-inline-start var(--cal-motion-duration-short) ease;
+}
+
+.trackDisabled > span:first-child,
+.track[data-disabled] > span:first-child {
+  background-color: var(--cal-color-placeholder);
+}
+
+.sizeM {
+  block-size: var(--cal-space-5);
+  inline-size: var(--cal-control-height-sm);
+}
+
+.sizeM > span:first-child {
+  block-size: var(--cal-icon-size-sm);
+  inline-size: var(--cal-icon-size-sm);
+}
+
+.sizeM.trackChecked > span:first-child,
+.sizeM[data-checked] > span:first-child {
+  inset-inline-start: calc(100% - var(--cal-icon-size-sm) - 2px);
+}
+
+.sizeS {
+  block-size: var(--cal-icon-size-sm);
+  inline-size: 26px;
+}
+
+.sizeS > span:first-child {
+  block-size: var(--cal-icon-size-xs);
+  inline-size: var(--cal-icon-size-xs);
+}
+
+.sizeS.trackChecked > span:first-child,
+.sizeS[data-checked] > span:first-child {
+  inset-inline-start: calc(100% - var(--cal-icon-size-xs) - 2px);
+}
+
+/* Size-qualified selectors outrank ui-kit's checked Thumb rule. */
+.sizeM > span:first-child,
+.sizeS > span:first-child,
+.sizeM[data-checked] > span:first-child[data-checked],
+.sizeS[data-checked] > span:first-child[data-checked] {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track,
+  .track > span:first-child {
+    transition: none;
+  }
+}

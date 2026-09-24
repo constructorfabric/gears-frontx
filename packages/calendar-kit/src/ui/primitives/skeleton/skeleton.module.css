@@ -1,0 +1,23 @@
+.skeleton {
+  animation: pulse var(--cal-motion-duration-long, 2s)
+    cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background-color: var(--cal-state-disabled);
+  border-radius: var(--cal-radius-md);
+}
+
+.inheritColor {
+  background-color: currentcolor;
+  opacity: 0.2;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

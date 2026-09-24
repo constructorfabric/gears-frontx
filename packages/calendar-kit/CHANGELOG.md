@@ -1,0 +1,18 @@
+# Changelog
+
+All notable changes to `@gears-frontx/calendar-kit` are documented here.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the package follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and publishes pre-release versions on the `alpha` channel.
+
+## [0.1.0-alpha.0] - 2026-09-24
+
+### Added
+
+- First public release: React 19 calendar UI for week, day, month and agenda screens, built over `@gears-frontx/ui-kit` primitives. The kit renders host data and reports user intent through typed callbacks; data, permissions, conflicts, persistence and translations stay with the host.
+- Root entry `@gears-frontx/calendar-kit`, re-exporting the components, controller hooks, parsers and types below, except the two annotated with the entry that carries them.
+- Subpath entries, each with its own declarations: `@gears-frontx/calendar-kit/core`, `@gears-frontx/calendar-kit/react`, `@gears-frontx/calendar-kit/i18n`, `@gears-frontx/calendar-kit/grid`, `@gears-frontx/calendar-kit/week-grid`, `@gears-frontx/calendar-kit/day-grid`, `@gears-frontx/calendar-kit/month-grid`, `@gears-frontx/calendar-kit/agenda-view`, `@gears-frontx/calendar-kit/calendar-toolbar`, `@gears-frontx/calendar-kit/event-card`, `@gears-frontx/calendar-kit/event-detail-panel`, `@gears-frontx/calendar-kit/create-event`, `@gears-frontx/calendar-kit/conflict-indicator`, `@gears-frontx/calendar-kit/availability-grid`, `@gears-frontx/calendar-kit/calendar-side-panel`, `@gears-frontx/calendar-kit/month-navigator`, `@gears-frontx/calendar-kit/search-results`, `@gears-frontx/calendar-kit/time-zone-list`, `@gears-frontx/calendar-kit/world-clocks` and `@gears-frontx/calendar-kit/calendar-list`.
+- Stylesheets: `@gears-frontx/calendar-kit/theme.css` maps the `--cal-*` tokens from host seams with kit fallbacks, `@gears-frontx/calendar-kit/reset.css` is the opt-in scoped reset, and `@gears-frontx/calendar-kit/themes/onecloud.css` is the in-house preset.
+- Components: `WeekGrid`, `DayGrid`, `MonthGrid`, `AgendaView`, `CalendarGrid`, `CalendarToolbar`, `EventCard`, `EventDetailPanel`, `CreateEventPopover`, `ConflictIndicator`, `AvailabilityGrid`, `CalendarSidePanel`, `MonthNavigator`, `SearchResults`, `TimeZoneList`, `WorldClocks` and `CalendarList`.
+- Localization: `CalendarLocalizationProvider` owns `locale`, `direction`, `t`, `messages` and `onMissingTranslation`, and `CalendarProvider` owns the viewer `timeZone`; `useCalendarLocalization` and `useCalendarContext` read them. `ENGLISH_TRANSLATIONS` carries the built-in English catalogue, and `englishTranslate` (on the `i18n` entry) is that catalogue as a standalone translator; the `CalendarTranslate`, `CalendarMessages` and `CalendarTranslations` types describe host catalogues.
+- Model and helpers: `CalendarEvent` and the branded parsers `calendarDate`, `parseLocalTime`, `utcInstant` and `parseIanaTimeZone`; time windows `CalendarTimeWindow`, `CalendarSlotMinutes`, `FULL_DAY_TIME_WINDOW`, `DEFAULT_WORKING_HOURS` and `DEFAULT_SLOT_MINUTES` with `assertTimeWindow`, `buildSlotStarts`, `buildTimeWindowRange`, `countWindowSlots` and `isWithinTimeWindow`; date-range selection `CalendarDateRange`, `orderDateRange`, `isDateInRange`, plus `useDateRangeSelection` (on the `react` entry); controller hooks `useWeekGridController`, `useDayGridController`, `useMonthGridController`, `useAgendaViewController`, `useCalendarToolbarController`, `useCalendarSidePanelController`, `useMonthNavigatorController`, `useSearchResultsController`, `useAvailabilityGridController`, `useWorldClocksController`, `useEventDetailPanelController` and `useCreateEventController`.
+- TypeScript declarations, source maps and the documentation pages under `dist/docs/` ship with the package.

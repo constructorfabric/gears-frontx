@@ -33,6 +33,10 @@ reason = "scripts/fs-types.mjs is a type-only shared @typedef module (no runtime
 patterns = ["scripts/fs-types.mjs"]
 
 [[ignore]]
+reason = "The component sources under packages/calendar-kit/src carry markers only against the week-grid FEATURE's numbered instructions; the remaining family units (day/month/agenda views, toolbar, create-event shell, availability grid, sidebar widgets) have no FEATURE yet giving their surface numbered instructions to point a marker at, so no artifact backs a marker there. The package's own artifact chain exists (PRD, DESIGN, FEATURE week-grid) and the member is registered below with PRD/DESIGN/FEATURE required, so this is narrower than a missing chain - only src is recorded as debt, scripts stays scanned. Removal criterion: calendar-kit FEATUREs land with numbered instructions for the remaining family-unit surfaces and packages/calendar-kit/src is registered as the child's own [[systems.children.codebase]] entry. NOT satisfied by marking more components - the FEATUREs must give instructions for the surfaces as a whole before the path is registered."
+patterns = ["packages/calendar-kit/src/**"]
+
+[[ignore]]
 reason = "The component sources under packages/ui-kit/src carry no @cpt- marker because no FEATURE yet gives the component surface numbered instructions to point a marker at, so no artifact backs one there. The package's own artifact chain exists (PRD, DESIGN, FEATURE component-contracts) and the member is registered above with PRD/DESIGN/FEATURE required, so this is narrower than the former package-wide packages/ui-kit/** ignore it replaces - only src is recorded as debt, scripts stays scanned. Removal criterion: a ui-kit FEATURE lands with numbered instructions for the component surface and packages/ui-kit/src is registered as the child's own [[systems.children.codebase]] entry. NOT satisfied by marking a handful of components - the FEATURE must give instructions for the surface as a whole before the path is registered."
 patterns = ["packages/ui-kit/src/**"]
 
@@ -423,3 +427,52 @@ required = true
 [[systems.children.codebase]]
 path = "packages/ui-kit/scripts"
 extensions = [".ts"]
+
+# Calendar Kit owns the PRD, the DESIGN and the FEATURE that describe it, same shape and rationale as
+# gts-plugin above. This entry resolves the package's marker IDs against its own artifact chain:
+# the autodetect form with PRD, DESIGN and FEATURE required, because `required` flags do not inherit
+# and the explicit-artifact-list form validates while enforcing nothing. DECOMPOSITION and ADR are
+# omitted rather than declared optional: a member never owns a DECOMPOSITION, and this member's
+# packaging decision lives under its own architecture tree (packages/calendar-kit/architecture/ADR/),
+# discovered through the member's autodetect root rather than declared here. `src` holds the family
+# units those FEATUREs describe and is deliberately NOT registered here - only the week-grid surface
+# has numbered instructions for a marker to point at, and registering it anyway would put the remaining
+# unmarked family-unit sources under scan with no instruction to satisfy. That debt is recorded instead
+# by its own path-anchored [[ignore]] for packages/calendar-kit/src/** above (with its removal
+# criterion), rather than by registering the path and leaving most files in it an unmarked, uncounted
+# gap. No [[systems.children.codebase]] is declared: unlike ui-kit's contract harness, the package's
+# scripts carry no markers, so the member's scanned surface is the artifact chain itself until a FEATURE
+# gives the remaining surfaces numbered instructions and the src path is registered. ADR is declared
+# `required = false`: owning an ADR is a member's option, not its obligation (cli precedent) - and
+# without this pattern the member's packaging ADR is discovered by nothing, leaving every reference
+# to `cpt-frontx-calendar-kit-adr-calendar-kit-packaging` dangling.
+[[systems.children]]
+name = "Calendar Kit"
+slug = "calendar-kit"
+kit = "sdlc"
+artifacts_dir = "packages/calendar-kit/architecture"
+
+[[systems.children.autodetect]]
+kit = "sdlc"
+system_root = "{project_root}"
+artifacts_root = "packages/calendar-kit/architecture"
+
+[systems.children.autodetect.artifacts.PRD]
+pattern = "PRD.md"
+traceability = "FULL"
+required = true
+
+[systems.children.autodetect.artifacts.DESIGN]
+pattern = "DESIGN.md"
+traceability = "FULL"
+required = true
+
+[systems.children.autodetect.artifacts.FEATURE]
+pattern = "features/*/FEATURE.md"
+traceability = "FULL"
+required = true
+
+[systems.children.autodetect.artifacts.ADR]
+pattern = "ADR/**/*.md"
+traceability = "FULL"
+required = false

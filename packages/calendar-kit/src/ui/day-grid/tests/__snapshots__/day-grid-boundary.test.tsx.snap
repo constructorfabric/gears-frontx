@@ -1,0 +1,10 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`DayGrid boundaries > locks header offset, weekday, and day number across locale, time zone, and DST 1`] = `
+[
+  "<div class="_header_1ad154"><div class="_headerGutter_1ad154 headerGutter" title="UTC">GMT+0</div><div class="_headerDay_1ad154 headerDay"><span class="_weekdayLabel_1ad154 weekdayLabel _today_1ad154">Mon</span><span class="_dayNumber_1ad154 dayNumber _today_1ad154">24</span></div></div>",
+  "<div class="_header_1ad154"><div class="_headerGutter_1ad154 headerGutter" title="America/New_York">GMT-4</div><div class="_headerDay_1ad154 headerDay"><span class="_weekdayLabel_1ad154 weekdayLabel _today_1ad154">Mon</span><span class="_dayNumber_1ad154 dayNumber _today_1ad154">24</span></div></div>",
+  "<div class="_header_1ad154"><div class="_headerGutter_1ad154 headerGutter" title="America/New_York">GMT-5</div><div class="_headerDay_1ad154 headerDay"><span class="_weekdayLabel_1ad154 weekdayLabel">Sun</span><span class="_dayNumber_1ad154 dayNumber">08</span></div></div>",
+  "<div class="_header_1ad154"><div class="_headerGutter_1ad154 headerGutter" title="UTC">GMT+0</div><div class="_headerDay_1ad154 headerDay"><span class="_weekdayLabel_1ad154 weekdayLabel _today_1ad154">Mon</span><span class="_dayNumber_1ad154 dayNumber _today_1ad154">24</span></div></div>",
+]
+`;
