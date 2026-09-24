@@ -1,0 +1,200 @@
+.button {
+}
+
+.round {
+  border-radius: var(--cal-radius-pill);
+}
+
+.content {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--cal-space-2);
+}
+
+.contentLoading > :not(.spinner) {
+  opacity: 0;
+}
+
+.rightIcon,
+.badge {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.rightIcon svg {
+  block-size: var(--cal-icon-size-sm);
+  inline-size: var(--cal-icon-size-sm);
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+  block-size: var(--cal-icon-size-sm);
+  inline-size: var(--cal-icon-size-sm);
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+
+.sizeXxl {
+  block-size: calc(var(--cal-control-height-lg) + var(--cal-space-2));
+  gap: var(--cal-space-2);
+  padding-inline: var(--cal-space-4);
+}
+
+.sizeXl {
+  block-size: var(--cal-control-height-lg);
+  gap: var(--cal-space-2);
+  padding-inline: var(--cal-space-5);
+}
+
+.sizeL {
+  block-size: var(--cal-control-height-md);
+  gap: var(--cal-space-2);
+  padding-inline: var(--cal-space-4);
+}
+
+.sizeM {
+  block-size: var(--cal-control-height-sm);
+  gap: var(--cal-space-2);
+  padding-inline: var(--cal-space-3);
+}
+
+.sizeS {
+  block-size: calc(var(--cal-control-height-sm) - var(--cal-space-1));
+  gap: var(--cal-space-2);
+  padding-inline: var(--cal-space-3);
+}
+
+.sizeXs {
+  block-size: var(--cal-space-6);
+  gap: var(--cal-space-1);
+  padding-inline: calc(var(--cal-space-1) + var(--cal-space-1) / 2);
+}
+
+.sizeContent {
+  align-items: flex-start;
+  block-size: auto;
+  justify-content: flex-start;
+  min-block-size: 0;
+  overflow: visible;
+  white-space: normal;
+}
+
+.onlyIcon {
+  gap: 0;
+  padding-inline: 0;
+}
+
+.sizeXxl.onlyIcon {
+  inline-size: calc(var(--cal-control-height-lg) + var(--cal-space-2));
+  padding-inline: var(--cal-space-4);
+}
+
+.sizeXl.onlyIcon {
+  inline-size: var(--cal-control-height-lg);
+  padding-inline: var(--cal-space-3);
+}
+
+.sizeL.onlyIcon {
+  inline-size: var(--cal-control-height-md);
+  padding-inline: calc(var(--cal-space-2) + var(--cal-space-1) / 2);
+}
+
+.sizeM.onlyIcon {
+  inline-size: var(--cal-control-height-sm);
+  padding-inline: var(--cal-space-2);
+}
+
+.sizeS.onlyIcon {
+  inline-size: calc(var(--cal-control-height-sm) - var(--cal-space-1));
+  padding-inline: calc(var(--cal-space-1) + var(--cal-space-1) / 2);
+}
+
+.sizeXs.onlyIcon {
+  inline-size: var(--cal-space-6);
+  padding-inline: calc(var(--cal-space-1) + var(--cal-space-1) / 2);
+}
+
+.button.primary {
+  --button-bg: var(--cal-color-error);
+  --button-fg: var(--cal-color-action-foreground);
+  --button-bg-hover: color-mix(
+    in srgb,
+    var(--cal-color-error) 95%,
+    var(--cal-color-text)
+  );
+  --button-fg-hover: var(--cal-color-action-foreground);
+}
+
+.button.secondary {
+  --button-bg: var(--cal-state-hover);
+  --button-fg: var(--cal-color-text);
+  /* Hover steps toward the text colour, so it reads in either theme. */
+  --button-bg-hover: color-mix(
+    in srgb,
+    var(--cal-state-hover) 90%,
+    var(--cal-color-text)
+  );
+  --button-fg-hover: var(--cal-color-text);
+}
+
+.button.tertiary {
+  --button-bg: var(--cal-color-surface);
+  --button-fg: var(--cal-color-text);
+  --button-bg-hover: var(--cal-state-hover);
+  --button-fg-hover: var(--cal-color-text);
+}
+
+.button.danger {
+  --button-bg: transparent;
+  --button-fg: var(--cal-color-error);
+  --button-bg-hover: var(--cal-color-conflict);
+  --button-fg-hover: var(--cal-color-action-foreground);
+}
+
+.button.primary:disabled:not([aria-busy="true"]),
+.button.secondary:disabled:not([aria-busy="true"]),
+.button.tertiary:disabled:not([aria-busy="true"]),
+.button.danger:disabled:not([aria-busy="true"]) {
+  --button-bg: var(--cal-color-input-disabled);
+  --button-bg-hover: var(--cal-color-input-disabled);
+  --button-fg: var(--cal-color-subtle);
+  --button-fg-hover: var(--cal-color-subtle);
+  --button-border: transparent;
+}
+
+.primary[aria-pressed="true"]:enabled {
+  background-color: var(--cal-state-active);
+  color: var(--cal-color-text);
+}
+
+.secondary[aria-pressed="true"]:enabled,
+.tertiary[aria-pressed="true"]:enabled,
+.ghost[aria-pressed="true"]:enabled {
+  background-color: var(--cal-color-selection);
+}
+
+.danger[aria-pressed="true"]:enabled {
+  background-color: color-mix(
+    in srgb,
+    var(--cal-color-conflict) 12%,
+    var(--cal-color-surface)
+  );
+  color: var(--cal-color-conflict);
+}
+
+.srOnly {
+  composes: srOnly from "../../../styles/modules/sr-only.module.css";
+}

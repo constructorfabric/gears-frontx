@@ -1,0 +1,23 @@
+.alert {
+  border: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  border-radius: var(--cal-radius-lg);
+  display: grid;
+  gap: var(--cal-space-1);
+  padding: var(--cal-space-3) var(--cal-space-4);
+  text-align: start;
+  font-family: var(--cal-font-family);
+  font-size: var(--cal-text-grid-size);
+  line-height: var(--cal-text-grid-line-height);
+  font-weight: var(--cal-text-grid-weight);
+  letter-spacing: var(--cal-text-grid-tracking);
+}
+
+.default {
+  background-color: var(--cal-color-raised);
+  color: var(--cal-color-text);
+}
+
+.destructive {
+  background-color: var(--cal-color-surface);
+  color: var(--cal-color-error);
+}

@@ -25,6 +25,19 @@
         "scripts/**/*.ts"
       ],
       "ignoreDependencies": ["esbuild"]
+    },
+    "packages/calendar-kit": {
+      "entry": [
+        "src/index.ts",
+        "demo/main.tsx",
+        "demo/examples/**/*.{ts,tsx}"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "demo/**/*.{ts,tsx}",
+        "scripts/**/*.ts"
+      ],
+      "ignoreDependencies": ["rollup"]
     }
   },
   "ignore": [

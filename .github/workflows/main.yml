@@ -72,6 +72,15 @@ jobs:
     # why it runs as its own step.
     - name: Verify ui-kit installs into a clean consumer
       run: npm run test:consumer --workspace=@gears-frontx/ui-kit
+    - name: Verify calendar-kit installs into a clean consumer
+      run: npm run test:consumer --workspace=@gears-frontx/calendar-kit
+
+    # calendar-kit's dist gate is the one suite the unit step above cannot
+    # reach: `test:unit` runs the package vitest.config.ts includes, which
+    # already pull in the a11y and demo test files, while the dist gate imports
+    # the built package through vitest.dist.config.ts after rebuilding it.
+    - name: Verify calendar-kit's built entries
+      run: npm run test:dist --workspace=@gears-frontx/calendar-kit
 
     - name: Audit dependencies for high severity vulnerabilities
       run: npm audit --audit-level=high --omit=dev

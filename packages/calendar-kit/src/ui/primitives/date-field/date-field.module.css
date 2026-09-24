@@ -1,0 +1,93 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  position: relative;
+}
+
+/* The segment under the caret is always selected, so hide the caret. */
+.control.control {
+  background: var(--cal-color-surface);
+  caret-color: transparent;
+  font-variant-numeric: tabular-nums;
+}
+
+div.control.control {
+  gap: calc(var(--cal-space-1) / 2);
+  padding-inline: var(--cal-space-2);
+}
+
+div.control.control > label {
+  margin-inline-start: calc(var(--cal-space-2) - var(--cal-space-1) / 2);
+}
+
+input.control.control {
+  transform: translateY(calc(-1 * var(--cal-border-width-1)));
+}
+
+.unfilled.unfilled {
+  color: var(--cal-color-muted);
+}
+
+.action {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: var(--cal-radius-sm);
+  color: var(--cal-color-muted);
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  padding: 0;
+}
+
+.action:hover:not(:disabled) {
+  color: var(--cal-color-text);
+}
+
+.action:focus-visible {
+  outline: var(--cal-border-width-2) solid var(--cal-color-focus-ring);
+  outline-offset: calc(-1 * var(--cal-border-width-1));
+}
+
+.action:disabled {
+  cursor: not-allowed;
+}
+
+.actionIcon {
+  block-size: var(--cal-icon-size-sm);
+  inline-size: var(--cal-icon-size-sm);
+}
+
+.panel {
+  inline-size: max-content;
+  padding: var(--cal-space-2);
+}
+
+/* ui-kit's calendar reads its own token names. */
+.calendar {
+  --accent: var(--cal-color-selection);
+  --accent-foreground: var(--cal-color-text);
+  --primary: var(--cal-color-action);
+  --primary-foreground: var(--cal-color-action-foreground);
+  --foreground: var(--cal-color-text);
+  --muted: var(--cal-color-input-disabled);
+  --muted-foreground: var(--cal-color-muted);
+  --ring: var(--cal-color-focus-ring);
+  --radius-sm: var(--cal-radius-sm);
+  --control-height-md: var(--cal-control-height-md);
+  --icon-size-sm: var(--cal-icon-size-sm);
+  --space-1: var(--cal-space-1);
+  --space-2: var(--cal-space-2);
+  --space-3: var(--cal-space-3);
+  --space-4: var(--cal-space-4);
+  --text-label-size: var(--cal-text-label-size);
+  --text-label-line-height: var(--cal-text-label-line-height);
+  --text-label-weight: var(--cal-text-label-weight);
+  --text-label-tracking: var(--cal-text-label-tracking);
+  --text-meta-size: var(--cal-text-meta-size);
+  --text-meta-line-height: var(--cal-text-meta-line-height);
+  --text-meta-weight: var(--cal-text-meta-weight);
+  --text-body-weight: var(--cal-text-grid-weight);
+  color: var(--cal-color-text);
+}

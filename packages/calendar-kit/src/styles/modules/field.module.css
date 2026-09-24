@@ -1,0 +1,29 @@
+.fieldIcon {
+  composes: iconBox from "./layout.module.css";
+  color: var(--cal-color-placeholder);
+}
+
+.topLabel {
+  align-items: center;
+  color: var(--cal-color-text);
+  display: flex;
+  font-size: var(--cal-text-grid-size);
+  font-weight: var(--cal-text-grid-weight);
+  gap: var(--cal-space-1);
+  line-height: var(--cal-text-grid-line-height);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cal-space-1);
+  inline-size: 100%;
+}
+
+.chevron {
+  block-size: var(--cal-icon-size-sm);
+  color: var(--cal-color-muted);
+  flex-shrink: 0;
+  inline-size: var(--cal-icon-size-sm);
+  transition: transform var(--cal-motion-duration-short) ease;
+}

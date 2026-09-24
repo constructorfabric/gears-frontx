@@ -1,0 +1,305 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cal-space-1);
+  inline-size: 100%;
+  position: relative;
+}
+
+.topLabel {
+  color: var(--cal-color-text);
+  font-size: var(--cal-text-grid-size);
+  line-height: var(--cal-text-grid-line-height);
+}
+
+.trigger {
+  align-items: center;
+  box-sizing: border-box;
+  background: var(--cal-color-surface);
+  border: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  border-radius: var(--cal-radius-md);
+  color: var(--cal-color-text);
+  display: flex;
+  font-family: inherit;
+  font-size: var(--cal-text-grid-size);
+  inline-size: 100%;
+  line-height: var(--cal-text-grid-line-height);
+  outline: none;
+  text-align: start;
+  transition:
+    background-color var(--cal-motion-duration-short) ease,
+    border-color var(--cal-motion-duration-short) ease,
+    box-shadow var(--cal-motion-duration-short) ease;
+}
+
+.sizeXxl {
+  block-size: var(--cal-space-8);
+  gap: var(--cal-space-2);
+  padding-inline: var(--cal-space-3);
+}
+
+.sizeXl {
+  block-size: var(--cal-control-height-md);
+  gap: var(--cal-space-2);
+  padding-inline: var(--cal-space-3);
+}
+
+.sizeL {
+  block-size: var(--cal-control-height-md);
+  gap: var(--cal-space-2);
+  padding-inline: var(--cal-space-3);
+}
+
+.sizeM {
+  block-size: var(--cal-space-6);
+  gap: var(--cal-space-2);
+  padding-inline: var(--cal-space-2);
+}
+
+.triggerInteractive:hover {
+  box-shadow: inset 0 0 0 var(--cal-border-width-1) var(--cal-state-hover);
+}
+
+.triggerInteractive:focus-visible {
+  box-shadow: inset 0 0 0 var(--cal-border-width-focus)
+    var(--cal-color-focus-ring);
+}
+
+.triggerInvalid,
+.triggerInvalid:hover,
+.triggerInvalid:focus-visible {
+  box-shadow: inset 0 0 0 var(--cal-border-width-1) var(--cal-color-error);
+}
+
+.triggerDisabled {
+  background: var(--cal-color-input-disabled);
+  color: var(--cal-color-subtle);
+  cursor: not-allowed;
+}
+
+.value {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.placeholder {
+  color: var(--cal-color-subtle);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.triggerIcon {
+  composes: fieldIcon from "../../../styles/modules/field.module.css";
+}
+
+.triggerIcon svg {
+  block-size: 14px;
+  inline-size: 14px;
+}
+
+.chevron {
+  composes: chevron from "../../../styles/modules/field.module.css";
+}
+
+/* Capped so the popup opens at its trigger, not at the viewport top. */
+.popup.popup {
+  max-block-size: min(240px, var(--available-height, 240px));
+}
+
+/* prettier-ignore */
+.popup {
+  --cal-select-hover: var(--cal-state-hover);
+  box-sizing: border-box;
+  padding: var(--cal-space-2);
+  gap: var(--cal-space-2);
+  border: 0;
+  border-radius: var(--cal-radius-lg);
+  background: var(--cal-color-overlay-surface);
+  box-shadow: inset 0 0 0 var(--cal-border-width-1) var(--cal-color-overlay-border), var(--cal-shadow-panel);
+}
+
+/* prettier-ignore */
+.popup [role='listbox'] {
+  gap: 0;
+  padding: 0;
+  scrollbar-color: var(--cal-color-grid-line-strong) transparent;
+  /* Firefox takes the colour but not the track geometry. */
+  scrollbar-width: auto;
+}
+
+/* ui-kit's scroll arrows cover the edge rows; the scrollbar already shows overflow. */
+/* prettier-ignore */
+.popup [data-direction='up'],
+.popup [data-direction='down'] {
+  display: none;
+}
+
+/* prettier-ignore */
+.popup [role='listbox']::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+/* prettier-ignore */
+.popup [role='listbox']::-webkit-scrollbar-thumb {
+  box-sizing: border-box;
+  min-height: 24px;
+  border: 2px solid transparent;
+  border-radius: var(--cal-radius-md);
+  background: var(--cal-color-grid-line-strong);
+  background-clip: padding-box;
+}
+
+/* prettier-ignore */
+.popup [role='option'] {
+  box-sizing: border-box;
+  position: relative;
+  width: 100%;
+  min-height: var(--cal-control-height-sm);
+  height: var(--cal-control-height-sm);
+  content-visibility: auto;
+  contain-intrinsic-size: 0 32px;
+  gap: var(--cal-space-2);
+  padding: var(--cal-space-1) 28px var(--cal-space-1) 0;
+  border-radius: var(--cal-radius-md);
+  cursor: pointer;
+}
+
+/* prettier-ignore */
+.popup [role='option']:focus,
+.popup [role='option'][data-highlighted] {
+  background-color: var(--cal-select-hover);
+  color: var(--cal-color-text);
+}
+
+/* The check marks the selection; the row keeps normal ink and the hover fill. */
+/* prettier-ignore */
+.popup [role='option'][data-selected]:not([data-highlighted]) {
+  background-color: transparent;
+}
+
+/* prettier-ignore */
+.popup [role='option'][data-selected] > span:last-child {
+  color: var(--cal-color-text);
+}
+
+/* prettier-ignore */
+.popup [role='option'] > div {
+  display: flex;
+  min-inline-size: 0;
+  flex: 1;
+  align-items: center;
+  gap: var(--cal-space-2);
+}
+
+/* prettier-ignore */
+.popup [role='option'] > div > .optionIndent {
+  flex: 0 0 0;
+  inline-size: 0;
+}
+
+/* prettier-ignore */
+.popup [role='option'] > div > .optionIcon {
+  box-sizing: border-box;
+  display: flex;
+  flex: 0 0 20px;
+  inline-size: var(--cal-icon-size-md);
+  block-size: var(--cal-icon-size-lg);
+  align-items: center;
+  justify-content: center;
+  padding-inline-start: 2px;
+}
+
+/* prettier-ignore */
+.popup [role='option'] > div > .optionText {
+  box-sizing: border-box;
+  color: inherit;
+  display: flex;
+  font-family: var(--cal-font-family);
+  font-size: var(--cal-text-grid-size);
+  font-weight: var(--cal-text-grid-weight);
+  line-height: var(--cal-text-grid-line-height);
+  letter-spacing: var(--cal-text-grid-tracking);
+  min-inline-size: 0;
+  flex: 1;
+  gap: 2px;
+  padding-block: 2px;
+  border-radius: var(--cal-radius-slot);
+}
+
+/* prettier-ignore */
+.popup [role='option'] > span:last-child {
+  box-sizing: border-box;
+  position: absolute;
+  inset-inline-end: var(--cal-space-2);
+  display: flex;
+  inline-size: var(--cal-icon-size-md);
+  block-size: var(--cal-icon-size-lg);
+  align-items: center;
+  justify-content: flex-start;
+  padding-inline-start: var(--cal-space-1);
+}
+
+/* prettier-ignore */
+.popup [role='separator'] {
+  box-sizing: border-box;
+  flex: 0 0 17px;
+  block-size: 17px;
+  margin: 0;
+  padding-block: var(--cal-space-2);
+  background-color: var(--cal-color-divider);
+  background-clip: content-box;
+}
+
+/* prettier-ignore */
+.popup [role='option'].itemNoCheck > span:last-child {
+  display: none;
+}
+
+.optionIcon {
+  align-items: center;
+  block-size: var(--cal-icon-size-sm);
+  color: var(--cal-color-muted);
+  display: flex;
+  flex-shrink: 0;
+  inline-size: var(--cal-icon-size-sm);
+  justify-content: center;
+}
+
+.optionIcon svg {
+  block-size: var(--cal-icon-size-sm);
+  flex-shrink: 0;
+  inline-size: var(--cal-icon-size-sm);
+}
+
+.message {
+  color: var(--cal-color-muted);
+  font-size: var(--cal-text-meta-size);
+  line-height: var(--cal-text-meta-line-height);
+}
+
+.messageInvalid {
+  color: var(--cal-color-error);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trigger,
+  .chevron {
+    transition: none;
+  }
+}
+
+.panelMessage {
+  composes: panelMessage from "../listbox-internals.module.css";
+}
+
+/* The listbox and its options carry focus; drop the UA outline from the popup. */
+.popup:focus,
+.popup:focus-visible {
+  outline: none;
+}
