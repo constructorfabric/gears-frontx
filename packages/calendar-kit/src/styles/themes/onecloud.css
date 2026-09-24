@@ -1,0 +1,185 @@
+/* px, not rem: inside a shadow root rem resolves against the host page. */
+
+:root,
+:host,
+[data-theme="light"] {
+  --surface: #ffffff;
+  --surface-elevated: #f7f7f8;
+  --foreground: #111111;
+  --muted-foreground: #6a6a6a;
+  --subtle-foreground: #777777;
+  --placeholder-foreground: #bbbbbb;
+  --divider: rgb(0 0 0 / 0.09);
+
+  --border: #00000021;
+  --border-strong: #00000021;
+  --ring: #315efb;
+  --primary-ring: #315efb;
+
+  --primary: #19213a;
+  --primary-foreground: #ffffff;
+
+  --now: #ff7065;
+  --now-label: #d40834;
+
+  --danger: #d40834;
+  --destructive: #d63c28;
+  --destructive-foreground: #ffffff;
+  --success: #228665;
+
+  --popover: #ffffff;
+  --popover-border: #00000021;
+  --popover-shadow: 4px 4px 20px rgb(25 33 58 / 0.08);
+  --overlay: #0a0a0a52;
+
+  --input: #00000021;
+  --muted: #f1f1f1;
+  --card-hover: #e8eced;
+  --selection-subtle: #e7ecf1;
+
+  --info: #266068;
+  --info-soft: #e0f3f6;
+  --warning: #9a3316;
+  --warning-soft: #ffeadb;
+  --accent: #f8eaff;
+  --accent-foreground: #841dba;
+
+  --font-sans: "Inter Variable", Inter, sans-serif;
+  --text-heading-1-size: 18px;
+  --text-heading-1-line-height: 24px;
+  --text-heading-1-weight: 600;
+  --text-heading-1-tracking: 0px;
+
+  --text-label-size: 14px;
+  --text-label-line-height: 20px;
+  --text-label-weight: 500;
+  --text-label-tracking: 0px;
+
+  --text-heading-2-size: 12px;
+  --text-heading-2-line-height: 16px;
+  --text-heading-2-weight: 600;
+  --text-meta-size: 12px;
+  --text-meta-line-height: 16px;
+  --text-meta-weight: 400;
+  --text-caption-size: 10px;
+  --text-caption-line-height: 12px;
+  --text-caption-weight: 500;
+  --text-caption-tracking: 0px;
+  --text-body-size: 14px;
+  --text-body-line-height: 20px;
+  --text-body-weight: 400;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --border-width: 1px;
+  --border-width-focus: 2px;
+
+  --radius-xs: 4px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --control-height-sm: 32px;
+  --control-height-md: 36px;
+  --control-height-lg: 40px;
+
+  --icon-size-xs: 12px;
+  --icon-size-sm: 16px;
+  --icon-size-md: 20px;
+  --icon-size-lg: 24px;
+
+  /* No OneCloud counterpart; kit defaults. */
+  --text-heading-2-tracking: -0.1px;
+  --text-meta-tracking: 0.1px;
+  --text-body-tracking: 0px;
+  --ring-inset: 1px;
+}
+
+/* Dark: only the seams that differ. */
+[data-theme="dark"],
+:host([data-theme="dark"]) {
+  --surface: #111827;
+  --surface-elevated: #1f2937;
+  --foreground: #f8fafc;
+  --muted-foreground: #c2ccdc;
+  --subtle-foreground: #a7b2c4;
+  --placeholder-foreground: #777777;
+  --divider: #282b32;
+
+  --border: #ffffff2b;
+  --border-strong: #ffffff3d;
+  --ring: #8db5ef;
+  --primary-ring: #8db5ef;
+
+  --now: #ff7065;
+  --now-label: #ff8fa3;
+
+  --danger: #ff7065;
+  --destructive: #db4f3d;
+  --success: #0fbd83;
+
+  --popover: #171717;
+  --popover-border: #4b4b4b;
+  --popover-shadow: 0 0 20px rgb(0 0 0 / 0.32);
+  --overlay: #00000099;
+
+  --input: #4b4b4b;
+  --muted: #32353f;
+  --card-hover: #212633;
+  --selection-subtle: #273449;
+
+  --info: #dbdcd3;
+  --info-soft: #414e5c;
+  --warning: #e6dac7;
+  --warning-soft: #51485a;
+  --accent: #484b5e;
+  --accent-foreground: #f3d7bf;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]),
+  :host:not([data-theme="light"]) {
+    --surface: #111827;
+    --surface-elevated: #1f2937;
+    --foreground: #f8fafc;
+    --muted-foreground: #c2ccdc;
+    --subtle-foreground: #a7b2c4;
+    --placeholder-foreground: #777777;
+    --divider: #282b32;
+
+    --border: #ffffff2b;
+    --border-strong: #ffffff3d;
+    --ring: #8db5ef;
+    --primary-ring: #8db5ef;
+
+    --now: #ff7065;
+    --now-label: #ff8fa3;
+
+    --danger: #ff7065;
+    --destructive: #db4f3d;
+    --success: #0fbd83;
+
+    --popover: #171717;
+    --popover-border: #4b4b4b;
+    --popover-shadow: 0 0 20px rgb(0 0 0 / 0.32);
+    --overlay: #00000099;
+
+    --input: #4b4b4b;
+    --muted: #32353f;
+    --card-hover: #212633;
+    --selection-subtle: #273449;
+
+    --info: #dbdcd3;
+    --info-soft: #414e5c;
+    --warning: #e6dac7;
+    --warning-soft: #51485a;
+    --accent: #484b5e;
+    --accent-foreground: #f3d7bf;
+  }
+}

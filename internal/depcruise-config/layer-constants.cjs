@@ -55,6 +55,11 @@ const PUBLISHED_LIBRARY_PROPERTIES = Object.freeze({
   // `standalone` either.
   'routing-tanstack': Object.freeze({ core: false, standalone: false }),
   telemetry: Object.freeze({ core: true, standalone: true }),
+  // A React component library like ui-kit, so not `core`; and it declares one
+  // deliberate runtime edge to the component substrate it composes
+  // (`cpt-frontx-calendar-kit-adr-calendar-kit-packaging`), so not `standalone` either.
+  // Mirrors the `routing-tanstack` split above.
+  'calendar-kit': Object.freeze({ core: false, standalone: false }),
   'ui-kit': Object.freeze({ core: false, standalone: true }),
 });
 
@@ -178,6 +183,15 @@ const ALLOWED_ECOSYSTEM_EDGES = Object.freeze({
   // property holds; the `frontx-ui-kit-interim-*` depcruise rules assert the
   // same isolation at the import-graph level.
   'ui-kit': Object.freeze({ runtime: Object.freeze([]), dev: Object.freeze([]) }),
+  // The calendar's one deliberate intra-ecosystem edge: the component
+  // substrate whose primitives it composes (`cpt-frontx-calendar-kit-adr-calendar-kit-packaging`).
+  // No other `@gears-frontx` edge is permitted, in either group. Mirrors the
+  // `routing-tanstack` single-edge shape; the import-graph side is the
+  // `frontx-calendar-kit-*` rules in the root `.dependency-cruiser.cjs`.
+  'calendar-kit': Object.freeze({
+    runtime: Object.freeze(['@gears-frontx/ui-kit']),
+    dev: Object.freeze([]),
+  }),
 
   // ---- Projects orchestration ----
   cli: Object.freeze({

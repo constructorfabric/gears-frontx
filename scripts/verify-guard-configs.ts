@@ -596,6 +596,7 @@ const OTHER_INTRA_ECOSYSTEM_FORBIDDEN_PACKAGES = [
   'cyber-pilot-kit-frontx',
   'ui-kit',
   'telemetry',
+  'calendar-kit',
 ];
 
 function verifyRoutingCoreProviderIsolation(): TestResult[] {
@@ -677,6 +678,7 @@ const SOLE_ENGINE_BOUND_PACKAGES = [
   'ui-kit',
   'telemetry',
   'routing',
+  'calendar-kit',
 ];
 
 function verifySoleEngineImportPattern(): TestResult[] {
