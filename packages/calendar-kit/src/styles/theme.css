@@ -1,0 +1,247 @@
+/* Each data-theme scope restates the mapping, so tokens resolve against its own seams. */
+:root,
+:host,
+[data-theme] {
+  /* ui-kit reads these directly, and its :root does not reach into the shadow root. */
+  --popover-foreground: var(--foreground, #0f172a);
+  --secondary: var(--muted, #f1f5f9);
+  --secondary-foreground: var(--foreground, #0f172a);
+
+  --cal-color-surface: var(--surface, #ffffff);
+  --cal-color-raised: var(--surface-elevated, #ffffff);
+  --cal-color-text: var(--foreground, #0f172a);
+  --cal-color-muted: var(--muted-foreground, #64748b);
+  --cal-color-subtle: var(--subtle-foreground, #5f6f88);
+  --cal-color-placeholder: var(--placeholder-foreground, #bbbbbb);
+  --cal-color-grid-line: var(--border, #64748b);
+  --cal-color-divider: var(--divider, rgb(0 0 0 / 0.09));
+  --cal-color-grid-line-strong: var(--border-strong, #475569);
+  --cal-color-focus-ring: var(--ring, #8b5cf6);
+  --cal-color-focus-ring-strong: var(--primary-ring, #6d28d9);
+  --cal-color-now: var(--now, var(--primary, #8257e6));
+  --cal-color-now-label: var(--now-label, var(--primary-foreground, #ffffff));
+  --cal-color-conflict: var(--danger, #e11d48);
+  --cal-color-overlay-surface: var(--popover, #ffffff);
+  --cal-color-overlay-border: var(
+    --popover-border,
+    color-mix(in oklab, var(--foreground, #0f172a) 10%, transparent)
+  );
+  --cal-color-scrim: var(--overlay, oklch(0 0 0 / 50%));
+  --cal-color-input: var(--input, #cbd5e1);
+  --cal-color-input-disabled: var(--muted, #f1f5f9);
+  --cal-color-action: var(--primary, #8257e6);
+  --cal-color-action-foreground: var(--primary-foreground, #ffffff);
+  --cal-color-selection: var(--selection-subtle, #dce7f2);
+  --cal-color-error: var(--destructive, #e11d48);
+  --cal-color-error-foreground: var(--destructive-foreground, #ffffff);
+  --cal-color-success: var(--success, #059669);
+  --cal-color-warning: var(--warning, #d97706);
+  --cal-color-info: var(--info, #0284c7);
+  --cal-color-turquoise-background: var(--info-soft, #eaf6ff);
+  --cal-color-turquoise-foreground: var(--info, #0284c7);
+  --cal-color-turquoise-border: var(--info, #0284c7);
+  --cal-color-turquoise-accent: var(--info, #0284c7);
+  --cal-color-turquoise-pattern: var(--info, #0284c7);
+  --cal-color-purple-background: var(--accent, #f3e8ff);
+  --cal-color-purple-foreground: var(--accent-foreground, #6d28d9);
+  --cal-color-purple-border: var(--accent-foreground, #6d28d9);
+  --cal-color-purple-accent: var(--accent-foreground, #6d28d9);
+  --cal-color-purple-pattern: var(--accent, #f3e8ff);
+  --cal-color-orange-background: var(--warning-soft, #fdf3e2);
+  --cal-color-orange-foreground: var(--warning, #d97706);
+  --cal-color-orange-border: var(--warning, #d97706);
+  --cal-color-orange-accent: var(--warning, #d97706);
+  --cal-color-orange-pattern: var(--warning, #d97706);
+
+  --cal-font-family: var(--font-sans, "Inter", sans-serif);
+  --cal-text-heading-size: var(--text-heading-1-size, 1.125rem);
+  --cal-text-heading-line-height: var(--text-heading-1-line-height, 1.5rem);
+  --cal-text-heading-weight: var(--text-heading-1-weight, 600);
+  --cal-text-heading-tracking: var(--text-heading-1-tracking, -0.1px);
+  --cal-text-label-size: var(--text-label-size, 0.875rem);
+  --cal-text-label-line-height: var(--text-label-line-height, 1.25rem);
+  --cal-text-label-weight: var(--text-label-weight, 500);
+  --cal-text-label-tracking: var(--text-label-tracking, 0px);
+  --cal-text-title-size: var(--text-heading-2-size, 1rem);
+  --cal-text-title-line-height: var(--text-heading-2-line-height, 1.5rem);
+  --cal-text-title-weight: var(--text-heading-2-weight, 600);
+  --cal-text-title-tracking: var(--text-heading-2-tracking, -0.1px);
+  --cal-text-meta-size: var(--text-meta-size, 0.75rem);
+  --cal-text-meta-line-height: var(--text-meta-line-height, 1rem);
+  --cal-text-meta-weight: var(--text-meta-weight, 400);
+  --cal-text-meta-tracking: var(--text-meta-tracking, 0.1px);
+  --cal-text-caption-size: var(--text-caption-size, 0.625rem);
+  --cal-text-caption-line-height: var(--text-caption-line-height, 0.75rem);
+  --cal-text-caption-weight: var(--text-caption-weight, 500);
+  --cal-text-caption-tracking: var(--text-caption-tracking, 0px);
+  --cal-text-day-number-size: var(--text-body-size, 0.9375rem);
+  --cal-text-day-number-line-height: var(--text-body-line-height, 1.25rem);
+  --cal-text-day-number-weight: var(--text-body-weight, 400);
+  --cal-text-day-number-tracking: var(--text-body-tracking, 0px);
+  --cal-text-grid-size: var(--text-body-size, 0.9375rem);
+  --cal-text-grid-line-height: var(--text-body-line-height, 1.25rem);
+  --cal-text-grid-weight: var(--text-body-weight, 400);
+  --cal-text-grid-tracking: var(--text-body-tracking, 0px);
+
+  --cal-space-1: var(--space-1, 0.25rem);
+  --cal-space-2: var(--space-2, 0.5rem);
+  --cal-space-3: var(--space-3, 0.75rem);
+  --cal-space-4: var(--space-4, 1rem);
+  --cal-space-5: var(--space-5, 1.25rem);
+  --cal-space-6: var(--space-6, 1.5rem);
+  --cal-space-8: var(--space-8, 2rem);
+
+  --cal-border-width-1: var(--border-width, 1px);
+  --cal-border-width-focus: var(--border-width-focus, 2px);
+  --cal-border-ring-inset: var(--ring-inset, 1px);
+  --cal-border-event: var(--border, #64748b);
+  --cal-border-conflict: var(--border-strong, #475569);
+
+  --cal-radius-sm: var(--radius-sm, 0.375rem);
+  --cal-radius-md: var(--radius-md, 0.5rem);
+  --cal-radius-lg: var(--radius-lg, 0.75rem);
+  --cal-radius-slot: var(--radius-xs, 4px);
+  --cal-shadow-overlay: var(
+    --popover-shadow,
+    0 4px 6px -1px var(--cal-color-overlay-border),
+    0 2px 4px -2px var(--cal-color-overlay-border)
+  );
+  --cal-shadow-panel: var(
+    --popover-shadow,
+    0 4px 6px -1px var(--cal-color-overlay-border),
+    0 2px 4px -2px var(--cal-color-overlay-border)
+  );
+  --cal-shadow-drag: var(
+    --popover-shadow,
+    0 4px 6px -1px var(--cal-color-overlay-border),
+    0 2px 4px -2px var(--cal-color-overlay-border)
+  );
+
+  --cal-control-height-sm: var(--control-height-sm, 2rem);
+  --cal-control-height-md: var(--control-height-md, 2.25rem);
+  --cal-control-height-lg: var(--control-height-lg, 2.5rem);
+  --cal-icon-size-xs: var(--icon-size-xs, 0.75rem);
+  --cal-icon-size-sm: var(--icon-size-sm, 1rem);
+  --cal-icon-size-md: var(--icon-size-md, 1.25rem);
+  --cal-icon-size-lg: var(--icon-size-lg, 1.5rem);
+  --cal-focus-ring-width: var(--border-width-focus, 2px);
+
+  --cal-state-active: var(--primary, #8257e6);
+  --cal-state-hover: var(--card-hover, #f8fafc);
+  --cal-state-focus: var(--ring, #8b5cf6);
+  --cal-state-disabled: var(--muted, #f1f5f9);
+  --cal-state-read-only: var(--muted-foreground, #64748b);
+  --cal-state-dragging: var(--accent, #f3e8ff);
+  --cal-slot-selected: var(--selection-subtle, #dce7f2);
+  --cal-slot-selected-foreground: var(--foreground, #0f172a);
+  --cal-slot-selected-ring: var(--ring, #8b5cf6);
+  --cal-slot-dragging: var(--accent, #f3e8ff);
+  --cal-slot-dragging-foreground: var(--accent-foreground, #6d28d9);
+  --cal-slot-dragging-ring: var(--primary-ring, #6d28d9);
+  --cal-slot-unavailable: var(--muted, #f1f5f9);
+  --cal-slot-unavailable-foreground: var(--muted-foreground, #64748b);
+  --cal-slot-unavailable-ring: var(--border-strong, #475569);
+
+  --cal-radius-pill: 9999px;
+  --cal-motion-duration-short: 120ms;
+  --cal-motion-duration-medium: 200ms;
+  --cal-motion-duration-long: 320ms;
+
+  --cal-layer-now-line: 20;
+  --cal-layer-all-day-band: 30;
+  --cal-layer-day-number-band: 31;
+  --cal-layer-overlay: 40;
+  --cal-layer-alert: 50;
+}
+
+[data-theme="dark"],
+:host([data-theme="dark"]) {
+  --cal-color-surface: var(--surface, #0f131b);
+  --cal-color-raised: var(--surface-elevated, #131824);
+  --cal-color-text: var(--foreground, #f8fafc);
+  --cal-color-muted: var(--muted-foreground, #8d96a8);
+  --cal-color-overlay-border: var(
+    --popover-border,
+    color-mix(in oklab, var(--foreground, #f8fafc) 10%, transparent)
+  );
+  --cal-color-subtle: var(--subtle-foreground, #7a8396);
+  --cal-color-placeholder: var(--placeholder-foreground, #777777);
+  --cal-color-divider: var(--divider, #282b32);
+  --cal-color-grid-line-strong: var(--border-strong, #303a4d);
+  --cal-color-focus-ring-strong: var(--primary-ring, #a78bfa);
+  --cal-color-conflict: var(--danger, #d63853);
+  --cal-color-selection: var(--selection-subtle, #1c2d3f);
+  --cal-slot-selected-foreground: var(--foreground, #f8fafc);
+  --cal-color-turquoise-background: var(--info-soft, #06262b);
+  --cal-color-orange-background: var(--warning-soft, #2e240a);
+  --cal-state-hover: var(--card-hover, #151c29);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]),
+  :host:not([data-theme="light"]) {
+    --cal-color-surface: var(--surface, #0f131b);
+    --cal-color-raised: var(--surface-elevated, #131824);
+    --cal-color-text: var(--foreground, #f8fafc);
+    --cal-color-muted: var(--muted-foreground, #8d96a8);
+    --cal-color-overlay-border: var(
+      --popover-border,
+      color-mix(in oklab, var(--foreground, #f8fafc) 10%, transparent)
+    );
+    --cal-color-subtle: var(--subtle-foreground, #7a8396);
+    --cal-color-placeholder: var(--placeholder-foreground, #777777);
+    --cal-color-divider: var(--divider, #282b32);
+    --cal-color-grid-line-strong: var(--border-strong, #303a4d);
+    --cal-color-focus-ring-strong: var(--primary-ring, #a78bfa);
+    --cal-color-conflict: var(--danger, #d63853);
+    --cal-color-selection: var(--selection-subtle, #1c2d3f);
+    --cal-slot-selected-foreground: var(--foreground, #f8fafc);
+    --cal-color-turquoise-background: var(--info-soft, #06262b);
+    --cal-color-orange-background: var(--warning-soft, #2e240a);
+    --cal-state-hover: var(--card-hover, #151c29);
+    color-scheme: dark;
+  }
+}
+
+@media (forced-colors: active) {
+  :root,
+  :host,
+  [data-theme] {
+    --cal-color-surface: Canvas;
+    --cal-color-raised: Canvas;
+    --cal-color-text: CanvasText;
+    --cal-color-muted: GrayText;
+    --cal-color-subtle: GrayText;
+    --cal-color-grid-line: GrayText;
+    --cal-color-grid-line-strong: CanvasText;
+    --cal-color-focus-ring: Highlight;
+    --cal-color-focus-ring-strong: Highlight;
+    --cal-color-now: Highlight;
+    --cal-color-now-label: HighlightText;
+    --cal-color-conflict: Highlight;
+    --cal-color-overlay-surface: Canvas;
+    --cal-color-overlay-border: CanvasText;
+    --cal-color-scrim: CanvasText;
+    --cal-color-input: Canvas;
+    --cal-color-input-disabled: GrayText;
+    --cal-color-action: Highlight;
+    --cal-color-action-foreground: HighlightText;
+    --cal-color-selection: Highlight;
+    --cal-slot-selected-foreground: HighlightText;
+    --cal-color-error: Highlight;
+    --cal-color-error-foreground: HighlightText;
+    --cal-color-success: Highlight;
+    --cal-color-warning: Highlight;
+    --cal-color-info: Highlight;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  :host {
+    --cal-motion-duration-short: 0s;
+    --cal-motion-duration-medium: 0s;
+    --cal-motion-duration-long: 0s;
+  }
+}
