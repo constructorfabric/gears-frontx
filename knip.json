@@ -10,9 +10,7 @@
       ]
     },
     "packages/cyber-pilot-kit-frontx": {
-      "entry": [
-        "skills/**/scripts/*.mjs"
-      ]
+      "entry": ["skills/**/scripts/*.mjs"]
     },
     "packages/ui-kit": {
       "entry": [
@@ -26,21 +24,20 @@
         "demo/**/*.{ts,tsx}",
         "scripts/**/*.ts"
       ],
-      "ignoreDependencies": [
-        "esbuild"
-      ]
+      "ignoreDependencies": ["esbuild"]
     },
     "packages/calendar-kit": {
       "entry": [
-        "src/index.ts"
+        "src/index.ts",
+        "demo/main.tsx",
+        "demo/examples/**/*.{ts,tsx}"
       ],
       "project": [
         "src/**/*.{ts,tsx}",
+        "demo/**/*.{ts,tsx}",
         "scripts/**/*.ts"
       ],
-      "ignoreDependencies": [
-        "rollup"
-      ]
+      "ignoreDependencies": ["rollup"]
     }
   },
   "ignore": [

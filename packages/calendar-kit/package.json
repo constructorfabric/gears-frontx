@@ -37,7 +37,6 @@
     "./reset.css": "./dist/reset.css",
     "./themes/onecloud.css": "./dist/themes/onecloud.css"
   },
-  "private": true,
   "publishConfig": {
     "access": "public"
   },

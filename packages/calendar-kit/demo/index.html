@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Calendar Kit Demo</title>
+    <link rel="icon" href="data:," />
+    <!--
+      Shell layout only. The kit's own component styles ship in theme.css
+      (imported once from main.tsx); this block just lays out the demo chrome
+      around them. Every value reads a --cal-* token with the same hardcoded
+      fallback theme.css uses, so the page is legible even for the one frame
+      before the bundled stylesheet is injected.
+    -->
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--cal-color-surface, #ffffff);
+        color: var(--cal-color-text, #0f172a);
+        font-family: var(
+          --cal-font-family,
+          "Inter",
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif
+        );
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .demo-app {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: var(--cal-space-6, 1.5rem);
+        display: grid;
+        gap: var(--cal-space-6, 1.5rem);
+      }
+
+      .demo-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--cal-space-4, 1rem);
+        padding-bottom: var(--cal-space-4, 1rem);
+        border-bottom: var(--cal-border-width-1, 1px) solid
+          var(--cal-color-grid-line, #64748b);
+      }
+
+      .demo-title {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+
+      .demo-subtitle {
+        margin: 0.25rem 0 0;
+        font-size: 0.875rem;
+        color: var(--cal-color-muted, #64748b);
+      }
+
+      .demo-controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--cal-space-4, 1rem);
+      }
+
+      .demo-control-group {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--cal-space-2, 0.5rem);
+      }
+
+      .demo-control-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--cal-color-muted, #64748b);
+      }
+
+      .demo-segmented {
+        display: inline-flex;
+        border: var(--cal-border-width-1, 1px) solid
+          var(--cal-color-grid-line, #64748b);
+        border-radius: var(--cal-radius-md, 0.5rem);
+        overflow: hidden;
+      }
+
+      .demo-segmented button {
+        appearance: none;
+        border: none;
+        background: transparent;
+        color: var(--cal-color-text, #0f172a);
+        font: inherit;
+        font-size: 0.875rem;
+        padding: 0.4rem 0.75rem;
+        cursor: pointer;
+      }
+
+      .demo-segmented button + button {
+        border-inline-start: var(--cal-border-width-1, 1px) solid
+          var(--cal-color-grid-line, #64748b);
+      }
+
+      .demo-segmented button[aria-pressed="true"] {
+        background: var(--cal-color-action, #8257e6);
+        color: var(--cal-color-action-foreground, #ffffff);
+      }
+
+      .demo-segmented button:focus-visible {
+        outline: var(--cal-focus-ring-width, 2px) solid
+          var(--cal-color-focus-ring, #8b5cf6);
+        outline-offset: -2px;
+      }
+
+      .demo-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--cal-space-2, 0.5rem);
+      }
+
+      .demo-nav button {
+        appearance: none;
+        border: var(--cal-border-width-1, 1px) solid
+          var(--cal-color-grid-line, #64748b);
+        border-radius: var(--cal-radius-pill, 9999px);
+        background: transparent;
+        color: var(--cal-color-text, #0f172a);
+        font: inherit;
+        font-size: 0.875rem;
+        padding: 0.4rem 0.9rem;
+        cursor: pointer;
+      }
+
+      .demo-nav button[aria-current="page"] {
+        background: var(--cal-color-action, #8257e6);
+        border-color: var(--cal-color-action, #8257e6);
+        color: var(--cal-color-action-foreground, #ffffff);
+      }
+
+      .demo-nav button:focus-visible {
+        outline: var(--cal-focus-ring-width, 2px) solid
+          var(--cal-color-focus-ring, #8b5cf6);
+        outline-offset: 2px;
+      }
+
+      .demo-screen {
+        display: grid;
+        gap: var(--cal-space-6, 1.5rem);
+      }
+
+      .demo-section {
+        display: grid;
+        gap: var(--cal-space-4, 1rem);
+        padding: var(--cal-space-5, 1.25rem);
+        border: var(--cal-border-width-1, 1px) solid
+          var(--cal-color-grid-line, #64748b);
+        border-radius: var(--cal-radius-lg, 0.75rem);
+        background: var(--cal-color-raised, #ffffff);
+      }
+
+      .demo-section h2 {
+        margin: 0;
+        font-size: 1.125rem;
+        font-weight: 600;
+      }
+
+      .demo-hint {
+        margin: 0;
+        font-size: 0.875rem;
+        color: var(--cal-color-muted, #64748b);
+      }
+
+      .demo-columns {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        gap: var(--cal-space-5, 1.25rem);
+        align-items: start;
+      }
+
+      .demo-stack {
+        display: grid;
+        gap: var(--cal-space-4, 1rem);
+      }
+
+      .demo-caption {
+        margin: 0;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--cal-color-subtle, #5f6f88);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/main.tsx"></script>
+  </body>
+</html>
