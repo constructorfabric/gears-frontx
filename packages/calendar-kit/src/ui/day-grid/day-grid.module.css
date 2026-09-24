@@ -1,0 +1,243 @@
+.dayGrid {
+  composes: gridGeometry from "../../styles/modules/grid-geometry.module.css";
+  --day-grid-slot-count: 24;
+  --day-grid-timed-grid-block-size: calc(
+    var(--grid-hour-height) * var(--day-grid-slot-count)
+  );
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  min-block-size: 0;
+  overflow: hidden;
+  color: var(--cal-color-text);
+  background: var(--cal-color-surface);
+  border: var(--cal-border-width-1) solid var(--cal-color-grid-line-strong);
+  border-radius: var(--cal-radius-md);
+  font-family: var(--cal-font-family);
+}
+
+.workingDay,
+.nonWorkingDay,
+.workingHour,
+.nonWorkingHour {
+}
+
+.header {
+  display: grid;
+  grid-template-columns: var(--grid-gutter-width) minmax(0, 1fr);
+  min-block-size: 48px;
+  block-size: 48px;
+}
+
+.headerGutter {
+  composes: gutterCell from "../../styles/modules/grid.module.css";
+  display: block;
+  min-inline-size: 0;
+  border-inline-end: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  border-block-end: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  color: var(--cal-color-subtle);
+  font-size: var(--cal-text-caption-size);
+  font-weight: var(--cal-text-caption-weight);
+  line-height: var(--cal-text-caption-line-height);
+  letter-spacing: var(--cal-text-caption-tracking);
+}
+
+.headerDay {
+  composes: gutterCell from "../../styles/modules/grid.module.css";
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  border-block-end: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+}
+
+.headerDay.headerDay {
+  padding-block-end: 0;
+}
+
+/* Doubled class outranks the composed dayNumber and weekdayLabel. */
+.today.today {
+  color: var(--cal-color-now-label);
+}
+
+.weekdayLabel {
+  composes: weekdayLabel from "../../styles/modules/text.module.css";
+  display: block;
+}
+
+.dayNumber {
+  composes: dayNumber from "../../styles/modules/text.module.css";
+  display: block;
+}
+
+.allDay {
+  display: grid;
+  grid-template-columns: var(--grid-gutter-width) minmax(0, 1fr);
+  min-block-size: 44px;
+  background: var(--cal-color-raised);
+}
+
+.gutterBase {
+  composes: gutterCell from "../../styles/modules/grid.module.css";
+  display: block;
+  color: var(--cal-color-subtle);
+  font-size: var(--cal-text-meta-size);
+  line-height: var(--cal-text-meta-line-height);
+  border-inline-end: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  border-block-end: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+}
+
+.allDayGutter {
+  composes: gutterBase;
+}
+
+.allDayTrack {
+  position: relative;
+  min-block-size: var(--grid-hour-height);
+  padding: var(--cal-space-1);
+  border-block-end: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+}
+
+.allDayEvent {
+  inset-block-start: var(--cal-space-1);
+  inset-inline-start: var(--cal-space-1);
+  inline-size: calc(100% - var(--cal-space-2));
+  block-size: var(--grid-chip-height);
+}
+
+.allDayEmpty {
+  color: var(--cal-color-subtle);
+  font-size: var(--cal-text-meta-size);
+  line-height: var(--cal-text-meta-line-height);
+}
+
+.timedLayout {
+  display: grid;
+  grid-template-columns: var(--grid-gutter-width) minmax(0, 1fr);
+  max-block-size: min(70vh, calc(var(--grid-hour-height) * 16));
+  min-block-size: 0;
+  min-inline-size: 0;
+  overflow: auto;
+}
+
+.gutter {
+  display: grid;
+  grid-template-rows: repeat(
+    var(--day-grid-slot-count),
+    var(--grid-hour-height)
+  );
+  min-block-size: var(--day-grid-timed-grid-block-size);
+}
+
+.gutterHour {
+  composes: gutterBase;
+}
+
+.timedGrid {
+  position: relative;
+  block-size: var(--day-grid-timed-grid-block-size);
+  min-inline-size: 0;
+}
+
+.dayCalendarGrid {
+  position: relative;
+  display: block;
+  block-size: var(--day-grid-timed-grid-block-size);
+  min-block-size: var(--day-grid-timed-grid-block-size);
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+}
+
+.dayCalendarGrid > [role="row"]:first-child {
+  display: none;
+}
+
+.dayCalendarGrid > [role="row"] {
+  grid-template-columns: minmax(0, 1fr);
+  block-size: var(--grid-hour-height);
+  min-block-size: var(--grid-hour-height);
+}
+
+.dayCalendarGrid > [role="row"] > [role="gridcell"] {
+  block-size: var(--grid-hour-height);
+  min-block-size: var(--grid-hour-height);
+  background: var(--cal-color-surface);
+}
+
+.cellContent {
+  position: relative;
+  z-index: 0;
+  block-size: 100%;
+  min-block-size: var(--grid-hour-height);
+  padding: var(--cal-space-1);
+  border-block-end: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+}
+
+[role="row"]:last-child .cellContent,
+[role="row"]:last-child .gutterHour {
+  border-block-end: 0;
+}
+
+.eventLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.event {
+  --calendar-event-inset: 2px;
+  position: absolute;
+  pointer-events: auto;
+}
+
+.event button {
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.dayEvent {
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.eventTime {
+  composes: metaText from "../../styles/modules/text.module.css";
+}
+
+.nowLine {
+  composes: nowLine from "../../styles/modules/now-line.module.css";
+}
+
+.nowLabel {
+  composes: nowLabel from "../../styles/modules/now-line.module.css";
+}
+
+.liveRegion {
+  composes: srOnly from "../../styles/modules/sr-only.module.css";
+}
+
+@media (forced-colors: active) {
+  .nowLine {
+    border-color: Highlight;
+  }
+}
+
+.trailingGutter .header,
+.trailingGutter .allDay,
+.trailingGutter .timedLayout {
+  grid-template-columns: var(--grid-gutter-width) minmax(0, 1fr) var(
+      --grid-gutter-width
+    );
+}
+
+.trailingGutterCell {
+  border-inline-start: var(--cal-border-width-1) solid
+    var(--cal-color-grid-line);
+  border-inline-end: 0;
+}
+
+.trailingGutterCell > .gutterHour {
+  border-inline-end: 0;
+}

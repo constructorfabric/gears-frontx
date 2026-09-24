@@ -1,0 +1,113 @@
+.panel {
+  background: var(--cal-color-surface);
+  border: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  border-radius: var(--cal-radius-lg);
+  box-shadow: var(--cal-shadow-overlay);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cal-space-2);
+  max-block-size: 256px;
+  max-inline-size: calc(100vw - var(--cal-space-8));
+  min-inline-size: 160px;
+  overflow-y: auto;
+  padding: var(--cal-space-2);
+  position: fixed;
+  z-index: 8;
+}
+
+.option {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--cal-radius-sm);
+  color: var(--cal-color-text);
+  display: flex;
+  flex: 0 0 auto;
+  font: inherit;
+  gap: var(--cal-space-2);
+  inline-size: 100%;
+  min-block-size: var(--cal-control-height-sm);
+  content-visibility: auto;
+  contain-intrinsic-size: 0 40px;
+  padding: var(--cal-space-2) var(--cal-space-3);
+  text-align: start;
+}
+
+.option:hover,
+.optionActive {
+  background: var(--cal-state-hover);
+}
+
+.option:focus-visible {
+  outline: var(--cal-border-width-focus) solid var(--cal-color-focus-ring);
+  outline-offset: calc(-1 * var(--cal-border-width-focus));
+}
+
+.option:disabled {
+  color: var(--cal-color-subtle);
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.optionDivider {
+  border-block-end: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  border-radius: 0;
+  padding-block-end: var(--cal-space-3);
+}
+
+.optionIcon {
+  align-items: center;
+  color: var(--cal-color-muted);
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.optionIcon svg,
+.check,
+.chevron {
+  block-size: var(--cal-icon-size-sm);
+  flex: 0 0 auto;
+  inline-size: var(--cal-icon-size-sm);
+}
+
+.optionContent {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.optionLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.optionSubtitle,
+.optionSupport {
+  color: var(--cal-color-muted);
+  font-size: var(--cal-text-meta-size);
+  line-height: var(--cal-text-meta-line-height);
+}
+
+.optionSupport {
+  flex: 0 0 auto;
+}
+
+.check {
+  color: var(--cal-color-action);
+}
+
+.chevron {
+  color: var(--cal-color-muted);
+}
+
+.panelMessage {
+  color: var(--cal-color-muted);
+  font-size: var(--cal-text-label-size);
+  line-height: var(--cal-text-label-line-height);
+  margin: 0;
+  padding-block: var(--cal-space-3);
+  padding-inline: var(--cal-space-3);
+  text-align: center;
+}

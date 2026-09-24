@@ -1,0 +1,86 @@
+.root {
+  composes: panelRoot from "../../styles/modules/list.module.css";
+}
+
+.header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  min-block-size: var(--cal-control-height-sm);
+}
+
+.heading {
+  composes: panelHeading from "../../styles/modules/list.module.css";
+}
+
+.edit,
+.control {
+  flex: 0 0 auto;
+}
+
+.list {
+  composes: listReset from "../../styles/modules/list.module.css";
+  display: flex;
+  flex-direction: column;
+  gap: var(--cal-space-1);
+}
+
+.row {
+  align-items: center;
+  display: flex;
+  gap: var(--cal-space-2);
+  justify-content: space-between;
+  min-block-size: var(--cal-control-height-md);
+  min-inline-size: 0;
+}
+
+.clockContent {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  gap: var(--cal-space-2);
+  justify-content: space-between;
+  min-inline-size: 0;
+}
+
+.city {
+  color: var(--cal-color-text);
+  font-size: var(--cal-text-grid-size);
+  line-height: var(--cal-text-grid-line-height);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.value {
+  flex: 0 0 auto;
+  color: var(--cal-color-muted);
+  font-weight: var(--cal-text-caption-weight);
+  white-space: nowrap;
+}
+
+.controls {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: var(--cal-space-1);
+}
+
+.control :global(svg),
+.edit :global(svg) {
+  block-size: var(--cal-icon-size-sm);
+  inline-size: var(--cal-icon-size-sm);
+}
+
+.addSelect {
+  inline-size: 100%;
+}
+
+@media (forced-colors: active) {
+  .city {
+    color: CanvasText;
+  }
+
+  .value {
+    forced-color-adjust: none;
+  }
+}

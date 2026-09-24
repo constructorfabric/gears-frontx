@@ -1,0 +1,61 @@
+.root {
+  composes: panelRoot from "../../styles/modules/list.module.css";
+}
+
+.heading {
+  composes: panelHeading from "../../styles/modules/list.module.css";
+}
+
+.option {
+  color: var(--cal-color-text);
+  font-size: var(--cal-text-grid-size);
+  font-weight: var(--cal-text-grid-weight);
+  inline-size: 100%;
+  justify-content: space-between;
+  letter-spacing: var(--cal-text-grid-tracking);
+  line-height: var(--cal-text-grid-line-height);
+  content-visibility: auto;
+  contain-intrinsic-size: 0 40px;
+  padding-inline: var(--cal-space-2);
+}
+
+/* Button wraps children in spans; match the wrapper by its relation to the name. */
+.option span:has(> .label) {
+  display: flex;
+  flex: 1 1 auto;
+  gap: var(--cal-space-1);
+  justify-content: flex-start;
+  min-inline-size: 0;
+}
+
+.option:hover {
+  background: var(--cal-state-hover);
+  color: var(--cal-color-text);
+}
+
+.option[aria-pressed="true"] {
+  background: var(--cal-slot-selected);
+  color: var(--cal-slot-selected-foreground);
+}
+
+.label {
+  composes: truncate from "../../styles/modules/text.module.css";
+  min-inline-size: 0;
+}
+
+.offset {
+  color: var(--cal-color-muted);
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (forced-colors: active) {
+  .option[aria-pressed="true"] {
+    background: Highlight;
+    color: HighlightText;
+  }
+
+  .offset {
+    color: inherit;
+  }
+}

@@ -1,0 +1,124 @@
+.results {
+  display: flex;
+  min-inline-size: 0;
+  flex-direction: column;
+  gap: var(--cal-space-4);
+  color: var(--cal-color-text);
+  font-family: var(--cal-font-family);
+}
+
+.groups {
+  display: flex;
+  min-inline-size: 0;
+  flex-direction: column;
+  gap: var(--cal-space-4);
+}
+
+.group,
+.rows {
+  display: flex;
+  min-inline-size: 0;
+  flex-direction: column;
+  gap: var(--cal-space-2);
+}
+
+.day {
+  composes: sectionLabel from "../../styles/modules/text.module.css";
+}
+
+.dayToday {
+  color: var(--cal-color-now);
+}
+
+.result {
+  composes: focusRing from "../../styles/modules/focus-ring.module.css";
+  align-items: flex-start;
+  appearance: none;
+  background: transparent;
+  border: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  border-radius: var(--cal-radius-md);
+  color: var(--cal-color-text);
+  cursor: pointer;
+  display: flex;
+  font-family: var(--cal-font-family);
+  font-size: inherit;
+  inline-size: 100%;
+  justify-content: flex-start;
+  margin: 0;
+  min-inline-size: 0;
+  outline: none;
+  padding: var(--cal-space-2);
+  text-align: start;
+  transition:
+    background-color var(--cal-motion-duration-short) ease,
+    border-color var(--cal-motion-duration-short) ease,
+    box-shadow var(--cal-motion-duration-short) ease;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 72px;
+  white-space: normal;
+}
+
+.result:hover {
+  background: var(--cal-state-hover);
+}
+
+.content {
+  display: flex;
+  min-inline-size: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--cal-space-1);
+}
+
+.title,
+.details {
+  max-inline-size: 100%;
+}
+
+.title {
+  composes: truncate from "../../styles/modules/text.module.css";
+  color: inherit;
+  font-size: var(--cal-text-grid-size);
+  font-weight: var(--cal-text-grid-weight);
+  line-height: var(--cal-text-grid-line-height);
+}
+
+.details {
+  composes: truncate from "../../styles/modules/text.module.css";
+  color: var(--cal-color-muted);
+  font-size: var(--cal-text-meta-size);
+  line-height: var(--cal-text-meta-line-height);
+}
+
+.liveRegion {
+  composes: srOnly from "../../styles/modules/sr-only.module.css";
+}
+
+@media (forced-colors: active), (prefers-contrast: more) {
+  .dayToday {
+    color: Highlight;
+  }
+
+  .result {
+    color: CanvasText;
+    background: Canvas;
+    border-color: CanvasText;
+  }
+
+  .result:hover,
+  .result:focus-visible {
+    color: HighlightText;
+    background: Highlight;
+    border-color: Highlight;
+  }
+
+  .details {
+    color: inherit;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .result {
+    transition-duration: 0s;
+  }
+}

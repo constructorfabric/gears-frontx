@@ -1,0 +1,27 @@
+.actionRow {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--cal-space-2);
+}
+
+.iconBox {
+  align-items: center;
+  block-size: var(--cal-icon-size-sm);
+  display: flex;
+  flex-shrink: 0;
+  inline-size: var(--cal-icon-size-sm);
+  justify-content: center;
+}
+
+.viewRoot {
+  composes: gridGeometry from "./grid-geometry.module.css";
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  min-inline-size: 0;
+  min-block-size: 0;
+  color: var(--cal-color-text);
+  font-family: var(--cal-font-family);
+}

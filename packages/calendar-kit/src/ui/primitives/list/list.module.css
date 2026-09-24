@@ -1,0 +1,304 @@
+.list {
+  background: var(--cal-color-surface);
+  display: flex;
+  flex-direction: column;
+  inline-size: 100%;
+}
+
+.header {
+  align-items: center;
+  color: var(--cal-color-muted);
+  display: flex;
+  font-family: var(--cal-font-family);
+  font-size: var(--cal-text-meta-size);
+  gap: var(--cal-space-2);
+  inline-size: 100%;
+  line-height: var(--cal-text-meta-line-height);
+  padding-block: var(--cal-space-1);
+  padding-inline: var(--cal-space-2);
+}
+
+.headerIcon {
+  composes: iconBox from "../../../styles/modules/layout.module.css";
+}
+
+.headerIcon svg {
+  block-size: var(--cal-icon-size-sm);
+  flex-shrink: 0;
+  inline-size: var(--cal-icon-size-sm);
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemWrapper {
+  display: flex;
+  flex-direction: column;
+  inline-size: 100%;
+}
+
+.item {
+  align-items: flex-start;
+  border-radius: var(--cal-radius-md);
+  display: flex;
+  gap: var(--cal-space-2);
+  inline-size: 100%;
+  outline: none;
+  padding-inline: var(--cal-space-2);
+  text-align: start;
+  transition:
+    background-color var(--cal-motion-duration-short) ease,
+    color var(--cal-motion-duration-short) ease;
+}
+
+.sizeM {
+  min-block-size: var(--cal-control-height-lg);
+  padding-block: var(--cal-space-2);
+}
+
+.sizeS {
+  min-block-size: var(--cal-control-height-sm);
+  padding-block: var(--cal-space-1);
+}
+
+.sizeXs {
+  min-block-size: var(--cal-icon-size-lg);
+  padding-block: 0;
+}
+
+.sizeM.framed {
+  padding-block: var(--cal-space-1);
+}
+
+.sizeS.framed {
+  padding-block: var(--cal-space-1);
+}
+
+.variantDefault {
+  color: var(--cal-color-text);
+}
+
+.variantDanger {
+  color: var(--cal-color-error);
+}
+
+.interactive {
+  cursor: pointer;
+}
+
+.interactive:hover {
+  background: var(--cal-state-hover);
+}
+
+.interactive:focus-visible {
+  box-shadow: inset 0 0 0 var(--cal-border-width-focus)
+    var(--cal-color-focus-ring);
+}
+
+.selected {
+  background: var(--cal-slot-selected);
+}
+
+.checked {
+  background: var(--cal-color-surface);
+}
+
+.dragging {
+  box-shadow: inset 0 0 0 var(--cal-border-width-1) var(--cal-color-focus-ring);
+}
+
+.active {
+  background: var(--cal-state-hover);
+}
+
+.disabled {
+  color: var(--cal-color-subtle);
+  pointer-events: none;
+}
+
+.dragHandleIcon {
+  color: var(--cal-color-muted);
+}
+
+.control {
+  align-items: center;
+  block-size: var(--cal-icon-size-lg);
+  display: flex;
+  flex-shrink: 0;
+  inline-size: var(--cal-icon-size-lg);
+  justify-content: center;
+  padding: var(--cal-space-1);
+}
+
+.avatar {
+  align-items: center;
+  block-size: var(--cal-icon-size-lg);
+  display: flex;
+  flex-shrink: 0;
+}
+
+.shrink {
+  flex-shrink: 0;
+}
+
+.body {
+  align-self: stretch;
+  border-radius: var(--cal-radius-sm);
+  display: flex;
+  flex: 1 1 0%;
+  flex-direction: column;
+  gap: calc(var(--cal-space-1) / 2);
+  justify-content: center;
+  min-inline-size: 0;
+  padding-block: calc(var(--cal-space-1) / 2);
+}
+
+.editing {
+  box-shadow: inset 0 0 0 var(--cal-border-width-1) var(--cal-color-focus-ring);
+}
+
+.invalid {
+  box-shadow: inset 0 0 0 var(--cal-border-width-1) var(--cal-color-error);
+}
+
+.label {
+  font-family: var(--cal-font-family);
+  font-size: var(--cal-text-grid-size);
+  line-height: var(--cal-text-grid-line-height);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtitle {
+  color: var(--cal-color-muted);
+  font-family: var(--cal-font-family);
+  font-size: var(--cal-text-meta-size);
+  line-height: var(--cal-text-meta-line-height);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.support {
+  color: var(--cal-color-muted);
+  flex-shrink: 0;
+  font-family: var(--cal-font-family);
+  font-size: var(--cal-text-meta-size);
+  line-height: var(--cal-text-meta-line-height);
+  padding-block-start: var(--cal-space-1);
+  text-align: end;
+}
+
+.trailing {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+}
+
+.badgeSlot {
+  flex-shrink: 0;
+  padding-block-start: var(--cal-space-1);
+}
+
+.chevronIcon {
+  color: var(--cal-color-muted);
+}
+
+.dividerRow {
+  inline-size: 100%;
+  padding-block-start: var(--cal-space-2);
+}
+
+.divider {
+  background: var(--cal-color-grid-line);
+  block-size: var(--cal-border-width-1);
+  margin-inline: calc(-1 * var(--cal-space-2));
+}
+
+.tag {
+  align-items: center;
+  background: var(--cal-state-disabled);
+  block-size: var(--cal-icon-size-lg);
+  border-radius: var(--cal-radius-md);
+  color: var(--cal-color-subtle);
+  display: inline-flex;
+  flex-shrink: 0;
+  font-family: var(--cal-font-family);
+  font-size: var(--cal-text-meta-size);
+  font-weight: var(--cal-text-grid-weight);
+  gap: var(--cal-space-1);
+  line-height: var(--cal-text-meta-line-height);
+  padding-inline: var(--cal-space-2);
+}
+
+.badge {
+  align-items: center;
+  background: var(--cal-color-error);
+  block-size: var(--cal-icon-size-sm);
+  border-radius: var(--cal-radius-pill);
+  color: var(--cal-color-action-foreground);
+  display: inline-flex;
+  font-family: var(--cal-font-family);
+  font-size: var(--cal-icon-size-xs);
+  font-weight: var(--cal-text-grid-weight);
+  gap: calc(var(--cal-space-1) / 2);
+  justify-content: center;
+  line-height: var(--cal-icon-size-xs);
+  min-inline-size: var(--cal-icon-size-sm);
+  padding-inline: var(--cal-space-1);
+}
+
+.indent {
+  block-size: var(--cal-icon-size-lg);
+  flex-shrink: 0;
+}
+
+.itemIcon {
+  align-items: center;
+  block-size: var(--cal-icon-size-lg);
+  display: flex;
+  flex-shrink: 0;
+  inline-size: var(--cal-icon-size-sm);
+  justify-content: center;
+}
+
+.iconButton {
+  align-items: center;
+  background: transparent;
+  block-size: var(--cal-icon-size-lg);
+  border: 0;
+  border-radius: var(--cal-radius-md);
+  color: var(--cal-color-muted);
+  display: flex;
+  flex-shrink: 0;
+  inline-size: var(--cal-icon-size-lg);
+  justify-content: center;
+  outline: none;
+  padding: calc(var(--cal-space-1) * 0.75);
+  transition: background-color var(--cal-motion-duration-short) ease;
+}
+
+.iconButton:hover {
+  background: var(--cal-state-hover);
+}
+
+.iconButton:focus-visible {
+  box-shadow: inset 0 0 0 var(--cal-border-width-focus)
+    var(--cal-color-focus-ring);
+}
+
+.iconButton:disabled {
+  pointer-events: none;
+}
+
+.item svg,
+.iconButton svg,
+.header svg {
+  block-size: var(--cal-icon-size-sm);
+  flex-shrink: 0;
+  inline-size: var(--cal-icon-size-sm);
+}

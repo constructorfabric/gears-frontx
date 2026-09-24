@@ -1,0 +1,101 @@
+.root {
+  display: flex;
+  min-inline-size: 0;
+  flex-direction: column;
+  gap: var(--cal-space-2);
+  color: var(--cal-color-text);
+  font-family: var(--cal-font-family);
+}
+
+.heading {
+  composes: label from "../../styles/modules/text.module.css";
+  margin: 0;
+}
+
+.state {
+  min-inline-size: 0;
+}
+
+.list {
+  display: flex;
+  min-inline-size: 0;
+  flex-direction: column;
+  gap: var(--cal-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  min-inline-size: 0;
+  color: var(--cal-color-text);
+}
+
+.label {
+  align-items: center;
+  display: flex;
+  min-inline-size: 0;
+  inline-size: 100%;
+  cursor: pointer;
+}
+
+.checkbox {
+  cursor: pointer;
+}
+
+/* ui-kit stretches the tick to the whole swatch. */
+.accentTurquoise :global(svg),
+.accentPurple :global(svg),
+.accentOrange :global(svg) {
+  block-size: var(--cal-icon-size-xs);
+  inline-size: var(--cal-icon-size-xs);
+}
+
+/* A surface-coloured tick contrasts with the accent fill in both themes. */
+.accentTurquoise[data-checked],
+.accentPurple[data-checked],
+.accentOrange[data-checked] {
+  color: var(--cal-color-surface);
+}
+
+.accentTurquoise[data-checked] {
+  background-color: var(--cal-color-turquoise-accent);
+  border-color: var(--cal-color-turquoise-accent);
+}
+
+.accentPurple[data-checked] {
+  background-color: var(--cal-color-purple-accent);
+  border-color: var(--cal-color-purple-accent);
+}
+
+.accentOrange[data-checked] {
+  background-color: var(--cal-color-orange-accent);
+  border-color: var(--cal-color-orange-accent);
+}
+
+.name {
+  composes: truncate from "../../styles/modules/text.module.css";
+  min-inline-size: 0;
+}
+
+.create {
+  display: flex;
+  min-inline-size: 0;
+}
+
+.createButton {
+  inline-size: 100%;
+}
+
+@media (forced-colors: active) {
+  .checkbox:focus-visible {
+    outline-color: Highlight;
+  }
+
+  .accentTurquoise[data-checked],
+  .accentPurple[data-checked],
+  .accentOrange[data-checked] {
+    background-color: Highlight;
+    border-color: CanvasText;
+  }
+}

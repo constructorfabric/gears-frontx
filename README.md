@@ -223,6 +223,7 @@ FrontX/                              # Ecosystem repository root
 │   ├── api/                        # Published library (core, standalone): API communication protocols + service registry
 │   ├── telemetry/                  # Published library (core, standalone): browser telemetry SDK
 │   ├── ui-kit/                     # Published library (standalone): UI components (artifact chain is recorded debt)
+│   ├── calendar-kit/               # Published library: calendar and scheduling components (consumes ui-kit primitives)
 │   ├── cli/                        # Projects orchestration: template-resolution CLI (`frontx`)
 │   └── cyber-pilot-kit-frontx/     # Projects orchestration: AI Tooling Kit
 ├── internal/                       # Internal build/lint config workspaces
