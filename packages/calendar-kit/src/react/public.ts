@@ -37,3 +37,33 @@ export {
   type UseWeekGridControllerOptions,
   type UseWeekGridControllerResult,
 } from "./controllers/use-week-grid-controller";
+
+export {
+  useDayGridController,
+  type AllDaySegment,
+  type DayGridControllerInternals,
+  type DayGridControllerParams,
+  type DaySegment,
+  type TimedEventPlacement,
+  type TimedSegment,
+  type UseDayGridControllerResult,
+} from "./controllers/use-day-grid-controller";
+export {
+  useMonthGridController,
+  type MonthGridAllDaySpan,
+  type MonthGridAnnouncement,
+  type MonthGridCell,
+  type MonthGridFocusedCell,
+  type MonthGridRow,
+  type UseMonthGridControllerOptions,
+  type UseMonthGridControllerResult,
+} from "./controllers/use-month-grid-controller";
+
+export {
+  useEventDetailPanelController,
+  COPY_STATUS_RESET_MS,
+  type EventDetailPanelControllerInternals,
+  type EventDetailPanelCopyStatus,
+  type UseEventDetailPanelControllerOptions,
+  type UseEventDetailPanelControllerResult,
+} from "./controllers/use-event-detail-panel-controller";

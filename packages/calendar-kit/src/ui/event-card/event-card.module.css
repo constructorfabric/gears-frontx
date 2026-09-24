@@ -1,0 +1,337 @@
+.card {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  block-size: auto;
+  inline-size: 100%;
+  min-block-size: var(--cal-control-height-sm);
+  padding: 0;
+  overflow: hidden;
+  font-family: var(--cal-font-family);
+  font-size: var(--cal-text-grid-size);
+  line-height: var(--cal-text-grid-line-height);
+  font-weight: var(--cal-text-grid-weight);
+  letter-spacing: var(--cal-text-grid-tracking);
+  text-align: start;
+  --button-bg: var(--cal-color-raised);
+  --button-fg: var(--cal-color-text);
+  --event-card-bar-color: var(--button-fg);
+  --button-bg-hover: var(--cal-state-hover);
+  --button-fg-hover: var(--cal-color-text);
+  --button-border: transparent;
+  color: var(--button-fg);
+  background-color: var(--button-bg);
+  border: 0;
+  border-radius: var(--cal-radius-slot);
+  transition:
+    background-color var(--cal-motion-duration-short) ease,
+    border-color var(--cal-motion-duration-short) ease,
+    box-shadow var(--cal-motion-duration-short) ease;
+}
+
+/* box-shadow: none drops the Button primitive's inset ring. */
+.card:focus-visible {
+  outline: var(--cal-focus-ring-width) solid var(--cal-color-focus-ring);
+  outline-offset: var(--cal-border-width-1);
+  box-shadow: none;
+}
+
+.colorBar {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(-1 * var(--cal-border-width-1));
+  inline-size: 3px;
+  background-color: var(--event-card-bar-color);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* Only the outer Button span; the inner one is the card body. */
+.card > span {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+.card > span > span {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--cal-space-1);
+  inline-size: 100%;
+  min-inline-size: 0;
+  white-space: normal;
+}
+
+.body {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  min-inline-size: 0;
+  min-block-size: 0;
+  overflow: hidden;
+  padding: var(--cal-space-1) calc(var(--cal-space-1) + var(--cal-space-1) / 2)
+    var(--cal-space-1) var(--cal-space-1);
+}
+
+.segmentStart {
+  composes: segmentStart from "../../styles/modules/state.module.css";
+}
+
+.segmentMiddle {
+  composes: segmentMiddle from "../../styles/modules/state.module.css";
+}
+
+.segmentEnd {
+  composes: segmentEnd from "../../styles/modules/state.module.css";
+}
+
+/* Unknown families keep the base paint; .selected keeps the family paint over the pressed fill. */
+.card.colorTurquoise,
+.card.selected.colorTurquoise {
+  --button-bg: var(--cal-color-turquoise-background);
+  --button-fg: var(--cal-color-turquoise-foreground);
+  --button-bg-hover: var(--cal-color-turquoise-background);
+  --button-fg-hover: var(--cal-color-turquoise-foreground);
+  --button-border: var(--cal-color-turquoise-border);
+  --event-card-bar-color: var(--cal-color-turquoise-accent);
+  background-color: var(--button-bg);
+  border-color: var(--cal-color-turquoise-border);
+}
+
+.card.colorPurple,
+.card.selected.colorPurple {
+  --button-bg: var(--cal-color-purple-background);
+  --button-fg: var(--cal-color-purple-foreground);
+  --button-bg-hover: var(--cal-color-purple-background);
+  --button-fg-hover: var(--cal-color-purple-foreground);
+  --button-border: var(--cal-color-purple-border);
+  --event-card-bar-color: var(--cal-color-purple-accent);
+  background-color: var(--button-bg);
+  border-color: var(--cal-color-purple-border);
+}
+
+.card.colorOrange,
+.card.selected.colorOrange {
+  --button-bg: var(--cal-color-orange-background);
+  --button-fg: var(--cal-color-orange-foreground);
+  --button-bg-hover: var(--cal-color-orange-background);
+  --button-fg-hover: var(--cal-color-orange-foreground);
+  --button-border: var(--cal-color-orange-border);
+  --event-card-bar-color: var(--cal-color-orange-accent);
+  background-color: var(--button-bg);
+  border-color: var(--cal-color-orange-border);
+}
+
+.card:not(.unavailable):hover {
+  background-color: var(--button-bg-hover);
+  color: var(--button-fg-hover);
+}
+
+.card.selected {
+  --button-border: var(--cal-slot-selected-ring);
+  border-color: var(--cal-slot-selected-ring);
+  box-shadow: 0 0 0 var(--cal-border-width-1) var(--cal-slot-selected-ring);
+}
+
+.card.past {
+  --button-bg: var(--cal-slot-unavailable);
+  --button-fg: var(--cal-color-muted);
+  --button-border: transparent;
+  --event-card-bar-color: var(--cal-color-muted);
+  background-color: var(--button-bg);
+  border: 0;
+  color: var(--button-fg);
+}
+
+.card.unavailable {
+  --button-bg: var(--cal-slot-unavailable);
+  --button-fg: var(--cal-slot-unavailable-foreground);
+  --button-bg-hover: var(--cal-slot-unavailable);
+  --button-fg-hover: var(--cal-slot-unavailable-foreground);
+  --button-border: var(--cal-slot-unavailable-ring);
+  background-color: var(--button-bg);
+  color: var(--button-fg);
+  border-color: var(--cal-slot-unavailable-ring);
+}
+
+.card.readOnly {
+  --button-border: var(--cal-state-read-only);
+  border-color: var(--cal-state-read-only);
+}
+
+.card.allDay {
+  block-size: 100%;
+  min-block-size: 0;
+  border: 0;
+  border-radius: var(--cal-radius-slot);
+}
+
+.card.allDay .body {
+  padding-block: calc(var(--cal-space-1) / 2);
+  padding-inline: var(--cal-space-1);
+}
+
+.card.recurring .title {
+  max-inline-size: calc(100% - var(--cal-icon-size-xs) - var(--cal-space-1));
+}
+
+.recurrenceIcon {
+  position: absolute;
+  inset-block-start: calc(var(--cal-space-1) + var(--cal-space-1) / 2);
+  inset-inline-end: calc(var(--cal-space-1) + var(--cal-space-1) / 2);
+  inline-size: var(--cal-icon-size-xs);
+  block-size: var(--cal-icon-size-xs);
+  color: var(--button-fg);
+}
+
+.card[data-event-card-layout="stacked"],
+.card[data-event-card-layout="single"],
+.card[data-event-card-layout="title"] {
+  min-block-size: 0;
+}
+
+.card[data-event-card-layout="stacked"] .body {
+  min-block-size: 0;
+  padding-block: var(--cal-space-1);
+}
+
+.card[data-event-card-layout="single"] .body,
+.card[data-event-card-layout="title"] .body {
+  min-block-size: 0;
+  padding-block: calc(var(--cal-space-1) / 2);
+}
+
+.card[data-event-card-layout="single"] .body {
+  padding-inline-start: var(--cal-space-1);
+  padding-inline-end: calc(var(--cal-space-1) / 2);
+}
+
+.card[data-event-card-layout="title"] .body {
+  padding-inline: var(--cal-space-1);
+}
+
+.card.allDay[data-event-card-layout="single"] .body,
+.card.allDay[data-event-card-layout="title"] .body {
+  padding-inline: var(--cal-space-1);
+}
+
+.card[data-event-card-layout="stacked"] .body > span {
+  gap: 0;
+}
+
+.card[data-event-card-compact="true"]:not([data-event-card-layout="full"])
+  .defaultMetadata,
+.card[data-compact="true"]:not([data-event-card-layout="full"])
+  .defaultMetadata {
+  display: none;
+}
+
+.title {
+  composes: ellipsis from "../../styles/modules/text.module.css";
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--button-fg);
+  font-size: var(--cal-text-meta-size);
+  font-weight: var(--cal-text-label-weight);
+  line-height: var(--cal-text-meta-line-height);
+  white-space: nowrap;
+}
+
+.singleLine {
+  display: flex;
+  align-items: center;
+  gap: var(--cal-space-1);
+  min-inline-size: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.singleLine > .title {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  max-inline-size: none;
+}
+
+.singleLine > .time {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  max-inline-size: 50%;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.time {
+  composes: metaText from "../../styles/modules/text.module.css";
+  min-inline-size: 0;
+  color: var(--button-fg);
+  font-size: var(--cal-text-meta-size);
+  font-weight: var(--cal-text-meta-weight);
+  line-height: var(--cal-text-meta-line-height);
+}
+
+.timedRow {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--cal-space-1) / 2);
+  min-inline-size: 0;
+}
+
+.timeIcon {
+  flex-shrink: 0;
+  inline-size: var(--cal-icon-size-xs);
+  block-size: var(--cal-icon-size-xs);
+}
+
+.metadata {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-inline-size: 0;
+  font-size: var(--cal-text-meta-size);
+  line-height: var(--cal-text-meta-line-height);
+  color: var(--cal-color-muted);
+}
+
+.metadataRow {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--cal-space-1) / 2);
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.metadataRow > span {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.metadataIcon {
+  flex-shrink: 0;
+  inline-size: var(--cal-icon-size-xs);
+  block-size: var(--cal-icon-size-xs);
+}
+
+/* Hook for ConflictIndicator severity; intentionally empty. */
+.warning,
+.error {
+}
+
+.srOnly {
+  composes: srOnly from "../../styles/modules/sr-only.module.css";
+}

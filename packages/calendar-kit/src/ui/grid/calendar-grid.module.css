@@ -1,0 +1,54 @@
+.container {
+  position: relative;
+  min-inline-size: 0;
+  min-block-size: 0;
+}
+
+.root {
+  position: relative;
+  display: grid;
+  min-inline-size: 0;
+  min-block-size: 0;
+  /* clip, not hidden: hidden makes this a scrollport and pins the sticky header to it. */
+  overflow: clip;
+  color: var(--cal-color-text);
+  background: var(--cal-color-surface);
+  border: var(--cal-border-width-1) solid var(--cal-color-grid-line-strong);
+  border-radius: var(--cal-radius-md);
+  font-family: var(--cal-font-family);
+  font-size: var(--cal-text-grid-size);
+  line-height: var(--cal-text-grid-line-height);
+  font-weight: var(--cal-text-grid-weight);
+  letter-spacing: var(--cal-text-grid-tracking);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: var(--calendar-grid-template-columns);
+  min-inline-size: 0;
+}
+
+.headerCell {
+  composes: headerCell from "../../styles/modules/grid.module.css";
+  min-inline-size: 0;
+}
+
+.cell {
+  composes: focusRingInset from "../../styles/modules/focus-ring.module.css";
+  position: relative;
+  min-inline-size: 0;
+  min-block-size: var(--cal-control-height-md);
+  outline: none;
+  border-inline-end: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  border-block-end: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+}
+
+.cell:last-child {
+  border-inline-end: 0;
+}
+
+@media (forced-colors: active) {
+  .cell:focus-visible {
+    outline-color: Highlight;
+  }
+}

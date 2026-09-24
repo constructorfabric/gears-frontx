@@ -193,3 +193,69 @@ export type {
   UseWeekGridControllerOptions,
   UseWeekGridControllerResult,
 } from "./react/public";
+
+export { CalendarGrid } from "./ui/grid/public";
+export { ConflictIndicator } from "./ui/conflict-indicator/public";
+export { EventCard } from "./ui/event-card/public";
+export { WeekGrid } from "./ui/week-grid/public";
+export { DayGrid } from "./ui/day-grid/public";
+export { MonthGrid } from "./ui/month-grid/public";
+
+export {
+  useDayGridController,
+  useMonthGridController,
+} from "./react/public";
+
+export type {
+  AllDaySegment,
+  DayGridControllerInternals,
+  DayGridControllerParams,
+  DaySegment,
+  TimedEventPlacement,
+  TimedSegment,
+  UseDayGridControllerResult,
+  MonthGridAllDaySpan,
+  MonthGridAnnouncement,
+  MonthGridCell,
+  MonthGridFocusedCell,
+  MonthGridRow,
+  UseMonthGridControllerOptions,
+  UseMonthGridControllerResult,
+} from "./react/public";
+
+export {
+  EventDetailPanel,
+  COPY_STATUS_RESET_MS,
+  useEventDetailPanelController,
+} from "./ui/event-detail-panel/public";
+
+export type {
+  CalendarGridCellKeyDownHandler,
+  CalendarGridProps,
+} from "./ui/grid/public";
+
+export type {
+  CalendarEventKeyDownHandler,
+  EventCardProps,
+} from "./ui/event-card/public";
+
+export type {
+  MonthGridData,
+  MonthGridProps,
+  MonthGridSelectionMode,
+  MonthGridWeekNumbering,
+} from "./ui/month-grid/public";
+
+export type {
+  EventDetailPanelProps,
+  EventDetailPanelControllerInternals,
+  EventDetailPanelCopyStatus,
+  UseEventDetailPanelControllerOptions,
+  UseEventDetailPanelControllerResult,
+} from "./ui/event-detail-panel/public";
+
+export type { WeekGridProps } from "./ui/week-grid/public";
+
+export type { DayGridProps } from "./ui/day-grid/public";
+
+export type { ConflictIndicatorProps } from "./ui/conflict-indicator/public";
