@@ -1,0 +1,18 @@
+.headerCell {
+  min-inline-size: 0;
+  min-block-size: var(--cal-control-height-lg);
+  padding: var(--cal-space-2);
+  overflow: hidden;
+  color: var(--cal-color-muted);
+  border-block-end: var(--cal-border-width-1) solid var(--cal-color-grid-line);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gutterCell {
+  overflow: hidden;
+  padding: var(--cal-space-2);
+  color: var(--cal-color-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

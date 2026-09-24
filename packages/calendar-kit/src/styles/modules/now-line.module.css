@@ -1,0 +1,20 @@
+.nowLine {
+  position: absolute;
+  inset-inline: 0;
+  z-index: var(--cal-layer-now-line);
+  block-size: 0;
+  border-block-start: var(--cal-border-width-1) solid var(--cal-color-now);
+  pointer-events: none;
+}
+
+.nowLabel {
+  position: absolute;
+  inset-block-start: -9px;
+  inset-inline-end: 100%;
+  padding-inline: var(--cal-space-1);
+  color: var(--cal-color-now-label);
+  background: var(--cal-color-surface);
+  font-size: var(--cal-text-meta-size);
+  line-height: var(--cal-text-meta-line-height);
+  white-space: nowrap;
+}

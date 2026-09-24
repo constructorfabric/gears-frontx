@@ -1,0 +1,85 @@
+.subheader {
+  align-items: center;
+  background: var(--cal-color-surface);
+  display: flex;
+  inline-size: 100%;
+  min-block-size: var(--cal-control-height-lg);
+  padding: var(--cal-space-2) var(--cal-space-3);
+  position: relative;
+}
+
+.sizeL {
+  min-block-size: 64px;
+}
+
+.sizeM {
+  min-block-size: var(--cal-control-height-lg);
+}
+
+.heading {
+  color: var(--cal-color-text);
+  flex: 1 1 0%;
+  font-family: var(--cal-font-family);
+  font-size: var(--cal-text-title-size);
+  font-weight: var(--cal-text-title-weight);
+  line-height: var(--cal-text-title-line-height);
+  margin: 0;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.titleGroup {
+  align-items: center;
+  display: flex;
+  flex: 1 1 0%;
+  gap: var(--cal-space-1);
+  min-inline-size: 0;
+  padding-inline-start: var(--cal-space-2);
+}
+
+.icon {
+  composes: iconBox from "../../../styles/modules/layout.module.css";
+}
+
+.icon svg,
+.roundButton svg,
+.closeButton svg {
+  block-size: var(--cal-icon-size-sm);
+  inline-size: var(--cal-icon-size-sm);
+}
+
+.actions {
+  composes: actionRow from "../../../styles/modules/layout.module.css";
+}
+
+.actionsBeforeClose {
+  padding-inline-end: var(--cal-space-2);
+}
+
+.roundButton,
+.closeButton {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--cal-radius-pill);
+  color: var(--cal-color-text);
+  display: inline-flex;
+  justify-content: center;
+  padding: var(--cal-space-1);
+}
+
+.roundButton:focus-visible,
+.closeButton:focus-visible {
+  box-shadow: inset 0 0 0 var(--cal-border-width-focus)
+    var(--cal-color-focus-ring);
+}
+
+.divider {
+  background: var(--cal-color-grid-line);
+  block-size: var(--cal-border-width-1);
+  inset-block-end: 0;
+  inset-inline: 0;
+  position: absolute;
+}
