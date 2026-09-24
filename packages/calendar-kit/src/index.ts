@@ -137,3 +137,59 @@ export type {
   InteractionAction,
   InteractionValidationResult,
 } from "./core/public";
+
+export {
+  CalendarLocalizationProvider,
+  CalendarProvider,
+  ENGLISH_TRANSLATIONS,
+  getLocaleDirection,
+  useCalendarContext,
+  useCalendarLocalization,
+} from "./i18n/public";
+
+export type {
+  CalendarContextProps,
+  CalendarLocalizationProps,
+  CalendarLocalizationProviderProps,
+  CalendarLocalizationValue,
+  CalendarMessages,
+  CalendarMissingTranslation,
+  CalendarProviderProps,
+  CalendarTranslations,
+  CalendarTranslationValues,
+  CalendarViewerProps,
+  CalendarViewerValue,
+} from "./i18n/public";
+
+
+export {
+  useControlledValue,
+  useInteractionController,
+} from "./react/public";
+
+export type {
+  UseControlledValueOptions,
+  UseControlledValueResult,
+  InteractionControllerInternals,
+  UseInteractionControllerOptions,
+  UseInteractionControllerResult,
+  CalendarConflictRenderer,
+  CalendarDetailRenderer,
+  CalendarEventRenderer,
+  CalendarInteractionCallbacks,
+  CalendarLocalizedProps,
+  CalendarQuickCreatePayload,
+  CalendarTemporalProps,
+} from "./react/public";
+
+export {
+  useWeekGridController,
+} from "./react/public";
+
+export type {
+  FocusedCell,
+  WeekGridControllerInternals,
+  WeekGridDayColumn,
+  UseWeekGridControllerOptions,
+  UseWeekGridControllerResult,
+} from "./react/public";

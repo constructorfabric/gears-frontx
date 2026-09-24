@@ -1,0 +1,5 @@
+.gridGeometry {
+  --grid-hour-height: 43px;
+  --grid-gutter-width: 56px;
+  --grid-chip-height: 21px;
+}

@@ -1,0 +1,8 @@
+.expandedDialog.expandedDialog {
+  block-size: min(46rem, calc(100dvh - (var(--cal-space-8) * 2)));
+  gap: 0;
+  inline-size: min(62rem, calc(100vw - (var(--cal-space-8) * 2)));
+  max-inline-size: none;
+  overflow: hidden;
+  padding: 0;
+}
