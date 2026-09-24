@@ -1,0 +1,112 @@
+{
+  "name": "@gears-frontx/calendar-kit",
+  "version": "0.1.0-alpha.0",
+  "description": "Composable calendar and scheduling components for FrontX applications",
+  "files": [
+    "dist",
+    "llms.txt",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./src/*": null,
+    "./chunks/*": null,
+    "./__test-utils__/*": null,
+    "./core/*": null,
+    "./react/*": null,
+    "./ui/*": null,
+    "./docs/*": null,
+    "./i18n/*": null,
+    "./package.json": "./package.json",
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js"
+    },
+    "./theme.css": "./dist/theme.css",
+    "./reset.css": "./dist/reset.css",
+    "./themes/onecloud.css": "./dist/themes/onecloud.css"
+  },
+  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "frontx",
+    "calendar",
+    "scheduling",
+    "react",
+    "components",
+    "css-modules",
+    "design-system"
+  ],
+  "author": "Cyber Fabric",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/constructorfabric/gears-frontx.git",
+    "directory": "packages/calendar-kit"
+  },
+  "scripts": {
+    "build": "vite build",
+    "type-check": "tsc --noEmit && npm run type-check:core && npm run type-check:tools",
+    "type-check:core": "tsc -p tsconfig.core.json",
+    "type-check:tools": "tsc -p tsconfig.tools.json",
+    "type-check:test": "tsc -p tsconfig.test.json",
+    "type-check:demo": "tsc -p demo/tsconfig.json",
+    "test": "npm run test:unit && npm run test:dist",
+    "test:unit": "vitest --run --passWithNoTests=false",
+    "test:dist": "npm run build && vitest --run --config vitest.dist.config.ts --maxWorkers=2",
+    "test:demo": "vitest --run --config demo/vitest.config.ts",
+    "test:a11y": "vitest --run __tests__/accessibility.test.tsx --passWithNoTests=false --testTimeout=30000",
+    "test:unit:watch": "vitest --watch",
+    "test:consumer": "bash scripts/verify-first-alpha.sh",
+    "demo": "npm run build && vite demo",
+    "demo:build": "vite build demo",
+    "demo:preview": "vite preview demo",
+    "docs": "node scripts/docs.ts",
+    "docs:check": "node scripts/docs.ts --check"
+  },
+  "dependencies": {
+    "@gears-frontx/ui-kit": "0.4.0-alpha.5",
+    "clsx": "2.1.1",
+    "lucide-react": "1.33.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.2",
+    "@testing-library/user-event": "14.6.7",
+    "@types/node": "26.4.1",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "4.3.4",
+    "@vitest/coverage-v8": "4.1.4",
+    "axe-core": "4.13.0",
+    "jsdom": "26.1.0",
+    "magic-string": "0.30.21",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "rollup-plugin-node-externals": "9.0.1",
+    "typescript": "5.4.2",
+    "vite": "6.4.3",
+    "vite-plugin-dts": "4.5.4",
+    "vite-plugin-lib-inject-css": "2.2.2",
+    "vitest": "4.1.4",
+    "vitest-axe": "0.1.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

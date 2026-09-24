@@ -1,0 +1,20 @@
+.listReset {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.panelRoot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cal-space-2);
+  font-family: var(--cal-font-family);
+}
+
+.panelHeading {
+  margin: 0;
+  color: var(--cal-color-text);
+  font-size: var(--cal-text-label-size);
+  font-weight: var(--cal-text-label-weight);
+  line-height: var(--cal-text-label-line-height);
+}

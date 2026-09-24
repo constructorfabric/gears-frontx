@@ -1,0 +1,74 @@
+.scrim {
+  animation: sheetFadeIn var(--cal-motion-duration-long) ease-out backwards;
+  background: var(--cal-color-scrim);
+  inset: 0;
+  position: fixed;
+  z-index: var(--cal-layer-overlay);
+}
+
+/* Resets the open <dialog>'s centred, padded user-agent box. */
+.panel {
+  background: var(--cal-color-surface);
+  block-size: auto;
+  border: 0;
+  box-shadow: var(--cal-shadow-panel);
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  inset-block: 0;
+  margin: 0;
+  max-block-size: none;
+  max-inline-size: 100%;
+  outline: none;
+  padding: 0;
+  position: fixed;
+  z-index: calc(var(--cal-layer-overlay) + 1);
+}
+
+.panelEnd {
+  animation: sheetInFromEnd var(--cal-motion-duration-long) ease-out backwards;
+  inset-inline: auto 0;
+}
+
+.panelStart {
+  animation: sheetInFromStart var(--cal-motion-duration-long) ease-out backwards;
+  inset-inline: 0 auto;
+}
+
+@keyframes sheetInFromEnd {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+@keyframes sheetInFromStart {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+@keyframes sheetFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrim,
+  .panelEnd,
+  .panelStart {
+    animation: none;
+  }
+}

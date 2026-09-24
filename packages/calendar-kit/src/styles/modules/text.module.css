@@ -1,0 +1,82 @@
+.metaText {
+  color: var(--cal-color-muted);
+  font-size: var(--cal-text-meta-size);
+  line-height: var(--cal-text-meta-line-height);
+}
+
+.dayNumber {
+  color: var(--cal-color-text);
+  font-size: var(--cal-text-day-number-size);
+  font-weight: var(--cal-text-day-number-weight);
+  line-height: var(--cal-text-day-number-line-height);
+}
+
+.weekdayLabel {
+  overflow: hidden;
+  color: var(--cal-color-muted);
+  font-size: var(--cal-text-meta-size);
+  font-weight: var(--cal-text-meta-weight);
+  line-height: var(--cal-text-meta-line-height);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sectionLabel {
+  margin: 0;
+  color: var(--cal-color-muted);
+  font-size: var(--cal-text-meta-size);
+  font-weight: var(--cal-text-meta-weight);
+  line-height: var(--cal-text-meta-line-height);
+  letter-spacing: var(--cal-text-meta-tracking);
+  text-transform: uppercase;
+}
+
+.heading {
+  color: var(--cal-color-text);
+  font-size: var(--cal-text-heading-size);
+  font-weight: var(--cal-text-heading-weight);
+  line-height: var(--cal-text-heading-line-height);
+  letter-spacing: var(--cal-text-heading-tracking);
+}
+
+.label {
+  color: var(--cal-color-text);
+  font-size: var(--cal-text-label-size);
+  font-weight: var(--cal-text-label-weight);
+  line-height: var(--cal-text-label-line-height);
+  letter-spacing: var(--cal-text-label-tracking);
+}
+
+.title {
+  color: var(--cal-color-text);
+  font-size: var(--cal-text-title-size);
+  font-weight: var(--cal-text-title-weight);
+  line-height: var(--cal-text-title-line-height);
+  letter-spacing: var(--cal-text-title-tracking);
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ellipsis {
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.helperText {
+  composes: metaText;
+  margin: 0;
+}
+
+.dialogTitle {
+  color: var(--cal-color-text);
+  font-size: var(--cal-text-title-size);
+  font-weight: var(--cal-text-title-weight);
+  line-height: var(--cal-text-title-line-height);
+  margin: 0;
+}

@@ -433,6 +433,7 @@ Root capacity is expressed as an absence of structural caps. Concrete runtime or
 | `@gears-frontx/routing` | Published libraries | [packages/routing/architecture/DESIGN.md](../packages/routing/architecture/DESIGN.md) |
 | `@gears-frontx/routing-tanstack` | Published libraries | [packages/routing-tanstack/architecture/DESIGN.md](../packages/routing-tanstack/architecture/DESIGN.md) |
 | `@gears-frontx/ui-kit` | Published libraries | [packages/ui-kit/architecture/DESIGN.md](../packages/ui-kit/architecture/DESIGN.md) |
+| `@gears-frontx/calendar-kit` | Published libraries | [packages/calendar-kit/architecture/DESIGN.md](../packages/calendar-kit/architecture/DESIGN.md) |
 | `@gears-frontx/cli` | Projects orchestration | [packages/cli/architecture/DESIGN.md](../packages/cli/architecture/DESIGN.md) |
 | `cyber-pilot-kit-frontx` | Projects orchestration | [packages/cyber-pilot-kit-frontx/architecture/DESIGN.md](../packages/cyber-pilot-kit-frontx/architecture/DESIGN.md) |
 
