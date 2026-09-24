@@ -303,3 +303,62 @@ export type {
 } from "./ui/create-event/public";
 
 export type { AgendaViewProps } from "./ui/agenda-view/public";
+
+export { CalendarToolbar } from "./ui/calendar-toolbar/public";
+
+export type { CalendarToolbarProps } from "./ui/calendar-toolbar/public";
+
+export { MonthNavigator } from "./ui/month-navigator/public";
+
+export type { MonthNavigatorProps } from "./ui/month-navigator/public";
+
+export { CalendarSidePanel } from "./ui/calendar-side-panel/public";
+
+export type {
+  CalendarSidePanelProps,
+  CalendarSidePanelSlots,
+} from "./ui/calendar-side-panel/public";
+
+export { CalendarList } from "./ui/calendar-list/public";
+
+export type { CalendarListProps } from "./ui/calendar-list/public";
+
+export { AvailabilityGrid } from "./ui/availability-grid/public";
+
+export type { AvailabilityGridProps } from "./ui/availability-grid/public";
+
+export { WorldClocks } from "./ui/world-clocks/public";
+
+export type { WorldClocksProps } from "./ui/world-clocks/public";
+
+export { TimeZoneList } from "./ui/time-zone-list/public";
+
+export type { TimeZoneListProps } from "./ui/time-zone-list/public";
+
+
+export {
+  useAvailabilityGridController,
+  useCalendarSidePanelController,
+  useCalendarToolbarController,
+  useMonthNavigatorController,
+  CLOCK_MOVE,
+  useWorldClocksController,
+} from "./react/public";
+
+export type {
+  AvailabilityFocusedCell,
+  AvailabilityGridControllerInternals,
+  UseAvailabilityGridControllerOptions,
+  UseAvailabilityGridControllerResult,
+  CalendarSidePanelControllerOptions,
+  CalendarSidePanelControllerResult,
+  ToolbarTitleRange,
+  UseCalendarToolbarControllerOptions,
+  UseCalendarToolbarControllerResult,
+  MonthNavigatorWeek,
+  UseMonthNavigatorControllerOptions,
+  UseMonthNavigatorControllerResult,
+  ClockMove,
+  WorldClocksControllerParams,
+  WorldClocksControllerResult,
+} from "./react/public";

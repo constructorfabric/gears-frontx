@@ -98,3 +98,39 @@ export {
   type SearchResultsControllerOptions,
   type SearchState,
 } from "./controllers/use-search-results-controller";
+
+export {
+  useAvailabilityGridController,
+  type AvailabilityFocusedCell,
+  type AvailabilityGridControllerInternals,
+  type UseAvailabilityGridControllerOptions,
+  type UseAvailabilityGridControllerResult,
+} from "./controllers/use-availability-grid-controller";
+
+export {
+  useCalendarSidePanelController,
+  type CalendarSidePanelControllerOptions,
+  type CalendarSidePanelControllerResult,
+} from "./controllers/use-calendar-side-panel-controller";
+
+export {
+  useCalendarToolbarController,
+  type ToolbarTitleRange,
+  type UseCalendarToolbarControllerOptions,
+  type UseCalendarToolbarControllerResult,
+} from "./controllers/use-calendar-toolbar-controller";
+
+export {
+  useMonthNavigatorController,
+  type MonthNavigatorWeek,
+  type UseMonthNavigatorControllerOptions,
+  type UseMonthNavigatorControllerResult,
+} from "./controllers/use-month-navigator-controller";
+
+export {
+  CLOCK_MOVE,
+  useWorldClocksController,
+  type ClockMove,
+  type WorldClocksControllerParams,
+  type WorldClocksControllerResult,
+} from "./controllers/use-world-clocks-controller";

@@ -1,0 +1,60 @@
+.root {
+  composes: gridGeometry from "../../styles/modules/grid-geometry.module.css";
+  min-inline-size: 0;
+  min-block-size: 0;
+  color: var(--cal-color-text);
+  font-family: var(--cal-font-family);
+}
+
+.grid {
+  min-inline-size: 24rem;
+}
+
+.cellContent {
+  composes: focusRingInset from "../../styles/modules/focus-ring.module.css";
+  display: flex;
+  min-block-size: var(--grid-hour-height);
+  align-items: center;
+  padding: var(--cal-space-2);
+  color: var(--cal-color-text);
+  background: var(--cal-color-surface);
+  border: 0;
+  outline: none;
+  transition:
+    background-color var(--cal-motion-duration-short),
+    box-shadow var(--cal-motion-duration-short);
+}
+
+.cellContent:hover {
+  background: var(--cal-state-hover);
+}
+
+.cellContent.selected {
+  background: var(--cal-slot-selected);
+  box-shadow: inset 0 0 0 var(--cal-border-width-focus)
+    var(--cal-slot-selected-ring);
+}
+
+.unavailable {
+  composes: unavailable from "../../styles/modules/state.module.css";
+}
+
+.cellContent.readOnly {
+  cursor: default;
+}
+
+@media (forced-colors: active) {
+  .cellContent.selected {
+    box-shadow: inset 0 0 0 var(--cal-border-width-focus) Highlight;
+  }
+
+  .cellContent {
+    outline-color: Highlight;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cellContent {
+    transition-duration: 0s;
+  }
+}
