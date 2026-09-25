@@ -45,6 +45,10 @@
       "type": "array",
       "items": { "type": "object", "$ref": "gts://gts.frontx.mfes.lifecycle.hook.v1~" },
       "$comment": "Optional lifecycle hooks - explicitly declared actions for each stage"
+    },
+    "route": {
+      "type": "string",
+      "$comment": "Optional route name for this domain, registered once here instead of a host-side id-to-name table. Validated against the routing grammar's name alphabet at registration time by the mfes runtime, not by this schema."
     }
   },
   "required": ["id", "sharedProperties", "actions", "extensionsActions", "defaultActionTimeout", "lifecycleStages", "extensionsLifecycleStages"]

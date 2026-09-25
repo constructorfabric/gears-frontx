@@ -85,6 +85,9 @@ export {
   UnsupportedDomainActionError,
   UnsupportedLifecycleStageError,
   EntryTypeNotHandledError,
+  DomainRouteValidationError,
+  ExtensionRouteConflictError,
+  DuplicateRouteTokenError,
   type ContractError,
 } from './errors';
 
@@ -164,3 +167,11 @@ export type { MfeStateContainerConfig } from './state';
 
 // GTS package extraction utility
 export { extractGtsPackage } from './gts/extract-package';
+
+// Route identity — validity, equality, declared-route and token derivation
+export {
+  isValidRouteName,
+  routeNamesEqual,
+  getDeclaredRoute,
+  getExtensionRouteToken,
+} from './routing-identity';

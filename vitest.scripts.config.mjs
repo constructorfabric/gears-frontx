@@ -29,9 +29,23 @@
  * a pass, the same silent gap that left this whole directory untested until
  * #483 (review round 3 on #492).
  */
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
+const fromRoot = (path) => fileURLToPath(new URL(path, import.meta.url));
+
 export default defineConfig({
+  // A test here that exercises a workspace package (the routing/mfes
+  // name-agreement test) runs against that package's public entry source, not
+  // its ignored `dist/`: the runner reaches this project before any workspace
+  // build, so a fresh checkout has no `dist/` to resolve, and a stale one would
+  // test code that is no longer the source.
+  resolve: {
+    alias: {
+      '@gears-frontx/routing': fromRoot('./packages/routing/src/index.ts'),
+      '@gears-frontx/mfes': fromRoot('./packages/mfes/src/index.ts'),
+    },
+  },
   test: {
     environment: 'node',
     include: ['scripts/**/*.test.{mjs,ts}'],

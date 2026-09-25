@@ -110,6 +110,12 @@ export interface ExtensionDomain {
   extensionsLifecycleStages: string[];
   /** Optional lifecycle hooks - explicitly declared actions for each stage */
   lifecycle?: LifecycleHook[];
+  /**
+   * Optional route name for this domain, in the routing grammar's `name`
+   * alphabet (lower-case letter, then lower-case letters/digits/`-`).
+   * Registered once, here, instead of a host-side id-to-name table.
+   */
+  route?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -125,7 +131,11 @@ export interface ExtensionPresentation {
   label: string;
   /** Optional icon identifier (e.g., "user", "settings") */
   icon?: string;
-  /** Route path for navigation (e.g., "/profile", "/settings") */
+  /**
+   * Single route-name token for navigation, in the routing grammar's `name`
+   * alphabet once one leading `/` is stripped (e.g. "profile", "/settings")
+   * — not a multi-segment path.
+   */
   route: string;
   /** Optional sort order for menu items (lower numbers first) */
   order?: number;
@@ -147,6 +157,14 @@ export interface Extension {
   entry: string;
   /** Optional lifecycle hooks - explicitly declared actions for each stage */
   lifecycle?: LifecycleHook[];
+  /**
+   * Optional declared route, usable by an extension without `presentation`.
+   * A deliberate exception to the "domain-specific fields go to derived
+   * types" convention above — routability applies to an extension in any
+   * domain. When both this and `presentation.route` are set, they must agree
+   * once each is stripped of one leading `/`.
+   */
+  route?: string;
   // Domain-specific fields are added via derived types, not defined here
 }
 
