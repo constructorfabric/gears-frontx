@@ -12,6 +12,7 @@
 // @cpt-state:cpt-frontx-state-extension-domain-governance-admission:p1
 // @cpt-dod:cpt-frontx-dod-extension-domain-governance-contract-enforcement:p1
 // @cpt-dod:cpt-frontx-dod-extension-domain-governance-default-deny:p1
+// @cpt-dod:cpt-frontx-dod-extension-domain-governance-route-identity-enforcement:p1
 
 import type {
   ExtensionDomain,
@@ -32,7 +33,14 @@ import type { ExtensionDomainImplementation } from './ExtensionDomainImplementat
 import { validateDomainLifecycleHooks, validateExtensionLifecycleHooks } from '../validation/lifecycle';
 import { validateContract } from '../validation/contract';
 import { validateExtensionType } from '../validation/extension-type';
-import { DomainValidationError, UnsupportedLifecycleStageError } from '../errors';
+import {
+  DomainValidationError,
+  UnsupportedLifecycleStageError,
+  DomainRouteValidationError,
+  ExtensionRouteConflictError,
+  DuplicateRouteTokenError,
+} from '../errors';
+import { isValidRouteName, routeNamesEqual, getExtensionRouteToken } from '../routing-identity';
 
 export class DefaultExtensionManager extends ExtensionManager {
   private readonly domains = new Map<string, ExtensionDomainState>();
@@ -63,6 +71,27 @@ export class DefaultExtensionManager extends ExtensionManager {
 
   // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-register-domain-call
   registerDomain(domain: ExtensionDomain): void {
+    // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-domain-route-invalid-check
+    // Runs before `typeSystem.register` so a rejected domain never reaches
+    // the type system at all (no partial admission). A domain's own route
+    // name is strict: unlike an extension's declared route, no leading '/'
+    // is tolerated (a domain name is not a path). Guarded against
+    // untyped/JS callers: a present-but-non-string `route` is rejected the
+    // same way an invalid string one is, never propagated to `.startsWith`.
+    const declaredDomainRoute: unknown = domain.route;
+    if (declaredDomainRoute !== undefined) {
+      const isString = typeof declaredDomainRoute === 'string';
+      if (!isString || !isValidRouteName(declaredDomainRoute as string)) {
+        // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-domain-route-invalid-reject
+        throw new DomainRouteValidationError(
+          domain.id,
+          isString ? (declaredDomainRoute as string) : String(declaredDomainRoute)
+        );
+        // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-domain-route-invalid-reject
+      }
+    }
+    // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-domain-route-invalid-check
+
     try {
       this.typeSystem.register(domain);
     } catch (cause) {
@@ -117,6 +146,56 @@ export class DefaultExtensionManager extends ExtensionManager {
 
   // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-register-extension
   async registerExtension(extension: Extension): Promise<void> {
+    // Route checks run before `typeSystem.register` so a rejected extension
+    // never reaches the type system at all (no partial admission).
+
+    // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-extension-route-reconcile
+    // Guarded: the conflict check only runs when the base route is itself a
+    // string — a non-string base `route` is not a conflict candidate; it
+    // simply is not the declared route (`getDeclaredRoute`'s own guard).
+    const rawBaseRoute: unknown = extension.route;
+    const presentationRoute = this.getPresentationRoute(extension);
+    // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-extension-route-conflict-check
+    if (typeof rawBaseRoute === 'string' && presentationRoute !== undefined) {
+      const baseStripped = rawBaseRoute.startsWith('/') ? rawBaseRoute.slice(1) : rawBaseRoute;
+      const presentationStripped = presentationRoute.startsWith('/')
+        ? presentationRoute.slice(1)
+        : presentationRoute;
+      if (!routeNamesEqual(baseStripped, presentationStripped)) {
+        // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-extension-route-conflict-reject
+        throw new ExtensionRouteConflictError(extension.id, rawBaseRoute, presentationRoute);
+        // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-extension-route-conflict-reject
+      }
+    }
+    // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-extension-route-conflict-check
+    // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-extension-route-reconcile
+
+    // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-extension-route-token-check
+    // The target domain may not be registered yet at this point (route
+    // checks now run ahead of the domain-existence check below): when it
+    // isn't, there is no sibling set to compare against, so the duplicate
+    // check is simply skipped here and the pre-existing domain-not-registered
+    // rejection further down still fires, unchanged.
+    const routeToken = getExtensionRouteToken(extension);
+    if (routeToken !== undefined) {
+      const domainStateForRouteCheck = this.domains.get(extension.domain);
+      if (domainStateForRouteCheck) {
+        for (const siblingId of domainStateForRouteCheck.extensions) {
+          const sibling = this.extensions.get(siblingId);
+          if (!sibling) continue;
+          const siblingToken = getExtensionRouteToken(sibling.extension);
+          // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-extension-route-duplicate-check
+          if (siblingToken !== undefined && routeNamesEqual(siblingToken, routeToken)) {
+            // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-extension-route-duplicate-reject
+            throw new DuplicateRouteTokenError(extension.id, siblingId, extension.domain, routeToken);
+            // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-extension-route-duplicate-reject
+          }
+          // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-extension-route-duplicate-check
+        }
+      }
+    }
+    // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-extension-route-token-check
+
     this.typeSystem.register(extension);
 
     const domainState = this.domains.get(extension.domain);
@@ -299,6 +378,19 @@ export class DefaultExtensionManager extends ExtensionManager {
       return schema;
     }
 
+    return undefined;
+  }
+
+  /**
+   * `presentation.route`, duck-typed: the base `Extension` contract carries
+   * no `presentation` field (that is `ScreenExtension`'s own addition), so
+   * any concrete extension may or may not carry one at runtime.
+   */
+  private getPresentationRoute(extension: Extension): string | undefined {
+    const presentation = (extension as { presentation?: { route?: unknown } }).presentation;
+    if (presentation && typeof presentation.route === 'string') {
+      return presentation.route;
+    }
     return undefined;
   }
 

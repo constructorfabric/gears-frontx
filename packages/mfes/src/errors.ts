@@ -108,6 +108,51 @@ export class UnsupportedLifecycleStageError extends MfeError {
   }
 }
 
+export class DomainRouteValidationError extends MfeError {
+  constructor(
+    public readonly domainId: string,
+    public readonly route: string
+  ) {
+    super(
+      `Domain '${domainId}' declares an invalid route '${route}': must be a lower-case letter ` +
+      `followed by lower-case letters, digits, or '-'`,
+      'DOMAIN_ROUTE_VALIDATION_ERROR'
+    );
+    this.name = 'DomainRouteValidationError';
+  }
+}
+
+export class ExtensionRouteConflictError extends MfeError {
+  constructor(
+    public readonly extensionId: string,
+    public readonly baseRoute: string,
+    public readonly presentationRoute: string
+  ) {
+    super(
+      `Extension '${extensionId}' declares conflicting routes: base route '${baseRoute}' does ` +
+      `not agree with presentation route '${presentationRoute}'`,
+      'EXTENSION_ROUTE_CONFLICT_ERROR'
+    );
+    this.name = 'ExtensionRouteConflictError';
+  }
+}
+
+export class DuplicateRouteTokenError extends MfeError {
+  constructor(
+    public readonly extensionId: string,
+    public readonly conflictingExtensionId: string,
+    public readonly domainId: string,
+    public readonly token: string
+  ) {
+    super(
+      `Extension '${extensionId}' cannot register route token '${token}' in domain '${domainId}': ` +
+      `already claimed by extension '${conflictingExtensionId}'`,
+      'DUPLICATE_ROUTE_TOKEN_ERROR'
+    );
+    this.name = 'DuplicateRouteTokenError';
+  }
+}
+
 export class EntryTypeNotHandledError extends MfeError {
   constructor(
     public readonly entryTypeId: string,

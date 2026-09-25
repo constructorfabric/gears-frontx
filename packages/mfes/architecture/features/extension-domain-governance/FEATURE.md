@@ -14,6 +14,7 @@
   - [Subset-Rule Contract Matching](#subset-rule-contract-matching)
   - [Mount Strategy Selection and Cardinality Validation](#mount-strategy-selection-and-cardinality-validation)
   - [Strategy Mount Execution](#strategy-mount-execution)
+  - [Route Identity: Validity, Declared Route, and Token Derivation](#route-identity-validity-declared-route-and-token-derivation)
 - [4. States (CDSL)](#4-states-cdsl)
   - [Extension Admission Lifecycle](#extension-admission-lifecycle)
   - [Extension Domain Cardinality Lifecycle](#extension-domain-cardinality-lifecycle)
@@ -21,6 +22,7 @@
   - [Contract Enforcement at Admission](#contract-enforcement-at-admission)
   - [Cardinality Matrix Enforcement at Domain Registration](#cardinality-matrix-enforcement-at-domain-registration)
   - [Default-Deny Posture and Security NFR](#default-deny-posture-and-security-nfr)
+  - [Route Identity Enforcement at Registration](#route-identity-enforcement-at-registration)
 - [6. Acceptance Criteria](#6-acceptance-criteria)
 
 <!-- /toc -->
@@ -79,24 +81,34 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 
 **Error Scenarios**:
 - Domain registration fails because declared lifecycle actions are inconsistent with the chosen mount strategy (cardinality violation).
+- Domain registration fails because the domain's own declared route is not a valid route name.
 - Extension admission fails because the extension's required properties are not provided by the domain, or the entry does not support all capabilities the domain requires, or the entry requires domain capabilities the domain does not provide.
+- Extension admission fails because the extension declares both a base route and a presentation route that disagree, or because its route token is already claimed by another extension registered in the same domain.
 
 **Steps**:
 1. [x] - `p1` - Developer composes a domain implementation factory by selecting one of the three named mount strategies (Concurrent, Optional, or Exclusive) and declaring the domain's lifecycle actions - `inst-compose-domain`
 2. [x] - `p1` - Developer calls the registry to register the composed domain - `inst-register-domain-call`
-3. [x] - `p1` - System performs action–behavior consistency check against the cardinality matrix for the selected strategy - `inst-cardinality-check`
-4. [x] - `p1` - **IF** the domain's declared actions violate the cardinality matrix row for the strategy - `inst-cardinality-fail-check`
+3. [x] - `p1` - **IF** the domain declares a route and it is not a valid route name (`cpt-frontx-algo-extension-domain-governance-route-identity`) — checked before the domain is admitted anywhere, including into the type system, so a rejected domain is left registered nowhere - `inst-domain-route-invalid-check`
+   1. [x] - `p1` - System rejects the domain registration, naming the domain id and the invalid value - `inst-domain-route-invalid-reject`
+4. [x] - `p1` - System performs action–behavior consistency check against the cardinality matrix for the selected strategy - `inst-cardinality-check`
+5. [x] - `p1` - **IF** the domain's declared actions violate the cardinality matrix row for the strategy - `inst-cardinality-fail-check`
    1. [x] - `p1` - System rejects the domain registration and returns an error identifying the violated rule - `inst-cardinality-reject`
    2. [x] - `p1` - **RETURN** domain registration failure - `inst-domain-reg-fail`
-5. [x] - `p1` - System registers the domain with its strategy instance as the mount executor - `inst-domain-registered`
-6. [x] - `p1` - Developer registers an extension entry into the registry (via `cpt-frontx-component-mfe-runtime`), declaring the entry's required properties, supported capabilities, and required domain capabilities - `inst-register-extension`
-7. [x] - `p1` - System runs subset-rule contract matching between the extension entry and the target domain as part of that registration — before any mount action is issued - `inst-contract-match`
-8. [x] - `p1` - Developer issues a mount action targeting the registered domain, specifying the (already contract-matched) extension to admit - `inst-mount-action`
-9. [x] - `p1` - **IF** contract matching returns any error - `inst-contract-fail-check`
-   1. [x] - `p1` - System rejects the extension admission with an error naming each unsatisfied rule (missing property, unsupported action, or unhandled domain action) - `inst-contract-reject`
-   2. [x] - `p1` - **RETURN** extension admission failure - `inst-admission-fail`
-10. [x] - `p1` - System admits the extension into the domain and delegates to the domain's mount strategy to execute the occupancy behavior - `inst-admitted-mount`
-11. [x] - `p1` - **RETURN** extension mounted successfully - `inst-mount-success`
+6. [x] - `p1` - System registers the domain with its strategy instance as the mount executor - `inst-domain-registered`
+7. [x] - `p1` - Developer registers an extension entry into the registry (via `cpt-frontx-component-mfe-runtime`), declaring the entry's required properties, supported capabilities, and required domain capabilities - `inst-register-extension`
+8. [x] - `p1` - System resolves whether the extension declares both a base route and a presentation route (`cpt-frontx-algo-extension-domain-governance-route-identity`) — checked before the extension is admitted anywhere, including into the type system, so a rejected extension is left registered nowhere - `inst-extension-route-reconcile`
+   1. [x] - `p1` - **IF** both are declared and, once each is stripped of one leading `/`, they are not equal - `inst-extension-route-conflict-check`
+      1. [x] - `p1` - System rejects the extension registration, naming the conflicting base and presentation values - `inst-extension-route-conflict-reject`
+9. [x] - `p1` - System derives the extension's route token (`cpt-frontx-algo-extension-domain-governance-route-identity`) and, when defined and the target domain is already registered, checks it against every sibling extension already registered in that domain — when the target domain is not yet registered, this check is skipped and the ordinary domain-not-registered rejection applies once registration proceeds - `inst-extension-route-token-check`
+   1. [x] - `p1` - **IF** a sibling extension in the same domain already carries an equal route token - `inst-extension-route-duplicate-check`
+      1. [x] - `p1` - System rejects the extension registration, naming both extension ids, the domain id, and the token - `inst-extension-route-duplicate-reject`
+10. [x] - `p1` - System runs subset-rule contract matching between the extension entry and the target domain as part of that registration — before any mount action is issued - `inst-contract-match`
+11. [x] - `p1` - Developer issues a mount action targeting the registered domain, specifying the (already contract-matched) extension to admit - `inst-mount-action`
+12. [x] - `p1` - **IF** contract matching returns any error - `inst-contract-fail-check`
+    1. [x] - `p1` - System rejects the extension admission with an error naming each unsatisfied rule (missing property, unsupported action, or unhandled domain action) - `inst-contract-reject`
+    2. [x] - `p1` - **RETURN** extension admission failure - `inst-admission-fail`
+13. [x] - `p1` - System admits the extension into the domain and delegates to the domain's mount strategy to execute the occupancy behavior - `inst-admitted-mount`
+14. [x] - `p1` - **RETURN** extension mounted successfully - `inst-mount-success`
 
 ## 3. Processes / Business Logic (CDSL)
 
@@ -177,6 +189,22 @@ Internal system functions and procedures that do not interact with actors direct
       1. [x] - `p1` - **IF** the incoming extension is already the sole mounted extension, return without action - `inst-me-exclusive-idempotent`
       2. [x] - `p1` - Create a new container and mount the extension; if mounting fails, destroy the container and propagate the error - `inst-me-exclusive-mount`
 3. [x] - `p1` - **RETURN** mount outcome - `inst-me-return`
+
+### Route Identity: Validity, Declared Route, and Token Derivation
+
+- [x] `p1` - **ID**: `cpt-frontx-algo-extension-domain-governance-route-identity`
+
+**Definition — routability.** An extension is routable if and only if its declared route, with one leading `/` stripped, is a valid route name: a single lower-case token drawn from `a`-`z`, `0`-`9`, and `-`, beginning with a letter. An extension whose declared route fails that check once stripped, or that declares no route at all, is not routable and takes no route token. This is the one place routability is defined for this component; a domain's own route name is validated by the same alphabet but is never itself stripped (`inst-domain-route-invalid-check`, below) — a domain name is not a path.
+
+**Input**: An extension's own registration (base `route` and, where present, `presentation.route`) or a domain's own registration (`route`).
+
+**Output**: For an extension — its declared route (raw) and, from that, its route token (normalized, or absent if not routable). For a domain — whether its declared route is a valid route name.
+
+**Steps**:
+1. [x] - `p1` - Route-name validity: a candidate is a valid route name iff it matches a lower-case letter followed by any number of lower-case letters, digits, or `-` - `inst-is-valid-route-name`
+2. [x] - `p1` - Route-name equality: two route names are equal iff they are identical character-by-character, with no decoding - `inst-route-names-equal`
+3. [x] - `p1` - An extension's declared route is its base `route` when present and itself a string, else `presentation.route` when the extension carries a presentation object whose `route` is itself a string, else absent — a non-string value in either place is treated as absent, never propagated further - `inst-get-declared-route`
+4. [x] - `p1` - An extension's route token is its declared route with one leading `/` stripped, iff that stripped value is a valid route name (step 1); otherwise the extension has no route token and is not routable - `inst-get-extension-route-token`
 
 ## 4. States (CDSL)
 
@@ -262,6 +290,23 @@ The system **MUST** deny extension admission by default: an extension is only mo
 - DB: N/A
 - Entities: Extension, ExtensionDomain
 
+### Route Identity Enforcement at Registration
+
+- [x] `p1` - **ID**: `cpt-frontx-dod-extension-domain-governance-route-identity-enforcement`
+
+The system **MUST** reject a domain registration whose declared route is not a valid route name, naming the domain id and the invalid value. The system **MUST** reject an extension registration whose base route and presentation route are both declared but, once each is stripped of one leading `/`, disagree. The system **MUST** reject an extension registration whose route token is already claimed by another extension registered in the same domain, naming both extension ids, the domain id, and the token. An extension with no route, or with a route that fails routability, is admitted without a route token rather than rejected. All three route checks run before the domain or extension is admitted anywhere, including into the type system, so a rejected registration is left registered nowhere — no partial admission.
+
+**Implements**:
+- `cpt-frontx-flow-extension-domain-governance-admission`
+- `cpt-frontx-algo-extension-domain-governance-route-identity`
+
+**Constraints**: `cpt-frontx-constraint-mfes-no-layout-domain-values`
+
+**Touches**:
+- API: N/A (internal runtime admission path)
+- DB: N/A
+- Entities: Extension, ExtensionDomain
+
 ## 6. Acceptance Criteria
 
 - [x] Contract matching rejects an extension whose required property is absent from the domain's shared-property set, and the error names the missing property.
@@ -274,3 +319,9 @@ The system **MUST** deny extension admission by default: an extension is only mo
 - [x] A domain backed by an unrecognized strategy instance is rejected at registration.
 - [x] No extension-domain name, placement constant, or application-specific vocabulary appears in any admission, matching, or cardinality enforcement code path (satisfies `cpt-frontx-constraint-mfes-no-layout-domain-values`).
 - [x] An extension that passes all admission checks is mounted according to the domain's strategy: ConcurrentMountStrategy mounts side by side; OptionalMountStrategy displaces any prior occupant; ExclusiveMountStrategy evicts all other occupants.
+- [x] A domain registration whose declared route is a valid route name is accepted; one whose declared route is not (empty, upper case, a leading `/`, or any other alphabet violation) is rejected, naming the domain id and the invalid value.
+- [x] An extension without a presentation can declare a base `route` and is routable under it when that route is valid.
+- [x] An extension whose base `route` and `presentation.route` are both declared and equal once each is stripped of one leading `/` (for example `'settings'` and `'/settings'`) is not a conflict; one whose stripped values differ is rejected at registration.
+- [x] An extension whose declared route is not routable (fails the route-name check once stripped, or is absent) is admitted without a route token; it is never rejected for this reason alone.
+- [x] Registering two extensions with the same route token in the same domain is rejected at registration time, naming both extension ids, the domain id, and the token; the same token is allowed across two different domains.
+- [x] Unregistering an extension frees its route token: a subsequent extension may register the same token in that domain.
