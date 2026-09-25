@@ -2110,6 +2110,10 @@ process.exit(0);
       'npx @scope/browser-cli',
       'pnpm dlx agent-browser',
       'npx -p agent-browser agent-browser',
+      'npx --yes agent-browser@latest',
+      'npx --yes agent-browser@^1.2.3',
+      'npm --silent exec -- agent-browser',
+      'npx -p helper@1.0.0 -p agent-browser agent-browser',
     ])('refuses the unpinned package runner command "%s"', (value) => {
       const run = runRefusal(['--browser-cmd', value]);
 
