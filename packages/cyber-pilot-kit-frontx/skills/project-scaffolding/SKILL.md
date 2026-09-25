@@ -1,6 +1,6 @@
 ---
 name: frontx-project-scaffolding
-description: "Applies when a developer wants a new FrontX project created from what they say they want built, rather than from a reference they already hold - for example a console with a stated number of screens. Matches the stated intent against what the locally installed inventory declares about itself, drives the frontx executable to apply the chosen set, and then realizes each unit the intent names inside the applied ground."
+description: "Applies when a developer wants a FrontX project built from what they say they want, rather than from a reference they already hold - for example a console with a stated number of screens - and equally when they want one more unit added to a project that already holds applied templates. Matches the stated intent against what the locally installed inventory declares about itself, drives the frontx executable to apply the chosen set, and then realizes each unit the intent names inside the applied ground."
 ---
 
 # Create a FrontX Project from a Stated Intent
@@ -142,6 +142,18 @@ Work from the intent, the records from step 1, and the identities from step 2.
    the plan. **A template contributes to a project once.** A part of the intent
    that repeats a unit inside ground the plan already covers adds no second
    application - see Step 7 (Realize the units the intent names) below.
+   **A part that names a unit is matched here like every other part.** Do not set
+   a unit aside as per-unit work before you have offered it to the inventory:
+   whether a unit has a template of its own is a fact of what is installed, not
+   of how small the unit sounds, and a family that publishes one template per
+   unit reads no differently here from one that publishes a single template
+   covering many. Where a distinct candidate's description claims the unit,
+   selecting it is the answer - one more `frontx add`, not a skill run later -
+   because a template of its own is what gives that unit its own declared
+   boundary, its own version line and its own upgrade cadence.
+   **Write down what you selected each part for.** Step 11 excludes exactly those
+   parts, so you need the pairing of part to selected identity, not just the list
+   of identities.
    **A tie here refuses exactly as an establishing tie does**: if two or more
    candidates match one supplemental part indistinguishably, refuse with a choice
    required, naming that part of the intent and each tied candidate with its
@@ -151,11 +163,25 @@ Work from the intent, the records from step 1, and the identities from step 2.
    (Read what the target directory already holds) recorded, and record it as already applied. Re-applying an identity
    re-claims ground it already occupies, and the CLI's conflict check refuses the
    whole operation rather than part of it.
-11. **Separate the per-unit work from the residual.** Every part of the intent
-    that names a unit living inside a selected or already-applied template's own
-    ground is per-unit work, recorded once per unit and attributed to the
-    template that owns that ground. It is **not** residual - Step 7 (Realize the
-    units the intent names) realizes it.
+   **Keep it in step 9's record all the same.** Dropping an identity from the
+   plan does not unmake the selection: the identity is already applied, so the
+   part of the intent you selected it for is already delivered. Step 11 reads
+   step 9's pairing, not the plan, precisely so a dropped identity does not let
+   its unit come back as per-unit work.
+11. **Separate the per-unit work from the residual.** Take every part of the
+    intent that names a unit living inside a selected or already-applied
+    template's own ground, **and that step 9 selected no identity for**. Those
+    are the per-unit work, recorded once per unit and attributed to the template
+    that owns that ground. It is **not** residual - Step 7 (Realize the units the
+    intent names) realizes it.
+    **A unit an application delivers is never also per-unit work.** If step 9
+    selected a distinct template for that unit, the unit is delivered by applying
+    it, and recording it here as well would plan the same unit twice - once as
+    ground to apply, once as work to improvise into ground. This holds whether
+    that identity is still in the plan or step 10 dropped it as already applied,
+    which is why the test is step 9's record and not the plan. Per-unit work is
+    what selection left over: the units the installed inventory offers no
+    template of their own for.
     Only what no template's description covers and no template's ground contains
     is residual.
 
@@ -319,7 +345,7 @@ from, and run it:
 ```bash
 node <installed kit root>/skills/project-scaffolding/scripts/verify-walk.mjs \
   --host <dev server origin> \
-  --browser-cmd 'npx --yes agent-browser@<the version this run pinned>' \
+  --browser-cmd 'npx --yes agent-browser@<pinned version>' \
   --capdir "$CAPDIR" \
   --checkpoints <name>:<destination>:<that point's ready testid>,... \
   --checkpoint-selector '<the reaching control testid, with {checkpoint} or {handle} in it>' \
@@ -332,7 +358,7 @@ node <installed kit root>/skills/project-scaffolding/scripts/verify-walk.mjs \
   --coverage <targetDir>/.frontx/verification-coverage.md
 ```
 
-**Only `--host` and `--capdir` are required.** Everything else describes
+**Only `--host`, `--capdir` and `--browser-cmd` are required.** Everything else describes
 something this project declared, and this document holds no opinion on whether a
 given project declares it. Two of those declarations are axes, and each is
 declared whole or not at all: naming part of one is refused before a browser is
@@ -385,11 +411,15 @@ sits inside, closes it before the first capture, and confirms the close by the
 opening control being back on the page. **A project that declares no such overlay
 passes neither flag, and nothing in the walk reaches for one.**
 
-`--browser-cmd` is what pins the browser CLI. Left out, the driver falls back to
-`npx --yes agent-browser`, which resolves whatever version is newest at the
-moment each run asks - so two runs of the same walk can be driven by two
-different browsers, and a capture that changed has no fixed tool to be
-attributed to. Name the version the run installed, and record it in the report.
+`--browser-cmd` is what pins the browser CLI, and it has no default. An
+unversioned `npx --yes agent-browser` would download whatever release is newest
+at the moment each run asks - code nothing pinned, fetched on every run, and two
+runs of the same walk driven by two different browsers - so the driver refuses a
+package runner handed a package with no version. Name the pinned package or an
+installed binary, and record which in the report. Every hand-driven browser call
+below repeats that same command: `<pinned version>` there is the version named
+here, and an installed binary replaces the whole `npx --yes agent-browser@<pinned version>`
+prefix.
 
 An installed binary is named here too, and the value is read as a command line
 rather than as one word: quote a path that carries spaces, or the driver is handed
@@ -622,7 +652,7 @@ established against this runner rather than assumed:
   **The controls inside the surface under verification are learned the same way,
   but not off that snapshot**: its content renders inside a shadow root, so read
   their handles
-  with one `npx --yes agent-browser eval` that descends into every `shadowRoot`
+  with one `npx --yes agent-browser@<pinned version> eval` that descends into every `shadowRoot`
   and collects what the scaffold marked:
 
   ```js
@@ -697,8 +727,8 @@ Carry the run out in this order:
 
 1. **Probe before launching.** Ask `http://localhost:9222/json/version` once.
    When it answers, attach to the browser already listening there with
-   `npx --yes agent-browser connect 9222`. When it does not, launch one with
-   `npx --yes agent-browser`. The probe is a single request, and it is worth
+   `npx --yes agent-browser@<pinned version> connect 9222`. When it does not, launch one with
+   `npx --yes agent-browser@<pinned version>`. The probe is a single request, and it is worth
    making every time: a self-launched browser has hung mid-run where an attached
    one returned every capture asked of it.
 2. **Read the interface's active variant before verifying anything, and switch to
@@ -721,7 +751,7 @@ Carry the run out in this order:
    it, so a control listening for `pointerdown` sees nothing at all and the page
    stays as it was. Do not retry the synthetic click, and do not record the
    control as broken. Re-issue that one click as the full native sequence through
-   `npx --yes agent-browser eval`:
+   `npx --yes agent-browser@<pinned version> eval`:
 
    ```js
    (() => {
@@ -769,7 +799,7 @@ Carry the run out in this order:
    each:
 
    ```bash
-   npx --yes agent-browser batch --bail <<'JSON'
+   npx --yes agent-browser@<pinned version> batch --bail <<'JSON'
    [
      ["open", "<dev server origin><this point's declared destination>"],
      ["snapshot", "-i"],
@@ -843,7 +873,7 @@ Carry the run out in this order:
    an overlay, and the reaching click only where it declares a control to click:
 
    ```bash
-   npx --yes agent-browser batch --bail <<'JSON'
+   npx --yes agent-browser@<pinned version> batch --bail <<'JSON'
    [
      ["reload"],
      ["click", "[data-testid=\"<the overlay's opening handle>\"]"],
@@ -960,7 +990,7 @@ Carry the run out in this order:
    nothing extra because it rides in the same batch as the click. When the run
    needs to see what is on the page at all - which controls exist now, what the
    load mounted - the reading is the accessibility snapshot, `npx --yes
-   agent-browser snapshot -i`. Reach for the snapshot for that question and not
+   agent-browser@<pinned version> snapshot -i`. Reach for the snapshot for that question and not
    as a reflex after every click, which is the habit that cost the measured run
    24 of its 87 calls. A text-wait qualifies as neither: it does not see into a
    shadow root, so it times out on text that was on the page the whole time. When
@@ -970,7 +1000,7 @@ Carry the run out in this order:
    enumerates the interactive nodes; static text, and the list structure around
    it, are absent from perfectly sound markup by construction. Judge static
    content by a screenshot or by reading the DOM through `npx --yes
-   agent-browser eval`, and never from the snapshot's silence. **A snapshot-only
+   agent-browser@<pinned version> eval`, and never from the snapshot's silence. **A snapshot-only
    signal is not grounds for touching product source.** One run read that
    absence as broken list semantics, stopped its dev servers, added redundant
    roles to the unit's own source, and then concluded it had never been a real
@@ -981,7 +1011,7 @@ Carry the run out in this order:
    shadow roots, so it spends its whole timeout on text that was already on the
    page, and one run spent three such timeouts before reading this. Reach for
    `wait --text` only for content known to live in light DOM. For everything else, poll through
-   `npx --yes agent-browser eval`:
+   `npx --yes agent-browser@<pinned version> eval`:
 
    ```js
    (async () => {

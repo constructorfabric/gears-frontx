@@ -15,7 +15,7 @@ Studio kit (`cpt-frontx-adr-ai-tooling-framework-packaging`).
 |---|---|---|---|
 | `.cf-studio-kit.toml` | — | manifest | Canonical declarative installation manifest |
 | `SKILL.md` | `frontx_skill` | skill | Ecosystem skill surface, discoverable at session start; carries the routing section that states which capability serves each kind of FrontX request |
-| `skills/project-scaffolding/SKILL.md` | `frontx_project_scaffolding` | skill | Creates a project from a stated intent: matches the intent against the descriptions installed templates declare, applies the chosen set over the `frontx` command surface, then realizes each named unit through the applied templates' own activated skills |
+| `skills/project-scaffolding/SKILL.md` | `frontx_project_scaffolding` | skill | Builds from a stated intent, whether the target is a new project or one that already holds applied templates: matches the intent against the descriptions installed templates declare, applies the chosen set over the `frontx` command surface, then, through the applied templates' own activated skills, realizes each named unit that no installed template claims and that lies inside selected or already-applied template ground; any other unit is reported as residual work and nothing is written for it |
 | `AGENTS.md` | `frontx_agents` | rule | Agent navigation and package-boundary rules |
 | `guidelines/` | `frontx_guidelines` | directory | Ecosystem guidelines (boundaries, constraints) |
 

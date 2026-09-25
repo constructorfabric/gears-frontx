@@ -24,8 +24,10 @@
 // read and not apply.
 //
 // Zero dependencies beyond the node standard library. The browser is reached by
-// shelling out to a browser CLI, `npx --yes agent-browser` unless --browser-cmd
-// names another.
+// shelling out to the browser CLI --browser-cmd names. There is no default: a
+// default would be an unpinned package resolved from the public registry on every
+// run, so the caller names a pinned version or an installed binary, and a package
+// runner handed an unversioned package is refused.
 //
 // The driver never retries a failure of its own accord. A failed step is
 // recorded in the JSON result and the process exits non-zero, so a retry is a
@@ -42,12 +44,19 @@ import process from 'node:process';
 const HELP = `verify-walk - drive one walk over a scaffolded application
 
 Usage:
-  node verify-walk.mjs --host <url> --capdir <path> [options]
+  node verify-walk.mjs --host <url> --capdir <path> --browser-cmd <cmd> [options]
 
 Required:
   --host <url>              origin of the running dev server, e.g. http://localhost:3000
   --capdir <path>           capture directory for this run; created when absent and
                             refused when it already holds files
+  --browser-cmd <cmd>       command line the browser CLI is driven through: a
+                            pinned package, e.g. 'npx --yes agent-browser@<version>',
+                            or an installed binary. There is no default, and a
+                            package runner (npx, pnpm dlx, bunx, yarn dlx) handed
+                            a package with no version is refused. Quote a path
+                            that carries spaces, single or double quotes alike:
+                            '"/path/with a space/browser-cli" --headless'
 
 Checkpoint axis - the points the walk visits, declared whole or not at all.
 Declaring --checkpoint-selector requires --checkpoints; declaring neither of them
@@ -100,11 +109,6 @@ Optional:
   --states <path>           JSON file of declared per-checkpoint interactions (see below)
   --cdp-port <n>            debugging port probed before any browser is launched (default: 9222)
   --ready-timeout <ms>      budget for a checkpoint readiness poll (default: 15000)
-  --browser-cmd <cmd>       command line the browser CLI is driven through
-                            (default: npx --yes agent-browser); a caller pins a
-                            version or names an installed binary here. Quote a
-                            path that carries spaces, single or double quotes
-                            alike: '"/path/with a space/browser-cli" --headless'
   --command-timeout <ms>    budget for one browser command; past it the child is
                             killed and the run records a timeout (default: 60000)
   --json-out <path>         machine-readable result (default: <capdir>/verify-walk.json)
@@ -143,7 +147,6 @@ const VARIANT_TOKEN = '{variant}';
 
 const ACTION_KINDS = new Set(['fill', 'click', 'read']);
 const MAX_TCP_PORT = 65535;
-const DEFAULT_BROWSER_COMMAND = 'npx --yes agent-browser';
 
 function parseArgs(argv) {
   const opts = {};
@@ -219,6 +222,72 @@ function tokenizeCommand(flag, raw) {
     throw new Error(`${flag} "${raw}" names no command to run`);
   }
   return tokens;
+}
+
+// A package runner fetches what it is asked for from the public registry, and a
+// package named without a version is whatever release is newest at the moment
+// each run asks: code nothing pinned, downloaded on every run, and two runs of
+// one walk driven by two different browsers. So a command line whose first word
+// is a package runner must hand it a versioned package. An installed binary is
+// the other trusted form and passes as it stands, because what it runs is fixed
+// by what was installed rather than by the registry at run time.
+const PACKAGE_RUNNERS = new Map([
+  ['npx', []], ['bunx', []], ['pnpx', []],
+  ['pnpm', ['dlx']], ['yarn', ['dlx']], ['npm', ['exec', 'x']],
+]);
+
+// An exact version only: a tag such as `latest` or a range such as `^1.2.3`
+// names whichever release matches at the moment each run asks, which is the
+// same drift an unversioned package carries.
+const EXACT_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+
+function isVersionedPackage(spec) {
+  // `@scope/name@1.2.3` or `name@1.2.3`: a version after the name, never the
+  // scope's own leading `@`.
+  const at = spec.lastIndexOf('@');
+  return at > 0 && EXACT_VERSION.test(spec.slice(at + 1));
+}
+
+function requirePinnedCommand(flag, tokens) {
+  const runner = path.basename(tokens[0]).replace(/\.(cmd|exe)$/i, '');
+  if (!PACKAGE_RUNNERS.has(runner)) return tokens;
+  const refuse = (why) => new Error(`${flag} "${tokens.join(' ')}" runs a package through ${runner} with no pinned version${why}; name the package with an exact @<version>, or name an installed binary`);
+  const subcommands = PACKAGE_RUNNERS.get(runner);
+  let rest = tokens.slice(1);
+  if (subcommands.length > 0) {
+    // The runner's own options may come before its subcommand (`npm --silent
+    // exec`). A subcommand found only behind a token that is neither an option
+    // nor that subcommand cannot be told apart from an option's value, so that
+    // form is refused rather than passed unread.
+    const at = rest.findIndex((token) => !token.startsWith('-'));
+    if (at === -1 || !subcommands.includes(rest[at])) {
+      if (rest.some((token) => subcommands.includes(token))) throw refuse(' that this check can read');
+      return tokens;
+    }
+    rest = rest.slice(at + 1);
+  }
+  // Flags before the package are the runner's own (`--yes`, `-y`); every flag
+  // that names a package explicitly (`--package=<spec>`, `-p <spec>`, repeated
+  // as often as the runner allows) is a package the runner fetches, so each one
+  // must be pinned. For npx and the dlx runners scanning stops at the first
+  // positional word or at `--`: what follows belongs to the command being run.
+  // `npm exec` (and its alias `npm x`) keeps reading its own options after the
+  // first positional word and stops only at `--`, so a `--package` behind the
+  // command still names a package npm fetches, and the scan goes on to `--`.
+  const readsPastPositional = runner === 'npm';
+  const packages = [];
+  let positional = null;
+  for (let i = 0; i < rest.length; i += 1) {
+    const token = rest[i];
+    if (token === '--') { positional ??= rest[i + 1] ?? null; break; }
+    if (token === '--package' || token === '-p') { packages.push(rest[i + 1] ?? ''); i += 1; continue; }
+    if (token.startsWith('--package=')) { packages.push(token.slice('--package='.length)); continue; }
+    if (token.startsWith('-')) continue;
+    positional ??= token;
+    if (!readsPastPositional) break;
+  }
+  if (packages.length > 0 ? packages.every(isVersionedPackage) : isVersionedPackage(positional ?? '')) return tokens;
+  throw refuse('');
 }
 
 // Every part of a capture's file name is caller data - a variant name out of a
@@ -443,7 +512,7 @@ function run(command, args, input) {
 }
 
 // Assigned during argument validation; `browser` reads it at call time.
-let browserCommand = tokenizeCommand('--browser-cmd', DEFAULT_BROWSER_COMMAND);
+let browserCommand = null;
 
 const browser = (args, input) => run(browserCommand[0], [...browserCommand.slice(1), ...args], input);
 
@@ -857,7 +926,7 @@ if (opts.help) {
   process.exit(0);
 }
 
-for (const required of ['host', 'capdir']) {
+for (const required of ['host', 'capdir', 'browser-cmd']) {
   if (!opts[required]) refuseArguments(`missing required argument --${required}`);
 }
 
@@ -936,7 +1005,7 @@ try {
   cdpPort = positiveInt('--cdp-port', opts['cdp-port'], 9222, MAX_TCP_PORT);
   commandTimeoutMs = positiveInt('--command-timeout', opts['command-timeout'], 60000);
 
-  browserCommand = tokenizeCommand('--browser-cmd', opts['browser-cmd'] ?? DEFAULT_BROWSER_COMMAND);
+  browserCommand = requirePinnedCommand('--browser-cmd', tokenizeCommand('--browser-cmd', opts['browser-cmd']));
 
   labels = parseLabelMap(opts['variant-labels']);
   checkpoints = checkpointAxisDeclared ? parseCheckpoints(opts.checkpoints) : [];
