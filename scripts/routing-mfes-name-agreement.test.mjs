@@ -4,8 +4,9 @@
 // even for types (internal/depcruise-config/core.cjs,
 // internal/depcruise-config/layer-constants.cjs). This test is the one place
 // outside both packages that proves the two copies still agree — it imports
-// each package's own built, published surface (never source internals) and
-// runs both over one shared list of names.
+// each package through its public entry point (never source internals; the
+// `repo-scripts` Vitest config resolves that entry to source, so no build is
+// needed) and runs both over one shared list of names.
 import { describe, it, expect } from 'vitest';
 import { validateName, namesEqual, deriveExtensionToken } from '@gears-frontx/routing';
 import { isValidRouteName, routeNamesEqual, getExtensionRouteToken } from '@gears-frontx/mfes';
