@@ -114,11 +114,21 @@ describe('EngineProviderProps — routerOptions requiredness', () => {
     expectTypeOf<WithoutRouterOptions>().toExtend<EngineProviderProps<typeof treeWithOptionalContext>>();
   });
 
-  it('EngineProvider itself is callable with {routeTree, history, routerOptions} for a context-bearing tree', () => {
-    // Exercises the actual overloaded export, not only the `EngineProviderProps`
-    // shape it is typed against — `expect-type` resolves `toBeCallableWith`
-    // against whichever overload the given arguments match (README,
-    // "Overloaded functions").
+  it('smoke check that the overloaded export accepts this shape', () => {
+    // Not a requiredness check: pinning `TRouteTree` on the overloaded
+    // `EngineProvider` via an instantiation expression
+    // (`EngineProvider<typeof treeWithContext>`) fails against the *other*
+    // overload's own constraint (`TRouter extends AnyRouter`) instead of
+    // resolving against the matching one — `expect-type`'s own
+    // `toBeCallableWith` on the unpinned export is the same overload-picking
+    // resolution the README documents, but weaker than a pinned check: per
+    // its own typing (`OverloadParameters`/`OverloadsNarrowedByParameters`),
+    // it can be satisfied by widening `TRouteTree` to `AnyRoute` rather than
+    // by actually narrowing it to `typeof treeWithContext`, so this only
+    // confirms the shape below type-checks against *some* instantiation of
+    // `EngineProviderProps`, not specifically against the context-bearing
+    // one. The requiredness claim itself is pinned above, directly on
+    // `EngineProviderProps<typeof treeWithContext>`.
     expectTypeOf(EngineProvider).toBeCallableWith({
       routeTree: treeWithContext,
       history,
