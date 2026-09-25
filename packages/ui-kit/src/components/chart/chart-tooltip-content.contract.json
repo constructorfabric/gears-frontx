@@ -162,7 +162,7 @@
         "description": "TS: RechartsPrimitive.AxisId | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
       },
       "content": {
-        "description": "TS: (ContentType<RechartsPrimitive.TooltipValueType, NameType> & string) | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
+        "description": "TS: ContentType<RechartsPrimitive.TooltipValueType, NameType> | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
       },
       "contentStyle": {
         "description": "TS: CSSProperties | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."

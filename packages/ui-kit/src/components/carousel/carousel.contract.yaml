@@ -87,7 +87,11 @@ attestations:
   a11y:
     outcome: unknown
   rtl:
-    outcome: unknown
+    outcome: failed
+    by: >-
+      carousel.tsx wires only ArrowLeft to the previous slide and ArrowRight
+      to the next (carousel.tsx:101-110), whatever the direction, so in a
+      right-to-left carousel the arrow keys move against the reading order
 
 prop_statements:
   opts:

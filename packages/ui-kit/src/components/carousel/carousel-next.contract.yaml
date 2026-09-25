@@ -60,7 +60,14 @@ attestations:
       "Next slide" and data-icon-only, and that it is disabled when the
       engine reports nothing to scroll to
   rtl:
-    outcome: unknown
+    outcome: failed
+    by: >-
+      carousel.tsx renders a hard-coded ChevronRightIcon in the button
+      (carousel.tsx:268) and carousel.module.css places it with a physical
+      `right: -3rem` (carousel.module.css:88), with no rule that mirrors
+      either under a right-to-left direction, so in a right-to-left
+      carousel the button sits on the right and points against the reading
+      order
 
 prop_statements:
   render:

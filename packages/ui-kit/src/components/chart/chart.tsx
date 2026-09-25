@@ -242,7 +242,7 @@ export const ChartTooltip = RechartsPrimitive.Tooltip;
 // A content renderer's root div takes the div's attributes but none of its
 // event handlers or content props: the chart hands the renderer props of
 // its own under those names, and the renderer supplies the content itself.
-type ContentRootAttributes = Omit<ComponentProps<'div'>, 'className' | keyof DOMAttributes<HTMLDivElement>>;
+type ContentRootAttributes = Omit<ComponentProps<'div'>, 'className' | 'content' | keyof DOMAttributes<HTMLDivElement>>;
 
 // Keeps every key a content renderer's root div must not receive off it: an
 // event handler (the chart's own are typed for its items, not for this

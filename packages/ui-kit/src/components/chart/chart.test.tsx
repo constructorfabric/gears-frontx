@@ -1,16 +1,18 @@
 import type { ComponentProps } from 'react';
 import { cleanup, render, screen } from '@testing-library/react';
 import { Bar, BarChart } from 'recharts';
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import {
   type ChartConfig,
   ChartContainer,
   ChartLegend,
   ChartLegendContent,
+  type ChartLegendContentProps,
   ChartStyle,
   ChartTooltip,
   ChartTooltipContent,
+  type ChartTooltipContentProps,
 } from './chart';
 import styles from './chart.module.css';
 
@@ -387,5 +389,17 @@ describe('ChartTooltip with ChartTooltipContent', () => {
     } finally {
       errors.mockRestore();
     }
+  });
+});
+
+// Type-level: the content renderers' props omit the root div's event
+// handlers and its `content` attribute, so neither is a prop a caller can
+// pass. These are compile-time assertions (`expectTypeOf`), as in the routing
+// package's types.test.ts: type-check:test fails if a prop reappears.
+describe('content renderer props (types)', () => {
+  it('have no DOM event handler, and the legend content no div content attribute', () => {
+    expectTypeOf<ChartTooltipContentProps>().not.toHaveProperty('onClick');
+    expectTypeOf<ChartLegendContentProps>().not.toHaveProperty('onClick');
+    expectTypeOf<ChartLegendContentProps>().not.toHaveProperty('content');
   });
 });
