@@ -269,18 +269,22 @@ function requirePinnedCommand(flag, tokens) {
   // Flags before the package are the runner's own (`--yes`, `-y`); every flag
   // that names a package explicitly (`--package=<spec>`, `-p <spec>`, repeated
   // as often as the runner allows) is a package the runner fetches, so each one
-  // must be pinned. Scanning stops at the first positional word or at `--`:
-  // what follows belongs to the command being run.
+  // must be pinned. For npx and the dlx runners scanning stops at the first
+  // positional word or at `--`: what follows belongs to the command being run.
+  // `npm exec` (and its alias `npm x`) keeps reading its own options after the
+  // first positional word and stops only at `--`, so a `--package` behind the
+  // command still names a package npm fetches, and the scan goes on to `--`.
+  const readsPastPositional = runner === 'npm';
   const packages = [];
   let positional = null;
   for (let i = 0; i < rest.length; i += 1) {
     const token = rest[i];
-    if (token === '--') { positional = rest[i + 1] ?? null; break; }
+    if (token === '--') { positional ??= rest[i + 1] ?? null; break; }
     if (token === '--package' || token === '-p') { packages.push(rest[i + 1] ?? ''); i += 1; continue; }
     if (token.startsWith('--package=')) { packages.push(token.slice('--package='.length)); continue; }
     if (token.startsWith('-')) continue;
-    positional = token;
-    break;
+    positional ??= token;
+    if (!readsPastPositional) break;
   }
   if (packages.length > 0 ? packages.every(isVersionedPackage) : isVersionedPackage(positional ?? '')) return tokens;
   throw refuse('');
