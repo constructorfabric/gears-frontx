@@ -46,6 +46,8 @@ export type { EngineProviderProps, EngineProviderFromRouterProps, ProviderRouter
 // to prevent.
 export {
   createRouter,
+  createRootRoute,
+  createRoute,
   RouterProvider,
   useNavigate,
   useParams,

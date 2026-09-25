@@ -37,6 +37,8 @@ describe('@gears-frontx/routing-tanstack entry point', () => {
         'EngineProvider',
         // DESIGN §3.3 public surface — the concrete engine's own re-exports.
         'createRouter',
+        'createRootRoute',
+        'createRoute',
         'RouterProvider',
         'useNavigate',
         'useParams',
