@@ -28,12 +28,12 @@
   },
   "mounted_in": [
     {
-      "container": "CommandDialog",
-      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.command_dialog.v1"
-    },
-    {
       "container": "Command",
       "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.command.v1"
+    },
+    {
+      "container": "CommandDialog",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.command_dialog.v1"
     }
   ],
   "invariants": [

@@ -2614,6 +2614,18 @@ export function groupCoverage(
   return covered;
 }
 
+// The names a group's pattern lists when it is a plain list of exact names,
+// `^(a|b|c)$` or `^name$`; undefined for any other shape.
+export function listedNames(match: string): string[] | undefined {
+  const list = /^\^\(?([A-Za-z_$][\w$]*(?:\|[A-Za-z_$][\w$]*)*)\)?\$$/.exec(match);
+  if (list === null) return undefined;
+  // A bare alternation with no group (`^a|b$`) anchors differently at each
+  // end, so only the grouped form and a single name are read as a list.
+  if (!match.startsWith('^(') && list[1].includes('|')) return undefined;
+  if (match.startsWith('^(') !== match.endsWith(')$')) return undefined;
+  return list[1].split('|');
+}
+
 function groupMatches(group: PropStatementGroup, name: string): boolean {
   return groupPattern(group).test(name);
 }
@@ -2622,12 +2634,16 @@ function groupMatches(group: PropStatementGroup, name: string): boolean {
 // alternative, not only the first, so `^onClick|Close` matches `Close` and
 // not `onClose` - the pattern is read as `^(?:onClick|Close)`. Compiled once
 // per group; a pattern that does not parse throws here, which is what
-// admission refuses.
+// admission refuses. The body is compiled on its own first: wrapped, an
+// unbalanced one such as `onClick)|(Close` would parse as
+// `^(?:onClick)|(Close)` and its second branch would escape the anchor.
 const groupPatterns = new WeakMap<PropStatementGroup, RegExp>();
 export function groupPattern(group: PropStatementGroup): RegExp {
   let pattern = groupPatterns.get(group);
   if (pattern === undefined) {
-    pattern = new RegExp(`^(?:${group.match.replace(/^\^/, '')})`);
+    const body = group.match.replace(/^\^/, '');
+    new RegExp(body);
+    pattern = new RegExp(`^(?:${body})`);
     groupPatterns.set(group, pattern);
   }
   return pattern;
@@ -2786,6 +2802,14 @@ export function assertOverlayReferencesRealProps(component: string, overlay: Ove
     if (![...declared, ...api].some((prop) => pattern.test(prop))) {
       refuse(`overlay prop_statement_groups match "${group.match}" names no prop the component or the primitive declares`);
     }
+    // A list of exact names (`^(a|b|c)$`) states the fact of each name it
+    // lists, so every one must be a prop: one matching prop among misspelt
+    // names would otherwise admit the list whole.
+    for (const name of listedNames(group.match) ?? []) {
+      if (!declared.has(name) && !api.has(name)) {
+        refuse(`overlay prop_statement_groups match "${group.match}" lists "${name}", which is not a real prop`);
+      }
+    }
   }
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-overlay-admission:p1:inst-oa-absent-prop
 }
@@ -2866,7 +2890,12 @@ export function mountPointsAccepting(exportStem: string, self: string, overlays:
       // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-structure-derivation:p1:inst-co-stale-major
     }
   }
-  return mountPoints.sort((a, b) => (a.component ?? '').localeCompare(b.component ?? ''));
+  // Code-unit order, which no locale or collation setting changes.
+  return mountPoints.sort((a, b) => {
+    const left = a.component ?? '';
+    const right = b.component ?? '';
+    return left < right ? -1 : left > right ? 1 : 0;
+  });
 }
 
 // The mount points an artifact carries: the filled component references plus

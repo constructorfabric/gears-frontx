@@ -42,6 +42,7 @@ import {
   groupCoverage,
   groupPattern,
   leavesTypeToTsc,
+  listedNames,
   mountPointsAccepting,
   loadElementSurface,
   loadElementSurfaces,
@@ -806,6 +807,25 @@ describe('a prop statement group', () => {
     expect(() =>
       assertOverlayReferencesRealProps('picker', { ...base, prop_statement_groups: [{ match: '^zzz', states: 's', because: 'b' }] }, extraction),
     ).toThrow(/names no prop/);
+    // Unbalanced parens that would parse once wrapped, letting `Close` escape
+    // the anchor, are refused as not a regular expression.
+    expect(() =>
+      assertOverlayReferencesRealProps('picker', { ...base, prop_statement_groups: [{ match: '^onClick)|(Close', states: 's', because: 'b' }] }, extraction),
+    ).toThrow(/is not a regular expression/);
+    expect(() => groupPattern({ match: '^onClick)|(Close', states: 's', because: 'b' })).toThrow();
+  });
+
+  it('refuses a list of exact names at admission when any listed name is not a prop', () => {
+    const extraction = extractComponent(fixture('untypeable-props.fixture.tsx'))[0];
+    const base = { deprecations: {}, accepts: { content: 'nothing' }, prop_statements: {} } as unknown as Parameters<typeof assertOverlayReferencesRealProps>[1];
+    const real = [...extraction.ownProps, ...extraction.apiProps].map((prop) => prop.name)[0];
+    expect(() =>
+      assertOverlayReferencesRealProps('picker', { ...base, prop_statement_groups: [{ match: `^(${real}|${real}Typo)$`, states: 's', because: 'b' }] }, extraction),
+    ).toThrow(new RegExp(`lists "${real}Typo", which is not a real prop`));
+    expect(listedNames('^(a|b)$')).toEqual(['a', 'b']);
+    expect(listedNames('^a$')).toEqual(['a']);
+    expect(listedNames('^on[A-Z]')).toBeUndefined();
+    expect(listedNames('^(a|b)')).toBeUndefined();
   });
 
   it('anchors every alternative of its pattern, not only the first', () => {

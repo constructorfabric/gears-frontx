@@ -23,12 +23,12 @@
   },
   "mounted_in": [
     {
-      "container": "QuestionnaireChoiceLabel",
-      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_choice_label.v1"
-    },
-    {
       "container": "QuestionnaireChoice",
       "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_choice.v1"
+    },
+    {
+      "container": "QuestionnaireChoiceLabel",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_choice_label.v1"
     }
   ],
   "invariants": [

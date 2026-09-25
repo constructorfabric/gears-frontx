@@ -159,7 +159,7 @@ describe('sidebar family: what nests where', () => {
       const expected = Object.entries(NESTING)
         .filter(([, children]) => children.includes(stem))
         .map(([container]) => ({ container: pascalCase(container), component: ref(container) }))
-        .sort((a, b) => a.component.localeCompare(b.component));
+        .sort((a, b) => (a.component < b.component ? -1 : a.component > b.component ? 1 : 0));
       expect(units[stem].contract.mounted_in, stem).toEqual(expected);
     }
   });

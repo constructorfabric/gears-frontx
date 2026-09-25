@@ -23,12 +23,12 @@
   },
   "mounted_in": [
     {
-      "container": "NativeSelectOptGroup",
-      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.native_select_opt_group.v1"
-    },
-    {
       "container": "NativeSelect",
       "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.native_select.v1"
+    },
+    {
+      "container": "NativeSelectOptGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.native_select_opt_group.v1"
     }
   ],
   "invariants": [

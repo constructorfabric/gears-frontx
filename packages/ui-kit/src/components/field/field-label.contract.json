@@ -37,12 +37,12 @@
   },
   "mounted_in": [
     {
-      "container": "FieldContent",
-      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_content.v1"
-    },
-    {
       "container": "Field",
       "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1"
+    },
+    {
+      "container": "FieldContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_content.v1"
     }
   ],
   "invariants": [

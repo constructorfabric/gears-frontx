@@ -132,12 +132,13 @@ describe('native-select family: what nests where', () => {
     // those two contracts while the opt-group's is the root alone. Nothing in
     // the three overlays writes a mount point, so the two directions cannot
     // disagree - what is asserted here is that the derivation produces the
-    // family the overlays describe. The compiler sorts mount points
-    // alphabetically by their component reference (mountPointsAccepting),
-    // which here puts the opt-group's ref before the root's.
+    // family the overlays describe. The compiler sorts mount points by their
+    // component reference in code-unit order (mountPointsAccepting), which
+    // here puts the root's ref (`native_select.v1`) before the opt-group's
+    // (`native_select_opt_group.v1`), since `.` sorts before `_`.
     expect(units['native-select-option'].contract.mounted_in).toEqual([
-      { container: pascalCase('native-select-opt-group'), component: componentRef('native-select-opt-group', contractMajor(DIRECTORY, 'native-select-opt-group')) },
       { container: pascalCase(DIRECTORY), component: componentRef(DIRECTORY, contractMajor(DIRECTORY, DIRECTORY)) },
+      { container: pascalCase('native-select-opt-group'), component: componentRef('native-select-opt-group', contractMajor(DIRECTORY, 'native-select-opt-group')) },
     ]);
     expect(units['native-select-opt-group'].contract.mounted_in).toEqual([
       { container: pascalCase(DIRECTORY), component: componentRef(DIRECTORY, contractMajor(DIRECTORY, DIRECTORY)) },

@@ -22,6 +22,10 @@
   },
   "mounted_in": [
     {
+      "container": "Sidebar",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar.v1"
+    },
+    {
       "container": "SidebarContent",
       "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_content.v1"
     },
@@ -32,10 +36,6 @@
     {
       "container": "SidebarHeader",
       "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_header.v1"
-    },
-    {
-      "container": "Sidebar",
-      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar.v1"
     }
   ],
   "invariants": [
