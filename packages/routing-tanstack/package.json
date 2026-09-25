@@ -1,6 +1,6 @@
 {
   "name": "@gears-frontx/routing-tanstack",
-  "version": "0.3.0-alpha.0",
+  "version": "0.3.0-alpha.1",
   "description": "FrontX's default routing-engine provider - binds the navigation substrate's shared history to TanStack Router, projecting each occupant's own entry into a virtual location that engine can navigate",
   "type": "module",
   "main": "./dist/index.cjs",
