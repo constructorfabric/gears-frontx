@@ -236,40 +236,54 @@ const PACKAGE_RUNNERS = new Map([
   ['pnpm', ['dlx']], ['yarn', ['dlx']], ['npm', ['exec', 'x']],
 ]);
 
+// An exact version only: a tag such as `latest` or a range such as `^1.2.3`
+// names whichever release matches at the moment each run asks, which is the
+// same drift an unversioned package carries.
+const EXACT_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+
 function isVersionedPackage(spec) {
   // `@scope/name@1.2.3` or `name@1.2.3`: a version after the name, never the
   // scope's own leading `@`.
   const at = spec.lastIndexOf('@');
-  return at > 0 && at < spec.length - 1 && !spec.slice(at + 1).includes('/');
+  return at > 0 && EXACT_VERSION.test(spec.slice(at + 1));
 }
 
 function requirePinnedCommand(flag, tokens) {
   const runner = path.basename(tokens[0]).replace(/\.(cmd|exe)$/i, '');
   if (!PACKAGE_RUNNERS.has(runner)) return tokens;
+  const refuse = (why) => new Error(`${flag} "${tokens.join(' ')}" runs a package through ${runner} with no pinned version${why}; name the package with an exact @<version>, or name an installed binary`);
   const subcommands = PACKAGE_RUNNERS.get(runner);
   let rest = tokens.slice(1);
   if (subcommands.length > 0) {
-    if (!subcommands.includes(rest[0])) return tokens;
-    rest = rest.slice(1);
+    // The runner's own options may come before its subcommand (`npm --silent
+    // exec`). A subcommand found only behind a token that is neither an option
+    // nor that subcommand cannot be told apart from an option's value, so that
+    // form is refused rather than passed unread.
+    const at = rest.findIndex((token) => !token.startsWith('-'));
+    if (at === -1 || !subcommands.includes(rest[at])) {
+      if (rest.some((token) => subcommands.includes(token))) throw refuse(' that this check can read');
+      return tokens;
+    }
+    rest = rest.slice(at + 1);
   }
-  // Flags before the package are the runner's own (`--yes`, `-y`); a flag that
-  // names the package explicitly (`--package=<spec>`, `-p <spec>`) is read as it.
+  // Flags before the package are the runner's own (`--yes`, `-y`); every flag
+  // that names a package explicitly (`--package=<spec>`, `-p <spec>`, repeated
+  // as often as the runner allows) is a package the runner fetches, so each one
+  // must be pinned. Scanning stops at the first positional word or at `--`:
+  // what follows belongs to the command being run.
+  const packages = [];
+  let positional = null;
   for (let i = 0; i < rest.length; i += 1) {
     const token = rest[i];
-    if (token === '--package' || token === '-p') {
-      const spec = rest[i + 1] ?? '';
-      if (!isVersionedPackage(spec)) break;
-      return tokens;
-    }
-    if (token.startsWith('--package=')) {
-      if (!isVersionedPackage(token.slice('--package='.length))) break;
-      return tokens;
-    }
+    if (token === '--') { positional = rest[i + 1] ?? null; break; }
+    if (token === '--package' || token === '-p') { packages.push(rest[i + 1] ?? ''); i += 1; continue; }
+    if (token.startsWith('--package=')) { packages.push(token.slice('--package='.length)); continue; }
     if (token.startsWith('-')) continue;
-    if (isVersionedPackage(token)) return tokens;
+    positional = token;
     break;
   }
-  throw new Error(`${flag} "${tokens.join(' ')}" runs a package through ${runner} with no pinned version; name the package with @<version>, or name an installed binary`);
+  if (packages.length > 0 ? packages.every(isVersionedPackage) : isVersionedPackage(positional ?? '')) return tokens;
+  throw refuse('');
 }
 
 // Every part of a capture's file name is caller data - a variant name out of a
