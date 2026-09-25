@@ -65,3 +65,14 @@ export function Generic<P extends NoHandlers>(props: P) {
 export function GenericIntersection<P extends object>(props: NoHandlers & P) {
   return <button type="button" {...props} />;
 }
+
+// Union branches reaching one variant declaration through different filters:
+// the axes are those any branch keeps, whichever branch is written first.
+type OmitsSize = Omit<VariantProps<typeof v>, 'size'> & { kind: 'a' };
+type KeepsAll = VariantProps<typeof v> & { kind: 'b' };
+export function UnionFilterOmitFirst(props: OmitsSize | KeepsAll) {
+  return <button type="button" className={v(props)} />;
+}
+export function UnionFilterKeepFirst(props: KeepsAll | OmitsSize) {
+  return <button type="button" className={v(props)} />;
+}

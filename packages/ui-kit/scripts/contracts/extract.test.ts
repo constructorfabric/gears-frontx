@@ -869,6 +869,20 @@ describe('extractComponent: the edges of a body-written default', () => {
     expect(byName('CoalescedElsewhere').propDefaults).toEqual({ size: 4 });
   });
 
+  it('notes a literal `??` read under a condition rather than stating it', () => {
+    expect(byName('CoalescedUnderCondition').propDefaults).toEqual({});
+    expect(byName('CoalescedUnderCondition').cannotExtract).toEqual([
+      expect.stringMatching(/^default: prop "size" is read through `\?\?` under a condition \(`inline`\)/),
+    ]);
+  });
+
+  it('notes a literal attribute with another spread between it and the rest spread', () => {
+    expect(byName('SpreadBetween').propDefaults).toEqual({});
+    expect(byName('SpreadBetween').cannotExtract).toEqual([
+      expect.stringMatching(/^default: prop "variant" is written before the rest spread with another spread between them/),
+    ]);
+  });
+
   it('reads through forwardRef and memo', () => {
     expect(byName('Forwarded').propDefaults).toEqual({ variant: 'ghost' });
     expect(byName('Memoed').propDefaults).toEqual({ size: 3 });
@@ -961,6 +975,15 @@ describe('extractComponent: key sets and index keys the checker resolves', () =>
     expect(byName('PickNever').axes).toEqual({});
     for (const name of ['OmitNone', 'OmitExclude', 'OmitAlias', 'OmitKeyofOther', 'PickNever']) {
       expect(byName(name).cannotExtract, name).toEqual([]);
+    }
+  });
+
+  it('reads the axes any union branch keeps, whatever the order of branches reaching one declaration through different filters', () => {
+    for (const name of ['UnionFilterOmitFirst', 'UnionFilterKeepFirst']) {
+      expect(byName(name).axes, name).toEqual({ variant: ['a', 'b'], size: ['s', 'm'] });
+      expect(byName(name).cannotExtract, name).toEqual([
+        expect.stringMatching(/reach "v" through different Omit\/Pick filters - the contract states every axis any branch keeps/),
+      ]);
     }
   });
 

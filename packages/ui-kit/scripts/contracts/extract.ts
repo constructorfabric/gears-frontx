@@ -628,6 +628,9 @@ interface KeyFilter {
   // parameter): what it removes or keeps is unknown, so no axis below
   // it can be told apart from one it removed. The text of that key argument.
   readonly unreadable?: string;
+  // Union branches reaching one declaration through different filters: a
+  // key is kept when any of them keeps it.
+  readonly anyOf?: readonly KeyFilter[];
 }
 
 const NO_KEY_FILTER: KeyFilter = { omitted: new Set() };
@@ -638,13 +641,38 @@ function narrowFilter(filter: KeyFilter, kind: 'omit' | 'pick', keys: readonly s
   return { ...filter, picked };
 }
 
+// A filter's content as text, to tell two filters apart whatever order
+// their keys were added in.
+function filterKey(filter: KeyFilter): string {
+  return JSON.stringify([
+    [...filter.omitted].sort(),
+    filter.picked === undefined ? null : [...filter.picked].sort(),
+    filter.unreadable ?? null,
+    filter.anyOf === undefined ? null : filter.anyOf.map(filterKey).sort(),
+  ]);
+}
+
+// The filters of several union branches reaching one variant declaration,
+// merged so a key is kept exactly when some branch keeps it: a caller may
+// pass the props of any branch, so an axis one branch keeps is an axis of
+// the union. The result does not depend on the branches' order.
+function mergeBranchFilters(filters: readonly KeyFilter[]): KeyFilter {
+  const distinct = [...new Map(filters.map((one) => [filterKey(one), one])).entries()]
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+    .map(([, one]) => one);
+  if (distinct.length === 1) return distinct[0];
+  if (distinct.some((one) => one === NO_KEY_FILTER || filterKey(one) === filterKey(NO_KEY_FILTER))) return NO_KEY_FILTER;
+  return { omitted: new Set(), anyOf: distinct };
+}
+
 function unreadableFilter(filter: KeyFilter, keyText: string): KeyFilter {
   return { ...filter, unreadable: filter.unreadable ?? keyText };
 }
 
 function keyAllowed(filter: KeyFilter | undefined, key: string): boolean {
   if (filter === undefined) return true;
-  return !filter.omitted.has(key) && (filter.picked === undefined || filter.picked.has(key));
+  if (filter.omitted.has(key) || (filter.picked !== undefined && !filter.picked.has(key))) return false;
+  return filter.anyOf === undefined || filter.anyOf.some((one) => keyAllowed(one, key));
 }
 
 // The same keys read off an instantiated helper's key argument: a string
@@ -851,18 +879,32 @@ function walkPropsType(
   // passed off as the answer; the first branch's element is kept.
   if (ts.isUnionTypeNode(node)) {
     const kinds: string[] = [];
+    // Every branch's filter for each variant declaration, by its text: two
+    // branches may reach the same declaration through different Omit/Pick
+    // helpers, and which one is walked first must not decide the axes.
+    const branchFilters = new Map<string, { source: ts.EntityName; filters: KeyFilter[] }>();
     for (const member of node.types.filter((type) => !isNullishTypeNode(type))) {
       const branch: PropsTypeWalkResult = { kind: undefined, variantSources: [], axisFilters: new Map(), cannotExtract: [] };
       walkPropsType(member, checker, branch, new Set(visited), depth + 1, filter);
       if (branch.kind !== undefined && !kinds.includes(branch.kind)) kinds.push(branch.kind);
       for (const source of branch.variantSources) {
-        if (!result.variantSources.some((known) => known.getText() === source.getText())) {
-          result.variantSources.push(source);
-          const sourceFilter = branch.axisFilters.get(source);
-          if (sourceFilter !== undefined) result.axisFilters.set(source, sourceFilter);
-        }
+        const known = branchFilters.get(source.getText());
+        const sourceFilter = branch.axisFilters.get(source) ?? NO_KEY_FILTER;
+        if (known === undefined) branchFilters.set(source.getText(), { source, filters: [sourceFilter] });
+        else known.filters.push(sourceFilter);
       }
       result.cannotExtract.push(...branch.cannotExtract);
+    }
+    for (const [text, { source, filters }] of branchFilters) {
+      if (!result.variantSources.some((known) => known.getText() === text)) result.variantSources.push(source);
+      const merged = mergeBranchFilters(filters);
+      if (merged !== NO_KEY_FILTER) result.axisFilters.set(source, merged);
+      if (new Set(filters.map(filterKey)).size > 1) {
+        result.cannotExtract.push(
+          `heritage: the branches of "${node.getText()}" reach "${text}" through different Omit/Pick filters - the ` +
+            `contract states every axis any branch keeps`,
+        );
+      }
     }
     if (result.kind === undefined) result.kind = kinds[0];
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
@@ -2243,6 +2285,7 @@ function coalescedDefault(
   let reassigned: string | undefined;
   let coalescingAssignment = false;
   let unreadable: string | undefined;
+  let conditional: string | undefined;
   const visit = (node: ts.Node): void => {
     // A shorthand property (`cva({ variant })`) reads the binding too, but
     // the checker's symbol at that name is the property's, not the binding's.
@@ -2269,6 +2312,7 @@ function coalescedDefault(
         const value = literalValue(parent.right);
         if (value === undefined) unreadable = parent.right.getText();
         else values.push(value.value);
+        conditional ??= conditionOver(parent, body);
       } else {
         raw = true;
       }
@@ -2288,6 +2332,15 @@ function coalescedDefault(
   // default, so it records nothing; beside a literal one it leaves no single
   // default, which is noted.
   if (values.length === 0) return undefined;
+  // A coalescing read on one branch of a condition (`compact ? 'sm' : (size
+  // ?? 'md')`) is what renders only on that branch: on another the caller
+  // who passes nothing gets something else.
+  if (conditional !== undefined) {
+    return {
+      kind: 'unsure',
+      why: `is read through \`??\` under a condition (\`${conditional}\`), so the literal is not what every caller who passes nothing gets`,
+    };
+  }
   if (unreadable !== undefined) {
     return { kind: 'unsure', why: `is read through \`??\` with a literal and with \`?? ${unreadable}\`, so no one literal is its default` };
   }
@@ -2295,6 +2348,29 @@ function coalescedDefault(
   const distinct = [...new Set(values.map((value) => JSON.stringify(value)))];
   if (distinct.length > 1) return { kind: 'unsure', why: `is read through \`??\` with ${distinct.length} different literals` };
   return { kind: 'literal', value: values[0] };
+}
+
+// The condition a read sits under inside the body, as its text: a ternary's
+// branch, the right side of `&&`, `||` or `??`, an `if`'s branch or a switch
+// case. Undefined when every path through the body reaches the read.
+function conditionOver(read: ts.Node, body: ts.Node): string | undefined {
+  let child = read;
+  for (let node = read.parent; node !== undefined && child !== body; child = node, node = node.parent) {
+    if (ts.isConditionalExpression(node) && child !== node.condition) return node.condition.getText();
+    if (
+      ts.isBinaryExpression(node) &&
+      child === node.right &&
+      (node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken ||
+        node.operatorToken.kind === ts.SyntaxKind.BarBarToken ||
+        node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken)
+    ) {
+      return node.left.getText();
+    }
+    if (ts.isIfStatement(node) && child !== node.expression) return node.expression.getText();
+    if (ts.isCaseClause(node) || ts.isDefaultClause(node)) return ts.isCaseClause(node) ? `case ${node.expression.getText()}` : 'default';
+    if (node === body) break;
+  }
+  return undefined;
 }
 
 // The literal attributes written before the rest spread on the element the
@@ -2381,12 +2457,22 @@ function attributesBeforeRest(
     return defaults;
   }
   const touched = otherUses(body, rest, attributes[restAt], checker);
-  for (const attribute of attributes.slice(0, restAt)) {
+  for (const [index, attribute] of attributes.slice(0, restAt).entries()) {
     if (!ts.isJsxAttribute(attribute) || !ts.isIdentifier(attribute.name)) continue;
     const name = attribute.name.text;
     // Not a prop of the component (removed with Omit, say): the rest cannot
     // carry it, so the attribute is the element's own and no default.
     if (destructured.has(name) || !propNames.has(name)) continue;
+    // Another spread between the attribute and the rest spread may carry the
+    // same name (`size="sm" {...ctx.itemProps} {...rest}`), and then it, not
+    // the literal, is what a caller who passes nothing gets.
+    if (attributes.slice(index + 1, restAt).some(ts.isJsxSpreadAttribute)) {
+      cannotExtract.push(
+        `default: prop "${name}" is written before the rest spread with another spread between them, which may carry ` +
+          `it - the literal attribute is not stated as its default`,
+      );
+      continue;
+    }
     // The body reads or writes the prop through the rest (or the whole props
     // object) somewhere else, or hands the object to something that can: the
     // value the element receives, or what the component does with it, is not

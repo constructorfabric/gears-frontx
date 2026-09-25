@@ -101,6 +101,18 @@ export function CoalescedElsewhere({ size, ...props }: BaseProps) {
   return <Base data-size={size ?? 4} size={1} {...props} />;
 }
 
+// coalesced only on one branch of a condition: an inline caller who passes
+// nothing gets 1, not 2
+export function CoalescedUnderCondition({ size, inline, ...props }: BaseProps) {
+  return <Base size={inline ? 1 : (size ?? 2)} inline={inline} {...props} />;
+}
+
+// another spread between the literal and the rest spread may carry the name
+const ctx: { itemProps: Pick<BaseProps, 'variant'> } = { itemProps: { variant: 'solid' } };
+export function SpreadBetween({ label, ...rest }: BaseProps) {
+  return <Base variant="ghost" {...ctx.itemProps} {...rest} label={label} />;
+}
+
 // ??= assignment
 export function NullishAssign({ variant, ...props }: BaseProps) {
   variant ??= 'solid';
