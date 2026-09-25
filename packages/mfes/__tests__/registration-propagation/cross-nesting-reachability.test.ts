@@ -27,7 +27,7 @@ import {
   ParentMfeBridge,
   type MfeEntryLifecycle,
 } from '../../src/handler/types';
-import { MfeBridgeFactoryDefault } from '../../src/handler/mfe-bridge-factory-default';
+import { MfeBridgeFactoryDefault } from '../../src/bridge/mfe-bridge-factory-default';
 import { ExtensionDomainImplementation } from '../../src/runtime/ExtensionDomainImplementation';
 import { ExtensionDomainImplementationFactory } from '../../src/runtime/ExtensionDomainImplementationFactory';
 import type { DomainContext } from '../../src/runtime/DomainContext';
@@ -37,6 +37,9 @@ import { ActionHandler } from '../../src/mediator/types';
 import type { InboundBridgeLink } from '../../src/runtime/inbound-bridge-link';
 import { ParentMfeBridgeImpl } from '../../src/bridge/ParentMfeBridge';
 import { BridgeInactiveError } from '../../src/bridge/errors';
+import { CROSS_HOP_PROTOCOL_VERSION } from '../../src/mediator/cross-hop-route';
+import type { CrossHopEnvelope } from '../../src/mediator/cross-hop-route';
+import type { ChainNodeFailureDiagnostic, MfeDiagnosticSink } from '../../src/runtime/config';
 
 // Global symbol registry key mirrored from `inbound-bridge-link.ts`'s own
 // `LINK_PROPERTY_KEY` — `Symbol.for(...)` guarantees this resolves to the
@@ -60,6 +63,38 @@ const ACTION_HANG = 'mock.action.v1~action_hang.v1~';
 const ACTION_COLLIDE = 'mock.action.v1~action_collide.v1~';
 const ACTION_UNRESOLVABLE = 'mock.action.v1~action_unresolvable.v1~';
 const ACTION_ASYNC = 'mock.action.v1~action_async.v1~';
+// AC5.4 (no double fallback): registered on D1 (registry1's own domain),
+// throw synchronously / reject asynchronously respectively, and are never
+// dispatched anywhere else in this file.
+const ACTION_THROW_SYNC = 'mock.action.v1~action_throw_sync.v1~';
+const ACTION_THROW_ASYNC = 'mock.action.v1~action_throw_async.v1~';
+// The declared `fallback` target for both above — local to D1 (registry1),
+// never crossing a further hop.
+const ACTION_B_FALLBACK = 'mock.action.v1~action_b_fallback.v1~';
+// Registered on D0 (registry0/shell's own domain) but never targeted by any
+// chain in the AC5.4 tests — proves the delivering runtime (registry0)
+// genuinely runs NOTHING of its own for a node it handed over, rather than
+// merely "the specific declared fallback happened not to collide".
+const ACTION_A_NEXT = 'mock.action.v1~action_a_next.v1~';
+const ACTION_A_FALLBACK = 'mock.action.v1~action_a_fallback.v1~';
+// AC5.2: succeeds locally at B (registry1, D1) — its declared `next` is
+// what this file's AC5.2 test routes back UP the arrival edge to A.
+const ACTION_B_PRIMARY = 'mock.action.v1~action_b_primary.v1~';
+// Registered on D1 (registry1's own domain), handled locally there and
+// never settling on its own — used to prove an ESCALATION registry1 already
+// ACCEPTED (registry2 -> registry1) keeps executing there, untouched, when
+// registry2's own link is revoked afterwards, distinct from `ACTION_HANG`
+// above, which proves the same for the DOWNWARD forwarding-entry tier
+// instead.
+const ACTION_HANG_UP = 'mock.action.v1~action_hang_up.v1~';
+// Registered on D1 (registry1's own domain) and handled locally there, but
+// settling only when the test releases its gate — long enough for the
+// extension that EMITTED the chain (child-ext, registered at registry0) to
+// be torn down while the chain is mid-flight. Used to pin that a chain's
+// life is bounded by the executor that ACCEPTED it and never by whatever
+// emitted it (`cpt-frontx-adr-action-dispatch-and-chaining`, MFES-8).
+const ACTION_GATED = 'mock.action.v1~action_gated.v1~';
+const ACTION_AFTER_GATE = 'mock.action.v1~action_after_gate.v1~';
 
 function createMockPlugin(entries: Map<string, MfeEntry>): TypeSystemPlugin {
   return {
@@ -194,6 +229,35 @@ function actionChain(type: string, target: string): ActionsChain {
   return { action: { type, target, payload: {} } };
 }
 
+// A `CrossHopEnvelope` for direct `InboundBridgeLink.escalate` calls in this
+// suite — the escalation transport takes the versioned envelope (carrying
+// the protocol version and a diagnostics context), never a bare
+// `ActionsChain`, matching how `DefaultMfeRegistry` mints one for
+// `link.escalate` and how `cross-runtime-routing.test.ts` builds one for
+// `CrossHopRoute.send`.
+function crossHopEnvelope(type: string, target: string): CrossHopEnvelope {
+  return {
+    version: CROSS_HOP_PROTOCOL_VERSION,
+    node: { action: { type, target, payload: {} } },
+    diagnostics: {},
+  };
+}
+
+/**
+ * Awaits full settlement of a chain via the registry's internal,
+ * completion-bearing `executeAndAwaitChain` — the public `executeActionsChain`
+ * is acceptance-only and yields nothing an emitter can await for the chain's
+ * own execution, per `cpt-frontx-adr-mfe-runtime-public-surface`.
+ * Tests below that need to observe a chain's settlement deterministically
+ * call this internal operation directly, mirroring the sanctioned pattern
+ * of calling the mediator's own `runAcceptedChain` directly (used elsewhere
+ * in this suite family, e.g. `bridge-lifetime.test.ts`).
+ */
+function awaitChain(registry: DefaultMfeRegistry, chain: ActionsChain): Promise<void> {
+  return (registry as unknown as { executeAndAwaitChain(chain: ActionsChain): Promise<void> })
+    .executeAndAwaitChain(chain);
+}
+
 // ─── Topology ───────────────────────────────────────────────────────────────
 //
 // shell (registry0, domain D0) -> child-ext -> registry1 (domains D1, COLLIDE)
@@ -218,11 +282,85 @@ interface Topology {
   registry1: DefaultMfeRegistry;
   registry2: DefaultMfeRegistry;
   registry1b: DefaultMfeRegistry;
-  rootCounter: { count: number };
-  leafCounter: { count: number };
+  rootCounter: CallCounter;
+  leafCounter: CallCounter;
+  /**
+   * Resolves the moment the never-settling ACTION_HANG_UP handler at the
+   * ESCALATION target (D1, on registry1) is actually invoked — i.e. the
+   * moment the escalating hop has been ACCEPTED and its node started.
+   * Awaiting it is how a test reaches the accepted-but-incomplete state
+   * deterministically, from real behaviour, rather than by flushing
+   * microtasks and hoping.
+   */
+  hangUpStarted: Promise<void>;
+  /** Counts settlements of the gated D1 node; see `ACTION_GATED`. */
+  gatedCounter: { count: number };
+  /** Counts the gated node's `next` continuation; see `ACTION_AFTER_GATE`. */
+  afterGateCounter: { count: number };
+  /** Resolves once the gated D1 handler has actually been entered. */
+  gateReached: Promise<void>;
+  /** Lets the gated D1 handler finish. */
+  releaseGate: () => void;
   collideCounterA: { count: number };
   collideCounterB: { count: number };
+  /** AC5.4: counts B's (registry1's) own local `fallback` dispatch. */
+  bFallbackCounter: CallCounter;
+  /** AC5.4: must stay 0 — A's (registry0's) own unrelated handlers. */
+  aNextCounter: CallCounter;
+  aFallbackCounter: CallCounter;
   errorSpy: ReturnType<typeof vi.spyOn>;
+  /**
+   * Every structured chain-node-failure diagnostic every registry in this
+   * topology recorded, in order — the substitutable sink
+   * `inst-diagnostic-record` requires, so what the executor recorded can be
+   * asserted against rather than only read by a person.
+   */
+  chainNodeFailures: ChainNodeFailureDiagnostic[];
+  /**
+   * Resolves with the NEXT structured chain-node-failure diagnostic any
+   * registry in this topology records, whichever registry that is — an
+   * explicit settlement signal (never a poll) for a failure that settles
+   * on a far side this test's own dispatch never receives anything back
+   * from (`cpt-frontx-adr-action-dispatch-and-chaining`, hand-over).
+   */
+  waitForNextChainNodeFailure: () => Promise<ChainNodeFailureDiagnostic>;
+}
+
+/**
+ * An explicit settlement signal for a far-side effect a test cannot
+ * `await` directly: under the continuation model, the dispatching side's
+ * own settlement resolves the instant it hands a node over, well before
+ * the far side's own scheduled execution actually runs it. Counter-based
+ * rather than a single deferred, so a handler invoked more than once can
+ * be awaited to a specific count — never a blind microtask flush or a
+ * timer-based poll (mirrors the identical helper in the property suite).
+ */
+function makeCallCounter(): CallCounter {
+  let count = 0;
+  let notify: () => void = () => {};
+  return {
+    get count() {
+      return count;
+    },
+    increment(): void {
+      count += 1;
+      notify();
+    },
+    waitFor(target: number): Promise<void> {
+      if (count >= target) return Promise.resolve();
+      return new Promise((resolve) => {
+        notify = () => {
+          if (count >= target) resolve();
+        };
+      });
+    },
+  };
+}
+
+interface CallCounter {
+  readonly count: number;
+  increment(): void;
+  waitFor(target: number): Promise<void>;
 }
 
 async function buildTopology(): Promise<Topology> {
@@ -233,9 +371,39 @@ async function buildTopology(): Promise<Topology> {
   ]);
   const plugin = createMockPlugin(entries);
   const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const chainNodeFailures: ChainNodeFailureDiagnostic[] = [];
+  let pendingFailureResolvers: Array<(diagnostic: ChainNodeFailureDiagnostic) => void> = [];
+  const waitForNextChainNodeFailure = (): Promise<ChainNodeFailureDiagnostic> =>
+    new Promise((resolve) => pendingFailureResolvers.push(resolve));
+  const diagnosticSink: MfeDiagnosticSink = {
+    reportLifecycleDispatchRefusal() {},
+    reportChainNodeFailure(diagnostic) {
+      chainNodeFailures.push(diagnostic);
+      const resolvers = pendingFailureResolvers;
+      pendingFailureResolvers = [];
+      resolvers.forEach((resolve) => resolve(diagnostic));
+    },
+  };
 
-  const rootCounter = { count: 0 };
-  const leafCounter = { count: 0 };
+  const rootCounter = makeCallCounter();
+  const leafCounter = makeCallCounter();
+  const gatedCounter = { count: 0 };
+  const afterGateCounter = { count: 0 };
+  const bFallbackCounter = makeCallCounter();
+  const aNextCounter = makeCallCounter();
+  const aFallbackCounter = makeCallCounter();
+  let markGateReached!: () => void;
+  const gateReached = new Promise<void>((resolve) => {
+    markGateReached = resolve;
+  });
+  let releaseGate!: () => void;
+  const gateReleased = new Promise<void>((resolve) => {
+    releaseGate = resolve;
+  });
+  let markHangUpStarted!: () => void;
+  const hangUpStarted = new Promise<void>((resolve) => {
+    markHangUpStarted = resolve;
+  });
   const collideCounterA = { count: 0 };
   const collideCounterB = { count: 0 };
 
@@ -248,22 +416,66 @@ async function buildTopology(): Promise<Topology> {
     // mount() body — this is the entire "adopt the ambient bridge" contract.
     registry1 = new DefaultMfeRegistry({
       typeSystem: plugin,
+      diagnosticSink,
       mfeHandlers: [
         new InjectableMountHandler(GRANDCHILD_ENTRY, () => {
-          registry2 = new DefaultMfeRegistry({ typeSystem: plugin });
+          registry2 = new DefaultMfeRegistry({ typeSystem: plugin, diagnosticSink });
           registry2.registerDomain(
             makeDomain(D2, [ACTION_LEAF, ACTION_HANG]),
             new GenericDomainFactory([
-              [ACTION_LEAF, ActionHandler.fromFunction(async () => { leafCounter.count += 1; })],
-              // Never settles on its own — used to exercise forced rejection
-              // of an in-flight forwarded action on retraction.
+              [ACTION_LEAF, ActionHandler.fromFunction(async () => { leafCounter.increment(); })],
+              // Never settles on its own — used to prove a forwarded
+              // action already accepted here keeps executing, untouched,
+              // when the route it arrived through is later retracted.
               [ACTION_HANG, ActionHandler.fromFunction(() => new Promise<void>(() => {}))],
             ])
           );
         }),
       ],
     });
-    registry1.registerDomain(makeDomain(D1), new GenericDomainFactory());
+    registry1.registerDomain(
+      makeDomain(D1, [
+        ACTION_HANG_UP,
+        ACTION_GATED,
+        ACTION_AFTER_GATE,
+        ACTION_THROW_SYNC,
+        ACTION_THROW_ASYNC,
+        ACTION_B_FALLBACK,
+        ACTION_B_PRIMARY,
+      ]),
+      new GenericDomainFactory([
+        [ACTION_GATED, ActionHandler.fromFunction(async () => {
+          markGateReached();
+          await gateReleased;
+          gatedCounter.count += 1;
+        })],
+        [ACTION_AFTER_GATE, ActionHandler.fromFunction(async () => { afterGateCounter.count += 1; })],
+        // Never settles on its own — the escalation-side counterpart to
+        // ACTION_HANG on D2 above, used to exercise a route retracted or
+        // deactivated AFTER an escalated node was already accepted at its
+        // authoritative target. Signals `hangUpStarted` first, so a test
+        // can observe that the hop was ACCEPTED and its node started
+        // before the route dies.
+        [ACTION_HANG_UP, ActionHandler.fromFunction(() => {
+          markHangUpStarted();
+          return new Promise<void>(() => {});
+        })],
+        // AC5.4: fails at B (registry1) — synchronously and, in the other
+        // variant, via a later rejection — so B's OWN dispatch of the
+        // chain's declared `fallback` (`ACTION_B_FALLBACK`, local to D1)
+        // is what must answer it, never a fallback A (registry0) runs.
+        [ACTION_THROW_SYNC, ActionHandler.fromFunction(() => {
+          throw new Error('AC5.4: synchronous handler failure at B');
+        })],
+        [ACTION_THROW_ASYNC, ActionHandler.fromFunction(async () => {
+          throw new Error('AC5.4: asynchronous handler failure at B');
+        })],
+        [ACTION_B_FALLBACK, ActionHandler.fromFunction(async () => { bFallbackCounter.increment(); })],
+        // AC5.2: succeeds locally at B; its declared `next` (ACTION_ROOT@D0)
+        // is dispatched from B itself and routes back UP the arrival edge.
+        [ACTION_B_PRIMARY, ActionHandler.fromFunction(async () => {})],
+      ])
+    );
     registry1.registerDomain(
       makeDomain(COLLIDE, [ACTION_COLLIDE]),
       new GenericDomainFactory([
@@ -273,7 +485,7 @@ async function buildTopology(): Promise<Topology> {
   });
 
   const siblingHandler = new InjectableMountHandler(SIBLING_ENTRY, () => {
-    registry1b = new DefaultMfeRegistry({ typeSystem: plugin });
+    registry1b = new DefaultMfeRegistry({ typeSystem: plugin, diagnosticSink });
     registry1b.registerDomain(
       makeDomain(COLLIDE, [ACTION_COLLIDE]),
       new GenericDomainFactory([
@@ -284,13 +496,18 @@ async function buildTopology(): Promise<Topology> {
 
   const registry0 = new DefaultMfeRegistry({
     typeSystem: plugin,
+    diagnosticSink,
     mfeHandlers: [childHandler, siblingHandler],
   });
 
   registry0.registerDomain(
-    makeDomain(D0, [ACTION_ROOT]),
+    makeDomain(D0, [ACTION_ROOT, ACTION_A_NEXT, ACTION_A_FALLBACK]),
     new GenericDomainFactory([
-      [ACTION_ROOT, ActionHandler.fromFunction(async () => { rootCounter.count += 1; })],
+      [ACTION_ROOT, ActionHandler.fromFunction(async () => { rootCounter.increment(); })],
+      // AC5.4: registered and reachable from A (registry0), but never
+      // targeted by any chain in the AC5.4 tests — must stay at 0.
+      [ACTION_A_NEXT, ActionHandler.fromFunction(async () => { aNextCounter.increment(); })],
+      [ACTION_A_FALLBACK, ActionHandler.fromFunction(async () => { aFallbackCounter.increment(); })],
     ])
   );
 
@@ -317,9 +534,19 @@ async function buildTopology(): Promise<Topology> {
     registry1b,
     rootCounter,
     leafCounter,
+    hangUpStarted,
+    gatedCounter,
+    afterGateCounter,
+    gateReached,
+    releaseGate,
     collideCounterA,
     collideCounterB,
+    bFallbackCounter,
+    aNextCounter,
+    aFallbackCounter,
     errorSpy,
+    chainNodeFailures,
+    waitForNextChainNodeFailure,
   };
 }
 
@@ -331,7 +558,7 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
   it('(a) shell-to-grandchild dispatch succeeds via propagated forwarding entries', async () => {
     const { registry0, leafCounter } = await buildTopology();
 
-    await registry0.executeActionsChain(actionChain(ACTION_LEAF, D2));
+    await awaitChain(registry0, actionChain(ACTION_LEAF, D2));
 
     expect(leafCounter.count).toBe(1);
   });
@@ -339,7 +566,7 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
   it('(b) grandchild-to-shell dispatch succeeds via escalation', async () => {
     const { registry2, rootCounter } = await buildTopology();
 
-    await registry2.executeActionsChain(actionChain(ACTION_ROOT, D0));
+    await awaitChain(registry2, actionChain(ACTION_ROOT, D0));
 
     expect(rootCounter.count).toBe(1);
   });
@@ -359,49 +586,112 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
     // Shell keeps routing COLLIDE to the FIRST-registered target (registry1) —
     // registry1b's own local domain of the same id is never reachable
     // through the shell.
-    await registry0.executeActionsChain(actionChain(ACTION_COLLIDE, COLLIDE));
+    await awaitChain(registry0, actionChain(ACTION_COLLIDE, COLLIDE));
     expect(collideCounterA.count).toBe(1);
     expect(collideCounterB.count).toBe(0);
   });
 
-  it('(d) disposing the child subtree retracts its advertisements from the shell and rejects an in-flight forwarded action for its targets', async () => {
-    const { registry0, registry1, errorSpy } = await buildTopology();
+  it(
+    '(d) disposing the child subtree retracts its advertisements from the shell, without touching a ' +
+      "node the far side already accepted: the SHELL's own dispatch hands the node over and settles " +
+      'immediately, and a LATER dispatch to the retracted target fails with a missing-handler error',
+    async () => {
+      const { registry0, registry1, errorSpy, chainNodeFailures } = await buildTopology();
+      errorSpy.mockClear();
 
-    // Dispatch a forwarded action to a handler that never settles on its own,
-    // then dispose registry1 (the child subtree that advertised D2's parent,
-    // and re-propagated D2 up to the shell) WITHOUT awaiting the dispatch
-    // first. The forwarding-entry route's `registerInFlight` callback is
-    // wired synchronously before any bridge hop truly suspends, so the
-    // dispatch is already tracked as in-flight by the time `dispose()` runs.
-    const dispatchPromise = registry0.executeActionsChain(actionChain(ACTION_HANG, D2));
-    registry1.dispose();
+      // Dispatch a forwarded action to a handler that never settles on its
+      // own. Handing the node down through the forwarding entry ends
+      // registry0's own settlement the instant registry1 accepts it
+      // (`inst-hand-over-done`) — registry0 never waits on the handler at
+      // all, so this `await` settles immediately regardless of what
+      // happens to registry1 afterward.
+      await awaitChain(registry0, actionChain(ACTION_HANG, D2));
 
-    // Forced rejection on retraction is what lets this resolve at all —
-    // the handler itself never settles, so without `inst-reject-inflight-retracted`
-    // this `await` would hang until the test framework's own timeout. The
-    // fact this `await` settles at all (rather than timing out the test) IS
-    // the proof the forced rejection fired.
-    await dispatchPromise;
+      // A successful hand-over is NOT a chain failure: it is this node's
+      // branch selection transferred to the far side, never observed by
+      // registry0 at all (`ChainSettlement.handedOver`). Neither the
+      // coarse `[MfeRegistry] Actions chain failed` log nor a structured
+      // chain-node-failure diagnostic fires for it.
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(chainNodeFailures.find((d) => d.target === D2)).toBeUndefined();
 
-    // Asserted on OUTCOME, not on the specific "was retracted while an
-    // action was in flight" wording: the `[MfeRegistry] Actions chain
-    // failed` diagnostic no longer carries the rejection's message (see D:
-    // `ChainResult.error` was removed by design, and that removal applies to
-    // every failure path uniformly, not just this one).
-    expect(errorSpy).toHaveBeenCalled();
+      // Dispose registry1 (the child subtree that advertised D2's parent,
+      // and re-propagated D2 up to the shell) — the node already accepted
+      // there, still hung, is untouched by this: retraction acts on the
+      // route only, never on an execution already accepted through it.
+      registry1.dispose();
 
-    // Retraction removed the shell's forwarding entry for D2 entirely — a
-    // further dispatch now fails with a missing-handler error, proving the
-    // advertisement was actually retracted (not merely that the first
-    // dispatch happened to fail).
-    errorSpy.mockClear();
-    await registry0.executeActionsChain(actionChain(ACTION_LEAF, D2));
-    expect(errorSpy).toHaveBeenCalled();
-    const failureLogged = errorSpy.mock.calls.some((call: unknown[]) =>
-      call.some((arg: unknown) => String(arg).includes('Actions chain failed') || String(arg).includes('No handler found'))
-    );
-    expect(failureLogged).toBe(true);
-  });
+      // Retraction removed the shell's forwarding entry for D2 entirely — a
+      // further dispatch now fails with a missing-handler error, proving the
+      // advertisement was actually retracted (not merely that the first
+      // dispatch happened to fail).
+      errorSpy.mockClear();
+      await awaitChain(registry0, actionChain(ACTION_LEAF, D2));
+      expect(errorSpy).toHaveBeenCalled();
+      // The advertisement is genuinely gone: the second dispatch's own
+      // structured diagnostic classifies it `missing-handler`, never
+      // `hop-unavailable` (which would mean a route still existed but
+      // refused delivery).
+      const missingHandler = chainNodeFailures.find((d) => d.target === D2);
+      expect(missingHandler?.failureClass).toBe('missing-handler');
+    }
+  );
+
+  it(
+    "(d.1) reservation tracking applies ONLY where a node executes: dispatching to D2 (the " +
+      "grandchild's own domain, executed at registry2) through the genuine shell -> registry1 -> " +
+      "registry2 forward, registry1 — the intermediate registry that only hands the node onward — " +
+      'NEVER takes a reservation for D2 at all, while registry2, the node\'s actual executor, holds ' +
+      'one for as long as its (never-settling) handler runs',
+    async () => {
+      const { registry0, registry1, registry2 } = await buildTopology();
+
+      function mediatorOf(registry: DefaultMfeRegistry): {
+        trackPendingAction: (targetId: string, p: Promise<void>) => void;
+        pendingActions: Map<string, Set<Promise<void>>>;
+      } {
+        return (
+          registry as unknown as {
+            mediator: {
+              trackPendingAction: (targetId: string, p: Promise<void>) => void;
+              pendingActions: Map<string, Set<Promise<void>>>;
+            };
+          }
+        ).mediator;
+      }
+
+      // Spied at the INSTANCE, on the private reservation primitive itself —
+      // never called for D2 at registry1 proves it takes NO reservation
+      // for a node it merely hands onward, a static invariant rather than
+      // a transient state that could otherwise be released before this
+      // test observes it (`executeCrossHopNode`'s own hand-over releases
+      // any reservation the instant it forwards, in the SAME microtask).
+      const registry1TrackSpy = vi.spyOn(mediatorOf(registry1), 'trackPendingAction');
+
+      // ACTION_HANG never settles on its own: awaiting registry0's own
+      // hand-over settlement (`awaitChain`, `ChainSettlement.handedOver`)
+      // is the same explicit signal test (d) above already establishes as
+      // sufficient to reach the far side's node having genuinely started —
+      // registry0 hands the node down to registry1 synchronously, and
+      // registry1's own scheduled microtask forwards it onward to
+      // registry2, whose own scheduled microtask then invokes the
+      // never-settling handler — all of it strictly before this `await`
+      // returns, since nothing here is a poll or a blind flush.
+      await awaitChain(registry0, actionChain(ACTION_HANG, D2));
+
+      // registry1 merely forwarded this node onward through its own
+      // forwarding entry for D2 — it never executes D2 itself, so its own
+      // reservation primitive must never even be called for it.
+      expect(registry1TrackSpy).not.toHaveBeenCalledWith(D2, expect.anything());
+      expect(mediatorOf(registry1).pendingActions.get(D2)?.size ?? 0).toBe(0);
+
+      // registry2 IS the node's actual executor — its own reservation for
+      // D2 is standing for as long as the never-settling handler runs.
+      expect(mediatorOf(registry2).pendingActions.get(D2)?.size ?? 0).toBe(1);
+
+      registry1TrackSpy.mockRestore();
+    }
+  );
 
   it('(e) the child-facing bridge surfaces are exactly 4 methods + 2 identity properties on ChildMfeBridge, and exactly 2 members on ParentMfeBridge', () => {
     // Exact key-set equality (not mere assignability) at compile time: if a
@@ -439,19 +729,31 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
   });
 
   it('(f) arrival-edge exclusion actually changes the outcome: registry1 never ping-pongs an escalated-from-registry2 dispatch back down through the same bridge', async () => {
-    const { registry2, errorSpy } = await buildTopology();
+    const { registry2, waitForNextChainNodeFailure } = await buildTopology();
 
     // registry2 does not declare ACTION_UNRESOLVABLE anywhere (D2's own
     // handlers only cover ACTION_LEAF/ACTION_HANG, plus the infra actions),
     // so registry2 cannot resolve it locally and must escalate. Spy on
-    // registry2's own public `executeActionsChain` — the entry point
-    // `sendDown` uses to route a forwarding-entry dispatch back down to it —
-    // to prove registry1 never reaches for that forwarding entry at all.
-    // (The one, and only, expected invocation is this test's own dispatch
-    // below; a second invocation would mean registry1 ping-ponged the chain
-    // straight back down through the same bridge it arrived on.)
-    const registry2ExecuteSpy = vi.spyOn(registry2, 'executeActionsChain');
-    errorSpy.mockClear();
+    // registry2's own internal, completion-bearing `executeAndAwaitChain` —
+    // the operation `awaitChain` below calls — to prove registry1 never
+    // reaches for the D2 forwarding entry a second time. (The one, and
+    // only, expected invocation is this test's own dispatch below; a second
+    // invocation would mean registry1 ping-ponged the chain straight back
+    // down through the same bridge it arrived on.)
+    const registry2ExecuteSpy = vi.spyOn(
+      registry2 as unknown as { executeAndAwaitChain(chain: ActionsChain): Promise<void> },
+      'executeAndAwaitChain'
+    );
+
+    // registry2's own settlement of this dispatch is a successful hand-over
+    // (the escalation to registry1) and resolves as soon as that hand-over
+    // is accepted — it is NOT the eventual outcome several hops further up,
+    // which this runtime holds nothing for and receives nothing back about
+    // (`cpt-frontx-adr-action-dispatch-and-chaining`). The eventual failure
+    // is observed through the substitutable diagnostic sink instead — an
+    // explicit settlement signal registered BEFORE the dispatch, never a
+    // poll.
+    const eventualFailure = waitForNextChainNodeFailure();
 
     // Dispatched FROM registry2 itself, targeting D2 (registry2's own local
     // domain): registry2 must escalate to registry1, tagging its own inbound
@@ -460,21 +762,16 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
     // (recorded when registry2 originally advertised D2 upward in
     // `buildTopology`) — without arrival-edge exclusion, registry1 would
     // resolve that forwarding entry and ping-pong the chain right back down
-    // to registry2 via `sendDown`, re-invoking `registry2.executeActionsChain`.
-    // The public `executeActionsChain` swallows the `ChainResult` and only
-    // logs failures (`[MfeRegistry] Actions chain failed: ...`), so the
-    // outcome is observed the same way test (d) observes it: via the logged
-    // error message.
-    await registry2.executeActionsChain(actionChain(ACTION_UNRESOLVABLE, D2));
+    // to registry2 via `sendDown`, re-invoking registry2's own chain executor.
+    await awaitChain(registry2, actionChain(ACTION_UNRESOLVABLE, D2));
 
     // The chain must have continued escalating past registry1 instead —
     // there is no handler for ACTION_UNRESOLVABLE anywhere up to the shell,
-    // so it ends non-completed. Asserted on OUTCOME (the chain failed at
-    // all), not on the specific missing-handler wording: the `[MfeRegistry]
-    // Actions chain failed` diagnostic deliberately no longer carries
-    // failure-reason text (see D: `ChainResult.error` was removed as a
-    // matter of policy, not just for this one message).
-    expect(errorSpy).toHaveBeenCalled();
+    // so it ends non-completed there, and that far side's own missing-handler
+    // failure is what this asserts against.
+    const diagnostic = await eventualFailure;
+    expect(diagnostic.failureClass).toBe('missing-handler');
+    expect(diagnostic.target).toBe(D2);
 
     // registry2's own dispatch entry point was invoked exactly once — this
     // test's own call. If registry1 had ping-ponged the chain back down
@@ -499,7 +796,7 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
       fallback: actionChain(ACTION_ROOT, D0),
     };
 
-    await registry2.executeActionsChain(chain);
+    await awaitChain(registry2, chain);
 
     expect(rootCounter.count).toBe(1);
   });
@@ -518,11 +815,93 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
       fallback: actionChain(ACTION_ROOT, D0),
     };
 
-    await registry0.executeActionsChain(chain);
+    // Under the continuation model, handing the primary node down to
+    // registry2 ends the SHELL's own settlement immediately
+    // (`inst-t-pending-handed-over`): the shell never observes registry2's
+    // own failure or the fallback it dispatches from itself (escalating
+    // back up to reach D0). Observed purely through the terminal effects
+    // instead.
+    void awaitChain(registry0, chain);
 
+    await rootCounter.waitFor(1);
     expect(rootCounter.count).toBe(1);
     expect(leafCounter.count).toBe(0);
   });
+
+  it(
+    '(f4) AC5.4 — after A (registry0) hands a node to B (registry1) and B\'s handler throws ' +
+      'SYNCHRONOUSLY, B\'s own declared `fallback` runs exactly once, and A never runs anything of its ' +
+      'own for this node (no double fallback)',
+    async () => {
+      const { registry0, bFallbackCounter, aNextCounter, aFallbackCounter } = await buildTopology();
+
+      const chain: ActionsChain = {
+        action: { type: ACTION_THROW_SYNC, target: D1, payload: {} },
+        next: actionChain(ACTION_A_NEXT, D0),
+        fallback: actionChain(ACTION_B_FALLBACK, D1),
+      };
+
+      // registry0's own settlement of this dispatch ends the instant B
+      // accepts the hand-over — it never observes B's own handler throwing,
+      // nor B's own dispatch of the declared fallback.
+      await awaitChain(registry0, chain);
+
+      await bFallbackCounter.waitFor(1);
+      expect(bFallbackCounter.count).toBe(1);
+      // A's OWN next/fallback handlers — reachable from A, but never the
+      // target of anything this chain does — never ran: A genuinely did
+      // nothing of its own for this node after handing it over.
+      expect(aNextCounter.count).toBe(0);
+      expect(aFallbackCounter.count).toBe(0);
+    }
+  );
+
+  it(
+    '(f5) AC5.4 — after A (registry0) hands a node to B (registry1) and B\'s handler REJECTS later ' +
+      '(asynchronously), B\'s own declared `fallback` runs exactly once, and A never runs anything of ' +
+      'its own for this node (no double fallback)',
+    async () => {
+      const { registry0, bFallbackCounter, aNextCounter, aFallbackCounter } = await buildTopology();
+
+      const chain: ActionsChain = {
+        action: { type: ACTION_THROW_ASYNC, target: D1, payload: {} },
+        next: actionChain(ACTION_A_NEXT, D0),
+        fallback: actionChain(ACTION_B_FALLBACK, D1),
+      };
+
+      await awaitChain(registry0, chain);
+
+      await bFallbackCounter.waitFor(1);
+      expect(bFallbackCounter.count).toBe(1);
+      expect(aNextCounter.count).toBe(0);
+      expect(aFallbackCounter.count).toBe(0);
+    }
+  );
+
+  it(
+    '(f6) AC5.2 — a node handed DOWN to B (registry1) whose declared `next` targets A\'s own domain ' +
+      '(D0, back UP the arrival edge B received the node on) is dispatched from B itself and executes ' +
+      'at A, never subject to the arrival-edge exclusion that governs re-routing the ORIGINAL action',
+    async () => {
+      const { registry0, rootCounter } = await buildTopology();
+
+      const chain: ActionsChain = {
+        action: { type: ACTION_B_PRIMARY, target: D1, payload: {} },
+        next: actionChain(ACTION_ROOT, D0),
+      };
+
+      // A's own settlement ends the instant B accepts the hand-over; B
+      // executes ACTION_B_PRIMARY locally, succeeds, and dispatches `next`
+      // FROM ITSELF — routed afresh through B's own resolution tiers, which
+      // escalate back up through the very bridge this node arrived on
+      // (continuations are never subject to arrival-edge exclusion,
+      // `inst-dispatch-continuation`) — reaching A's own ACTION_ROOT.
+      await awaitChain(registry0, chain);
+
+      await rootCounter.waitFor(1);
+      expect(rootCounter.count).toBe(1);
+    }
+  );
 
   it('(g) an async mount() still closes the ambient window at its synchronous prefix: a registry built there before the first await still adopts the correct inbound bridge', async () => {
     const ASYNC_ENTRY = 'entry.async-child.v1';
@@ -603,7 +982,7 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
     // (e.g. adopted no bridge, or the wrong one), this dispatch from the
     // shell down into `asyncChildRegistry`'s own domain would fail to
     // resolve a handler.
-    await registry0.executeActionsChain(actionChain(ACTION_ASYNC, D_ASYNC));
+    await awaitChain(registry0, actionChain(ACTION_ASYNC, D_ASYNC));
     expect(counter.count).toBe(1);
   });
 
@@ -622,27 +1001,29 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
     // through the now-inactive bridge is explicitly rejected — a
     // target-inactive failure, distinct from a missing-handler failure.
     //
-    // The `[MfeRegistry] Actions chain failed` diagnostic deliberately no
-    // longer carries failure-reason text (see D: `ChainResult.error` was
-    // removed by design, uniformly across every failure path, not just this
-    // one) -- so the inactive-vs-missing-handler distinction can't be read
-    // off the log anymore. Instead, spy on `ParentMfeBridgeImpl.sendActionsChain`
-    // itself -- the exact call `sendDown` makes to deliver through the
-    // forwarding entry's bridge -- and inspect what it actually rejected
+    // The `[MfeRegistry] Actions chain failed` diagnostic does not carry
+    // failure-reason text by design (`ChainResult.error` is omitted from the
+    // public surface by design, uniformly across every failure path), so the
+    // inactive-vs-missing-handler distinction is verified at the mechanism
+    // instead of the log. Spy on `ParentMfeBridgeImpl.sendCrossHopEnvelope`
+    // itself — the exact call `sendDown` makes to deliver through the
+    // forwarding entry's bridge — to inspect what it actually rejected
     // with, which is unaffected by log scrubbing.
-    const sendSpy = vi.spyOn(ParentMfeBridgeImpl.prototype, 'sendActionsChain');
+    const sendSpy = vi.spyOn(ParentMfeBridgeImpl.prototype, 'sendCrossHopEnvelope');
     errorSpy.mockClear();
-    await registry0.executeActionsChain(actionChain(ACTION_LEAF, D2));
+    await awaitChain(registry0, actionChain(ACTION_LEAF, D2));
 
     // Outcome-level check: the dispatch failed at all.
     expect(errorSpy).toHaveBeenCalled();
 
     // Mechanism-level check: the forwarding entry for D2 WAS resolved and
     // reached the bridge (proving this isn't a missing-handler/no-route
-    // failure), and the bridge rejected specifically because it is inactive.
+    // failure), and the bridge refused the delivery, synchronously and at
+    // the call, specifically because it is inactive.
     expect(sendSpy).toHaveBeenCalled();
     const lastCall = sendSpy.mock.results[sendSpy.mock.results.length - 1];
-    await expect(lastCall.value).rejects.toBeInstanceOf(BridgeInactiveError);
+    expect(lastCall.type).toBe('throw');
+    expect(lastCall.value).toBeInstanceOf(BridgeInactiveError);
 
     sendSpy.mockRestore();
   });
@@ -656,7 +1037,7 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
     const entries = new Map<string, MfeEntry>([[FAIL_ENTRY, makeEntry(FAIL_ENTRY)]]);
     const plugin = createMockPlugin(entries);
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const leafCounter = { count: 0 };
+    const leafCounter = makeCallCounter();
 
     let registryFail: DefaultMfeRegistry | undefined;
 
@@ -674,7 +1055,7 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
             registryFail.registerDomain(
               makeDomain(D_FAIL, [ACTION_FAIL_LEAF]),
               new GenericDomainFactory([
-                [ACTION_FAIL_LEAF, ActionHandler.fromFunction(async () => { leafCounter.count += 1; })],
+                [ACTION_FAIL_LEAF, ActionHandler.fromFunction(async () => { leafCounter.increment(); })],
               ])
             );
             throw new Error('mount failed after advertising D_FAIL');
@@ -705,24 +1086,26 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
     // but dispatch through the now-inactive bridge is explicitly rejected,
     // so the handler this test guards is never actually invoked.
     //
-    // As in test (h): the console.error diagnostic no longer carries
-    // failure-reason text by design (see D), so the inactive-vs-missing-
+    // As in test (h): the console.error diagnostic does not carry
+    // failure-reason text by design, so the inactive-vs-missing-
     // handler distinction is verified at the mechanism instead of the log —
-    // spying on `ParentMfeBridgeImpl.sendActionsChain`, the call `sendDown`
+    // spying on `ParentMfeBridgeImpl.sendCrossHopEnvelope`, the call `sendDown`
     // makes to deliver through the forwarding entry's bridge.
-    const sendSpy = vi.spyOn(ParentMfeBridgeImpl.prototype, 'sendActionsChain');
+    const sendSpy = vi.spyOn(ParentMfeBridgeImpl.prototype, 'sendCrossHopEnvelope');
     errorSpy.mockClear();
-    await registry0.executeActionsChain(actionChain(ACTION_FAIL_LEAF, D_FAIL));
+    await awaitChain(registry0, actionChain(ACTION_FAIL_LEAF, D_FAIL));
 
     // Outcome-level check: the dispatch failed at all.
     expect(errorSpy).toHaveBeenCalled();
 
     // Mechanism-level check: the forwarding entry for D_FAIL WAS resolved
     // and reached the bridge (not a missing-handler/no-route failure), and
-    // the bridge rejected specifically because it is inactive.
+    // the bridge refused the delivery, synchronously and at the call,
+    // specifically because it is inactive.
     expect(sendSpy).toHaveBeenCalled();
     const lastCall = sendSpy.mock.results[sendSpy.mock.results.length - 1];
-    await expect(lastCall.value).rejects.toBeInstanceOf(BridgeInactiveError);
+    expect(lastCall.type).toBe('throw');
+    expect(lastCall.value).toBeInstanceOf(BridgeInactiveError);
     expect(leafCounter.count).toBe(0);
 
     vi.restoreAllMocks();
@@ -737,7 +1120,7 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
     const entries = new Map<string, MfeEntry>([[REUSE_ENTRY, makeEntry(REUSE_ENTRY)]]);
     const plugin = createMockPlugin(entries);
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const reuseCounter = { count: 0 };
+    const reuseCounter = makeCallCounter();
 
     // Constructed exactly once, the very first time `mount()` runs — never
     // rebuilt on a later remount. The link it adopts at that first mount is
@@ -754,7 +1137,7 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
         reusedRegistry.registerDomain(
           makeDomain(D_REUSE, [ACTION_REUSE_LEAF]),
           new GenericDomainFactory([
-            [ACTION_REUSE_LEAF, ActionHandler.fromFunction(async () => { reuseCounter.count += 1; })],
+            [ACTION_REUSE_LEAF, ActionHandler.fromFunction(async () => { reuseCounter.increment(); })],
           ])
         );
       }
@@ -780,7 +1163,11 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
     await mounter0.mount(REUSE_EXT, document.createElement('div'));
     expect(reusedRegistry).toBeDefined();
 
-    await registry0.executeActionsChain(actionChain(ACTION_REUSE_LEAF, D_REUSE));
+    // Handing the node down to `reusedRegistry` ends registry0's own
+    // settlement immediately (`inst-t-pending-handed-over`); observed
+    // through the terminal effect instead.
+    void awaitChain(registry0, actionChain(ACTION_REUSE_LEAF, D_REUSE));
+    await reuseCounter.waitFor(1);
     expect(reuseCounter.count).toBe(1);
 
     // ── Unmount: the parent (registry0) only DEACTIVATES the bridge — the
@@ -798,12 +1185,17 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
     // for it was never retracted, so nothing needs to be re-propagated,
     // with no action required from the microfrontend author.
     errorSpy.mockClear();
-    await registry0.executeActionsChain(actionChain(ACTION_REUSE_LEAF, D_REUSE));
-    const failureLogged = errorSpy.mock.calls.some((call: unknown[]) =>
-      call.some((arg: unknown) => String(arg).includes('Actions chain failed') || String(arg).includes('No handler found'))
-    );
-    expect(failureLogged).toBe(false);
+    void awaitChain(registry0, actionChain(ACTION_REUSE_LEAF, D_REUSE));
+    // A `missing-handler` failure would mean the reused link never reached
+    // `reusedRegistry` at all; the generic "chain failed" log, in contrast,
+    // is now expected here — under the continuation model registry0 never
+    // observes the far side's real completion (see above).
+    await reuseCounter.waitFor(2);
     expect(reuseCounter.count).toBe(2);
+    const missingHandlerLogged = errorSpy.mock.calls.some((call: unknown[]) =>
+      call.some((arg: unknown) => String(arg).includes('No handler found'))
+    );
+    expect(missingHandlerLogged).toBe(false);
 
     vi.restoreAllMocks();
   });
@@ -817,7 +1209,7 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
     const entries = new Map<string, MfeEntry>([[REUSE_ENTRY, makeEntry(REUSE_ENTRY)]]);
     const plugin = createMockPlugin(entries);
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const reuseCounter = { count: 0 };
+    const reuseCounter = makeCallCounter();
 
     let reusedRegistry: DefaultMfeRegistry | undefined;
     // The bridge instance handed to `mount()` on each mount cycle — the SAME
@@ -833,7 +1225,7 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
         reusedRegistry.registerDomain(
           makeDomain(D_REUSE, [ACTION_REUSE_LEAF]),
           new GenericDomainFactory([
-            [ACTION_REUSE_LEAF, ActionHandler.fromFunction(async () => { reuseCounter.count += 1; })],
+            [ACTION_REUSE_LEAF, ActionHandler.fromFunction(async () => { reuseCounter.increment(); })],
           ])
         );
       }
@@ -863,12 +1255,14 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
     expect(bridges[0]).toBe(bridges[1]);
 
     errorSpy.mockClear();
-    await registry0.executeActionsChain(actionChain(ACTION_REUSE_LEAF, D_REUSE));
+    // Handing the node down ends registry0's own settlement immediately
+    // (`inst-t-pending-handed-over`); observed through the terminal effect.
+    void awaitChain(registry0, actionChain(ACTION_REUSE_LEAF, D_REUSE));
 
+    await reuseCounter.waitFor(1);
     expect(reuseCounter.count).toBe(1);
     const anyFailureLogged = errorSpy.mock.calls.some((call: unknown[]) =>
       call.some((arg: unknown) =>
-        String(arg).includes('Actions chain failed') ||
         String(arg).includes('No handler found') ||
         String(arg).includes('BridgeDisposedError') ||
         String(arg).includes('disposed') ||
@@ -926,13 +1320,13 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
 
     expect(() => link.retractAdvertisement(OTHER_TARGET)).not.toThrow();
 
-    await expect(link.escalate(actionChain(ACTION_OTHER, OTHER_TARGET))).rejects.toThrow(/revoked/);
+    expect(() => link.escalate(crossHopEnvelope(ACTION_OTHER, OTHER_TARGET))).toThrow(/revoked/);
 
     // No ancestor state was acquired by the rejected propagate call above: a
     // dispatch to OTHER_TARGET fails to resolve rather than routing through
     // the (never legitimately admitted, and now doubly-refused) entry.
     errorSpy.mockClear();
-    await registry0.executeActionsChain(actionChain(ACTION_OTHER, OTHER_TARGET));
+    await awaitChain(registry0, actionChain(ACTION_OTHER, OTHER_TARGET));
     const failureLogged = errorSpy.mock.calls.some((call: unknown[]) =>
       call.some((arg: unknown) => String(arg).includes('Actions chain failed') || String(arg).includes('No handler found'))
     );
@@ -978,9 +1372,9 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
     const accepted: boolean = link.propagateAdvertisement('domain.does-not-matter.v1', []);
     expect(accepted).toBe(true);
 
-    await expect(link.escalate(actionChain('mock.action.v1~irrelevant.v1~', 'domain.irrelevant.v1'))).rejects.toThrow(
-      /inactive/
-    );
+    expect(() =>
+      link.escalate(crossHopEnvelope('mock.action.v1~irrelevant.v1~', 'domain.irrelevant.v1'))
+    ).toThrow(/inactive/);
 
     vi.restoreAllMocks();
   });
@@ -994,8 +1388,8 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
     const entries = new Map<string, MfeEntry>([[FRESH_ENTRY, makeEntry(FRESH_ENTRY)]]);
     const plugin = createMockPlugin(entries);
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const counters = [{ count: 0 }, { count: 0 }];
-    const rootCounter = { count: 0 };
+    const counters = [makeCallCounter(), makeCallCounter()];
+    const rootCounter = makeCallCounter();
 
     const registries: DefaultMfeRegistry[] = [];
 
@@ -1007,7 +1401,7 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
       registry.registerDomain(
         makeDomain(D_FRESH, [ACTION_FRESH_LEAF]),
         new GenericDomainFactory([
-          [ACTION_FRESH_LEAF, ActionHandler.fromFunction(async () => { counters[index].count += 1; })],
+          [ACTION_FRESH_LEAF, ActionHandler.fromFunction(async () => { counters[index].increment(); })],
         ])
       );
       registries.push(registry);
@@ -1020,7 +1414,7 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
     registry0.registerDomain(
       makeDomain(D0, [ACTION_ROOT]),
       new GenericDomainFactory([
-        [ACTION_ROOT, ActionHandler.fromFunction(async () => { rootCounter.count += 1; })],
+        [ACTION_ROOT, ActionHandler.fromFunction(async () => { rootCounter.increment(); })],
       ])
     );
 
@@ -1035,16 +1429,20 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
     expect(registries).toHaveLength(2);
     const [firstRegistry, secondRegistry] = registries;
 
-    // Shell reaches the SECOND (current) registry's domain.
+    // Shell reaches the SECOND (current) registry's domain. Handing the
+    // node down ends registry0's own settlement immediately
+    // (`inst-t-pending-handed-over`); observed through the terminal effect.
     errorSpy.mockClear();
-    await registry0.executeActionsChain(actionChain(ACTION_FRESH_LEAF, D_FRESH));
+    void awaitChain(registry0, actionChain(ACTION_FRESH_LEAF, D_FRESH));
+    await counters[1].waitFor(1);
     expect(counters[1].count).toBe(1);
     expect(counters[0].count).toBe(0);
 
     // The SECOND registry genuinely holds the current link and can escalate
     // up to the shell.
     errorSpy.mockClear();
-    await secondRegistry.executeActionsChain(actionChain(ACTION_ROOT, D0));
+    void awaitChain(secondRegistry, actionChain(ACTION_ROOT, D0));
+    await rootCounter.waitFor(1);
     expect(rootCounter.count).toBe(1);
 
     // The FIRST registry — the previous mount's — was unlinked when the
@@ -1058,7 +1456,7 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
     // action: with a working link it would reach `registry0` and resolve;
     // unlinked, it fails to resolve at all.
     errorSpy.mockClear();
-    await firstRegistry.executeActionsChain(actionChain(ACTION_ROOT, D0));
+    await awaitChain(firstRegistry, actionChain(ACTION_ROOT, D0));
     const firstUnlinkedFailureLogged = errorSpy.mock.calls.some((call: unknown[]) =>
       call.some((arg: unknown) => String(arg).includes('Actions chain failed') || String(arg).includes('No handler found'))
     );
@@ -1067,6 +1465,75 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
 
     vi.restoreAllMocks();
   });
+
+  it(
+    'a target re-advertised over a STILL-LIVE edge that already holds the identical entry for it is ' +
+      'accepted as an idempotent no-op — neither rejected nor logged (inst-readvertise-same-edge)',
+    async () => {
+      const IDEMP_ENTRY = 'entry.idempotent-child.v1';
+      const IDEMP_EXT = 'ext.idempotent-child.v1';
+      const D_IDEMP = 'domain.idempotent-child.v1';
+      const ACTION_IDEMP_LEAF = 'mock.action.v1~action_idempotent_leaf.v1~';
+
+      const entries = new Map<string, MfeEntry>([[IDEMP_ENTRY, makeEntry(IDEMP_ENTRY)]]);
+      const plugin = createMockPlugin(entries);
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const counter = makeCallCounter();
+
+      const registries: DefaultMfeRegistry[] = [];
+      const idempHandler = new InjectableMountHandler(IDEMP_ENTRY, () => {
+        // A fresh registry every mount — its adoption re-propagates D_IDEMP
+        // upward through the SAME still-live edge (the extension's own
+        // bridge pair never changes across mounts) that already holds the
+        // ancestor's own recorded entry for it, minted by the PREVIOUS
+        // mount's registry.
+        const registry = new DefaultMfeRegistry({ typeSystem: plugin });
+        registry.registerDomain(
+          makeDomain(D_IDEMP, [ACTION_IDEMP_LEAF]),
+          new GenericDomainFactory([
+            [ACTION_IDEMP_LEAF, ActionHandler.fromFunction(async () => { counter.increment(); })],
+          ])
+        );
+        registries.push(registry);
+      });
+
+      const registry0 = new DefaultMfeRegistry({
+        typeSystem: plugin,
+        mfeHandlers: [idempHandler],
+      });
+      registry0.registerDomain(makeDomain(D0), new GenericDomainFactory());
+
+      await registry0.registerExtension(makeExtension(IDEMP_EXT, D0, IDEMP_ENTRY));
+      const mounter0 = registry0.getMounter(D0);
+      mounter0.attach(document.createElement('div'));
+
+      await mounter0.mount(IDEMP_EXT, document.createElement('div'));
+
+      // Remount WITHOUT ever unregistering the extension in between: the
+      // link registry0 minted for it is still live, and the second
+      // registry's own adoption (step 2) re-advertises D_IDEMP over that
+      // SAME edge — the ancestor already holds exactly this entry for it.
+      errorSpy.mockClear();
+      await mounter0.unmount(IDEMP_EXT);
+      await mounter0.mount(IDEMP_EXT, document.createElement('div'));
+
+      // Neither rejected (a collision would be logged) nor otherwise
+      // logged — an ordinary, silent no-op.
+      const collisionLog = errorSpy.mock.calls.find((call: unknown[]) =>
+        String(call[0]).includes('Advertisement collision')
+      );
+      expect(collisionLog).toBeUndefined();
+
+      // The route still resolves — proving the entry was genuinely
+      // accepted (as the SAME entry), not silently dropped.
+      expect(registries).toHaveLength(2);
+      void awaitChain(registry0, actionChain(ACTION_IDEMP_LEAF, D_IDEMP));
+      await counter.waitFor(1);
+      expect(counter.count).toBe(1);
+
+      vi.restoreAllMocks();
+    }
+  );
 
   it('(n) a first mount that acquires a bridge but then fails BEFORE the link-mint step still mints the link on the next, successful mount', async () => {
     const RETRY_ENTRY = 'entry.retry-child.v1';
@@ -1077,7 +1544,7 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
     const entries = new Map<string, MfeEntry>([[RETRY_ENTRY, makeEntry(RETRY_ENTRY)]]);
     const plugin = createMockPlugin(entries);
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const leafCounter = { count: 0 };
+    const leafCounter = makeCallCounter();
 
     let retryRegistry: DefaultMfeRegistry | undefined;
 
@@ -1091,7 +1558,7 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
       retryRegistry.registerDomain(
         makeDomain(D_RETRY, [ACTION_RETRY_LEAF]),
         new GenericDomainFactory([
-          [ACTION_RETRY_LEAF, ActionHandler.fromFunction(async () => { leafCounter.count += 1; })],
+          [ACTION_RETRY_LEAF, ActionHandler.fromFunction(async () => { leafCounter.increment(); })],
         ])
       );
     });
@@ -1135,13 +1602,125 @@ describe('Cross-nesting reachability: registration propagation, escalation, retr
     expect(retryRegistry).toBeDefined();
 
     errorSpy.mockClear();
-    await registry0.executeActionsChain(actionChain(ACTION_RETRY_LEAF, D_RETRY));
+    // Handing the node down ends registry0's own settlement immediately
+    // (`inst-t-pending-handed-over`); observed through the terminal effect.
+    void awaitChain(registry0, actionChain(ACTION_RETRY_LEAF, D_RETRY));
+    await leafCounter.waitFor(1);
     expect(leafCounter.count).toBe(1);
-    const failureLogged = errorSpy.mock.calls.some((call: unknown[]) =>
-      call.some((arg: unknown) => String(arg).includes('Actions chain failed') || String(arg).includes('No handler found'))
+    const missingHandlerLogged = errorSpy.mock.calls.some((call: unknown[]) =>
+      call.some((arg: unknown) => String(arg).includes('No handler found'))
     );
-    expect(failureLogged).toBe(false);
+    expect(missingHandlerLogged).toBe(false);
 
     vi.restoreAllMocks();
+  });
+
+  it(
+    '(n) an escalation already ACCEPTED at registry1 keeps executing there, untouched, when ' +
+      "registry2's own link is revoked afterwards — retraction acts on the ROUTE only, never on a " +
+      'sub-chain the far side already accepted, and a LATER dispatch through the revoked link is ' +
+      'refused (AC5.8)',
+    async () => {
+      const { registry1, registry2, leafCounter, hangUpStarted } = await buildTopology();
+
+      // Dispatched FROM registry2 (the grandchild), targeting ACTION_HANG_UP
+      // on D1 — registry2 has no local handler for D1, so this resolves via
+      // the ESCALATION tier (registry2's own inbound-bridge link to
+      // registry1). The declared `fallback` targets ACTION_LEAF on D2 —
+      // registry2's OWN local domain.
+      const chain: ActionsChain = {
+        action: { type: ACTION_HANG_UP, target: D1, payload: {}, timeout: 3600000 },
+        fallback: actionChain(ACTION_LEAF, D2),
+      };
+
+      void (
+        registry2 as unknown as { mediator: { runAcceptedChain(chain: ActionsChain): Promise<unknown> } }
+      ).mediator.runAcceptedChain(chain);
+
+      // The far handler has genuinely started: registry1 accepted the node
+      // before this point.
+      await hangUpStarted;
+
+      // Revoke registry2's own inbound-bridge link via GRANDCHILD_EXT's
+      // permanent unregistration on registry1 — the same production
+      // trigger test (l) uses for the downward forwarding-entry tier, here
+      // exercised for the escalation tier instead.
+      await registry1.unregisterExtension(GRANDCHILD_EXT);
+
+      // Retraction acts on the route only: it never touches the sub-chain
+      // registry1 already accepted before it ran, so that node keeps
+      // executing there (it never settles on its own, so the escalating
+      // side never re-observes it — nothing here strands or force-rejects
+      // it), and registry2's own declared `fallback` never runs for it.
+      expect(leafCounter.count).toBe(0);
+
+      // A LATER dispatch attempt through the now-revoked link is refused:
+      // resolution finds no route at all (the link is gone), so this ends
+      // as an ordinary missing-handler chain failure, never a hang.
+      const later = await (
+        registry2 as unknown as { mediator: { runAcceptedChain(chain: ActionsChain): Promise<{ completed: boolean }> } }
+      ).mediator.runAcceptedChain({
+        action: { type: ACTION_LEAF, target: D1, payload: {} },
+      });
+      expect(later.completed).toBe(false);
+    }
+  );
+
+  it('(p) a chain emitted by an extension keeps running after that extension is UNMOUNTED and then permanently UNREGISTERED, settling normally under the executor that accepted it', async () => {
+    // A chain's life is bounded by the life of the EXECUTOR that accepted
+    // it and never by the life of whatever EMITTED it
+    // (`cpt-frontx-adr-action-dispatch-and-chaining`, MFES-8): the emitter
+    // was only the trigger and was never the thing running it. Here the
+    // emitter is child-ext — an extension registered and mounted at the
+    // SHELL (registry0) — while the accepting executor is registry1, the
+    // registry child-ext hosts, and the chain's nodes target registry1's
+    // OWN local domain D1. Tearing child-ext down at the shell therefore
+    // removes the emitter and nothing else the chain depends on.
+    const {
+      registry0,
+      registry1,
+      gatedCounter,
+      afterGateCounter,
+      gateReached,
+      releaseGate,
+      chainNodeFailures,
+    } = await buildTopology();
+
+    const chain: ActionsChain = {
+      action: { type: ACTION_GATED, target: D1, payload: {} },
+      next: actionChain(ACTION_AFTER_GATE, D1),
+      // Would run if anything ended the chain as a node FAILURE. It must not.
+      fallback: actionChain(ACTION_LEAF, D2),
+    };
+
+    const settlementPromise = (
+      registry1 as unknown as {
+        mediator: { runAcceptedChain(chain: ActionsChain): Promise<{ completed: boolean; path: string[] }> };
+      }
+    ).mediator.runAcceptedChain(chain);
+
+    // The first node is genuinely in flight inside registry1's executor.
+    await gateReached;
+
+    // Tear the EMITTER down, both ways the ADR names: an ordinary unmount
+    // (deactivates its bridge) and then permanent unregistration (revokes
+    // its link, retracts its advertisements, releases its bridge pair).
+    const mounter0 = registry0.getMounter(D0);
+    await mounter0.unmount(CHILD_EXT);
+    await registry0.unregisterExtension(CHILD_EXT);
+
+    // Neither of those ended the chain: it is still waiting on its own
+    // first node, which now finishes on its own terms.
+    releaseGate();
+    const settlement = await settlementPromise;
+
+    expect(settlement.completed).toBe(true);
+    expect(gatedCounter.count).toBe(1);
+    // `next` followed, so the node succeeded rather than being cut short.
+    expect(afterGateCounter.count).toBe(1);
+    expect(settlement.path).toEqual([ACTION_GATED, ACTION_AFTER_GATE]);
+    // No node of this chain failed at all — nothing classified it as a
+    // failure or an unavailable hop.
+    expect(chainNodeFailures).toEqual([]);
   });
 });

@@ -36,7 +36,7 @@ import type { DefaultMountManager } from '../../src/runtime/default-mount-manage
 import type { TypeSystemPlugin } from '../../src/type-substrate';
 import type { Extension, ExtensionDomain, MfeEntry } from '../../src/types';
 import { MfeHandler, ChildMfeBridge, type MfeEntryLifecycle } from '../../src/handler/types';
-import { MfeBridgeFactoryDefault } from '../../src/handler/mfe-bridge-factory-default';
+import { MfeBridgeFactoryDefault } from '../../src/bridge/mfe-bridge-factory-default';
 import { ExtensionDomainImplementation } from '../../src/runtime/ExtensionDomainImplementation';
 import { ExtensionDomainImplementationFactory } from '../../src/runtime/ExtensionDomainImplementationFactory';
 import type { DomainContext } from '../../src/runtime/DomainContext';

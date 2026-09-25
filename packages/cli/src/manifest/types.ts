@@ -53,7 +53,7 @@ export interface TemplateManifest {
   // installable; the cost a template accepts by omitting it is that it is not
   // selectable from an intent and is reachable only by its exact reference.
   // Prose only, drawn from no closed set, so it reintroduces none of the
-  // template classification cpt-frontx-adr-uniform-template-mechanism removed.
+  // classification `cpt-frontx-adr-template-classification` removed.
   description?: string;
 }
 

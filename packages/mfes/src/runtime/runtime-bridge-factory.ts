@@ -15,6 +15,7 @@ import type { ParentMfeBridge, ChildMfeBridge } from '../handler/types';
 import type { ExtensionDomainState } from './extension-manager';
 import type { ActionsChain } from '../types';
 import type { ActionHandler } from '../mediator/types';
+import type { CrossHopRoute } from '../mediator/cross-hop-route';
 
 export abstract class RuntimeBridgeFactory {
   /**
@@ -32,8 +33,10 @@ export abstract class RuntimeBridgeFactory {
     entryTypeId: string,
     domainActions: readonly string[],
     existing: { parentBridge: ParentMfeBridge; childBridge: ChildMfeBridge } | undefined,
-    executeActionsChain: (chain: ActionsChain) => Promise<void>,
-    registerCatchAllActionHandler: (domainId: string, handler: ActionHandler) => void,
+    // The public, acceptance-only chain dispatcher (void, synchronously-
+    // refusing) — wired to the child bridge's public capability ONLY.
+    dispatchActionsChain: (chain: ActionsChain) => void,
+    registerCatchAllRoute: (domainId: string, route: CrossHopRoute) => void,
     unregisterCatchAllActionHandler: (domainId: string) => void,
     registerExtensionActionHandler: (extensionId: string, actionTypeId: string, handler: ActionHandler, domainId: string) => void,
     unregisterExtensionActionHandler: (extensionId: string) => void

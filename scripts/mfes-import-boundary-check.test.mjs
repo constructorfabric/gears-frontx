@@ -43,7 +43,7 @@ async function writeSource(root, relativePath, content) {
 const CLEAN_BARREL = [
   "export { MfeRegistry } from './registry/MfeRegistry';",
   "export { createMfeRegistryFactory } from './runtime/DefaultMfeRegistryFactory';",
-  "export { MfeHandlerMF, LruCache } from './handler/MfeHandlerMF';",
+  "export { MfeHandlerMF, LruCache } from './handler/mfe-handler-mf/MfeHandlerMF';",
 ].join('\n');
 
 /** Runs the guard with its output captured, so a case can assert what it named. */

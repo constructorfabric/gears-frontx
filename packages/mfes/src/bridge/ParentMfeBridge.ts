@@ -9,7 +9,8 @@
  */
 
 import { ParentMfeBridge } from '../handler/types';
-import type { ActionsChain, SharedProperty } from '../types';
+import type { CrossHopEnvelope } from '../mediator/cross-hop-route';
+import type { SharedProperty } from '../types';
 import type { ChildMfeBridgeImpl } from './ChildMfeBridge';
 import { BridgeDisposedError, BridgeInactiveError } from './errors';
 
@@ -26,11 +27,6 @@ export class ParentMfeBridgeImpl extends ParentMfeBridge {
    * Reference to the child bridge.
    */
   private readonly childBridge: ChildMfeBridgeImpl;
-
-  /**
-   * Handler for actions sent from child to parent.
-   */
-  private childActionHandler: ((chain: ActionsChain) => Promise<void>) | null = null;
 
   /**
    * Permanent-disposal state, delegated to the child bridge — the single
@@ -74,41 +70,36 @@ export class ParentMfeBridgeImpl extends ParentMfeBridge {
   }
 
   /**
-   * Send an actions chain to the child MFE.
-   * Used by the host to send actions to the MFE.
+   * Hand a versioned cross-hop envelope to the child MFE — the transport
+   * every runtime-crossing hop resolves to
+   * (`cpt-frontx-adr-action-dispatch-and-chaining`), used by a downward
+   * forwarding entry and by the converted parent-to-child-domain forwarding
+   * tier, and by the parent runtime sending an action chain directly to a
+   * child's domain.
    *
-   * @param chain - Actions chain to send
-   * @returns Promise resolving when execution is complete
-   * @throws {BridgeDisposedError} If bridge has been permanently disposed
-   * @throws {BridgeInactiveError} If the extension is registered but not currently mounted
+   * Synchronous and binary: throws to refuse the delivery at the call, with
+   * no side effect in the child runtime, or returns having handed the node
+   * to the child's registry, which has already accepted and reserved what
+   * it needs before this call returns — this runtime is then done with the
+   * node and holds nothing for it (`cpt-frontx-adr-action-dispatch-and-chaining`).
+   * Nothing awaitable ever crosses this bridge: completion observation
+   * stays strictly inside the executor that accepts the envelope.
+   *
+   * @internal concrete-only; not part of the abstract `ParentMfeBridge` contract.
    */
   // @cpt-begin:cpt-frontx-algo-mfe-host-communication-bridge-delegation:p1:inst-parent-send-chain
   // @cpt-begin:cpt-frontx-algo-mfe-host-communication-bridge-delegation:p1:inst-deliver-to-child
-  async sendActionsChain(chain: ActionsChain): Promise<void> {
+  sendCrossHopEnvelope(envelope: CrossHopEnvelope): void {
     if (this.destroyed) {
       throw new BridgeDisposedError(this.instanceId);
     }
     if (!this.active) {
       throw new BridgeInactiveError(this.instanceId);
     }
-    return this.childBridge.handleParentActionsChain(chain);
+    this.childBridge.handleCrossHopEnvelope(envelope);
   }
   // @cpt-end:cpt-frontx-algo-mfe-host-communication-bridge-delegation:p1:inst-deliver-to-child
   // @cpt-end:cpt-frontx-algo-mfe-host-communication-bridge-delegation:p1:inst-parent-send-chain
-
-  /**
-   * Register a handler for actions sent from the child MFE to the host.
-   * This is called by MfeRegistry to connect the bridge to the mediator.
-   *
-   * @param callback - Handler for child actions
-   * @throws {BridgeDisposedError} If bridge has been permanently disposed
-   */
-  onChildAction(callback: (chain: ActionsChain) => Promise<void>): void {
-    if (this.destroyed) {
-      throw new BridgeDisposedError(this.instanceId);
-    }
-    this.childActionHandler = callback;
-  }
 
   /**
    * Called by MfeRegistry when a domain property is updated.
@@ -165,29 +156,8 @@ export class ParentMfeBridgeImpl extends ParentMfeBridge {
     if (this.destroyed) {
       return; // Idempotent
     }
-    this.childActionHandler = null;
     this.propertySubscribers.clear();
     this.childBridge.destroy();
   }
   // @cpt-end:cpt-frontx-algo-mfe-host-communication-bridge-delegation:p1:inst-parent-handle
-
-  /**
-   * INTERNAL: Called by ChildMfeBridge.sendActionsChain.
-   * Routes child actions to the registered handler (typically the mediator).
-   *
-   * @param chain - Actions chain from child
-   * @returns Promise resolving when execution is complete
-   */
-  handleChildAction(chain: ActionsChain): Promise<void> {
-    if (this.destroyed) {
-      return Promise.reject(new BridgeDisposedError(this.instanceId));
-    }
-    if (!this.active) {
-      return Promise.reject(new BridgeInactiveError(this.instanceId));
-    }
-    if (!this.childActionHandler) {
-      return Promise.reject(new Error('No child action handler registered'));
-    }
-    return this.childActionHandler(chain);
-  }
 }

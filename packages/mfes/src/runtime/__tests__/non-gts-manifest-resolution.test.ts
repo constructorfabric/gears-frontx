@@ -19,7 +19,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 // @internal — colocated test, direct relative import is permitted.
 import { DefaultMfeRegistry } from '../DefaultMfeRegistry';
-import { MfeHandlerMF } from '../../handler/MfeHandlerMF';
+import { MfeHandlerMF } from '../../handler/mfe-handler-mf/MfeHandlerMF';
 import type { TypeSystemPlugin } from '../../type-substrate';
 import type { Extension, ExtensionDomain } from '../../types';
 import type { MfeEntryMF } from '../../types/mfe-entry-mf';

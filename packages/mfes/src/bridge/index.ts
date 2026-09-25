@@ -9,4 +9,4 @@
 
 export { ChildMfeBridgeImpl } from './ChildMfeBridge';
 export { ParentMfeBridgeImpl } from './ParentMfeBridge';
-export { ChildDomainForwardingHandler } from './ChildDomainForwardingHandler';
+export { createChildDomainForwardingRoute } from './ChildDomainForwardingHandler';

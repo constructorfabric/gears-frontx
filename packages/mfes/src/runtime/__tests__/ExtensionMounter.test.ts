@@ -4,6 +4,7 @@ import { ExtensionMounter } from '../ExtensionMounter';
 import { MountManager } from '../mount-manager';
 import type { ContainerHooks } from '../mount-strategy';
 import type { ParentMfeBridge } from '../../handler/types';
+import type { MountSetChange, MountSetObserver } from '../config';
 
 // ─── Fakes ───────────────────────────────────────────────────────────────────
 
@@ -213,6 +214,119 @@ describe('DefaultExtensionMounter', () => {
 
       mountManager.settle();
       await expect(first).resolves.not.toThrow();
+    });
+  });
+
+  describe('MountSetObserver — notified from the commit, for every committed change including detach', () => {
+    function makeRecordingObserver(): { observer: MountSetObserver; changes: MountSetChange[] } {
+      const changes: MountSetChange[] = [];
+      return {
+        observer: {
+          onMountSetChanged(change) {
+            changes.push(change);
+          },
+        },
+        changes,
+      };
+    }
+
+    it('notifies on mount (entered) and on unmount (left)', async () => {
+      const DOMAIN = 'obs-domain';
+      const mountManager = new FakeMountManager();
+      const addMountedExtension = vi.fn();
+      const removeMountedExtension = vi.fn();
+      const mounted: string[] = [];
+      const getMountedExtensions = (_domainId: string): readonly string[] => mounted;
+      const hooks = new TrackingHooks();
+      const { observer, changes } = makeRecordingObserver();
+
+      const mounter = new DefaultExtensionMounter(
+        DOMAIN,
+        mountManager,
+        addMountedExtension,
+        removeMountedExtension,
+        getMountedExtensions,
+        hooks,
+        observer
+      );
+      const root = document.createElement('div');
+      mounter.attach(root);
+
+      await mounter.mount('ext-1', document.createElement('div'));
+      expect(changes).toEqual([{ domainId: DOMAIN, entered: ['ext-1'], left: [] }]);
+
+      await mounter.unmount('ext-1');
+      expect(changes).toEqual([
+        { domainId: DOMAIN, entered: ['ext-1'], left: [] },
+        { domainId: DOMAIN, entered: [], left: ['ext-1'] },
+      ]);
+    });
+
+    it('detach() calls removeMountedExtension to notify observers of extensions being torn down', async () => {
+      const DOMAIN = 'obs-detach-domain';
+      const mountManager = new FakeMountManager();
+      const mountedIds = ['ext-a', 'ext-b'];
+      const getMountedExtensions = (_domainId: string): readonly string[] => [...mountedIds];
+      const addMountedExtension = vi.fn();
+      const removeMountedExtension = vi.fn();
+      const hooks = new TrackingHooks();
+      const { observer, changes } = makeRecordingObserver();
+
+      const mounter = new DefaultExtensionMounter(
+        DOMAIN,
+        mountManager,
+        addMountedExtension,
+        removeMountedExtension,
+        getMountedExtensions,
+        hooks,
+        observer
+      );
+      const root = document.createElement('div');
+      mounter.attach(root);
+
+      await mounter.detach();
+
+      // Every committed change must be observable (per
+      // `cpt-frontx-adr-action-dispatch-and-chaining`), so detach() calls
+      // removeMountedExtension to propagate the mount-set changes to observers.
+      expect(removeMountedExtension).toHaveBeenCalledWith(DOMAIN, 'ext-a');
+      expect(removeMountedExtension).toHaveBeenCalledWith(DOMAIN, 'ext-b');
+      expect(changes).toContainEqual({ domainId: DOMAIN, entered: [], left: ['ext-a'] });
+      expect(changes).toContainEqual({ domainId: DOMAIN, entered: [], left: ['ext-b'] });
+    });
+
+    it('reports no chain-settlement information — only domain and entered/left extension ids', async () => {
+      const DOMAIN = 'obs-shape-domain';
+      const mountManager = new FakeMountManager();
+      const addMountedExtension = vi.fn();
+      const removeMountedExtension = vi.fn();
+      const mounted: string[] = [];
+      const getMountedExtensions = (_domainId: string): readonly string[] => mounted;
+      const hooks = new TrackingHooks();
+      const { observer, changes } = makeRecordingObserver();
+
+      const mounter = new DefaultExtensionMounter(
+        DOMAIN,
+        mountManager,
+        addMountedExtension,
+        removeMountedExtension,
+        getMountedExtensions,
+        hooks,
+        observer
+      );
+      const root = document.createElement('div');
+      mounter.attach(root);
+      await mounter.mount('ext-1', document.createElement('div'));
+
+      expect(Object.keys(changes[0]!).sort()).toEqual(['domainId', 'entered', 'left']);
+    });
+
+    it('is optional: omitting it (undefined) is safe and mount/unmount/detach still work', async () => {
+      const { mounter, root } = makeFixture(); // no observer passed
+      mounter.attach(root);
+      await expect(mounter.mount('ext-1', document.createElement('div'))).resolves.not.toThrow();
+      await expect(mounter.unmount('ext-1')).resolves.not.toThrow();
+      await expect(mounter.detach()).resolves.not.toThrow();
     });
   });
 

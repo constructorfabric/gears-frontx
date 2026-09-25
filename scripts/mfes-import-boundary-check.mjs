@@ -86,7 +86,11 @@ const SCANNED_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx'
  *
  * @type {Set<string>}
  */
-export const CONCRETE_EXPORT_DENYLIST = new Set([]);
+export const CONCRETE_EXPORT_DENYLIST = new Set([
+  'ChildMfeBridgeImpl',
+  'ParentMfeBridgeImpl',
+  'createChildDomainForwardingRoute',
+]);
 
 /**
  * The concrete-implementation naming rule (see the docblock for why a rule and

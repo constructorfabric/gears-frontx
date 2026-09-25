@@ -23,15 +23,15 @@ export class DefaultDomainLifecycleTrigger extends DomainLifecycleTrigger {
     super();
   }
 
-  triggerExtensionStage(extId: string, stageId: string): Promise<void> {
-    return this.lifecycleManager.triggerLifecycleStage(extId, stageId);
+  triggerExtensionStage(extId: string, stageId: string): void {
+    this.lifecycleManager.triggerLifecycleStage(extId, stageId);
   }
 
-  triggerStage(stageId: string): Promise<void> {
-    return this.lifecycleManager.triggerDomainLifecycleStage(this.domainId, stageId);
+  triggerStage(stageId: string): void {
+    this.lifecycleManager.triggerDomainLifecycleStage(this.domainId, stageId);
   }
 
-  triggerOwnStage(stageId: string): Promise<void> {
-    return this.lifecycleManager.triggerDomainOwnLifecycleStage(this.domainId, stageId);
+  triggerOwnStage(stageId: string): void {
+    this.lifecycleManager.triggerDomainOwnLifecycleStage(this.domainId, stageId);
   }
 }

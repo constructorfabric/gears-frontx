@@ -12,37 +12,6 @@ import type { TypeSystemPlugin } from '../type-substrate';
 import type { ActionsChain } from '../types';
 
 /**
- * Result of action chain execution.
- */
-export interface ChainResult {
-  /** Whether the chain completed successfully */
-  completed: boolean;
-  /** Array of action type IDs that were executed */
-  path: string[];
-  /** Whether the chain timed out */
-  timedOut?: boolean;
-  /** Total execution time in milliseconds */
-  executionTime?: number;
-}
-
-/**
- * Per-request execution options (chain-level only)
- *
- * NOTE: Action-level timeouts are defined in:
- * - ExtensionDomain.defaultActionTimeout (required)
- * - Action.timeout (optional override)
- *
- * Timeout is treated as a failure - the ActionsChain.fallback handles all failures uniformly.
- */
-export interface ChainExecutionOptions {
-  /**
-   * Override chain timeout for this execution (ms)
-   * This limits the total time for the entire chain execution.
-   */
-  chainTimeout?: number;
-}
-
-/**
  * Abstract base class for receiving a single action.
  *
  * Both domain-side lifecycle handlers and extension-side custom handlers extend this class.
@@ -143,16 +112,25 @@ export abstract class ActionsChainsMediator {
   abstract readonly typeSystem: TypeSystemPlugin;
 
   /**
-   * Execute an action chain, routing to targets and handling success/failure branching.
+   * Accept (or synchronously refuse) an action chain for execution.
    *
-   * @param chain - The actions chain to execute
-   * @param options - Optional per-request execution options (override defaults)
-   * @returns Promise resolving to chain result
+   * Acceptance-only per `cpt-frontx-adr-action-dispatch-and-chaining`: this
+   * call either accepts the chain — validating its envelope, creating the
+   * executor's own path/diagnostic state, and reserving what the
+   * first executable node needs, all before returning — or throws
+   * `ActionsChainRefusalError` synchronously. It never returns a value and
+   * never yields a promise an emitter could await for the chain's own
+   * execution; settlement observation (branch selection on `next`/`fallback`)
+   * stays entirely inside the executor. The completion-bearing "observed
+   * execution" operation this drives is deliberately NOT part of this
+   * abstract, exported contract — it is a concrete-mediator-only member, so
+   * an emitter holding only this abstraction has no way to reach it.
+   *
+   * @param chain - The actions chain to accept
+   * @throws {ActionsChainRefusalError} synchronously if the chain (or its
+   *   declared per-action timeout) is invalid.
    */
-  abstract executeActionsChain(
-    chain: ActionsChain,
-    options?: ChainExecutionOptions
-  ): Promise<ChainResult>;
+  abstract executeActionsChain(chain: ActionsChain): void;
 
   /**
    * Register a handler for a specific (targetId, actionTypeId) pair.

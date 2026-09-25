@@ -98,6 +98,7 @@ Published libraries:
 * `cpt-frontx-adr-lazy-import-resolution` — Separates the runtime ABI from the template-bound build through lazy import.
 * `cpt-frontx-adr-mfe-asset-discovery` — Discovers microfrontends through their manifest contract.
 * `cpt-frontx-adr-shared-dep-dedup-key` — Keys cross-microfrontend shared-dependency reuse to the identity of the producing build.
+* `cpt-frontx-adr-shared-dep-cache-reach` — Extends that reuse to one bounded, version-namespaced source-text cache per realm, shared by compatible independently loaded copies of the runtime without sharing module graphs.
 * `cpt-frontx-adr-api-surface-organization` — Separates request/response and streaming behind a common protocol surface.
 * `cpt-frontx-adr-api-transport-bypass-and-fetch-sharing` — Provides a plugin short-circuit and a realm-shared fetch cache.
 * `cpt-frontx-routing-adr-occupant-reference-boundary` — Names and carries occupant identity through route resolution and reporting without depending on the runtime's concrete extension type - owned by the routing member tree, `packages/routing/architecture/ADR/`.
@@ -109,7 +110,7 @@ CLI (projects orchestration):
 
 * `cpt-frontx-adr-template-acquisition-and-location` — Externalizes templates and resolves them by source-spec at runtime, and publishes them from a templates repository of their own rather than from this one, so no template and nothing serving one is held here.
 * `cpt-frontx-adr-source-spec-syntax` — Defines the versioned source-spec syntax for template acquisition, including the optional subtree segment that lets one repository publish several addressable templates.
-* `cpt-frontx-adr-uniform-template-mechanism` — Establishes one uniform mechanism that operates over any template, each template declaring what it produces.
+* `cpt-frontx-adr-template-classification` — Establishes one uniform mechanism that operates over any template, each template declaring what it produces.
 * `cpt-frontx-adr-template-manifest-contract` — Defines the template manifest publication contract declaring identity, version, ownership boundaries, and referenced templates.
 * `cpt-frontx-adr-template-ownership-boundary-declaration` — Defines the two-tier ownership-boundary declaration (exclusive subtrees plus shared-file region ownership with a declared merge) - owned by the CLI member tree, `packages/cli/architecture/ADR/`.
 * `cpt-frontx-adr-assembly-conflict-prevention` — Detects and refuses conflicting assembly before any write via a pre-flight intersection check and a post-materialization boundary-honesty guard.

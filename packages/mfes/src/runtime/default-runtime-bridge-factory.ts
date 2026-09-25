@@ -12,11 +12,12 @@
 import type { ParentMfeBridge, ChildMfeBridge } from '../handler/types';
 import type { ActionsChain } from '../types';
 import { ActionHandler } from '../mediator/types';
+import type { CrossHopRoute } from '../mediator/cross-hop-route';
 import type { ExtensionDomainState } from './extension-manager';
 import { RuntimeBridgeFactory } from './runtime-bridge-factory';
 import { ChildMfeBridgeImpl } from '../bridge/ChildMfeBridge';
 import { ParentMfeBridgeImpl } from '../bridge/ParentMfeBridge';
-import { ChildDomainForwardingHandler } from '../bridge/ChildDomainForwardingHandler';
+import { createChildDomainForwardingRoute } from '../bridge/ChildDomainForwardingHandler';
 import { BridgeDisposedError, BridgeInactiveError } from '../bridge/errors';
 
 /**
@@ -73,7 +74,8 @@ export class DefaultRuntimeBridgeFactory extends RuntimeBridgeFactory {
    * @param entryTypeId - Type ID of the MFE entry
    * @param domainActions - Action type IDs the entry declares it can receive (unused — kept for API compat)
    * @param existing - The extension's already-minted bridge pair, if this is a remount
-   * @param executeActionsChain - Callback for executing actions chains from child to parent
+   * @param dispatchActionsChain - The public, acceptance-only chain dispatcher (void); wired to the
+   *   child bridge's public `executeActionsChain` capability ONLY
    * @param registerCatchAllActionHandler - Callback for registering catch-all child domain handlers in parent mediator
    * @param unregisterCatchAllActionHandler - Callback for unregistering catch-all child domain handlers from parent mediator
    * @param registerExtensionActionHandler - Callback for registering per-(extensionId, actionTypeId) handlers
@@ -86,8 +88,8 @@ export class DefaultRuntimeBridgeFactory extends RuntimeBridgeFactory {
     _entryTypeId: string,
     _domainActions: readonly string[],
     existing: { parentBridge: ParentMfeBridge; childBridge: ChildMfeBridge } | undefined,
-    executeActionsChain: (chain: ActionsChain) => Promise<void>,
-    registerCatchAllActionHandler: (domainId: string, handler: ActionHandler) => void,
+    dispatchActionsChain: (chain: ActionsChain) => void,
+    registerCatchAllRoute: (domainId: string, route: CrossHopRoute) => void,
     unregisterCatchAllActionHandler: (domainId: string) => void,
     registerExtensionActionHandler: (extensionId: string, actionTypeId: string, handler: ActionHandler, domainId: string) => void,
     _unregisterExtensionActionHandler: (extensionId: string) => void
@@ -99,14 +101,15 @@ export class DefaultRuntimeBridgeFactory extends RuntimeBridgeFactory {
         throw new Error(`acquireBridge: expected concrete bridge impls for extension '${extensionId}'`);
       }
 
-      // Re-wire child-to-parent action chain transport.
-      parentBridge.onChildAction(executeActionsChain);
-      childBridge.setExecuteActionsChainCallback(executeActionsChain);
+      // Re-wire the public, acceptance-only child dispatch capability
+      // (void) — nothing awaitable ever crosses this bridge
+      // (`cpt-frontx-adr-mfe-runtime-public-surface`).
+      childBridge.setExecuteActionsChainCallback(dispatchActionsChain);
 
       // Re-wire child domain forwarding callbacks.
       const registerChildDomainCallback = (domainId: string) => {
-        const handler = new ChildDomainForwardingHandler(parentBridge, domainId);
-        registerCatchAllActionHandler(domainId, handler);
+        const route = createChildDomainForwardingRoute(parentBridge, domainId);
+        registerCatchAllRoute(domainId, route);
       };
       const unregisterChildDomainCallback = (domainId: string) => {
         unregisterCatchAllActionHandler(domainId);
@@ -126,7 +129,7 @@ export class DefaultRuntimeBridgeFactory extends RuntimeBridgeFactory {
       // @cpt-begin:cpt-frontx-algo-mfe-host-communication-bridge-delegation:p1:inst-registration-survives-remount
       // Do NOT re-subscribe to domainState.propertySubscribers, do NOT
       // replay domainState.properties, and do NOT touch
-      // properties/propertySubscribers/actionsChainHandler/childDomainIds —
+      // properties/propertySubscribers/childDomainIds —
       // all survive deactivation untouched (`inst-registration-survives-remount`).
       childBridge.activate();
       // @cpt-end:cpt-frontx-algo-mfe-host-communication-bridge-delegation:p1:inst-registration-survives-remount
@@ -141,15 +144,11 @@ export class DefaultRuntimeBridgeFactory extends RuntimeBridgeFactory {
     // Create parent bridge (concrete type for access to internal methods)
     const parentBridgeImpl = new ParentMfeBridgeImpl(childBridge);
 
-    // Connect child to parent
-    childBridge.setParentBridge(parentBridgeImpl);
-
-    // Wire child action handler (internal wiring, not on public interface)
+    // Wire the registry's own public, acceptance-only `executeActionsChain`
+    // to the child bridge's public capability (void): nothing awaitable
+    // ever crosses this bridge (`cpt-frontx-adr-mfe-runtime-public-surface`).
     // @cpt-begin:cpt-frontx-algo-mfe-host-communication-bridge-delegation:p2:inst-fwd-exec-chain
-    parentBridgeImpl.onChildAction(executeActionsChain);
-
-    // Wire registry's executeActionsChain to child bridge as capability pass-through
-    childBridge.setExecuteActionsChainCallback(executeActionsChain);
+    childBridge.setExecuteActionsChainCallback(dispatchActionsChain);
     // @cpt-end:cpt-frontx-algo-mfe-host-communication-bridge-delegation:p2:inst-fwd-exec-chain
 
     // Wire child domain forwarding callbacks.
@@ -157,8 +156,8 @@ export class DefaultRuntimeBridgeFactory extends RuntimeBridgeFactory {
     // cannot enumerate the child domain's action types at registration time.
     // @cpt-begin:cpt-frontx-algo-mfe-host-communication-bridge-delegation:p2:inst-fwd-reg-domain
     const registerChildDomainCallback = (domainId: string) => {
-      const handler = new ChildDomainForwardingHandler(parentBridgeImpl, domainId);
-      registerCatchAllActionHandler(domainId, handler);
+      const route = createChildDomainForwardingRoute(parentBridgeImpl, domainId);
+      registerCatchAllRoute(domainId, route);
     };
 
     const unregisterChildDomainCallback = (domainId: string) => {

@@ -22,7 +22,7 @@ date: 2026-07-16
 
 <!-- /toc -->
 
-**ID**: `cpt-frontx-adr-uniform-template-mechanism`
+**ID**: `cpt-frontx-adr-template-classification`
 
 ## Context and Problem Statement
 

@@ -38,8 +38,9 @@ export type {
 } from './types';
 
 // Mediator types (Phase 3)
+// The public surface carries no completion-bearing result type and
+// no per-call execution-options type (`cpt-frontx-adr-mfe-runtime-public-surface`).
 export { ActionHandler, ActionsChainsMediator } from './mediator/types';
-export type { ChainResult, ChainExecutionOptions } from './mediator/types';
 
 // Handler type contracts (Phase 3)
 export { ParentMfeBridge, ChildMfeBridge, MfeBridgeFactory, MfeHandler } from './handler/types';
@@ -48,7 +49,13 @@ export type { MfeEntryLifecycle, MfeMountContext } from './handler/types';
 // Registry contracts (Phase 3)
 export { MfeRegistry } from './registry/MfeRegistry';
 export { MfeRegistryFactory } from './registry/MfeRegistryFactory';
-export type { MfeRegistryConfig } from './runtime/config';
+export type {
+  MfeRegistryConfig,
+  MfeDiagnosticSink,
+  LifecycleDispatchRefusalDiagnostic,
+  MountSetObserver,
+  MountSetChange,
+} from './runtime/config';
 
 // Runtime abstractions (Phase 3)
 export { MountStrategy } from './runtime/mount-strategy';
@@ -68,9 +75,6 @@ export type { RuntimeConnection } from './runtime/coordination/types';
 // Mediator error surface (Phase 6) — the concrete mediator stays internal (ADR-0003)
 export { NoHandlerForActionTargetError } from './mediator/actions-chains-mediator';
 
-// Bridge concrete implementations (Phase 6)
-export { ChildMfeBridgeImpl, ParentMfeBridgeImpl, ChildDomainForwardingHandler } from './bridge';
-
 // Bridge error classes (Phase 6)
 export { NoActionsChainHandlerError, BridgeDisposedError, BridgeInactiveError } from './bridge/errors';
 
@@ -85,7 +89,9 @@ export {
   UnsupportedDomainActionError,
   UnsupportedLifecycleStageError,
   EntryTypeNotHandledError,
+  ActionsChainRefusalError,
   type ContractError,
+  type ActionsChainRefusalClass,
 } from './errors';
 
 // Shadow DOM utilities (Phase 7)
@@ -121,7 +127,7 @@ export type {
 
 // Mount manager (Phase 7)
 export { MountManager } from './runtime/mount-manager';
-export type { ActionChainExecutor, LifecycleTrigger } from './runtime/mount-manager';
+export type { ActionsChainDispatcher, LifecycleTrigger } from './runtime/mount-manager';
 
 // Runtime bridge factory (Phase 7)
 export { RuntimeBridgeFactory } from './runtime/runtime-bridge-factory';
@@ -129,14 +135,14 @@ export { RuntimeBridgeFactory } from './runtime/runtime-bridge-factory';
 // MFE Isolation — handler, trust kernel, types (Phase 8)
 // MfeHandlerMF is sanctioned surface — do not remove in a barrel cleanup.
 // Rationale/table: packages/mfes/architecture/DESIGN.md, public-surface table.
-export { MfeHandlerMF, LruCache } from './handler/MfeHandlerMF';
-export { RetryHandler } from './handler/retry-handler';
+export { MfeHandlerMF, LruCache } from './handler/mfe-handler-mf/MfeHandlerMF';
+export { RetryHandler } from './handler/mfe-handler-mf/retry-handler';
 export type { MfeEntryMF } from './types/mfe-entry-mf';
 export {
   sourceImports,
   rewriteBareSpecifier,
   importBlobModule,
-} from './handler/mf-dynamic-module-ops';
+} from './handler/mfe-handler-mf/mf-dynamic-module-ops';
 
 // Only the creation function crosses the barrel: the concrete registry and
 // factory stay internal so no consumer can build a rival registry past the
@@ -144,7 +150,6 @@ export {
 export { createMfeRegistryFactory } from './runtime/DefaultMfeRegistryFactory';
 
 // Lifecycle manager — abstract contract; the default implementation stays internal (ADR-0003)
-// (aliased: distinct from mount-manager's ActionChainExecutor, which also carries ChainExecutionOptions)
 export { LifecycleManager } from './runtime/lifecycle-manager';
 export type { ActionChainExecutor as LifecycleActionChainExecutor } from './runtime/lifecycle-manager';
 

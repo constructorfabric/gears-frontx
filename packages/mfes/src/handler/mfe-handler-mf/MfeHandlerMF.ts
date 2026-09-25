@@ -33,24 +33,37 @@
 // @cpt-state:cpt-frontx-state-mfe-isolation-module-lifecycle:p1
 // @cpt-state:cpt-frontx-state-mfe-loading-load-lifecycle:p1
 
-import type { MfeEntryMF } from '../types/mfe-entry-mf';
-import type { MfManifest } from '../manifest/mf-manifest';
-import { LazyLoaderRegistry } from '../lazy-loader/lazy-loader-registry';
+import type { MfeEntryMF } from '../../types/mfe-entry-mf';
+import type { MfManifest } from '../../manifest/mf-manifest';
+import { LazyLoaderRegistry } from '../../lazy-loader/lazy-loader-registry';
 import {
   MfeHandler,
   ChildMfeBridge,
   MfeEntryLifecycle,
-} from './types';
-import { MfeLoadError } from '../errors';
+} from '../types';
+import { MfeLoadError } from '../../errors';
 import { RetryHandler } from './retry-handler';
-import { MfeBridgeFactoryDefault } from './mfe-bridge-factory-default';
+import { MfeBridgeFactoryDefault } from '../../bridge/mfe-bridge-factory-default';
 import {
   sourceImports,
   rewriteBareSpecifier,
   findSurvivingDeclaredSharedDepSpecifier,
   importBlobModule,
+  buildLazyLoaderStubSource,
 } from './mf-dynamic-module-ops';
 import { findUndeclaredWellFormedSpecifiers } from './mf-shared-dep-specifier-scan';
+import { LruCache } from './lru-cache';
+import {
+  getRealmSharedDepTextCache,
+  type SharedDepTextCache,
+} from './realm-shared-dep-text-cache';
+
+// Re-exported unchanged: `LruCache` moved to its own module (so
+// `realm-shared-dep-text-cache.ts` can construct one without importing this
+// file, which would be circular — see `lru-cache.ts`'s doc comment), but
+// stays reachable at this same path for existing importers
+// (`src/index.ts`'s barrel export and this file's own unit tests).
+export { LruCache };
 
 const RUNTIME_STYLE_ID_PREFIX = '__frontx-mfe-runtime-style-';
 
@@ -411,56 +424,6 @@ class ManifestCache {
 }
 
 /**
- * Minimal LRU cache with fixed capacity. Leverages insertion-order semantics
- * of `Map`: each `get` re-inserts the key (moving it to the end, i.e. "most
- * recent"), and `set` evicts the oldest key when capacity would be exceeded.
- *
- * We use this for source-text caches to prevent unbounded growth on
- * long-running hosts that accumulate many distinct chunk URLs over time
- * (a partial miss on issue #253).
- *
- * @internal Exported for unit testing; not part of the public API.
- */
-export class LruCache<K, V> {
-  private readonly map = new Map<K, V>();
-
-  constructor(private readonly capacity: number) {
-    if (!Number.isFinite(capacity) || capacity <= 0) {
-      throw new RangeError(`LruCache capacity must be a positive integer, got ${capacity}`);
-    }
-  }
-
-  get(key: K): V | undefined {
-    if (!this.map.has(key)) return undefined;
-    const value = this.map.get(key) as V;
-    // Re-insert to mark as most-recently-used.
-    this.map.delete(key);
-    this.map.set(key, value);
-    return value;
-  }
-
-  set(key: K, value: V): void {
-    // If already present, delete first so the re-insert moves it to the end.
-    if (this.map.has(key)) {
-      this.map.delete(key);
-    } else if (this.map.size >= this.capacity) {
-      // Evict the oldest (first) key.
-      const oldestKey = this.map.keys().next().value;
-      if (oldestKey !== undefined) this.map.delete(oldestKey);
-    }
-    this.map.set(key, value);
-  }
-
-  delete(key: K): boolean {
-    return this.map.delete(key);
-  }
-
-  has(key: K): boolean {
-    return this.map.has(key);
-  }
-}
-
-/**
  * Max source-text entries retained. Expose-chunk entries evict oldest-first.
  *
  * Concurrent fan-out (see {@link boundedMap}) can insert up to
@@ -477,20 +440,6 @@ export class LruCache<K, V> {
  * import graph approaches this width.
  */
 const SOURCE_TEXT_CACHE_CAPACITY = 256;
-/**
- * Max shared-dep text entries retained (keyed by name@version@contentHash
- * when a build hash is declared, or name@version@<resolved URL> otherwise).
- *
- * Same burst-eviction trade-off as {@link SOURCE_TEXT_CACHE_CAPACITY}
- * applies here, scaled down: entries are bounded by distinct
- * npm-published packages declared across all MFEs' `rollupOptions.external`
- * MULTIPLIED by the distinct builds of each that are observed (per-build
- * `contentHash`, or per-microfrontend resolved chunk URL when no hash is
- * declared) — still far fewer than the number of chunks any one MFE emits,
- * so 128 keeps ample headroom even with concurrent fan-out bursts of up to
- * {@link MAX_CONCURRENT_FETCHES} per load.
- */
-const SHARED_DEP_TEXT_CACHE_CAPACITY = 128;
 /**
  * Max adoption-notice ledger entries retained (keyed by name@version plus
  * the declaring manifest's id).
@@ -509,24 +458,39 @@ const SHARED_DEP_ADOPTION_NOTICE_CACHE_CAPACITY = 64;
  * on, so the attempt's abandonment on timeout can release them.
  *
  * `MfeHandlerMF.fetchSourceText` publishes its in-flight fetch promise in
- * the handler-level, URL-keyed `sourceTextCache` (and
- * `fetchSharedDepSources` does the same in the two-tier-keyed
- * `sharedDepTextCache`), evicting it only when it REJECTS. A fetch that
- * never settles is therefore never evicted, so the retry that follows a
- * timeout rejoins the very promise the timed-out attempt already gave up
+ * the handler-level, URL-keyed `sourceTextCache` (a copy-local `LruCache`),
+ * and `fetchSharedDepSources` does the same in the two-tier-keyed
+ * `sharedDepTextCache` — a reference to the REALM-SHARED
+ * cache `getRealmSharedDepTextCache()` returns (or, if that copy fell back,
+ * a cache local to this copy — see `realm-shared-dep-text-cache.ts`). Either
+ * way the entry is evicted only when the promise it names REJECTS. A fetch
+ * that never settles is therefore never evicted, so the retry that follows
+ * a timeout rejoins the very promise the timed-out attempt already gave up
  * on and expires against its own budget in turn — the timeout bounds the
  * hang without ever recovering from it.
  *
  * Every attempt gets its own ledger (created per invocation of the retry
  * callback in {@link MfeHandlerMF.load}). Each cache entry the attempt
- * registers OR joins is recorded here; on timeout {@link release} removes
- * exactly those entries, so the next attempt issues its own fetch. A blunt
- * "clear the cache" would instead discard entries other, still-live loads
- * are legitimately waiting on.
+ * registers OR joins is recorded here — the ACTUAL cache object it used
+ * (`inst-lto-release-record-cache`), never a name to be re-resolved when
+ * the release runs, because a shared-dependency entry may live in the
+ * realm-shared cache OR in this copy's local fallback, and only the cache
+ * that received the exact promise is the one to release it from. Recording
+ * the promise itself (not merely the cache and key) is what makes the
+ * release identity-checked against a specific GENERATION
+ * (`inst-lto-release-generation-identity`): if two copies both joined
+ * promise P1 and one copy's attempt times out and deletes P1's mapping, a
+ * retry may publish a replacement P2 under the same key — the other copy's
+ * later release still carries P1, so its identity check fails against P2
+ * and it cannot remove it. On timeout {@link release} removes exactly the
+ * still-unsettled entries this attempt actually joined, so the next attempt
+ * issues its own fetch. A blunt "clear the cache" would instead discard
+ * entries other, still-live loads — in this copy or, for the realm-shared
+ * cache, in another compatible copy — are legitimately waiting on.
  */
 class AttemptSourceTextLedger {
   private readonly entries: Array<{
-    readonly cache: LruCache<string, Promise<string>>;
+    readonly cache: SharedDepTextCache;
     readonly key: string;
     readonly promise: Promise<string>;
     settled: boolean;
@@ -543,21 +507,29 @@ class AttemptSourceTextLedger {
    * abandoned attempt's background work registers afterwards belongs to
    * that work, not to a retry this ledger can still speak for.
    */
+  // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-record-cache
   record(
-    cache: LruCache<string, Promise<string>>,
+    cache: SharedDepTextCache,
     key: string,
     promise: Promise<string>
   ): void {
     if (this.released) {
       return;
     }
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-generation-identity
+    // Recording the promise itself — not merely the cache and key — is
+    // what lets `release()` below distinguish the GENERATION this attempt
+    // actually joined from a later replacement generation published under
+    // the same key.
     const entry = { cache, key, promise, settled: false };
+    // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-generation-identity
     const markSettled = (): void => {
       entry.settled = true;
     };
     promise.then(markSettled, markSettled);
     this.entries.push(entry);
   }
+  // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-record-cache
 
   /**
    * Release the still-unsettled cache entries this attempt was waiting on.
@@ -574,10 +546,21 @@ class AttemptSourceTextLedger {
       // `fetchSourceText` and `fetchSharedDepSources` is: remove the key
       // only while it still maps to the very promise this attempt was
       // waiting on, never one a concurrent load has since registered
-      // under the same key.
+      // under the same key — the discipline that makes a release from one
+      // copy safe against a realm-shared cache another copy is also
+      // publishing into.
+      // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-generation-identity
+      // Where two copies both joined this same promise and one already
+      // timed out and deleted this mapping, a retry may have since
+      // published a REPLACEMENT promise under `entry.key`. This check
+      // fails against that replacement (it is not `entry.promise`), so
+      // this release can never evict a generation this attempt did not
+      // join — only an attempt that actually joined the replacement, and
+      // then exhausted its own budget, may release it.
       if (entry.cache.get(entry.key) === entry.promise) {
         entry.cache.delete(entry.key);
       }
+      // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-generation-identity
       // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-identity-checked
     }
     // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-not-cancel
@@ -588,7 +571,22 @@ class AttemptSourceTextLedger {
     // resolve to it. The accepted cost is that the abandoned fetch and the
     // retry's own fetch may be in flight for the same source at once, the
     // price of a retry that can actually succeed.
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-realm-shared
+    // Where the released entry lived in the realm-shared cache, this
+    // release may reach a key another independently loaded copy is
+    // awaiting. That waiter is undisturbed — it already holds the promise,
+    // and this removed only the mapping to it — while a caller arriving
+    // after this release finds no entry and starts a duplicate fetch. That
+    // duplicate arises across genuine retry generations (the intended
+    // recovery when a fetch exceeds an attempt budget), never merely from
+    // the number of copies that originally joined one promise, which
+    // `inst-lto-release-generation-identity` above bounds. No waiter count
+    // is recorded anywhere in this release path: conditioning release on
+    // "no other waiter" would leave a timed-out attempt's own retry
+    // rejoining the same possibly-hung promise forever, since a staggered
+    // retry could hold such a count above zero indefinitely.
     this.entries.length = 0;
+    // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-realm-shared
     // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-not-cancel
   }
   // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-abandoned-source-text
@@ -652,31 +650,44 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   );
 
   /**
-   * Shared dep source text cache for this handler instance.
+   * Reference to the realm-wide shared-dependency source-text cache,
+   * obtained through the internal rendezvous accessor
+   * {@link getRealmSharedDepTextCache} rather than constructed here. The
+   * FIELD is instance-held — every `MfeHandlerMF` instance calls the
+   * accessor once, at construction — but the CACHE it names is shared
+   * realm-wide across every compatible, independently loaded copy of this
+   * package: two loads whose deduplication key already agrees that they
+   * reuse the same emitted build (`cpt-frontx-adr-shared-dep-dedup-key`)
+   * fetch that build's source text once for the whole realm, not once per
+   * handler and not once per copy — including a nested extension host
+   * that constructs its own `MfeHandlerMF` from its own independently
+   * loaded copy of this package.
    *
    * Keyed on a two-tier scheme: when a shared-dep entry declares a
-   * `contentHash`, the key is `name@version@contentHash` and the entry is
-   * shared across every MFE loaded through this handler — the first MFE to
-   * load it fetches the source, and every other MFE declaring the identical
-   * `name@version@contentHash` gets a cache hit, zero network fetch, even
-   * across different manifests and origins served by this host application.
-   * When no `contentHash` is declared, the key falls back to
+   * `contentHash`, the key is `name@version@contentHash`; when no
+   * `contentHash` is declared, the key falls back to
    * `name@version@<resolved chunk URL>`, so reuse is scoped to that one
-   * manifest's own resolved URL rather than shared cross-MFE.
+   * manifest's own resolved URL rather than shared cross-MFE
+   * (`cpt-frontx-adr-shared-dep-dedup-key`).
    *
-   * A host application constructs the handler once, so this cache is shared
-   * by all microfrontends mounted through that application's registry.
-   * Nested extension hosts that load through their own handler instance do
-   * not share this cache; see issue #627.
+   * The realm-wide bound is 128 resident MAPPINGS, not per handler and not
+   * per copy — see `realm-shared-dep-text-cache.ts` — and bounds mapping
+   * count, not retained bytes: no byte ceiling is claimed on this cache's
+   * behalf. Its lifetime is the realm's page lifetime: a resident fulfilled
+   * value stays strongly reachable for as long as it survives eviction, and
+   * no handler discard, registry disposal, extension unmount, or extension
+   * unregistration clears or releases it — there is no retainer count.
    *
-   * LRU-bounded for the same reason as `sourceTextCache`. Shared deps are
-   * naturally fewer (only npm-published packages declared in `rollupOptions.external`),
-   * but the cap defends against a pathological host that keeps adding new
-   * versions over time.
+   * The rendezvous this cache is reached through is TRUSTED same-realm
+   * coordination state, not an authenticity or confidentiality boundary: a
+   * structurally conforming entry is adopted whichever same-realm code
+   * published it (`cpt-frontx-adr-shared-dep-cache-reach`
+   * records this as an accepted consequence, not a gap to close).
    */
-  private readonly sharedDepTextCache = new LruCache<string, Promise<string>>(
-    SHARED_DEP_TEXT_CACHE_CAPACITY,
-  );
+  // @cpt-dod:cpt-frontx-dod-mfe-isolation-realm-shared-dep-text-cache:p1
+  // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-hold-reference
+  private readonly sharedDepTextCache: SharedDepTextCache = getRealmSharedDepTextCache();
+  // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-hold-reference
 
   /**
    * Tracks which `name@version` + manifest id pairs have already received
@@ -1425,31 +1436,59 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       }
       // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-hash-declared
 
-      let textPromise = this.sharedDepTextCache.get(cacheKey);
+      // Captured once, into a local, rather than read again as
+      // `this.sharedDepTextCache` at eviction/record time below: `cache`
+      // is the exact cache object this fetch's promise is (or was)
+      // registered in — the realm-shared cache, or this copy's local
+      // fallback if the realm rendezvous fell back
+      // (`getRealmSharedDepTextCache`) — so the eviction-on-rejection
+      // callback and the ledger both operate on the cache that actually
+      // received THIS promise, never a value the field might read
+      // differently by the time the callback runs.
+      const cache = this.sharedDepTextCache;
+      // Checked against whichever cache this copy resolved at construction
+      // — the realm-shared cache every compatible independently loaded
+      // copy converges on, or this copy's own local fallback
+      // (`cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous`).
+      let textPromise = cache.get(cacheKey);
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-else-fetch
       if (textPromise === undefined) {
         // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-shared-dep
         // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-fetch-and-cache
+        // Stored under `cacheKey` in `cache` — the realm-shared cache when
+        // this copy's rendezvous resolved to one — before awaiting it, so
+        // a concurrent caller from ANY compatible copy that computes the
+        // same key finds this in-flight promise already published rather
+        // than issuing its own fetch, however the concurrent calls are
+        // interleaved.
         textPromise = this.fetchSourceText(absoluteUrl, ledger);
         // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-fetch-and-cache
         // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-shared-dep
         // Evict on rejection so a transient failure doesn't poison every
         // future load that shares this name@version. Identity check prevents
-        // clobbering a later retry promise under the same key.
-        textPromise.catch(() => {
-          if (this.sharedDepTextCache.get(cacheKey) === textPromise) {
-            this.sharedDepTextCache.delete(cacheKey);
+        // clobbering a later retry promise under the same key. `cache` (not
+        // `this.sharedDepTextCache`) is the cache this exact promise was
+        // published into, matching the ledger's own identity-checked
+        // release discipline.
+        const rejectedPromise = textPromise;
+        rejectedPromise.catch(() => {
+          if (cache.get(cacheKey) === rejectedPromise) {
+            cache.delete(cacheKey);
           }
         });
-        this.sharedDepTextCache.set(cacheKey, textPromise);
+        cache.set(cacheKey, textPromise);
       }
       // Record the shared-dep entry this attempt is waiting on — whether it
       // registered it just now or joined one a previous load left in the
       // cache — so a timeout releases it and the retry re-fetches.
-      ledger?.record(this.sharedDepTextCache, cacheKey, textPromise);
+      ledger?.record(cache, cacheKey, textPromise);
       // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-else-fetch
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-cache-hit
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-retrieve-cached
+      // Whether `textPromise` was just published above or was already
+      // resident under `cacheKey` — in this copy's own fallback, or in the
+      // cache the realm shares with every other compatible independently
+      // loaded copy — this `await` is the sole retrieval step either way.
       const text = await textPromise;
       // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-retrieve-cached
       // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-cache-hit
@@ -2120,13 +2159,11 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // {@link LazyLoaderRegistry}) to reach the host-side resolver. Returning
     // a `Promise<Module>` mirrors the original `import()` semantic so the
     // caller's transformed code (`__frontx_lazy('./X').then(m => m.X)`) keeps
-    // working unchanged.
-    const stubSource =
-      `const __id=${JSON.stringify(loaderId)};\n` +
-      `export const __frontx_lazy=async(p)=>{` +
-      `const u=await globalThis.__FRONTX_LAZY__.resolve(__id,p);` +
-      `return import(u);` +
-      `};\n`;
+    // working unchanged. Source-text construction lives in the audited trust
+    // kernel ({@link buildLazyLoaderStubSource} in `mf-dynamic-module-ops.ts`)
+    // rather than here, so it stays the sole site that writes dynamic-import
+    // text — see that function's doc comment for why.
+    const stubSource = buildLazyLoaderStubSource(loaderId);
 
     const blob = new Blob([stubSource], { type: 'text/javascript' });
     const url = URL.createObjectURL(blob);

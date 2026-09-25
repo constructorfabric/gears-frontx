@@ -12,6 +12,7 @@
 - [3. Processes / Business Logic (CDSL)](#3-processes--business-logic-cdsl)
   - [Blob URL Chain Construction](#blob-url-chain-construction)
   - [Shared-Dependency Blob URL Construction](#shared-dependency-blob-url-construction)
+  - [Realm Shared-Dependency Cache Rendezvous](#realm-shared-dependency-cache-rendezvous)
   - [Trust-Kernel Guarded Import](#trust-kernel-guarded-import)
 - [4. States (CDSL)](#4-states-cdsl)
   - [Isolated Module Lifecycle](#isolated-module-lifecycle)
@@ -19,6 +20,7 @@
 - [5. Definitions of Done](#5-definitions-of-done)
   - [Audited Trust Kernel — Blob Core](#audited-trust-kernel--blob-core)
   - [Instance-Keyed Load Cache](#instance-keyed-load-cache)
+  - [Realm-Shared Dependency Source-Text Cache](#realm-shared-dependency-source-text-cache)
   - [Manifest Reference Resolution](#manifest-reference-resolution)
 - [6. Acceptance Criteria](#6-acceptance-criteria)
 
@@ -52,7 +54,7 @@ A registered microfrontend must evaluate as its own module instance so distinct 
 
 - **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
-- **ADR**: `cpt-frontx-adr-mfe-load-isolation`, `cpt-frontx-adr-shared-dep-dedup-key`
+- **ADR**: `cpt-frontx-adr-mfe-load-isolation`, `cpt-frontx-adr-shared-dep-dedup-key`, `cpt-frontx-adr-shared-dep-cache-reach`
 - **Component**: `cpt-frontx-component-mfe-runtime` (shared with F4, F5, F6, F7)
 - **Dependencies**: `cpt-frontx-feature-mfe-registry` (F4), `cpt-frontx-feature-mfe-loading` (F5)
 
@@ -175,10 +177,10 @@ Internal system functions that implement the isolation mechanism.
    3. [x] - `p1` - **ELSE** - `inst-else-no-hash`
       1. [x] - `p1` - Compute the deduplication cache key as `name@version@<resolved absolute chunk URL>`, which confines reuse to loads of the same microfrontend because that URL is unique to it - `inst-compute-key-fallback`
       2. [x] - `p1` - Emit an adoption notice, deduplicated per package `name@version` and the manifest's own id, not per load — naming the dependency, the manifest it came from, and that cross-MFE reuse is disabled for that dependency; the deduplication ledger is bounded so it cannot grow without limit on a long-lived handler, so the same pair may be renotified after its entry is evicted; the load proceeds on the fallback key rather than failing - `inst-emit-adoption-notice`
-   4. [x] - `p1` - **IF** the cross-MFE shared-dep text cache already holds a promise for this key - `inst-if-cache-hit`
+   4. [x] - `p1` - **IF** the shared-dep text cache this copy resolved through the realm rendezvous (`cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous`) — the realm-shared cache every compatible independently loaded copy converges on, or this copy's own local fallback — already holds a promise for this key - `inst-if-cache-hit`
       1. [x] - `p1` - Retrieve the cached source text promise - `inst-retrieve-cached`
    5. [x] - `p1` - **ELSE** - `inst-else-fetch`
-      1. [x] - `p1` - Fetch the source text from the absolute chunk URL derived earlier and store the *in-flight fetch promise* in the cross-MFE cache under the key before awaiting it — which is what keeps the deduplication race-free however the concurrent fetches are interleaved; on rejection, evict the entry to permit retry - `inst-fetch-and-cache`
+      1. [x] - `p1` - Fetch the source text from the absolute chunk URL derived earlier and store the *in-flight fetch promise* in that same cache under the key before awaiting it — which is what keeps the deduplication race-free, across every compatible copy converged on the realm-shared cache, however the concurrent fetches are interleaved; on rejection, evict the entry — identity-checked against the exact promise this fetch published — to permit retry - `inst-fetch-and-cache`
 4. [x] - `p1` - Resolve the collected sources in dependency order — the sole source of dependency-order correctness for blob construction, derived from the fetched sources themselves and not from the manifest's enumeration order — processing each dependency only after all dependencies it imports have been resolved - `inst-resolve-order`
 5. [x] - `p1` - **IF** a pass over the pending shared dependencies resolves none of them, the remaining set imports one another circularly and no dependency order over it exists - `inst-if-shared-cycle`
    1. [x] - `p1` - **RETURN** error — fail the load with a diagnostic naming the shared dependencies that remain unresolved and the imports among them that form the cycle, rather than minting a module whose bare specifiers are left unrewritten and which therefore cannot be instantiated - `inst-raise-shared-cycle`
@@ -195,6 +197,27 @@ Internal system functions that implement the isolation mechanism.
 **Notes** (deferred, not decided here):
 
 * Whether the undeclared-specifier diagnostic should also scan expose-chain chunks is open; demoting that half to diagnostic-only removes any safety dimension from the question — a warn-only scan cannot fail an expose-chain load — leaving only scan cost and console noise to weigh.
+
+### Realm Shared-Dependency Cache Rendezvous
+
+- [x] `p1` - **ID**: `cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous`
+
+**Input**: The realm's global object, and the protocol version this evaluated copy of the package speaks
+
+**Output**: The bounded shared-dependency source-text cache this copy's loads consult — the one cache compatible copies in the realm converge on, or a cache local to this copy where the realm's entry cannot be understood
+
+**Steps**:
+1. [x] - `p1` - Read the realm-global slot `Symbol.for('@gears-frontx/mfes:shared-dep-text-cache:1')`, whose description carries the protocol version this copy speaks, and expect a value tagged with that same version and carrying the cache; the accessor is internal, so obtaining the cache adds no exported symbol and no consumer-visible operation (`cpt-frontx-constraint-mfes-realm-shared-dep-cache`) - `inst-rsdc-read-slot`
+2. [x] - `p1` - **IF** the slot holds nothing - `inst-rsdc-if-empty`
+   1. [x] - `p1` - Create the bounded cache and publish the version-tagged entry into the slot synchronously, before returning it, so two copies initializing in one realm cannot each end up holding a cache of their own - `inst-rsdc-publish`
+3. [x] - `p1` - **ELSE IF** the entry carries the protocol version this copy speaks - `inst-rsdc-if-version-known`
+   1. [x] - `p1` - Adopt the cache the entry carries, recognizing it by the operations the loading path needs of it rather than by class identity, which cannot be relied upon across independently evaluated copies - `inst-rsdc-adopt`
+   2. [x] - `p1` - Adopt a structurally conforming entry whichever same-realm code published it: the slot is trusted same-realm coordination state, not an authenticity or confidentiality boundary, so the version and structural checks guard against accidental incompatibility and neither establish publisher identity nor prevent a same-realm publisher from observing or substituting cached source text (`cpt-frontx-adr-shared-dep-cache-reach` records that acceptance); no cross-copy authentication is attempted, because independently loaded copies share no prior secret, no unforgeable common object identity and no class identity - `inst-rsdc-trusted-coordination`
+4. [x] - `p1` - **ELSE** the entry is malformed, or carries a protocol version this copy does not recognize - `inst-rsdc-else-version-unknown`
+   1. [x] - `p1` - Treat the slot as absent, emit a diagnostic naming the unrecognized entry, and neither read, mutate, replace nor delete it — a copy that cannot establish the entry's semantics must not act on them, and an incompatible future protocol occupies a slot of its own rather than contending for this one - `inst-rsdc-leave-unknown`
+   2. [x] - `p1` - Fall back to a bounded cache local to this evaluated copy, so reuse degrades to copy scope rather than failing the load - `inst-rsdc-fallback-local`
+5. [x] - `p1` - Hold the resulting cache per handler as a reference obtained here rather than as a field static to this copy, so the reference is instance-held while the cache it names is realm-shared and the scope stays legible where it is read - `inst-rsdc-hold-reference`
+6. [x] - `p1` - **RETURN** that cache, which every shared-dependency key this copy resolves is looked up in and published into for the realm's lifetime; it bounds the number of resident mappings rather than the bytes they retain, a resident fulfilled value stays strongly reachable, and no handler discard, registry disposal, extension unmount or extension unregistration clears or releases it - `inst-rsdc-return-cache`
 
 ### Trust-Kernel Guarded Import
 
@@ -264,6 +287,8 @@ The system **MUST** maintain a single audited trust-kernel file that is the sole
 
 The system **MUST** key the load cache by the extension instance ID (not the entry definition ID) so that two extensions sharing the same entry definition produce distinct blob URL chains and distinct module evaluations. The cache **MUST** retain load promises for the page lifetime and **MUST NOT** revoke blob URLs after the import resolves, because a module may continue evaluating after its import promise settles. Cache entries **MUST** be evicted only on load failure, to permit retry.
 
+The load cache **MUST** remain class-static within one evaluated copy of the package, so every handler that copy constructs recognizes a repeat load of the same extension instance, and it **MUST NOT** be reached through the realm shared-dependency cache protocol (`cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous`) or shared with any other evaluated copy by any other means: it holds lifecycle results and evaluated module graphs, which `cpt-frontx-adr-mfe-load-isolation` requires each copy's loads to construct for themselves, and its keys are extension identities that two copies may assign independently. The asymmetry with `cpt-frontx-dod-mfe-isolation-realm-shared-dep-text-cache` is deliberate: source text is inert and reusable across copies, an evaluated graph is neither.
+
 **Implements**:
 - `cpt-frontx-flow-mfe-isolation-load`
 - `cpt-frontx-algo-mfe-isolation-blob-url-chain`
@@ -271,6 +296,30 @@ The system **MUST** key the load cache by the extension instance ID (not the ent
 **Constraints**: none owned (F8 owns no DESIGN constraint per DECOMPOSITION 2.7)
 
 **Addresses (NFR)**: `cpt-frontx-nfr-security`
+
+**Touches**:
+- Entities: `MfeEntry`
+
+### Realm-Shared Dependency Source-Text Cache
+
+- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-realm-shared-dep-text-cache`
+
+The system **MUST** hold shared-dependency source text in one bounded cache per JavaScript realm, of exactly 128 least-recently-used mappings for the whole realm rather than per handler, which every compatible independently loaded copy of the package in that realm converges on through the version-namespaced rendezvous `cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous` specifies. The capacity **MUST NOT** multiply by handler count or by compatible package-copy count, and the 129th distinct insertion **MUST** evict the least-recently-used mapping. The bound is on mappings, not on retained bytes: cache-attributable payload is at most the source text the 128 resident entries retain plus promise and least-recently-used bookkeeping, a single source response is not size-limited here, and no absolute byte ceiling is claimed or to be claimed on this cache's behalf. 128 is a fixed policy constant, not a demonstrated optimum for every production composition; sustained eviction churn is the trigger for revisiting it. Convergence **MUST** add no public surface: no exported symbol, no capability method on any type in the DESIGN's API Contracts table, and no constructor argument, so the cache is reached only through an internal accessor (`cpt-frontx-constraint-mfes-realm-shared-dep-cache`). The cache **MUST** retain both in-flight and fulfilled source-text promises, holding a resident fulfilled value strongly for the realm's lifetime so that a later compatible handler in that realm still receives the hit, and **MUST** share source text only: every load **MUST** still construct its own isolated module graph over the text it retrieves.
+
+Its lifetime **MUST** be the realm's. The system **MUST NOT** count retainers on it, and **MUST NOT** clear or release it when a handler is discarded, a registry is disposed, an extension is unmounted, or an extension is unregistered; no expiry window applies. Eviction **MUST** be capacity-driven or identity-checked only, so a caller already holding an evicted promise proceeds unaffected and a rejection can never remove a promise a later load published under the same key.
+
+On meeting a realm entry that is malformed or carries a protocol version it does not recognize, a copy **MUST** treat the entry as absent, emit a diagnostic, leave the entry unread, unmutated, unreplaced and undeleted, and serve that copy's loads from a bounded cache local to itself; an incompatible future protocol **MUST** occupy a rendezvous slot of its own rather than this one.
+
+A structurally conforming protocol entry **MUST** be adopted whichever same-realm code published it. The rendezvous is trusted same-realm coordination state, not an authenticity or confidentiality boundary: the version and structural checks guard against accidental incompatibility and **MUST NOT** be presented as publisher authentication or as preventing a same-realm publisher from observing or substituting cached source text, which `cpt-frontx-adr-shared-dep-cache-reach` records as an accepted consequence.
+
+**Implements**:
+- `cpt-frontx-flow-mfe-isolation-load`
+- `cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls`
+- `cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous`
+
+**Constraints**: `cpt-frontx-constraint-mfes-realm-shared-dep-cache`
+
+**Addresses (NFR)**: `cpt-frontx-nfr-runtime-performance`, `cpt-frontx-nfr-security`
 
 **Touches**:
 - Entities: `MfeEntry`
@@ -297,6 +346,7 @@ The system **MUST** accept an entry's manifest either as the document itself or 
 - [x] All blob URLs in the instance-keyed load cache are retained for the page lifetime and are never revoked after the import resolves
 - [x] Shared-dependency source text is deduplicated across MFE loads using a cross-MFE LRU cache keyed by a producer-published content hash of the emitted chunk when the manifest declares one for that entry, and by the resolved absolute chunk URL — scoping reuse to loads of the same microfrontend — when it does not; cache entries for failed fetches are evicted to permit retry
 - [x] On load failure, the cache entry for the failed extension instance is evicted so a subsequent call can attempt a fresh load
+- [x] Compatible independently loaded copies of the package in one realm converge on a single 128-entry shared-dependency source-text cache through a version-namespaced rendezvous of its own, so a dependency whose key agrees across copies is fetched once for the realm; an unrecognized rendezvous entry is left untouched and the copy serves its loads from a bounded local cache; the cache survives handler discard and registry disposal; and every load still evaluates its own isolated module graph over the text it reuses
 - [ ] No load ever emits, for any module and for any reason, a specifier that is not an inline-content URL minted by that load. There is no exception for dependency cycles.
 - [ ] A chunk whose static-dependency graph closes a cycle — including one that closes across two branches that fanned out independently — fails the load without a circular wait, with a diagnostic naming the chunk, the lineage that closes the cycle, and the microfrontend.
 - [ ] Shared dependencies that import one another circularly fail the load with a diagnostic naming them, rather than producing a module whose bare specifiers are left unrewritten.

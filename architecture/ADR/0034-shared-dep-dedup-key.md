@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-09-10
 ---
 
@@ -64,7 +64,7 @@ This decision fixes the identity the cache key must express and the fail-safe po
 
 ### Confirmation
 
-Compliance is confirmed by contract and by runtime behaviour. A schema-conformance check on the published manifest confirms that a per-shared-dependency content hash, where present, is declared as an optional field rather than a required one, so a producing build that omits it remains a conforming manifest. A runtime test confirms that two loads whose manifests declare a matching hash for the same shared-dependency entry share cached source text, that two loads whose manifests declare differing hashes for the same name and version do not, and that a load whose manifest omits the hash reuses cached text only against a prior load resolving the identical absolute chunk URL. A further test confirms that an unrewritten reference is never masked: when the surviving specifier is one the manifest declared, even a coincidental cross-microfrontend match on a resolved URL still surfaces as a diagnosed load failure naming the chunk and the microfrontend, and otherwise it surfaces as a diagnostic naming the chunk and the microfrontend alongside the browser's own instantiation failure.
+Compliance is confirmed by contract and by runtime behaviour. A schema-conformance check on the published manifest confirms that a per-shared-dependency content hash, where present, is declared as an optional field rather than a required one, so a producing build that omits it remains a conforming manifest. A runtime test confirms that two loads whose manifests declare a matching hash for the same shared-dependency entry share cached source text, that two loads whose manifests declare differing hashes for the same name and version do not, and that a load whose manifest omits the hash reuses cached text only against a prior load resolving the identical absolute chunk URL. A further test confirms that an unrewritten reference is never masked: when the surviving specifier is one the manifest declared, even a coincidental cross-microfrontend match on a resolved URL still surfaces as a diagnosed load failure naming the chunk and the microfrontend, and otherwise it surfaces as a diagnostic naming the chunk and the microfrontend alongside the browser's own instantiation failure. The grounding mechanisms in the present concrete instantiation are the published manifest's JSON Schema (`packages/gts-plugin/src/frontx.mfes/schemas/mfe/mf_manifest.v1.json`), whose shared-dependency item declares `contentHash` while omitting it from that item's `required` list, the matching optional `contentHash` field on the shared-dependency entry of the manifest type `MfManifest` (`packages/mfes/src/manifest/mf-manifest.ts`), and the two-tier deduplication key in `MfeHandlerMF` (`packages/mfes/src/handler/mfe-handler-mf/MfeHandlerMF.ts`), which keys reuse on `name@version@contentHash` when the entry declares a hash and falls back to `name@version@<resolved chunk URL>` when it does not.
 
 ## Pros and Cons of the Options
 

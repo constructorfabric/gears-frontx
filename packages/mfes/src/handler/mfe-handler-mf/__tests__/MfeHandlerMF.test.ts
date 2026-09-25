@@ -23,7 +23,7 @@
  * recover the real origin at runtime, so an unresolved "auto" must fail
  * loudly rather than silently building a bogus same-origin relative URL).
  */
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * Opt-in stub for `importBlobModule`.
@@ -51,9 +51,30 @@ vi.mock('../mf-dynamic-module-ops', async (importOriginal) => {
 });
 
 import { MfeHandlerMF, LruCache } from '../MfeHandlerMF';
-import { MfeLoadError } from '../../errors';
-import type { MfeEntryMF } from '../../types/mfe-entry-mf';
-import type { MfManifest, MfManifestShared } from '../../manifest/mf-manifest';
+import { MfeLoadError } from '../../../errors';
+import type { MfeEntryMF } from '../../../types/mfe-entry-mf';
+import type { MfManifest, MfManifestShared } from '../../../manifest/mf-manifest';
+
+// The shared-dependency source-text cache is REALM-shared
+// (`getRealmSharedDepTextCache`, `realm-shared-dep-text-cache.ts`) — every
+// `new MfeHandlerMF(...)` in this file, no matter the test, resolves to
+// the SAME cache slot on `globalThis`, rather than each getting its own
+// fresh `LruCache`. Without this reset, an earlier test's cached shared-dep
+// source text (or fetch call) would leak into a later test that declares
+// the identical name@version(@contentHash) key with different fixture
+// text, defeating this suite's per-test isolation. Deleting the known
+// rendezvous symbol in `beforeEach` AND `afterEach` guarantees no realm
+// state survives from a previous test or leaks into the next one, matching
+// this cache's own page-lifetime design: within one page load it is never
+// cleared, but this suite is not one page load.
+const SHARED_DEP_TEXT_CACHE_SYMBOL = Symbol.for(
+  '@gears-frontx/mfes:shared-dep-text-cache:1'
+);
+function resetRealmSharedDepTextCache(): void {
+  delete (globalThis as Record<symbol, unknown>)[SHARED_DEP_TEXT_CACHE_SYMBOL];
+}
+beforeEach(resetRealmSharedDepTextCache);
+afterEach(resetRealmSharedDepTextCache);
 
 // Fixture type IDs use a mock notation rather than the real GTS strings: the
 // handler treats them as opaque cache keys and error context, and MFES-1

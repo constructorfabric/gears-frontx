@@ -7,8 +7,8 @@
  * @packageDocumentation
  */
 
-import { MfeBridgeFactory } from './types';
-import { ChildMfeBridgeImpl } from '../bridge/ChildMfeBridge';
+import { MfeBridgeFactory } from '../handler/types';
+import { ChildMfeBridgeImpl } from './ChildMfeBridge';
 
 /**
  * Default bridge factory - creates ChildMfeBridgeImpl instances.

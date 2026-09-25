@@ -16,6 +16,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { DefaultMfeRegistry } from '../../src/runtime/DefaultMfeRegistry';
 import type { ActionsChainsMediator } from '../../src/mediator/types';
+import type { DefaultActionsChainsMediator } from '../../src/mediator/actions-chains-mediator';
 import type { TypeSystemPlugin } from '../../src/type-substrate';
 import type { ActionsChain, Extension, ExtensionDomain, MfeEntry } from '../../src/types';
 import {
@@ -23,7 +24,7 @@ import {
   ChildMfeBridge,
   type MfeEntryLifecycle,
 } from '../../src/handler/types';
-import { MfeBridgeFactoryDefault } from '../../src/handler/mfe-bridge-factory-default';
+import { MfeBridgeFactoryDefault } from '../../src/bridge/mfe-bridge-factory-default';
 import { ExtensionDomainImplementation } from '../../src/runtime/ExtensionDomainImplementation';
 import { ExtensionDomainImplementationFactory } from '../../src/runtime/ExtensionDomainImplementationFactory';
 import type { DomainContext } from '../../src/runtime/DomainContext';
@@ -150,6 +151,21 @@ function actionChain(type: string, target: string, extra: Partial<ActionsChain> 
   return { action: { type, target, payload: {} }, ...extra };
 }
 
+/**
+ * Awaits full settlement of a chain via the registry's internal,
+ * completion-bearing `executeAndAwaitChain` — the public `executeActionsChain`
+ * is acceptance-only and yields nothing an emitter can await for the chain's
+ * own execution, per `cpt-frontx-adr-mfe-runtime-public-surface`.
+ * Tests below that need to observe a chain's settlement deterministically
+ * call this internal operation directly, the same sanctioned pattern already
+ * used elsewhere in this file for the concrete mediator's own
+ * `runAcceptedChain`.
+ */
+function awaitChain(registry: DefaultMfeRegistry, chain: ActionsChain): Promise<void> {
+  return (registry as unknown as { executeAndAwaitChain(chain: ActionsChain): Promise<void> })
+    .executeAndAwaitChain(chain);
+}
+
 /** An `MfeHandler` whose `mount()`/`unmount()` bodies are fully controlled by the test. */
 class ControlledHandler extends MfeHandler {
   readonly bridgeFactory = new MfeBridgeFactoryDefault();
@@ -250,17 +266,21 @@ describe('Bridge lifetime: one pair per extension, reactivated (not recreated) a
     await mounter.mount(EXT, document.createElement('div'));
     await mounter.unmount(EXT);
 
-    // Unmount alone does not destroy — inactive, not disposed.
-    await expect(capturedBridge!.executeActionsChain(actionChain(ACTION_PING, EXT))).rejects.toMatchObject({
-      code: 'BRIDGE_INACTIVE',
-    });
+    // Unmount alone does not destroy — inactive, not disposed. The bridge's
+    // own capability is unusable AT THE CALL, so per
+    // `cpt-frontx-adr-child-mfe-host-access` it throws
+    // SYNCHRONOUSLY, never as a rejected promise a child would have to
+    // reject-handle.
+    expect(() => capturedBridge!.executeActionsChain(actionChain(ACTION_PING, EXT))).toThrow(
+      expect.objectContaining({ code: 'BRIDGE_INACTIVE' })
+    );
 
     await registry.unregisterExtension(EXT);
 
-    // Permanent unregistration destroys the bridge.
-    await expect(capturedBridge!.executeActionsChain(actionChain(ACTION_PING, EXT))).rejects.toMatchObject({
-      code: 'BRIDGE_DISPOSED',
-    });
+    // Permanent unregistration destroys the bridge — same synchronous-throw shape.
+    expect(() => capturedBridge!.executeActionsChain(actionChain(ACTION_PING, EXT))).toThrow(
+      expect.objectContaining({ code: 'BRIDGE_DISPOSED' })
+    );
   });
 
   it('(4) regression lock: unmount never calls unregisterAllHandlers; unregisterExtension calls it exactly once', async () => {
@@ -299,9 +319,14 @@ describe('Bridge lifetime: one pair per extension, reactivated (not recreated) a
     await mounter.mount(EXT, document.createElement('div'));
     await mounter.unmount(EXT);
 
+    // Uses the concrete mediator's internal, completion-bearing
+    // `runAcceptedChain` directly (not the acceptance-only public
+    // `executeActionsChain`, which yields nothing to await for the chain's
+    // own execution per `cpt-frontx-adr-action-dispatch-and-chaining`) so
+    // this test can still observe the settlement it pins.
     const result = await (registry as unknown as {
-      mediator: ActionsChainsMediator;
-    }).mediator.executeActionsChain(
+      mediator: DefaultActionsChainsMediator;
+    }).mediator.runAcceptedChain(
       actionChain(ACTION_PING, EXT, { fallback: actionChain(ACTION_ROOT, D0) })
     );
 
@@ -325,12 +350,11 @@ describe('Bridge lifetime: one pair per extension, reactivated (not recreated) a
     await mounter.unmount(EXT);
 
     const result = await (registry as unknown as {
-      mediator: ActionsChainsMediator;
-    }).mediator.executeActionsChain(actionChain(ACTION_PING, EXT));
+      mediator: DefaultActionsChainsMediator;
+    }).mediator.runAcceptedChain(actionChain(ACTION_PING, EXT));
 
     expect(pingCounter.count).toBe(0);
     expect(result.completed).toBe(false);
-    expect(result.timedOut).toBeFalsy();
   });
 
   it('(7) a forwarding entry into an unmounted host\'s nested subtree is rejected as inactive, so the fallback fires', async () => {
@@ -381,7 +405,7 @@ describe('Bridge lifetime: one pair per extension, reactivated (not recreated) a
       action: { type: ACTION_NESTED_LEAF, target: D_NESTED, payload: {} },
       fallback: actionChain(ACTION_ROOT, D0),
     };
-    await registry0.executeActionsChain(chain);
+    await awaitChain(registry0, chain);
 
     expect(leafCounter.count).toBe(0);
     expect(rootCounter.count).toBe(1);
@@ -404,7 +428,7 @@ describe('Bridge lifetime: one pair per extension, reactivated (not recreated) a
     await mounter.unmount(EXT);
     await mounter.mount(EXT, document.createElement('div'));
 
-    await registry.executeActionsChain(
+    await awaitChain(registry,
       actionChain(ACTION_PING, EXT, { fallback: actionChain(ACTION_ROOT, D0) })
     );
 
@@ -430,7 +454,7 @@ describe('Bridge lifetime: one pair per extension, reactivated (not recreated) a
     await mounter.unmount(EXT);
     await mounter.mount(EXT, document.createElement('div'));
 
-    await registry.executeActionsChain(actionChain(ACTION_PING, EXT));
+    await awaitChain(registry, actionChain(ACTION_PING, EXT));
 
     expect(pingCounter.count).toBe(1);
   });

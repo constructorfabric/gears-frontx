@@ -107,10 +107,18 @@ export class DefaultExtensionManager extends ExtensionManager {
       await this.unregisterExtension(extensionId);
     }
 
-    await this.triggerDomainOwnLifecycle(
+    // @cpt-begin:cpt-frontx-algo-mfe-registry-lifecycle-stage-triggering:p1:inst-algo-lst-sites
+    // Non-blocking: the domain's own `destroyed` stage is triggered
+    // alongside this unregistration transition — a notification that the
+    // transition is happening, not a phase it waits on. Deferred target
+    // retirement (`ActionsChainsMediator.unregisterAllHandlers`, called
+    // just below via `DefaultMfeRegistry.unregisterDomain`) is what lets a
+    // `destroyed` hook targeting this very domain still reach its handler.
+    this.triggerDomainOwnLifecycle(
       domainId,
       this.typeSystem.resolveLifecycleStageDestroyedId()
     );
+    // @cpt-end:cpt-frontx-algo-mfe-registry-lifecycle-stage-triggering:p1:inst-algo-lst-sites
 
     this.domains.delete(domainId);
   }
@@ -192,10 +200,14 @@ export class DefaultExtensionManager extends ExtensionManager {
     this.extensions.set(extension.id, extensionState);
     domainState.extensions.add(extension.id);
 
-    await this.triggerLifecycle(
+    // @cpt-begin:cpt-frontx-algo-mfe-registry-lifecycle-stage-triggering:p1:inst-algo-lst-sites
+    // Non-blocking: the `init` stage is triggered alongside admission — a
+    // notification that admission happened, not a phase admission waits on.
+    this.triggerLifecycle(
       extension.id,
       this.typeSystem.resolveLifecycleStageInitId()
     );
+    // @cpt-end:cpt-frontx-algo-mfe-registry-lifecycle-stage-triggering:p1:inst-algo-lst-sites
     // @cpt-end:cpt-frontx-state-extension-domain-governance-admission:p1:inst-adm-t3
     // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-admission-fail
     // (implicit: error thrown above transitions to admission-fail; normal path returns)
@@ -213,10 +225,19 @@ export class DefaultExtensionManager extends ExtensionManager {
       await this.unmountExtension(extensionId);
     }
 
-    await this.triggerLifecycle(
+    // @cpt-begin:cpt-frontx-algo-mfe-registry-lifecycle-stage-triggering:p1:inst-algo-lst-sites
+    // Non-blocking: the extension's own `destroyed` stage is triggered
+    // alongside this unregistration transition. Deferred target retirement
+    // (`ActionsChainsMediator.unregisterAllHandlers`, called just below via
+    // `releaseExtensionBridge` -> `MountManager.releaseExtension`) is what
+    // lets a `destroyed` hook targeting this very extension still reach its
+    // handler even though `unregisterExtensionActionHandler` runs right
+    // after this call returns.
+    this.triggerLifecycle(
       extensionId,
       this.typeSystem.resolveLifecycleStageDestroyedId()
     );
+    // @cpt-end:cpt-frontx-algo-mfe-registry-lifecycle-stage-triggering:p1:inst-algo-lst-sites
 
     this.releaseExtensionBridge(extensionId);
 

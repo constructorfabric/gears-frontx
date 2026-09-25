@@ -191,10 +191,12 @@ Internal system functions and procedures that do not interact with actors direct
 **Transitions**:
 1. [x] - `p1` - **FROM** SUBMITTED **TO** CONTRACT_MATCHED **WHEN** all three subset-rule containment checks pass (no missing properties, no unsupported actions, no unhandled domain actions) - `inst-adm-t1`
 2. [x] - `p1` - **FROM** SUBMITTED **TO** REJECTED **WHEN** any subset-rule containment check fails (contract matching returns at least one error) - `inst-adm-t2`
-3. [x] - `p1` - **FROM** CONTRACT_MATCHED **TO** ADMITTED **WHEN** the extension's state is stored and its init lifecycle fires — the mount strategy executes occupancy and holds no accept/veto authority of its own - `inst-adm-t3`
+3. [x] - `p1` - **FROM** CONTRACT_MATCHED **TO** ADMITTED **WHEN** the extension's state is stored and its `init` lifecycle stage is triggered alongside that storage — the trigger accompanies the transition and the transition does not wait for the triggered chain to complete; the mount strategy executes occupancy and holds no accept/veto authority of its own - `inst-adm-t3`
 4. [x] - `p1` - **FROM** CONTRACT_MATCHED **TO** REJECTED **WHEN** the internal admission guard finds no registered handler covering the entry's type (defensive path; admission normally proceeds after contract match) - `inst-adm-t4`
-5. [x] - `p1` - **FROM** ADMITTED **TO** MOUNTED **WHEN** the domain's strategy mount execution completes without error - `inst-adm-t5`
+5. [x] - `p1` - **FROM** ADMITTED **TO** MOUNTED **WHEN** the domain's strategy mount execution completes without error; the `activated` lifecycle stage is triggered alongside that completion and the transition does not wait for the triggered chain to complete - `inst-adm-t5`
 6. [x] - `p1` - **FROM** ADMITTED **TO** REJECTED **WHEN** the strategy mount execution fails (error from mounter or container hooks) - `inst-adm-t6`
+7. [x] - `p1` - A stage's chains being still in flight at the moment its accompanying transition completes is expected, not a race: each accepted chain is origin-invariant (`cpt-frontx-constraint-mfes-origin-invariant-chain-execution`), so its actions resolve on their merits; a delivery refused across a hop is the current action's failure and is answered by the delivering runtime dispatching that action's declared `fallback`, whereas a dispatch refused synchronously at the call accepts no execution — a transition owes a stage's chain no window and no ordering guarantee relative to itself - `inst-adm-t7`
+8. [x] - `p1` - Failure of a stage's chain never moves this state machine; only the strategy's own mount execution outcome decides ADMITTED → MOUNTED versus ADMITTED → REJECTED - `inst-adm-t8`
 
 ### Extension Domain Cardinality Lifecycle
 

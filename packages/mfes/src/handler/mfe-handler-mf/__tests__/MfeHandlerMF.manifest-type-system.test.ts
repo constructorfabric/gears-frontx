@@ -18,10 +18,10 @@
 // @cpt-dod:cpt-frontx-dod-mfe-isolation-manifest-reference-resolution:p1
 import { describe, expect, it, vi } from 'vitest';
 import { MfeHandlerMF } from '../MfeHandlerMF';
-import { MfeLoadError } from '../../errors';
-import type { MfeEntryMF } from '../../types/mfe-entry-mf';
-import type { MfManifest } from '../../manifest/mf-manifest';
-import type { TypeSystemPlugin } from '../../type-substrate';
+import { MfeLoadError } from '../../../errors';
+import type { MfeEntryMF } from '../../../types/mfe-entry-mf';
+import type { MfManifest } from '../../../manifest/mf-manifest';
+import type { TypeSystemPlugin } from '../../../type-substrate';
 
 const MANIFEST_ID = 'mock.mfe.mf_manifest.v1~test.manifest.v1';
 const ENTRY_BASE_ID = 'mock.mfe.entry.v1~';

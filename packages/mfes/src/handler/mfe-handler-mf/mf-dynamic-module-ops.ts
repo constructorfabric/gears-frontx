@@ -9,14 +9,80 @@
  *
  * **TRUST BOUNDARY — READ BEFORE EDITING:**
  *
- * This file is the ONLY place where blob-URL `import()` and RegExp
- * construction from interpolated strings are allowed in production source.
- * A custom ESLint rule (`local/trusted-patterns-file`) enforces:
+ * This file is where production code generates blob-URL `import()` calls and
+ * RegExp construction from interpolated strings (cpt-frontx-adr-mfe-load-
+ * isolation) — the sole site for that generation, not necessarily the only
+ * place the literal substring `import(` ever appears (a generated stub's
+ * *source text* can legitimately contain it; see `buildLazyLoaderStubSource`).
+ * Two mechanisms machine-enforce that:
  *
- *   1. Every exported function must have a JSDoc block with `@safety-reviewed`
- *      and `@why` tags explaining why the pattern is safe.
- *   2. No module-level state — only pure function declarations at the top level.
- *   3. No dangerous imports: `fs`, `child_process`, `process.env`, etc.
+ *   1. An ESLint `no-restricted-syntax` rule (`eslint.config.js`) confines
+ *      `ImportExpression` and the identifier `RegExp` (or its string
+ *      spellings, in code or JSX tag position) to this file, across
+ *      `packages/mfes/src/**` (that whole tree is explicitly kept in
+ *      ESLint's file discovery by a negation in `eslint.config.js`'s
+ *      global `ignores` array, so a source file merely NAMED like a config
+ *      file — e.g. `regexp.config.ts` — still reaches this rule instead of
+ *      being silently skipped while still compiled and shippable):
+ *      `Identifier[name='RegExp']` matches a bare reference, a property
+ *      name in any member expression (`globalThis.RegExp`, `RegExp.call`),
+ *      an argument (`Reflect.construct(RegExp, [...])`), and an alias's
+ *      initializer (`const R = RegExp`) alike — every one of these is, at
+ *      the AST level, simply an Identifier node named `RegExp`.
+ *      `JSXIdentifier[name='RegExp']` matches the same name in JSX tag
+ *      position (`<RegExp />`), a distinct node type the parser gives JSX
+ *      element names. `Literal[value='RegExp']` and the matching
+ *      `TemplateElement` selectors catch the computed-string spellings
+ *      (`globalThis['RegExp']`, `` globalThis[`RegExp`] ``). Matching the
+ *      identifier and its string spelling directly, rather than
+ *      enumerating construction forms (`new RegExp(...)`, `.call`/`.apply`,
+ *      member spellings one by one), is what makes this complete: a
+ *      form-by-form list is sound only as long as it stays exhaustive
+ *      against every way to write the construction, while every way to
+ *      invoke or reference the global `RegExp` reduces, at the AST level,
+ *      to one of these node shapes, so matching them directly needs no
+ *      enumeration and no custom text processing to stay complete. This
+ *      match is deliberately over-broad: it also rejects a legitimate
+ *      local name, import binding, or property named `RegExp` unrelated to
+ *      the global constructor, and a type-only reference (`function
+ *      f(p: RegExp)`) — the accepted cost of a lexical quarantine on this
+ *      one name.
+ *   2. `scripts/check-trust-kernel-annotations.mjs` (run via
+ *      `npm run arch:check`) classifies every exported declaration here into
+ *      function-valued (verify `@safety-reviewed`/`@why` as real, own-line
+ *      JSDoc tags via `ts.getJSDocTags` — not a text search fooled by a tag
+ *      name merely mentioned in prose), provably-not-function-valued (a
+ *      type/interface/enum, or a `const` with a literal initializer —
+ *      skipped), or unsupported (anything else, including a
+ *      call-expression initializer, a re-export this file has no local
+ *      declaration for, an `export =` assignment, an `export as namespace`
+ *      declaration, or an exported `let`/`var` binding whose initializer
+ *      proves nothing once reassignment is possible). The third outcome
+ *      FAILS the check, as does a file that does not parse cleanly;
+ *      nothing is silently skipped.
+ *
+ * Neither the RegExp/import confinement nor the annotation checker is
+ * airtight, and neither pretends to be:
+ *
+ *   - The ESLint rule cannot see semantic indirection that never writes
+ *     the word `RegExp` — as an identifier, a JSX tag name, or a matching
+ *     string — anywhere in the source at all:
+ *     `globalThis[/RegExp/.source]('x')` (the computed property name comes
+ *     from a regex literal's `.source` at runtime; the `Literal` node
+ *     holding `/RegExp/` has a RegExp object as its value, not the string
+ *     `"RegExp"`, so no selector above matches it), `String.fromCharCode(...)`
+ *     constructing the word at runtime, or the word split across
+ *     concatenated string parts. This is inherent to any static check, not
+ *     a gap specific to this rule, and it is a code-review concern.
+ *   - The annotation checker verifies a tag's SHAPE (real, own-line,
+ *     non-empty) — it cannot verify that what a `@why` says is actually
+ *     true. That remains what security review is for.
+ *
+ * Two further invariants are held by convention and code review only — no
+ * automated check reaches them at all:
+ *
+ *   3. No module-level state — only pure function declarations at the top level.
+ *   4. No dangerous imports: `fs`, `child_process`, `process.env`, etc.
  *
  * **Scope creep control:** adding a function here should require a security
  * review. If you find yourself tempted to "just add one more helper," STOP.
@@ -167,6 +233,28 @@ export function findSurvivingDeclaredSharedDepSpecifier(
 // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-assert-shared-dep-no-bare-specifier
 
 /**
+ * The URL schemes the trust kernel treats as inline content — never
+ * network-addressed, so importing one carries no cross-origin/user-input
+ * risk. `importBlobModule`'s own runtime guard and the scheme guard
+ * `buildLazyLoaderStubSource` generates into the lazy-loader stub both read
+ * THIS list rather than each hardcoding `'blob:'`/`'data:'` independently,
+ * so the two guards cannot drift apart the way two hand-copied literals
+ * could: adding, removing, or renaming a scheme here changes both checks at
+ * once instead of requiring a second edit someone could forget.
+ *
+ * @safety-reviewed 2026-09-22
+ * @why Returns a fresh array of two hardcoded string literals on every
+ *      call — no interpolation, no external input, nothing that could vary
+ *      at runtime or be influenced by a caller. This function performs no
+ *      dynamic-code admission itself; it exists only so the two real
+ *      guards share one source of truth instead of duplicating this list
+ *      by hand.
+ */
+export function inlineContentSchemes(): readonly string[] {
+  return ['blob:', 'data:'];
+}
+
+/**
  * Dynamically import a blob URL and return the evaluated ES module record.
  * This is the core mechanism of per-MFE module isolation: each MFE load
  * produces a fresh blob URL whose content is evaluated as an isolated ES
@@ -180,9 +268,12 @@ export function findSurvivingDeclaredSharedDepSpecifier(
  *      `blob:` URL directly. Both schemes carry inline content with no
  *      network access, so the safety property is identical: no path,
  *      network URL, or user input can reach this function. The runtime
- *      guard below makes that invariant executable so accidental call
- *      sites that pass a path or `http:`/`file:` URL fail fast rather than
- *      silently loading untrusted code.
+ *      guard below (reading {@link inlineContentSchemes}, the single shared
+ *      list this file's generated lazy-loader stub also reads — see
+ *      `buildLazyLoaderStubSource` — so the two guards cannot drift apart)
+ *      makes that invariant executable so accidental call sites that pass a
+ *      path or `http:`/`file:` URL fail fast rather than silently loading
+ *      untrusted code.
  *
  *      **BUNDLER PRAGMAS — the two inline comments in the `import()` below
  *      are load-bearing. Do not remove or reorder them.**
@@ -202,10 +293,10 @@ export function findSurvivingDeclaredSharedDepSpecifier(
 export async function importBlobModule(blobUrl: string): Promise<unknown> {
   // @cpt-begin:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-inspect-scheme
   // @cpt-begin:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-if-invalid-scheme
-  if (!(blobUrl.startsWith('blob:') || blobUrl.startsWith('data:'))) {
+  if (!inlineContentSchemes().some((scheme) => blobUrl.startsWith(scheme))) {
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-reject-scheme
     throw new TypeError(
-      `importBlobModule accepts only blob: or data: URLs, received: ${blobUrl}`,
+      `importBlobModule accepts only ${inlineContentSchemes().join(' or ')} URLs, received: ${blobUrl}`,
     );
     // @cpt-end:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-reject-scheme
   }
@@ -216,4 +307,64 @@ export async function importBlobModule(blobUrl: string): Promise<unknown> {
   return await import(/* webpackIgnore: true */ /* @vite-ignore */ blobUrl);
   // @cpt-end:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-return-module
   // @cpt-end:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-exec-import
+}
+
+/**
+ * Build the source text for a per-load `__frontx_lazy` loader stub module.
+ * The stub is a tiny ESM module, blob-URL'd by the caller, that re-exports a
+ * `__frontx_lazy` function closed over `loaderId`; vendor chunks transformed
+ * by the ADR-0022 build plugin import this binding to resolve lazy chunks
+ * through the host-side {@link LazyLoaderRegistry} without threading the
+ * resolver id through every call site.
+ *
+ * This text contains the substring `import(u)`, but only as characters
+ * inside a string this function returns — it is never parsed as source by
+ * this file, so it is not itself a dynamic-`import()` call site here. It
+ * becomes one only once the caller blob-URLs it and passes that URL to
+ * {@link importBlobModule}, which is the trust kernel's sole real import()
+ * call site — keeping stub-source generation here (rather than at the call
+ * site in `MfeHandlerMF`) is what keeps that "sole site" claim true: the
+ * only place in this codebase that ever writes the literal text `import(`
+ * into dynamically-evaluated source is this file.
+ *
+ * @safety-reviewed 2026-09-22
+ * @why `loaderId` is embedded only after `JSON.stringify`, which escapes
+ *      every character that could break out of the string-literal position
+ *      it is interpolated into — the same escaping argument
+ *      `bareSpecifierPattern` makes for RegExp construction, applied here to
+ *      string-literal construction instead. `loaderId` itself is minted by
+ *      `LazyLoaderRegistry.register` (an in-process counter-backed id), not
+ *      user input. The `u` the stub resolves at runtime is never embedded in
+ *      this text — it is fetched at call time from
+ *      `globalThis.__FRONTX_LAZY__.resolve`. The generated stub does not
+ *      merely trust that resolver to return inline content: the guard
+ *      condition below is GENERATED from {@link inlineContentSchemes} (the
+ *      same list `importBlobModule` reads its own guard from), one
+ *      `u.startsWith(...)` clause per scheme, rather than hand-writing
+ *      `'blob:'`/`'data:'` a second time — so the two guards cannot drift
+ *      apart the way two independently maintained literals could; a change
+ *      to the shared list changes both checks in the same edit. A resolver
+ *      defect that ever returned a non-inline-content URL (e.g. an
+ *      `http:`/`file:` path) fails this generated check with a `TypeError`
+ *      instead of the stub silently importing it.
+ * @inputs `loaderId` is an id minted by `LazyLoaderRegistry.register` — an
+ *         in-process identifier, not user input. The generated stub's `u` is
+ *         runtime-guarded against the same scheme list `importBlobModule`
+ *         guards `blobUrl` against.
+ */
+// @cpt-algo:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1
+export function buildLazyLoaderStubSource(loaderId: string): string {
+  // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-build-stub-source
+  const schemeCheck = inlineContentSchemes()
+    .map((scheme) => `u.startsWith(${JSON.stringify(scheme)})`)
+    .join('||');
+  return (
+    `const __id=${JSON.stringify(loaderId)};\n` +
+    `export const __frontx_lazy=async(p)=>{` +
+    `const u=await globalThis.__FRONTX_LAZY__.resolve(__id,p);` +
+    `if(!(${schemeCheck}))throw new TypeError('__frontx_lazy resolved a non-inline-content URL: '+u);` +
+    `return import(u);` +
+    `};\n`
+  );
+  // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-build-stub-source
 }

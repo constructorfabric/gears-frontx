@@ -1,10 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 // @internal — colocated test, direct relative import is permitted.
 import { DefaultMfeRegistry } from '../DefaultMfeRegistry';
 import { MfeRegistry } from '../../registry/MfeRegistry';
-import type { MfeRegistryConfig } from '../config';
+import type { MfeRegistryConfig, MfeDiagnosticSink, ChainNodeFailureDiagnostic } from '../config';
 import type { TypeSystemPlugin } from '../../type-substrate';
-import type { ExtensionDomain } from '../../types';
+import type { ExtensionDomain, ActionsChain } from '../../types';
 import type { DomainContext } from '../DomainContext';
 import { ExtensionDomainImplementation } from '../ExtensionDomainImplementation';
 import { ExtensionDomainImplementationFactory } from '../ExtensionDomainImplementationFactory';
@@ -15,6 +15,10 @@ import {
 } from '../mount-strategies';
 import type { ContainerHooks, ActionPayload, MountStrategy } from '../mount-strategy';
 import { ActionHandler } from '../../mediator/types';
+import type {
+  DefaultActionsChainsMediator,
+  ChainSettlement,
+} from '../../mediator/actions-chains-mediator';
 import { ExtensionMounter } from '../ExtensionMounter';
 
 // Mock-plugin-local stand-ins for the framework's well-known lifecycle action
@@ -93,6 +97,26 @@ function createMockPlugin(): TypeSystemPlugin<MockSchema> {
 function freshRegistry(): DefaultMfeRegistry {
   const config: MfeRegistryConfig = { typeSystem: createMockPlugin() };
   return new DefaultMfeRegistry(config);
+}
+
+/** Variant of `freshRegistry` that wires a caller-supplied `diagnosticSink`. */
+function freshRegistryWithSink(diagnosticSink: MfeDiagnosticSink): DefaultMfeRegistry {
+  const config: MfeRegistryConfig = { typeSystem: createMockPlugin(), diagnosticSink };
+  return new DefaultMfeRegistry(config);
+}
+
+function makeCapturingDiagnosticSink(): {
+  sink: MfeDiagnosticSink;
+  chainNodeFailures: ChainNodeFailureDiagnostic[];
+} {
+  const chainNodeFailures: ChainNodeFailureDiagnostic[] = [];
+  const sink: MfeDiagnosticSink = {
+    reportLifecycleDispatchRefusal() {},
+    reportChainNodeFailure(diagnostic) {
+      chainNodeFailures.push(diagnostic);
+    },
+  };
+  return { sink, chainNodeFailures };
 }
 
 // ─── Test domain constants ────────────────────────────────────────────────────
@@ -479,6 +503,16 @@ describe('DefaultMfeRegistry', () => {
     // which needs a DOM-attached mounter) — an ExclusiveMountStrategy instance is
     // still captured so cardinality classification (`instanceof` check) applies.
     it('a handler registered under a DERIVED mount_ext id actually fires when dispatched with the BASE literal', async () => {
+      // The registry's own `executeActionsChain` is acceptance-only and void
+      // per `cpt-frontx-adr-mfe-runtime-public-surface` — it yields
+      // nothing to await for the chain's own execution. This test needs to
+      // observe the handler's own effect deterministically rather than
+      // racing the fire-and-forget execution, so the handler resolves a
+      // controlled deferred promise the test explicitly awaits, pinning
+      // ordering rather than hoping for it.
+      let resolveFired!: () => void;
+      const fired = new Promise<void>((resolve) => { resolveFired = resolve; });
+
       class FlagHandlerImpl extends ExtensionDomainImplementation {
         readonly strategy: ExclusiveMountStrategy;
         mountHandlerFired = false;
@@ -490,6 +524,7 @@ describe('DefaultMfeRegistry', () => {
             DERIVED_MOUNT_EXT,
             ActionHandler.fromFunction(async () => {
               this.mountHandlerFired = true;
+              resolveFired();
             })
           );
         }
@@ -513,13 +548,14 @@ describe('DefaultMfeRegistry', () => {
       const factory = new FlagHandlerFactory(reg);
       reg.registerDomain(makeExclusiveDerivedDomain(), factory);
 
-      await reg.executeActionsChain({
+      reg.executeActionsChain({
         action: {
           type: FRONTX_ACTION_MOUNT_EXT,
           target: DOMAIN_EXCL_DERIVED_ID,
           payload: { subject: 'ext-1' },
         },
       });
+      await fired;
 
       expect(factory.lastImpl?.mountHandlerFired).toBe(true);
     });
@@ -590,5 +626,96 @@ describe('DefaultMfeRegistry', () => {
       expect(() => reg.registerDomain(domain, new ConcurrentDomainFactory())).not.toThrow();
       expect(reg.getMounter('rollback-domain-2')).toBeTruthy();
     });
+  });
+
+  describe('dispose() during an in-flight chain (registry-level teardown boundary)', () => {
+    // `DefaultMfeRegistry.executeAndAwaitChain` (private, awaited internally
+    // by the fire-and-forget public `executeActionsChain`) logs a coarse
+    // "[MfeRegistry] Actions chain failed" for any settlement that is
+    // neither `completed` nor `handedOver` nor `tornDown`
+    // (`ChainSettlement.tornDown`'s own doc). A settlement ended by this
+    // registry's own `dispose()` — never an outcome of the action — must be
+    // `tornDown`, so it must never reach that log, and the mediator's own
+    // fine-grained `diagnosticSink.reportChainNodeFailure` must never fire
+    // for it either.
+    it(
+      'a real registry disposed while a chain\'s handler never settles logs no ' +
+        '"Actions chain failed" and reports no chain-node-failure diagnostic, and next/fallback never run',
+      async () => {
+        const { sink, chainNodeFailures } = makeCapturingDiagnosticSink();
+        const reg = freshRegistryWithSink(sink);
+
+        let nextRan = false;
+        const neverSettles = new Promise<void>(() => {});
+
+        class NeverSettlingImpl extends ExtensionDomainImplementation {
+          private readonly strategy: ConcurrentMountStrategy;
+          constructor(ctx: DomainContext) {
+            super();
+            // Captured only to satisfy admission's "at least one MountStrategy"
+            // requirement — this test's own MOUNT_EXT/UNMOUNT_EXT handlers are
+            // registered directly below, never through `this.strategy`.
+            this.strategy = new ConcurrentMountStrategy(ctx.mounter, new TestHooks());
+            ctx.registerHandler(
+              FRONTX_ACTION_MOUNT_EXT,
+              ActionHandler.fromFunction(() => neverSettles)
+            );
+            ctx.registerHandler(
+              FRONTX_ACTION_UNMOUNT_EXT,
+              ActionHandler.fromFunction(async () => {
+                nextRan = true;
+              })
+            );
+          }
+          protected getMountStrategies(): MountStrategy[] {
+            return [this.strategy];
+          }
+        }
+        class NeverSettlingFactory extends ExtensionDomainImplementationFactory {
+          build(ctx: DomainContext): NeverSettlingImpl {
+            return new NeverSettlingImpl(ctx);
+          }
+        }
+
+        const domainId = 'never-settling-teardown-domain';
+        reg.registerDomain(makeConcurrentDomain(domainId), new NeverSettlingFactory());
+
+        // The registry's own executor — cast to reach `runAcceptedChain`
+        // directly, the completion-bearing operation
+        // `executeAndAwaitChain` awaits internally — spied on to capture
+        // ITS returned promise as the deterministic signal this test
+        // awaits: by the time that promise settles, `executeAndAwaitChain`'s
+        // own `await` on the SAME promise (registered first, synchronously,
+        // inside `executeActionsChain` below) has already resumed and run
+        // its coarse log check, since promise reactions fire in
+        // registration order.
+        const mediator = (reg as unknown as { mediator: DefaultActionsChainsMediator }).mediator;
+        let capturedSettlement: Promise<ChainSettlement> | undefined;
+        const originalRunAcceptedChain = mediator.runAcceptedChain.bind(mediator);
+        vi.spyOn(mediator, 'runAcceptedChain').mockImplementation((chain: ActionsChain) => {
+          capturedSettlement = originalRunAcceptedChain(chain);
+          return capturedSettlement;
+        });
+
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        const chain: ActionsChain = {
+          action: { type: FRONTX_ACTION_MOUNT_EXT, target: domainId, payload: {} },
+          next: { action: { type: FRONTX_ACTION_UNMOUNT_EXT, target: domainId, payload: {} } },
+        };
+        reg.executeActionsChain(chain);
+        expect(capturedSettlement).toBeDefined();
+
+        reg.dispose();
+
+        const settlement = await capturedSettlement!;
+        expect(settlement.completed).toBe(false);
+        expect(nextRan).toBe(false);
+        expect(chainNodeFailures).toEqual([]);
+        expect(consoleErrorSpy).not.toHaveBeenCalled();
+
+        consoleErrorSpy.mockRestore();
+      }
+    );
   });
 });

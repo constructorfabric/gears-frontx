@@ -27,6 +27,20 @@ export default [
       '*.config.*',
       '**/*.config.*',
       '**/*.cjs',
+      // `**/*.config.*` and `**/*.cjs` above are meant for build/tool config
+      // at a package's root (vite.config.ts, tsup.config.ts, ...), not for
+      // production source. Left unqualified, they also match a file that
+      // merely happens to be NAMED like config under `packages/mfes/src/**`
+      // (e.g. `regexp.config.ts`) — such a file is still compiled by the
+      // package's tsconfig and shippable in dist, yet would never reach the
+      // dynamic-code trust-kernel confinement rule (cpt-frontx-adr-mfe-load-
+      // isolation) below, silently. This negation re-includes that source
+      // tree in ESLint's file discovery; a negation inside the SAME global
+      // `ignores` array is how flat config allows narrowing a broader
+      // pattern — a later config block's `ignores` cannot do this once a
+      // global-ignores object (a config object with only `ignores`, no
+      // `files`) has excluded a path.
+      '!packages/mfes/src/**',
       // Not lintable yet, and deliberately still ignored. Lifting this needs a
       // config block giving `scripts/**` the Node globals it runs against —
       // without one, 69 of the 73 errors are `no-undef` on `console`, `Buffer`,
@@ -562,6 +576,175 @@ export default [
             'MFES-3 VIOLATION (cpt-frontx-constraint-mfes-no-layout-domain-values): @gears-frontx/mfes must not define specific extension-domain (layout-domain) values. These are solution vocabulary owned by the consuming template (LayoutDomain enum).',
         },
         // @cpt-end:cpt-frontx-constraint-mfes-no-layout-domain-values:p10:inst-eslint-rule
+      ],
+    },
+  },
+
+  // ============ @gears-frontx/mfes DYNAMIC-CODE TRUST KERNEL (ADR-0011) ============
+  // cpt-frontx-adr-mfe-load-isolation: the dynamic-code primitives isolation
+  // depends on (dynamic `import()` of inline content, dynamic `RegExp`
+  // construction from interpolated strings) must live in exactly one audited
+  // trust-kernel file, `mf-dynamic-module-ops.ts`. This block forbids both
+  // primitives everywhere else under `packages/mfes/src/**`; the block
+  // immediately below re-declares MFES-1/2/3 (only) for the kernel file
+  // itself, which this block's `ignores` excludes.
+  //
+  // FLAT-CONFIG HAZARD: this block overlaps the `packages/mfes/**/*.ts(x)`
+  // block above (same `no-restricted-syntax` rule, overlapping file set) and
+  // is declared later, so ESLint flat config makes this block's array
+  // REPLACE — not merge with — that one for every file it matches. The
+  // MFES-1/2/3 selectors are therefore repeated verbatim below, alongside the
+  // new dynamic-code selectors, so no file loses MFES-1/2/3 coverage by
+  // gaining this one.
+  //
+  // Scoped to `src/**` only: test files legitimately construct dynamic
+  // `import()` calls to load independent module copies (e.g. cache-isolation
+  // tests), which is not the arbitrary-code-admission surface this guards.
+  {
+    // .mts/.cts are included defensively though none exist in this package
+    // today: package.json sets "type": "module", so every .ts file here is
+    // already ESM and nothing needs the module-specific extensions to
+    // override that — but a stray one would still fall under this block
+    // rather than silently escaping it if ever introduced.
+    files: [
+      'packages/mfes/src/**/*.ts',
+      'packages/mfes/src/**/*.tsx',
+      'packages/mfes/src/**/*.mts',
+      'packages/mfes/src/**/*.cts',
+    ],
+    ignores: ['packages/mfes/src/handler/mfe-handler-mf/mf-dynamic-module-ops.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        // --- MFES-1/2/3 (repeated from the block above — see hazard note) ---
+        {
+          selector: [
+            "Literal[value=/gts\\.(frontx\\.(screensets|framework|state|i18n|react|mfes)|[a-z]+\\.(screensets|framework|state|i18n))/]",
+            "TemplateElement[value.raw=/gts\\.(frontx\\.(screensets|framework|state|i18n|react|mfes)|[a-z]+\\.(screensets|framework|state|i18n))/]",
+            "TemplateElement[value.cooked=/gts\\.(frontx\\.(screensets|framework|state|i18n|react|mfes)|[a-z]+\\.(screensets|framework|state|i18n))/]",
+          ].join(', '),
+          message:
+            'MFES-1 VIOLATION (cpt-frontx-constraint-mfes-no-type-format-literals): @gears-frontx/mfes must not contain type-system-format string literals from solution namespaces or the mfes namespace (gts.frontx.mfes.*). These belong in the type-system plugin or consumer packages.',
+        },
+        {
+          selector: [
+            "Literal[value=/^(theme|language)$/]",
+            "TemplateElement[value.raw=/^(theme|language)$/]",
+            "TemplateElement[value.cooked=/^(theme|language)$/]",
+          ].join(', '),
+          message:
+            'MFES-2 VIOLATION (cpt-frontx-constraint-mfes-no-solution-shared-properties): @gears-frontx/mfes must not define solution-specific shared-property identifiers (e.g. theme, language). Supply these via the application layer or templates.',
+        },
+        {
+          selector: [
+            "Literal[value=/^(header|footer|menu|sidebar|popup|overlay|screen)$/]",
+            "TemplateElement[value.raw=/^(header|footer|menu|sidebar|popup|overlay|screen)$/]",
+            "TemplateElement[value.cooked=/^(header|footer|menu|sidebar|popup|overlay|screen)$/]",
+          ].join(', '),
+          message:
+            'MFES-3 VIOLATION (cpt-frontx-constraint-mfes-no-layout-domain-values): @gears-frontx/mfes must not define specific extension-domain (layout-domain) values. These are solution vocabulary owned by frontx-template-shell (LayoutDomain enum).',
+        },
+        // --- Dynamic-code trust kernel (cpt-frontx-adr-mfe-load-isolation) ---
+        // @cpt-begin:cpt-frontx-adr-mfe-load-isolation:p1:inst-eslint-import-expression
+        {
+          selector: 'ImportExpression',
+          message:
+            'TRUST-KERNEL VIOLATION (cpt-frontx-adr-mfe-load-isolation): dynamic import() may only appear in the audited trust kernel, packages/mfes/src/handler/mfe-handler-mf/mf-dynamic-module-ops.ts. Add the primitive there (with @safety-reviewed/@why) and call it from here instead.',
+        },
+        // @cpt-end:cpt-frontx-adr-mfe-load-isolation:p1:inst-eslint-import-expression
+        // @cpt-begin:cpt-frontx-adr-mfe-load-isolation:p1:inst-eslint-new-regexp
+        // This selector matches the identifier and its string spelling
+        // directly, rather than enumerating construction forms (`new
+        // RegExp(...)`, `.call`/`.apply`, member spellings, ...), because a
+        // form-by-form list can only be as complete as the forms someone
+        // thought to enumerate — every way to invoke or reference the
+        // global `RegExp` reduces, at the AST level, to one of exactly
+        // three node shapes: an `Identifier` named "RegExp" (a bare
+        // reference, a member/property name as in `globalThis.RegExp` or
+        // `RegExp.call`, an argument as in `Reflect.construct(RegExp,
+        // [p])`, or an alias's initializer as in `const R = RegExp`); a
+        // `JSXIdentifier` named "RegExp" (the same name in JSX tag
+        // position, e.g. `<RegExp />`, which the parser gives a distinct
+        // node type from a plain `Identifier`); or a `Literal`/
+        // `TemplateElement` whose value IS the string "RegExp" (the
+        // computed-property spellings `globalThis['RegExp']` and ``
+        // globalThis[`RegExp`] ``). Comments are not AST nodes at all, so
+        // ESLint's own parser keeps prose mentioning "RegExp" out of this
+        // rule's reach for free — no comment-stripping logic is needed or
+        // present.
+        //
+        // This is deliberately over-broad: `Identifier[name='RegExp']`
+        // also rejects a legitimate LOCAL name, import binding, or
+        // property named `RegExp` that has nothing to do with the global
+        // constructor, and a type-only reference (`function f(p: RegExp)`)
+        // that never runs as code at all. That false-positive rate is the
+        // accepted cost of a lexical quarantine on this one name within
+        // `packages/mfes/src/**` — the alternative (matching only "real"
+        // uses of the global) would require type information this
+        // syntax-only rule does not have, which reopens exactly the
+        // enumeration problem this shape avoids.
+        {
+          selector: [
+            "Identifier[name='RegExp']",
+            "JSXIdentifier[name='RegExp']",
+            "Literal[value='RegExp']",
+            "TemplateElement[value.raw='RegExp']",
+            "TemplateElement[value.cooked='RegExp']",
+          ].join(', '),
+          message:
+            "TRUST-KERNEL VIOLATION (cpt-frontx-adr-mfe-load-isolation): the identifier `RegExp` (in any form — a call, a member/property reference, an alias, an argument, a JSX tag name, or a matching string/template literal) may only appear in the audited trust kernel, packages/mfes/src/handler/mfe-handler-mf/mf-dynamic-module-ops.ts. Add the primitive there (with @safety-reviewed/@why) and call it from here instead.",
+        },
+        // @cpt-end:cpt-frontx-adr-mfe-load-isolation:p1:inst-eslint-new-regexp
+        // What remains genuinely out of reach is semantic indirection that
+        // never writes the word "RegExp" — as an identifier, a JSX tag
+        // name, or a matching string — anywhere in the source at all:
+        // `globalThis[/RegExp/.source]('x')` (a regex literal's `.source`
+        // string is produced at runtime; the `Literal` node holding the
+        // regex has a RegExp object as its value, not the string "RegExp",
+        // so no selector above matches it), `String.fromCharCode(...)`
+        // building the six characters at runtime, or the word split across
+        // concatenated string parts. No static check, AST-based or
+        // textual, can see a value that is never spelled out. See
+        // ADR-0011's review-only list.
+      ],
+    },
+  },
+  {
+    files: ['packages/mfes/src/handler/mfe-handler-mf/mf-dynamic-module-ops.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: [
+            "Literal[value=/gts\\.(frontx\\.(screensets|framework|state|i18n|react|mfes)|[a-z]+\\.(screensets|framework|state|i18n))/]",
+            "TemplateElement[value.raw=/gts\\.(frontx\\.(screensets|framework|state|i18n|react|mfes)|[a-z]+\\.(screensets|framework|state|i18n))/]",
+            "TemplateElement[value.cooked=/gts\\.(frontx\\.(screensets|framework|state|i18n|react|mfes)|[a-z]+\\.(screensets|framework|state|i18n))/]",
+          ].join(', '),
+          message:
+            'MFES-1 VIOLATION (cpt-frontx-constraint-mfes-no-type-format-literals): @gears-frontx/mfes must not contain type-system-format string literals from solution namespaces or the mfes namespace (gts.frontx.mfes.*). These belong in the type-system plugin or consumer packages.',
+        },
+        {
+          selector: [
+            "Literal[value=/^(theme|language)$/]",
+            "TemplateElement[value.raw=/^(theme|language)$/]",
+            "TemplateElement[value.cooked=/^(theme|language)$/]",
+          ].join(', '),
+          message:
+            'MFES-2 VIOLATION (cpt-frontx-constraint-mfes-no-solution-shared-properties): @gears-frontx/mfes must not define solution-specific shared-property identifiers (e.g. theme, language). Supply these via the application layer or templates.',
+        },
+        {
+          selector: [
+            "Literal[value=/^(header|footer|menu|sidebar|popup|overlay|screen)$/]",
+            "TemplateElement[value.raw=/^(header|footer|menu|sidebar|popup|overlay|screen)$/]",
+            "TemplateElement[value.cooked=/^(header|footer|menu|sidebar|popup|overlay|screen)$/]",
+          ].join(', '),
+          message:
+            'MFES-3 VIOLATION (cpt-frontx-constraint-mfes-no-layout-domain-values): @gears-frontx/mfes must not define specific extension-domain (layout-domain) values. These are solution vocabulary owned by frontx-template-shell (LayoutDomain enum).',
+        },
+        // Deliberately NO dynamic-code selectors here: this file IS the
+        // audited trust kernel where ImportExpression and non-literal
+        // RegExp construction are the sanctioned mechanism (ADR-0011 /
+        // cpt-frontx-adr-mfe-load-isolation).
       ],
     },
   },

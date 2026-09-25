@@ -52,8 +52,8 @@ export interface ExtensionState {
   shadowRoot?: ShadowRoot;
 }
 
-export type LifecycleTriggerCallback = (extensionId: string, stageId: string) => Promise<void>;
-export type DomainLifecycleTriggerCallback = (domainId: string, stageId: string) => Promise<void>;
+export type LifecycleTriggerCallback = (extensionId: string, stageId: string) => void;
+export type DomainLifecycleTriggerCallback = (domainId: string, stageId: string) => void;
 
 export abstract class ExtensionManager {
   abstract registerDomain(domain: ExtensionDomain): void;

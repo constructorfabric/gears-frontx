@@ -14,6 +14,7 @@
 - [3. Processes / Business Logic (CDSL)](#3-processes--business-logic-cdsl)
   - [Handler Resolution by Declared Base Type](#handler-resolution-by-declared-base-type)
   - [Extension Registration and Entry Storage](#extension-registration-and-entry-storage)
+  - [Non-Blocking Lifecycle Stage Triggering](#non-blocking-lifecycle-stage-triggering)
 - [4. States (CDSL)](#4-states-cdsl)
   - [MfeEntry Registration Lifecycle](#mfeentry-registration-lifecycle)
   - [Factory Cache Lifecycle](#factory-cache-lifecycle)
@@ -21,6 +22,7 @@
   - [Registry Facade Contract](#registry-facade-contract)
   - [Handler Resolution by Declared Base Type](#handler-resolution-by-declared-base-type-1)
   - [Register–Validate–Mount Sequence Ownership](#registervalidatemount-sequence-ownership)
+  - [Non-Blocking Lifecycle Stage Triggering](#non-blocking-lifecycle-stage-triggering-1)
   - [Type Contracts](#type-contracts)
 - [6. Acceptance Criteria](#6-acceptance-criteria)
 
@@ -155,6 +157,24 @@ Internal system functions and procedures that do not interact with actors direct
 6. [ ] - `p1` - Notify the extension's target domain that a new extension has been registered - `inst-algo-re-06`
 7. [ ] - `p1` - **RETURN** success - `inst-algo-re-07`
 
+### Non-Blocking Lifecycle Stage Triggering
+
+- [x] `p1` - **ID**: `cpt-frontx-algo-mfe-registry-lifecycle-stage-triggering`
+
+**Input**: An entity (`Extension` or `ExtensionDomain`) undergoing a runtime transition, and the lifecycle stage that accompanies it.
+
+**Output**: The stage's hooks' actions chains are dispatched (accepted or synchronously refused per `cpt-frontx-constraint-mfes-origin-invariant-chain-execution`); the accompanying transition proceeds without regard to their outcome.
+
+**Steps**:
+1. [x] - `p1` - There are exactly five automatic trigger sites, each accompanying one runtime transition: `init` alongside extension registration, `activated` alongside extension mount, `deactivated` alongside extension unmount, `destroyed` alongside extension unregistration, and the domain's own `destroyed` alongside domain unregistration - `inst-algo-lst-sites`
+2. [x] - `p1` - **FOR** the stage being triggered, collect the entity's hooks whose declared stage matches, in declaration order - `inst-algo-lst-collect`
+3. [x] - `p1` - **FOR EACH** collected hook, in declaration order, dispatch its actions chain through the acceptance-only mediator surface without awaiting settlement - `inst-algo-lst-dispatch-order`
+   1. [x] - `p1` - Declaration order governs dispatch order only; completion order among a stage's hooks is explicitly not guaranteed and **MUST NOT** be assumed by any caller or test - `inst-algo-lst-no-completion-order`
+   2. [x] - `p1` - **IF** dispatching a hook's chain is synchronously refused (for example, an unwired dispatch capability), catch the refusal and report it through a structured, substitutable diagnostic naming the entity, the stage, the hook's declaration position, the refusal class, and a correlation identity, then continue to the next hook in this loop - `inst-algo-lst-refusal-contained`
+4. [x] - `p1` - The triggering operation and the per-domain trigger facade a domain implementation reaches through its runtime context both yield nothing an emitter or domain author can await for chain execution, consistent with acceptance-only dispatch (`cpt-frontx-constraint-mfes-origin-invariant-chain-execution`) - `inst-algo-lst-non-awaitable`
+5. [x] - `p1` - **RETURN** immediately once every collected hook's chain has been dispatched or its refusal contained — without waiting for any dispatched chain to settle; the accompanying runtime transition proceeds independently of this return - `inst-algo-lst-return-non-blocking`
+6. [x] - `p1` - Once a hook's chain is accepted, its subsequent execution — including failing or timing out — is handled entirely by the executor that runs it and is never reported back through this trigger - `inst-algo-lst-chain-failure-is-executor-business`
+
 ## 4. States (CDSL)
 
 ### MfeEntry Registration Lifecycle
@@ -231,6 +251,21 @@ The system **MUST** own and orchestrate the complete register → type-validate 
 - Entities: `MfeEntry`, `Extension`
 - Component: `cpt-frontx-component-mfe-runtime`
 - Sequence: `cpt-frontx-seq-mfe-register-validate-mount`
+
+### Non-Blocking Lifecycle Stage Triggering
+
+- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-registry-lifecycle-stage-triggering`
+
+The system **MUST** trigger the `init`, `activated`, `deactivated`, `destroyed` (extension), and `destroyed` (domain's own) lifecycle stages as non-blocking notifications accompanying their respective transitions — the accompanying transition **MUST NOT** await any stage's dispatched chains, and neither the triggering operation nor the per-domain trigger facade a domain implementation reaches through its runtime context **MUST** yield anything an emitter or domain author can await for chain execution. A hook's synchronous refusal **MUST** be contained to that hook — reported through a structured, substitutable diagnostic and never fatal to the remaining hooks of that stage or to the accompanying transition.
+
+**Implements**:
+- `cpt-frontx-algo-mfe-registry-lifecycle-stage-triggering`
+
+**Constraints**: `cpt-frontx-constraint-mfes-origin-invariant-chain-execution`
+
+**Touches**:
+- Entities: `MfeEntry`, `Extension`, `ExtensionDomain`
+- Component: `cpt-frontx-component-mfe-runtime`
 
 ### Type Contracts
 

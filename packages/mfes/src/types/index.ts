@@ -52,6 +52,12 @@ export interface ActionsChain {
   next?: ActionsChain;
   /** Fallback chain to execute on failure */
   fallback?: ActionsChain;
+  // @cpt-begin:cpt-frontx-flow-mfe-host-communication-dispatch-chain:p1:inst-assemble-chain
+  // No whole-chain budget field: per ADR `cpt-frontx-adr-action-dispatch-and-chaining`,
+  // there is no aggregate bound on a chain as a whole — bounding is stated
+  // per action (`Action.timeout`), where an author already states it, and
+  // nowhere else.
+  // @cpt-end:cpt-frontx-flow-mfe-host-communication-dispatch-chain:p1:inst-assemble-chain
 }
 
 // ---------------------------------------------------------------------------

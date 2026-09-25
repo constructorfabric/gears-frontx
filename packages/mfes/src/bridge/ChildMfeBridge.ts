@@ -10,6 +10,7 @@
 
 import { ChildMfeBridge } from '../handler/types';
 import type { ActionHandler } from '../mediator/types';
+import type { CrossHopEnvelope } from '../mediator/cross-hop-route';
 import type { SharedProperty, ActionsChain } from '../types';
 import { NoActionsChainHandlerError, BridgeDisposedError, BridgeInactiveError } from './errors';
 
@@ -40,20 +41,26 @@ export class ChildMfeBridgeImpl extends ChildMfeBridge {
   private readonly properties = new Map<string, SharedProperty>();
 
   /**
-   * Internal: reference to parent bridge for action chain forwarding.
+   * Internal: handler receiving a versioned cross-hop envelope forwarded or
+   * escalated down to this registry through the inbound-bridge link — the
+   * transport every runtime-crossing hop resolves to, including a plain
+   * parent-to-child action chain delivery. Wired by
+   * `DefaultMfeRegistry.relinkInboundBridge` to
+   * `DefaultMfeRegistry.receiveCrossHopNode`, duck-typed for cross-copy
+   * safety. Synchronous and binary: throws to refuse the delivery, or
+   * returns having accepted the node and reserved what it needs.
    */
-  private parentBridge: import('./ParentMfeBridge').ParentMfeBridgeImpl | null = null;
+  private crossHopEnvelopeHandler: ((envelope: CrossHopEnvelope) => void) | null = null;
 
   /**
-   * Internal: handler for actions chains sent from parent to child.
+   * Internal: callback for the public, acceptance-only dispatch of actions
+   * chains via the registry — the registry's own `executeActionsChain`,
+   * void and synchronously-refusing. Injected by the bridge factory during
+   * wiring. This is the ONLY action-dispatch path this bridge carries:
+   * fire-and-forget on acceptance, with no completion of any kind ever
+   * crossing back over it (`cpt-frontx-adr-mfe-runtime-public-surface`).
    */
-  private actionsChainHandler: ((chain: ActionsChain) => Promise<void>) | null = null;
-
-  /**
-   * Internal: callback for executing actions chains via the registry.
-   * Injected by bridge factory during wiring.
-   */
-  private executeActionsChainCallback: ((chain: ActionsChain) => Promise<void>) | null = null;
+  private executeActionsChainCallback: ((chain: ActionsChain) => void) | null = null;
 
   /**
    * Internal: callback for registering child domains in the parent mediator.
@@ -141,17 +148,24 @@ export class ChildMfeBridgeImpl extends ChildMfeBridge {
   }
 
   /**
-   * Execute an actions chain via the registry.
-   * This is a capability pass-through -- the bridge delegates directly to
-   * the registry's executeActionsChain(). This is the ONLY public API for
-   * actions chain execution from child MFEs.
+   * Accept (or synchronously refuse) an actions chain for execution via the
+   * registry. This is a capability pass-through — it forwards directly to
+   * the registry's own acceptance-only `executeActionsChain` callback,
+   * adding no coordination logic of its own. This is the ONLY public API
+   * for actions chain execution from child MFEs
+   * (`cpt-frontx-adr-child-mfe-host-access`).
    *
-   * @param chain - Actions chain to execute
-   * @returns Promise resolving when execution is complete
+   * Refuses synchronously, before anything is forwarded, when this bridge
+   * is disposed, already inactive, or holds no wired dispatch callback —
+   * each an unusable dispatch capability AT THE CALL. Yields nothing a
+   * child can await for the chain's own execution.
+   *
+   * @param chain - Actions chain to accept.
    * @throws {BridgeDisposedError} If the bridge has been permanently disposed
    * @throws {BridgeInactiveError} If the extension is registered but not currently mounted
    */
-  async executeActionsChain(chain: ActionsChain): Promise<void> {
+  // @cpt-begin:cpt-frontx-algo-mfe-host-communication-bridge-delegation:p1:inst-fwd-exec-chain
+  executeActionsChain(chain: ActionsChain): void {
     if (this.destroyed) {
       throw new BridgeDisposedError(this.extensionId);
     }
@@ -161,57 +175,34 @@ export class ChildMfeBridgeImpl extends ChildMfeBridge {
     if (!this.executeActionsChainCallback) {
       throw new Error(`Bridge not connected for extension '${this.extensionId}'`);
     }
-    return this.executeActionsChainCallback(chain);
+    this.executeActionsChainCallback(chain);
   }
+  // @cpt-end:cpt-frontx-algo-mfe-host-communication-bridge-delegation:p1:inst-fwd-exec-chain
 
   /**
-   * INTERNAL: Send an actions chain to the host domain.
-   * Forwards to parent bridge's child action handler.
-   * This is a concrete-only method for internal child-to-parent transport.
+   * Register the handler receiving a versioned cross-hop envelope forwarded
+   * or escalated down through this bridge — the transport every runtime-
+   * crossing hop resolves to (`cpt-frontx-adr-action-dispatch-and-chaining`).
+   * Compare-and-clear unsubscribe: since this bridge object is the SAME one
+   * handed to every mount of this extension (`inst-bridge-lifetime`), an
+   * unsubscribe captured by an earlier registration must not clobber a
+   * DIFFERENT handler installed after it replaced this one.
    *
-   * @param chain - Actions chain to send
-   * @returns Promise resolving when execution is complete
-   * @throws {BridgeDisposedError} If the bridge has been permanently disposed
-   * @throws {BridgeInactiveError} If the extension is registered but not currently mounted
+   * @internal concrete-only; not part of the abstract `ChildMfeBridge` contract.
    */
-  async sendActionsChain(chain: ActionsChain): Promise<void> {
-    if (this.destroyed) {
-      throw new BridgeDisposedError(this.extensionId);
+  // @cpt-begin:cpt-frontx-algo-mfe-host-communication-registration-propagation:p2:inst-relink-downward-delivery
+  onCrossHopEnvelope(handler: (envelope: CrossHopEnvelope) => void): () => void {
+    if (this.crossHopEnvelopeHandler !== null) {
+      console.warn(`onCrossHopEnvelope: replacing existing handler for extension '${this.extensionId}'`);
     }
-    if (!this.active) {
-      throw new BridgeInactiveError(this.extensionId);
-    }
-    if (!this.parentBridge) {
-      throw new Error(`Bridge not connected for extension '${this.extensionId}'`);
-    }
-    return this.parentBridge.handleChildAction(chain);
-  }
-
-  /**
-   * Register a handler for actions chains sent from the parent domain.
-   * Child MFEs that define their own domains should register a handler
-   * to enable parent-to-child action chain delivery.
-   *
-   * @param handler - Handler for parent actions chains
-   * @returns Unsubscribe function
-   */
-  onActionsChain(handler: (chain: ActionsChain) => Promise<void>): () => void {
-    if (this.actionsChainHandler !== null) {
-      console.warn(`onActionsChain: replacing existing handler for extension '${this.extensionId}'`);
-    }
-    this.actionsChainHandler = handler;
-    // Compare-and-clear: since this bridge object is the SAME one handed to
-    // every mount of this extension (`inst-bridge-lifetime`), an unsubscribe
-    // captured by an earlier registration must not clobber a DIFFERENT
-    // handler installed after it replaced this one — e.g. a nested registry
-    // rebuilt on a remount adopts this same bridge's still-live inbound
-    // link and re-subscribes before the previous adopter's own unlink runs.
+    this.crossHopEnvelopeHandler = handler;
     return () => {
-      if (this.actionsChainHandler === handler) {
-        this.actionsChainHandler = null;
+      if (this.crossHopEnvelopeHandler === handler) {
+        this.crossHopEnvelopeHandler = null;
       }
     };
   }
+  // @cpt-end:cpt-frontx-algo-mfe-host-communication-registration-propagation:p2:inst-relink-downward-delivery
 
   /**
    * Subscribe to a specific property's updates.
@@ -284,22 +275,15 @@ export class ChildMfeBridgeImpl extends ChildMfeBridge {
   }
 
   /**
-   * INTERNAL: Connect this child bridge to its parent bridge.
+   * INTERNAL: Set the callback for the public, acceptance-only dispatch of
+   * actions chains via the registry. Called by the bridge factory during
+   * wiring.
    *
-   * @param parent - Parent bridge instance
-   */
-  setParentBridge(parent: import('./ParentMfeBridge').ParentMfeBridgeImpl): void {
-    this.parentBridge = parent;
-  }
-
-  /**
-   * INTERNAL: Set the callback for executing actions chains via the registry.
-   * Called by bridge factory during wiring.
-   *
-   * @param callback - Registry's executeActionsChain method
+   * @param callback - The registry's own void, synchronously-refusing
+   *   `executeActionsChain` method.
    */
   setExecuteActionsChainCallback(
-    callback: (chain: ActionsChain) => Promise<void>
+    callback: (chain: ActionsChain) => void
   ): void {
     this.executeActionsChainCallback = callback;
   }
@@ -380,27 +364,38 @@ export class ChildMfeBridgeImpl extends ChildMfeBridge {
   }
 
   /**
-   * INTERNAL: Handle actions chain sent from parent to child.
-   * Called by ParentMfeBridgeImpl.sendActionsChain().
+   * INTERNAL: Handle a versioned cross-hop envelope sent from the parent —
+   * a downward forwarding entry, the converted parent-to-child-domain
+   * forwarding tier, or a plain parent-to-child action chain delivery.
+   * Called by `ParentMfeBridgeImpl.sendCrossHopEnvelope()`. Throws the same
+   * way for a disposed or inactive bridge, so that failure is a node
+   * failure inside the sending hop's own boundary rather than a silent
+   * success.
    *
-   * @param chain - Actions chain from parent
-   * @returns Promise resolving when execution is complete
+   * Synchronous and binary: throws to refuse the delivery at the call, with
+   * no side effect here, or returns having handed the envelope to the
+   * registered receiver, which has already accepted and reserved what the
+   * node needs before this call returns
+   * (`cpt-frontx-adr-action-dispatch-and-chaining`).
+   *
    * @throws {BridgeDisposedError} If the bridge has been permanently disposed
    * @throws {BridgeInactiveError} If the extension is registered but not currently mounted
-   * @throws {NoActionsChainHandlerError} If no handler is registered
+   * @throws {NoActionsChainHandlerError} If no receiver is registered
    */
-  handleParentActionsChain(chain: ActionsChain): Promise<void> {
+  // @cpt-begin:cpt-frontx-algo-mfe-host-communication-bridge-delegation:p1:inst-child-invoke
+  handleCrossHopEnvelope(envelope: CrossHopEnvelope): void {
     if (this.destroyed) {
       throw new BridgeDisposedError(this.extensionId);
     }
     if (!this.active) {
       throw new BridgeInactiveError(this.extensionId);
     }
-    if (this.actionsChainHandler === null) {
+    if (this.crossHopEnvelopeHandler === null) {
       throw new NoActionsChainHandlerError(this.extensionId);
     }
-    return this.actionsChainHandler(chain);
+    this.crossHopEnvelopeHandler(envelope);
   }
+  // @cpt-end:cpt-frontx-algo-mfe-host-communication-bridge-delegation:p1:inst-child-invoke
 
   /**
    * INTERNAL: Permanent teardown, called by the bridge factory only when the
@@ -426,8 +421,7 @@ export class ChildMfeBridgeImpl extends ChildMfeBridge {
     // Clean up the rest
     this.propertySubscribers.clear();
     this.properties.clear();
-    this.parentBridge = null;
-    this.actionsChainHandler = null;
+    this.crossHopEnvelopeHandler = null;
     this.executeActionsChainCallback = null;
 
     this.active = false;

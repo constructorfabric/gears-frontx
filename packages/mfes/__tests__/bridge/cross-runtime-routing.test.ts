@@ -12,8 +12,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ChildMfeBridgeImpl } from '../../src/bridge/ChildMfeBridge';
 import { ParentMfeBridgeImpl } from '../../src/bridge/ParentMfeBridge';
-import { ChildDomainForwardingHandler } from '../../src/bridge/ChildDomainForwardingHandler';
-import { ActionHandler } from '../../src/mediator/types';
+import { createChildDomainForwardingRoute } from '../../src/bridge/ChildDomainForwardingHandler';
+import { CROSS_HOP_PROTOCOL_VERSION, CrossHopRoute } from '../../src/mediator/cross-hop-route';
 
 describe('Cross-Runtime Action Chain Routing', () => {
   let childBridge: ChildMfeBridgeImpl;
@@ -25,58 +25,83 @@ describe('Cross-Runtime Action Chain Routing', () => {
       'test-instance'
     );
     parentBridge = new ParentMfeBridgeImpl(childBridge);
-    childBridge.setParentBridge(parentBridge);
     // These tests exercise an already-mounted bridge pair; production code
     // reaches this state via `RuntimeBridgeFactory.acquireBridge`, which
     // activates the child bridge as its final step.
     childBridge.activate();
   });
 
-  describe('ChildDomainForwardingHandler', () => {
-    it('should forward action to child domain via bridge transport', async () => {
-      // Setup: Mock the parent bridge sendActionsChain
-      vi.spyOn(parentBridge, 'sendActionsChain').mockResolvedValue(undefined);
+  describe('createChildDomainForwardingRoute', () => {
+    it('resolves to a CrossHopRoute (never a plain ActionHandler) and hands the envelope to the child domain via sendCrossHopEnvelope, synchronously', () => {
+      // Setup: Mock the parent bridge's cross-hop transport as accepting
+      // (returning normally — synchronous and binary).
+      vi.spyOn(parentBridge, 'sendCrossHopEnvelope').mockImplementation(() => {});
 
-      // Create forwarding handler class instance
-      const handler = new ChildDomainForwardingHandler(
+      // Build the cross-hop route the catch-all tier resolves to.
+      const route = createChildDomainForwardingRoute(
         parentBridge,
         'mock.ext.domain.v1~child.domain.v1'
       );
+      expect(route).toBeInstanceOf(CrossHopRoute);
 
-      // Act: Handle an action
-      await handler.handleAction(
-        'mock.ext.action.v1~test.action.v1',
-        { foo: 'bar' }
-      );
+      // Act: hand a versioned envelope over, as the mediator's cross-hop
+      // dispatch does — returns nothing, throws nothing: accepted.
+      expect(() =>
+        route.send({
+          version: CROSS_HOP_PROTOCOL_VERSION,
+          node: {
+            action: {
+              type: 'mock.ext.action.v1~test.action.v1',
+              target: 'mock.ext.domain.v1~parent.domain.v1',
+              payload: { foo: 'bar' },
+            },
+          },
+          diagnostics: {},
+        })
+      ).not.toThrow();
 
-      // Assert: sendActionsChain was called with correct chain
-      expect(parentBridge.sendActionsChain).toHaveBeenCalledWith({
-        action: {
-          type: 'mock.ext.action.v1~test.action.v1',
-          target: 'mock.ext.domain.v1~child.domain.v1',
-          payload: { foo: 'bar' },
+      // Assert: sendCrossHopEnvelope was called with the envelope re-targeted
+      // at the child domain — the sending side is done with the node the
+      // instant this call returns.
+      expect(parentBridge.sendCrossHopEnvelope).toHaveBeenCalledWith({
+        version: CROSS_HOP_PROTOCOL_VERSION,
+        node: {
+          action: {
+            type: 'mock.ext.action.v1~test.action.v1',
+            target: 'mock.ext.domain.v1~child.domain.v1',
+            payload: { foo: 'bar' },
+          },
         },
+        diagnostics: {},
       });
     });
 
-    it('should propagate errors from child domain', async () => {
-      // Setup: Mock failed chain result
+    it('propagates a synchronous refusal from the child domain hop', () => {
+      // Setup: Mock a hop-unavailable refusal (e.g. a deactivated bridge) —
+      // synchronous and binary: throws at the call, no side effect.
       const testError = new Error('Test error');
-      vi.spyOn(parentBridge, 'sendActionsChain').mockRejectedValue(testError);
+      vi.spyOn(parentBridge, 'sendCrossHopEnvelope').mockImplementation(() => {
+        throw testError;
+      });
 
-      // Create forwarding handler class instance
-      const handler = new ChildDomainForwardingHandler(
+      const route = createChildDomainForwardingRoute(
         parentBridge,
         'mock.ext.domain.v1~child.domain.v1'
       );
 
-      // Act & Assert: Should propagate error
-      await expect(
-        handler.handleAction(
-          'mock.ext.action.v1~test.action.v1',
-          undefined
-        )
-      ).rejects.toThrow('Test error');
+      // Act & Assert: Should propagate the throw synchronously.
+      expect(() =>
+        route.send({
+          version: CROSS_HOP_PROTOCOL_VERSION,
+          node: {
+            action: {
+              type: 'mock.ext.action.v1~test.action.v1',
+              target: 'mock.ext.domain.v1~parent.domain.v1',
+            },
+          },
+          diagnostics: {},
+        })
+      ).toThrow('Test error');
     });
   });
 
@@ -192,21 +217,24 @@ describe('Cross-Runtime Action Chain Routing', () => {
   });
 
   describe('End-to-End Integration', () => {
-    it('should route action from parent mediator through child bridge to child registry', async () => {
-      // Setup: Mock child registry executeActionsChain
-      const childRegistryExecute = vi.fn().mockResolvedValue(undefined);
+    it('should route action from parent mediator through child bridge to child registry', () => {
+      // Setup: Mock child registry's cross-hop envelope receiver — the
+      // transport every runtime-crossing hop resolves to. Accepts
+      // synchronously (returns normally) the way a real
+      // `receiveCrossHopNode` does once it has reserved what the node needs.
+      const childRegistryReceive = vi.fn();
 
       // Wire parent -> child transport
-      childBridge.onActionsChain(childRegistryExecute);
+      childBridge.onCrossHopEnvelope(childRegistryReceive);
 
-      // Create register callback that creates forwarding handler
-      const handlers = new Map<string, ActionHandler>();
+      // Create register callback that creates the forwarding route
+      const routes = new Map<string, CrossHopRoute>();
       const registerCallback = (domainId: string) => {
-        const handler = new ChildDomainForwardingHandler(parentBridge, domainId);
-        handlers.set(domainId, handler);
+        const route = createChildDomainForwardingRoute(parentBridge, domainId);
+        routes.set(domainId, route);
       };
       const unregisterCallback = (domainId: string) => {
-        handlers.delete(domainId);
+        routes.delete(domainId);
       };
 
       childBridge.setChildDomainCallbacks(registerCallback, unregisterCallback);
@@ -215,49 +243,64 @@ describe('Cross-Runtime Action Chain Routing', () => {
       const childDomainId = 'mock.ext.domain.v1~child.domain.v1';
       childBridge.registerChildDomain(childDomainId);
 
-      // Verify handler was registered
-      expect(handlers.has(childDomainId)).toBe(true);
+      // Verify route was registered
+      expect(routes.has(childDomainId)).toBe(true);
 
-      // Act: Simulate parent mediator invoking the forwarding handler
-      const handler = handlers.get(childDomainId)!;
-      await handler.handleAction(
-        'mock.ext.action.v1~test.action.v1',
-        { data: 'test' }
-      );
+      // Act: Simulate the mediator's cross-hop dispatch invoking the route
+      const route = routes.get(childDomainId)!;
+      expect(() =>
+        route.send({
+          version: CROSS_HOP_PROTOCOL_VERSION,
+          node: {
+            action: {
+              type: 'mock.ext.action.v1~test.action.v1',
+              target: 'mock.ext.domain.v1~parent.domain.v1',
+              payload: { data: 'test' },
+            },
+          },
+          diagnostics: {},
+        })
+      ).not.toThrow();
 
-      // Assert: Child registry received the action chain
-      expect(childRegistryExecute).toHaveBeenCalledWith({
-        action: {
-          type: 'mock.ext.action.v1~test.action.v1',
-          target: childDomainId,
-          payload: { data: 'test' },
+      // Assert: Child registry received the envelope, re-targeted at the
+      // child domain — the sending side is done with the node the instant
+      // this call returns.
+      expect(childRegistryReceive).toHaveBeenCalledWith({
+        version: CROSS_HOP_PROTOCOL_VERSION,
+        node: {
+          action: {
+            type: 'mock.ext.action.v1~test.action.v1',
+            target: childDomainId,
+            payload: { data: 'test' },
+          },
         },
+        diagnostics: {},
       });
     });
 
-    it('should remove forwarding handler from parent mediator on cleanup', () => {
+    it('should remove forwarding route from parent mediator on cleanup', () => {
       // Setup: Register domain with callbacks
-      const handlers = new Map<string, ActionHandler>();
+      const routes = new Map<string, CrossHopRoute>();
       const registerCallback = (domainId: string) => {
-        const handler = new ChildDomainForwardingHandler(parentBridge, domainId);
-        handlers.set(domainId, handler);
+        const route = createChildDomainForwardingRoute(parentBridge, domainId);
+        routes.set(domainId, route);
       };
       const unregisterCallback = (domainId: string) => {
-        handlers.delete(domainId);
+        routes.delete(domainId);
       };
 
       childBridge.setChildDomainCallbacks(registerCallback, unregisterCallback);
       const childDomainId = 'mock.ext.domain.v1~child.domain.v1';
       childBridge.registerChildDomain(childDomainId);
 
-      // Verify handler is registered
-      expect(handlers.has(childDomainId)).toBe(true);
+      // Verify route is registered
+      expect(routes.has(childDomainId)).toBe(true);
 
       // Act: Cleanup (simulating unmount)
       childBridge.destroy();
 
-      // Assert: Handler was removed
-      expect(handlers.has(childDomainId)).toBe(false);
+      // Assert: Route was removed
+      expect(routes.has(childDomainId)).toBe(false);
     });
 
     it('should not affect parent domain handlers', async () => {
@@ -286,4 +329,68 @@ describe('Cross-Runtime Action Chain Routing', () => {
       expect(childDomains.has('mock.ext.domain.v1~parent.domain.v1')).toBe(false);
     });
   });
+
+  describe('createChildDomainForwardingRoute — deactivation refuses new deliveries only (inst-bridge-deactivation)', () => {
+    it(
+      'refuses a delivery attempted AFTER the bridge deactivates with a target-inactive cause, ' +
+        'while a delivery already accepted before deactivation is untouched by it',
+      () => {
+        const childDomainId = 'mock.ext.domain.v1~child.domain.v1';
+        const route = createChildDomainForwardingRoute(parentBridge, childDomainId);
+
+        // Accepted BEFORE deactivation: the far side has already taken the
+        // node — this call returns normally.
+        childBridge.onCrossHopEnvelope(() => {});
+        expect(() =>
+          route.send({
+            version: CROSS_HOP_PROTOCOL_VERSION,
+            node: {
+              action: { type: 'mock.ext.action.v1~primary.v1~', target: childDomainId, payload: {} },
+            },
+            diagnostics: {},
+          })
+        ).not.toThrow();
+
+        // Deactivate the bridge — an ordinary unmount, not permanent
+        // unregistration: the route itself is untouched, only NEW
+        // deliveries through it are refused from here.
+        childBridge.deactivate();
+
+        expect(() =>
+          route.send({
+            version: CROSS_HOP_PROTOCOL_VERSION,
+            node: {
+              action: { type: 'mock.ext.action.v1~primary.v1~', target: childDomainId, payload: {} },
+            },
+            diagnostics: {},
+          })
+        ).toThrow(/inactive/i);
+      }
+    );
+  });
+
+  describe(
+    'the completion-bearing child-to-parent transport is fully removed — nothing awaitable ' +
+      'ever crosses a bridge or is passed into bridge wiring',
+    () => {
+      it('neither concrete bridge implementation carries a completion-bearing method on its own prototype', () => {
+        // The concrete bridges carry no completion-bearing chain transport methods
+        // (`sendActionsChain`, `onActionsChain`, `handleParentActionsChain` on ChildMfeBridgeImpl;
+        // `sendActionsChain`, `onChildAction`, `handleChildAction` on ParentMfeBridgeImpl).
+        // Every runtime-crossing hop goes through the synchronous, binary
+        // `sendCrossHopEnvelope`/`handleCrossHopEnvelope` pair.
+        const childOwnMethods = Object.getOwnPropertyNames(ChildMfeBridgeImpl.prototype);
+        const parentOwnMethods = Object.getOwnPropertyNames(ParentMfeBridgeImpl.prototype);
+
+        expect(childOwnMethods).not.toContain('sendActionsChain');
+        expect(childOwnMethods).not.toContain('onActionsChain');
+        expect(childOwnMethods).not.toContain('handleParentActionsChain');
+        expect(childOwnMethods).not.toContain('setParentBridge');
+
+        expect(parentOwnMethods).not.toContain('sendActionsChain');
+        expect(parentOwnMethods).not.toContain('onChildAction');
+        expect(parentOwnMethods).not.toContain('handleChildAction');
+      });
+    }
+  );
 });

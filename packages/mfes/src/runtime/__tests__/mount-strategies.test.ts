@@ -72,7 +72,7 @@ class FakeRegistry extends MfeRegistry {
   async unregisterExtension(_id: string): Promise<void> {}
   updateSharedProperty(_p: string, _v: unknown): void {}
   getDomainProperty(_d: string, _p: string): unknown { return undefined; }
-  async executeActionsChain(_c: ActionsChain): Promise<void> {}
+  executeActionsChain(_c: ActionsChain): void {}
   getExtension(_id: string): Extension | undefined { return undefined; }
   getDomain(_id: string): ExtensionDomain | undefined { return undefined; }
   getExtensionsForDomain(_id: string): Extension[] { return []; }

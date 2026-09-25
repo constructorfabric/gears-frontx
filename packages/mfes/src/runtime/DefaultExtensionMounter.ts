@@ -17,6 +17,7 @@
 import { ExtensionMounter } from './ExtensionMounter';
 import type { MountManager } from './mount-manager';
 import type { ContainerHooks } from './mount-strategy';
+import type { MountSetObserver } from './config';
 
 /**
  * @internal
@@ -53,7 +54,12 @@ export class DefaultExtensionMounter extends ExtensionMounter {
     private readonly removeMountedExtension: (domainId: string, extensionId: string) => void,
     private readonly getMountedExtensions: (domainId: string) => readonly string[],
     // hooks is used in detach() to destroy containers for each extension
-    private readonly hooks: ContainerHooks
+    private readonly hooks: ContainerHooks,
+    // Construction-time mount-set observer, if the host supplied one via
+    // `MfeRegistryConfig.mountSetObserver` — `undefined` when none was
+    // supplied. Notified from the commit itself (`mount`/`unmount`/`detach`
+    // below), never from a lifecycle stage.
+    private readonly mountSetObserver?: MountSetObserver
   ) {
     super();
   }
@@ -70,6 +76,15 @@ export class DefaultExtensionMounter extends ExtensionMounter {
       await this.mountManager.unmountExtension(extId);
       this.hooks.destroy(extId);
       this.containers.delete(extId);
+      // Every committed change must be observable (per
+      // `cpt-frontx-adr-action-dispatch-and-chaining`), so the mount-set
+      // change is propagated to observers via the removal hook.
+      this.removeMountedExtension(this.domainId, extId);
+      this.mountSetObserver?.onMountSetChanged({
+        domainId: this.domainId,
+        entered: [],
+        left: [extId],
+      });
     }
     this.attachedRoot = null;
   }
@@ -124,6 +139,11 @@ export class DefaultExtensionMounter extends ExtensionMounter {
       this.containers.set(extensionId, container);
 
       this.addMountedExtension(this.domainId, extensionId);
+      this.mountSetObserver?.onMountSetChanged({
+        domainId: this.domainId,
+        entered: [extensionId],
+        left: [],
+      });
     })();
 
     this.inFlightMountsByExtension.set(extensionId, { promise: mountWork, container });
@@ -147,5 +167,10 @@ export class DefaultExtensionMounter extends ExtensionMounter {
     this.containers.delete(extensionId);
 
     this.removeMountedExtension(this.domainId, extensionId);
+    this.mountSetObserver?.onMountSetChanged({
+      domainId: this.domainId,
+      entered: [],
+      left: [extensionId],
+    });
   }
 }

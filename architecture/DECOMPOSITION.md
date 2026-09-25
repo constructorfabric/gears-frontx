@@ -103,6 +103,9 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/mfes/architecture/features/mfe-isolation/FEATURE.md).
 
+**Installed-kit coverage references**:
+- `cpt-frontx-constraint-mfes-realm-shared-dep-cache`
+
 ### 2.8 [API Protocol Surface](../packages/api/architecture/features/api-protocol-surface/) - MEDIUM
 
 - [x] `p2` - **ID**: `cpt-frontx-feature-api-protocol-surface`
