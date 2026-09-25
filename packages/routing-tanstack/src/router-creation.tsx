@@ -93,6 +93,17 @@ export function createProviderRouter<TRouteTree extends AnyRoute>(
   // declares a context, so a call site holding a concrete, context-bearing
   // route tree cannot omit it at all, not merely fail to satisfy it once
   // supplied.
+  //
+  // The conditional needs `TRouteTree` resolved to a concrete route tree to
+  // pick a branch; a caller that is itself still generic over
+  // `T extends AnyRoute` and forwards that unresolved `T` straight through
+  // (`function wrap<T extends AnyRoute>(tree: T, h) { return
+  // createProviderRouter(tree, h); }`) gets a compile error at the
+  // forwarding call even for a `T` that will only ever be a
+  // context-optional tree at every call site that instantiates it — such a
+  // generic caller must pin the tree to a concrete type before forwarding,
+  // or accept and forward its own `options` parameter instead of omitting
+  // it.
   ...[options]: EmptyRouterOptions extends ProviderRouterOptions<TRouteTree>
     ? [options?: ProviderRouterOptions<TRouteTree>]
     : [options: ProviderRouterOptions<TRouteTree>]
@@ -174,30 +185,51 @@ interface EngineProviderTreeProps<TRouteTree extends AnyRoute> {
 }
 
 /**
- * Forwarded verbatim to `createProviderRouter` above when this component
- * builds the router itself — the seam a consumer states `context` (and
- * every other engine construction option) through, since this shape is
- * the only one of the two that constructs anything. Expected stable for
- * the lifetime of one mount like the two props above: the `useMemo` below
- * reads it, so a fresh object literal on every render rebuilds the
- * router. The `{router}` shape has no counterpart by construction — a
- * router handed in has already been built with whatever options its
- * builder chose.
- *
- * Required, not optional, whenever `TRouteTree` declares a router context
- * (H5): a plain optional field here would repeat `createProviderRouter`'s
- * own pre-fix gap one level up — a consumer building this props shape
- * directly, not only one calling that function, could otherwise omit
- * `routerOptions` for a context-bearing tree and have it type-check. Keyed
- * off the same condition as that function's trailing parameter
- * (`EmptyRouterOptions extends ProviderRouterOptions<TRouteTree>`) so the two stay in
- * lockstep by construction rather than by two authors remembering to
- * agree.
+ * Keyed off the same condition as `createProviderRouter`'s own trailing
+ * parameter (`EmptyRouterOptions extends ProviderRouterOptions<TRouteTree>`)
+ * so the two stay in lockstep by construction rather than by two authors
+ * remembering to agree: `routerOptions` below is required, not optional,
+ * whenever `TRouteTree` declares a router context. A plain optional field
+ * here would repeat that function's own pre-fix gap one level up — a
+ * consumer building this props shape directly, not only one calling that
+ * function, could otherwise omit `routerOptions` for a context-bearing tree
+ * and have it type-check. The same caveat as that function's own trailing
+ * parameter applies here too: a component still generic over its own
+ * `T extends AnyRoute` that forwards an unresolved `T` into
+ * `EngineProviderProps<T>` must pin the tree to a concrete type or pass
+ * `routerOptions` regardless of whether `T` ends up context-bearing.
  */
 export type EngineProviderProps<TRouteTree extends AnyRoute> = EngineProviderTreeProps<TRouteTree> &
   (EmptyRouterOptions extends ProviderRouterOptions<TRouteTree>
-    ? { readonly routerOptions?: ProviderRouterOptions<TRouteTree> }
-    : { readonly routerOptions: ProviderRouterOptions<TRouteTree> });
+    ? {
+        /** Forwarded verbatim to `createProviderRouter` above when this
+         * component builds the router itself — the seam a consumer states
+         * `context` (and every other engine construction option) through,
+         * since this shape is the only one of the two that constructs
+         * anything. Expected stable for the lifetime of one mount like the
+         * two props above: the `useMemo` below reads it, so a fresh object
+         * literal on every render rebuilds the router. The `{router}` shape
+         * has no counterpart by construction — a router handed in has
+         * already been built with whatever options its builder chose.
+         * Optional here: `TRouteTree` declares no router context, so there
+         * is nothing this field would be required to carry. */
+        readonly routerOptions?: ProviderRouterOptions<TRouteTree>;
+      }
+    : {
+        /** Forwarded verbatim to `createProviderRouter` above when this
+         * component builds the router itself — the seam a consumer states
+         * `context` (and every other engine construction option) through,
+         * since this shape is the only one of the two that constructs
+         * anything. Expected stable for the lifetime of one mount like the
+         * two props above: the `useMemo` below reads it, so a fresh object
+         * literal on every render rebuilds the router. The `{router}` shape
+         * has no counterpart by construction — a router handed in has
+         * already been built with whatever options its builder chose.
+         * Required here: `TRouteTree` declares a router context, and this
+         * field is the only place a `{routeTree, history}` mount can state
+         * it. */
+        readonly routerOptions: ProviderRouterOptions<TRouteTree>;
+      });
 
 /**
  * `createEngineProviderRouter` below returns only a constructed

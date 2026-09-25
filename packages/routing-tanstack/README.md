@@ -23,8 +23,9 @@ It takes one of two prop shapes:
 
 - `{ routeTree, history }` — build a router from a route tree and an already-adapted virtual
   history (the usual case, whether the microfrontend is composed inside an application or served
-  standalone). An optional `routerOptions` prop carries the engine's other construction options
-  through to that build; see below.
+  standalone). A `routerOptions` prop carries the engine's other construction options through to
+  that build; see below. Optional unless the route tree declares a router context (built with
+  `createRootRouteWithContext`), in which case it is required.
 - `{ router }` — mount a router that was already constructed elsewhere, for example through
   `createEngineProviderRouter`.
 
@@ -56,9 +57,10 @@ route it last rendered, until the next navigation brings it forward.
 
 ## Router construction options
 
-`createProviderRouter(routeTree, history, options?)` takes the engine's remaining construction
+`createProviderRouter(routeTree, history, options)` takes the engine's remaining construction
 options as its third argument, and `EngineProvider`'s `{ routeTree, history }` shape takes the same
-object as its `routerOptions` prop. `context` is the usual one — the dependency an application's
+object as its `routerOptions` prop. Both are required when the route tree declares a router
+context, optional otherwise. `context` is the usual one — the dependency an application's
 route loaders read, an API client being the common case:
 
 ```tsx
