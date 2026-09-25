@@ -8,7 +8,8 @@ import * as routingTanstack from '../index.js';
 // (`../standalone-history-source.ts`, `../engine-provider-history.ts`), the
 // location-preserving redirect helper (`../location-preserving-redirect.ts`),
 // and — per DESIGN §3.3's public-surface table — the concrete engine's own
-// component-tree hooks and components, re-exported so a microfrontend never
+// router and route-tree construction, mounting, hooks, components, and
+// route-resolution helpers, re-exported so a microfrontend never
 // has to import `@tanstack/react-router` itself
 // (`cpt-frontx-constraint-routing-tanstack-sole-engine-import`). Teardown
 // has no separate export — it is `RouterHistory#destroy`, already reachable
@@ -39,6 +40,7 @@ describe('@gears-frontx/routing-tanstack entry point', () => {
         'createRouter',
         'createRootRoute',
         'createRoute',
+        'createRootRouteWithContext',
         'RouterProvider',
         'useNavigate',
         'useParams',
