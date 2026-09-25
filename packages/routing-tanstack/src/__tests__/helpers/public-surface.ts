@@ -10,8 +10,8 @@ import * as tanstackIndex from '../../index.js';
 const REACT_ROUTER_PASSTHROUGH = [
   'createRouter',
   'createRootRoute',
-  'createRoute',
   'createRootRouteWithContext',
+  'createRoute',
   'RouterProvider',
   'useNavigate',
   'useParams',
