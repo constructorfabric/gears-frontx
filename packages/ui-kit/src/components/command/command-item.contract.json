@@ -1,0 +1,147 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.command_item.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "command-item",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "One command in a Command list, run by a click or by Enter while it is highlighted.",
+  "typical_uses": [
+    "An action the user finds by typing and runs from the list",
+    "An option with a trailing keyboard shortcut hint"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "An action in a menu anchored to a trigger, with no search",
+      "instead": {
+        "target": "DropdownMenuItem",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_item.v1"
+      }
+    },
+    {
+      "situation": "An option kept as a field's value once picked from a filterable list",
+      "instead": {
+        "target": "ComboboxItem",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_item.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true,
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.command_shortcut.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "CommandGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.command_group.v1"
+    },
+    {
+      "container": "CommandList",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.command_list.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "value-identifies-and-matches",
+      "text": "`value` identifies the item for the root's `value` and is what the search is scored against, together with `keywords`; without it the value is taken from the children's text, so a caption that changes between renders needs a stable `value`."
+    },
+    {
+      "id": "on-select-is-the-only-activation",
+      "text": "`onSelect` is called with the item's value on a click and on Enter while the item is highlighted; the component sets its own `onClick` and `onPointerMove` after the caller's props, so a caller's handlers for those never run. A disabled item never calls `onSelect`."
+    },
+    {
+      "id": "option-state-attributes",
+      "text": "The item renders with `role=\"option\"` and always carries `aria-selected` and `data-selected` (\"true\" while highlighted) and `aria-disabled` and `data-disabled` (\"true\" while `disabled`); command.module.css paints the highlighted item with the accent colors and dims a disabled one."
+    },
+    {
+      "id": "unrendered-when-filtered-out",
+      "text": "While the search text is not empty, an item that does not match is not rendered at all, unless `forceMount` is true on it or on its group, or the root's `shouldFilter` is false."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Run the item's action from `onClick`",
+      "do_instead": "Use `onSelect`, which also runs on Enter"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is the item's caption, made of text, an inline icon and an optional CommandShortcut",
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+    },
+    "onSelect": {
+      "states": "onSelect is a callback called with the item's value when the item is run, not a value",
+      "because": "`(value: string) => void` - a function, which no JSON Schema type covers."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "An item with a stable value and a shortcut hint",
+        "code": "<CommandItem value=\"calculator\" keywords={['math']} onSelect={openCalculator}>\n  <CalculatorIcon />\n  Calculator\n  <CommandShortcut>⌘K</CommandShortcut>\n</CommandItem>\n"
+      },
+      {
+        "title": "A disabled item",
+        "code": "<CommandItem value=\"export\" disabled>Export</CommandItem>"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The action bound to a click handler",
+        "code": "<CommandItem value=\"profile\" onClick={openProfile}>Profile</CommandItem>",
+        "why": "The component sets its own `onClick` after the caller's props, so `openProfile` never runs, by click or by Enter; use `onSelect`."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "command",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit CommandItem",
+    "type": "object",
+    "properties": {
+      "asChild": {
+        "type": "boolean"
+      },
+      "children": {
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the item's caption, made of text, an inline icon and an optional CommandShortcut. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "forceMount": {
+        "type": "boolean"
+      },
+      "keywords": {
+        "type": "array"
+      },
+      "onSelect": {
+        "description": "TS: ((value: string) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onSelect is a callback called with the item's value when the item is run, not a value. `(value: string) => void` - a function, which no JSON Schema type covers."
+      },
+      "value": {
+        "type": "string"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

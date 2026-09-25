@@ -1,0 +1,90 @@
+# Semantic overlay for NavigationMenuViewport - a part of the NavigationMenu
+# family, see navigation-menu.contract.yaml's `family_membership` for how the
+# contracts relate. The forwarded surface is the primitive's div.
+component: navigation-menu-viewport
+
+intent: The clipping box inside the menu's shared popup that holds the open item's content.
+
+typical_uses:
+  - Rendered once by NavigationMenu itself, inside the shared popup; never placed by the caller in the ordinary composition
+
+dont_use_when:
+  - situation: Composing a NavigationMenu
+    instead:
+      target: NavigationMenu
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu.v1
+      note: The root renders the viewport itself.
+
+# No kit component accepts the viewport: the root renders it internally.
+accepts:
+  content: nothing
+
+invariants:
+  - id: clips-to-the-popup
+    text: >-
+      navigation-menu.module.css fills the popup with the viewport and hides
+      its overflow, so a content wider or taller than the popup's current
+      size is clipped while the popup resizes to it.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the viewport's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property; the primitive passes an empty state
+      object.
+  style:
+    states: style accepts a function as well as a plain style object; the primitive passes that function an empty state object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)`, and the viewport's state
+      carries no fields. The compiler emits one JSON type per property, so
+      nothing is asserted; the kit's own styling goes through
+      navigation-menu.module.css, not through this.
+
+examples:
+  good:
+    - title: The ordinary composition, where the root renders the viewport
+      code: |
+        <NavigationMenu>
+          <NavigationMenuList>
+            <NavigationMenuItem>
+              <NavigationMenuTrigger>Products</NavigationMenuTrigger>
+              <NavigationMenuContent>
+                <NavigationMenuLink href="/products/a">Product A</NavigationMenuLink>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+          </NavigationMenuList>
+        </NavigationMenu>
+  bad:
+    - title: A viewport placed by hand beside the list
+      code: |
+        <NavigationMenu>
+          <NavigationMenuList>
+            <NavigationMenuItem>
+              <NavigationMenuTrigger>Products</NavigationMenuTrigger>
+              <NavigationMenuContent>
+                <NavigationMenuLink href="/products/a">Product A</NavigationMenuLink>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+          </NavigationMenuList>
+          <NavigationMenuViewport />
+        </NavigationMenu>
+      why: >-
+        The root already renders the one viewport the kit composes, inside
+        its shared popup; a second one placed beside the list sits outside
+        that popup, so nothing positions, sizes or clips it.
+
+family_membership:
+  name: navigation_menu
+  role: part

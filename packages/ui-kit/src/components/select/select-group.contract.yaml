@@ -1,0 +1,92 @@
+# Semantic overlay for SelectGroup - a part of the Select family, see
+# select.contract.yaml's `family_membership` for how the contracts relate.
+# The forwarded surface is the primitive's div.
+component: select-group
+
+intent: A captioned section of options in a SelectContent, named for assistive technology by the SelectLabel inside it.
+
+typical_uses:
+  - A labelled section of a long option list, such as the regions of one continent
+
+dont_use_when:
+  - situation: A visual break between options with no caption
+    instead:
+      target: SelectSeparator
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.select_separator.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.select_label.v1 # SelectLabel
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.select_item.v1 # SelectItem
+
+invariants:
+  - id: named-by-its-label
+    text: >-
+      The group renders `role="group"` and takes its accessible name from the
+      SelectLabel inside it, through `aria-labelledby`, unless the caller
+      passes its own `aria-labelledby`; a group with neither has no name.
+  - id: no-spacing-of-its-own
+    text: >-
+      select.module.css gives the group no padding and no divider; the list
+      pads every option the same whether or not a group encloses it.
+
+anti_patterns: []
+
+deprecations: {}
+
+# select.test.tsx renders groups and asserts the list, not the group, owns
+# the padding; nothing asserts the group role or its aria-labelledby.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the group's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the group's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (an empty object for a group). The compiler emits one JSON type per property, so nothing is asserted; the
+      kit's own styling goes through select.module.css, not through this.
+
+examples:
+  good:
+    - title: Two captioned sections divided by a rule
+      code: |
+        <SelectContent>
+          <SelectGroup>
+            <SelectLabel>Europe</SelectLabel>
+            <SelectItem value="eu-central">Frankfurt</SelectItem>
+            <SelectItem value="eu-west">Dublin</SelectItem>
+          </SelectGroup>
+          <SelectSeparator />
+          <SelectGroup>
+            <SelectLabel>Americas</SelectLabel>
+            <SelectItem value="us-east">Virginia</SelectItem>
+          </SelectGroup>
+        </SelectContent>
+  bad:
+    - title: A group with no caption, used only to wrap the options
+      code: |
+        <SelectContent>
+          <SelectGroup>
+            <SelectItem value="eu-central">Frankfurt</SelectItem>
+            <SelectItem value="us-east">Virginia</SelectItem>
+          </SelectGroup>
+        </SelectContent>
+      why: >-
+        The group adds no spacing and, without a SelectLabel, no name; it
+        only announces an unnamed group. Place the items straight under
+        SelectContent.
+
+family_membership:
+  name: select
+  role: part

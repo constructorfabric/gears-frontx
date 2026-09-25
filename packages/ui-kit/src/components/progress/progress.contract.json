@@ -1,0 +1,179 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.progress.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "progress",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Communicate how far a task has progressed, or that work is still running when progress cannot be measured.",
+  "typical_uses": [
+    "A long-running task with a known percentage",
+    "A task of unknown duration, marked indeterminate with `value={null}`"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A short async action with no meaningful percentage",
+      "instead": {
+        "target": "Spinner",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.spinner.v1",
+        "note": "On a Button, the `loading` prop carries the busy state inline (aria-busy) without a second element."
+      }
+    },
+    {
+      "situation": "A placeholder for content that has not arrived, with nothing to measure",
+      "instead": {
+        "target": "Skeleton",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.skeleton.v1"
+      }
+    },
+    {
+      "situation": "Step-by-step navigation where the steps are themselves the interface",
+      "instead": {
+        "target": "the consuming application's own step indicator",
+        "note": "The kit ships no stepper or wizard component, and a bar cannot carry per-step state or navigation."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.progress_label.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.progress_value.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "always-renders-its-own-track",
+      "text": "Progress always renders its own track and indicator, after any children; there is no prop to suppress them. Children are the parts that belong beside the bar - a label, a readout - never a second track."
+    },
+    {
+      "id": "value-null-means-indeterminate",
+      "text": "`value={null}` marks the bar indeterminate: the root reports no `aria-valuenow`, and every part of the family carries `data-indeterminate`, which the stylesheet turns into a sweeping band instead of a width fill."
+    },
+    {
+      "id": "named-by-aria-label-or-label-part",
+      "text": "The root element is what receives the accessible name: an `aria-label` on Progress, or a ProgressLabel child whose id the root wires into `aria-labelledby`."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Render one with no accessible name",
+      "do_instead": "Pass `aria-label`, or compose a ProgressLabel into it; a bar reports a value but needs a name for what the progress is of"
+    },
+    {
+      "dont": "Fake an indeterminate look with a stuck value",
+      "do_instead": "Pass `value={null}` - a static value reports a false, frozen percentage to assistive technology"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "Base UI's own Progress primitive (role=\"progressbar\" with aria-valuenow/-min/-max wiring, and a ProgressLabel's id wired into aria-labelledby) plus progress.test.tsx's own accessible-name, aria-valuenow/-min/-max and data-indeterminate assertions"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "value": {
+      "states": "value is a number or null",
+      "because": "`number | null` - the compiler emits one JSON type per property, so a number-or-null union is left unasserted."
+    },
+    "getAriaValueText": {
+      "states": "getAriaValueText is a function the root calls for the value's text alternative, not a value",
+      "because": "`(formattedValue: string | null, value: number | null) => string` - a function of the formatted readout and the raw value. No JSON Schema type covers a function."
+    },
+    "format": {
+      "states": "format is an Intl.NumberFormatOptions object controlling how the value is formatted",
+      "because": "An object type with the full breadth of Intl's own formatting options is not something this schema restates; the kit forwards it to Base UI unchanged."
+    },
+    "locale": {
+      "states": "locale is a BCP 47 locale string, an Intl.Locale object, or a readonly array of either, passed to Intl.NumberFormat",
+      "because": "Intl.LocalesArgument is a union of those shapes; the compiler emits one JSON type per property, so this union is left to tsc."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the root's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the root's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (status). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through progress.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Determinate, named for assistive tech",
+        "code": "<Progress value={64} aria-label=\"Uploading\" />"
+      },
+      {
+        "title": "Composed with a caption and a live readout",
+        "code": "<Progress value={42}>\n  <ProgressLabel>Uploading</ProgressLabel>\n  <ProgressValue />\n</Progress>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A bar with no name",
+        "code": "<Progress value={64} />",
+        "why": "The progressbar has no accessible name, so assistive technology announces a bare percentage with no name for what it is the progress of."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "progress",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.progress_indicator.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.progress_label.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.progress_track.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.progress_value.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Progress",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "aria-valuetext": {
+        "type": "string"
+      },
+      "format": {
+        "description": "TS: Intl.NumberFormatOptions | undefined. The compiler emits one JSON type per property; this type is left to tsc. format is an Intl.NumberFormatOptions object controlling how the value is formatted. An object type with the full breadth of Intl's own formatting options is not something this schema restates; the kit forwards it to Base UI unchanged."
+      },
+      "getAriaValueText": {
+        "description": "TS: ((formattedValue: string | null, value: number | null) => string) | undefined. The compiler emits one JSON type per property; this type is left to tsc. getAriaValueText is a function the root calls for the value's text alternative, not a value. `(formattedValue: string | null, value: number | null) => string` - a function of the formatted readout and the raw value. No JSON Schema type covers a function."
+      },
+      "locale": {
+        "description": "TS: Intl.LocalesArgument. The compiler emits one JSON type per property; this type is left to tsc. locale is a BCP 47 locale string, an Intl.Locale object, or a readonly array of either, passed to Intl.NumberFormat. Intl.LocalesArgument is a union of those shapes; the compiler emits one JSON type per property, so this union is left to tsc."
+      },
+      "max": {
+        "type": "number"
+      },
+      "min": {
+        "type": "number"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ProgressRootState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the root's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: ProgressRootState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the root's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (status). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through progress.module.css, not through this."
+      },
+      "value": {
+        "description": "TS: number | null. The compiler emits one JSON type per property; this type is left to tsc. value is a number or null. `number | null` - the compiler emits one JSON type per property, so a number-or-null union is left unasserted."
+      }
+    },
+    "required": [
+      "value"
+    ],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

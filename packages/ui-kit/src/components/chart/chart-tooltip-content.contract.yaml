@@ -1,0 +1,127 @@
+# Semantic overlay for ChartTooltipContent - one of the six independent
+# contracts in this directory (see chart-container.contract.yaml). Its props
+# type joins the library's Tooltip props, its default content's props and
+# the div attributes; the tooltip passes all of its own props in.
+component: chart-tooltip-content
+
+intent: Render a tooltip's box for the active chart point - a label and one row per series with its indicator, config label and value.
+
+typical_uses:
+  - The content of a ChartTooltip
+
+dont_use_when:
+  - situation: A tooltip body that needs a layout of its own
+    instead:
+      target: a component of the caller's own passed as ChartTooltip's `content`
+      note: The tooltip clones any element given as `content` with the same props, so a custom body receives the payload the same way.
+
+accepts:
+  content: nothing
+
+mounted_in:
+  - container: the `content` prop of ChartTooltip
+    note: >-
+      A prop, not a child: the tooltip clones the element with its active
+      state, payload and label on every render. ChartTooltip is the
+      library's Tooltip, so no kit contract accepts this component.
+
+invariants:
+  - id: requires-a-chart-container
+    text: >-
+      It reads the ChartConfig through the context ChartContainer provides
+      and throws when rendered outside one.
+  - id: renders-only-while-active
+    text: >-
+      It renders nothing unless `active` is true and `payload` has at least
+      one row; a row whose `type` is `none` is skipped.
+  - id: row-name-and-label-from-config
+    text: >-
+      A row's name is the label of the config entry found by a key -
+      `nameKey`, else the row's name, else its data key - where a string
+      field of that name on the row or its data point supplies the entry's
+      key; a row with no entry shows its own name. Without `labelKey`, the
+      box label is the category the tooltip passes as `label`, shown as its
+      config entry's label when it names one, whenever that category is a
+      string; otherwise, and always with `labelKey`, it is the config label
+      found for the first row by the same lookup, keyed on `labelKey`, else
+      on the row's data key or name. When no entry matches, no label shows
+      unless `labelFormatter` is given.
+  - id: label-nests-for-one-row
+    text: >-
+      When `payload` has exactly one entry, counting an entry whose `type`
+      is `none`, and the indicator is not `dot`, the label leaves the top of
+      the box and shows inside that row, above its name - and only when the
+      row renders its default body: if `formatter` replaces the row, or the
+      one entry is skipped, no label shows at all. With more than one entry
+      the label stays at the top, even when all but one are skipped.
+  - id: indicator-color-and-icon
+    text: >-
+      A row's indicator takes `color` when given, else the fill of the
+      row's data point, else the series color; a config entry with an
+      `icon` shows that icon in place of the indicator, and `hideIndicator`
+      removes the indicator but not the icon.
+  - id: tooltip-settings-stay-off-the-root
+    text: >-
+      The tooltip's own settings, the active index and coordinate it passes
+      in, and every event handler never reach the rendered box, and its props
+      type admits no handler, `children` or `dangerouslySetInnerHTML`;
+      `color` is read as the indicator color, `content` is dropped, and every
+      other div attribute reaches the box, with `className` merged after the
+      kit's classes.
+
+anti_patterns:
+  - dont: Pass `formatter` to reformat only the number of each row
+    do_instead: >-
+      Expect `formatter` to replace the whole row, indicator and name
+      included; to keep the default row, format the data before it reaches
+      the chart
+
+deprecations: {}
+
+# chart.test.tsx asserts rendering, label and indicator behaviour; nothing
+# in it asserts how assistive technology reads the box.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Rows with a dashed indicator and no label
+      code: |
+        <ChartTooltip content={<ChartTooltipContent indicator="dashed" hideLabel />} />
+    - title: Row names from a field of the data
+      code: |
+        <ChartTooltip content={<ChartTooltipContent nameKey="browser" labelKey="visitors" />} />
+  bad:
+    - title: Content rendered outside ChartContainer
+      code: |
+        <BarChart width={480} height={240} data={data}>
+          <ChartTooltip content={<ChartTooltipContent />} />
+        </BarChart>
+      why: >-
+        ChartTooltipContent reads the ChartConfig from ChartContainer's
+        context and throws without it.
+
+# What each property the schema cannot state in full actually states, and
+# why - the compiler emits both halves into that property's description.
+prop_statements:
+  formatter:
+    states: 'formatter is called for each row that has a value and a name, with the value, the name, the row, its index and the row''s own data point - not the payload array its type declares for the fifth argument - and its return replaces the row''s indicator, name and value'
+    because: 'A function, which no JSON Schema type covers.'
+  label:
+    states: 'label is the category of the active point, passed in by the tooltip'
+    because: '`ReactNode` - an element tree, which no JSON Schema type covers.'
+  labelFormatter:
+    states: 'labelFormatter is called with the resolved label and the payload, and its return is shown as the label even when no label resolved; under `hideLabel` it is not called'
+    because: 'A function, which no JSON Schema type covers.'
+  payload:
+    states: 'payload is the list of rows for the active point, passed in by the tooltip'
+    because: 'An array of the library''s row entries, whose SVG attributes and nested data the compiler emits no JSON type for.'
+
+# One statement for the tooltip settings that all state the same fact.
+prop_statement_groups:
+  - match: '^(allowEscapeViewBox|animationEasing|axisId|content|contentStyle|cursor|defaultIndex|isAnimationActive|itemSorter|itemStyle|labelStyle|offset|payloadUniqBy|portal|position|reverseDirection|wrapperStyle)$'
+    states: 'A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it'
+    because: 'An object, a function or a union of types, which the compiler emits no single JSON type for.'

@@ -1,0 +1,97 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_group_label.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sidebar-group-label",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The small muted caption naming a SidebarGroup.",
+  "typical_uses": [
+    "The caption at the top of a sidebar section"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A caption for a form control outside the sidebar",
+      "instead": {
+        "target": "Label",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.label.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "SidebarGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_group.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "slides-away-in-the-icon-rail",
+      "text": "Collapsed to the icon rail the label fades out and pulls its own 32px row away with a negative top margin, so the rows below move up; it is not removed from the DOM."
+    },
+    {
+      "id": "caption-only",
+      "text": "SidebarGroupLabel renders a plain div with no role and no link to the group."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's useRender takes an element or a function of the label's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property. It is how the caption becomes a heading or a `label` element."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A caption for a section",
+        "code": "<SidebarGroupLabel>Platform</SidebarGroupLabel>"
+      },
+      {
+        "title": "A caption that labels the section's search field",
+        "code": "<SidebarGroupLabel render={<label htmlFor=\"sidebar-search\" />}>Search</SidebarGroupLabel>"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A caption expected to name the section for assistive tech",
+        "code": "<SidebarGroup>\n  <SidebarGroupLabel>Projects</SidebarGroupLabel>\n  <SidebarGroupContent>{menu}</SidebarGroupContent>\n</SidebarGroup>\n",
+        "why": "The label is a plain div and the group a plain div with no role, so nothing names the section; render the label as a heading, or give the group `role=\"group\"` with `aria-labelledby` pointing at the label."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sidebar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SidebarGroupLabel",
+    "type": "object",
+    "properties": {
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, {}> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's useRender takes an element or a function of the label's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property. It is how the caption becomes a heading or a `label` element."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

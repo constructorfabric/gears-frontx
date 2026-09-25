@@ -1,0 +1,102 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_action.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sidebar-menu-action",
+  "forwards_to": "gts.frontx.uikit.element.dom_button.v1~",
+  "intent": "A small icon button at the trailing end of one menu row, acting on that row's item.",
+  "typical_uses": [
+    "A \"more\" button opening the row's own menu of commands"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "An action on a whole section",
+      "instead": {
+        "target": "SidebarGroupAction",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_group_action.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "SidebarMenuItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "pinned-to-the-row-end",
+      "text": "The action is a 20px square absolutely positioned 4px from the item's right edge and vertically centred on the row, sizing a direct `svg` child to the small icon size; collapsed to the icon rail it is not displayed."
+    },
+    {
+      "id": "show-on-hover",
+      "text": "With `showOnHover` the action is transparent until its item is hovered or holds focus, or until the action has `aria-expanded=\"true\"` or `data-popup-open`; it stays in the tab order while transparent."
+    },
+    {
+      "id": "icon-only-needs-a-name",
+      "text": "It renders a native button with no accessible name of its own; an icon-only action needs `aria-label`."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "failed",
+      "by": "sidebar.module.css positions .menuAction with the physical `right` property, so it stays on the right edge under a right-to-left direction"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's useRender takes an element or a function of the action's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property. It is how the action becomes a menu trigger."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A named action revealed on hover",
+        "code": "<SidebarMenuItem>\n  <SidebarMenuButton>\n    <FolderIcon />\n    <span>Design</span>\n  </SidebarMenuButton>\n  <SidebarMenuAction showOnHover aria-label=\"More for Design\">\n    <MoreHorizontalIcon />\n  </SidebarMenuAction>\n</SidebarMenuItem>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The action nested in the row's button",
+        "code": "<SidebarMenuButton>\n  <FolderIcon />\n  <span>Design</span>\n  <SidebarMenuAction aria-label=\"More\"><MoreHorizontalIcon /></SidebarMenuAction>\n</SidebarMenuButton>\n",
+        "why": "A button inside a button is invalid markup and joins the action to the row's accessible name; the action is the button's sibling inside SidebarMenuItem."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sidebar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SidebarMenuAction",
+    "type": "object",
+    "properties": {
+      "showOnHover": {
+        "type": "boolean",
+        "default": false
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, {}> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's useRender takes an element or a function of the action's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property. It is how the action becomes a menu trigger."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

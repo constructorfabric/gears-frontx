@@ -1,0 +1,63 @@
+# Semantic overlay for EmptyDescription - part of the Empty family, see
+# empty.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from EmptyHeader's accepted components, not
+# authored here.
+component: empty-description
+
+intent: Explain why nothing is shown and what the user can do about it, in a sentence or two under the title.
+
+typical_uses:
+  - The muted sentence beneath EmptyTitle giving the reason for the empty state or the next step
+
+dont_use_when:
+  - situation: The description of a card that holds real content
+    instead:
+      target: CardDescription
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_description.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: descendant-links-are-underlined
+    text: >-
+      Any descendant a inherits the description's muted color, is
+      underlined with a 4px offset, and turns var(--link-foreground) on
+      hover.
+
+anti_patterns:
+  - dont: Put a short count or hint in EmptyDescription as a second line
+    do_instead: >-
+      Give the secondary line its own EmptyDetail after the description,
+      which sets it on the smaller meta type
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A description with an inline link
+      code: |
+        <EmptyDescription>
+          No projects yet. <a href="/docs/projects">Read how projects work</a>.
+        </EmptyDescription>
+  bad:
+    - title: A count crammed into the description
+      code: |
+        <EmptyHeader>
+          <EmptyTitle>No results</EmptyTitle>
+          <EmptyDescription>Try a different search term. 3 filters applied.</EmptyDescription>
+        </EmptyHeader>
+      why: >-
+        The count is a secondary line; EmptyDetail sets it on the meta type
+        with its own spacing under the description.
+
+family_membership:
+  name: empty
+  role: part

@@ -1,0 +1,174 @@
+# Semantic overlay for SelectContent - a part of the Select family, see
+# select.contract.yaml's `family_membership` for how the contracts relate.
+# It composes the primitive's Portal, Positioner, Popup and List plus the
+# two scroll buttons; the forwarded surface is the Popup's div.
+component: select-content
+
+intent: The popup of a Select, portalled and positioned against its trigger, that lists the options.
+
+typical_uses:
+  - The list of options a SelectTrigger opens
+
+dont_use_when:
+  - situation: The list of actions a menu button opens
+    instead:
+      target: DropdownMenuContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_content.v1
+  - situation: A list the user filters by typing
+    instead:
+      target: ComboboxContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_content.v1
+  - situation: A floating panel holding fields, buttons or free-form content
+    instead:
+      target: PopoverContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.popover_content.v1
+
+# The ONE authored statement of what the popup hosts: the compiler fills each
+# part's `mounted_in` from this list. SelectLabel is not here: the primitive
+# throws unless a SelectGroup encloses it. The scroll buttons are not here
+# either: the content renders its own pair around the list.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.select_group.v1 # SelectGroup
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.select_item.v1 # SelectItem
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.select_separator.v1 # SelectSeparator
+
+invariants:
+  - id: selected-item-over-the-trigger
+    text: >-
+      Unless `alignItemWithTrigger` is false, a popup opened by mouse or
+      keyboard overlaps the trigger so the chosen item sits over the trigger's
+      caption, and `side`, `align` and the offsets do not apply; opened by
+      touch, turned off, or short of space, the popup opens on `side`
+      instead.
+  - id: children-go-into-the-list
+    text: >-
+      Children render inside the primitive's listbox list, which the
+      content always places between a SelectScrollUpButton and a
+      SelectScrollDownButton of its own; the list, not the popup, is what
+      scrolls.
+  - id: portals-to-body-unless-container
+    text: >-
+      Without `container`, the popup portals into the node of the nearest
+      enclosing portal, or the document body when there is none; a theme
+      scoped to a subtree reaches the popup only when that subtree, or a node
+      inside it, is passed as `container`.
+  - id: as-wide-as-the-trigger
+    text: >-
+      select.module.css sets the popup's width to the trigger's width
+      (`--anchor-width`) with a 9rem floor, and caps its height at the space
+      available beside the trigger.
+  - id: reduced-motion-keeps-the-fade
+    text: >-
+      The popup fades and scales on open and close; under
+      `prefers-reduced-motion` select.module.css drops the transform
+      transition and keeps the fade.
+
+anti_patterns:
+  - dont: Keep the default positioning when the trigger sits inside a transformed or filtered container, such as an animated panel
+    do_instead: >-
+      Pass `positionMethod="fixed"`; absolute positioning resolves against
+      the transformed container instead of the page and misplaces the popup
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Select.List renders role="listbox" (aria-multiselectable
+      under multiple); select.test.tsx asserts no listbox is found while the
+      select is closed and that the listbox is found by its role once open
+  rtl:
+    outcome: unknown
+
+unexposed_parts:
+  - part: Select.Portal
+    reason: Composed inside SelectContent; only its `container` is exposed, as a prop of the content itself.
+  - part: Select.Positioner
+    reason: Composed inside SelectContent; its placement and collision props are exposed on the content itself.
+  - part: Select.List
+    reason: Composed inside SelectContent as the scrolling listbox that holds the children; it takes no props from the caller.
+
+prop_statements:
+  children:
+    states: children is the popup's rows, the parts listed under accepts
+    because: >-
+      `React.ReactNode` is a union of elements, strings, numbers, fragments
+      and more; the compiler emits one JSON type per property.
+  container:
+    states: container is the DOM node, shadow root or ref to one that the popup portals into; an explicit null renders no popup until a node is passed
+    because: >-
+      `HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null`
+      - live DOM nodes and ref objects, which no JSON Schema type covers.
+  sideOffset:
+    states: sideOffset is the gap in pixels between the anchor and the popup, as a number or a function of side, align and both boxes' sizes
+    because: >-
+      `number | OffsetFunction` - the compiler emits one JSON type per
+      property, and the function form has no JSON Schema representation.
+  alignOffset:
+    states: alignOffset is the shift in pixels along the alignment axis, as a number or a function of side, align and both boxes' sizes
+    because: >-
+      `number | OffsetFunction` - the compiler emits one JSON type per
+      property, and the function form has no JSON Schema representation.
+  collisionBoundary:
+    states: collisionBoundary is the area the popup is kept inside, `clipping-ancestors`, an element, a list of elements or a rectangle
+    because: >-
+      `'clipping-ancestors' | Element | Element[] | Rect` mixes a string with
+      live DOM elements, which no JSON Schema type covers.
+  collisionPadding:
+    states: collisionPadding is the space in pixels kept from the collision boundary, one number or a per-side object
+    because: >-
+      `number | { top?, right?, bottom?, left? }` - the compiler emits one
+      JSON type per property.
+  finalFocus:
+    states: finalFocus decides where focus goes when the popup closes - true for the default, false for nowhere, a ref, or a function of the interaction type
+    because: >-
+      `boolean | RefObject<HTMLElement | null> | ((closeType) => boolean | HTMLElement | null | void)`
+      mixes a boolean with a ref object and a callback; the compiler emits
+      one JSON type per property.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the popup's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the popup's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open, side, align, ...). The compiler emits one JSON type per property, so nothing is asserted; the
+      kit's own styling goes through select.module.css, not through this.
+
+examples:
+  good:
+    - title: A popup opening below the trigger instead of over it
+      code: |
+        <Select items={REGIONS}>
+          <SelectTrigger aria-label="Region">
+            <SelectValue placeholder="Pick a region" />
+          </SelectTrigger>
+          <SelectContent alignItemWithTrigger={false} align="start">
+            <SelectItem value="eu-central">Frankfurt</SelectItem>
+            <SelectItem value="us-east">Virginia</SelectItem>
+          </SelectContent>
+        </Select>
+    - title: A popup portalled into a themed subtree
+      code: |
+        <SelectContent container={themedSectionRef}>
+          <SelectItem value="eu-central">Frankfurt</SelectItem>
+        </SelectContent>
+  bad:
+    - title: A made-up position prop on the popup
+      code: |
+        <SelectContent position="popper">
+          <SelectItem value="eu-central">Frankfurt</SelectItem>
+        </SelectContent>
+      why: >-
+        The content takes no `position`; to open the popup on `side` rather
+        than over the trigger, pass `alignItemWithTrigger={false}`.
+
+family_membership:
+  name: select
+  role: part

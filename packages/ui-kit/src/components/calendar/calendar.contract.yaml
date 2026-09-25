@@ -1,0 +1,286 @@
+# Semantic overlay for Calendar - the hand-written half of the contract.
+#
+# Machine-extractable facts (the prop list) do NOT belong here: the compiler
+# reads them from calendar.tsx and the wrapped day-picker library's props.
+# Those props are a union discriminated by `mode` (none, single, multiple,
+# range, each optionally `required`); the extraction reads every branch, and
+# what the union says per mode is carried below, in `invariants` and
+# `prop_statements`. The library renders its own root and forwards only the
+# attributes it names, so the component names no element surface.
+component: calendar
+
+intent: Show one or more month grids inline on the page and let the user pick one day, several days or a date range from them.
+
+typical_uses:
+  - An always-visible calendar for picking a day or a range, such as a booking or scheduling view
+  - A read-only month view that marks days through modifiers
+
+dont_use_when:
+  - situation: A date field that opens a calendar from a trigger button or a typed field
+    instead:
+      target: DatePicker
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.date_picker.v1
+  - situation: A time of day, alone or next to a date
+    instead:
+      target: Input
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.input.v1
+      note: >-
+        Calendar selects whole days only; a time goes in its own field,
+        such as an Input with `type="time"`.
+
+# Calendar takes no children: the grid, the caption, the navigation and the
+# optional footer are all built from its props.
+accepts:
+  content: nothing
+
+invariants:
+  - id: selection-follows-on-select
+    text: >-
+      With `onSelect` given, the grid shows `selected` on every render and a
+      pick only calls `onSelect`, so a caller that does not store the value
+      it receives sees the previous selection stay. Without `onSelect`,
+      `selected` seeds the initial selection and the calendar keeps later
+      picks in its own state.
+  - id: month-wins-over-default-month
+    text: >-
+      `month` and `defaultMonth` are both accepted; `defaultMonth` seeds the
+      initial state and is ignored afterwards, and when `month` is given it
+      wins and the component follows it on every render.
+  - id: no-mode-no-day-buttons
+    text: >-
+      Without `mode` and without `onDayClick`, days render as plain text
+      with no buttons, so the grid can be neither focused day by day nor
+      clicked.
+  - id: single-pick-toggles
+    text: >-
+      In single mode, picking the day already selected clears the selection
+      and calls `onSelect(undefined)`, unless `required` is set.
+  - id: overrides-replace-the-kit-slots
+    text: >-
+      A key in `classNames` for a slot the kit styles (months, month, nav,
+      the previous and next buttons, the caption, dropdown and grid slots,
+      day, range_start, range_middle, range_end, today, outside, disabled,
+      hidden) replaces the kit's class for that slot; a key for any other
+      slot, `day_button` included, is added to it. A key in `components`
+      replaces the kit's
+      Chevron, DayButton or WeekNumber. A replacement DayButton loses the
+      selection data attributes and the keyboard focus move unless it
+      renders CalendarDayButton.
+  - id: keyboard-direction-follows-dir
+    text: >-
+      Arrow keys move the focused day (Shift+Left/Right by month,
+      Shift+Up/Down by year), Page Up and Page Down move by month
+      (Shift+Page Up/Down by year) and Home and End to the week's edges. Left and Right swap only when the `dir`
+      prop is `rtl`; a direction inherited from an ancestor does not swap
+      them.
+
+anti_patterns:
+  - dont: Replace `components.DayButton` with a plain button to change how a day looks
+    do_instead: >-
+      Add a class through `modifiersClassNames` or `classNames.day_button`,
+      which keep the kit's classes, or render CalendarDayButton inside the
+      replacement
+
+deprecations: {}
+
+# calendar.test.tsx finds the grid with getByRole('grid') and asserts that a
+# matched disabled day's button carries the native `disabled` property and
+# ignores a click. The grid semantics come from the primitive.
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's DayPicker (role="grid" per month with
+      aria-multiselectable in multiple and range mode, role="gridcell" with
+      aria-selected per day, a roving tabindex over the day buttons and
+      arrow, Page Up/Down, Home and End keyboard navigation, labelled
+      previous and next month buttons), plus calendar.test.tsx asserting
+      the grid role and a disabled day button's native disabled state
+  rtl:
+    outcome: unknown
+
+unexposed_parts:
+  - part: the chevron
+    reason: >-
+      The kit's Chevron slot, one of four directional icons chosen by the
+      library's `orientation`, styled by calendar.module.css's `.chevron`.
+  - part: the week number cell
+    reason: >-
+      The kit's WeekNumber slot, a table cell wrapping the number in a div
+      styled by `.weekNumberCell`, rendered only with `showWeekNumber`.
+
+prop_statements:
+  selected:
+    states: selected is the current selection, a Date in single mode, a list of Dates in multiple mode and a `{ from, to }` date range in range mode
+    because: >-
+      `Date | Date[] | DateRange | undefined`, discriminated by `mode` and
+      declared only by the three selection branches; the compiler emits one
+      JSON type per property, and a Date object has no JSON Schema
+      representation.
+  onSelect:
+    states: onSelect is a callback called with the next selection, typed like `selected` for the active mode, plus the clicked date, its modifiers and the event, not a value
+    because: >-
+      `(selected, triggerDate, modifiers, e) => void`, whose first argument
+      follows `mode` and `required` - functions, which no JSON Schema type
+      covers.
+  disabled:
+    states: disabled is a day matcher, one matcher or a list of them, that rules out the matching days
+    because: >-
+      `Matcher | Matcher[]`, where a matcher is a boolean, a Date, a list of
+      Dates, a range, a before/after bound, an interval, a day of the week
+      or a function of the day; Dates and functions have no JSON Schema
+      representation.
+  hidden:
+    states: hidden is a day matcher, one matcher or a list of them, whose matching days are left out of the grid
+    because: >-
+      The same `Matcher | Matcher[]` as `disabled`; Dates and functions have
+      no JSON Schema representation.
+  modifiers:
+    states: modifiers is an object mapping a custom modifier name to the day matcher it applies to
+    because: >-
+      `Record<string, Matcher | Matcher[] | undefined>`; the matchers hold
+      Dates and functions, which have no JSON Schema representation.
+  modifiersClassNames:
+    states: modifiersClassNames is an object mapping a modifier name to the class added to its days
+    because: >-
+      `ModifiersClassNames`, a map keyed by modifier names the caller
+      chooses; the compiler leaves the named type to tsc.
+  modifiersStyles:
+    states: modifiersStyles is an object mapping a modifier name to the inline style of its days
+    because: >-
+      `ModifiersStyles`, a map of React style objects keyed by modifier
+      names; the compiler leaves the named type to tsc.
+  classNames:
+    states: classNames is an object mapping the library's slot names to a class, replacing or adding to the kit's class as `overrides-replace-the-kit-slots` states
+    because: >-
+      `Partial<ClassNames>`, keyed by the library's own slot names
+      (`months`, `day`, `range_start` and others); the compiler leaves the
+      named type to tsc. The kit's classes come from calendar.module.css.
+  styles:
+    states: styles is an object mapping the library's slot names to an inline style
+    because: >-
+      `Partial<Styles>`, React style objects keyed by slot name; the
+      compiler leaves the named type to tsc.
+  style:
+    states: style is a plain style object applied inline to the calendar's root element
+    because: >-
+      `CSSProperties` is React's style object type, which the compiler
+      leaves to tsc; the kit's own styling goes through calendar.module.css,
+      not through this.
+  components:
+    states: components is an object of React components that replace the library's render slots
+    because: >-
+      `Partial<CustomComponents>` holds components, which are functions and
+      have no JSON Schema representation.
+  formatters:
+    states: formatters is an object of functions that format the caption, the day, the weekday and the dropdown text
+    because: >-
+      `Partial<Formatters>` holds functions, which have no JSON Schema
+      representation. The kit supplies an abbreviated
+      `formatMonthDropdown`, which a consumer key of the same name
+      replaces.
+  labels:
+    states: labels is an object of functions that build the accessible labels of the grid, the days and the navigation
+    because: >-
+      `Partial<Labels>` holds functions, which have no JSON Schema
+      representation.
+  locale:
+    states: locale is a date-fns locale object, which also sets the root's `lang` when `lang` is not given
+    because: >-
+      `Partial<DayPickerLocale>` is an object holding a code, formatting and
+      parsing functions and week options; the functions have no JSON Schema
+      representation.
+  dateLib:
+    states: dateLib is an object of date functions that replace the library's own date arithmetic
+    because: >-
+      `Partial<DateLib>` holds functions, which have no JSON Schema
+      representation.
+  defaultMonth:
+    states: defaultMonth is a Date whose month the calendar shows first
+    because: A Date object has no JSON Schema representation.
+  month:
+    states: month is a Date whose month the calendar shows, controlling navigation
+    because: A Date object has no JSON Schema representation.
+  startMonth:
+    states: startMonth is a Date, the earliest month navigation can reach
+    because: A Date object has no JSON Schema representation.
+  endMonth:
+    states: endMonth is a Date, the latest month navigation can reach
+    because: A Date object has no JSON Schema representation.
+  today:
+    states: today is a Date that the grid marks as today in place of the current date
+    because: A Date object has no JSON Schema representation.
+  footer:
+    states: footer is any React node rendered below the grids
+    because: >-
+      `ReactNode` covers elements, strings, arrays and more, and the
+      compiler emits one JSON type per property.
+  weekStartsOn:
+    states: weekStartsOn is the index of the first weekday, 0 for Sunday through 6 for Saturday
+    because: >-
+      `0 | 1 | 2 | 3 | 4 | 5 | 6`; the schema states a number, and the
+      compiler emits no numeric enum, so tsc checks the range.
+  firstWeekContainsDate:
+    states: firstWeekContainsDate is the day of January, 1 or 4, that the first week of the year must contain
+    because: >-
+      `1 | 4`; the schema states a number, and the compiler emits no numeric
+      enum, so tsc checks the two values.
+  onMonthChange:
+    states: onMonthChange is a callback called with the newly shown month, not a value
+    because: >-
+      `(month: Date) => void` - a function, which no JSON Schema type
+      covers.
+  onNextClick:
+    states: onNextClick is a callback called with the month the next button moves to, not a value
+    because: >-
+      `(month: Date) => void` - a function, which no JSON Schema type
+      covers.
+  onPrevClick:
+    states: onPrevClick is a callback called with the month the previous button moves to, not a value
+    because: >-
+      `(month: Date) => void` - a function, which no JSON Schema type
+      covers.
+  onDayClick:
+    states: onDayClick is a callback called with the clicked date, its modifiers and the mouse event, not a value
+    because: >-
+      `(date, modifiers, e) => void` - a function, which no JSON Schema type
+      covers. Given without `mode`, it still turns the days into buttons.
+  onDayFocus:
+    states: onDayFocus is a callback called with the focused date, its modifiers and the focus event, not a value
+    because: A function, which no JSON Schema type covers.
+  onDayBlur:
+    states: onDayBlur is a callback called with the blurred date, its modifiers and the focus event, not a value
+    because: A function, which no JSON Schema type covers.
+  onDayKeyDown:
+    states: onDayKeyDown is a callback called with the date, its modifiers and the keyboard event after the calendar's own key handling, not a value
+    because: A function, which no JSON Schema type covers.
+  onDayMouseEnter:
+    states: onDayMouseEnter is a callback called with the date, its modifiers and the mouse event, not a value
+    because: A function, which no JSON Schema type covers.
+  onDayMouseLeave:
+    states: onDayMouseLeave is a callback called with the date, its modifiers and the mouse event, not a value
+    because: A function, which no JSON Schema type covers.
+
+examples:
+  good:
+    - title: One day
+      code: |
+        const [date, setDate] = useState<Date | undefined>();
+        <Calendar mode="single" selected={date} onSelect={setDate} />
+    - title: A range over two months with weekends ruled out
+      code: |
+        const [range, setRange] = useState<DateRange | undefined>();
+        <Calendar mode="range" selected={range} onSelect={setRange} numberOfMonths={2} disabled={{ dayOfWeek: [0, 6] }} />
+    - title: Month and year dropdowns in the caption
+      code: <Calendar mode="single" selected={date} onSelect={setDate} captionLayout="dropdown" />
+  bad:
+    - title: A picker with no mode
+      code: <Calendar selected={date} onSelect={setDate} />
+      why: >-
+        Without `mode` the days are not buttons and nothing can be picked;
+        `onSelect` is never called.
+    - title: A made-up defaultSelected prop for an uncontrolled calendar
+      code: <Calendar mode="single" defaultSelected={new Date()} />
+      why: >-
+        There is no `defaultSelected`; pass `selected` without `onSelect`
+        to seed a selection the calendar then keeps itself.

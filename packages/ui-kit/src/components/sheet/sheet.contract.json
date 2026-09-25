@@ -1,0 +1,198 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sheet",
+  "intent": "Hold the open state of one edge-anchored panel and tie its trigger to that panel.",
+  "typical_uses": [
+    "A focused task or form in a panel that slides in from one edge of the viewport over the page",
+    "The details of a record opened from a list, with the list staying in place behind the panel"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A short prompt or form shown centered over the page",
+      "instead": {
+        "target": "Dialog",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog.v1"
+      }
+    },
+    {
+      "situation": "A confirmation the user must answer before continuing, such as before a destructive action",
+      "instead": {
+        "target": "AlertDialog",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog.v1"
+      }
+    },
+    {
+      "situation": "An edge panel the user drags or swipes to dismiss",
+      "instead": {
+        "target": "Drawer",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.drawer.v1"
+      }
+    },
+    {
+      "situation": "The application's persistent navigation panel",
+      "instead": {
+        "target": "Sidebar",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar.v1"
+      }
+    },
+    {
+      "situation": "A list of actions anchored to a trigger",
+      "instead": {
+        "target": "DropdownMenu",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_trigger.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_content.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "open-wins-over-default-open",
+      "text": "`open` and `defaultOpen` are both accepted; `defaultOpen` seeds the initial state and is ignored afterwards, and when `open` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "modal-sets-focus-scroll-and-pointer",
+      "text": "With `modal` at its default `true`, focus is trapped in the panel, page scroll is locked and presses outside the panel reach nothing on the page; `'trap-focus'` traps focus without locking page scroll or adding the primitive's own blocking layer; `false` traps no focus, locks no scroll and adds no blocking layer. In every mode the visible backdrop SheetContent renders stays, covering the page and catching presses on it, unless `showBackdrop={false}`."
+    },
+    {
+      "id": "escape-and-outside-press-close",
+      "text": "Escape and a press outside the panel close the sheet, reporting the reason to `onOpenChange`; with nested dialogs open, only the topmost one closes. `disablePointerDismissal` keeps an outside press from closing it, and for a non-modal sheet also keeps focus moving out from closing it."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Pass `open` without `onOpenChange`",
+      "do_instead": "Update the state `open` reads from inside `onOpenChange`; a controlled sheet closes only when `open` turns false, so Escape, an outside press and every close button otherwise leave it open"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is the root's content, either React nodes or a function of the active trigger's payload that returns them",
+      "because": "`React.ReactNode | PayloadChildRenderFunction<Payload>` - the function form receives `{ payload }` from whichever trigger opened the sheet. The compiler emits one JSON type per property, and a function has no JSON Schema representation."
+    },
+    "modal": {
+      "states": "modal is true, false or the string 'trap-focus'",
+      "because": "`boolean | 'trap-focus'` - the compiler emits one JSON type per property, so a boolean-or-string union is left unasserted."
+    },
+    "onOpenChange": {
+      "states": "onOpenChange is a callback called with the next open state and event details, not a value",
+      "because": "`(open: boolean, eventDetails) => void`; the second argument carries Base UI's change-event details, including the reason (a trigger press, an outside press, Escape, a close press, focus moving out or an imperative action). No JSON Schema type covers a function."
+    },
+    "onOpenChangeComplete": {
+      "states": "onOpenChangeComplete is a callback called with the open state once the open or close animation has finished",
+      "because": "`(open: boolean) => void` - a function, which no JSON Schema type covers."
+    },
+    "actionsRef": {
+      "states": "actionsRef is a ref the root fills with imperative `close` and `unmount` actions",
+      "because": "`React.RefObject<DialogRootActions | null>` - a ref object holding functions, which no JSON Schema type covers."
+    },
+    "handle": {
+      "states": "handle is an opaque object from the primitive's Dialog.createHandle(), shared with a trigger placed outside this root",
+      "because": "`DialogHandle<Payload>` is a class instance holding the sheet's store, not data; the kit re-exports no createHandle, so a caller imports it from the primitive."
+    },
+    "triggerId": {
+      "states": "triggerId is the id of the trigger a controlled sheet is open for, or null",
+      "because": "`string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
+    },
+    "defaultTriggerId": {
+      "states": "defaultTriggerId is the id of the trigger an initially open sheet is open for, or null",
+      "because": "`string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A sheet opened by a kit Button, with a title and footer actions",
+        "code": "<Sheet>\n  <SheetTrigger render={<Button variant=\"outline\" />}>Edit profile</SheetTrigger>\n  <SheetContent>\n    <SheetHeader>\n      <SheetTitle>Edit profile</SheetTitle>\n      <SheetDescription>Changes apply when you save.</SheetDescription>\n    </SheetHeader>\n    <SheetFooter>\n      <SheetClose render={<Button variant=\"outline\" />}>Cancel</SheetClose>\n      <Button onClick={save}>Save</Button>\n    </SheetFooter>\n  </SheetContent>\n</Sheet>\n"
+      },
+      {
+        "title": "A controlled sheet",
+        "code": "<Sheet open={open} onOpenChange={setOpen}>\n  <SheetContent side=\"left\">\n    <SheetHeader>\n      <SheetTitle>Filters</SheetTitle>\n    </SheetHeader>\n  </SheetContent>\n</Sheet>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A made-up prop for the edge on the root",
+        "code": "<Sheet side=\"left\">\n  <SheetTrigger>Open</SheetTrigger>\n  <SheetContent>\n    <SheetTitle>Filters</SheetTitle>\n  </SheetContent>\n</Sheet>\n",
+        "why": "The root takes no edge; `side` is SheetContent's prop, so the panel still opens from the right."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sheet",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_close.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_description.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_footer.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_header.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_title.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_trigger.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Sheet",
+    "type": "object",
+    "properties": {
+      "actionsRef": {
+        "description": "TS: React.RefObject<DialogRootActions | null> | undefined. The compiler emits one JSON type per property; this type is left to tsc. actionsRef is a ref the root fills with imperative `close` and `unmount` actions. `React.RefObject<DialogRootActions | null>` - a ref object holding functions, which no JSON Schema type covers."
+      },
+      "children": {
+        "description": "TS: React.ReactNode | PayloadChildRenderFunction<Payload>. The compiler emits one JSON type per property; this type is left to tsc. children is the root's content, either React nodes or a function of the active trigger's payload that returns them. `React.ReactNode | PayloadChildRenderFunction<Payload>` - the function form receives `{ payload }` from whichever trigger opened the sheet. The compiler emits one JSON type per property, and a function has no JSON Schema representation."
+      },
+      "defaultOpen": {
+        "type": "boolean"
+      },
+      "defaultTriggerId": {
+        "description": "TS: string | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. defaultTriggerId is the id of the trigger an initially open sheet is open for, or null. `string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
+      },
+      "disablePointerDismissal": {
+        "type": "boolean"
+      },
+      "handle": {
+        "description": "TS: DialogHandle<Payload> | undefined. The compiler emits one JSON type per property; this type is left to tsc. handle is an opaque object from the primitive's Dialog.createHandle(), shared with a trigger placed outside this root. `DialogHandle<Payload>` is a class instance holding the sheet's store, not data; the kit re-exports no createHandle, so a caller imports it from the primitive."
+      },
+      "modal": {
+        "description": "TS: boolean | \"trap-focus\" | undefined. The compiler emits one JSON type per property; this type is left to tsc. modal is true, false or the string 'trap-focus'. `boolean | 'trap-focus'` - the compiler emits one JSON type per property, so a boolean-or-string union is left unasserted."
+      },
+      "onOpenChange": {
+        "description": "TS: ((open: boolean, eventDetails: DialogRootChangeEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChange is a callback called with the next open state and event details, not a value. `(open: boolean, eventDetails) => void`; the second argument carries Base UI's change-event details, including the reason (a trigger press, an outside press, Escape, a close press, focus moving out or an imperative action). No JSON Schema type covers a function."
+      },
+      "onOpenChangeComplete": {
+        "description": "TS: ((open: boolean) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChangeComplete is a callback called with the open state once the open or close animation has finished. `(open: boolean) => void` - a function, which no JSON Schema type covers."
+      },
+      "open": {
+        "type": "boolean"
+      },
+      "triggerId": {
+        "description": "TS: string | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. triggerId is the id of the trigger a controlled sheet is open for, or null. `string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,89 @@
+# Semantic overlay for BubbleContent - part of the bubble family, see
+# bubble.contract.yaml's `family_membership`. `mounted_in` is filled from
+# Bubble's accepted components, not authored here. No primitive backs it:
+# it renders a div through Base UI's useRender, which is where its `render`
+# prop comes from.
+component: bubble-content
+
+intent: Draw the framed surface of a bubble that holds the turn's text or rich content, optionally as a link or button.
+
+typical_uses:
+  - The text of one conversation turn inside a Bubble
+  - A clickable bubble, such as a suggestion the user can pick, rendered as a button or a link
+
+dont_use_when:
+  - situation: A clickable action that is not a turn in a conversation
+    instead:
+      target: Button
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+
+# Chat text, a quoted reply, a list or short structured output: any node.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: interactive-styling-on-button-or-link-only
+    text: >-
+      The pointer cursor, the hover fill and the focus ring apply only when
+      the rendered element is a `button` or an `a` (bubble.module.css
+      `.bubbleContent:is(button, a)`); the default div gets none of them and
+      is not focusable.
+  - id: long-content-wraps-inside-the-frame
+    text: >-
+      The surface is capped at its Bubble's width, breaks long unbroken
+      words (`overflow-wrap: break-word`) and clips anything that still
+      overflows (`overflow: hidden`).
+
+anti_patterns:
+  - dont: Attach an onClick to the default div to make a bubble clickable
+    do_instead: Pass `render={<button type="button" />}` or a link element, which is focusable and gets the kit's hover and focus styling
+
+deprecations: {}
+
+# The one assertion bubble.test.tsx makes through the accessibility tree:
+# the render path keeps a native button's role and text name. A rendered
+# button or link is left-aligned with a physical `text-align: left`.
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      bubble.test.tsx asserts that BubbleContent rendered with
+      `render={<button type="button" />}` is found by role "button" with the
+      accessible name "Click here" and keeps the content class
+  rtl:
+    outcome: failed
+    by: >-
+      bubble.module.css `.bubbleContent:is(button, a)` sets the physical
+      `text-align: left`, so a clickable bubble's text does not mirror
+      under a right-to-left direction
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      useRender's render prop takes an element or a function that receives
+      the props to spread (BubbleContent passes no state of its own), so its
+      type is a union of a React element and a callback - the compiler emits
+      one JSON type per property.
+
+examples:
+  good:
+    - title: A suggestion the user can pick
+      code: |
+        <Bubble variant="outline">
+          <BubbleContent render={<button type="button" onClick={onPick} />}>Show me the diff</BubbleContent>
+        </Bubble>
+  bad:
+    - title: A clickable div
+      code: |
+        <Bubble variant="outline">
+          <BubbleContent onClick={onPick}>Show me the diff</BubbleContent>
+        </Bubble>
+      why: >-
+        The default div is not focusable and exposes no button role, and the
+        kit's pointer cursor, hover fill and focus ring apply only to a
+        rendered button or link.
+
+family_membership:
+  name: bubble
+  role: part

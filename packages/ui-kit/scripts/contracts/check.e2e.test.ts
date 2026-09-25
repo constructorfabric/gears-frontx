@@ -365,7 +365,7 @@ describe('a base reference that does not resolve', () => {
 
 describe('guard: the enrolled set itself', () => {
   it('re-checks every entry when enrolled.json changes, and fails one that names no directory', () => {
-    // Editing the file that grants enrollment used to widen nothing, so an
+    // Were editing the file that grants enrollment to widen nothing, an
     // entry could be added for a directory that does not exist and be
     // checked by nothing until some unrelated change touched it.
     const fixture = createFixture();
@@ -562,11 +562,11 @@ describe("guard/enrollment: a near miss in a contract's own examples", () => {
   });
 
   it('answers a base-taking subcommand given no --base the same way, without ending the process', () => {
-    // The usage error is the one branch of the dispatch that used to take the
-    // exit itself. A branch that ends the process answers its caller by
-    // killing it: here that is the test worker, which is why the two cases
-    // below could not be written at all before, and in a real run it is the
-    // truncated stdout the entry point's own comment argues against.
+    // The usage error returns its exit code like every other branch of the
+    // dispatch. A branch that ended the process would answer its caller by
+    // killing it: here that is the test worker, so the two cases below could
+    // not be written at all, and in a real run it is the truncated stdout the
+    // entry point's own comment argues against.
     const context = createFixture().context;
     const printed: string[] = [];
     const spy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {

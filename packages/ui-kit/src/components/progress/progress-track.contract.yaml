@@ -1,0 +1,112 @@
+# Semantic overlay for ProgressTrack - a part of the Progress family, see
+# progress.contract.yaml's `family_membership` for how the five contracts
+# relate.
+#
+# Machine-extractable facts (prop list, forwarded surface) do NOT belong
+# here: the compiler takes those from progress.tsx and the Base UI Progress
+# primitive it wraps, and rejects an overlay that tries to restate them -
+# one fact, one owner.
+component: progress-track
+
+intent: The drawn rail a progress indicator fills.
+
+typical_uses:
+  - The track of a progress root, hosting its indicator
+
+dont_use_when:
+  - situation: A short busy state of unknown duration, with no percentage to measure
+    instead:
+      target: Spinner
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.spinner.v1
+
+# The kit's own Progress wrapper draws its own track after the children, so
+# a standalone ProgressTrack pairs with the primitive's own Root - a
+# component of the primitive package, outside this kit's contract set,
+# which is why this mount point names no component reference.
+mounted_in:
+  - container: the primitive package's root, Progress.Root (@base-ui/react/progress)
+    note: >-
+      The exported Progress wrapper always draws its own track, so a
+      standalone ProgressTrack belongs under the primitive package's own
+      Progress.Root.
+
+# The track is the indicator's host: this is what the kit's own wrapper
+# composes inside its auto-rendered track.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.progress_indicator.v1 # ProgressIndicator
+
+invariants:
+  - id: needs-a-progress-root
+    text: >-
+      A ProgressTrack reads the nearest progress root's state through React
+      context and throws when there is none: it must sit inside a progress
+      root, whichever package exports it.
+  - id: carries-the-status-attribute
+    text: >-
+      The track carries its root's status as a data attribute -
+      `data-indeterminate`, `data-progressing` or `data-complete` - and the
+      stylesheet's indeterminate sweep selector keys on the track's own
+      attribute, not the indicator's.
+
+# One fact, one owner: that the wrapper always draws its own track is the
+# root invariant's claim (progress.contract.yaml
+# always-renders-its-own-track), demonstrated once by the bad example below.
+anti_patterns: []
+
+deprecations: {}
+
+# The track wires no accessibility semantics of its own; progress.test.tsx
+# asserts only its drawn geometry.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+# What each property that reaches this contract asserting nothing (or only
+# part of its shape) actually states, and why - keyed on the property
+# itself. The compiler emits both halves into that property's own
+# description, beside the `TS:` text.
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the track's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the track's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (status). The compiler emits one JSON type per property, so nothing is asserted; the kit's own
+      styling goes through progress.module.css, not through this.
+
+examples:
+  good:
+    - title: A track hosting its indicator, beside the primitive's own root
+      code: |-
+        import { Progress as ProgressPrimitive } from '@base-ui/react/progress';
+
+        <ProgressPrimitive.Root value={42}>
+          <ProgressTrack>
+            <ProgressIndicator />
+          </ProgressTrack>
+        </ProgressPrimitive.Root>
+  bad:
+    - title: A track nested inside the kit's Progress wrapper
+      code: |
+        <Progress value={42}>
+          <ProgressTrack>
+            <ProgressIndicator />
+          </ProgressTrack>
+        </Progress>
+      why: >-
+        The wrapper renders its own track after the children and there is
+        no prop to suppress it, so this draws two bars. Keep the wrapper's
+        own track, or compose beside the primitive's own root.
+
+family_membership:
+  name: progress
+  role: part

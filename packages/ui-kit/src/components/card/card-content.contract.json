@@ -1,0 +1,78 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "card-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Hold the body of a card between its header and its footer, inset to the card's padding.",
+  "typical_uses": [
+    "The main body of a Card"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The card's title and the line that describes it",
+      "instead": {
+        "target": "CardHeader",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "Card",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "horizontal-inset-only",
+      "text": "CardContent sets only a horizontal padding of --card-spacing and no layout of its own; the distance to the header and footer comes from the root Card's gap."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Body text between header and footer",
+        "code": "<Card>\n  <CardHeader>\n    <CardTitle>Team plan</CardTitle>\n  </CardHeader>\n  <CardContent>\n    <p>Next invoice on the 1st.</p>\n  </CardContent>\n</Card>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A margin added to separate the body from the header",
+        "code": "<CardContent style={{ marginTop: 16 }}>\n  <p>Next invoice on the 1st.</p>\n</CardContent>\n",
+        "why": "The root Card's gap already puts --card-spacing between its direct children; a margin adds to it and no longer follows the card's `size`."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "card",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit CardContent",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,89 @@
+# Semantic overlay for ComboboxGroup - a part of the Combobox family, see
+# combobox.contract.yaml's `family_membership`. It wraps Base UI's
+# Combobox.Group; the forwarded surface is its div.
+component: combobox-group
+
+intent: A labelled section of a Combobox's list, grouping related items under one ComboboxLabel.
+
+typical_uses:
+  - One section of a grouped list, such as the regions of one continent
+
+dont_use_when:
+  - situation: A plain divider between items with no section label
+    instead:
+      target: ComboboxSeparator
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_separator.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_label.v1 # ComboboxLabel
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_item.v1 # ComboboxItem
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_collection.v1 # ComboboxCollection
+
+invariants:
+  - id: named-by-its-label
+    text: >-
+      The group renders with role "group" and takes its accessible name
+      from the ComboboxLabel inside it, through `aria-labelledby`, unless
+      the caller passes its own `aria-labelledby`; a group with neither has
+      no name.
+  - id: no-spacing-of-its-own
+    text: >-
+      combobox.module.css gives the group no padding and no divider, only a
+      scroll margin; the list pads every item the same whether or not a
+      group encloses it.
+  - id: items-feed-the-collection
+    text: >-
+      `items` is the list a ComboboxCollection inside this group maps over;
+      a group whose items are written out by hand needs none.
+
+anti_patterns: []
+
+deprecations: {}
+
+# combobox.test.tsx asserts the label's kit class inside a group; nothing
+# asserts the group role or its name.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the group's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the group's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (empty for this part). The compiler emits one JSON type per property, so nothing is asserted; the
+      kit's own styling goes through combobox.module.css, not through this.
+
+examples:
+  good:
+    - title: A group rendered from one entry of grouped items
+      code: |
+        <ComboboxGroup items={group.items}>
+          <ComboboxLabel>{group.label}</ComboboxLabel>
+          <ComboboxCollection>
+            {(item) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}
+          </ComboboxCollection>
+        </ComboboxGroup>
+  bad:
+    - title: A made-up heading prop
+      code: |
+        <ComboboxGroup heading="Europe">
+          <ComboboxItem value="frankfurt">Frankfurt</ComboboxItem>
+        </ComboboxGroup>
+      why: >-
+        The group takes no `heading`; its title is a ComboboxLabel placed
+        inside it, which is also what names the group.
+
+family_membership:
+  name: combobox
+  role: part

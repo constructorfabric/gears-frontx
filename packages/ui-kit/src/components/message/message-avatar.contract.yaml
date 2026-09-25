@@ -1,0 +1,83 @@
+# Semantic overlay for MessageAvatar - part of the Message family, see
+# message.contract.yaml's `family_membership` for how the five contracts
+# relate. `mounted_in` is filled from Message's own accepted components, not
+# authored here.
+component: message-avatar
+
+intent: Hold the sender's picture at the bottom of a message row, or reserve its width when left empty.
+
+typical_uses:
+  - The sender's Avatar beside the message
+  - An empty slot on the earlier messages of a MessageGroup, keeping their surfaces aligned
+
+dont_use_when:
+  - situation: A person's picture anywhere outside a message row
+    instead:
+      target: Avatar
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.avatar.v1
+
+# The slot holds the sender's Avatar, or nothing (an empty slot keeps its
+# width). Avatar is the avatar family's root, and a family root may be
+# mounted in another component's container.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.avatar.v1 # Avatar
+
+invariants:
+  - id: fixed-bottom-anchored-column
+    text: >-
+      The slot never shrinks, is at least var(--space-8) wide, centers its
+      content and sits at the bottom of the row; left empty it still
+      reserves that width.
+  - id: lifts-when-the-row-has-a-footer
+    text: >-
+      When the row contains a MessageFooter, the slot is shifted up by
+      var(--space-8) so it lines up with the message surface rather than
+      with the footer below it.
+  - id: slot-does-not-clip
+    text: >-
+      The slot draws a round var(--muted) background but clips nothing, so
+      an AvatarBadge overhanging the Avatar's circle stays visible.
+
+anti_patterns:
+  - dont: Put the sender's name inside MessageAvatar
+    do_instead: Put the name in a MessageHeader inside MessageContent and keep the slot for the picture
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: The sender's Avatar in the slot
+      code: |
+        <MessageAvatar>
+          <Avatar>
+            <AvatarImage src="/assistant.png" alt="Assistant" />
+            <AvatarFallback>AS</AvatarFallback>
+          </Avatar>
+        </MessageAvatar>
+  bad:
+    - title: The sender's name placed in the avatar slot
+      code: |
+        <Message>
+          <MessageAvatar>Assistant</MessageAvatar>
+          <MessageContent>
+            <Bubble>
+              <BubbleContent>How can I help you today?</BubbleContent>
+            </Bubble>
+          </MessageContent>
+        </Message>
+      why: >-
+        The slot is a round, muted, bottom-anchored cell sized for a picture;
+        a name placed there sits beside the bubble on a pill background
+        instead of above it in the muted header style.
+
+family_membership:
+  name: message
+  role: part

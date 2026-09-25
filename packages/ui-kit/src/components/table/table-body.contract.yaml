@@ -1,0 +1,69 @@
+# Semantic overlay for TableBody - part of the Table family, see
+# table.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from the accepting member's own
+# `accepts`, not authored here.
+component: table-body
+
+intent: Hold a table's data rows.
+
+typical_uses:
+  - The data rows of a table, one TableRow per record
+
+dont_use_when:
+  - situation: A totals or summary row under the data
+    instead:
+      target: TableFooter
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.table_footer.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.table_row.v1 # TableRow
+
+invariants:
+  - id: last-row-drops-its-rule
+    text: >-
+      When TableBody is the table's last child, its last row draws no
+      bottom rule, since the container's own edge sits below it; with a
+      TableFooter after it the rule stays.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Two data rows
+      code: |
+        <TableBody>
+          <TableRow>
+            <TableCell>INV001</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>INV002</TableCell>
+          </TableRow>
+        </TableBody>
+  bad:
+    - title: A totals row appended to the body
+      code: |
+        <TableBody>
+          <TableRow>
+            <TableCell>INV001</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Total</TableCell>
+          </TableRow>
+        </TableBody>
+      why: >-
+        The totals row reads as one more record and takes the body's hover
+        and state tints; put it in TableFooter.
+
+family_membership:
+  name: table
+  role: part

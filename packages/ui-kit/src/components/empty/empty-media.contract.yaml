@@ -1,0 +1,74 @@
+# Semantic overlay for EmptyMedia - part of the Empty family, see
+# empty.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from EmptyHeader's accepted components, not
+# authored here. The `variant` axis and its default come from empty.tsx's
+# cva; this overlay only says what each value means.
+component: empty-media
+
+intent: Hold the placeholder's leading visual, either a small icon on a filled square plate or a bare illustration.
+
+typical_uses:
+  - A single icon that names the kind of thing that is missing
+  - An illustration or image that carries its own chrome
+
+dont_use_when:
+  - situation: A person's or entity's picture with a fallback
+    instead:
+      target: Avatar
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.avatar.v1
+
+# An icon or an illustration: any element, so the content is not
+# constrained to kit components.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: icon-variant-draws-a-3rem-plate
+    text: >-
+      `variant="icon"` draws a 3rem square plate with rounded corners,
+      filled with var(--secondary), and sizes any descendant svg to
+      var(--icon-size-lg); `variant="default"` adds no fill and no size,
+      leaving the content at its own dimensions.
+  - id: svg-descendants-ignore-pointer
+    text: >-
+      Any descendant svg of EmptyMedia gets pointer-events none and does not
+      shrink, whichever variant is set.
+
+anti_patterns:
+  - dont: Use `variant="icon"` around a full illustration or image
+    do_instead: >-
+      Keep the default variant for anything larger than a glyph; the icon
+      plate is a fixed 3rem square
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A bare illustration with no plate
+      code: |
+        <EmptyHeader>
+          <EmptyMedia>
+            <img src="/empty-inbox.svg" alt="" width={96} height={96} />
+          </EmptyMedia>
+          <EmptyTitle>Inbox zero</EmptyTitle>
+        </EmptyHeader>
+  bad:
+    - title: An illustration placed on the icon plate
+      code: |
+        <EmptyMedia variant="icon">
+          <img src="/empty-inbox.svg" alt="" width={96} height={96} />
+        </EmptyMedia>
+      why: >-
+        The icon plate is a fixed 3rem (48px) square sized for a glyph, half
+        the size of this image; the default variant leaves an illustration
+        at its own dimensions.
+
+family_membership:
+  name: empty
+  role: part

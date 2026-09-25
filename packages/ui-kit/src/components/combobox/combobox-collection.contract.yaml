@@ -1,0 +1,74 @@
+# Semantic overlay for ComboboxCollection - a part of the Combobox family,
+# see combobox.contract.yaml's `family_membership`. It wraps Base UI's
+# Combobox.Collection, which renders no element of its own, so it names no
+# element surface.
+component: combobox-collection
+
+intent: Render the filtered items of a Combobox, or of the enclosing ComboboxGroup, by calling a function once per item.
+
+typical_uses:
+  - The items of one group in a grouped list, mapped from that group's own `items`
+
+dont_use_when:
+  - situation: A flat list with no groups
+    instead:
+      target: ComboboxList
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_list.v1
+      note: >-
+        Pass the function as ComboboxList's own children; the list wraps it
+        in a collection itself.
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_item.v1 # ComboboxItem
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_group.v1 # ComboboxGroup
+
+invariants:
+  - id: maps-the-nearest-item-source
+    text: >-
+      Inside a ComboboxGroup given `items`, the collection maps that group's
+      items; anywhere else it maps the root's filtered items. It renders
+      nothing of its own, only what the function returns.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  children:
+    states: children is a function of an item and its index returning the React nodes to render for it
+    because: >-
+      `(item: any, index: number) => ReactNode` - a function, which no JSON
+      Schema type covers.
+
+examples:
+  good:
+    - title: The items of one group
+      code: |
+        <ComboboxGroup items={group.items}>
+          <ComboboxLabel>{group.label}</ComboboxLabel>
+          <ComboboxCollection>
+            {(item) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}
+          </ComboboxCollection>
+        </ComboboxGroup>
+  bad:
+    - title: Node children instead of a function
+      code: |
+        <ComboboxCollection>
+          <ComboboxItem value="europe">Europe</ComboboxItem>
+        </ComboboxCollection>
+      why: >-
+        The collection calls its children once per item, so they must be a
+        function of the item; a node child is not callable, and the render
+        throws as soon as there is an item to map.
+
+family_membership:
+  name: combobox
+  role: part

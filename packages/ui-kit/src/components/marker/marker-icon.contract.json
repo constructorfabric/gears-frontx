@@ -1,0 +1,83 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.marker_icon.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "marker-icon",
+  "forwards_to": "gts.frontx.uikit.element.dom_span.v1~",
+  "intent": "Hold the small decorative icon at the start of a marker, hidden from assistive tech.",
+  "typical_uses": [
+    "A glyph or a spinner that shows the kind of step a marker reports"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A status mark that stands on its own, outside a marker row",
+      "instead": {
+        "target": "StatusDot",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.status_dot.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "Marker",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.marker.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "always-aria-hidden",
+      "text": "MarkerIcon renders `aria-hidden=\"true\"` on its span, so nothing inside it reaches assistive tech."
+    },
+    {
+      "id": "fixed-small-box",
+      "text": "The span is a var(--icon-size-sm) square that does not shrink, and any descendant svg fills it and ignores the pointer."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "marker.test.tsx asserts that MarkerIcon renders a span with `aria-hidden=\"true\"`"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "An icon beside the text that carries the meaning",
+        "code": "<Marker>\n  <MarkerIcon>\n    <CheckIcon />\n  </MarkerIcon>\n  <MarkerContent>Explored 4 files</MarkerContent>\n</Marker>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "An icon as the marker's only content",
+        "code": "<Marker>\n  <MarkerIcon>\n    <CheckIcon />\n  </MarkerIcon>\n</Marker>\n",
+        "why": "MarkerIcon is aria-hidden, so assistive tech reads nothing for this marker; the meaning belongs in a MarkerContent beside the icon."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "marker",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit MarkerIcon",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

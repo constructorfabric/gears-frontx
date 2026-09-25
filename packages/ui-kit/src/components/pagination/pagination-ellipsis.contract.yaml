@@ -1,0 +1,77 @@
+# Semantic overlay for PaginationEllipsis - part of the Pagination family,
+# see pagination.contract.yaml. `mounted_in` is filled from
+# PaginationItem's own accepted components, not authored here.
+component: pagination-ellipsis
+
+intent: Mark the pages of a pagination row that are collapsed out of view.
+
+typical_uses:
+  - A stand-in for the pages between the current page and the first or last one
+
+dont_use_when:
+  - situation: The collapsed-levels marker in a Breadcrumb trail
+    instead:
+      target: BreadcrumbEllipsis
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_ellipsis.v1
+
+accepts:
+  content: nothing
+
+invariants:
+  - id: fixed-content-hidden-from-assistive-tech
+    text: >-
+      The ellipsis renders a `span` with `aria-hidden="true"` holding a
+      horizontal dots icon and a visually hidden "More pages" label;
+      children passed to it are not rendered. Because the label sits inside
+      the aria-hidden span it is hidden as well, so assistive tech hears
+      nothing where the collapsed pages are.
+  - id: sits-on-the-item-box
+    text: >-
+      The ellipsis takes the same var(--control-height-xs) square as a page
+      link (pagination.module.css `.ellipsis`), so it keeps the row's
+      rhythm.
+
+anti_patterns:
+  - dont: Make the ellipsis the only way to reach the collapsed pages
+    do_instead: Keep the collapsed pages reachable some other way, such as the previous and next links; the ellipsis is hidden from assistive tech and is not interactive
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: failed
+    by: >-
+      pagination.tsx puts the visually hidden "More pages" label inside the
+      span that carries aria-hidden="true", so it is never announced;
+      pagination.test.tsx asserts aria-hidden="true" and textContent "More
+      pages" on the same element
+  rtl:
+    outcome: unknown
+
+unexposed_parts:
+  - part: the horizontal dots icon
+    reason: >-
+      pagination.tsx renders a MoreHorizontalIcon inside the span; it is not
+      exported as a component of its own and cannot be replaced.
+  - part: the visually hidden "More pages" label
+    reason: >-
+      pagination.tsx renders it as a span with the stylesheet's srOnly
+      class; it is not exported and its text cannot be changed.
+
+examples:
+  good:
+    - title: Collapsed pages in their own item
+      code: |
+        <PaginationItem>
+          <PaginationEllipsis />
+        </PaginationItem>
+  bad:
+    - title: A custom label given as children
+      code: <PaginationEllipsis>12 more</PaginationEllipsis>
+      why: >-
+        The ellipsis renders fixed content and ignores children, so the
+        label never appears.
+
+family_membership:
+  name: pagination
+  role: part

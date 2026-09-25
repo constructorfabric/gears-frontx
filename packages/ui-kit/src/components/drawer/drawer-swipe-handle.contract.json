@@ -1,0 +1,77 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.drawer_swipe_handle.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "drawer-swipe-handle",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The small grab bar that shows a drawer's panel can be swiped.",
+  "typical_uses": [
+    "The grab bar at the edge of a drawer's panel, shown by `showSwipeHandle` on the root"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Showing the grab bar on a drawer's panel",
+      "instead": {
+        "target": "Drawer",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.drawer.v1",
+        "note": "Set `showSwipeHandle` on the root."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "invariants": [
+    {
+      "id": "hidden-grab-bar",
+      "text": "By default DrawerSwipeHandle is a div hidden from assistive technology (`aria-hidden=\"true\"`), a rounded bar in var(--border-strong) that is 2.5rem wide and 0.25rem tall on a top or bottom panel and turned upright on a left or right one; it is an affordance only, since the whole panel responds to a swipe."
+    },
+    {
+      "id": "sits-at-the-edge-facing-the-page",
+      "text": "Rendered through `showSwipeHandle`, it sits outside the panel's padded content region, on the panel's edge that faces the page."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "The bar switched on from the root",
+        "code": "<Drawer showSwipeHandle>\n  <DrawerTrigger>Open</DrawerTrigger>\n  <DrawerContent>\n    <DrawerTitle>Filters</DrawerTitle>\n  </DrawerContent>\n</Drawer>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The bar placed by hand inside the panel",
+        "code": "<Drawer>\n  <DrawerTrigger>Open</DrawerTrigger>\n  <DrawerContent>\n    <DrawerSwipeHandle />\n    <DrawerTitle>Filters</DrawerTitle>\n  </DrawerContent>\n</Drawer>\n",
+        "why": "Children of DrawerContent land in its padded content region, so the bar sits inside the padding rather than at the panel's edge; set `showSwipeHandle` on the root instead."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "drawer",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit DrawerSwipeHandle",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

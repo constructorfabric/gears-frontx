@@ -1,10 +1,7 @@
 // Fixture for extract.test.ts (N2): a bare union type directly in heritage
 // position (an intersection member, not wrapped in a name the walk can
-// resolve). typeRefParts returns undefined for a ts.UnionTypeNode - the old
-// walk treated that the same as "nothing here," continuing with no
-// kind/variantSources contributed and no note that a real heritage member
-// went unclassified. The same silent-loss shape as M1's aliased-import
-// cases, triggered by a different node kind instead of a different symbol.
+// resolve). A union of props types is walked branch by branch, the way its
+// props are read, so nothing in it is left unread.
 export interface RedProps {
   tone: 'red';
 }

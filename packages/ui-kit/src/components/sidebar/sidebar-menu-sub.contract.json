@@ -1,0 +1,83 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_sub.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sidebar-menu-sub",
+  "forwards_to": "gts.frontx.uikit.element.dom_ul.v1~",
+  "intent": "A nested list of rows under one menu row, indented behind a vertical guide line.",
+  "typical_uses": [
+    "The child pages of one navigation row"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A second level that must show and hide on demand",
+      "instead": {
+        "target": "Collapsible",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.collapsible.v1",
+        "note": "Place a Collapsible inside the SidebarMenuItem; the sub-menu has no open state of its own."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_sub_item.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "SidebarMenuItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "indented-list-with-a-guide",
+      "text": "SidebarMenuSub renders an unstyled `ul` indented 12px on each side with a left border as the guide line; collapsed to the icon rail it is not displayed."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "failed",
+      "by": "sidebar.module.css draws the .menuSub guide with the physical `border-left`, so it stays on the left under a right-to-left direction"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Child pages under a row",
+        "code": "<SidebarMenuItem>\n  <SidebarMenuButton>\n    <BookIcon />\n    <span>Docs</span>\n  </SidebarMenuButton>\n  <SidebarMenuSub>\n    <SidebarMenuSubItem>\n      <SidebarMenuSubButton href=\"/docs/intro\">\n        <span>Introduction</span>\n      </SidebarMenuSubButton>\n    </SidebarMenuSubItem>\n  </SidebarMenuSub>\n</SidebarMenuItem>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A sub-menu as a sibling of the item",
+        "code": "<SidebarMenu>\n  <SidebarMenuItem>{docsRow}</SidebarMenuItem>\n  <SidebarMenuSub>{children}</SidebarMenuSub>\n</SidebarMenu>\n",
+        "why": "A `ul` directly inside the menu's `ul` is invalid list markup; the sub-menu goes inside the SidebarMenuItem it belongs to."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sidebar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SidebarMenuSub",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

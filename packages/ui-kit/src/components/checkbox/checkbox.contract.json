@@ -1,0 +1,188 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.checkbox.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "checkbox",
+  "forwards_to": "gts.frontx.uikit.element.dom_span.v1~",
+  "intent": "Let a user opt in or out of one independent option, tracked as part of a form's state.",
+  "typical_uses": [
+    "An option independent of any other, where several may be on at once",
+    "A choice staged in a form that takes effect on submit"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "An immediate on/off with instant effect",
+      "instead": {
+        "target": "Switch",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.switch.v1"
+      }
+    },
+    {
+      "situation": "Mutually exclusive options, only one of which may be on",
+      "instead": {
+        "target": "RadioGroup",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "Field",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1"
+    },
+    {
+      "container": "Label",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.label.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "checked-wins-over-default-checked",
+      "text": "`checked` and `defaultChecked` are both accepted; `defaultChecked` seeds the initial state and is ignored afterwards, and when `checked` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "indeterminate-overrides-the-reported-checked-state",
+      "text": "`indeterminate` is independent of `checked` in the props, but not in what gets reported: while `indeterminate` is true the box renders the minus mark and `aria-checked` reads \"mixed\" regardless of `checked`'s own value, matching the WAI-ARIA mixed-state convention for a \"some children selected\" parent."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put the label text where children would go",
+      "do_instead": "Checkbox takes no content; wrap the box and the label text together in `Label` so the two share one click target"
+    },
+    {
+      "dont": "Pass `checked` with no `onCheckedChange`",
+      "do_instead": "A controlled box with no change handler never receives its own toggle back - pair `checked` with `onCheckedChange`, or drop both and use `defaultChecked` for an uncontrolled box"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "Base UI's own Checkbox primitive (role=\"checkbox\", keyboard toggling, a hidden native input for form submission, aria-checked including \"mixed\") plus checkbox.test.tsx's own role/aria-checked/data-disabled assertions"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "onCheckedChange": {
+      "states": "onCheckedChange is a function called with the next checked value and event details, not a value",
+      "because": "A function type has no JSON Schema representation. Its second argument carries Base UI's own change-event-details shape (a reason, the triggering native event, and controls to cancel the change or allow it to propagate), which only tsc can check."
+    },
+    "inputRef": {
+      "states": "inputRef is a ref to the hidden native input Base UI renders for form submission",
+      "because": "`React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - the compiler emits one JSON type per property. It exists so a consumer can read or focus the native input directly, the same input `name`/`value`/`uncheckedValue` submit through."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the checkbox's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the checkbox's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (checked, disabled, indeterminate, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through checkbox.module.css, not through this."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "Base UI's Checkbox.Indicator",
+      "reason": "checkbox.tsx renders it directly inside its own Root wrapper to draw the box and its two marks, the check and the minus that swap on the indicator's data-indeterminate state; it is not exported as a component of its own, so a consumer cannot reach or replace it independently - only the whole Checkbox."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "Labelled checkbox, one click target",
+        "code": "<Label>\n  <Checkbox name=\"terms\" required /> I agree to the terms\n</Label>"
+      },
+      {
+        "title": "Indeterminate, for a \"some children selected\" parent",
+        "code": "<Checkbox indeterminate aria-label=\"Select all\" />"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Label text passed as children",
+        "code": "<Checkbox>I agree to the terms</Checkbox>",
+        "why": "Checkbox takes no content - there is no slot for it. Wrap the box and the text together in `Label` instead, which is also what gives the pair one shared click target."
+      },
+      {
+        "title": "Controlled with no change handler",
+        "code": "<Checkbox checked={true} aria-label=\"Terms\" />",
+        "why": "`checked` with no `onCheckedChange` never gets its own toggle back, so the box is stuck controlled and never responds to a click. Pair `checked` with `onCheckedChange`, or use `defaultChecked` instead."
+      }
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Checkbox",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "checked": {
+        "type": "boolean"
+      },
+      "defaultChecked": {
+        "type": "boolean"
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "form": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      },
+      "indeterminate": {
+        "type": "boolean"
+      },
+      "inputRef": {
+        "description": "TS: Ref<HTMLInputElement> | undefined. The compiler emits one JSON type per property; this type is left to tsc. inputRef is a ref to the hidden native input Base UI renders for form submission. `React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - the compiler emits one JSON type per property. It exists so a consumer can read or focus the native input directly, the same input `name`/`value`/`uncheckedValue` submit through."
+      },
+      "name": {
+        "type": "string"
+      },
+      "nativeButton": {
+        "type": "boolean"
+      },
+      "onCheckedChange": {
+        "description": "TS: ((checked: boolean, eventDetails: { reason: \"none\"; event: Event; cancel: () => void; allowPropagation: () => void; isCanceled: boolean; isPropagationAllowed: boolean; trigger: Element | undefined; }) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onCheckedChange is a function called with the next checked value and event details, not a value. A function type has no JSON Schema representation. Its second argument carries Base UI's own change-event-details shape (a reason, the triggering native event, and controls to cancel the change or allow it to propagate), which only tsc can check."
+      },
+      "parent": {
+        "type": "boolean"
+      },
+      "readOnly": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, CheckboxRootState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the checkbox's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "required": {
+        "type": "boolean"
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: CheckboxRootState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the checkbox's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (checked, disabled, indeterminate, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through checkbox.module.css, not through this."
+      },
+      "uncheckedValue": {
+        "type": "string"
+      },
+      "value": {
+        "type": "string"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

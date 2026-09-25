@@ -1,0 +1,122 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_previous.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "pagination-previous",
+  "forwards_to": "gts.frontx.uikit.element.dom_a.v1~",
+  "intent": "Link to the previous page of a paged result set with a chevron and a short label.",
+  "typical_uses": [
+    "The previous link at the start of the page row",
+    "Half of a previous/next pair with no page numbers"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A link to one numbered page",
+      "instead": {
+        "target": "PaginationLink",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_link.v1"
+      }
+    },
+    {
+      "situation": "A link to the next page",
+      "instead": {
+        "target": "PaginationNext",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_next.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "PaginationItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "fixed-content-and-accessible-name",
+      "text": "The link renders a left chevron before the label and ignores children. Its accessible name is the fixed `aria-label` \"Go to previous page\", set ahead of the consumer's props: `text` changes only the visible label, and only an `aria-label` passed to it replaces the name."
+    },
+    {
+      "id": "label-hidden-below-640px",
+      "text": "The visible label is hidden below a 640px viewport width (pagination.module.css `.previousNextText`), so a narrow viewport shows the chevron alone."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Relabel the link through `text` alone",
+      "do_instead": "Pass a matching `aria-label` with a custom `text`, so the visible label stays part of the accessible name"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "pagination.test.tsx asserts getByRole('link', { name: 'Go to previous page' }) finds the link, with the visible \"Previous\" label and an svg inside it"
+    },
+    "rtl": {
+      "outcome": "failed",
+      "by": "pagination.tsx renders ChevronLeftIcon in the link and pagination.module.css has no rule that mirrors it under a right-to-left direction, so in a right-to-left row it points against the reading order"
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "the chevron icon",
+      "reason": "pagination.tsx renders a ChevronLeftIcon inside the link; it is not exported as a component of its own and cannot be replaced."
+    },
+    {
+      "part": "the visible label span",
+      "reason": "pagination.tsx renders `text` in a span with the stylesheet's previousNextText class; it is not exported, and `text` is the only control over it."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "The default label",
+        "code": "<PaginationPrevious href=\"?page=1\" />"
+      },
+      {
+        "title": "A custom label with a matching accessible name",
+        "code": "<PaginationPrevious href=\"?page=1\" text=\"Newer\" aria-label=\"Go to newer results\" />"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A label given as children",
+        "code": "<PaginationPrevious href=\"?page=1\">Back</PaginationPrevious>",
+        "why": "The link renders fixed content and ignores children; the visible label is set through `text`."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "pagination",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit PaginationPrevious",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "isActive": {
+        "type": "boolean"
+      },
+      "text": {
+        "type": "string",
+        "default": "Previous"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

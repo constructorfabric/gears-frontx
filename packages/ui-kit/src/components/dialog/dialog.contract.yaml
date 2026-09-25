@@ -1,0 +1,171 @@
+# Semantic overlay for Dialog (the root) - the hand-written half of one of
+# eight contracts describing this compound component. See the other
+# dialog-*.contract.yaml files for the rest of the family, and
+# `family_membership` below for how a reader walks between them.
+#
+# Machine-extractable facts (prop list, forwarded surface) do NOT belong
+# here: the compiler takes those from dialog.tsx and the Base UI Dialog
+# primitive it re-exports. The root renders no element of its own, so it
+# names no element surface.
+component: dialog
+
+intent: Hold the open state of one modal dialog and tie its trigger to the centered popup that blocks the rest of the page while open.
+
+typical_uses:
+  - A short form or decision the user completes before returning to the page
+  - A detail view that needs the user's full attention
+
+dont_use_when:
+  - situation: A confirmation the user must answer explicitly, which must not close on a press outside it
+    instead:
+      target: AlertDialog
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog.v1
+  - situation: A panel that slides in from an edge of the screen
+    instead:
+      target: Sheet
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.sheet.v1
+  - situation: An edge panel the user can dismiss with a swipe gesture
+    instead:
+      target: Drawer
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.drawer.v1
+  - situation: A floating panel anchored to its trigger that leaves the page interactive
+    instead:
+      target: Popover
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.popover.v1
+  - situation: A brief status message that needs no answer
+    instead:
+      target: Toaster
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.toast_toaster.v1
+
+# The ONE authored statement of the root's nesting: the compiler fills the
+# trigger's and the content's `mounted_in` from this list.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_trigger.v1 # DialogTrigger
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_content.v1 # DialogContent
+
+invariants:
+  - id: open-wins-over-default-open
+    text: >-
+      `open` and `defaultOpen` are both accepted; `defaultOpen` seeds the
+      initial state and is ignored afterwards, and when `open` is given it
+      wins and the component follows it on every render.
+  - id: modal-sets-focus-scroll-and-pointer
+    text: >-
+      With `modal` at its default `true`, focus is trapped in the popup,
+      page scroll is locked and presses outside the popup reach nothing on
+      the page; `'trap-focus'` traps focus without locking scroll or adding
+      the primitive's own blocking layer; `false` traps no focus, locks no
+      scroll and adds no blocking layer. In every mode the visible backdrop
+      DialogContent renders stays, covering the page and catching presses on
+      it, unless `showBackdrop={false}`, so the page is interactive only with
+      both `modal={false}` and `showBackdrop={false}`.
+  - id: escape-and-outside-press-close
+    text: >-
+      Escape and a press outside the popup close the dialog, reporting the
+      reason to `onOpenChange`; with nested dialogs open, only the topmost
+      one closes. `disablePointerDismissal` keeps an outside press from
+      closing it, and for a non-modal dialog also keeps focus moving out from
+      closing it.
+
+anti_patterns:
+  - dont: Pass `open` without `onOpenChange`
+    do_instead: Update the state `open` reads from inside `onOpenChange`
+
+deprecations: {}
+
+# The root renders nothing and wires no ARIA of its own; the popup's role is
+# DialogContent's.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  children:
+    states: children is the root's content, either React nodes or a function of the active trigger's payload that returns them
+    because: >-
+      `React.ReactNode | PayloadChildRenderFunction<Payload>` - the function
+      form receives `{ payload }` from whichever trigger opened the dialog.
+      The compiler emits one JSON type per property, and a function has no JSON Schema representation.
+  onOpenChange:
+    states: onOpenChange is a callback called with the next open state and event details, not a value
+    because: >-
+      `(open: boolean, eventDetails) => void`; the second argument carries
+      Base UI's change-event details, including the reason (a trigger
+      press, an outside press, Escape, a close press, focus moving out or an
+      imperative action). No JSON Schema type covers a function.
+  onOpenChangeComplete:
+    states: onOpenChangeComplete is a callback called with the open state once the open or close animation has finished
+    because: >-
+      `(open: boolean) => void` - a function, which no JSON Schema type
+      covers.
+  actionsRef:
+    states: actionsRef is a ref the root fills with imperative `close` and `unmount` actions
+    because: >-
+      `React.RefObject<DialogRootActions | null>` - a ref object holding
+      functions, which no JSON Schema type covers.
+  handle:
+    states: handle is an opaque object from the primitive's Dialog.createHandle(), shared with a trigger placed outside this root
+    because: >-
+      `DialogHandle<Payload>` is a class instance holding the dialog's
+      store, not data; the kit re-exports no createHandle, so a caller
+      imports it from the primitive.
+  modal:
+    states: modal is true, false or the string 'trap-focus'
+    because: >-
+      `boolean | 'trap-focus'` - the compiler emits one JSON type per
+      property, so a boolean-or-string union is left unasserted.
+  triggerId:
+    states: triggerId is the id of the trigger a controlled dialog is open for, or null
+    because: >-
+      `string | null` - the compiler emits one JSON type per property, so a
+      string-or-null union is left unasserted.
+  defaultTriggerId:
+    states: defaultTriggerId is the id of the trigger an initially open dialog is open for, or null
+    because: >-
+      `string | null` - the compiler emits one JSON type per property, so a
+      string-or-null union is left unasserted.
+
+examples:
+  good:
+    - title: A short task with a composed cancel action
+      code: |
+        <Dialog>
+          <DialogTrigger render={<Button variant="outline" />}>Rename</DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Rename project</DialogTitle>
+              <DialogDescription>The new name is visible to everyone on the team.</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+              <Button onClick={handleRename}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+    - title: A controlled dialog
+      code: |
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent>
+            <DialogTitle>Session expired</DialogTitle>
+          </DialogContent>
+        </Dialog>
+  bad:
+    - title: A controlled dialog nothing can close
+      code: |
+        <Dialog open={open}>
+          <DialogContent>
+            <DialogTitle>Session expired</DialogTitle>
+          </DialogContent>
+        </Dialog>
+      why: >-
+        Without `onOpenChange` nothing turns `open` false, so Escape, an
+        outside press and the built-in close button all leave the dialog on
+        screen.
+
+family_membership:
+  name: dialog
+  role: root

@@ -1,0 +1,68 @@
+# Semantic overlay for SidebarInset - a part of the sidebar family, see
+# sidebar-provider.contract.yaml for the root.
+component: sidebar-inset
+
+intent: The main content area of a sidebar shell, beside the Sidebar panel.
+
+typical_uses:
+  - The page region next to the sidebar
+
+dont_use_when:
+  - situation: A main content area in a layout without a sidebar
+    instead:
+      target: a plain main element
+      note: The kit ships no layout component for a shell without a sidebar.
+
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: renders-the-main-landmark
+    text: >-
+      SidebarInset renders a `main` element, so it is the page's main
+      landmark; a shell renders one.
+  - id: inset-card-follows-an-inset-sidebar
+    text: >-
+      From a 768px viewport, when an earlier sibling carries
+      `data-variant="inset"` (a Sidebar with `variant="inset"`), the area
+      takes a margin, a large radius and a shadow so it reads as a card;
+      it does not when it comes before the Sidebar.
+
+anti_patterns:
+  - dont: Nest SidebarInset inside Sidebar
+    do_instead: Render it as Sidebar's sibling, directly inside SidebarProvider
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: The main area after the panel
+      code: |
+        <SidebarProvider>
+          <Sidebar variant="inset">{panel}</Sidebar>
+          <SidebarInset>
+            <header>
+              <SidebarTrigger />
+            </header>
+            {page}
+          </SidebarInset>
+        </SidebarProvider>
+  bad:
+    - title: A second main landmark inside the area
+      code: |
+        <SidebarInset>
+          <main>{page}</main>
+        </SidebarInset>
+      why: >-
+        SidebarInset already renders `main`; a nested one gives the page two
+        main landmarks.
+
+family_membership:
+  name: sidebar
+  role: part

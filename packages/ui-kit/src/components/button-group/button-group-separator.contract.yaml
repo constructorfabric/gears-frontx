@@ -1,0 +1,84 @@
+# Semantic overlay for ButtonGroupSeparator - a part of the ButtonGroup
+# family, see button-group.contract.yaml's `family_membership`. It renders
+# the kit's Separator with the group's own styling.
+component: button-group-separator
+
+intent: A short divider between two controls inside a ButtonGroup.
+
+typical_uses:
+  - The divider between the halves of a split button
+
+dont_use_when:
+  - situation: A divider between sections or items outside any ButtonGroup
+    instead:
+      target: Separator
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.separator.v1
+
+accepts:
+  content: nothing
+
+invariants:
+  - id: orientation-resolves-to-vertical
+    text: >-
+      When `orientation` is omitted the divider is vertical, the opposite of
+      Separator's own horizontal fallback; it does not read the enclosing
+      group's orientation.
+  - id: role-separator-stamped
+    text: >-
+      The rendered div carries `role="separator"` and `aria-orientation`
+      matching the resolved orientation, from the primitive underneath.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Separator (role="separator" and aria-orientation set
+      from orientation), plus button-group.test.tsx asserting
+      data-orientation="vertical" by default and "horizontal" when passed
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the
+      separator's own state, so its type is a union of a React element and a
+      callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the separator's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (orientation). The compiler emits one JSON type per property, so nothing is asserted; the kit's own
+      styling goes through button-group.module.css and separator.module.css,
+      not through this.
+
+examples:
+  good:
+    - title: Between the halves of a split button
+      code: |
+        <ButtonGroup aria-label="Save">
+          <Button>Save</Button>
+          <ButtonGroupSeparator />
+          <Button aria-label="More save options" icon={<CaretDownIcon />} />
+        </ButtonGroup>
+  bad:
+    - title: The default divider in a vertical group
+      code: |
+        <ButtonGroup orientation="vertical">
+          <Button variant="outline">Newest first</Button>
+          <ButtonGroupSeparator />
+          <Button variant="outline">Oldest first</Button>
+        </ButtonGroup>
+      why: >-
+        The divider stays vertical in a column of controls; pass
+        `orientation="horizontal"` so it runs across the column.
+
+family_membership:
+  name: button_group
+  role: part

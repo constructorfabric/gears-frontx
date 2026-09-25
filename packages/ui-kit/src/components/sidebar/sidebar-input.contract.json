@@ -1,0 +1,173 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_input.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sidebar-input",
+  "forwards_to": "gts.frontx.uikit.element.dom_input.v1~",
+  "intent": "A text field inside the sidebar panel, filling the panel's width on its elevated surface.",
+  "typical_uses": [
+    "A search or filter field in the sidebar header or in a section"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A text field anywhere outside the sidebar panel",
+      "instead": {
+        "target": "Input",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.input.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "SidebarFooter",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_footer.v1"
+    },
+    {
+      "container": "SidebarGroupContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_group_content.v1"
+    },
+    {
+      "container": "SidebarHeader",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_header.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "is-the-kit-input",
+      "text": "SidebarInput is the kit's Input with the elevated surface color and a full width on the input element; every Input prop keeps its meaning."
+    },
+    {
+      "id": "hidden-in-the-icon-rail",
+      "text": "Collapsed to the icon rail the input element is not displayed; with `icon` or `end` given, Input's wrapper span and the slot content stay visible."
+    },
+    {
+      "id": "value-wins-over-default-value",
+      "text": "`value` and `defaultValue` are both accepted; `defaultValue` seeds the initial state and is ignored afterwards, and when `value` is given it wins and the component follows it on every render."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Leave the field with no accessible name",
+      "do_instead": "Pass `aria-label`, or render a SidebarGroupLabel as a `label` whose `htmlFor` names the field's `id`"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "icon": {
+      "states": "icon is a React node, not a value",
+      "because": "`ReactNode` is a union, and the compiler emits one JSON type per property - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. The slot exists so the leading icon gets sized, positioned and marked aria-hidden; what may go in it is \"anything React renders\", which is the whole assertion."
+    },
+    "end": {
+      "states": "end is a React node, not a value",
+      "because": "`ReactNode` is a union, and the compiler emits one JSON type per property - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. The slot is live trailing content that is never aria-hidden, so its name and keyboard behavior are the consumer's."
+    },
+    "value": {
+      "states": "value is the controlled field value, a string, a number or a readonly array of strings",
+      "because": "React types a native input's value as this three-way union; the schema asserts nothing for it, so the TypeScript type is the statement and tsc is the checker."
+    },
+    "defaultValue": {
+      "states": "defaultValue is the uncontrolled field's initial value, a string, a number or a readonly array of strings",
+      "because": "React types a native input's value as this three-way union; the schema asserts nothing for it, so the TypeScript type is the statement and tsc is the checker."
+    },
+    "onValueChange": {
+      "states": "onValueChange is a function called with the next value and event details, not a value",
+      "because": "A function type has no JSON Schema representation. Its second argument carries Base UI's own change-event-details shape, which only tsc can check."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the input's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the input's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, focused, filled, valid, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through input.module.css and sidebar.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A named search field in the header",
+        "code": "<SidebarHeader>\n  <SidebarInput type=\"search\" aria-label=\"Search the docs\" />\n</SidebarHeader>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "An unnamed field",
+        "code": "<SidebarInput placeholder=\"Search\" />",
+        "why": "A placeholder is not an accessible name and disappears once the user types; pass `aria-label` or a label pointing at the field."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sidebar",
+    "role": "part"
+  },
+  "slots": [
+    {
+      "prop": "icon",
+      "description": "Decorative leading icon inside the field, as on the kit's Input."
+    },
+    {
+      "prop": "end",
+      "description": "Live trailing slot after the field, as on the kit's Input."
+    }
+  ],
+  "x-uikit": {
+    "partially_typed_props": {
+      "end": {
+        "typeText": "ReactNode",
+        "optional": true
+      },
+      "icon": {
+        "typeText": "ReactNode",
+        "optional": true
+      }
+    },
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SidebarInput",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "end": {
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. end is a React node, not a value. `ReactNode` is a union, and the compiler emits one JSON type per property - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. The slot is live trailing content that is never aria-hidden, so its name and keyboard behavior are the consumer's."
+      },
+      "icon": {
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. icon is a React node, not a value. `ReactNode` is a union, and the compiler emits one JSON type per property - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. The slot exists so the leading icon gets sized, positioned and marked aria-hidden; what may go in it is \"anything React renders\", which is the whole assertion."
+      },
+      "defaultValue": {
+        "description": "TS: string | number | readonly string[] | undefined. The compiler emits one JSON type per property; this type is left to tsc. defaultValue is the uncontrolled field's initial value, a string, a number or a readonly array of strings. React types a native input's value as this three-way union; the schema asserts nothing for it, so the TypeScript type is the statement and tsc is the checker."
+      },
+      "onValueChange": {
+        "description": "TS: ((value: string, eventDetails: { reason: \"none\"; event: Event; cancel: () => void; allowPropagation: () => void; isCanceled: boolean; isPropagationAllowed: boolean; trigger: Element | undefined; }) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onValueChange is a function called with the next value and event details, not a value. A function type has no JSON Schema representation. Its second argument carries Base UI's own change-event-details shape, which only tsc can check."
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, InputState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the input's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: InputState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the input's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, focused, filled, valid, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through input.module.css and sidebar.module.css, not through this."
+      },
+      "value": {
+        "description": "TS: string | number | readonly string[] | undefined. The compiler emits one JSON type per property; this type is left to tsc. value is the controlled field value, a string, a number or a readonly array of strings. React types a native input's value as this three-way union; the schema asserts nothing for it, so the TypeScript type is the statement and tsc is the checker."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

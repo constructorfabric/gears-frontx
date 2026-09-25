@@ -1,0 +1,181 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_menu.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "menubar-menu",
+  "intent": "Hold the open state of one menu of a Menubar and tie its MenubarTrigger to the MenubarContent it opens.",
+  "typical_uses": [
+    "One top-level menu of the bar, such as File or View"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A menu of actions on its own, outside any bar",
+      "instead": {
+        "target": "DropdownMenu",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu.v1"
+      }
+    },
+    {
+      "situation": "A nested list of further actions inside an open menu",
+      "instead": {
+        "target": "MenubarSub",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_sub.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_trigger.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_content.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Menubar",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "open-wins-over-default-open",
+      "text": "`open` and `defaultOpen` are both accepted; `defaultOpen` seeds the initial state and is ignored afterwards, and when `open` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "escape-and-outside-press-close",
+      "text": "While open, pressing Escape or pressing outside the popup closes the menu and reports the change through `onOpenChange`."
+    },
+    {
+      "id": "own-modal-ignored-in-a-bar",
+      "text": "Inside a Menubar the menu's own `modal` is ignored; whether an open menu locks scroll and blocks the page is decided by the bar's `modal`."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Hold the open state in the caller and pass `open` without `onOpenChange`",
+      "do_instead": "Pass `onOpenChange` alongside `open` and update the state from it, or leave both out; a controlled `open` that nothing updates keeps the menu from opening on a trigger press, from closing on Escape and from being switched to from a sibling menu of the bar"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is the menu's content, either React nodes or a function of the active trigger's payload that returns them",
+      "because": "`React.ReactNode | PayloadChildRenderFunction<Payload>` - the function form receives `{ payload }` from whichever trigger opened the menu. The compiler emits one JSON type per property, and a function has no JSON Schema representation."
+    },
+    "onOpenChange": {
+      "states": "onOpenChange is a callback called with the next open state and event details, not a value",
+      "because": "`(open: boolean, eventDetails) => void`; the second argument carries Base UI's change-event details, including the reason (such as a trigger press, an item press, an outside press or Escape). No JSON Schema type covers a function."
+    },
+    "onOpenChangeComplete": {
+      "states": "onOpenChangeComplete is a callback called with the open state once the open or close animation has finished",
+      "because": "`(open: boolean) => void` - a function, which no JSON Schema type covers."
+    },
+    "actionsRef": {
+      "states": "actionsRef is a ref the menu fills with imperative `close` and `unmount` actions",
+      "because": "`React.RefObject<MenuRoot.Actions | null>` - a ref object holding functions, which no JSON Schema type covers."
+    },
+    "handle": {
+      "states": "handle is an opaque object from the primitive's Menu.createHandle(), shared with a trigger placed outside this menu",
+      "because": "`MenuHandle<Payload>` is a class instance holding the menu's store, not data; the kit re-exports no createHandle, so a caller imports it from the primitive."
+    },
+    "triggerId": {
+      "states": "triggerId is the id of the trigger a controlled menu is open for, or null",
+      "because": "`string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
+    },
+    "defaultTriggerId": {
+      "states": "defaultTriggerId is the id of the trigger an initially open menu is open for, or null",
+      "because": "`string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A View menu opened from state the caller owns",
+        "code": "<MenubarMenu open={open} onOpenChange={setOpen}>\n  <MenubarTrigger>View</MenubarTrigger>\n  <MenubarContent>\n    <MenubarItem onClick={onZoomIn}>Zoom in</MenubarItem>\n  </MenubarContent>\n</MenubarMenu>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A non-modal menu requested on the menu instead of the bar",
+        "code": "<Menubar>\n  <MenubarMenu modal={false}>\n    <MenubarTrigger>File</MenubarTrigger>\n    <MenubarContent>\n      <MenubarItem>New tab</MenubarItem>\n    </MenubarContent>\n  </MenubarMenu>\n</Menubar>\n",
+        "why": "A menu inside a bar ignores its own `modal`, so the page is still locked while the menu is open; pass `modal={false}` to the Menubar."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "menubar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit MenubarMenu",
+    "type": "object",
+    "properties": {
+      "actionsRef": {
+        "description": "TS: React.RefObject<MenuRootActions | null> | undefined. The compiler emits one JSON type per property; this type is left to tsc. actionsRef is a ref the menu fills with imperative `close` and `unmount` actions. `React.RefObject<MenuRoot.Actions | null>` - a ref object holding functions, which no JSON Schema type covers."
+      },
+      "children": {
+        "description": "TS: React.ReactNode | PayloadChildRenderFunction<Payload>. The compiler emits one JSON type per property; this type is left to tsc. children is the menu's content, either React nodes or a function of the active trigger's payload that returns them. `React.ReactNode | PayloadChildRenderFunction<Payload>` - the function form receives `{ payload }` from whichever trigger opened the menu. The compiler emits one JSON type per property, and a function has no JSON Schema representation."
+      },
+      "closeParentOnEsc": {
+        "type": "boolean"
+      },
+      "defaultOpen": {
+        "type": "boolean"
+      },
+      "defaultTriggerId": {
+        "description": "TS: string | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. defaultTriggerId is the id of the trigger an initially open menu is open for, or null. `string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "handle": {
+        "description": "TS: MenuHandle<Payload> | undefined. The compiler emits one JSON type per property; this type is left to tsc. handle is an opaque object from the primitive's Menu.createHandle(), shared with a trigger placed outside this menu. `MenuHandle<Payload>` is a class instance holding the menu's store, not data; the kit re-exports no createHandle, so a caller imports it from the primitive."
+      },
+      "highlightItemOnHover": {
+        "type": "boolean"
+      },
+      "loopFocus": {
+        "type": "boolean"
+      },
+      "modal": {
+        "type": "boolean"
+      },
+      "onOpenChange": {
+        "description": "TS: ((open: boolean, eventDetails: MenuRootChangeEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChange is a callback called with the next open state and event details, not a value. `(open: boolean, eventDetails) => void`; the second argument carries Base UI's change-event details, including the reason (such as a trigger press, an item press, an outside press or Escape). No JSON Schema type covers a function."
+      },
+      "onOpenChangeComplete": {
+        "description": "TS: ((open: boolean) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChangeComplete is a callback called with the open state once the open or close animation has finished. `(open: boolean) => void` - a function, which no JSON Schema type covers."
+      },
+      "open": {
+        "type": "boolean"
+      },
+      "orientation": {
+        "type": "string",
+        "enum": [
+          "horizontal",
+          "vertical"
+        ]
+      },
+      "triggerId": {
+        "description": "TS: string | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. triggerId is the id of the trigger a controlled menu is open for, or null. `string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

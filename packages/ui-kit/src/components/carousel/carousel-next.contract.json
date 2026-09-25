@@ -1,0 +1,154 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.carousel_next.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "carousel-next",
+  "forwards_to": "gts.frontx.uikit.element.dom_button.v1~",
+  "intent": "Step a Carousel forward by one slide, with a fixed chevron icon.",
+  "typical_uses": [
+    "The built-in next-slide control of a Carousel"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A step control with a different look or placement than the fixed chevron button",
+      "instead": {
+        "target": "Button",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1",
+        "note": "Render a plain Button inside the Carousel and drive it from useCarousel's `scrollNext` and `canScrollNext`."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "Carousel",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.carousel.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "disabled-when-nothing-to-scroll",
+      "text": "The button is disabled whenever the engine reports nothing to scroll to in this direction; a consumer `disabled` can only add a reason to disable it and never re-enables it."
+    },
+    {
+      "id": "consumer-on-click-runs-before-scroll",
+      "text": "A consumer `onClick` is called first and the step forward runs after it on every click; the consumer handler cannot replace the navigation."
+    },
+    {
+      "id": "default-accessible-name",
+      "text": "Without `aria-label` the button is named \"Next slide\"; the name is always set, so a caption passed as children does not become the accessible name unless `aria-label` repeats it."
+    },
+    {
+      "id": "positioned-outside-the-carousel",
+      "text": "The button is absolutely positioned with its outer edge 3rem beyond the Carousel's box (right of it when horizontal, below it, centred and rotated a quarter turn when vertical), so the surrounding layout has to leave that room."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Mount CarouselNext outside a Carousel",
+      "do_instead": "Place it inside the Carousel it steps; it reads the root's context through useCarousel and throws \"useCarousel must be used within a <Carousel />\" without one"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "carousel.test.tsx asserts a button with the accessible name \"Next slide\" and data-icon-only, and that it is disabled when the engine reports nothing to scroll to"
+    },
+    "rtl": {
+      "outcome": "failed",
+      "by": "carousel.tsx renders a hard-coded ChevronRightIcon in the button (carousel.tsx:268) and carousel.module.css places it with a physical `right: -3rem` (carousel.module.css:88), with no rule that mirrors either under a right-to-left direction, so in a right-to-left carousel the button sits on the right and points against the reading order"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the next-slide button's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the next-slide button's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (ButtonState, which carries `disabled`). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through button.module.css and carousel.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Default control, relabelled and restyled",
+        "code": "<Carousel aria-label=\"Photos\">\n  <CarouselContent>\n    <CarouselItem>1</CarouselItem>\n    <CarouselItem>2</CarouselItem>\n  </CarouselContent>\n  <CarouselNext aria-label=\"Show later photo\" variant=\"ghost\" size=\"lg\" />\n</Carousel>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Swapping the glyph through an icon prop",
+        "code": "<CarouselNext icon={<ArrowIcon />} />",
+        "why": "CarouselNext takes every Button prop except `icon`; the chevron is fixed."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "carousel",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": [
+      "default: prop \"aria-label\" defaults to \"Next slide\", but the contract states no property for it - the default is not stated"
+    ]
+  },
+  "props": {
+    "title": "UiKit CarouselNext",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "destructive",
+          "outline",
+          "secondary",
+          "ghost",
+          "link",
+          "navigation",
+          "avatar",
+          "utility"
+        ],
+        "default": "outline"
+      },
+      "size": {
+        "type": "string",
+        "enum": [
+          "default",
+          "sm",
+          "lg"
+        ],
+        "default": "sm"
+      },
+      "className": {
+        "type": "string"
+      },
+      "focusableWhenDisabled": {
+        "type": "boolean"
+      },
+      "loading": {
+        "type": "boolean"
+      },
+      "nativeButton": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ButtonState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the next-slide button's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: ButtonState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the next-slide button's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (ButtonState, which carries `disabled`). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through button.module.css and carousel.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

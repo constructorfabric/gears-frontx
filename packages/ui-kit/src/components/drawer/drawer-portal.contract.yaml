@@ -1,0 +1,97 @@
+# Semantic overlay for DrawerPortal - a part of the Drawer family, see
+# drawer.contract.yaml's `family_membership` for how the contracts relate.
+# An unstyled pass-through to the primitive's Drawer.Portal (Base UI's
+# Dialog.Portal); DrawerContent renders one around the panel itself.
+component: drawer-portal
+
+intent: The primitive's portal, which moves what it holds out of the page's DOM tree into the document body or a given container while its Drawer is mounted.
+
+typical_uses:
+  - A layer a caller must portal beside the drawer's panel, outside it
+
+dont_use_when:
+  - situation: Portalling the drawer's panel, or rendering it into a themed subtree
+    instead:
+      target: DrawerContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.drawer_content.v1
+      note: DrawerContent portals itself; pass the subtree as its `container`.
+
+# The portal takes whatever it is given. Its `mounted_in` is filled from
+# the Drawer root's accepted components.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: rendered-only-while-mounted
+    text: >-
+      The portal renders nothing while the drawer is closed and not
+      animating closed, unless `keepMounted` is set.
+  - id: adds-the-blocking-layer-while-modal
+    text: >-
+      While the drawer is mounted and the root's `modal` is exactly `true`,
+      the portal renders the primitive's transparent blocking backdrop
+      before its children.
+
+anti_patterns: []
+
+deprecations: {}
+
+# A plain div with no role; drawer.test.tsx never renders it directly.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  container:
+    states: container is the DOM node, shadow root or ref to one that the portal renders into; an explicit null renders nothing until a node is passed
+    because: >-
+      `HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null`
+      - live DOM nodes and ref objects, which no JSON Schema type covers.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the portal's
+      state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property; the primitive passes an empty
+      state object.
+  style:
+    states: style accepts a function as well as a plain style object; the primitive passes that function an empty state object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)`, and the portal's state
+      carries no fields. The compiler emits one JSON type per property, so nothing is asserted; the kit sets no style of its own on the
+      portal.
+
+examples:
+  good:
+    - title: A layer kept in the DOM while the drawer is closed
+      code: |
+        <Drawer modal="trap-focus">
+          <DrawerTrigger>Open</DrawerTrigger>
+          <DrawerPortal keepMounted>
+            <StatusLayer />
+          </DrawerPortal>
+          <DrawerContent>
+            <DrawerTitle>Status</DrawerTitle>
+          </DrawerContent>
+        </Drawer>
+  bad:
+    - title: The panel wrapped in a portal of its own
+      code: |
+        <Drawer>
+          <DrawerTrigger>Open</DrawerTrigger>
+          <DrawerPortal>
+            <DrawerContent>
+              <DrawerTitle>Filters</DrawerTitle>
+            </DrawerContent>
+          </DrawerPortal>
+        </Drawer>
+      why: >-
+        DrawerContent already portals itself, so this nests a second portal
+        and, while the drawer is modal, renders a second copy of the
+        primitive's blocking backdrop.
+
+family_membership:
+  name: drawer
+  role: part

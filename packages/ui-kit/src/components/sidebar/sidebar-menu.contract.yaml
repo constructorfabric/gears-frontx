@@ -1,0 +1,68 @@
+# Semantic overlay for SidebarMenu - a part of the sidebar family, see
+# sidebar-provider.contract.yaml for the root.
+component: sidebar-menu
+
+intent: The list of navigation rows in a sidebar section, header or footer.
+
+typical_uses:
+  - The rows of one sidebar section
+  - A single switcher or user row in the header or the footer
+
+dont_use_when:
+  - situation: A menu of commands that opens from a button
+    instead:
+      target: DropdownMenu
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_item.v1 # SidebarMenuItem
+
+invariants:
+  - id: unstyled-list
+    text: >-
+      SidebarMenu renders a `ul` with the list bullets, margin and padding
+      removed, laying its items out as a full-width column with a 4px gap.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Two rows
+      code: |
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton render={<a href="/inbox" />}>
+              <InboxIcon />
+              <span>Inbox</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton render={<a href="/drafts" />}>
+              <FileIcon />
+              <span>Drafts</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+  bad:
+    - title: Rows straight in the list
+      code: |
+        <SidebarMenu>
+          <SidebarMenuButton>Inbox</SidebarMenuButton>
+        </SidebarMenu>
+      why: >-
+        A `ul` may only hold `li` children; wrap each row in a
+        SidebarMenuItem.
+
+family_membership:
+  name: sidebar
+  role: part

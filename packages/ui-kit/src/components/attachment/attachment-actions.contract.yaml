@@ -1,0 +1,70 @@
+# Semantic overlay for AttachmentActions - part of the attachment family,
+# see attachment.contract.yaml's `family_membership`. `mounted_in` is
+# filled from Attachment's accepted components, not authored here.
+component: attachment-actions
+
+intent: Hold the attachment's action buttons after the content column, above its trigger.
+
+typical_uses:
+  - A remove or download button on an attached file
+
+dont_use_when:
+  - situation: The one action in a card's header
+    instead:
+      target: CardAction
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_action.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_action.v1 # AttachmentAction
+
+invariants:
+  - id: stacked-above-the-trigger
+    text: >-
+      The actions are positioned with `z-index: 20`, above an
+      AttachmentTrigger's `z-index: 10`, so they stay clickable while the
+      trigger covers the rest of the card.
+  - id: pinned-to-the-corner-when-vertical
+    text: >-
+      In an Attachment with `orientation="vertical"` the actions are taken
+      out of the flow and pinned var(--space-3) from the card's top and
+      right edges.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: failed
+    by: >-
+      attachment.module.css `.attachment.orientationVertical
+      .attachmentActions` pins the actions with the physical `right`, so
+      in the vertical orientation they stay at the right edge under a
+      right-to-left direction
+
+examples:
+  good:
+    - title: Two actions on a file
+      code: |
+        <AttachmentActions>
+          <AttachmentAction icon={<DownloadIcon />} aria-label="Download report.pdf" />
+          <AttachmentAction icon={<XIcon />} aria-label="Remove report.pdf" />
+        </AttachmentActions>
+  bad:
+    - title: A plain Button inside the actions
+      code: |
+        <AttachmentActions>
+          <Button icon={<XIcon />} aria-label="Remove report.pdf" />
+        </AttachmentActions>
+      why: >-
+        A plain Button renders the `default` filled variant at the default
+        size; AttachmentAction is the Button that takes the small ghost look
+        the card expects.
+
+family_membership:
+  name: attachment
+  role: part

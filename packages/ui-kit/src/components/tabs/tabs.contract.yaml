@@ -1,0 +1,185 @@
+# Semantic overlay for Tabs (the root) - the hand-written half of one of
+# four contracts describing this compound component. See
+# tabs-list.contract.yaml, tabs-trigger.contract.yaml and
+# tabs-content.contract.yaml for the rest of the family, and
+# `family_membership` below for how a reader (or the conformance test) walks
+# between them.
+#
+# Machine-extractable facts (axis names, axis values, defaults, prop list)
+# do NOT belong here: the compiler takes those from tabs.tsx and the Base UI
+# Tabs primitive it wraps, and rejects an overlay that tries to restate
+# them - one fact, one owner. This file carries only what the code cannot
+# express: intent, boundaries, invariants.
+component: tabs
+
+intent: Switch between panels that share the same screen space, showing exactly one at a time.
+
+typical_uses:
+  - Grouping related views that do not need to be compared side by side
+  - Switching between differently-shaped content behind a shared header, where only one need be visible or interactive at once
+
+dont_use_when:
+  - situation: Sequential, gated steps that need validation before the user may move to the next one
+    instead:
+      target: a purpose-built stepper
+      note: >-
+        This kit ships no stepper component. Tabs imply free jumping between
+        every panel; a gated wizard must prevent that, which nothing here
+        does.
+  - situation: Content the user needs to compare at a glance
+    instead:
+      target: a layout that keeps every section visible at once (a row or grid of Card, for instance)
+      note: >-
+        Tabs hide every panel but the active one, so nothing behind the
+        active tab is ever visible beside it.
+  - situation: Picking a mode or option with no panel to show per choice
+    instead:
+      target: ToggleGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.toggle_group.v1
+  - situation: Navigating between pages or routes
+    instead:
+      target: NavigationMenu
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu.v1
+  - situation: Sections that may be open at the same time
+    instead:
+      target: Accordion
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.accordion.v1
+
+# The ONE authored statement of a nesting relationship: the compiler fills
+# every other contract's `mounted_in` from lists like this one, so the two
+# directions cannot disagree.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.tabs_list.v1 # TabsList
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.tabs_content.v1 # TabsContent
+
+invariants:
+  - id: value-wins-over-default-value
+    text: >-
+      `value` and `defaultValue` are both accepted; `defaultValue` seeds the
+      initial state and is ignored afterwards, and when `value` is given it
+      wins and the component follows it on every render.
+  - id: orientation-drives-layout-and-keyboard-axis
+    text: >-
+      With `orientation` at its default of `horizontal`, every part - the
+      root, the list, each trigger and the open panel - stamps a matching
+      `data-orientation` attribute that lays the list above its panel and
+      moves focus between triggers with the left/right arrow keys;
+      switching to `vertical` puts the list beside its panel and moves focus
+      with up/down instead. No other prop needs to change to switch it.
+
+anti_patterns:
+  - dont: Give two TabsTrigger/TabsContent pairs the same value
+    do_instead: >-
+      Give every pair a unique value - Base UI matches a panel to its tab by
+      exact value equality, and a duplicate leaves one panel unreachable
+  - dont: Omit defaultValue/value while leaving the first TabsTrigger disabled
+    do_instead: >-
+      Set defaultValue (or value) explicitly to an enabled tab's value - Base
+      UI falls back to the next enabled tab client-side, but it cannot do
+      that during server-side rendering, so the server- and client-rendered
+      output would disagree
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      Base UI's Tabs.Root - tablist/tab/tabpanel role wiring and keyboard
+      navigation between triggers - exercised by tabs.test.tsx's "stamps
+      data-orientation on every part, defaulting to horizontal" and
+      "switches every part to vertical orientation and keeps arrow-key
+      navigation on its own axis" assertions
+  rtl:
+    outcome: unknown
+
+# What each property that reaches this contract asserting nothing (or only
+# part of its shape) actually states, and why - keyed on the property
+# itself. The compiler emits both halves into that property's own
+# description, beside the `TS:` text.
+prop_statements:
+  value:
+    states: value is an opaque identifier, typed any by Base UI, compared by identity against a TabsTrigger's own value
+    because: >-
+      Base UI's TabsRootProps types `value` as `TabsTab.Value | undefined`,
+      where `TabsTab.Value` is `any | null` - not interpreted, only compared
+      by identity, so no JSON Schema type can state what it holds beyond
+      "present or null". tabs.md's example uses string values
+      (`defaultValue="account"`), which is what a reader should reach for.
+  defaultValue:
+    states: defaultValue is the same opaque any-typed identifier as value, seeding the initial selection
+    because: >-
+      Same `TabsTab.Value` type as `value` above, unchecked in the same half
+      - the uncontrolled starting selection is compared by identity against
+      each trigger's own `value`, and no schema can state what a caller's
+      own identifier looks like.
+  onValueChange:
+    states: onValueChange is a callback, not a value
+    because: >-
+      `(value: TabsTab.Value, eventDetails) => void` - a function of the
+      opaque value type plus Base UI's own event-details object. No JSON
+      Schema type covers a function.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the root's own
+      state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the root's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (orientation, tabActivationDirection). The compiler emits one JSON type per property, so nothing is
+      asserted; the kit's own styling goes through tabs.module.css, not
+      through this.
+
+examples:
+  good:
+    - title: Uncontrolled, two panels
+      code: |
+        <Tabs defaultValue="account">
+          <TabsList>
+            <TabsTrigger value="account">Account</TabsTrigger>
+            <TabsTrigger value="password">Password</TabsTrigger>
+          </TabsList>
+          <TabsContent value="account">
+            <p>Update your account details here.</p>
+          </TabsContent>
+          <TabsContent value="password">
+            <p>Change your password here.</p>
+          </TabsContent>
+        </Tabs>
+    - title: Vertical, flat line list sized to a sidebar
+      code: |
+        <Tabs defaultValue="general" orientation="vertical">
+          <TabsList variant="line">
+            <TabsTrigger value="general">General</TabsTrigger>
+            <TabsTrigger value="billing">Billing</TabsTrigger>
+          </TabsList>
+          <TabsContent value="general">
+            <p>General settings.</p>
+          </TabsContent>
+          <TabsContent value="billing">
+            <p>Billing settings.</p>
+          </TabsContent>
+        </Tabs>
+  bad:
+    - title: Two panels sharing the same value
+      code: |
+        <Tabs defaultValue="account">
+          <TabsList>
+            <TabsTrigger value="account">Account</TabsTrigger>
+            <TabsTrigger value="account">Duplicate</TabsTrigger>
+          </TabsList>
+          <TabsContent value="account">One panel, two triggers pointing at it.</TabsContent>
+        </Tabs>
+      why: >-
+        Base UI matches a panel to its tab by exact value equality; a
+        duplicate value leaves the second trigger with no panel of its own
+        to activate.
+
+family_membership:
+  name: tabs
+  role: root

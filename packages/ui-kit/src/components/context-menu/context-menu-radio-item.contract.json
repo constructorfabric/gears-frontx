@@ -1,0 +1,179 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_radio_item.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "context-menu-radio-item",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "One option of a ContextMenuRadioGroup, identified by a value unique within that group.",
+  "typical_uses": [
+    "One entry in a single-choice menu setting, such as one sort order"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A setting that is on or off on its own",
+      "instead": {
+        "target": "ContextMenuCheckboxItem",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_checkbox_item.v1"
+      }
+    },
+    {
+      "situation": "A one-off command with no selected state",
+      "instead": {
+        "target": "ContextMenuItem",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_item.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_shortcut.v1"
+    ],
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "ContextMenuRadioGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_radio_group.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "throws-outside-a-radio-group",
+      "text": "Rendering the item outside a ContextMenuRadioGroup throws; the primitive reads the selected value from the group's context."
+    },
+    {
+      "id": "choosing-keeps-the-menu-open",
+      "text": "Activating the item selects it and leaves the menu open, unless `closeOnClick` is true."
+    },
+    {
+      "id": "check-glyph-only-while-checked",
+      "text": "A check glyph, hidden from assistive technology, is rendered at the row's inline end only while the item is checked; the row always reserves padding on its right side for it."
+    },
+    {
+      "id": "disabled-stays-reachable",
+      "text": "A `disabled` row stays in arrow-key navigation and can take focus, but pressing it or pressing Enter on it does nothing."
+    },
+    {
+      "id": "descendant-svg-sized",
+      "text": "context-menu.module.css sizes every descendant `svg` of the row to the small icon size and keeps it from shrinking or taking pointer events, so a leading icon passed in children needs no size of its own."
+    },
+    {
+      "id": "inset-lines-up-with-icon-rows",
+      "text": "`inset` indents the item's text by the width of the icon column (the small icon size plus two spacing steps), so it lines up with rows that start with an icon."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Reuse the same `value` for two items in one ContextMenuRadioGroup",
+      "do_instead": "Give every item a unique `value` within its group; items sharing a value show as checked together and cannot be told apart"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "context-menu.test.tsx asserts the item is found by role menuitemradio and its accessible name, and that clicking it reports its value through the group's onValueChange; the primitive's Menu.RadioItem wires aria-checked"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "value": {
+      "states": "value is the item's own value, of any type the caller chooses, required and compared against the group's value",
+      "because": "The primitive declares `value: any` with no `?`, so no JSON Schema type can state what it holds, only that it must be present."
+    },
+    "onClick": {
+      "states": "onClick is a callback called with the click event when the item is activated by pointer or keyboard",
+      "because": "A React event handler - a function, which no JSON Schema type covers."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the radio item's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the radio item's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (checked, disabled, highlighted). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through context-menu.module.css, not through this."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "ContextMenu.RadioItemIndicator",
+      "reason": "Composed inside ContextMenuRadioItem with a fixed check icon; the kit exports no indicator to replace or place."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "Items inside their group",
+        "code": "<ContextMenuRadioGroup value={view} onValueChange={setView}>\n  <ContextMenuRadioItem value=\"list\">List</ContextMenuRadioItem>\n  <ContextMenuRadioItem value=\"grid\">Grid</ContextMenuRadioItem>\n</ContextMenuRadioGroup>\n"
+      },
+      {
+        "title": "A disabled option with a shortcut hint",
+        "code": "<ContextMenuRadioGroup value={zoom} onValueChange={setZoom}>\n  <ContextMenuRadioItem value=\"fit\">\n    Fit\n    <ContextMenuShortcut>Ctrl+0</ContextMenuShortcut>\n  </ContextMenuRadioItem>\n  <ContextMenuRadioItem value=\"actual\" disabled>Actual size</ContextMenuRadioItem>\n</ContextMenuRadioGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A radio item with no group around it",
+        "code": "<ContextMenuContent>\n  <ContextMenuRadioItem value=\"list\">List</ContextMenuRadioItem>\n</ContextMenuContent>\n",
+        "why": "The item reads and writes the enclosing ContextMenuRadioGroup's value through context, and the primitive throws when there is none."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "context_menu",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ContextMenuRadioItem",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "inset": {
+        "type": "boolean"
+      },
+      "closeOnClick": {
+        "type": "boolean"
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "label": {
+        "type": "string"
+      },
+      "nativeButton": {
+        "type": "boolean"
+      },
+      "onClick": {
+        "description": "TS: ((event: BaseUIEvent<MouseEvent<HTMLDivElement, MouseEvent>>) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onClick is a callback called with the click event when the item is activated by pointer or keyboard. A React event handler - a function, which no JSON Schema type covers."
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, MenuRadioItemState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the radio item's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: MenuRadioItemState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the radio item's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (checked, disabled, highlighted). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through context-menu.module.css, not through this."
+      },
+      "value": {
+        "description": "TS: any. The compiler emits one JSON type per property; this type is left to tsc. value is the item's own value, of any type the caller chooses, required and compared against the group's value. The primitive declares `value: any` with no `?`, so no JSON Schema type can state what it holds, only that it must be present."
+      }
+    },
+    "required": [
+      "value"
+    ],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

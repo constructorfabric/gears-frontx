@@ -1,0 +1,67 @@
+# Semantic overlay for MenubarShortcut - a part of the Menubar family, see
+# menubar.contract.yaml's `family_membership` for how the contracts relate.
+# MenubarShortcut is DropdownMenuShortcut re-exported under this name, so its
+# behaviour and its styling in dropdown-menu.module.css are that part's. It is
+# the kit's own span, not a primitive part.
+component: menubar-shortcut
+
+intent: The keyboard shortcut hint shown at the end of a menu row.
+
+typical_uses:
+  - The key combination that runs the same action outside the menu
+
+dont_use_when:
+  - situation: A key or key combination shown in running text or a tooltip, outside a menu row
+    instead:
+      target: Kbd
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.kbd.v1
+
+# `mounted_in` is filled from the rows that accept it.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: display-only
+    text: >-
+      The shortcut is text only: it registers no key handler and adds no
+      `aria-keyshortcuts`, so the application binds the keys itself.
+  - id: pushed-to-the-row-end
+    text: >-
+      dropdown-menu.module.css pushes the shortcut to the inline end of its
+      row and renders it in the muted foreground color, switching to the
+      accent foreground while a MenubarItem, MenubarCheckboxItem or
+      MenubarRadioItem holding it is highlighted.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A shortcut hint on a command
+      code: |
+        <MenubarItem onClick={onSave}>
+          Save
+          <MenubarShortcut>⌘S</MenubarShortcut>
+        </MenubarItem>
+  bad:
+    - title: A shortcut placed as its own row in the popup
+      code: |
+        <MenubarContent>
+          <MenubarItem onClick={onSave}>Save</MenubarItem>
+          <MenubarShortcut>⌘S</MenubarShortcut>
+        </MenubarContent>
+      why: >-
+        The shortcut belongs inside the row whose action it names; on its own
+        it is a stray span that arrow keys skip and nothing ties to the item.
+
+family_membership:
+  name: menubar
+  role: part

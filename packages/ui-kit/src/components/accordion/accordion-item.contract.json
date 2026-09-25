@@ -63,11 +63,11 @@
     },
     "render": {
       "states": "render replaces the item element with one the caller supplies",
-      "because": "Base UI's render prop takes an element or a function of the item's state; neither is expressible in JSON Schema."
+      "because": "Base UI's render prop takes an element or a function of the item's state; the compiler emits one JSON type per property."
     },
     "style": {
       "states": "style accepts a function of the item's state as well as a plain style object",
-      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`; a JSON Schema `object` would reject the function form."
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`; the compiler emits one JSON type per property."
     }
   },
   "examples": {
@@ -107,16 +107,16 @@
         "type": "boolean"
       },
       "onOpenChange": {
-        "description": "TS: ((open: boolean, eventDetails: AccordionItemChangeEventDetails) => void) | undefined. Not expressible in JSON Schema, checked by tsc. onOpenChange is a callback, not a value. `(open: boolean, eventDetails) => void` - a function of Base UI's own event-details object. No JSON Schema type covers a function."
+        "description": "TS: ((open: boolean, eventDetails: AccordionItemChangeEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChange is a callback, not a value. `(open: boolean, eventDetails) => void` - a function of Base UI's own event-details object. No JSON Schema type covers a function."
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, AccordionItemState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the item element with one the caller supplies. Base UI's render prop takes an element or a function of the item's state; neither is expressible in JSON Schema."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, AccordionItemState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the item element with one the caller supplies. Base UI's render prop takes an element or a function of the item's state; the compiler emits one JSON type per property."
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: AccordionItemState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the item's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`; a JSON Schema `object` would reject the function form."
+        "description": "TS: CSSProperties | ((state: AccordionItemState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the item's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`; the compiler emits one JSON type per property."
       },
       "value": {
-        "description": "TS: any. Not expressible in JSON Schema, checked by tsc. value is an opaque identifier, typed `any` by Base UI. Base UI's Accordion.Item declares `value?: any` - it is compared by identity against the root's `value`/`defaultValue` array and never interpreted, so the primitive types it as anything. Strings are what accordion.md uses, and what a reader should reach for."
+        "description": "TS: any. The compiler emits one JSON type per property; this type is left to tsc. value is an opaque identifier, typed `any` by Base UI. Base UI's Accordion.Item declares `value?: any` - it is compared by identity against the root's `value`/`defaultValue` array and never interpreted, so the primitive types it as anything. Strings are what accordion.md uses, and what a reader should reach for."
       }
     },
     "required": [],

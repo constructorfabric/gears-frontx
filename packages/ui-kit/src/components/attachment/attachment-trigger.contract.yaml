@@ -1,0 +1,94 @@
+# Semantic overlay for AttachmentTrigger - part of the attachment family,
+# see attachment.contract.yaml's `family_membership`. `mounted_in` is
+# filled from Attachment's accepted components, not authored here. No
+# primitive backs it: it renders a button through Base UI's useRender,
+# which is where its `render` prop comes from.
+component: attachment-trigger
+
+intent: Make the whole attachment card one click target that opens or previews the file, while its actions stay separately clickable.
+
+typical_uses:
+  - Opening a preview dialog for the attached file
+  - Linking the whole card to the file, rendered as a link
+
+dont_use_when:
+  - situation: A separate action on the attachment, such as remove
+    instead:
+      target: AttachmentAction
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_action.v1
+  - situation: A clickable control that is not an attachment card
+    instead:
+      target: Button
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+
+# The trigger is an empty overlay over the card; its name comes from
+# aria-label, not from children.
+accepts:
+  content: nothing
+
+invariants:
+  - id: covers-the-card-below-the-actions
+    text: >-
+      The trigger is absolutely positioned over the whole of its
+      Attachment (`inset: 0`, `z-index: 10`), so a click on the preview,
+      the title or the description lands on it, while AttachmentActions
+      (`z-index: 20`) stay above it.
+  - id: needs-an-accessible-name
+    text: >-
+      The trigger renders no text of its own, so the `aria-label` passed to
+      it names the rendered button or link.
+  - id: button-type-by-default
+    text: >-
+      Without `render` it renders a `<button>` with `type="button"` unless
+      a `type` is given; with `render` no `type` is added.
+
+anti_patterns:
+  - dont: Wrap the whole Attachment in a link or a button to make it clickable
+    do_instead: Put an AttachmentTrigger inside it, rendered as a link with `render` when it navigates, so AttachmentActions stay separate controls
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      attachment.test.tsx asserts that AttachmentTrigger renders a BUTTON
+      with type "button", and that with `render={<a href="..." />}` and
+      aria-label="Open report.pdf" it is found by role "link" with that
+      accessible name
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      useRender's render prop takes an element or a function that receives
+      the props to spread (AttachmentTrigger passes no state of its own), so
+      its type is a union of a React element and a callback - the compiler
+      emits one JSON type per property.
+
+examples:
+  good:
+    - title: The whole card as a link to the file
+      code: |
+        <Attachment>
+          <AttachmentMedia>
+            <FileTextIcon />
+          </AttachmentMedia>
+          <AttachmentContent>
+            <AttachmentTitle>report.pdf</AttachmentTitle>
+          </AttachmentContent>
+          <AttachmentTrigger render={<a href="/files/report.pdf" />} aria-label="Open report.pdf" />
+        </Attachment>
+  bad:
+    - title: Text children as the trigger's name
+      code: <AttachmentTrigger>Open report.pdf</AttachmentTrigger>
+      why: >-
+        The trigger is an overlay covering the whole card, so its text is
+        drawn over the title and preview; name it with `aria-label` and
+        leave it empty.
+
+family_membership:
+  name: attachment
+  role: part

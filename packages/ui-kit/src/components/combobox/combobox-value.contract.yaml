@@ -1,0 +1,78 @@
+# Semantic overlay for ComboboxValue - a part of the Combobox family, see
+# combobox.contract.yaml's `family_membership`. It wraps Base UI's
+# Combobox.Value, which renders no element of its own, so it names no
+# element surface.
+component: combobox-value
+
+intent: Render a Combobox's current value where the field itself does not show it, as the chosen label, a placeholder, or whatever a function of the value returns.
+
+typical_uses:
+  - One ComboboxChip per chosen value inside ComboboxChips
+
+dont_use_when:
+  - situation: Showing the chosen item of a single-line field
+    instead:
+      target: ComboboxInput
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_input.v1
+      note: >-
+        The field's own text already shows the chosen item's label.
+
+# A function child typically returns one ComboboxChip per value; a node
+# child is shown as given.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_chip.v1 # ComboboxChip
+  text: true
+
+invariants:
+  - id: what-it-renders
+    text: >-
+      A function child is called with the current value (an array with
+      `multiple`) and its result rendered; a node child is rendered as
+      given; with no children it renders `placeholder` while nothing is
+      chosen (null, or an empty array under `multiple`) and the root's
+      `items` give no label for a null value, and otherwise the chosen item's label, or the chosen labels
+      with `multiple`, looked up in the root's `items`.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  children:
+    states: children is either React nodes or a function of the current value returning React nodes
+    because: >-
+      `ReactNode | ((selectedValue: any) => ReactNode)` - the compiler emits one JSON type per property, and a function has no JSON Schema representation.
+  placeholder:
+    states: placeholder is the React content shown while nothing is chosen and no children are given
+    because: >-
+      `ReactNode` is a union of elements, strings, numbers, fragments and
+      more; the compiler emits one JSON type per property.
+
+examples:
+  good:
+    - title: One chip per chosen value
+      code: |
+        <ComboboxChips ref={anchor}>
+          <ComboboxValue>
+            {(values) => values.map((value) => <ComboboxChip key={value}>{value}</ComboboxChip>)}
+          </ComboboxValue>
+          <ComboboxChipsInput aria-label="Frameworks" />
+        </ComboboxChips>
+  bad:
+    - title: A value outside any Combobox
+      code: <ComboboxValue placeholder="None chosen" />
+      why: >-
+        The primitive's Value reads the nearest Combobox root's state through
+        context and throws when there is none.
+
+family_membership:
+  name: combobox
+  role: part

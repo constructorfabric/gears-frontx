@@ -1,0 +1,95 @@
+# Semantic overlay for BubbleReactions - part of the bubble family, see
+# bubble.contract.yaml's `family_membership`. `mounted_in` is filled from
+# Bubble's accepted components, not authored here. The `side` and `align`
+# axes and their defaults are extracted from bubble.tsx's cva, not restated.
+component: bubble-reactions
+
+intent: Show the reactions a bubble received as a small pill overlapping one of its edges.
+
+typical_uses:
+  - A row of reaction emoji with an overflow count on a received turn
+  - A row of reaction buttons the reader can toggle
+
+dont_use_when:
+  - situation: A status, tag or count shown on its own rather than anchored to a bubble
+    instead:
+      target: Badge
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.badge.v1
+
+# Emoji spans, a count, or buttons: any node.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: overlaps-the-bubble-edge
+    text: >-
+      The pill is absolutely positioned against its Bubble (position
+      relative) and shifted 75% of its own height past the `side` edge, so
+      it overlaps the bubble and extends into the space above or below it.
+  - id: align-uses-physical-sides
+    text: >-
+      `align="start"` insets the pill var(--space-3) from the left edge and
+      `align="end"` from the right edge; these are physical sides and do not
+      mirror under a right-to-left direction.
+  - id: flush-around-buttons
+    text: >-
+      When any descendant is a `button`, the pill drops its own padding and
+      sits flush around the buttons, which size themselves.
+
+anti_patterns:
+  - dont: Leave a row of emoji spans and counts without an accessible name
+    do_instead: >-
+      Give the row `role="img"` and an `aria-label` that reads the reactions
+      once, or render real buttons with their own names when the reactions
+      are interactive
+  - dont: Stack bubbles carrying reactions with the default gap between them
+    do_instead: Leave extra vertical space between those rows, since the pill extends past the bubble edge into it
+
+deprecations: {}
+
+# bubble.test.tsx asserts classes and data attributes only. The pill's
+# inline placement is physical, read from bubble.module.css.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: failed
+    by: >-
+      bubble.module.css .alignStart/.alignEnd inset the pill with physical
+      left/right, so it does not mirror under a right-to-left direction
+
+companions:
+  - export: bubbleReactionsVariants
+    typed_by: 'cva(...), returns (props: VariantProps<typeof bubbleReactionsVariants> & { className?: string }) => string'
+    description: >-
+      The class-name builder BubbleReactions uses for its `side` and `align`
+      classes; it does not set the `data-side` and `data-align` attributes
+      the component itself renders.
+
+examples:
+  good:
+    - title: Reactions named once for assistive tech, anchored top start
+      code: |
+        <Bubble variant="secondary">
+          <BubbleContent>Ship it.</BubbleContent>
+          <BubbleReactions side="top" align="start" role="img" aria-label="Reactions: fire and 8 more">
+            <span>🔥</span>
+            <span>+8</span>
+          </BubbleReactions>
+        </Bubble>
+  bad:
+    - title: Reactions placed outside the bubble
+      code: |
+        <Bubble variant="secondary">
+          <BubbleContent>Ship it.</BubbleContent>
+        </Bubble>
+        <BubbleReactions>
+          <span>🔥</span>
+        </BubbleReactions>
+      why: >-
+        The pill is positioned absolutely against its Bubble; outside one it
+        anchors to whatever positioned ancestor happens to be nearest.
+
+family_membership:
+  name: bubble
+  role: part

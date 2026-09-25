@@ -1,0 +1,105 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_description.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "field-description",
+  "forwards_to": "gts.frontx.uikit.element.dom_p.v1~",
+  "intent": "Explain what a field or a field set expects, as muted helper text.",
+  "typical_uses": [
+    "Helper text under a control, referenced from the control's aria-describedby",
+    "A sentence under a FieldLegend explaining the whole set"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A validation message about the value entered",
+      "instead": {
+        "target": "FieldError",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_error.v1"
+      }
+    },
+    {
+      "situation": "Text next to a control that neither describes nor names it",
+      "instead": {
+        "target": "the consuming application's own text markup",
+        "note": "A description is for the field it sits in; unrelated text is plain markup."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "Field",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1"
+    },
+    {
+      "container": "FieldContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_content.v1"
+    },
+    {
+      "container": "FieldSet",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_set.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "muted-paragraph",
+      "text": "FieldDescription renders a p with no margin in the muted foreground color at the label size. Any descendant link inherits that color, is underlined, and takes the link color on hover."
+    },
+    {
+      "id": "described-only-when-referenced",
+      "text": "It describes nothing by itself: the control's aria-describedby must name the description's id, both set by the consumer."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Leave the description unreferenced and expect assistive tech to read it with the control",
+      "do_instead": "Give it an id and put that id in the control's aria-describedby"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "field.test.tsx asserts that the Input's aria-describedby equals the id the rendered FieldDescription carries"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Helper text referenced from the control",
+        "code": "<Field>\n  <FieldLabel htmlFor=\"email\">Email</FieldLabel>\n  <Input id=\"email\" aria-describedby=\"email-desc\" />\n  <FieldDescription id=\"email-desc\">We only use it for the invoice.</FieldDescription>\n</Field>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A validation message rendered as a description",
+        "code": "<FieldDescription>This field is required.</FieldDescription>",
+        "why": "A description is muted helper text and is not announced when it appears; a validation message is FieldError, which renders role=\"alert\" and the danger color."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "field",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit FieldDescription",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

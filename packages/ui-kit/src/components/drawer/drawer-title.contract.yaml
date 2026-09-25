@@ -1,0 +1,86 @@
+# Semantic overlay for DrawerTitle - a part of the Drawer family, see
+# drawer.contract.yaml's `family_membership` for how the contracts relate.
+component: drawer-title
+
+intent: The heading that names a drawer's panel.
+
+typical_uses:
+  - The panel's heading, inside its DrawerHeader
+
+dont_use_when:
+  - situation: A heading for a section inside the panel's body
+    instead:
+      target: a plain heading element (h3 and below)
+      note: Only one DrawerTitle names the panel; a section heading is ordinary content.
+  - situation: The heading of an edge panel with no swipe gesture
+    instead:
+      target: SheetTitle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_title.v1
+  - situation: The heading of a centered dialog
+    instead:
+      target: DialogTitle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_title.v1
+
+# `mounted_in` is filled from DrawerHeader's accepted components.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: heading-level-two
+    text: >-
+      DrawerTitle renders an h2 set in the heading-2 type ramp with no
+      margin.
+
+anti_patterns:
+  - dont: Render a second DrawerTitle in the same panel
+    do_instead: >-
+      Keep one DrawerTitle per drawer and use plain headings for any
+      subheadings; only one title can name the panel
+
+deprecations: {}
+
+# drawer.test.tsx asserts only the title's kit class.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the
+      title's state, so its type is a union of a React element and a
+      callback - the compiler emits one JSON type per property; the primitive passes an
+      empty state object.
+  style:
+    states: style accepts a function as well as a plain style object; the primitive passes that function an empty state object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)`, and the title's state
+      carries no fields. The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through
+      drawer.module.css, not through this.
+
+examples:
+  good:
+    - title: The panel's heading
+      code: |
+        <DrawerHeader>
+          <DrawerTitle>Edit profile</DrawerTitle>
+        </DrawerHeader>
+  bad:
+    - title: A plain heading in place of DrawerTitle
+      code: |
+        <DrawerHeader>
+          <h2>Edit profile</h2>
+        </DrawerHeader>
+      why: >-
+        A plain heading carries no id the primitive knows about, so the
+        panel gets no `aria-labelledby` and a screen reader announces an
+        unnamed dialog.
+
+family_membership:
+  name: drawer
+  role: part

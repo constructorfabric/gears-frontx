@@ -1,0 +1,86 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_action.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "alert-action",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "A single compact action positioned in the alert's top-right corner - something the user can do right there without leaving the page.",
+  "typical_uses": [
+    "One button (or icon button) that responds directly to what the alert reports (retry, dismiss, view details)"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "More than one action, or an action that needs more room than a corner-positioned control",
+      "instead": {
+        "target": "a custom layout inside AlertDescription, or a heavier surface entirely for anything beyond one compact control",
+        "note": "AlertAction reserves a fixed amount of padding sized for a single control; this kit has no dedicated multi-action row component for inside an Alert today."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Alert",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "always-positions-in-the-top-right-corner",
+      "text": "AlertAction always renders absolutely positioned in its nearest Alert's top-right corner; it does not take part in the normal document flow beside the title and description text."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put more than one interactive control inside AlertAction expecting them to lay out side by side",
+      "do_instead": "Keep AlertAction to a single compact control - its fixed corner position and the padding Alert reserves for it are both sized for one"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A single retry button in the corner",
+        "code": "<Alert variant=\"destructive\">\n  <AlertTitle>Payment failed</AlertTitle>\n  <AlertDescription>We couldn't charge your card ending in 4242.</AlertDescription>\n  <AlertAction>\n    <Button size=\"sm\" variant=\"outline\">Retry</Button>\n  </AlertAction>\n</Alert>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Two actions crammed into one AlertAction",
+        "code": "<AlertAction>\n  <Button size=\"sm\">Retry</Button>\n  <Button size=\"sm\" variant=\"ghost\">Dismiss</Button>\n</AlertAction>\n",
+        "why": "AlertAction reserves a fixed amount of corner padding sized for one compact control; a second button overflows or overlaps it instead of laying out side by side."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "alert",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit AlertAction",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

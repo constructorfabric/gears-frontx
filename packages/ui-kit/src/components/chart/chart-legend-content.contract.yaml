@@ -1,0 +1,115 @@
+# Semantic overlay for ChartLegendContent - one of the six independent
+# contracts in this directory (see chart-container.contract.yaml). Its props
+# type joins the library's default legend content props and the div
+# attributes; the legend passes all of its own props in, and the component
+# keeps the legend's settings off its root div.
+component: chart-legend-content
+
+intent: Render a legend's items in a centered row - one per series, each a config icon or a color swatch followed by the config label.
+
+typical_uses:
+  - The content of a ChartLegend
+
+dont_use_when:
+  - situation: Legend items the user clicks to show or hide a series
+    instead:
+      target: the library's default legend content, by leaving ChartLegend's `content` unset
+      note: ChartLegendContent renders its items as plain elements and calls no handler per item.
+
+accepts:
+  content: nothing
+
+mounted_in:
+  - container: the `content` prop of ChartLegend
+    note: >-
+      A prop, not a child: the legend clones the element with its payload
+      and settings on every render. ChartLegend is the library's Legend, so
+      no kit contract accepts this component.
+
+invariants:
+  - id: requires-a-chart-container
+    text: >-
+      It reads the ChartConfig through the context ChartContainer provides
+      and throws when rendered outside one.
+  - id: renders-only-with-items
+    text: >-
+      It renders nothing when `payload` is empty; an item whose `type` is
+      `none` is skipped.
+  - id: item-text-is-the-config-label
+    text: >-
+      An item's text is the label of the config entry found by `nameKey`,
+      else the item's data key, where a string field of that name on the
+      item or its data point supplies the entry's key; an item with no entry
+      shows its swatch and no text.
+  - id: hide-icon-keeps-the-swatch
+    text: >-
+      A config entry with an `icon` shows that icon in place of the color
+      swatch; `hideIcon` brings the swatch back, and no item is ever left
+      without one of the two.
+  - id: vertical-align-sets-the-padding-side
+    text: >-
+      `verticalAlign` of `top` puts the row's padding below it, toward a
+      plot underneath; any other value puts it above. Inside ChartLegend the
+      value is the legend's own `verticalAlign` (default `bottom`), which
+      overrides one set on this element.
+  - id: legend-settings-stay-off-the-root
+    text: >-
+      The legend's own settings and every event handler never reach the
+      root div, and its props type admits no handler, `children` or
+      `dangerouslySetInnerHTML`; `content` is dropped, and every other div
+      attribute reaches the root, with `className` merged after the kit's
+      classes.
+
+anti_patterns:
+  - dont: Style the items through `formatter`, `labelStyle` or `iconSize`
+    do_instead: >-
+      Give the config entry a `label` or an `icon`, and pass `className` for
+      the row; only the library's default content reads those three props
+
+deprecations: {}
+
+# chart.test.tsx asserts rendering, the swatch color, the padding side and
+# attribute forwarding; nothing in it asserts how assistive technology
+# reads the legend.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Legend items named from a field of the data
+      code: |
+        <ChartLegend content={<ChartLegendContent nameKey="browser" />} />
+    - title: A named group for the legend row
+      code: |
+        <ChartLegend content={<ChartLegendContent role="group" aria-label="Series" />} />
+  bad:
+    - title: The content passed as a child of the legend
+      code: |
+        <ChartLegend>
+          <ChartLegendContent />
+        </ChartLegend>
+      why: >-
+        The legend renders its `content` prop, not its children, so the
+        library's default content shows and this element is never rendered.
+    - title: The padding side set on the content instead of the legend
+      code: |
+        <ChartLegend content={<ChartLegendContent verticalAlign="top" />} />
+      why: >-
+        The legend overwrites the element's `verticalAlign` with its own,
+        which defaults to `bottom`; set `verticalAlign="top"` on ChartLegend.
+
+# What each property the schema cannot state in full actually states, and
+# why - the compiler emits both halves into that property's description.
+prop_statements:
+  payload:
+    states: 'payload is the list of legend items, passed in by the legend'
+    because: 'An array of the library''s legend entries, whose nested data and icon elements the compiler emits no JSON type for.'
+
+# One statement for the legend settings that all state the same fact.
+prop_statement_groups:
+  - match: '^(formatter|labelStyle)$'
+    states: 'A setting of the legend itself, passed in with its other props; ChartLegendContent does not read it'
+    because: 'A function or a style object, which the compiler emits no JSON type for.'

@@ -1,0 +1,99 @@
+# Semantic overlay for InputGroupButton - a part of the InputGroup family, see
+# input-group.contract.yaml. It renders the kit's Button; its props are
+# Button's own, except that it redeclares `size` and `type` and sets its own
+# defaults for `variant`, `size` and `type`. The schema carries those values
+# and defaults.
+component: input-group-button
+
+intent: A compact action attached inside an InputGroup's addon, sharing the field's frame.
+
+typical_uses:
+  - A clear, copy or reveal action at the end of a field
+  - An icon-only action that has an accessible name (pass aria-label)
+
+dont_use_when:
+  - situation: An action beside a field rather than inside its frame, or anywhere outside an InputGroup
+    instead:
+      target: Button
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+
+accepts:
+  content: specified
+  text: true
+  icons_via: icon
+
+invariants:
+  - id: icon-only-needs-label
+    text: >-
+      With `icon` set and no children the button renders icon-only and carries
+      no accessible name of its own - `aria-label` is required.
+  - id: disabled-dims-only-the-button
+    text: >-
+      A disabled InputGroupButton dims only itself; the group dims as a whole
+      only when its field is disabled.
+  - id: capped-to-the-row
+    text: >-
+      Inside a group the button is never taller than the group's row, and its
+      focus ring is drawn one border-width out instead of the kit's usual
+      standoff so it stays inside the field's frame.
+
+anti_patterns:
+  - dont: Look for an icon-only size
+    do_instead: Pass `icon` with no children and an `aria-label`; the button squares itself up at whichever size is active
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      Base UI's own Button primitive, plus input-group.test.tsx resolving an
+      icon-less button by getByRole('button', { name: 'Clear' }) from its
+      aria-label and asserting its type property is 'button'
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  icon:
+    states: icon is a React node, not a value
+    because: >-
+      `ReactNode` is a union, and the compiler emits one JSON type per
+      property - an element, a string, a fragment and `false` are all valid
+      and only tsc can tell them from a mistake. It is Button's icon slot,
+      reaching this part unchanged.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the button's
+      own state, so its type is a union of a React element and a callback -
+      the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the button's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state. The compiler emits one JSON type per
+      property, so nothing is asserted; the kit's own styling goes
+      through button.module.css and input-group.module.css, not through this.
+
+examples:
+  good:
+    - title: Icon-only clear action
+      code: |
+        <InputGroup>
+          <InputGroupInput placeholder="Search" aria-label="Search" />
+          <InputGroupAddon align="inline-end">
+            <InputGroupButton icon={<XIcon />} aria-label="Clear" onClick={clear} />
+          </InputGroupAddon>
+        </InputGroup>
+  bad:
+    - title: Icon-only size from an older API
+      code: <InputGroupButton size="icon-xs"><XIcon /></InputGroupButton>
+      why: >-
+        Icon-only is derived from `icon` with no children, not from a size,
+        and an icon in children misses the slot that sizes it and marks it
+        decorative. Use `icon={<XIcon />}` with an `aria-label`.
+
+family_membership:
+  name: input_group
+  role: part

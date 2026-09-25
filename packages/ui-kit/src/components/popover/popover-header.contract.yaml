@@ -1,0 +1,68 @@
+# Semantic overlay for PopoverHeader - a part of the Popover family, see
+# popover.contract.yaml's `family_membership` for how the contracts relate.
+component: popover-header
+
+intent: The heading region of a PopoverContent, stacking the popover's title over its description.
+
+typical_uses:
+  - A PopoverTitle over a one-line PopoverDescription
+
+dont_use_when:
+  - situation: The heading region of a dialog's popup
+    instead:
+      target: DialogHeader
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_header.v1
+  - situation: The heading region of a card on the page
+    instead:
+      target: CardHeader
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1
+
+# The ONE authored statement of what the header hosts: the compiler fills
+# the title's and the description's `mounted_in` from this list.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.popover_title.v1 # PopoverTitle
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.popover_description.v1 # PopoverDescription
+
+invariants:
+  - id: stacked-column
+    text: >-
+      PopoverHeader is a flex column whose children are spaced
+      var(--space-1) apart.
+
+anti_patterns: []
+
+deprecations: {}
+
+# A plain div with no role; popover.test.tsx renders it but asserts nothing
+# about it.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A title over its description
+      code: |
+        <PopoverHeader>
+          <PopoverTitle>Dimensions</PopoverTitle>
+          <PopoverDescription>Set the dimensions for the layer.</PopoverDescription>
+        </PopoverHeader>
+  bad:
+    - title: A header used outside a popover's panel
+      code: |
+        <Card>
+          <PopoverHeader>
+            <PopoverTitle>Usage</PopoverTitle>
+          </PopoverHeader>
+        </Card>
+      why: >-
+        PopoverTitle needs an enclosing Popover root and throws without one;
+        use CardHeader and CardTitle in a card.
+
+family_membership:
+  name: popover
+  role: part

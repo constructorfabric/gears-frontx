@@ -1,0 +1,61 @@
+# Semantic overlay for QuestionnaireChoiceDescription - a part of the
+# Questionnaire family, see questionnaire.contract.yaml's
+# `family_membership`. A plain styled span; no engine part underneath.
+component: questionnaire-choice-description
+
+intent: A second line under a QuestionnaireChoice's answer text that says what picking it means.
+
+typical_uses:
+  - A supporting sentence under one answer
+
+dont_use_when:
+  - situation: A hint that applies to the whole question
+    instead:
+      target: QuestionnaireDescription
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_description.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: part-of-the-choice-name
+    text: >-
+      It carries no id and is not wired into `aria-describedby`; inside a
+      QuestionnaireChoice it sits in the row's label, so its text is part
+      of the choice's accessible name.
+
+anti_patterns:
+  - dont: Place QuestionnaireChoiceDescription beside the choices instead of inside a QuestionnaireChoice
+    do_instead: Pass it among the QuestionnaireChoice's children, where it stacks under the answer text
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A second line under an answer
+      code: |
+        <QuestionnaireChoice value="pro">
+          Pro
+          <QuestionnaireChoiceDescription>Everything included.</QuestionnaireChoiceDescription>
+        </QuestionnaireChoice>
+  bad:
+    - title: The description outside its choice
+      code: |
+        <QuestionnaireChoices>
+          <QuestionnaireChoice value="pro">Pro</QuestionnaireChoice>
+          <QuestionnaireChoiceDescription>Everything included.</QuestionnaireChoiceDescription>
+        </QuestionnaireChoices>
+      why: >-
+        Outside the row it becomes a separate grid cell that neither stacks
+        under the answer nor belongs to its accessible name.
+
+family_membership:
+  name: questionnaire
+  role: part

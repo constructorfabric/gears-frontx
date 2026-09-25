@@ -1,0 +1,64 @@
+# Semantic overlay for AlertDescription - part of the Alert family, see
+# alert.contract.yaml's `family_membership` for how the four contracts
+# relate. `mounted_in` is filled from Alert's own accepted components, not
+# authored here.
+component: alert-description
+
+intent: The alert's supporting detail - the sentence or two beneath its title explaining what happened or what to do.
+
+typical_uses:
+  - The line beneath AlertTitle giving the message's detail or its next step
+
+dont_use_when:
+  - situation: Supporting text anywhere outside of an Alert
+    instead:
+      target: a plain paragraph, styled for its own surrounding context
+      note: >-
+        AlertDescription carries Alert's own muted color and text-wrap
+        behavior; this kit has no generic standalone paragraph component to
+        substitute.
+
+# AlertDescriptionProps declares no children field of its own beyond the
+# forwarded div surface; whatever a consumer passes renders as the
+# description's own text or inline content.
+accepts:
+  content: specified
+  text: true
+
+invariants: []
+
+anti_patterns:
+  - dont: Put the alert's detail text inside AlertTitle
+    do_instead: >-
+      Keep AlertTitle to the short headline and give the detail its own
+      AlertDescription beneath it
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Supporting detail split into two paragraphs
+      code: |
+        <AlertDescription>
+          <p>We could not reach the billing service.</p>
+          <p>Retry in a few minutes, or contact support if it persists.</p>
+        </AlertDescription>
+  bad:
+    - title: The detail folded into the title
+      code: |
+        <Alert>
+          <AlertTitle>Payment failed. We couldn't charge your card ending in 4242.</AlertTitle>
+        </Alert>
+      why: >-
+        AlertTitle is the headline; the detail belongs in AlertDescription,
+        the part that carries the alert's supporting text.
+
+family_membership:
+  name: alert
+  role: part

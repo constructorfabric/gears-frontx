@@ -1,0 +1,63 @@
+# Semantic overlay for PaginationItem - part of the Pagination family, see
+# pagination.contract.yaml. `mounted_in` is filled from
+# PaginationContent's own accepted components, not authored here.
+component: pagination-item
+
+intent: Hold one entry of a pagination row - a page link, the previous or next link, or the ellipsis.
+
+typical_uses:
+  - One entry of the page row, holding exactly one link or the ellipsis
+
+dont_use_when:
+  - situation: One crumb inside a Breadcrumb
+    instead:
+      target: BreadcrumbItem
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_item.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_link.v1 # PaginationLink
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_previous.v1 # PaginationPrevious
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_next.v1 # PaginationNext
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_ellipsis.v1 # PaginationEllipsis
+
+invariants:
+  - id: bare-list-item
+    text: >-
+      The item renders a bare `li` with no kit class, role or aria
+      attribute; every visual property of an entry comes from what it
+      holds.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A page link in its item
+      code: |
+        <PaginationItem>
+          <PaginationLink href="?page=3">3</PaginationLink>
+        </PaginationItem>
+  bad:
+    - title: Two links in one item
+      code: |
+        <PaginationItem>
+          <PaginationLink href="?page=1">1</PaginationLink>
+          <PaginationLink href="?page=2">2</PaginationLink>
+        </PaginationItem>
+      why: >-
+        Each entry is one list item; two links in one item read as a single
+        entry to assistive tech and sit outside the row's var(--space-1)
+        spacing.
+
+family_membership:
+  name: pagination
+  role: part

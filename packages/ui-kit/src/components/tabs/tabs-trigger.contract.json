@@ -1,0 +1,128 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.tabs_trigger.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "tabs-trigger",
+  "forwards_to": "gts.frontx.uikit.element.dom_button.v1~",
+  "intent": "The clickable tab that selects its matching TabsContent panel.",
+  "typical_uses": [
+    "One entry in a TabsList, naming the panel it selects"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A standalone action button with no TabsContent panel behind it",
+      "instead": {
+        "target": "Button",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "TabsList",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.tabs_list.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "disabled-trigger-stays-keyboard-reachable",
+      "text": "A disabled TabsTrigger stays reachable by arrow-key navigation - Base UI keeps it focusable rather than giving it the native `disabled` attribute - but it does not activate on click, Enter or Space. Style the disabled state through `data-disabled`; `:disabled` never matches it."
+    },
+    {
+      "id": "trigger-sizes-every-svg-inside",
+      "text": "Every `svg` inside a TabsTrigger, at any depth, is sized to the kit's small icon box regardless of any size set on it directly."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Size an icon placed inside a TabsTrigger",
+      "do_instead": "Leave it unstyled - every svg inside the trigger is fixed at its icon box already"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "Base UI's Tabs.Tab - tab role, aria-selected/data-active and aria-disabled wiring - exercised by tabs.test.tsx's \"does not activate a disabled tab\" and \"keeps a disabled tab reachable by arrow-key navigation without activating it\" assertions"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "value": {
+      "states": "value is an opaque identifier, typed any by Base UI, required and compared by identity against the root's value",
+      "because": "Base UI's Tabs.Tab declares `value: TabsTab.Value` with no `?` - required, and typed `any` by the primitive itself, not by a caller's own generic - so no JSON Schema type can state what it holds, only that it must be present. It is compared by identity against the nearest Tabs root's own `value`/`defaultValue`."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the trigger's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the trigger's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, active, orientation, tabActivationDirection). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through tabs.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A trigger inside its list",
+        "code": "<TabsList>\n  <TabsTrigger value=\"account\">Account</TabsTrigger>\n</TabsList>\n"
+      },
+      {
+        "title": "A disabled trigger",
+        "code": "<TabsList>\n  <TabsTrigger value=\"team\" disabled>\n    Team (soon)\n  </TabsTrigger>\n</TabsList>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A trigger with no TabsList around it",
+        "code": "<TabsTrigger value=\"account\">Account</TabsTrigger>",
+        "why": "TabsTrigger reads and writes the nearest Tabs root's state through Base UI context; outside a TabsList inside one, clicking it selects nothing."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "tabs",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit TabsTrigger",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "nativeButton": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, TabsTabState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the trigger's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: TabsTabState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the trigger's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, active, orientation, tabActivationDirection). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through tabs.module.css, not through this."
+      },
+      "value": {
+        "description": "TS: any. The compiler emits one JSON type per property; this type is left to tsc. value is an opaque identifier, typed any by Base UI, required and compared by identity against the root's value. Base UI's Tabs.Tab declares `value: TabsTab.Value` with no `?` - required, and typed `any` by the primitive itself, not by a caller's own generic - so no JSON Schema type can state what it holds, only that it must be present. It is compared by identity against the nearest Tabs root's own `value`/`defaultValue`."
+      }
+    },
+    "required": [
+      "value"
+    ],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

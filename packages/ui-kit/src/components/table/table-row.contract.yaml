@@ -1,0 +1,80 @@
+# Semantic overlay for TableRow - part of the Table family, see
+# table.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from the accepting member's own
+# `accepts`, not authored here.
+component: table-row
+
+intent: One row of a table, holding its heading and data cells.
+
+typical_uses:
+  - One record in TableBody
+  - The heading row in TableHeader or a totals row in TableFooter
+
+dont_use_when:
+  - situation: One entry of a list whose entries do not share columns
+    instead:
+      target: Item
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.table_head.v1 # TableHead
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.table_cell.v1 # TableCell
+
+invariants:
+  - id: states-are-caller-set-data-attributes
+    text: >-
+      The kit sets no row state itself: a row inside TableBody is tinted by
+      the `data-state` attribute the caller passes ("selected", "stale" or
+      "restricted"), on hover, and while a descendant carries
+      aria-expanded="true"; a data-state tint wins over hover. Rows in
+      TableHeader and TableFooter take none of these tints.
+  - id: collection-row-cues
+    text: >-
+      Only under Table's `variant="collection"`, a body row the caller
+      makes focusable with tabIndex takes a pointer cursor and an inset
+      focus ring, and a body row carrying `data-pending` takes the muted
+      fill and a progress cursor.
+
+anti_patterns:
+  - dont: Paint a selected row with a background through className or style
+    do_instead: Pass data-state="selected" on the row inside TableBody
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      table.test.tsx asserts getAllByRole('row') finds all three rows of a
+      table with a header, a body and a footer row
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A selected body row
+      code: |
+        <TableBody>
+          <TableRow data-state="selected">
+            <TableCell>INV002</TableCell>
+            <TableCell>Pending</TableCell>
+          </TableRow>
+        </TableBody>
+  bad:
+    - title: A row placed directly in Table
+      code: |
+        <Table>
+          <TableRow>
+            <TableCell>INV001</TableCell>
+          </TableRow>
+        </Table>
+      why: >-
+        Table hosts caption, header, body and footer sections, not rows; React
+        reports a <tr> directly under <table> as invalid nesting, and the
+        row misses every body-scoped style. Put it in TableBody.
+
+family_membership:
+  name: table
+  role: part

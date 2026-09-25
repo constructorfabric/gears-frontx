@@ -1,0 +1,129 @@
+# Semantic overlay for Switch - the hand-written half of the contract.
+#
+# Machine-extractable facts (prop list, defaults, forwarded surface) do NOT
+# belong here: the compiler takes those from switch.tsx and the Base UI
+# Switch primitive it wraps, and rejects an overlay that tries to restate
+# them - one fact, one owner. This file carries only what the code cannot
+# express: intent, boundaries, invariants.
+component: switch
+
+intent: Let a user turn one independent setting on or off, with the change taking effect immediately.
+
+typical_uses:
+  - A setting that applies the moment it changes (notifications, dark mode, a feature flag)
+
+dont_use_when:
+  - situation: An option that only takes effect once the surrounding form is submitted
+    instead:
+      target: Checkbox
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.checkbox.v1
+  - situation: Mutually exclusive choices, only one of which may be on
+    instead:
+      target: RadioGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group.v1
+  - situation: A pressed/unpressed button in a toolbar, drawn as a button rather than a track and knob
+    instead:
+      target: Toggle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.toggle.v1
+
+# SwitchProps declares no children field of its own and the component always
+# renders its own Thumb as the sole child passed to the Base UI root - a
+# children value a consumer passes through the forwarded span surface is
+# overridden by that fixed JSX child, never rendered. There is no slot for
+# anything a consumer puts inside.
+accepts:
+  content: nothing
+
+invariants:
+  - id: checked-wins-over-default-checked
+    text: >-
+      `checked` and `defaultChecked` are both accepted; `defaultChecked`
+      seeds the initial state and is ignored afterwards, and when `checked`
+      is given it wins and the component follows it on every render.
+
+anti_patterns:
+  - dont: Render a switch with no visible label and no aria-label
+    do_instead: Pair it with `Label` for a shared click target, or pass `aria-label` directly when there is no visible text
+  - dont: Pass label text as children
+    do_instead: Switch takes no content - wrap the switch and the label text together in `Label`, which is also what gives the pair one shared click target
+  - dont: Pass `checked` with no `onCheckedChange`
+    do_instead: A controlled switch with no change handler never receives its own toggle back - pair `checked` with `onCheckedChange`, or drop both and use `defaultChecked` for an uncontrolled switch
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      Base UI's own Switch primitive (role="switch", keyboard toggling, a
+      hidden native input for form submission, data-checked/data-unchecked)
+      plus switch.test.tsx's own role/aria-checked/data-checked assertions
+  rtl:
+    outcome: unknown
+
+# Internal structure this component composes that the kit does not expose as
+# a component of its own.
+unexposed_parts:
+  - part: Base UI's Switch.Thumb
+    reason: >-
+      switch.tsx renders it directly inside its own Root wrapper as the knob
+      that slides between the two ends of the track; it is not exported as a
+      component of its own, so a consumer cannot reach or replace it
+      independently - only the whole Switch.
+
+# What each property that reaches this contract asserting nothing (or only
+# part of its shape) actually states, and why - keyed on the property
+# itself. The compiler emits both halves into that property's own
+# description, beside the `TS:` text.
+prop_statements:
+  onCheckedChange:
+    states: onCheckedChange is a function called with the next checked value and event details, not a value
+    because: >-
+      A function type has no JSON Schema representation. Its second argument
+      carries Base UI's own change-event-details shape (a reason, the
+      triggering native event, and controls to cancel the change or allow it
+      to propagate), which only tsc can check.
+  inputRef:
+    states: inputRef is a ref to the hidden native input Base UI renders for form submission
+    because: >-
+      `React.Ref<HTMLInputElement>` is a union of a ref object and a callback
+      function - the compiler emits one JSON type per property. It exists so a
+      consumer can read or focus the native input directly, the same input
+      `name`/`value`/`uncheckedValue` submit through.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the switch's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the switch's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (checked, disabled, readOnly, required). The compiler emits one JSON type per property, so nothing is
+      asserted; the kit's own styling goes through switch.module.css, not
+      through this.
+
+examples:
+  good:
+    - title: Labelled toggle, one click target
+      code: |-
+        <Label>
+          <Switch checked={notify} onCheckedChange={setNotify} /> Email notifications
+        </Label>
+    - title: Compact, unlabelled row named for assistive tech
+      code: <Switch size="sm" defaultChecked aria-label="Enable rule" />
+  bad:
+    - title: Label text passed as children
+      code: <Switch>Email notifications</Switch>
+      why: >-
+        Switch takes no content - there is no slot for it, and the text is
+        silently dropped because the component's own Thumb always renders in
+        its place. Wrap the switch and the text together in `Label` instead,
+        which is also what gives the pair one shared click target.
+    - title: Controlled with no change handler
+      code: <Switch checked={true} aria-label="Notifications" />
+      why: >-
+        `checked` with no `onCheckedChange` never gets its own toggle back,
+        so the switch is stuck controlled and never responds to a click. Pair
+        `checked` with `onCheckedChange`, or use `defaultChecked` instead.

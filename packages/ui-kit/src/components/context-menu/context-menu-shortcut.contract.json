@@ -1,0 +1,95 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_shortcut.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "context-menu-shortcut",
+  "forwards_to": "gts.frontx.uikit.element.dom_span.v1~",
+  "intent": "The keyboard shortcut hint shown at the end of a context menu row.",
+  "typical_uses": [
+    "The key combination that runs the same action outside the menu, such as Ctrl+C beside Copy"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A key or key combination shown in running text or outside a menu row",
+      "instead": {
+        "target": "Kbd",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.kbd.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "ContextMenuCheckboxItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_checkbox_item.v1"
+    },
+    {
+      "container": "ContextMenuItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_item.v1"
+    },
+    {
+      "container": "ContextMenuRadioItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_radio_item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "display-only",
+      "text": "The shortcut is text only: it registers no key handler and adds no `aria-keyshortcuts`, so the application binds the keys itself."
+    },
+    {
+      "id": "pushed-to-the-row-end",
+      "text": "context-menu.module.css pushes the shortcut to the inline end of its row and renders it in the muted foreground color, switching to the accent foreground while a ContextMenuItem, ContextMenuCheckboxItem or ContextMenuRadioItem holding it is highlighted."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A shortcut hint on an action",
+        "code": "<ContextMenuItem onClick={onCopy}>\n  Copy\n  <ContextMenuShortcut>Ctrl+C</ContextMenuShortcut>\n</ContextMenuItem>\n"
+      },
+      {
+        "title": "A shortcut hint on a setting",
+        "code": "<ContextMenuCheckboxItem checked={showRuler} onCheckedChange={setShowRuler}>\n  Show ruler\n  <ContextMenuShortcut>Ctrl+R</ContextMenuShortcut>\n</ContextMenuCheckboxItem>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A Kbd used as the row's shortcut hint",
+        "code": "<ContextMenuItem onClick={onCopy}>\n  Copy\n  <Kbd>Ctrl+C</Kbd>\n</ContextMenuItem>\n",
+        "why": "ContextMenuItem accepts ContextMenuShortcut, not Kbd; a Kbd is not pushed to the end of the row and keeps its muted chip colors when the row is highlighted."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "context_menu",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ContextMenuShortcut",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

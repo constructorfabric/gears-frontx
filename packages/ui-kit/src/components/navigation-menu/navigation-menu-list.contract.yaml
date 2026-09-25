@@ -1,0 +1,83 @@
+# Semantic overlay for NavigationMenuList - a part of the NavigationMenu
+# family, see navigation-menu.contract.yaml's `family_membership` for how the
+# contracts relate. The forwarded surface is the primitive's ul.
+component: navigation-menu-list
+
+intent: The row (or column) of a NavigationMenu's top-level entries, one NavigationMenuItem each.
+
+typical_uses:
+  - The single list of entries directly inside a NavigationMenu
+
+dont_use_when:
+  - situation: A list of links with no expanding entries and no shared panel
+    instead:
+      target: a plain `nav` element holding a list of links
+      note: >-
+        NavigationMenuList only works inside a NavigationMenu root, whose
+        shared popup and hover machinery a flat list of links does not need.
+
+# `mounted_in` is filled from NavigationMenu's own accepted components.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu_item.v1 # NavigationMenuItem
+
+invariants:
+  - id: arrow-keys-move-along-the-orientation
+    text: >-
+      Arrow keys along the root's `orientation` (left and right for
+      `horizontal`, up and down for `vertical`) move focus between the
+      triggers and links of the list, and stop at the first and last entry
+      instead of wrapping.
+
+anti_patterns:
+  - dont: Put a NavigationMenuTrigger or NavigationMenuLink directly in the list
+    do_instead: Wrap each entry in its own NavigationMenuItem; the item carries the value that ties a trigger to its content
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the list's own
+      state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the list's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes
+      through navigation-menu.module.css, not through this.
+
+examples:
+  good:
+    - title: A list of two entries
+      code: |
+        <NavigationMenuList>
+          <NavigationMenuItem>
+            <NavigationMenuLink href="/docs">Docs</NavigationMenuLink>
+          </NavigationMenuItem>
+          <NavigationMenuItem>
+            <NavigationMenuLink href="/blog">Blog</NavigationMenuLink>
+          </NavigationMenuItem>
+        </NavigationMenuList>
+  bad:
+    - title: A link placed in the list with no item around it
+      code: |
+        <NavigationMenuList>
+          <NavigationMenuLink href="/docs">Docs</NavigationMenuLink>
+        </NavigationMenuList>
+      why: >-
+        The list is a `ul`; an entry outside a NavigationMenuItem is an `a`
+        directly inside it, which is not valid list markup.
+
+family_membership:
+  name: navigation_menu
+  role: part

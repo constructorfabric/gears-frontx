@@ -1,0 +1,175 @@
+# Semantic overlay for ToggleGroup (the root) - the hand-written half of one
+# of two contracts describing this compound component. See
+# toggle-group-item.contract.yaml for the other half, and
+# `family_membership` below for how a reader (or the conformance test) walks
+# between them.
+#
+# Machine-extractable facts (axis names, axis values, defaults, prop list)
+# do NOT belong here: the compiler takes those from toggle-group.tsx and the
+# Base UI ToggleGroup primitive it wraps, and rejects an overlay that tries
+# to restate them - one fact, one owner. This file carries only what the
+# code cannot express: intent, boundaries, invariants.
+component: toggle-group
+
+intent: Let the user press one or several of a small set of related options drawn as toggle buttons that share one pressed state.
+
+typical_uses:
+  - A switch between a few mutually exclusive modes of the same content (alignment, view mode)
+  - A row of independent formatting or filter marks that may be pressed together
+
+dont_use_when:
+  - situation: A single on/off control with no sibling options
+    instead:
+      target: Toggle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.toggle.v1
+  - situation: Each choice shows its own panel of content
+    instead:
+      target: Tabs
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.tabs.v1
+  - situation: A form field picking one of several labelled options
+    instead:
+      target: RadioGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group.v1
+  - situation: A row of one-shot actions with no pressed state
+    instead:
+      target: ButtonGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button_group.v1
+
+# The ONE authored statement of a nesting relationship: the compiler fills
+# every other contract's `mounted_in` from lists like this one, so the two
+# directions cannot disagree.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.toggle_group_item.v1 # ToggleGroupItem
+
+capabilities:
+  - name: segmented
+    enabled_by: spacing
+    description: >-
+      A number sets the gap between items in pixels. `0` also joins the
+      items into one strip: adjoining items drop the border they share,
+      inner corners are squared and only the strip's outer corners stay
+      rounded (one radius step tighter when the group's own `size` is
+      `sm`), and on a horizontal group each item's inline padding becomes
+      `--space-2` (none for an icon-only item). The joined border is visible
+      only with a variant that draws one (`outline`, `steel`); the `default`
+      variant's border is transparent. Left unset, items keep a fixed
+      `--space-1` gap and their own borders and corners.
+  - name: icon_only
+    enabled_by: iconOnly
+    description: >-
+      Marks every item icon-only, so each draws its glyph alone the way a
+      standalone icon-only Toggle does.
+
+invariants:
+  - id: value-wins-over-default-value
+    text: >-
+      `value` and `defaultValue` are both accepted; `defaultValue` seeds the
+      initial state and is ignored afterwards, and when `value` is given it
+      wins and the component follows it on every render.
+  - id: value-is-an-array-in-both-modes
+    text: >-
+      `value`, `defaultValue` and the value `onValueChange` receives are
+      arrays of item values with and without `multiple`. Without `multiple`,
+      pressing an item yields a one-element array and pressing the pressed
+      item again yields an empty array.
+  - id: disabled-cascades-to-every-item
+    text: >-
+      Setting `disabled` on the group disables every item inside it; an
+      item's own `disabled` can disable that one item further but cannot
+      re-enable it against a disabled group.
+  - id: group-look-wins-over-item-look
+    text: >-
+      `variant`, `size` and `iconOnly` set on the group apply to every item
+      and win over the item's own; an item's own value applies only where
+      the group leaves that prop unset.
+
+anti_patterns:
+  - dont: Render the group with no accessible name
+    do_instead: >-
+      Pass `aria-label`, or `aria-labelledby` pointing at a visible heading;
+      a `<label htmlFor>` cannot name the group, because the group is a div
+      with role="group", not a labelable element
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      The primitive's ToggleGroup (role="group" and arrow-key roving focus
+      between items, with Home/End and wrap-around by default) plus
+      toggle-group.test.tsx's getByRole('group', { name }) assertion on the
+      aria-labelled group
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  value:
+    states: value is an array of the caller's own Value type parameter, one entry per pressed item
+    because: >-
+      Base UI types it as `readonly Value[]`, where `Value extends string`
+      is the caller's own type parameter; the compiler emits one JSON type
+      per property, so the caller's narrowing is checked by tsc, not by the
+      schema.
+  defaultValue:
+    states: defaultValue is an array of the caller's own Value type parameter, the initially pressed items
+    because: >-
+      Same `readonly Value[]` type as `value`, for the uncontrolled starting
+      state; the compiler emits one JSON type per property, so the caller's
+      narrowing is checked by tsc, not by the schema.
+  onValueChange:
+    states: onValueChange is a callback of the next array of pressed item values and event details
+    because: >-
+      Base UI types it as `(groupValue: Value[], eventDetails) => void`;
+      a function has no JSON Schema representation, so nothing beyond its
+      presence is asserted.
+  style:
+    states: style is a plain React style object; when `spacing` is set, its gap replaces any gap given here
+    because: >-
+      ToggleGroupProps omits Base UI's `CSSProperties | ((state) =>
+      CSSProperties)` style and redeclares it as React's `CSSProperties`,
+      so the function form is not accepted; the compiler has no JSON type
+      for `CSSProperties`, so nothing is asserted. The kit's own styling
+      goes through toggle-group.module.css, not through this.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the group's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+
+examples:
+  good:
+    - title: Single selection kept to one chosen option
+      code: |-
+        <ToggleGroup value={[view]} onValueChange={([next]) => next && setView(next)} aria-label="View">
+          <ToggleGroupItem value="list" aria-label="List"><ListIcon /></ToggleGroupItem>
+          <ToggleGroupItem value="grid" aria-label="Grid"><GridIcon /></ToggleGroupItem>
+        </ToggleGroup>
+    - title: Multiple selection, uncontrolled
+      code: |-
+        <ToggleGroup multiple defaultValue={['bold']} variant="outline" aria-label="Text formatting">
+          <ToggleGroupItem value="bold" aria-label="Bold"><BoldIcon /></ToggleGroupItem>
+          <ToggleGroupItem value="italic" aria-label="Italic"><ItalicIcon /></ToggleGroupItem>
+        </ToggleGroup>
+    - title: Joined icon strip
+      code: |-
+        <ToggleGroup spacing={0} variant="outline" size="sm" iconOnly defaultValue={['list']} aria-label="View">
+          <ToggleGroupItem value="list" aria-label="List"><ListIcon /></ToggleGroupItem>
+          <ToggleGroupItem value="grid" aria-label="Grid"><GridIcon /></ToggleGroupItem>
+        </ToggleGroup>
+  bad:
+    - title: A single-selection value passed as a plain string
+      code: |-
+        <ToggleGroup value={align} onValueChange={setAlign} aria-label="Alignment">
+          <ToggleGroupItem value="left" aria-label="Left"><AlignLeftIcon /></ToggleGroupItem>
+          <ToggleGroupItem value="right" aria-label="Right"><AlignRightIcon /></ToggleGroupItem>
+        </ToggleGroup>
+      why: >-
+        The group reads and reports an array even without `multiple`, so a
+        string `value` does not type-check and `setAlign` receives an array.
+
+family_membership:
+  name: toggle_group
+  role: root

@@ -1,0 +1,90 @@
+# Semantic overlay for QuestionnaireInput - a part of the Questionnaire
+# family, see questionnaire.contract.yaml's `family_membership`.
+component: questionnaire-input
+
+intent: The freeform text answer of a QuestionnaireItem, rendered as the kit Input.
+
+typical_uses:
+  - The only answer of an item with no choices
+  - A freeform "other" answer after an item's fixed choices
+
+dont_use_when:
+  - situation: A text field in an ordinary form outside a questionnaire
+    instead:
+      target: Input
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.input.v1
+
+accepts:
+  content: nothing
+
+invariants:
+  - id: value-wins-over-default-value
+    text: >-
+      `value` and `defaultValue` are both accepted; `defaultValue` seeds
+      the initial state and is ignored afterwards, and when `value` is given
+      it wins and the component follows it on every render.
+  - id: answer-when-non-blank
+    text: >-
+      The field counts as the item's answer once its text is non-blank after
+      trimming, and is stamped `data-filled` or `data-empty`; it submits
+      under the item's name only while it is the item's answer, so blank
+      text, a skipped item or a choice checked after it in a single-answer
+      item submit nothing from it.
+  - id: kit-input-unless-render
+    text: >-
+      Without `render` it renders the kit Input; `render` replaces that
+      element entirely.
+
+anti_patterns:
+  - dont: Pass `name` or `form` to QuestionnaireInput
+    do_instead: >-
+      Leave both to the questionnaire; the field submits under its item's
+      `name`, and its props omit both
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      The questionnaire engine's render prop takes an element or a function
+      of the field's own state (`QuestionnaireInputState`: disabled,
+      filled, invalid), so its type is a union of a React element and a
+      callback; the compiler emits one JSON type per property, so nothing is
+      asserted. The kit defaults it to its own Input.
+
+examples:
+  good:
+    - title: A freeform item
+      code: |
+        <QuestionnaireItem name="notes">
+          <QuestionnaireTitle>Anything else?</QuestionnaireTitle>
+          <QuestionnaireInput placeholder="Optional notes" />
+          <QuestionnaireError />
+        </QuestionnaireItem>
+    - title: A freeform "other" answer after fixed choices
+      code: |
+        <QuestionnaireChoices>
+          <QuestionnaireChoice value="approvals">Approval checkpoints</QuestionnaireChoice>
+          <QuestionnaireInput aria-label="Another feature" placeholder="Describe another feature" />
+        </QuestionnaireChoices>
+  bad:
+    - title: The kit Input in place of QuestionnaireInput
+      code: |
+        <QuestionnaireItem name="notes">
+          <QuestionnaireTitle>Anything else?</QuestionnaireTitle>
+          <Input name="notes" />
+        </QuestionnaireItem>
+      why: >-
+        A plain Input is not registered with the item, so typing never marks
+        the item answered and Next keeps failing its validation.
+
+family_membership:
+  name: questionnaire
+  role: part

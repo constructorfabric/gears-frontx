@@ -1,0 +1,86 @@
+# Semantic overlay for CommandList - a part of the Command family, see
+# command.contract.yaml's `family_membership`. The forwarded surface is the
+# library's list div.
+component: command-list
+
+intent: The scrollable listbox of a Command that holds its items, groups, separators and empty message.
+
+typical_uses:
+  - The list below a CommandInput
+
+dont_use_when:
+  - situation: A scrolling region of a page or panel that is not the list of a Command
+    instead:
+      target: ScrollArea
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.scroll_area.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.command_empty.v1 # CommandEmpty
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.command_group.v1 # CommandGroup
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.command_item.v1 # CommandItem
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.command_separator.v1 # CommandSeparator
+
+invariants:
+  - id: listbox-named-by-label
+    text: >-
+      The list renders with `role="listbox"` and takes its `aria-label` from
+      its own `label` prop, not the root's (the library's default is
+      "Suggestions"), set after the caller's props.
+  - id: height-capped-and-exposed
+    text: >-
+      command.module.css caps the list at 18.75rem and scrolls it
+      vertically; the library sets the `--cmdk-list-height` custom property
+      on the list to the height of its content.
+
+anti_patterns:
+  - dont: Name the list with `aria-label`
+    do_instead: Pass `label`; the component sets `aria-label` from it after the caller's props
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+unexposed_parts:
+  - part: The library's list sizer div
+    reason: >-
+      A div inside the list that holds the children and is measured for
+      `--cmdk-list-height`; fixed markup, not a component of its own.
+
+prop_statements:
+  children:
+    states: children is the list's items, groups, separators and empty message
+    because: >-
+      `React.ReactNode` is a union of elements, strings, numbers, fragments
+      and more; the compiler emits one JSON type per property.
+
+examples:
+  good:
+    - title: A list with an empty message and a group
+      code: |
+        <CommandList label="Commands">
+          <CommandEmpty>No results found.</CommandEmpty>
+          <CommandGroup heading="Suggestions">
+            <CommandItem value="calendar">Calendar</CommandItem>
+          </CommandGroup>
+        </CommandList>
+  bad:
+    - title: The search field placed inside the list
+      code: |
+        <CommandList>
+          <CommandInput />
+          <CommandItem value="calendar">Calendar</CommandItem>
+        </CommandList>
+      why: >-
+        CommandInput is a sibling of CommandList under Command; inside the
+        listbox it scrolls away with the items and sits inside the element
+        it controls.
+
+family_membership:
+  name: command
+  role: part

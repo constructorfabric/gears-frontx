@@ -1,0 +1,214 @@
+# Semantic overlay for SheetContent - a part of the Sheet family, see
+# sheet.contract.yaml's `family_membership` for how the contracts relate.
+# It composes the primitive's Portal, Backdrop, Popup and a Close rendered
+# as the kit Button; the forwarded surface is the Popup's div.
+component: sheet-content
+
+intent: The panel itself, portalled over the page and pinned to one edge of the viewport while its Sheet is open.
+
+typical_uses:
+  - A form, a filter set or a record's details in a panel at the right edge
+  - A full-width panel dropping from the top or rising from the bottom edge
+
+dont_use_when:
+  - situation: A popup centered over the page
+    instead:
+      target: DialogContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_content.v1
+  - situation: A floating panel anchored beside its trigger rather than to the viewport edge
+    instead:
+      target: PopoverContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.popover_content.v1
+
+# The panel takes whatever a caller puts in it - its header, footer and
+# title parts as well as forms, lists and any other content - so its
+# children are not constrained to a list.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: rendered-only-while-open
+    text: >-
+      The panel and its backdrop are in the DOM only while the sheet is open
+      or animating closed; the kit passes no `keepMounted` to the portal, so
+      a closed sheet renders nothing.
+  - id: portals-to-body-unless-container
+    text: >-
+      Without `container`, the panel portals into the node of the nearest
+      enclosing portal, or the document body when there is none; a theme
+      scoped to a subtree reaches the panel only when that subtree, or a
+      node inside it, is passed as `container`.
+  - id: named-by-its-title-described-by-its-description
+    text: >-
+      The panel takes its accessible name from the SheetTitle inside it and
+      its description from the SheetDescription, through `aria-labelledby`
+      and `aria-describedby`; without a title, pass `aria-label` on
+      SheetContent.
+  - id: focus-moves-into-the-popup-on-open
+    text: >-
+      Unless `initialFocus` says otherwise, opening moves focus to the first
+      tabbable element inside the panel, which is the built-in close button
+      when nothing before it is tabbable, or to the panel itself when it
+      holds none or the sheet was opened by touch.
+  - id: internal-backdrop-blocks-while-modal
+    text: >-
+      While the root's `modal` is `true` the primitive renders a transparent
+      backdrop of its own under the panel, which blocks the page and closes
+      the sheet on a press, so `showBackdrop={false}` alone removes the
+      visible veil but not the blocking.
+  - id: side-pins-and-sizes-the-panel
+    text: >-
+      `side` pins the panel to that viewport edge and stamps it as
+      `data-side`: `top` and `bottom` span the full width with a height
+      sized to the content and capped at the viewport height minus 2rem;
+      `left` and `right` span the full height at 75% of the width, capped at
+      24rem from a 640px viewport up. Only the edge that faces the page gets
+      a border, and no corner is rounded.
+  - id: scrolls-when-taller-than-the-panel
+    text: >-
+      The panel is its own vertical scroll container, a one-column grid
+      whose column's minimum is zero, so content taller than the panel
+      scrolls inside it and a child wider than the panel overflows inside it
+      instead of widening it; the built-in close button scrolls with the
+      content.
+  - id: inset-lives-on-direct-children
+    text: >-
+      The panel has no padding of its own: every direct child other than
+      SheetHeader, SheetFooter (which carry their own var(--space-4)
+      padding) and the built-in close button gets a horizontal padding of
+      var(--space-6), the
+      first a top padding and the last one (right before the close button
+      when it is shown) a bottom padding of var(--space-6), and direct
+      children are spaced var(--space-6) apart. These rules carry
+      single-class specificity, so a child's own `className` padding can
+      override them, and then replaces the inset rather than adding to it.
+  - id: reduced-motion-keeps-the-fade
+    text: >-
+      The panel fades and slides 2.5rem along its own axis on open and
+      close; under `prefers-reduced-motion` sheet.module.css drops the slide
+      and keeps the fade.
+
+anti_patterns:
+  - dont: Turn off `showCloseButton` without composing a SheetClose inside the panel
+    do_instead: >-
+      Keep the built-in close button, or place a SheetClose in the panel,
+      such as in the footer; a modal sheet needs a close control inside it
+      so touch screen reader users can leave it
+  - dont: Leave out SheetTitle for a cleaner look
+    do_instead: >-
+      Render a SheetTitle and hide it visually through its `className` when
+      the design shows no heading, so the panel keeps an accessible name
+  - dont: Set `modal={false}` on the root and keep the backdrop
+    do_instead: >-
+      Pass `showBackdrop={false}` here together with `modal={false}` on
+      the root; the backdrop alone still covers the page and closes the
+      sheet when pressed
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Dialog.Popup renders role dialog; sheet.test.tsx
+      asserts getByRole('dialog') on the open panel, that the built-in close
+      is getByRole('button', { name: 'Close' }) and takes the name from
+      closeLabel ("renames the built-in close button via
+      closeLabel for non-English apps"), and that Escape on the panel closes
+      it ("closes on Escape")
+  rtl:
+    outcome: unknown
+
+capabilities:
+  - name: close_button
+    enabled_by: showCloseButton
+    description: >-
+      Default true: the panel renders a close (X) button after its children,
+      a ghost kit Button placed var(--space-4) from the top and right edges,
+      whose accessible name is `closeLabel`; it is the panel's only built-in
+      close control, and pressing it closes the sheet.
+  - name: backdrop
+    enabled_by: showBackdrop
+    description: >-
+      Default true: a fixed layer behind the panel covers the page with a
+      light var(--overlay-panel) tint and, where the browser supports it, a
+      blur of what is behind, and a press on it closes the sheet.
+
+unexposed_parts:
+  - part: Dialog.Portal
+    reason: Composed inside SheetContent; only its `container` is exposed, as SheetContent's own prop.
+  - part: Dialog.Backdrop
+    reason: Composed inside SheetContent as the backdrop, switched by `showBackdrop` and styled by sheet.module.css.
+  - part: Dialog.Close
+    reason: Composed inside SheetContent as the built-in close button, switched by `showCloseButton` and named by `closeLabel`; the exported SheetClose is the same primitive for a consumer-composed close action.
+
+prop_statements:
+  container:
+    states: container is the DOM node, shadow root or ref to one that the panel portals into; an explicit null renders no panel until a node is passed
+    because: >-
+      `HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null`
+      - live DOM nodes and ref objects, which no JSON Schema type covers.
+  initialFocus:
+    states: initialFocus picks the element focused on open - true for the first tabbable element (the panel itself when opened by touch), false for no move, a ref to an element, or a function of the opening interaction type
+    because: >-
+      `boolean | RefObject<HTMLElement | null> | ((openType) => boolean | HTMLElement | null | void)`
+      - a ref object and a function, which no JSON Schema type covers.
+  finalFocus:
+    states: finalFocus picks the element focused on close - true for the trigger or the previously focused element, false for no move, a ref to an element, or a function of the closing interaction type
+    because: >-
+      `boolean | RefObject<HTMLElement | null> | ((closeType) => boolean | HTMLElement | null | void)`
+      - a ref object and a function, which no JSON Schema type covers.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the panel's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the panel's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open, nested, nestedDialogOpen,
+      transitionStatus). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through
+      sheet.module.css, not through this.
+
+examples:
+  good:
+    - title: A left-edge panel with a scrolling body between header and footer
+      code: |
+        <Sheet>
+          <SheetTrigger render={<Button variant="outline" />}>Filters</SheetTrigger>
+          <SheetContent side="left">
+            <SheetHeader>
+              <SheetTitle>Filters</SheetTitle>
+            </SheetHeader>
+            <FilterForm />
+            <SheetFooter>
+              <SheetClose render={<Button />}>Apply</SheetClose>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
+    - title: A panel portalled into a themed subtree, with a localized close label
+      code: |
+        <Sheet>
+          <SheetTrigger>Details</SheetTrigger>
+          <SheetContent container={themedSectionRef} closeLabel="Fermer">
+            <SheetTitle>Details</SheetTitle>
+          </SheetContent>
+        </Sheet>
+  bad:
+    - title: A made-up prop for the panel's edge
+      code: |
+        <Sheet>
+          <SheetTrigger>Filters</SheetTrigger>
+          <SheetContent position="left">
+            <SheetTitle>Filters</SheetTitle>
+          </SheetContent>
+        </Sheet>
+      why: >-
+        SheetContent has no `position` prop; the edge is `side`, so this
+        panel still opens at the right edge.
+
+family_membership:
+  name: sheet
+  role: part

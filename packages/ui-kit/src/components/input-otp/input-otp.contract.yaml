@@ -1,0 +1,183 @@
+# Semantic overlay for InputOtp (the root) - the hand-written half of one of
+# four contracts describing this compound component. See
+# input-otp-group.contract.yaml, input-otp-slot.contract.yaml and
+# input-otp-separator.contract.yaml for the rest of the family, and
+# `family_membership` below for how a reader (or the conformance test) walks
+# between them.
+#
+# Machine-extractable facts (prop list, defaults, forwarded surface) do NOT
+# belong here: the compiler takes those from input-otp.tsx and the Base UI
+# OTPField primitive it wraps, and rejects an overlay that tries to restate
+# them - one fact, one owner. This file carries only what the code cannot
+# express: intent, boundaries, invariants.
+component: input-otp
+
+intent: Collect a fixed-length one-time code, one character per slot, as one string value.
+
+typical_uses:
+  - A verification or one-time passcode of a known, fixed length
+
+dont_use_when:
+  - situation: >-
+      A short free-form value whose length varies (a promo code, a postal
+      code), or a single numeric value such as an amount or a quantity
+    instead:
+      target: Input
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.input.v1
+      note: >-
+        Input, with `type="number"` or `inputMode="numeric"` for a number; InputOtp splits
+        its value into one slot per character and only completes once every
+        slot is filled.
+
+# The ONE authored statement of a nesting relationship: the compiler fills
+# every other contract's `mounted_in` from lists like this one, so the two
+# directions cannot disagree.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.input_otp_group.v1 # InputOtpGroup
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.input_otp_separator.v1 # InputOtpSeparator
+
+invariants:
+  - id: value-wins-over-default-value
+    text: >-
+      `value` and `defaultValue` are both accepted; `defaultValue` seeds the
+      initial state and is ignored afterwards, and when `value` is given it
+      wins and the component follows it on every render.
+  - id: value-normalized-to-length
+    text: >-
+      Every value, whether given through `value`, `defaultValue` or typed and
+      pasted, is stripped of whitespace, filtered by `validationType`, passed
+      through `normalizeValue` and clamped to `length` characters before the
+      slots show it.
+  - id: id-lands-on-the-first-slot
+    text: >-
+      `id` is not rendered on the root element: the first slot receives it
+      and each later slot receives `{id}-2`, `{id}-3` and so on. A
+      `<label htmlFor>` naming that `id` therefore labels the first slot.
+      Unless the root is given its own `aria-labelledby`, the primitive then
+      points the root's and every slot's `aria-labelledby` at that label; a
+      slot given its own `aria-labelledby`, or a slot other than the first
+      given its own `aria-label`, keeps that instead.
+
+anti_patterns:
+  - dont: Label the field with `aria-label` on the first slot
+    do_instead: >-
+      Put a Label whose `htmlFor` names the root's `id` - the primitive
+      drops `aria-label` from the first slot and warns in development when
+      that slot has no associated label
+  - dont: Render a number of InputOtpSlot parts that differs from `length`
+    do_instead: >-
+      Render exactly `length` slots - the value is clamped to `length`, not
+      to the slots rendered, completion fires only at `length` characters,
+      and the primitive warns in development when the two counts differ
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      The primitive's OTPField.Root (role="group", aria-labelledby taken
+      from a label associated with the first slot) and OTPField.Input
+      (focus moved between slots by the arrow, Home and End keys) plus
+      input-otp.test.tsx's assertion that typing into the first slot moves
+      focus to the second
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  onValueChange:
+    states: onValueChange is a function called with the next code string and event details, not a value
+    because: >-
+      A function type has no JSON Schema representation. Its second argument
+      carries Base UI's own change-event-details shape, whose reason names
+      what changed the value (typing, clearing, pasting or a key), which
+      only tsc can check.
+  onValueComplete:
+    states: onValueComplete is a function called with the full code string once every slot is filled, not a value
+    because: >-
+      A function type has no JSON Schema representation. It also fires when a
+      complete value is pasted over an already complete one, and runs right
+      before the owning form is submitted when `autoSubmit` is on.
+  onValueInvalid:
+    states: onValueInvalid is a function called with the attempted text when validation or normalization rejects characters, not a value
+    because: >-
+      A function type has no JSON Schema representation. Its first argument
+      is the raw text the user typed or pasted, before normalization.
+  normalizeValue:
+    states: normalizeValue is a function from a string to a string, applied after whitespace and validationType filtering
+    because: >-
+      A function type has no JSON Schema representation. Its result is
+      filtered by `validationType` again and clamped to `length`, and it may
+      run more than once on the same value, so it has to be idempotent.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the field's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the field's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (complete, disabled, readOnly, required,
+      ...). The compiler emits one JSON type per property, so
+      nothing is asserted; the kit's own styling goes through
+      input-otp.module.css, not through this.
+
+unexposed_parts:
+  - part: The primitive's hidden validation input
+    reason: >-
+      OTPField.Root renders one extra native input beside the root element,
+      hidden from assistive tech and out of the tab order, that carries the
+      whole code for `name`, `form`, `required` and constraint validation;
+      the kit exports no part for it.
+
+examples:
+  good:
+    - title: Six digits in two groups, labelled by a sibling Label
+      code: |
+        <Label htmlFor="otp">Verification code</Label>
+        <InputOtp id="otp" length={6} onValueComplete={verify}>
+          <InputOtpGroup>
+            <InputOtpSlot />
+            <InputOtpSlot />
+            <InputOtpSlot />
+          </InputOtpGroup>
+          <InputOtpSeparator />
+          <InputOtpGroup>
+            <InputOtpSlot />
+            <InputOtpSlot />
+            <InputOtpSlot />
+          </InputOtpGroup>
+        </InputOtp>
+    - title: Controlled four-character alphanumeric code
+      code: |
+        <InputOtp id="code" length={4} validationType="alphanumeric" value={code} onValueChange={setCode}>
+          <InputOtpGroup>
+            <InputOtpSlot />
+            <InputOtpSlot />
+            <InputOtpSlot />
+            <InputOtpSlot />
+          </InputOtpGroup>
+        </InputOtp>
+  bad:
+    - title: Four slots under a length of six
+      code: |
+        <InputOtp length={6}>
+          <InputOtpGroup>
+            <InputOtpSlot />
+            <InputOtpSlot />
+            <InputOtpSlot />
+            <InputOtpSlot />
+          </InputOtpGroup>
+        </InputOtp>
+      why: >-
+        A pasted six-character code is accepted in full while only four
+        characters are visible, and completion needs six characters the user
+        can never type into the missing slots.
+
+family_membership:
+  name: input_otp
+  role: root

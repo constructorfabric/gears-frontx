@@ -1,0 +1,68 @@
+# Semantic overlay for CarouselItem - a part of the Carousel family, see
+# carousel.contract.yaml's `family_membership`.
+component: carousel-item
+
+intent: One slide of a Carousel, taking the full length of the viewport along the scroll axis.
+
+typical_uses:
+  - One card, image or panel in a Carousel's track
+
+dont_use_when:
+  - situation: One entry of a plain list or grid that does not step or scroll
+    instead:
+      target: Item
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1
+
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: slide-group-roledescription
+    text: >-
+      Every slide renders `role="group"` with `aria-roledescription="slide"`;
+      a consumer `aria-label` (for example "2 of 5") lands on that group.
+  - id: leading-edge-padding-only
+    text: >-
+      A slide pads only its leading edge along the scroll axis (inline start
+      when horizontal, block start when vertical), which produces the gap
+      between slides; its trailing and cross-axis edges carry no padding, so
+      a bordered child placed directly inside sits flush against the
+      viewport's clipped edge.
+
+anti_patterns:
+  - dont: Place a bordered element (a Card, a framed image) directly inside CarouselItem
+    do_instead: >-
+      Wrap it in a padding element (`var(--space-1)` is enough) inside the
+      slide, so its outline or shadow is not clipped by the viewport
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: carousel.test.tsx asserts role="group" and aria-roledescription="slide" on a CarouselItem
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A bordered card inside a padded slide
+      code: |
+        <CarouselItem>
+          <div style={{ padding: 'var(--space-1)' }}>
+            <Card>...</Card>
+          </div>
+        </CarouselItem>
+  bad:
+    - title: A slide placed straight in the Carousel root
+      code: |
+        <Carousel aria-label="Photos">
+          <CarouselItem>1</CarouselItem>
+        </Carousel>
+      why: >-
+        Slides belong inside CarouselContent, the track the engine measures
+        and moves; outside it a slide is never scrolled.
+
+family_membership:
+  name: carousel
+  role: part

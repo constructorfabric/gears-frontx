@@ -1,0 +1,87 @@
+# Semantic overlay for QuestionnaireProgress - a part of the Questionnaire
+# family, see questionnaire.contract.yaml's `family_membership`.
+component: questionnaire-progress
+
+intent: Report where the user is in a Questionnaire, as a progressbar whose default text reads "Question X of Y".
+
+typical_uses:
+  - A position line above the current question
+  - A custom position display built from the position through `render`
+
+dont_use_when:
+  - situation: A task's completion or a loading amount outside a questionnaire
+    instead:
+      target: Progress
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.progress.v1
+
+# Children replace the default "Question X of Y" text.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: counts-enabled-items
+    text: >-
+      The position counts only enabled items (the `items` entries when the
+      root has `items`, otherwise the rendered enabled QuestionnaireItems),
+      so a disabled item neither adds to the total nor takes a number.
+  - id: progressbar-semantics
+    text: >-
+      The element carries role="progressbar" with aria-valuemin 1,
+      aria-valuenow, aria-valuemax and aria-valuetext set from the position,
+      is a polite live region, and is named "Questionnaire progress";
+      children replace only the visible text, never the aria values, and an
+      `aria-label` replaces the name.
+
+anti_patterns:
+  - dont: Compute the position yourself and pass it as text
+    do_instead: >-
+      Leave the default text, or read `current` and `total` from the state
+      the function form of `render` receives; the root already owns the
+      position
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      questionnaire.test.tsx asserts role="progressbar" with aria-valuenow
+      "1" and aria-valuemax "3" and the text "Question 1 of 3"
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      The questionnaire engine's render prop takes an element or a function
+      of the progress's own state (`QuestionnaireProgressState`: current,
+      first, last, total), so its type is a union of a React element and a
+      callback; the compiler emits one JSON type per property, so nothing
+      is asserted.
+
+examples:
+  good:
+    - title: The default position text
+      code: <QuestionnaireProgress />
+    - title: A compact position drawn from the render state
+      code: |
+        <QuestionnaireProgress
+          render={(props, state) => (
+            <div {...props}>
+              {state.current} / {state.total}
+            </div>
+          )}
+        />
+  bad:
+    - title: The kit Progress used as the questionnaire's position
+      code: <Progress value={step * 25} />
+      why: >-
+        Progress knows nothing about the questionnaire; the count drifts as
+        soon as an item is disabled or `items` changes, while
+        QuestionnaireProgress reads the position from the root.
+
+family_membership:
+  name: questionnaire
+  role: part

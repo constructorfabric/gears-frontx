@@ -1,0 +1,160 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_radio_group.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "context-menu-radio-group",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Hold the one selected value shared by a set of ContextMenuRadioItem rows.",
+  "typical_uses": [
+    "A single-choice setting kept in the menu, such as a sort order or a view mode"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Settings that are each on or off independently",
+      "instead": {
+        "target": "ContextMenuCheckboxItem",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_checkbox_item.v1"
+      }
+    },
+    {
+      "situation": "A single choice that belongs to a form on the page",
+      "instead": {
+        "target": "RadioGroup",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_label.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_radio_item.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "ContextMenuContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_content.v1"
+    },
+    {
+      "container": "ContextMenuSubContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_sub_content.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "value-wins-over-default-value",
+      "text": "`value` and `defaultValue` are both accepted; `defaultValue` seeds the initial state and is ignored afterwards, and when `value` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "selects-by-item-value",
+      "text": "The item whose `value` is strictly equal (`===`) to the group's value is checked; activating another item reports that item's `value` through `onValueChange`."
+    },
+    {
+      "id": "disabled-cascades-to-every-item",
+      "text": "Setting `disabled` on the group disables every ContextMenuRadioItem inside it; an item's own `disabled` can disable that one item further but cannot re-enable it against a disabled group."
+    },
+    {
+      "id": "named-by-its-label",
+      "text": "The group renders `role=\"group\"` and takes its accessible name from the ContextMenuLabel inside it, through `aria-labelledby`, unless the caller passes its own `aria-labelledby`."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is the group's label and radio items",
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+    },
+    "value": {
+      "states": "value is the selected item's value, of any type the caller chooses",
+      "because": "Typed `any` by the primitive, so no JSON Schema type can state what it holds; items are matched against it by their own `value`."
+    },
+    "defaultValue": {
+      "states": "defaultValue is the initially selected item's value, of any type the caller chooses",
+      "because": "Typed `any` by the primitive, so no JSON Schema type can state what it holds."
+    },
+    "onValueChange": {
+      "states": "onValueChange is a callback called with the chosen item's value and event details, not a value",
+      "because": "`(value: any, eventDetails) => void` - a function, which no JSON Schema type covers."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the group's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the group's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through context-menu.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A controlled view mode",
+        "code": "<ContextMenuRadioGroup value={view} onValueChange={setView}>\n  <ContextMenuLabel>View</ContextMenuLabel>\n  <ContextMenuRadioItem value=\"list\">List</ContextMenuRadioItem>\n  <ContextMenuRadioItem value=\"grid\">Grid</ContextMenuRadioItem>\n</ContextMenuRadioGroup>\n"
+      },
+      {
+        "title": "An uncontrolled sort order",
+        "code": "<ContextMenuRadioGroup defaultValue=\"name\">\n  <ContextMenuRadioItem value=\"name\">Name</ContextMenuRadioItem>\n  <ContextMenuRadioItem value=\"date\">Date modified</ContextMenuRadioItem>\n</ContextMenuRadioGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The selected value set on an item instead of the group",
+        "code": "<ContextMenuRadioGroup>\n  <ContextMenuRadioItem value=\"list\" checked>List</ContextMenuRadioItem>\n  <ContextMenuRadioItem value=\"grid\">Grid</ContextMenuRadioItem>\n</ContextMenuRadioGroup>\n",
+        "why": "A radio item has no `checked` prop; the selection lives on the group as `value` or `defaultValue`, and an item is checked when its own `value` matches it."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "context_menu",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ContextMenuRadioGroup",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "children": {
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the group's label and radio items. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+      },
+      "defaultValue": {
+        "description": "TS: any. The compiler emits one JSON type per property; this type is left to tsc. defaultValue is the initially selected item's value, of any type the caller chooses. Typed `any` by the primitive, so no JSON Schema type can state what it holds."
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "onValueChange": {
+        "description": "TS: ((value: any, eventDetails: MenuRootChangeEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onValueChange is a callback called with the chosen item's value and event details, not a value. `(value: any, eventDetails) => void` - a function, which no JSON Schema type covers."
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, MenuRadioGroupState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the group's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: MenuRadioGroupState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the group's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through context-menu.module.css, not through this."
+      },
+      "value": {
+        "description": "TS: any. The compiler emits one JSON type per property; this type is left to tsc. value is the selected item's value, of any type the caller chooses. Typed `any` by the primitive, so no JSON Schema type can state what it holds; items are matched against it by their own `value`."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar_group_count.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "avatar-group-count",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The circle that ends an AvatarGroup's stack and stands for the members not shown.",
+  "typical_uses": [
+    "A \"+N\" count after the last visible avatar of a group"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A count outside a stack of avatars, such as an unread number or a tag",
+      "instead": {
+        "target": "Badge",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.badge.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "AvatarGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar_group.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "size-comes-from-the-sibling-avatars",
+      "text": "The count takes no size prop: its circle is the default avatar size, and becomes the `sm` or `lg` size when its group has a direct Avatar child of that size (`lg` when both are present); its label stays at one text size throughout, and only an svg inside it grows at `lg`."
+    },
+    {
+      "id": "fill-cells-shared-with-the-fallback",
+      "text": "`tone` and `variant` pick one of the twelve fill cells avatar.module.css shares with AvatarFallback, so a count chip and a fallback given the same pair paint the same colors."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A count matching a group of small avatars",
+        "code": "<AvatarGroup>\n  <Avatar size=\"sm\">\n    <AvatarFallback>JD</AvatarFallback>\n  </Avatar>\n  <Avatar size=\"sm\">\n    <AvatarFallback>SL</AvatarFallback>\n  </Avatar>\n  <AvatarGroupCount>+3</AvatarGroupCount>\n</AvatarGroup>\n"
+      },
+      {
+        "title": "A count filled to match toned members",
+        "code": "<AvatarGroup>\n  <Avatar>\n    <AvatarFallback tone=\"accent\" variant=\"solid\">ML</AvatarFallback>\n  </Avatar>\n  <AvatarGroupCount tone=\"accent\" variant=\"soft\">+3</AvatarGroupCount>\n</AvatarGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A size prop guessed from Avatar",
+        "code": "<AvatarGroup>\n  <Avatar size=\"sm\">\n    <AvatarFallback>JD</AvatarFallback>\n  </Avatar>\n  <AvatarGroupCount size=\"sm\">+3</AvatarGroupCount>\n</AvatarGroup>\n",
+        "why": "AvatarGroupCount declares no `size`; the count already takes the small size from the `sm` Avatar beside it in the same group."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "avatar_group",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof avatarGroupCountVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit AvatarGroupCount",
+    "type": "object",
+    "properties": {
+      "tone": {
+        "type": "string",
+        "enum": [
+          "neutral",
+          "accent",
+          "info",
+          "success",
+          "warning",
+          "danger"
+        ],
+        "default": "neutral"
+      },
+      "variant": {
+        "type": "string",
+        "enum": [
+          "solid",
+          "soft"
+        ],
+        "default": "soft"
+      },
+      "className": {
+        "type": "string"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

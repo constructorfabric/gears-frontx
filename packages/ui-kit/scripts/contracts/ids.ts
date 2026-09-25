@@ -27,12 +27,12 @@ const EMPTY_NAMESPACE = '_';
 // schema stops being backward compatible with what shipped before.
 //
 // A DEFAULT, not a kit-wide setting, and that distinction is the whole point
-// of the constant's name. It used to be read directly by every call site, so
-// the one escape hatch the compatibility gate offers - "move the major and
-// the narrowing is accepted" - could only be taken by rewriting the
-// identifier of every contract, every instance and every reference in the
-// kit at once. A gate whose escape hatch costs that much is a gate people
-// route around. The major now comes from the component's own overlay
+// of the constant's name. Read directly by every call site, the one escape
+// hatch the compatibility gate offers - "move the major and the narrowing is
+// accepted" - could only be taken by rewriting the identifier of every
+// contract, every instance and every reference in the kit at once, and a
+// gate whose escape hatch costs that much is a gate people route around. The
+// major comes from the component's own overlay
 // (`major:`), threaded through the id builders below, so moving one
 // component's major moves that component's own identifiers plus every
 // reference to it - a reference carries the target's major - rather than
@@ -169,8 +169,8 @@ export function componentRefPrefix(component: string): string {
 
 // GTS type id of the props surface a component's document carries - a
 // STANDALONE type with no parent: there is nothing above a component's props
-// for it to derive from, and the chain that used to be there said only that
-// a near-empty anchor existed. `props` is a real category rather than a
+// for it to derive from, and a parent chain would say only that a near-empty
+// anchor existed. `props` is a real category rather than a
 // position in a hierarchy: not every type here is a props surface.
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-identifiers:p2:inst-id-props-schema
 export function propsTypeRef(component: string, major: number): string {

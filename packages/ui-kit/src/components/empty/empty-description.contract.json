@@ -1,0 +1,84 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_description.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "empty-description",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Explain why nothing is shown and what the user can do about it, in a sentence or two under the title.",
+  "typical_uses": [
+    "The muted sentence beneath EmptyTitle giving the reason for the empty state or the next step"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The description of a card that holds real content",
+      "instead": {
+        "target": "CardDescription",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_description.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "EmptyHeader",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_header.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "descendant-links-are-underlined",
+      "text": "Any descendant a inherits the description's muted color, is underlined with a 4px offset, and turns var(--link-foreground) on hover."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put a short count or hint in EmptyDescription as a second line",
+      "do_instead": "Give the secondary line its own EmptyDetail after the description, which sets it on the smaller meta type"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A description with an inline link",
+        "code": "<EmptyDescription>\n  No projects yet. <a href=\"/docs/projects\">Read how projects work</a>.\n</EmptyDescription>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A count crammed into the description",
+        "code": "<EmptyHeader>\n  <EmptyTitle>No results</EmptyTitle>\n  <EmptyDescription>Try a different search term. 3 filters applied.</EmptyDescription>\n</EmptyHeader>\n",
+        "why": "The count is a secondary line; EmptyDetail sets it on the meta type with its own spacing under the description."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "empty",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit EmptyDescription",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

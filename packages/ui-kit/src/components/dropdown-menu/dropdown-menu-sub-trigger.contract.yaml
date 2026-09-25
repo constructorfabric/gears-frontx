@@ -1,0 +1,111 @@
+# Semantic overlay for DropdownMenuSubTrigger - a part of the DropdownMenu
+# family, see dropdown-menu.contract.yaml's `family_membership` for how the
+# contracts relate. The forwarded surface is the primitive's div.
+component: dropdown-menu-sub-trigger
+
+intent: The menu row that opens its DropdownMenuSub's popup beside it.
+
+typical_uses:
+  - A row such as Share or Move to that leads to a nested list
+
+dont_use_when:
+  - situation: A row that runs an action when chosen
+    instead:
+      target: DropdownMenuItem
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_item.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: hover-and-press-open
+    text: >-
+      While `openOnHover` is on, which it is unless set to false, a mouse
+      pointer resting on the row opens the submenu after `delay`
+      milliseconds (100 when not given) and leaving closes it after
+      `closeDelay` milliseconds (0 when not given); with `openOnHover` false,
+      pressing the row toggles the submenu instead.
+  - id: trailing-chevron
+    text: >-
+      The row always ends in a right-pointing chevron; there is no prop to
+      leave it out, and it does not mirror in a right-to-left layout.
+  - id: stays-highlighted-while-open
+    text: >-
+      dropdown-menu.module.css keeps the row highlighted while its submenu is
+      open.
+  - id: descendant-svg-sized
+    text: >-
+      dropdown-menu.module.css sizes every descendant `svg` of the row to the
+      small icon size and keeps it from shrinking or taking pointer events,
+      so a leading icon passed in children needs no size of its own.
+
+anti_patterns:
+  - dont: Give the row an `onClick` that runs an action
+    do_instead: >-
+      Keep the action on a DropdownMenuItem inside the submenu; the row's job
+      is to open the submenu, so an action on it fires when the user only
+      meant to look inside
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Menu.SubmenuTrigger renders role="menuitem"; dropdown-menu.test.tsx asserts the row is found by the
+      menuitem role and name 'More tools' and that clicking it opens the
+      submenu's items
+  rtl:
+    outcome: unknown
+
+unexposed_parts:
+  - part: the trailing chevron icon
+    reason: Rendered by DropdownMenuSubTrigger after the children; the kit exposes no prop to replace or hide it.
+
+prop_statements:
+  onClick:
+    states: onClick is a callback called with the click event when the row is pressed
+    because: >-
+      A React event handler - a function, which no JSON Schema type covers.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the
+      sub-trigger's own state, so its type is a union of a React element and
+      a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the sub-trigger's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (disabled, highlighted, open). The compiler emits one JSON type per property, so nothing is asserted; the
+      kit's own styling goes through dropdown-menu.module.css, not through
+      this.
+
+examples:
+  good:
+    - title: A sub-trigger with a leading icon
+      code: |
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <ShareIcon />
+            Share
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <DropdownMenuItem>Email</DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+  bad:
+    - title: A sub-trigger outside any DropdownMenuSub
+      code: |
+        <DropdownMenuContent>
+          <DropdownMenuSubTrigger>Share</DropdownMenuSubTrigger>
+        </DropdownMenuContent>
+      why: >-
+        The row has no submenu to open; place it with a
+        DropdownMenuSubContent inside a DropdownMenuSub.
+
+family_membership:
+  name: dropdown_menu
+  role: part

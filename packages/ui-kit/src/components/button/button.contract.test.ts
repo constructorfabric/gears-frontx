@@ -6,7 +6,7 @@
 // the invariants that make the contract trustworthy: axes and defaults
 // mirror the cva() call exactly, the overlay only references props that
 // exist, and the $id obeys the GTS segment grammar.
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { GTS, parseGtsID } from '@globaltypesystem/gts-ts';
@@ -28,32 +28,31 @@ import {
   buildComponentType,
   buildOverlaySchema,
   buildPropsAndRequired,
+  CLASSIFICATION_KEY,
   compileContract,
+  type CompiledContract,
   compilePropsValidator,
   liftPropsSchema,
   loadComponentType,
   loadElementSurface,
   OPEN_UNEVALUATED,
-  parseOverlay,
-  registerContractTypes,
-  resolveTargetExtraction,
-  CLASSIFICATION_KEY,
-  partlyCheckedPropertyNames,
-  type CompiledContract,
   type Overlay,
+  parseOverlay,
+  partlyCheckedPropertyNames,
+  resolveTargetExtraction,
 } from '../../../scripts/contracts/compile';
 import type { ComponentExtraction } from '../../../scripts/contracts/extract';
 import { classifyProps } from '../../../scripts/contracts/check-lib';
 import { contractMajor } from '../../../scripts/contracts/compile';
 import {
   bareGtsId,
+  COMPONENT_TYPE_ID_BARE,
   componentRef,
   componentRefPattern,
-  COMPONENT_TYPE_ID_BARE,
   domElementToken,
-  METAMODEL_VERSION,
   elementTypeId,
   elementTypeRef,
+  METAMODEL_VERSION,
   propsSchemaId,
 } from '../../../scripts/contracts/ids';
 import {
@@ -61,6 +60,7 @@ import {
   assertContractFreshness,
   registeredKitStore,
   resolveComponentRef,
+  unitStore,
   validateContractInstance,
 } from '../../../scripts/contracts/testing';
 
@@ -102,6 +102,8 @@ function compileValidator(): ReturnType<Ajv2020['compile']> {
   return compilePropsValidator(contract);
 }
 const extraction = resolveTargetExtraction('button');
+// The kit's component directories, one per shipped component.
+const COMPONENTS_DIR = join(process.cwd(), 'src/components');
 const committedComponentType = JSON.parse(
   readFileSync(join(process.cwd(), 'scripts/contracts/ui-component.meta.json'), 'utf8'),
 ) as SchemaObject;
@@ -229,7 +231,7 @@ describe('button contract conformance', () => {
     // overlay's own `prop_statements.render` entry (states/because), which the
     // compiler emits into the same description beside the `TS:` text.
     expect(contract.props.properties.render.type).toBeUndefined();
-    expect(contract.props.properties.render.description).toMatch(/^TS: .*Not expressible in JSON Schema, checked by tsc\./s);
+    expect(contract.props.properties.render.description).toMatch(/^TS: .*The compiler emits one JSON type per property; this type is left to tsc\./s);
     expect(contract.props.properties.render.description).toContain('ComponentRenderFn');
     expect(contract.props.properties.render.description).toContain('render replaces the rendered element with one the caller supplies');
   });
@@ -485,11 +487,14 @@ describe('overlay and extraction safety', () => {
       axes: {},
       booleanAxes: [],
       defaults: {},
+      propDefaults: {},
       ownProps,
       apiProps,
       forwardedProps: [],
       unclassifiedProps: [],
       elementKind: 'button',
+      hasBody: true,
+      admitsUnlistedProps: false,
       variantSourceLabels: [],
       cannotExtract: [],
     };
@@ -874,13 +879,22 @@ describe('a component reference names one contract major', () => {
     expect(target.contractId).not.toBe(stale);
   });
 
-  it('resolves a component that ships no contract to its directory alone', () => {
-    // Most components a `don't` rule points at are undescribed; the kit
-    // shipping the component is a directory, not a registration.
+  // A component a `don't` rule points at may have no contract yet; the kit
+  // shipping the component is a directory, not a registration. The example
+  // is picked at test time, so enrolling any one component never breaks the
+  // case, and it is skipped once every directory ships a contract.
+  const undescribed = readdirSync(COMPONENTS_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort()
+    .find((name) => !readdirSync(join(COMPONENTS_DIR, name)).includes(`${name}.contract.json`));
+
+  it.skipIf(undescribed === undefined)('resolves a component that ships no contract to its directory alone', () => {
     // A component that ships no contract has no overlay to state a major, so
     // a reference to one may only name major 1 - see testing.ts's own check.
-    const target = resolveComponentRef(componentRef('switch', 1));
-    expect(target.directory).toBe('switch');
+    const directory = undescribed as string;
+    const target = resolveComponentRef(componentRef(directory, 1));
+    expect(target.directory).toBe(directory);
     expect(target.contractId).toBeUndefined();
   });
 });
@@ -903,16 +917,12 @@ describe('button in a GTS store', () => {
   // it claims exists, so the claim would stay unverified until something
   // happened to resolve it at runtime. GTS.validateInstance resolves the type
   // and validates against it, which turns that into a build-time failure.
+  // The vocabulary the component type references is registered with it. A
+  // store missing one of them cannot compile the type at all - see "fails
+  // when a vocabulary type is not registered" below, which is that failure
+  // asserted deliberately.
   function registeredStore(): GTS {
-    const gts = new GTS();
-    gts.register(componentType);
-    // The vocabulary the component type references. A store missing one of
-    // them cannot compile the type at all - see "fails when a vocabulary type
-    // is not registered" below, which is that failure asserted deliberately.
-    registerContractTypes((entity) => gts.register(entity));
-    gts.register(elementSurface);
-    gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
-    return gts;
+    return unitStore([{ contract, elementSurface }], { componentType });
   }
 
   it('validates as an instance of the component type, and its element surface as a type', () => {
@@ -927,9 +937,7 @@ describe('button in a GTS store', () => {
   it('fails when the component type is not registered', () => {
     // Negative control for the check above: without it, a passing
     // validateInstance would prove nothing about whether the type resolves.
-    const gts = new GTS();
-    gts.register(elementSurface);
-    gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
+    const gts = unitStore([{ contract, elementSurface }], { componentType: false, vocabulary: false });
     const result = gts.validateInstance(contract.$id);
     expect(result.ok).toBe(false);
     expect(result.error).toContain('Schema not found');
@@ -974,10 +982,7 @@ describe('button in a GTS store', () => {
     // type names its concepts by reference, so a registry missing one has not
     // checked a component against a smaller schema - it has not checked it at
     // all, and says so.
-    const gts = new GTS();
-    gts.register(componentType);
-    gts.register(elementSurface);
-    gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
+    const gts = unitStore([{ contract, elementSurface }], { componentType, vocabulary: false });
     const result = gts.validateInstance(contract.$id);
     expect(result.ok).toBe(false);
     expect(result.error).toMatch(/resolve|reference/i);

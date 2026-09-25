@@ -1,0 +1,81 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.table_footer.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "table-footer",
+  "forwards_to": "gts.frontx.uikit.element.dom_tfoot.v1~",
+  "intent": "Hold the summary rows under a table's data, such as totals.",
+  "typical_uses": [
+    "A totals row under the data rows"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Page controls for stepping through the rows",
+      "instead": {
+        "target": "Pagination",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.pagination.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.table_row.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Table",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.table.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "footer-rows-are-a-muted-band",
+      "text": "Rows inside TableFooter take the muted fill and the label font weight, take no hover or data-state tint, and the last one draws no bottom rule."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A totals row",
+        "code": "<TableFooter>\n  <TableRow>\n    <TableCell>Total</TableCell>\n    <TableCell>$400.00</TableCell>\n  </TableRow>\n</TableFooter>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A cell with no row around it",
+        "code": "<TableFooter>\n  <TableCell>Total</TableCell>\n</TableFooter>\n",
+        "why": "A <td> cannot be a child of <tfoot>; TableFooter hosts rows, so put the cell in a TableRow."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "table",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit TableFooter",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.progress_label.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "progress-label",
+  "forwards_to": "gts.frontx.uikit.element.dom_span.v1~",
+  "intent": "The visible caption that names what its progress bar is the progress of.",
+  "typical_uses": [
+    "The caption beside the bar, composed as a child of Progress"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A caption for anything that is not a progress bar",
+      "instead": {
+        "target": "Label",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.label.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "Progress",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.progress.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "names-the-bar-not-itself",
+      "text": "A ProgressLabel registers its id with the root, which wires it into the progressbar's `aria-labelledby`, so the caption's text becomes the bar's accessible name; the span itself renders `role=\"presentation\"` and nothing announces it as a separate element."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Point a `<label htmlFor>` at the bar's id",
+      "do_instead": "Compose this ProgressLabel into the root - a `<label>` element cannot name a div, and the root wires `aria-labelledby` only from a ProgressLabel's registered id"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "the primitive's Progress.Label, which registers its id with the root for `aria-labelledby` and renders role=\"presentation\" (verified in the @base-ui/react/progress source); progress.test.tsx asserts the label's span and its text"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the label's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the label's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (status). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through progress.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A caption composed inside the wrapper",
+        "code": "<Progress value={42}>\n  <ProgressLabel>Uploading</ProgressLabel>\n</Progress>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A label with no progress root around it",
+        "code": "<ProgressLabel>Uploading</ProgressLabel>",
+        "why": "The label registers its id with the nearest progress root through React context and throws when there is none."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "progress",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ProgressLabel",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ProgressLabelState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the label's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: ProgressLabelState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the label's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (status). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through progress.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

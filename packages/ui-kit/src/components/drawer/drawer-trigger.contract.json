@@ -1,0 +1,136 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.drawer_trigger.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "drawer-trigger",
+  "forwards_to": "gts.frontx.uikit.element.dom_button.v1~",
+  "intent": "The button that opens its Drawer.",
+  "typical_uses": [
+    "The control that opens a drawer, usually a kit Button passed through `render`"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A button that opens an edge panel with no swipe gesture",
+      "instead": {
+        "target": "SheetTrigger",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_trigger.v1"
+      }
+    },
+    {
+      "situation": "A button that opens a centered dialog",
+      "instead": {
+        "target": "DialogTrigger",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_trigger.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "Drawer",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.drawer.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "unstyled-native-button",
+      "text": "DrawerTrigger renders a native button with no kit class of its own; its look comes from `className` or from the element passed through `render`."
+    },
+    {
+      "id": "announces-the-popup-it-opens",
+      "text": "The trigger carries `aria-haspopup=\"dialog\"` and an `aria-expanded` that is true while the drawer is open and was opened by this trigger; while the drawer is open, the trigger that opened it, or the only trigger when none is recorded as the opener, also carries `aria-controls` with the panel's id."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Render a non-button element through `render` while `nativeButton` stays at its default",
+      "do_instead": "Pass `nativeButton={false}` together with a `render` element that is not a native button, so the primitive adds the button role and keyboard handling itself"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "the primitive's Drawer.Trigger (Base UI's Dialog.Trigger) renders a native button with aria-haspopup and aria-expanded; drawer.test.tsx asserts getByRole('button', { name: 'Open' }) on it and that clicking it opens the panel (\"opens on trigger click and renders content with kit classes\")"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "handle": {
+      "states": "handle is an opaque object from the primitive's Drawer.createHandle(), tying this trigger to a Drawer root it is not placed inside",
+      "because": "`DrawerHandle<Payload>` is a class instance holding the drawer's store, not data; the kit re-exports no createHandle, so a caller imports it from the primitive."
+    },
+    "payload": {
+      "states": "payload is any value handed to the root's function children when this trigger opens the drawer",
+      "because": "Typed by the caller's own `Payload` type parameter (`unknown` here), so no JSON Schema type can state what it holds."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the trigger's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the trigger's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, open). The compiler emits one JSON type per property, so nothing is asserted; the kit sets no style of its own on the trigger."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "The kit's Button rendered as the trigger",
+        "code": "<Drawer>\n  <DrawerTrigger render={<Button variant=\"outline\" />}>Open filters</DrawerTrigger>\n  <DrawerContent>\n    <DrawerTitle>Filters</DrawerTitle>\n  </DrawerContent>\n</Drawer>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A kit Button nested inside the trigger",
+        "code": "<Drawer>\n  <DrawerTrigger>\n    <Button variant=\"outline\">Open filters</Button>\n  </DrawerTrigger>\n  <DrawerContent>\n    <DrawerTitle>Filters</DrawerTitle>\n  </DrawerContent>\n</Drawer>\n",
+        "why": "The trigger already renders a native button, so this nests a button inside a button, which HTML does not allow; pass the Button through `render` instead."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "drawer",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit DrawerTrigger",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "handle": {
+        "description": "TS: DrawerPrimitive.Handle<unknown> | undefined. The compiler emits one JSON type per property; this type is left to tsc. handle is an opaque object from the primitive's Drawer.createHandle(), tying this trigger to a Drawer root it is not placed inside. `DrawerHandle<Payload>` is a class instance holding the drawer's store, not data; the kit re-exports no createHandle, so a caller imports it from the primitive."
+      },
+      "id": {
+        "type": "string"
+      },
+      "nativeButton": {
+        "type": "boolean"
+      },
+      "payload": {
+        "description": "TS: unknown. The compiler emits one JSON type per property; this type is left to tsc. payload is any value handed to the root's function children when this trigger opens the drawer. Typed by the caller's own `Payload` type parameter (`unknown` here), so no JSON Schema type can state what it holds."
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, DrawerTriggerState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the trigger's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: DrawerTriggerState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the trigger's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, open). The compiler emits one JSON type per property, so nothing is asserted; the kit sets no style of its own on the trigger."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

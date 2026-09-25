@@ -1,0 +1,86 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_group.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "attachment-group",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Lay out several attachments in one horizontally scrolling, snapping row.",
+  "typical_uses": [
+    "The files attached to one message or waiting in a composer"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Attachments that should wrap onto several lines or stack in a column",
+      "instead": {
+        "target": "a plain flex or grid container in the consuming application",
+        "note": "AttachmentGroup always lays its children out in one row that scrolls horizontally; the kit ships no wrapping attachment layout."
+      }
+    },
+    {
+      "situation": "Images or slides the user steps through one viewport at a time",
+      "instead": {
+        "target": "Carousel",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.carousel.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "one-snapping-row",
+      "text": "The group is a flex row that scrolls horizontally with mandatory snapping and spaces its children var(--space-3) apart; each direct Attachment child keeps its own width and snaps to its start edge."
+    },
+    {
+      "id": "fade-and-hidden-scrollbar-need-utilities",
+      "text": "The group adds the global `scroll-fade-x` and `no-scrollbar` classes; the edge fade and the hidden scrollbar draw only when the package's utilities.css is loaded."
+    },
+    {
+      "id": "no-role-and-not-focusable",
+      "text": "The group renders a div with no role and no tab stop of its own, so a row of attachments with no trigger or actions cannot be scrolled from the keyboard unless the caller makes the group focusable."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Two small attachments in a row",
+        "code": "<AttachmentGroup>\n  <Attachment size=\"sm\">\n    <AttachmentContent>\n      <AttachmentTitle>notes.txt</AttachmentTitle>\n    </AttachmentContent>\n  </Attachment>\n  <Attachment size=\"sm\">\n    <AttachmentContent>\n      <AttachmentTitle>diagram.png</AttachmentTitle>\n    </AttachmentContent>\n  </Attachment>\n</AttachmentGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A size set on the group",
+        "code": "<AttachmentGroup size=\"sm\">\n  <Attachment />\n</AttachmentGroup>\n",
+        "why": "AttachmentGroup declares no `size` and its div surface has none, so TypeScript rejects it; the size belongs on each Attachment."
+      }
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit AttachmentGroup",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

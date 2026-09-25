@@ -1,0 +1,136 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.hover_card_trigger.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "hover-card-trigger",
+  "forwards_to": "gts.frontx.uikit.element.dom_a.v1~",
+  "intent": "The link whose hover or keyboard focus opens its HoverCard's preview.",
+  "typical_uses": [
+    "A link to a person, a document or another record that the card previews"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A link with no preview attached to it",
+      "instead": {
+        "target": "a plain `<a>` element or the app router's link component",
+        "note": "The kit ships no standalone link component; a link that previews nothing needs no HoverCard around it."
+      }
+    },
+    {
+      "situation": "An icon-only button whose label should appear on hover",
+      "instead": {
+        "target": "TooltipTrigger",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.tooltip_trigger.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "HoverCard",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.hover_card.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "hover-opens-for-mouse-pointers-focus-for-keyboard",
+      "text": "Hovering opens the card for mouse pointers only, after `delay` milliseconds (600 when not given); keyboard focus that shows a focus ring opens it after the same delay. A card opened by hover closes `closeDelay` milliseconds (300 when not given) after the pointer leaves both the trigger and the card."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Leave out `href`",
+      "do_instead": "Pass `href`, or a link element through `render`; an `<a>` without `href` is not a link, takes no keyboard focus and so never opens the card for keyboard users"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "the primitive's PreviewCard.Trigger renders a native <a>; hover-card.test.tsx asserts the trigger is found by its link role and accessible name and that its tagName is 'A'"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "handle": {
+      "states": "handle is an opaque object from the primitive's PreviewCard.createHandle(), tying this trigger to a HoverCard root it is not placed inside",
+      "because": "`PreviewCardHandle<Payload>` is a class instance holding the card's store, not data; the kit re-exports no createHandle, so a caller imports it from the primitive."
+    },
+    "payload": {
+      "states": "payload is any value handed to the root's function children when this trigger opens the card",
+      "because": "Typed by the caller's own `Payload` type parameter (`unknown` here), so no JSON Schema type can state what it holds."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the trigger's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the trigger's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open). The compiler emits one JSON type per property, so nothing is asserted; hover-card.module.css styles no trigger, so the link keeps the look the caller gives it."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A handle linking to a profile",
+        "code": "<HoverCard>\n  <HoverCardTrigger href=\"/users/ada\">@ada</HoverCardTrigger>\n  <HoverCardContent>Ada Lovelace</HoverCardContent>\n</HoverCard>\n"
+      },
+      {
+        "title": "The app router's link rendered as the trigger, opening sooner",
+        "code": "<HoverCard>\n  <HoverCardTrigger delay={300} render={<RouterLink to=\"/docs/spec\" />}>\n    Specification\n  </HoverCardTrigger>\n  <HoverCardContent>The current draft of the specification.</HoverCardContent>\n</HoverCard>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A kit Button nested inside the trigger",
+        "code": "<HoverCard>\n  <HoverCardTrigger href=\"/users/ada\">\n    <Button variant=\"ghost\">@ada</Button>\n  </HoverCardTrigger>\n  <HoverCardContent>Ada Lovelace</HoverCardContent>\n</HoverCard>\n",
+        "why": "The trigger already renders an `<a>`, so this nests a button inside a link, which HTML does not allow; put the caption straight into the trigger."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "hover_card",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit HoverCardTrigger",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "closeDelay": {
+        "type": "number"
+      },
+      "delay": {
+        "type": "number"
+      },
+      "handle": {
+        "description": "TS: PreviewCardPrimitive.Handle<unknown> | undefined. The compiler emits one JSON type per property; this type is left to tsc. handle is an opaque object from the primitive's PreviewCard.createHandle(), tying this trigger to a HoverCard root it is not placed inside. `PreviewCardHandle<Payload>` is a class instance holding the card's store, not data; the kit re-exports no createHandle, so a caller imports it from the primitive."
+      },
+      "payload": {
+        "description": "TS: unknown. The compiler emits one JSON type per property; this type is left to tsc. payload is any value handed to the root's function children when this trigger opens the card. Typed by the caller's own `Payload` type parameter (`unknown` here), so no JSON Schema type can state what it holds."
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, PreviewCardTriggerState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the trigger's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: PreviewCardTriggerState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the trigger's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open). The compiler emits one JSON type per property, so nothing is asserted; hover-card.module.css styles no trigger, so the link keeps the look the caller gives it."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

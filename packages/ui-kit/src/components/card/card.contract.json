@@ -1,0 +1,154 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "card",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Frame one self-contained unit of related content and its actions on a flat bordered surface.",
+  "typical_uses": [
+    "A settings section or a summary panel with a title, its content and its actions",
+    "One stat or preview shown with a clear visual boundary",
+    "A media card whose image runs to the card's edges"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A focused task that must block the rest of the page until it is done",
+      "instead": {
+        "target": "Dialog",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog.v1"
+      }
+    },
+    {
+      "situation": "One row in a list of many rows that share the same shape",
+      "instead": {
+        "target": "Item",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1"
+      }
+    },
+    {
+      "situation": "Tabular data read across rows and columns",
+      "instead": {
+        "target": "Table",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.table.v1"
+      }
+    },
+    {
+      "situation": "A status or error message about the page or a section",
+      "instead": {
+        "target": "Alert",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert.v1"
+      }
+    },
+    {
+      "situation": "A region that has settled with nothing to show",
+      "instead": {
+        "target": "Empty",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.empty.v1"
+      }
+    },
+    {
+      "situation": "A section the user opens and closes",
+      "instead": {
+        "target": "Collapsible",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.collapsible.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.card_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.card_footer.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "no-role-or-landmark",
+      "text": "Card and every part render a plain div with no role and no aria attribute of their own, so a card is not a landmark or a region to assistive tech."
+    },
+    {
+      "id": "size-sets-the-shared-inset-and-title-step",
+      "text": "`size` sets the inset every part shares: the root's gap between its direct children, its top and bottom padding and the horizontal padding of CardHeader, CardContent and CardFooter all read --card-spacing (var(--space-4) at default, var(--space-3) at sm), and sm steps CardTitle down from the heading-2 size to the body size. Every Card declares these values itself, so a nested Card follows its own size, not an ancestor's."
+    },
+    {
+      "id": "direct-img-runs-to-the-edges",
+      "text": "A direct <img> child sits against the card's side edges, because the root has no horizontal padding of its own; when it is the first child the root drops its top padding and the image's top corners are rounded to the card's radius, and when it is the last child its bottom corners are rounded (the bottom padding stays). An <img> nested inside a part is not treated this way."
+    },
+    {
+      "id": "clips-overflow-at-the-border",
+      "text": "The root sets overflow hidden, so anything a child draws past the card's rounded border box is clipped."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Nest a Card inside another Card's content to group items within one surface",
+      "do_instead": "Lay the items out with a grid or flex wrapper inside CardContent; a nested Card draws a second border inside the first"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Header with a title, a description and a corner action, then content and a footer",
+        "code": "<Card>\n  <CardHeader>\n    <CardTitle>Team plan</CardTitle>\n    <CardDescription>Billed monthly, 5 seats in use.</CardDescription>\n    <CardAction>\n      <Button variant=\"ghost\" size=\"sm\">Manage</Button>\n    </CardAction>\n  </CardHeader>\n  <CardContent>\n    <p>Next invoice on the 1st.</p>\n  </CardContent>\n  <CardFooter style={{ gap: 'var(--space-2)' }}>\n    <Button variant=\"outline\">Cancel</Button>\n    <Button>Upgrade</Button>\n  </CardFooter>\n</Card>\n"
+      },
+      {
+        "title": "A compact card sized down as a unit",
+        "code": "<Card size=\"sm\">\n  <CardHeader>\n    <CardTitle>Storage</CardTitle>\n    <CardDescription>12 GB of 20 GB used</CardDescription>\n  </CardHeader>\n</Card>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A size set on a part instead of the card",
+        "code": "<Card>\n  <CardHeader>\n    <CardTitle size=\"sm\">Storage</CardTitle>\n  </CardHeader>\n</Card>\n",
+        "why": "`size` is Card's own prop; CardTitle has none, and its size follows the nearest Card's `size`. Set `size=\"sm\"` on Card, or `typography=\"panel\"` on CardTitle for the denser title alone."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "card",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.card_action.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.card_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.card_description.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.card_footer.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.card_title.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof cardVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Card",
+    "type": "object",
+    "properties": {
+      "size": {
+        "type": "string",
+        "enum": [
+          "default",
+          "sm"
+        ],
+        "default": "default"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

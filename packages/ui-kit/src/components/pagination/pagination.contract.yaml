@@ -1,0 +1,114 @@
+# Semantic overlay for Pagination (the root) - the hand-written half of one
+# of seven contracts describing this family. The parts are
+# pagination-content, pagination-item, pagination-link,
+# pagination-previous, pagination-next and pagination-ellipsis;
+# `family_membership` below is how a reader (or the conformance test) walks
+# between them.
+#
+# Machine-extractable facts (prop list, defaults, forwarded surface) do NOT
+# belong here: the compiler takes those from pagination.tsx and rejects an
+# overlay that restates them. No primitive backs the family: every export
+# is semantic markup (nav > ul > li > a), and the only kit props are
+# PaginationLink's `isActive`/`square` and the `text` of the previous and
+# next links, which the schema states fully.
+component: pagination
+
+intent: Let the user move between the pages of one paged result set through links to each page.
+
+typical_uses:
+  - Page numbers with previous and next links under a server-paged list, where every page has its own URL
+  - A previous/next pair alone, with no page numbers
+
+dont_use_when:
+  - situation: Loading more items into the same list, or infinite scroll
+    instead:
+      target: Button
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+  - situation: Paging the rows of a DataTable
+    instead:
+      target: DataTable
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.data_table.v1
+      note: >-
+        DataTable renders its own previous and next controls in its footer
+        and owns the page state.
+  - situation: Showing where the current page sits in a hierarchy
+    instead:
+      target: Breadcrumb
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb.v1
+  - situation: Primary navigation between the application's top-level sections
+    instead:
+      target: NavigationMenu
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu.v1
+  - situation: Switching between sections of one page
+    instead:
+      target: Tabs
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.tabs.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_content.v1 # PaginationContent
+
+invariants:
+  - id: named-navigation-landmark
+    text: >-
+      Pagination renders a `nav` landmark named "pagination" through
+      `aria-label`; the label is set ahead of the consumer's props, so an
+      `aria-label` passed to Pagination replaces it.
+  - id: centered-full-width-row
+    text: >-
+      The root is a full-width flex row that centers its content
+      (pagination.module.css `.pagination`), so the page row sits in the
+      middle of its container whatever the container's width.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      pagination.test.tsx asserts getByRole('navigation', { name:
+      'pagination' }) resolves to a NAV element
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Page numbers between previous and next links
+      code: |
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious href="?page=1" />
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationLink href="?page=1">1</PaginationLink>
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationLink href="?page=2" isActive>2</PaginationLink>
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationEllipsis />
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext href="?page=3" />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+  bad:
+    - title: Links placed straight into the root
+      code: |
+        <Pagination>
+          <PaginationLink href="?page=1">1</PaginationLink>
+          <PaginationLink href="?page=2">2</PaginationLink>
+        </Pagination>
+      why: >-
+        Without PaginationContent and PaginationItem there is no list, so the
+        links lose their list semantics and the spaced row
+        pagination.module.css puts on `.content`.
+
+family_membership:
+  name: pagination
+  role: root

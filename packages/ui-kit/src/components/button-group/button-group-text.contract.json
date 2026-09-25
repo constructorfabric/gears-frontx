@@ -1,0 +1,101 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.button_group_text.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "button-group-text",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "A static text segment inside a ButtonGroup, drawn as a filled plate with the same hairline as the controls beside it.",
+  "typical_uses": [
+    "A caption or unit joined to the controls around it (a prefix, a currency sign)"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A caption that names a form control, outside any ButtonGroup",
+      "instead": {
+        "target": "Label",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.label.v1"
+      }
+    },
+    {
+      "situation": "Text or a unit attached inside one text field",
+      "instead": {
+        "target": "InputGroupText",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_text.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "ButtonGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button_group.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "svg-descendants-sized-small",
+      "text": "Any svg inside the segment, at any depth, is sized to the small icon size, does not shrink, and ignores pointer events."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put an interactive control inside ButtonGroupText",
+      "do_instead": "Place the control as its own direct child of the ButtonGroup; the text segment is a static plate, not a container for controls"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "useRender's render prop takes an element or a function of the text segment's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A caption joined to the actions it introduces",
+        "code": "<ButtonGroup aria-label=\"Sort order\">\n  <ButtonGroupText>Sort</ButtonGroupText>\n  <Button variant=\"outline\">Newest first</Button>\n  <Button variant=\"outline\">Oldest first</Button>\n</ButtonGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A button placed inside the text segment",
+        "code": "<ButtonGroup>\n  <ButtonGroupText>Sort <Button>Newest</Button></ButtonGroupText>\n</ButtonGroup>\n",
+        "why": "The Button is not a direct child of the group, so it is not joined, and it sits inside a muted plate meant for static text."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "button_group",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ButtonGroupText",
+    "type": "object",
+    "properties": {
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, {}> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. useRender's render prop takes an element or a function of the text segment's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

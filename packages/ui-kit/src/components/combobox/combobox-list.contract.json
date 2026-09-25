@@ -1,0 +1,120 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_list.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "combobox-list",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The scrolling listbox inside a Combobox's popup that renders the items left after filtering.",
+  "typical_uses": [
+    "The list of a combobox's filtered items, flat or in groups"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The message shown when no item matches the query",
+      "instead": {
+        "target": "ComboboxEmpty",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_empty.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_item.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_group.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_separator.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_collection.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "ComboboxContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_content.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "function-children-map-the-filtered-items",
+      "text": "When children is a function, the list calls it once for every item (or every group, when the root's `items` holds groups) left after filtering, with the item and its index; a node child is rendered as given, unfiltered."
+    },
+    {
+      "id": "listbox-role",
+      "text": "The list renders with role \"listbox\", and with `aria-multiselectable` when the root has `multiple`; with the root's `grid` it renders role \"grid\" instead."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "the primitive's Combobox.List sets role=\"listbox\" and aria-multiselectable; combobox.test.tsx asserts the popup is found by role listbox once opened and is absent while closed"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is either React nodes or a function of an item and its index returning React nodes",
+      "because": "`ReactNode | ((item: any, index: number) => ReactNode)` - the compiler emits one JSON type per property, and a function has no JSON Schema representation."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the list's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the list's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (empty). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through combobox.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A flat list rendered from the root's items",
+        "code": "<ComboboxList>\n  {(item) => (\n    <ComboboxItem key={item} value={item}>\n      {item}\n    </ComboboxItem>\n  )}\n</ComboboxList>\n"
+      },
+      {
+        "title": "Groups rendered from grouped items",
+        "code": "<ComboboxList>\n  {(group) => (\n    <ComboboxGroup key={group.value} items={group.items}>\n      <ComboboxLabel>{group.label}</ComboboxLabel>\n      <ComboboxCollection>\n        {(item) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}\n      </ComboboxCollection>\n    </ComboboxGroup>\n  )}\n</ComboboxList>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The no-results message put inside the list",
+        "code": "<ComboboxList>\n  <ComboboxEmpty>No regions found.</ComboboxEmpty>\n  <ComboboxItem value=\"europe\">Europe</ComboboxItem>\n</ComboboxList>\n",
+        "why": "ComboboxEmpty belongs beside the list, as a child of ComboboxContent; inside the listbox it becomes a non-option child of it."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "combobox",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ComboboxList",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "children": {
+        "description": "TS: ReactNode | ((item: any, index: number) => ReactNode). The compiler emits one JSON type per property; this type is left to tsc. children is either React nodes or a function of an item and its index returning React nodes. `ReactNode | ((item: any, index: number) => ReactNode)` - the compiler emits one JSON type per property, and a function has no JSON Schema representation."
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ComboboxListState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the list's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: ComboboxListState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the list's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (empty). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through combobox.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

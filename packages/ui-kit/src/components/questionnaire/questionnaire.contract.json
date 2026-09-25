@@ -1,0 +1,175 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "questionnaire",
+  "forwards_to": "gts.frontx.uikit.element.dom_form.v1~",
+  "intent": "A form that asks one question at a time, tracks which item is current and whether each is answered or skipped, and validates an item before the user may move past it.",
+  "typical_uses": [
+    "A short onboarding or setup flow answered one question per step",
+    "A survey whose questions are single choice, multiple choice or a short freeform answer"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Several related fields the user benefits from seeing together (an address, a profile)",
+      "instead": {
+        "target": "FieldSet",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_set.v1"
+      }
+    },
+    {
+      "situation": "One single-choice question inside an ordinary page or form",
+      "instead": {
+        "target": "RadioGroup",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group.v1"
+      }
+    },
+    {
+      "situation": "Steps that each hold a whole form or arbitrary content rather than one question",
+      "instead": {
+        "target": "the application's own step flow around separate forms",
+        "note": "The kit ships no generic stepper. A Questionnaire item holds one question (a title, choices or a short text answer), and its validation only knows answered, skipped and unanswered."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_progress.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_item.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_actions.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "item-wins-over-default-item",
+      "text": "`item` and `defaultItem` are both accepted; `defaultItem` seeds the initial state and is ignored afterwards, and when `item` is given it wins and the component follows it on every render; a form reset returns to `defaultItem`."
+    },
+    {
+      "id": "items-define-the-flow",
+      "text": "When `items` is given it decides which questions exist, their order and which choice gets which shortcut, and the root reads each entry's `required` for Skip's visibility; a rendered QuestionnaireItem whose name is missing from it is left out of the flow. Without `items` the flow is the rendered, enabled QuestionnaireItems in document order. Outside production builds the root logs a console warning for every mismatch between `items` and what is rendered."
+    },
+    {
+      "id": "submit-validates-every-item",
+      "text": "Submitting validates the enabled items in order and stops at the first that fails: the submit event is cancelled, that item becomes current and its first answer control takes focus; `onSubmit` is called only once every item passes."
+    },
+    {
+      "id": "native-validation-off-by-default",
+      "text": "`noValidate` defaults to true, so the browser's own constraint bubbles never show; the questionnaire's answered/skipped validation runs either way, and `noValidate={false}` adds the native constraint check on the item's controls on top of it."
+    },
+    {
+      "id": "parts-need-their-context",
+      "text": "Each part reads context and throws when mounted outside it: QuestionnaireProgress, QuestionnaireItem and the four navigation buttons need a Questionnaire; QuestionnaireTitle, QuestionnaireDescription, QuestionnaireChoices, QuestionnaireChoice, QuestionnaireInput and QuestionnaireError need a QuestionnaireItem; QuestionnaireChoiceInput, QuestionnaireChoiceLabel and QuestionnaireChoiceShortcut need a QuestionnaireChoice. QuestionnaireActions and QuestionnaireChoiceDescription are plain elements and read none."
+    },
+    {
+      "id": "root-owns-the-keyboard",
+      "text": "The root handles keys for the current item: Cmd/Ctrl+Enter validates and continues from anywhere inside it, submitting on the last item; Enter on a checked choice or a filled text field does the same; ArrowUp/ArrowDown move between the item's answers; ArrowLeft goes to the previous item and ArrowRight to the next once the current one is answered or skipped, both only while focus is outside a text field and a radio; with `shortcuts` a letter or number key checks the matching radio, or toggles the matching checkbox, without advancing."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Leave the built-in English copy in a localized interface",
+      "do_instead": "Pass children to QuestionnaireError and each navigation button, and children, an `aria-label` and an `aria-valuetext` to QuestionnaireProgress; their defaults (\"Question 1 of 3\", \"Questionnaire progress\", \"Choose an answer to continue.\", \"Choose an answer or skip this question.\", \"Previous\", \"Skip\", \"Next\", \"Submit\") are fixed English strings inside the engine"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "questionnaire.test.tsx asserts that only the current item's fieldset is shown while a later one has the hidden property and the inert attribute, and that a blocked Next keeps the item current and shows a role=\"alert\" message"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "items": {
+      "states": "items is a list of question definitions, each with a name and optional choices, required and disabled",
+      "because": "`readonly QuestionnaireItemDefinition[]` where each entry is `{ name: string; choices?: readonly { value: string; disabled?: boolean }[]; required?: boolean; disabled?: boolean }`; the nested object shape is left to tsc."
+    },
+    "onItemChange": {
+      "states": "onItemChange is a callback, not a value",
+      "because": "A function type has no JSON Schema representation. It is `(item: string) => void`, called with the name of the item the flow moves to."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A required single-choice item, then an optional multiple-choice item",
+        "code": "<Questionnaire\n  items={[\n    { name: 'role', choices: [{ value: 'engineer' }, { value: 'designer' }], required: true },\n    { name: 'tools', choices: [{ value: 'cli' }, { value: 'editor' }] },\n  ]}\n  defaultItem=\"role\"\n  shortcuts=\"letters\"\n  onSubmit={handleSubmit}\n>\n  <QuestionnaireProgress />\n  <QuestionnaireItem name=\"role\" required>\n    <QuestionnaireTitle>What is your role?</QuestionnaireTitle>\n    <QuestionnaireChoices>\n      <QuestionnaireChoice value=\"engineer\">Engineer</QuestionnaireChoice>\n      <QuestionnaireChoice value=\"designer\">Designer</QuestionnaireChoice>\n    </QuestionnaireChoices>\n    <QuestionnaireError />\n  </QuestionnaireItem>\n  <QuestionnaireItem name=\"tools\" multiple>\n    <QuestionnaireTitle>Which tools do you use?</QuestionnaireTitle>\n    <QuestionnaireChoices>\n      <QuestionnaireChoice value=\"cli\">CLI</QuestionnaireChoice>\n      <QuestionnaireChoice value=\"editor\">Editor</QuestionnaireChoice>\n    </QuestionnaireChoices>\n    <QuestionnaireError />\n  </QuestionnaireItem>\n  <QuestionnaireActions>\n    <QuestionnairePrevious />\n    <QuestionnaireSkip />\n    <QuestionnaireNext />\n    <QuestionnaireSubmit />\n  </QuestionnaireActions>\n</Questionnaire>\n"
+      },
+      {
+        "title": "The current item controlled by the caller",
+        "code": "<Questionnaire items={items} item={current} onItemChange={setCurrent}>\n  {children}\n</Questionnaire>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Only the current item mounted",
+        "code": "<Questionnaire items={items} item={current} onItemChange={setCurrent}>\n  {current === 'role' && <QuestionnaireItem name=\"role\" required>{roleQuestion}</QuestionnaireItem>}\n  {current === 'tools' && <QuestionnaireItem name=\"tools\" multiple>{toolsQuestion}</QuestionnaireItem>}\n</Questionnaire>\n",
+        "why": "Every QuestionnaireItem stays mounted and the root hides the inactive ones. An item rendered only while current takes its inputs out of the form, so the submitted FormData holds only the last item's answer and submitting cannot re-validate the others."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "questionnaire",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_actions.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_choice.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_choice_description.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_choice_input.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_choice_label.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_choice_shortcut.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_choices.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_description.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_error.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_input.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_item.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_next.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_previous.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_progress.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_skip.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_submit.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_title.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Questionnaire",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "defaultItem": {
+        "type": "string"
+      },
+      "item": {
+        "type": "string"
+      },
+      "items": {
+        "type": "array",
+        "description": "TS: readonly QuestionnaireItemDefinition[] | undefined. Not fully expressible in JSON Schema; what the type states beyond the kind above is checked by tsc. items is a list of question definitions, each with a name and optional choices, required and disabled. `readonly QuestionnaireItemDefinition[]` where each entry is `{ name: string; choices?: readonly { value: string; disabled?: boolean }[]; required?: boolean; disabled?: boolean }`; the nested object shape is left to tsc."
+      },
+      "onItemChange": {
+        "description": "TS: ((item: string) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onItemChange is a callback, not a value. A function type has no JSON Schema representation. It is `(item: string) => void`, called with the name of the item the flow moves to."
+      },
+      "shortcuts": {
+        "type": "string",
+        "enum": [
+          "letters",
+          "numbers"
+        ]
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

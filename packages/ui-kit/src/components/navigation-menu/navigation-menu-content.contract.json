@@ -1,0 +1,129 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "navigation-menu-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The panel of one NavigationMenuItem, shown in the menu's shared popup while that item is open.",
+  "typical_uses": [
+    "A panel of links, grouped or laid out in columns, behind a top-level trigger"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A floating panel with fields or controls, anchored to a button",
+      "instead": {
+        "target": "PopoverContent",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.popover_content.v1"
+      }
+    },
+    {
+      "situation": "The popup of a menu of actions",
+      "instead": {
+        "target": "DropdownMenuContent",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_content.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "NavigationMenuItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu_item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "portalled-into-the-shared-viewport",
+      "text": "The content is not rendered where it is written: while its item is open it is portalled into the one NavigationMenuViewport the root renders inside its shared popup, and switching to another item swaps that content out for the other item's."
+    },
+    {
+      "id": "rendered-only-while-open",
+      "text": "The content is in the DOM only while its item is open or animating closed, unless `keepMounted` is given, which keeps it mounted and hidden while closed."
+    },
+    {
+      "id": "sized-to-its-own-content",
+      "text": "navigation-menu.module.css sizes the content to its own width (`max-content`) and the popup follows the active content's measured size, so the panel's layout, not the popup, decides how wide it is."
+    },
+    {
+      "id": "slides-with-the-activation-direction",
+      "text": "When the open item changes in a horizontal menu, the outgoing and incoming contents fade and slide in the direction the popup moved; under `prefers-reduced-motion` navigation-menu.module.css drops the slide transition and keeps the fade. A vertical menu fades only."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Place a NavigationMenuContent outside a NavigationMenuItem, or give an item two of them",
+      "do_instead": "Give every trigger's item exactly one content; the content opens with its own item's value"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the content's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the content's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, transitionStatus, activationDirection). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through navigation-menu.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A panel of two links",
+        "code": "<NavigationMenuItem>\n  <NavigationMenuTrigger>Products</NavigationMenuTrigger>\n  <NavigationMenuContent>\n    <NavigationMenuLink href=\"/products/a\">Product A</NavigationMenuLink>\n    <NavigationMenuLink href=\"/products/b\">Product B</NavigationMenuLink>\n  </NavigationMenuContent>\n</NavigationMenuItem>\n"
+      },
+      {
+        "title": "A panel kept in the DOM while closed",
+        "code": "<NavigationMenuItem>\n  <NavigationMenuTrigger>Docs</NavigationMenuTrigger>\n  <NavigationMenuContent keepMounted>\n    <NavigationMenuLink href=\"/docs/start\">Getting started</NavigationMenuLink>\n  </NavigationMenuContent>\n</NavigationMenuItem>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Open state passed to the content",
+        "code": "<NavigationMenuItem>\n  <NavigationMenuTrigger>Products</NavigationMenuTrigger>\n  <NavigationMenuContent forceMount>\n    <NavigationMenuLink href=\"/products/a\">Product A</NavigationMenuLink>\n  </NavigationMenuContent>\n</NavigationMenuItem>\n",
+        "why": "The content takes no `forceMount`, a prop of an older library; to keep a closed panel in the DOM pass `keepMounted`, and to open it drive the root's `value`."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "navigation_menu",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit NavigationMenuContent",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "keepMounted": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, NavigationMenuContentState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the content's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: NavigationMenuContentState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the content's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, transitionStatus, activationDirection). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through navigation-menu.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,131 @@
+# Semantic overlay for Message (the root) - the hand-written half of one of
+# five contracts describing this family. The parts are message-avatar,
+# message-content, message-header and message-footer; `family_membership`
+# below is how a reader (or the conformance test) walks between them.
+# MessageGroup, the sixth export of this directory, wraps whole Message rows
+# and is therefore not a part of the family it wraps (see
+# message-group.contract.yaml); the root's `mounted_in` is filled from the
+# group's accepted components.
+#
+# Machine-extractable facts (prop list, defaults, forwarded surface) do NOT
+# belong here: the compiler takes those from message.tsx and rejects an
+# overlay that restates them. Message wraps no primitive (every export is a
+# plain styled div), and its one kit prop, `align`, is a string union the
+# schema states fully, so no member carries prop_statements.
+component: message
+
+intent: Lay out one message of a conversation as a row, placing an avatar beside a column that holds the message's header, visible surface and footer, on the side the message belongs to.
+
+typical_uses:
+  - One message in a conversation thread, from either side, with or without an avatar
+  - A message that carries a sender name above it or a status line or actions below it
+
+dont_use_when:
+  - situation: The visible surface of the message itself, its fill, frame and text
+    instead:
+      target: Bubble, placed inside MessageContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.bubble.v1
+  - situation: A one-line status or event in the conversation with no avatar, header or footer
+    instead:
+      target: Marker
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.marker.v1
+  - situation: The scrolling frame around a whole transcript
+    instead:
+      target: MessageScroller
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller.v1
+  - situation: A file or image attached to a message
+    instead:
+      target: Attachment
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.attachment.v1
+
+# The ONE authored statement of a nesting relationship: the compiler fills
+# every other contract's `mounted_in` from lists like this one. The row
+# hosts the avatar slot and the content column; the header, the surface and
+# the footer go inside the column. No text flag: a row's text belongs in
+# its parts.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.message_avatar.v1 # MessageAvatar
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.message_content.v1 # MessageContent
+
+invariants:
+  - id: align-is-stamped-as-data-align
+    text: >-
+      `align` is written to the row as `data-align` and is the only
+      alignment input of the family; no part takes an `align` of its own,
+      each reacts to the row's attribute through message.module.css. A
+      Bubble inside the row takes its own `align`, which the row does not
+      set; the Bubble's notched speaker-side corner follows the Bubble's own
+      `align`, so an end-side row needs `align="end"` on its Bubble as well.
+  - id: end-alignment-mirrors-the-row
+    text: >-
+      With `align="end"` the row lays its children out in reverse
+      (`flex-direction: row-reverse`), so a MessageAvatar written first sits
+      after MessageContent on the inline axis, and every direct child of a
+      MessageContent inside the row aligns to the end edge.
+  - id: no-role-or-live-region
+    text: >-
+      Message and every part render a plain div with no role, no aria
+      attribute and no live region of their own; a message appearing
+      announces nothing to assistive tech.
+
+anti_patterns: []
+
+deprecations: {}
+
+# message.test.tsx asserts the rendered tag, the classes, data-align and that
+# a consumer aria-label is forwarded; nothing asserts how assistive
+# technology reads a row, and nothing renders it right to left.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A message from the other side with an avatar, a sender name and a status line
+      code: |
+        <Message>
+          <MessageAvatar>
+            <Avatar>
+              <AvatarFallback>AS</AvatarFallback>
+            </Avatar>
+          </MessageAvatar>
+          <MessageContent>
+            <MessageHeader>Assistant</MessageHeader>
+            <Bubble>
+              <BubbleContent>How can I help you today?</BubbleContent>
+            </Bubble>
+            <MessageFooter>Delivered</MessageFooter>
+          </MessageContent>
+        </Message>
+    - title: The current user's own message on the end side
+      code: |
+        <Message align="end">
+          <MessageContent>
+            <Bubble variant="secondary" align="end">
+              <BubbleContent>What did the last deploy change?</BubbleContent>
+            </Bubble>
+          </MessageContent>
+        </Message>
+  bad:
+    - title: The sender name written as a direct child of the row
+      code: |
+        <Message>
+          <MessageHeader>Assistant</MessageHeader>
+          <MessageContent>
+            <Bubble>
+              <BubbleContent>How can I help you today?</BubbleContent>
+            </Bubble>
+          </MessageContent>
+        </Message>
+      why: >-
+        Message is a flex row, so the header is laid out to the side of the
+        content column rather than above the bubble; inside MessageContent it
+        stacks above the surface.
+
+family_membership:
+  name: message
+  role: root

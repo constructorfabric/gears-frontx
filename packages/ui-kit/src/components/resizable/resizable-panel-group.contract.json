@@ -1,0 +1,192 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.resizable_panel_group.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "resizable-panel-group",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Lay out two or more panels side by side or stacked, with draggable handles between them that let the user resize the panels.",
+  "typical_uses": [
+    "A split view whose panes the user sizes directly, such as a list beside a detail view",
+    "A multi-pane workspace with both horizontal and vertical splits"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A layout with fixed proportions that the user never resizes",
+      "instead": {
+        "target": "a plain flex or grid container styled by the application",
+        "note": "The group only adds value through its handles; without them it is a flex container with the library's layout bookkeeping on top."
+      }
+    },
+    {
+      "situation": "A side navigation that opens and closes from a toggle rather than being dragged to a size",
+      "instead": {
+        "target": "Sidebar",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.resizable_panel.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.resizable_handle.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "parts-are-direct-children",
+      "text": "Panels and handles must be direct DOM children of the group's element, as the wrapped library requires; a wrapper element between the group and a panel or handle breaks that requirement."
+    },
+    {
+      "id": "orientation-sets-inline-layout",
+      "text": "The group renders a div whose inline `display: flex`, `flex-direction` (row for `orientation=\"horizontal\"`, the default, column for `vertical`) and `flex-wrap: nowrap` are set from `orientation` after `style` is applied, so neither `style` nor `className` can change them. Its inline width and height default to 100% of the parent and its overflow to hidden; `style` may override those three."
+    },
+    {
+      "id": "layout-is-seeded-not-controlled",
+      "text": "There is no controlled layout prop: `defaultLayout` seeds the panel sizes, keyed by each panel's `id`; later changes are reported through `onLayoutChange` while they happen and `onLayoutChanged` once they settle, and are set from outside only through the imperative handle on `groupRef`."
+    },
+    {
+      "id": "test-id-follows-id",
+      "text": "The group, every panel and every handle write their resolved `id` into `data-testid` after the consumer's attributes, so a consumer `data-testid` is overwritten."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Pass `data-testid` to the group or its parts to find them in a test",
+      "do_instead": "Pass `id` and query by it, or query a handle by its separator role"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children are the group's panels and the handles between them",
+      "because": "`ReactNode` covers elements, strings, arrays and more, and the compiler emits one JSON type per property; which components belong here is stated by `accepts`."
+    },
+    "defaultLayout": {
+      "states": "defaultLayout is an object mapping each panel's `id` to its starting size",
+      "because": "The library's `Layout` is `{ [id: string]: number }`, a map keyed by panel ids the caller chooses; the compiler leaves the named type to tsc."
+    },
+    "elementRef": {
+      "states": "elementRef is a ref to the group's div element",
+      "because": "`Ref<HTMLDivElement | null>` is a union of a ref object and a callback function - the compiler emits one JSON type per property."
+    },
+    "groupRef": {
+      "states": "groupRef receives the group's imperative handle, with getLayout and setLayout",
+      "because": "`Ref<GroupImperativeHandle | null>` is a ref object or a callback holding an object of functions, which no JSON Schema type covers."
+    },
+    "onLayoutChange": {
+      "states": "onLayoutChange is a callback called with the layout on every change while the user drags or presses a resize key, not a value",
+      "because": "`(layout: Layout) => void` - a function, which no JSON Schema type covers."
+    },
+    "onLayoutChanged": {
+      "states": "onLayoutChanged is a callback called with the layout and a meta object once a change settles, not a value",
+      "because": "`(layout: Layout, meta: LayoutChangedMeta) => void`, where `meta.isUserInteraction` tells a pointer or keyboard resize from any other cause - a function, which no JSON Schema type covers."
+    },
+    "resizeTargetMinimumSize": {
+      "states": "resizeTargetMinimumSize is an object with a `coarse` and a `fine` number, the minimum hit-target size for touch and for mouse input",
+      "because": "`{ coarse: number; fine: number }` is an inline object type, which the compiler leaves to tsc."
+    },
+    "style": {
+      "states": "style is a plain style object applied inline to the group's div",
+      "because": "`CSSProperties` is React's style object type, which the compiler leaves to tsc. The group sets `display`, `flex-direction` and `flex-wrap` after it, so those three cannot be overridden; the kit's own styling goes through resizable.module.css."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A two-panel horizontal split with a visible grip",
+        "code": "<ResizablePanelGroup style={{ height: 300 }}>\n  <ResizablePanel defaultSize=\"30%\" minSize=\"20%\">Sidebar</ResizablePanel>\n  <ResizableHandle withHandle />\n  <ResizablePanel>Content</ResizablePanel>\n</ResizablePanelGroup>\n"
+      },
+      {
+        "title": "A vertical split nested inside one panel of a horizontal split",
+        "code": "<ResizablePanelGroup style={{ height: 300 }}>\n  <ResizablePanel defaultSize=\"30%\">Sidebar</ResizablePanel>\n  <ResizableHandle />\n  <ResizablePanel>\n    <ResizablePanelGroup orientation=\"vertical\">\n      <ResizablePanel>Editor</ResizablePanel>\n      <ResizableHandle />\n      <ResizablePanel defaultSize=\"25%\">Console</ResizablePanel>\n    </ResizablePanelGroup>\n  </ResizablePanel>\n</ResizablePanelGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The orientation prop name of an older library version",
+        "code": "<ResizablePanelGroup direction=\"vertical\">\n  <ResizablePanel>Top</ResizablePanel>\n  <ResizableHandle />\n  <ResizablePanel>Bottom</ResizablePanel>\n</ResizablePanelGroup>\n",
+        "why": "The group takes `orientation`, not `direction`; an unknown `direction` lands on the div as an attribute and the panels stay side by side."
+      },
+      {
+        "title": "A panel wrapped in an extra element",
+        "code": "<ResizablePanelGroup>\n  <div><ResizablePanel>Left</ResizablePanel></div>\n  <ResizableHandle />\n  <ResizablePanel>Right</ResizablePanel>\n</ResizablePanelGroup>\n",
+        "why": "Panels and handles must be direct children of the group's element."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "resizable",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.resizable_handle.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.resizable_panel.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ResizablePanelGroup",
+    "type": "object",
+    "properties": {
+      "children": {
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children are the group's panels and the handles between them. `ReactNode` covers elements, strings, arrays and more, and the compiler emits one JSON type per property; which components belong here is stated by `accepts`."
+      },
+      "className": {
+        "type": "string"
+      },
+      "defaultLayout": {
+        "description": "TS: ResizablePrimitive.Layout | undefined. The compiler emits one JSON type per property; this type is left to tsc. defaultLayout is an object mapping each panel's `id` to its starting size. The library's `Layout` is `{ [id: string]: number }`, a map keyed by panel ids the caller chooses; the compiler leaves the named type to tsc."
+      },
+      "disableCursor": {
+        "type": "boolean"
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "elementRef": {
+        "description": "TS: Ref<HTMLDivElement | null> | undefined. The compiler emits one JSON type per property; this type is left to tsc. elementRef is a ref to the group's div element. `Ref<HTMLDivElement | null>` is a union of a ref object and a callback function - the compiler emits one JSON type per property."
+      },
+      "groupRef": {
+        "description": "TS: Ref<ResizablePrimitive.GroupImperativeHandle | null> | undefined. The compiler emits one JSON type per property; this type is left to tsc. groupRef receives the group's imperative handle, with getLayout and setLayout. `Ref<GroupImperativeHandle | null>` is a ref object or a callback holding an object of functions, which no JSON Schema type covers."
+      },
+      "id": {
+        "type": "string"
+      },
+      "onLayoutChange": {
+        "description": "TS: ((layout: ResizablePrimitive.Layout) => void | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onLayoutChange is a callback called with the layout on every change while the user drags or presses a resize key, not a value. `(layout: Layout) => void` - a function, which no JSON Schema type covers."
+      },
+      "onLayoutChanged": {
+        "description": "TS: ((layout: ResizablePrimitive.Layout, meta: ResizablePrimitive.LayoutChangedMeta) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onLayoutChanged is a callback called with the layout and a meta object once a change settles, not a value. `(layout: Layout, meta: LayoutChangedMeta) => void`, where `meta.isUserInteraction` tells a pointer or keyboard resize from any other cause - a function, which no JSON Schema type covers."
+      },
+      "orientation": {
+        "type": "string",
+        "enum": [
+          "horizontal",
+          "vertical"
+        ]
+      },
+      "resizeTargetMinimumSize": {
+        "description": "TS: { coarse: number; fine: number; } | undefined. The compiler emits one JSON type per property; this type is left to tsc. resizeTargetMinimumSize is an object with a `coarse` and a `fine` number, the minimum hit-target size for touch and for mouse input. `{ coarse: number; fine: number }` is an inline object type, which the compiler leaves to tsc."
+      },
+      "style": {
+        "description": "TS: CSSProperties | undefined. The compiler emits one JSON type per property; this type is left to tsc. style is a plain style object applied inline to the group's div. `CSSProperties` is React's style object type, which the compiler leaves to tsc. The group sets `display`, `flex-direction` and `flex-wrap` after it, so those three cannot be overridden; the kit's own styling goes through resizable.module.css."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

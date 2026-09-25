@@ -1,0 +1,59 @@
+# Semantic overlay for BreadcrumbItem - part of the Breadcrumb family, see
+# breadcrumb.contract.yaml. `mounted_in` is filled from BreadcrumbList's
+# own accepted components, not authored here.
+component: breadcrumb-item
+
+intent: Hold one crumb of a breadcrumb trail - an ancestor link, the current page or the collapsed-levels ellipsis.
+
+typical_uses:
+  - One level of the trail, holding exactly one link, page or ellipsis
+
+dont_use_when:
+  - situation: One page item inside a Pagination
+    instead:
+      target: PaginationItem
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_item.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_link.v1 # BreadcrumbLink
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_page.v1 # BreadcrumbPage
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_ellipsis.v1 # BreadcrumbEllipsis
+
+invariants:
+  - id: inline-row-of-its-children
+    text: >-
+      The item renders an `li` laid out as an inline flex row that centers
+      its children and spaces them var(--space-1) apart
+      (breadcrumb.module.css `.item`); it adds no role or aria attribute
+      of its own.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: An ancestor crumb
+      code: |
+        <BreadcrumbItem>
+          <BreadcrumbLink href="/reports">Reports</BreadcrumbLink>
+        </BreadcrumbItem>
+  bad:
+    - title: Plain text as a crumb
+      code: <BreadcrumbItem>Reports</BreadcrumbItem>
+      why: >-
+        Bare text gets neither the link styling of BreadcrumbLink nor the
+        current-page semantics of BreadcrumbPage; wrap an ancestor in
+        BreadcrumbLink and the current page in BreadcrumbPage.
+
+family_membership:
+  name: breadcrumb
+  role: part

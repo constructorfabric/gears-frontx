@@ -1,0 +1,82 @@
+# Semantic overlay for MessageScrollerItem - part of the MessageScroller
+# family, see message-scroller.contract.yaml's `family_membership`.
+component: message-scroller-item
+
+intent: Wrap one message of the transcript so the scroller can target it by id, track whether it is in view and anchor the view to it.
+
+typical_uses:
+  - One message row of a transcript, identified by its `messageId`
+  - The newest turn, marked with `scrollAnchor` so it is brought to the top of the view when it arrives
+
+dont_use_when:
+  - situation: The layout of the message itself, its avatar, side, header and footer
+    instead:
+      target: Message, placed inside the item
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.message.v1
+
+# The item is a plain div around whatever one message renders: a Message row,
+# a MessageGroup, a Marker or any other content.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: stamps-id-and-anchor
+    text: >-
+      The item renders `data-message-id` from `messageId` and
+      `data-scroll-anchor` as `"true"` or `"false"` from `scrollAnchor`; only
+      an item with a `messageId` can be reached by `scrollToMessage` or
+      reported by useMessageScrollerVisibility.
+  - id: new-anchor-aligns-to-the-top
+    text: >-
+      When newly appended items include ones carrying `scrollAnchor`, the
+      scroller aligns the first of them to the top of the viewport, leaving the
+      provider's `scrollMargin` plus `scrollPreviousItemPeek` pixels of the
+      content before it in view, and sizes the spacer so the position is
+      reachable; this holds with `autoScroll` on too, except that more than
+      one new anchored item arriving together while the scroller follows
+      the end scrolls to the end instead. The scroller reacts to items being
+      added or removed, not to `scrollAnchor` changing on an item already
+      mounted.
+
+anti_patterns:
+  - dont: Mark every item with `scrollAnchor` expecting the view to follow the end
+    do_instead: >-
+      Mark only the turns that should be brought to the top when they arrive,
+      and call `scrollToEnd` from useMessageScroller where the end is the
+      wanted position
+
+deprecations: {}
+
+# message-scroller.test.tsx asserts data-message-id and data-scroll-anchor
+# only; the item has no role and nothing asserts how it is read.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: An item holding a Message row
+      code: |
+        <MessageScrollerItem messageId={message.id}>
+          <Message>
+            <MessageContent>
+              <Bubble>
+                <BubbleContent>{message.text}</BubbleContent>
+              </Bubble>
+            </MessageContent>
+          </Message>
+        </MessageScrollerItem>
+  bad:
+    - title: An item without an id, expected to be reached by scrollToMessage
+      code: |
+        <MessageScrollerItem key={message.id}>{message.text}</MessageScrollerItem>
+      why: >-
+        `key` is React's and never reaches the item; without `messageId` the
+        item is not registered, so `scrollToMessage(message.id)` cannot find
+        it.
+
+family_membership:
+  name: message_scroller
+  role: part

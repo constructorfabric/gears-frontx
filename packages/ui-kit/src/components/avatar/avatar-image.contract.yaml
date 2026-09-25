@@ -1,0 +1,119 @@
+# Semantic overlay for AvatarImage - a part of the avatar family, see
+# avatar.contract.yaml's `family_membership` for how the four contracts
+# relate.
+component: avatar-image
+
+intent: The picture inside an Avatar, rendered only once it has loaded.
+
+typical_uses:
+  - A person's or account's profile picture inside an Avatar
+
+dont_use_when:
+  - situation: A picture that is not someone's avatar
+    instead:
+      target: a plain img element
+      note: >-
+        AvatarImage renders nothing until a separate load succeeds and
+        requires an Avatar root around it; an ordinary image needs neither.
+
+# An img element takes no children.
+accepts:
+  content: nothing
+
+invariants:
+  - id: rendered-only-once-loaded
+    text: >-
+      The img enters the DOM only when the load status becomes loaded;
+      while the image is idle, loading or has failed AvatarImage renders
+      nothing. When the status leaves loaded the img carries
+      `data-ending-style` and is removed once its animations finish, and
+      avatar.module.css declares none on it.
+  - id: load-probed-off-screen
+    text: >-
+      The load status comes from a separate `window.Image` the primitive
+      creates with the same `src`, `srcSet`, `sizes`, `crossOrigin` and
+      `referrerPolicy`, not from the rendered img; with neither `src` nor
+      `srcSet` the status is error at once.
+  - id: source-change-reloads
+    text: >-
+      Changing `src`, `srcSet`, `sizes`, `crossOrigin` or `referrerPolicy`
+      starts a new load: the status goes back to loading and the fallback
+      shows until the new load succeeds, except for an image the browser
+      already has cached, which reports loaded in the same pass.
+  - id: status-callback-never-reports-idle
+    text: >-
+      `onLoadingStatusChange` is called with loading, loaded or error as the
+      status changes; it is never called with idle, including when the
+      AvatarImage unmounts and the root's status returns to idle.
+
+anti_patterns:
+  - dont: Style or animate the img expecting it to be present while it loads
+    do_instead: >-
+      Style the loading state on AvatarFallback - the img does not exist
+      until the load has succeeded
+
+deprecations: {}
+
+# The primitive renders a native img and forwards `alt` to it;
+# avatar.test.tsx finds the loaded image with getByAltText('Jane Doe') and
+# asserts that no image with that alt text exists after a failed load.
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Avatar.Image renders a native img carrying the
+      consumer's `alt`; avatar.test.tsx asserts getByAltText('Jane Doe')
+      finds it once loaded ("hides the fallback and renders the image once
+      it loads") and queryByAltText('Jane Doe') is null after a failed load
+      ("falls back when the image fails to load")
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  onLoadingStatusChange:
+    states: onLoadingStatusChange is a callback called with the image's new load status, not a value
+    because: >-
+      `(status: ImageLoadingStatus) => void` - a function, which no JSON
+      Schema type covers.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the image's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the image's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (imageLoadingStatus, transitionStatus). The compiler emits one JSON type per property, so nothing is
+      asserted; the kit's own styling goes through avatar.module.css, not
+      through this.
+
+examples:
+  good:
+    - title: A picture with its fallback
+      code: |
+        <Avatar>
+          <AvatarImage src="/jane.jpg" alt="Jane Doe" />
+          <AvatarFallback>JD</AvatarFallback>
+        </Avatar>
+    - title: Reacting to a failed load
+      code: |
+        <Avatar>
+          <AvatarImage
+            src={user.pictureUrl}
+            alt={user.name}
+            onLoadingStatusChange={(status) => status === 'error' && reportMissingPicture(user.id)}
+          />
+          <AvatarFallback>{user.initials}</AvatarFallback>
+        </Avatar>
+  bad:
+    - title: An image with no Avatar root around it
+      code: <AvatarImage src="/jane.jpg" alt="Jane Doe" />
+      why: >-
+        The primitive's Avatar.Image reads the root's context to report its
+        load status and throws when no Avatar is above it.
+
+family_membership:
+  name: avatar
+  role: part

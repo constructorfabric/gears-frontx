@@ -1,0 +1,192 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.status_dot.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "status-dot",
+  "forwards_to": "gts.frontx.uikit.element.dom_span.v1~",
+  "intent": "Report the state of something that is not an action, as a small round dot with an optional label in the same tone.",
+  "typical_uses": [
+    "A one-word state in a dense row or a table cell (running, failed, degraded)",
+    "A bare dot in a cell whose column header already names what it reports, named with aria-label"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A status that needs a filled chip of its own, or sits alone as a column's whole content",
+      "instead": {
+        "target": "Badge, with its own `dot`",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.badge.v1"
+      }
+    },
+    {
+      "situation": "A full-width note row in a conversation thread, with an icon, a border or a divider",
+      "instead": {
+        "target": "Marker",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.marker.v1"
+      }
+    },
+    {
+      "situation": "A loading state with no settled value yet",
+      "instead": {
+        "target": "Spinner",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.spinner.v1"
+      }
+    },
+    {
+      "situation": "A status mark pinned to the corner of an avatar",
+      "instead": {
+        "target": "AvatarBadge",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar_badge.v1"
+      }
+    },
+    {
+      "situation": "A clickable status that performs an action",
+      "instead": {
+        "target": "Button",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "invariants": [
+    {
+      "id": "accessible-name-follows-the-label",
+      "text": "With a `label` that renders something the root adds no role and no `aria-hidden`: the label is the announcement. Without one, the root is `aria-hidden=\"true\"`, unless the caller passes `aria-label` or `aria-labelledby`, in which case the root takes `role=\"img\"` instead so that name reaches the accessibility tree. `false`, `null`, `undefined` and `\"\"` all count as no label. A `role` or `aria-hidden` the caller passes overrides either default, and the branches hold on whatever element `render` substitutes."
+    },
+    {
+      "id": "tone-paints-dot-and-label-together",
+      "text": "The tone class sets only `color` on the root; the dot fills from `currentColor` and the label inherits, so the two always share one tone. The resolved tone is reflected as `data-tone` on the root, and an explicit `tone={null}` resolves to neutral in both class and attribute."
+    },
+    {
+      "id": "live-pulses-only-the-dot-and-stops-under-reduced-motion",
+      "text": "`live` sets `data-live` on the root and breathes only the dot, on a 2s opacity cycle; the label keeps full opacity. Under `prefers-reduced-motion: reduce` the animation is removed outright, not slowed, and `data-live` stays on the root."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Set a colour on the component from outside",
+      "do_instead": "Pick the `tone`; it owns the dot and the label together, in both themes"
+    },
+    {
+      "dont": "Keep `live` on a status that has settled",
+      "do_instead": "Drop `live` once the state is final - a moving dot beside \"Completed\" reads as unfinished work"
+    },
+    {
+      "dont": "Wrap it in a button or a link to make the status clickable",
+      "do_instead": "`render` is for the wrapping element only, such as an `li` in a status list"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "failed",
+      "by": "theme.css token contrast measured with src/__test-utils__/contrast.ts: the tone colour the label is painted in reaches 3.44:1 for light `success`, 1.96:1 for light `warning` and 4.29:1 for light `danger` against the light --background (success 3.77:1 and warning 2.15:1 on the white --card; light `danger` is 4.29:1 on --background but 4.70:1 on --card), under the 4.5:1 WCAG 1.4.3 asks of the 12px label. A bare dot named with role=\"img\" is a graphic under WCAG 1.4.11 and light `warning` misses its 3:1 as well. The accessible-name branches themselves hold: status-dot.test.tsx asserts aria-hidden=\"true\" on a bare dot, role=\"img\" with the caller's aria-label or aria-labelledby, and no role or aria-hidden once a label is shown, also under `render`."
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "label": {
+      "states": "label is a React node, not a string",
+      "because": "`ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "useRender's render prop takes an element or a function that receives the props to spread (StatusDot passes no state of its own), so its type is a union of a React element and a callback - the compiler emits one JSON type per property. It is for the wrapping element, such as `render={<li />}` inside a status list."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "the dot span",
+      "reason": "status-dot.tsx always renders it as the root's first child, painted from the tone; it is not exported as a component of its own, and the only controls over it are `tone` and `live`."
+    },
+    {
+      "part": "the label span",
+      "reason": "status-dot.tsx renders it only when `label` renders something; it is not exported as a component of its own, and what goes in it is the `label` prop."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "A labelled status",
+        "code": "<StatusDot tone=\"success\" label=\"Running\" />"
+      },
+      {
+        "title": "A live status",
+        "code": "<StatusDot tone=\"info\" live label=\"Streaming\" />"
+      },
+      {
+        "title": "A bare dot named for assistive tech",
+        "code": "<StatusDot tone=\"warning\" aria-label=\"Degraded\" />"
+      },
+      {
+        "title": "As a list item in a status list",
+        "code": "<ul>\n  <StatusDot tone=\"success\" label=\"Running\" render={<li />} />\n</ul>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The label passed as children",
+        "code": "<StatusDot tone=\"success\">Running</StatusDot>",
+        "why": "StatusDot's props omit `children`, so tsc refuses this; forced through, the caller's children are merged after the component's own and replace the dot and label spans, and with no `label` the root is still hidden from assistive tech. The text goes in `label`."
+      },
+      {
+        "title": "A variant prop guessed from Badge",
+        "code": "<StatusDot variant=\"success\" label=\"Running\" />",
+        "why": "StatusDot's paint axis is `tone`, not `variant`; the guessed prop is forwarded to the span and the dot stays neutral."
+      }
+    ]
+  },
+  "companions": [
+    {
+      "export": "statusDotVariants",
+      "typed_by": "cva(...), returns (props: VariantProps<typeof statusDotVariants> & { className?: string }) => string",
+      "description": "The tone class-name builder StatusDot itself uses, exported beside the component."
+    }
+  ],
+  "x-uikit": {
+    "partially_typed_props": {
+      "label": {
+        "typeText": "ReactNode",
+        "optional": true
+      }
+    },
+    "variant_sources": [
+      "VariantProps<typeof statusDotVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit StatusDot",
+    "type": "object",
+    "properties": {
+      "tone": {
+        "type": "string",
+        "enum": [
+          "neutral",
+          "success",
+          "warning",
+          "danger",
+          "info"
+        ],
+        "default": "neutral"
+      },
+      "label": {
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. label is a React node, not a string. `ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+      },
+      "live": {
+        "type": "boolean",
+        "default": false
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, {}> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. useRender's render prop takes an element or a function that receives the props to spread (StatusDot passes no state of its own), so its type is a union of a React element and a callback - the compiler emits one JSON type per property. It is for the wrapping element, such as `render={<li />}` inside a status list."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

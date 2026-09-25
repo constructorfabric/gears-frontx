@@ -1,0 +1,83 @@
+# Semantic overlay for AspectRatio - the hand-written half of the contract.
+#
+# Machine-extractable facts (the prop list, requiredness, types) do NOT belong
+# here: the compiler takes those from aspect-ratio.tsx and rejects an overlay
+# that tries to restate them - one fact, one owner. This file carries only
+# what the code cannot express: intent, boundaries, invariants.
+component: aspect-ratio
+
+intent: Reserve a box at a fixed width-to-height ratio so the layout around it does not shift when its content loads.
+
+typical_uses:
+  - Holding space for an image, video or embed before it loads, so surrounding layout does not jump
+  - Tiles in a grid or gallery that must share one proportion regardless of each item's natural size
+
+# Each entry names the alternative - "don't" without "instead" is banned. The
+# kit ships no component for this case, so the note names the outside target
+# instead.
+dont_use_when:
+  - situation: Content with a natural, already-fixed size (a fixed-size icon or badge)
+    instead:
+      target: a plain wrapper element
+      note: >-
+        A ratio box buys nothing for content that does not stretch to fill it -
+        render the content directly. The kit ships no component for this case
+        beyond the plain element the host page already provides.
+
+# The box forwards children into a plain div untouched: whatever the consumer
+# renders may go inside and nothing examines it, so there is no text flag and
+# no component list to state - a narrower claim would describe a slot the code
+# does not have.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: consumer-style-merges-after-the-component
+    text: >-
+      A consumer's `style` is spread after the component's own inline
+      `--ratio`, so a `--ratio` key inside a consumer style silently
+      overrides the `ratio` prop.
+
+anti_patterns:
+  - dont: Expect the box to crop or scale the child to fit
+    do_instead: >-
+      Size the child to the box yourself (a full-size img with
+      `object-fit: cover`, for example); the box reserves proportions only
+
+deprecations: {}
+
+# The component renders a plain layout box with no roles, accessible names or
+# states of its own, and its unit suite asserts structure and style merging
+# only - nobody has checked an assistive-technology or directionality claim,
+# so both stay honest unknowns rather than borrowed verdicts.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+# Canonical snippets. `good` is what to copy, `bad` is what generation
+# actually produces when it guesses; every `bad` states why, because a
+# counter-example without its reason teaches the shape, not the rule.
+examples:
+  good:
+    - title: Holding space for a photo before it loads
+      code: >-
+        <AspectRatio ratio={16 / 9}><img src="/photo.jpg" alt="A description"
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></AspectRatio>
+    - title: Square tiles that share one proportion
+      code: >-
+        <AspectRatio ratio={1} className="tile"><img src="/thumb.jpg" alt=""
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></AspectRatio>
+  bad:
+    - title: Expecting the box to crop the child
+      code: >-
+        <AspectRatio ratio={4 / 3}><img src="/photo.jpg" alt="A photo" /></AspectRatio>
+      why: >-
+        Without sizing of its own the child does not fill the box, so the
+        reserved space shows through and an oversized image spills out.
+    - title: Ratio smuggled through a style key
+      code: >-
+        <AspectRatio ratio={16 / 9} style={{ '--ratio': 1 }}>content</AspectRatio>
+      why: >-
+        The style key wins over the `ratio` prop, so the box renders 1:1.

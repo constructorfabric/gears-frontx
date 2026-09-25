@@ -1,0 +1,70 @@
+# Semantic overlay for ItemActions - part of the item family, see
+# item.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from Item's accepted components.
+component: item-actions
+
+intent: Hold the controls at the end of an item row.
+
+typical_uses:
+  - One or more buttons, a switch or a menu trigger that act on the row
+
+dont_use_when:
+  - situation: One action beside a bounded panel's title
+    instead:
+      target: CardAction
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_action.v1
+
+# A button, a switch or a badge are all meaningful here, and the code
+# examines nothing about what is nested.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: centered-row-with-gap
+    text: >-
+      ItemActions is a flex row that centers its children vertically and
+      spaces them var(--space-2) apart; it does not push itself to the end
+      of the row, which is left to an ItemContent before it taking the free
+      width.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Two buttons at the end of a row
+      code: |
+        <Item>
+          <ItemContent>
+            <ItemTitle>Q3 report.pdf</ItemTitle>
+          </ItemContent>
+          <ItemActions>
+            <Button variant="outline" size="sm">Share</Button>
+            <Button size="sm">Download</Button>
+          </ItemActions>
+        </Item>
+  bad:
+    - title: Actions with no content column before them
+      code: |
+        <Item>
+          <ItemMedia variant="icon">
+            <FileIcon />
+          </ItemMedia>
+          <ItemActions>
+            <Button size="sm">Download</Button>
+          </ItemActions>
+        </Item>
+      why: >-
+        Without an ItemContent to take the free width, the actions sit right
+        after the media instead of at the end of the row.
+
+family_membership:
+  name: item
+  role: part

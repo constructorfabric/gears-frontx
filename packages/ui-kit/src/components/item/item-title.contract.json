@@ -1,0 +1,86 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.item_title.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "item-title",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Name what one item row is, in a single line.",
+  "typical_uses": [
+    "The one-line name of an Item, such as a file name or a person's name"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The headline of a bounded panel",
+      "instead": {
+        "target": "CardTitle",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_title.v1"
+      }
+    },
+    {
+      "situation": "The headline of a placeholder for a region with nothing to show",
+      "instead": {
+        "target": "EmptyTitle",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_title.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "ItemContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.item_content.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "one-line-clipped",
+      "text": "ItemTitle renders a div in the label weight that never wraps: it is as wide as its text up to the space available, and text past that width is clipped. It has no heading role."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A short name above its description",
+        "code": "<ItemContent>\n  <ItemTitle>Jane Doe</ItemTitle>\n  <ItemDescription>Owner</ItemDescription>\n</ItemContent>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The explanation folded into the title",
+        "code": "<ItemContent>\n  <ItemTitle>Jane Doe, owner of the workspace since March</ItemTitle>\n</ItemContent>\n",
+        "why": "ItemTitle stays on one line and clips what does not fit, so the end of the sentence is lost in a narrow row; the supporting text belongs in ItemDescription, which wraps to two lines."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "item",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ItemTitle",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

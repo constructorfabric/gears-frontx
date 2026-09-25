@@ -1,0 +1,231 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "combobox-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The popup of a Combobox, portalled and positioned against its field, holding the list and the no-results message.",
+  "typical_uses": [
+    "The popup that holds a combobox's ComboboxList and ComboboxEmpty"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A fixed list of options with no typed query",
+      "instead": {
+        "target": "SelectContent",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.select_content.v1"
+      }
+    },
+    {
+      "situation": "A floating panel with arbitrary content, not tied to a filterable field",
+      "instead": {
+        "target": "PopoverContent",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.popover_content.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_list.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_empty.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Combobox",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "rendered-only-while-open",
+      "text": "The popup is in the DOM only while the combobox is open or animating closed; the kit passes no `keepMounted` to the portal, so a closed combobox renders no popup."
+    },
+    {
+      "id": "portals-to-body-unless-container",
+      "text": "Without `container`, the popup portals into the node of the nearest enclosing portal, or the document body when there is none; a theme scoped to a subtree reaches the popup only when that subtree, or a node inside it, is passed as `container`."
+    },
+    {
+      "id": "anchored-to-the-input-unless-anchor",
+      "text": "Without `anchor`, the popup is placed against the combobox's input element; combobox.module.css makes it as wide as that anchor (at least 9rem) and no taller than the space available, and the list inside it scrolls."
+    },
+    {
+      "id": "reduced-motion-keeps-the-fade",
+      "text": "The popup fades and scales on open and close; under `prefers-reduced-motion` combobox.module.css drops the transform transition and keeps the fade."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Leave out `anchor` in a combobox whose field is ComboboxChips",
+      "do_instead": "Pass the ref from `useComboboxAnchor()` both to ComboboxChips and to this `anchor`, so the popup lines up with the whole chips field rather than with the inline input among the chips"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "container": {
+      "states": "container is the DOM node, shadow root or ref to one that the popup portals into; an explicit null renders no popup until a node is passed",
+      "because": "`HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null` - live DOM nodes and ref objects, which no JSON Schema type covers."
+    },
+    "anchor": {
+      "states": "anchor is the element, virtual element, ref or function returning one that the popup is placed against",
+      "because": "`Element | VirtualElement | RefObject<Element | null> | (() => Element | VirtualElement | null) | null` - live DOM nodes, refs and functions, which no JSON Schema type covers."
+    },
+    "sideOffset": {
+      "states": "sideOffset is the gap in pixels between the anchor and the popup, as a number or a function of side, align and both boxes' sizes",
+      "because": "`number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation."
+    },
+    "alignOffset": {
+      "states": "alignOffset is the shift in pixels along the alignment axis, as a number or a function of side, align and both boxes' sizes",
+      "because": "`number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation."
+    },
+    "collisionBoundary": {
+      "states": "collisionBoundary is the area the popup is kept inside, `clipping-ancestors`, an element, a list of elements or a rectangle",
+      "because": "`'clipping-ancestors' | Element | Element[] | Rect` mixes a string with live DOM elements, which no JSON Schema type covers."
+    },
+    "collisionPadding": {
+      "states": "collisionPadding is the space in pixels kept from the collision boundary, one number or a per-side object",
+      "because": "`number | { top?, right?, bottom?, left? }` - the compiler emits one JSON type per property."
+    },
+    "initialFocus": {
+      "states": "initialFocus decides what receives focus when the popup opens - false for nothing, true for the default, a ref, or a function of the interaction type",
+      "because": "`boolean | RefObject<HTMLElement | null> | ((openType) => boolean | void | HTMLElement | null)` mixes a boolean with refs and functions, which no JSON Schema type covers."
+    },
+    "finalFocus": {
+      "states": "finalFocus decides what receives focus when the popup closes - false for nothing, true for the default, a ref, or a function of the interaction type",
+      "because": "`boolean | RefObject<HTMLElement | null> | ((closeType) => boolean | void | HTMLElement | null)` mixes a boolean with refs and functions, which no JSON Schema type covers."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the popup's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the popup's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, side, align, anchorHidden, transitionStatus, empty). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through combobox.module.css, not through this."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "Combobox.Portal",
+      "reason": "Composed inside ComboboxContent; only its `container` is exposed, as ComboboxContent's own prop."
+    },
+    {
+      "part": "Combobox.Positioner",
+      "reason": "Composed inside ComboboxContent; its placement props are exposed on ComboboxContent itself."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "The list beside a no-results message",
+        "code": "<Combobox items={regions}>\n  <ComboboxInput aria-label=\"Region\" />\n  <ComboboxContent>\n    <ComboboxEmpty>No regions found.</ComboboxEmpty>\n    <ComboboxList>\n      {(item) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}\n    </ComboboxList>\n  </ComboboxContent>\n</Combobox>\n"
+      },
+      {
+        "title": "A popup portalled into a themed subtree",
+        "code": "<ComboboxContent container={themedSectionRef}>\n  <ComboboxList>\n    {(item) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}\n  </ComboboxList>\n</ComboboxContent>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Items placed straight into the popup",
+        "code": "<ComboboxContent>\n  <ComboboxItem value=\"europe\">Europe</ComboboxItem>\n  <ComboboxItem value=\"americas\">Americas</ComboboxItem>\n</ComboboxContent>\n",
+        "why": "ComboboxContent does not wrap its children in a list, so these items sit in no listbox and the list's padding and scrolling are lost; put them inside ComboboxList."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "combobox",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {
+      "container": {
+        "typeText": "HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null | undefined",
+        "optional": true
+      }
+    },
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ComboboxContent",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "container": {
+        "description": "Partially typed: HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null | undefined. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. container is the DOM node, shadow root or ref to one that the popup portals into; an explicit null renders no popup until a node is passed. `HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null` - live DOM nodes and ref objects, which no JSON Schema type covers."
+      },
+      "align": {
+        "type": "string",
+        "enum": [
+          "center",
+          "end",
+          "start"
+        ],
+        "default": "start"
+      },
+      "alignOffset": {
+        "description": "TS: number | OffsetFunction | undefined. The compiler emits one JSON type per property; this type is left to tsc. alignOffset is the shift in pixels along the alignment axis, as a number or a function of side, align and both boxes' sizes. `number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation.",
+        "default": 0
+      },
+      "anchor": {
+        "description": "TS: Element | VirtualElement | RefObject<Element | null> | (() => Element | VirtualElement | null) | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. anchor is the element, virtual element, ref or function returning one that the popup is placed against. `Element | VirtualElement | RefObject<Element | null> | (() => Element | VirtualElement | null) | null` - live DOM nodes, refs and functions, which no JSON Schema type covers."
+      },
+      "collisionBoundary": {
+        "description": "TS: Boundary | undefined. The compiler emits one JSON type per property; this type is left to tsc. collisionBoundary is the area the popup is kept inside, `clipping-ancestors`, an element, a list of elements or a rectangle. `'clipping-ancestors' | Element | Element[] | Rect` mixes a string with live DOM elements, which no JSON Schema type covers."
+      },
+      "collisionPadding": {
+        "description": "TS: Padding | undefined. The compiler emits one JSON type per property; this type is left to tsc. collisionPadding is the space in pixels kept from the collision boundary, one number or a per-side object. `number | { top?, right?, bottom?, left? }` - the compiler emits one JSON type per property."
+      },
+      "finalFocus": {
+        "description": "TS: boolean | RefObject<HTMLElement | null> | ((closeType: InteractionType) => boolean | void | HTMLElement | null) | undefined. The compiler emits one JSON type per property; this type is left to tsc. finalFocus decides what receives focus when the popup closes - false for nothing, true for the default, a ref, or a function of the interaction type. `boolean | RefObject<HTMLElement | null> | ((closeType) => boolean | void | HTMLElement | null)` mixes a boolean with refs and functions, which no JSON Schema type covers."
+      },
+      "initialFocus": {
+        "description": "TS: boolean | RefObject<HTMLElement | null> | ((openType: InteractionType) => boolean | void | HTMLElement | null) | undefined. The compiler emits one JSON type per property; this type is left to tsc. initialFocus decides what receives focus when the popup opens - false for nothing, true for the default, a ref, or a function of the interaction type. `boolean | RefObject<HTMLElement | null> | ((openType) => boolean | void | HTMLElement | null)` mixes a boolean with refs and functions, which no JSON Schema type covers."
+      },
+      "positionMethod": {
+        "type": "string",
+        "enum": [
+          "absolute",
+          "fixed"
+        ]
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ComboboxPopupState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the popup's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "side": {
+        "type": "string",
+        "enum": [
+          "bottom",
+          "inline-end",
+          "inline-start",
+          "left",
+          "right",
+          "top"
+        ],
+        "default": "bottom"
+      },
+      "sideOffset": {
+        "description": "TS: number | OffsetFunction | undefined. The compiler emits one JSON type per property; this type is left to tsc. sideOffset is the gap in pixels between the anchor and the popup, as a number or a function of side, align and both boxes' sizes. `number | OffsetFunction` - the compiler emits one JSON type per property, and the function form has no JSON Schema representation.",
+        "default": 6
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: ComboboxPopupState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the popup's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, side, align, anchorHidden, transitionStatus, empty). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through combobox.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

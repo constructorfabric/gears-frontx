@@ -1,0 +1,86 @@
+# Semantic overlay for AvatarGroupCount - the one part of the avatar_group
+# family, see avatar-group.contract.yaml's `family_membership`. No
+# primitive backs it: it is a plain div styled by avatar.module.css. The
+# `tone` and `variant` axes and their defaults are extracted from
+# avatar.tsx, not restated here.
+component: avatar-group-count
+
+intent: The circle that ends an AvatarGroup's stack and stands for the members not shown.
+
+typical_uses:
+  - A "+N" count after the last visible avatar of a group
+
+dont_use_when:
+  - situation: A count outside a stack of avatars, such as an unread number or a tag
+    instead:
+      target: Badge
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.badge.v1
+
+# AvatarGroupCount examines nothing about what a consumer nests inside it;
+# text or a glyph render centered, and avatar.module.css sizes any svg
+# inside it.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: size-comes-from-the-sibling-avatars
+    text: >-
+      The count takes no size prop: its circle is the default avatar size,
+      and becomes the `sm` or `lg` size when its group has a direct Avatar
+      child of that size (`lg` when both are present); its label stays at one text size throughout, and
+      only an svg inside it grows at `lg`.
+  - id: fill-cells-shared-with-the-fallback
+    text: >-
+      `tone` and `variant` pick one of the twelve fill cells
+      avatar.module.css shares with AvatarFallback, so a count chip and a
+      fallback given the same pair paint the same colors.
+
+anti_patterns: []
+
+deprecations: {}
+
+# avatar.test.tsx asserts the count's classes and text only; nothing in it
+# asserts how assistive technology reads the count.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A count matching a group of small avatars
+      code: |
+        <AvatarGroup>
+          <Avatar size="sm">
+            <AvatarFallback>JD</AvatarFallback>
+          </Avatar>
+          <Avatar size="sm">
+            <AvatarFallback>SL</AvatarFallback>
+          </Avatar>
+          <AvatarGroupCount>+3</AvatarGroupCount>
+        </AvatarGroup>
+    - title: A count filled to match toned members
+      code: |
+        <AvatarGroup>
+          <Avatar>
+            <AvatarFallback tone="accent" variant="solid">ML</AvatarFallback>
+          </Avatar>
+          <AvatarGroupCount tone="accent" variant="soft">+3</AvatarGroupCount>
+        </AvatarGroup>
+  bad:
+    - title: A size prop guessed from Avatar
+      code: |
+        <AvatarGroup>
+          <Avatar size="sm">
+            <AvatarFallback>JD</AvatarFallback>
+          </Avatar>
+          <AvatarGroupCount size="sm">+3</AvatarGroupCount>
+        </AvatarGroup>
+      why: >-
+        AvatarGroupCount declares no `size`; the count already takes the
+        small size from the `sm` Avatar beside it in the same group.
+
+family_membership:
+  name: avatar_group
+  role: part

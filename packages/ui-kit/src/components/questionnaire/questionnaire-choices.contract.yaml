@@ -1,0 +1,74 @@
+# Semantic overlay for QuestionnaireChoices - a part of the Questionnaire
+# family, see questionnaire.contract.yaml's `family_membership`.
+component: questionnaire-choices
+
+intent: The grid that lays out a QuestionnaireItem's choices, and its freeform field when the item offers one beside them.
+
+typical_uses:
+  - The list of fixed answers of an item
+  - Fixed answers followed by a freeform "other" field
+
+dont_use_when:
+  - situation: An item whose only answer is freeform text
+    instead:
+      target: QuestionnaireInput placed directly in the QuestionnaireItem
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_input.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_choice.v1 # QuestionnaireChoice
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_input.v1 # QuestionnaireInput, as the last cell
+
+invariants:
+  - id: shortcuts-mode-on-the-grid
+    text: >-
+      When the root has `shortcuts`, the grid carries `data-shortcuts` with
+      the mode (`letters` or `numbers`).
+
+anti_patterns:
+  - dont: Place a freeform QuestionnaireInput outside QuestionnaireChoices in an item that also has choices
+    do_instead: Make it the last child of QuestionnaireChoices, so it sits on the choice grid's rhythm
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      The questionnaire engine's render prop takes an element or a function
+      of the grid's own state (`QuestionnaireChoicesState`: shortcuts), so
+      its type is a union of a React element and a callback; the compiler
+      emits one JSON type per property, so nothing is asserted.
+
+examples:
+  good:
+    - title: Fixed choices and a freeform field
+      code: |
+        <QuestionnaireChoices>
+          <QuestionnaireChoice value="tool-calls">Tool call timeline</QuestionnaireChoice>
+          <QuestionnaireChoice value="approvals">Approval checkpoints</QuestionnaireChoice>
+          <QuestionnaireInput aria-label="Another feature" placeholder="Describe another feature" />
+        </QuestionnaireChoices>
+  bad:
+    - title: Choices wrapped in a RadioGroup
+      code: |
+        <QuestionnaireChoices>
+          <RadioGroup>
+            <QuestionnaireChoice value="engineer">Engineer</QuestionnaireChoice>
+          </RadioGroup>
+        </QuestionnaireChoices>
+      why: >-
+        The item already groups its choices as native radios sharing its
+        name; a RadioGroup adds a second selection state that the
+        questionnaire never reads.
+
+family_membership:
+  name: questionnaire
+  role: part

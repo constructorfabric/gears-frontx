@@ -1,0 +1,186 @@
+# Semantic overlay for ContextMenuContent - a part of the ContextMenu family,
+# see context-menu.contract.yaml's `family_membership` for how the fourteen
+# contracts relate. It composes the primitive's Portal, Positioner and
+# Popup; the forwarded surface is the Popup's div.
+component: context-menu-content
+
+intent: The menu popup, portalled and placed at the point where its ContextMenu was opened, holding the menu's rows.
+
+typical_uses:
+  - The one popup of a ContextMenu, listing its items, groups, separators and submenus
+
+dont_use_when:
+  - situation: A floating panel with fields or buttons the user has to operate
+    instead:
+      target: PopoverContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.popover_content.v1
+  - situation: The list of options of a form select
+    instead:
+      target: SelectContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.select_content.v1
+  - situation: The popup of a nested submenu
+    instead:
+      target: ContextMenuSubContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_sub_content.v1
+
+# The rows a menu popup hosts. ContextMenuLabel is not listed: it must sit
+# inside a ContextMenuGroup or ContextMenuRadioGroup, which host it.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_group.v1 # ContextMenuGroup
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_item.v1 # ContextMenuItem
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_checkbox_item.v1 # ContextMenuCheckboxItem
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_radio_group.v1 # ContextMenuRadioGroup
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_separator.v1 # ContextMenuSeparator
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_sub.v1 # ContextMenuSub
+
+invariants:
+  - id: rendered-only-while-open
+    text: >-
+      The popup is in the DOM only while the menu is open or animating
+      closed; the kit passes no `keepMounted` to the portal, so a closed
+      menu renders nothing.
+  - id: portals-to-body-unless-container
+    text: >-
+      Without `container`, the popup portals into the node of the nearest
+      enclosing portal, or the document body when there is none; a theme
+      scoped to a subtree reaches the popup only when that subtree, or a
+      node inside it, is passed as `container`.
+  - id: anchored-at-the-opening-point
+    text: >-
+      The popup is placed against the point where the menu was opened, not
+      against the trigger's box, so it takes no width from the trigger;
+      context-menu.module.css gives it a 9rem minimum width and lets it grow
+      with its longest row.
+  - id: scrolls-past-the-available-height
+    text: >-
+      The popup's height is capped at the space the positioner reports as
+      available, and its rows scroll vertically beyond that.
+  - id: arrow-keys-move-through-items
+    text: >-
+      Arrow keys move focus through the items in order, disabled items
+      included, and wrap from the last back to the first unless the root's
+      `loopFocus` is false; typing moves focus to the next item whose text
+      starts with the typed characters.
+  - id: reduced-motion-keeps-the-fade
+    text: >-
+      The popup fades and scales on open and close; under
+      `prefers-reduced-motion` context-menu.module.css drops the transform
+      transition and keeps the fade.
+
+anti_patterns:
+  - dont: Keep the default positioning when the trigger sits inside a transformed or filtered container, such as an animated panel
+    do_instead: >-
+      Pass `positionMethod="fixed"`; absolute positioning resolves against
+      the transformed container instead of the page and misplaces the popup
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      context-menu.test.tsx asserts that a right click on the trigger
+      renders an element with role menu and that Escape pressed on that
+      menu removes it; the primitive's Menu.Popup keeps focus inside the
+      menu while it is open
+  rtl:
+    outcome: unknown
+
+unexposed_parts:
+  - part: ContextMenu.Portal
+    reason: Composed inside ContextMenuContent; only its `container` is exposed, as a prop of the content itself.
+  - part: ContextMenu.Positioner
+    reason: Composed inside ContextMenuContent; its placement and collision props are exposed on the content itself.
+
+prop_statements:
+  children:
+    states: children is the popup's rows, the parts listed under accepts
+    because: >-
+      `React.ReactNode` is a union of elements, strings, numbers, fragments
+      and more; the compiler emits one JSON type per property.
+  container:
+    states: container is the DOM node, shadow root or ref to one that the popup portals into; null and undefined both mean no container of its own
+    because: >-
+      `HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null`
+      - live DOM nodes and ref objects, which no JSON Schema type covers. The
+      kit resolves it as `container ?? <the enclosing content's container>`,
+      so an explicit null falls through like an absent prop.
+  sideOffset:
+    states: sideOffset is the gap in pixels between the anchor and the popup, as a number or a function of side, align and both boxes' sizes
+    because: >-
+      `number | OffsetFunction` - the compiler emits one JSON type per
+      property, and the function form has no JSON Schema representation.
+  alignOffset:
+    states: alignOffset is the shift in pixels along the alignment axis, as a number or a function of side, align and both boxes' sizes
+    because: >-
+      `number | OffsetFunction` - the compiler emits one JSON type per
+      property, and the function form has no JSON Schema representation.
+  collisionBoundary:
+    states: collisionBoundary is the area the popup is kept inside, `clipping-ancestors`, an element, a list of elements or a rectangle
+    because: >-
+      `'clipping-ancestors' | Element | Element[] | Rect` mixes a string with
+      live DOM elements, which no JSON Schema type covers.
+  collisionPadding:
+    states: collisionPadding is the space in pixels kept from the collision boundary, one number or a per-side object
+    because: >-
+      `number | { top?, right?, bottom?, left? }` - the compiler emits one
+      JSON type per property.
+  finalFocus:
+    states: finalFocus decides where focus goes when the popup closes - true for the default, false for nowhere, a ref, or a function of the interaction type
+    because: >-
+      `boolean | RefObject<HTMLElement | null> | ((closeType) => boolean | HTMLElement | null | void)`
+      mixes a boolean with a ref object and a callback; the compiler emits
+      one JSON type per property.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the popup's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the popup's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open, side, align, nested, instant,
+      transitionStatus). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through
+      context-menu.module.css, not through this.
+
+examples:
+  good:
+    - title: A popup with a labelled group and a destructive action
+      code: |
+        <ContextMenu>
+          <ContextMenuTrigger>{row}</ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuGroup>
+              <ContextMenuLabel>Edit</ContextMenuLabel>
+              <ContextMenuItem onClick={onCopy}>Copy</ContextMenuItem>
+              <ContextMenuItem onClick={onPaste}>Paste</ContextMenuItem>
+            </ContextMenuGroup>
+            <ContextMenuSeparator />
+            <ContextMenuItem variant="destructive" onClick={onDelete}>Delete</ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+    - title: A popup portalled into a themed subtree
+      code: |
+        <ContextMenu>
+          <ContextMenuTrigger>{canvas}</ContextMenuTrigger>
+          <ContextMenuContent container={themedSectionRef}>
+            <ContextMenuItem onClick={onPaste}>Paste</ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
+  bad:
+    - title: Content with no ContextMenu root around it
+      code: |
+        <ContextMenuContent>
+          <ContextMenuItem onClick={onCopy}>Copy</ContextMenuItem>
+        </ContextMenuContent>
+      why: >-
+        The primitive's Portal and Popup read the nearest ContextMenu root's
+        state through context and throw when there is none.
+
+family_membership:
+  name: context_menu
+  role: part

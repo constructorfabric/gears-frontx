@@ -1,0 +1,95 @@
+# Semantic overlay for InputOtpSeparator - a part of the InputOtp family,
+# see input-otp.contract.yaml's `family_membership` for how the four
+# contracts relate.
+component: input-otp-separator
+
+intent: Divide two runs of an InputOtp's slots with a muted glyph.
+
+typical_uses:
+  - The divider between the two halves of a split code
+
+dont_use_when:
+  - situation: A divider between content anywhere outside an InputOtp
+    instead:
+      target: Separator
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.separator.v1
+
+# Children replace the default dash glyph; the separator examines nothing
+# about them.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: default-dash-hidden-from-assistive-tech
+    text: >-
+      With no children the separator renders a dash inside a span marked
+      `aria-hidden="true"`; children, when given, replace that span and are
+      rendered as they are, with no `aria-hidden` added.
+  - id: orientation-changes-only-attributes
+    text: >-
+      `orientation` sets the stamped `aria-orientation` and
+      `data-orientation` and nothing else: input-otp.module.css has no
+      orientation selector, so the separator looks the same either way.
+
+anti_patterns:
+  - dont: Put the separator inside an InputOtpGroup
+    do_instead: Place it directly inside the InputOtp root, between two groups
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      The primitive's Separator (role="separator" with aria-orientation)
+      plus input-otp.test.tsx's assertion that the rendered field contains
+      an element with role separator
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the
+      separator's own state, so its type is a union of a React element and
+      a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the separator's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (orientation). The compiler emits one JSON type per property, so nothing is asserted; the kit's own
+      styling goes through input-otp.module.css, not through this.
+
+examples:
+  good:
+    - title: The default dash between two groups
+      code: |
+        <InputOtp id="otp" length={4}>
+          <InputOtpGroup>
+            <InputOtpSlot />
+            <InputOtpSlot />
+          </InputOtpGroup>
+          <InputOtpSeparator />
+          <InputOtpGroup>
+            <InputOtpSlot />
+            <InputOtpSlot />
+          </InputOtpGroup>
+        </InputOtp>
+    - title: A custom glyph in place of the dash
+      code: <InputOtpSeparator><span aria-hidden="true">/</span></InputOtpSeparator>
+  bad:
+    - title: A separator with no InputOtp around it
+      code: |
+        <p>Section one</p>
+        <InputOtpSeparator />
+        <p>Section two</p>
+      why: >-
+        InputOtpSeparator exists to divide slot groups inside an InputOtp
+        and draws a muted glyph; a general content divider is the kit's
+        Separator, which draws a line.
+
+family_membership:
+  name: input_otp
+  role: part

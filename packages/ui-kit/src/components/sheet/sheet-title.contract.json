@@ -1,0 +1,111 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_title.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sheet-title",
+  "forwards_to": "gts.frontx.uikit.element.dom_h2.v1~",
+  "intent": "The heading that names a sheet's panel.",
+  "typical_uses": [
+    "The panel's heading, inside its SheetHeader"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A heading for a section inside the panel's body",
+      "instead": {
+        "target": "a plain heading element (h3 and below)",
+        "note": "Only one SheetTitle names the panel; a section heading is ordinary content."
+      }
+    },
+    {
+      "situation": "The heading of a centered dialog",
+      "instead": {
+        "target": "DialogTitle",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_title.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "SheetHeader",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_header.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "heading-level-two",
+      "text": "SheetTitle renders an h2 set in the heading-2 type ramp with no margin."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Render a second SheetTitle in the same panel",
+      "do_instead": "Keep one SheetTitle per sheet and use plain headings for any subheadings; only one title can name the panel"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the title's state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property; the primitive passes an empty state object."
+    },
+    "style": {
+      "states": "style accepts a function as well as a plain style object; the primitive passes that function an empty state object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`, and the title's state carries no fields. The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through sheet.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "The panel's heading",
+        "code": "<SheetHeader>\n  <SheetTitle>Edit profile</SheetTitle>\n</SheetHeader>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A plain heading in place of SheetTitle",
+        "code": "<SheetHeader>\n  <h2>Edit profile</h2>\n</SheetHeader>\n",
+        "why": "A plain heading carries no id the primitive knows about, so the panel gets no `aria-labelledby` and a screen reader announces an unnamed dialog."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sheet",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SheetTitle",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, DialogTitleState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the title's state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property; the primitive passes an empty state object."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: DialogTitleState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function as well as a plain style object; the primitive passes that function an empty state object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`, and the title's state carries no fields. The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through sheet.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

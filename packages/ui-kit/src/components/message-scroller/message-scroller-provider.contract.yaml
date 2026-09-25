@@ -1,0 +1,144 @@
+# Semantic overlay for MessageScrollerProvider - a directory neighbour of the
+# MessageScroller family, not a part of it. The provider sits ABOVE the
+# family root (it wraps the scroller and anything that calls the hooks), so
+# it is a wrapper of the family rather than a member mounted inside it.
+component: message-scroller-provider
+
+intent: Hold one scroller's follow mode, anchor bookkeeping and scroll state for the MessageScroller below it and for every hook call in the same subtree.
+
+typical_uses:
+  - Once around a transcript's MessageScroller together with the composer or toolbar that calls its hooks
+
+dont_use_when:
+  - situation: A scrollable panel that never follows new content or jumps to a message
+    instead:
+      target: ScrollArea
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.scroll_area.v1
+
+# The provider renders its children unchanged and reaches every consumer
+# through context at any depth, so nothing about its direct children is
+# constrained.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: renders-no-element
+    text: >-
+      MessageScrollerProvider renders no DOM element; it only provides
+      context to the scroller parts and hooks below it.
+  - id: every-part-and-hook-needs-a-provider
+    text: >-
+      MessageScroller, MessageScrollerViewport, MessageScrollerContent,
+      MessageScrollerItem, MessageScrollerButton and the three hooks throw
+      when rendered or called without a MessageScrollerProvider above them.
+  - id: follows-the-end-only-with-auto-scroll
+    text: >-
+      With `autoScroll` off the scroller never keeps itself pinned to the
+      end; a newly appended anchored item is still aligned to the top (see
+      MessageScrollerItem). With it on, while the view is at the bottom edge, added content
+      and resizes keep it pinned to the end, except where a new anchored
+      MessageScrollerItem is aligned to the top instead; a wheel or touch move
+      on the viewport, or one of the keys ArrowUp, ArrowDown, PageUp,
+      PageDown, Home, End or Space pressed on it, stops the following until
+      the view is back at the bottom edge.
+  - id: default-scroll-position-applies-once
+    text: >-
+      `defaultScrollPosition` is applied once, when the content first has
+      children: `end` scrolls to the end, `start` to the start, and
+      `last-anchor` aligns the last item carrying `scrollAnchor` to the top
+      of the viewport unless the content from that item down fits in the
+      viewport, in which case it scrolls to the end. Changing the value
+      applies it once more.
+  - id: edge-threshold-decides-scrollable
+    text: >-
+      An edge counts as scrollable only while more than
+      `scrollEdgeThreshold` pixels of content lie past it; that answer is
+      what useMessageScrollerScrollable returns, what `data-scrollable`
+      carries and what activates a MessageScrollerButton; while the scroller
+      follows the end, `end` is reported false in all three.
+  - id: one-provider-per-transcript-identity
+    text: >-
+      The provider's record of handled anchors and of the applied default
+      scroll position is never reset on its own; swapping the children for a different transcript
+      reads as an edit of the current one.
+
+anti_patterns:
+  - dont: Keep one mounted provider while switching the scroller to a different transcript
+    do_instead: Give the provider a `key` that changes with the transcript's identity, so a new transcript mounts a fresh provider
+
+deprecations: {}
+
+# The provider renders nothing and wires no ARIA; message-scroller.test.tsx
+# asserts nothing about it beyond rendering the parts inside it.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  children:
+    states: children is any React content; every scroller part and hook call inside it, at any depth, reads this provider
+    because: >-
+      `React.ReactNode` is a union of elements, strings, numbers, fragments
+      and more; the compiler emits one JSON type per property.
+
+companions:
+  - export: useMessageScroller
+    typed_by: '() => { scrollToEnd(options?): boolean; scrollToMessage(messageId: string, options?): boolean; scrollToStart(options?): boolean }'
+    description: >-
+      The imperative scroll API of the nearest provider. `scrollToMessage`
+      targets a MessageScrollerItem by its `messageId` and returns false
+      when no such item is mounted while other items are; called before
+      any item exists it queues the jump until the item mounts.
+      `scrollToMessage` takes `align`, `behavior` and `scrollMargin` options;
+      `scrollToEnd` and `scrollToStart` accept the same options type but
+      honour only `behavior`.
+  - export: useMessageScrollerScrollable
+    typed_by: '() => { start: boolean; end: boolean }'
+    description: >-
+      Whether more content lies past the start and past the end edge of the
+      viewport, by the provider's `scrollEdgeThreshold`; `end` reads false
+      while the scroller is following the end.
+  - export: useMessageScrollerVisibility
+    typed_by: '() => { currentAnchorId: string | null; visibleMessageIds: string[] }'
+    description: >-
+      The `messageId`s of the items currently in view, and the id of the
+      last item carrying `scrollAnchor` whose top is at or above the
+      viewport's top plus `scrollMargin` and `scrollPreviousItemPeek`; items
+      without a `messageId` are not tracked.
+
+examples:
+  good:
+    - title: A provider keyed by the open conversation, around the scroller and the composer
+      code: |
+        <MessageScrollerProvider key={conversation.id} autoScroll>
+          <MessageScroller>
+            <MessageScrollerViewport>
+              <MessageScrollerContent>
+                {messages.map((message) => (
+                  <MessageScrollerItem key={message.id} messageId={message.id}>
+                    {message.text}
+                  </MessageScrollerItem>
+                ))}
+              </MessageScrollerContent>
+            </MessageScrollerViewport>
+            <MessageScrollerButton />
+          </MessageScroller>
+          <Composer />
+        </MessageScrollerProvider>
+  bad:
+    - title: The hook called above its own provider
+      code: |
+        function Transcript() {
+          const { scrollToEnd } = useMessageScroller();
+          return (
+            <MessageScrollerProvider>
+              <MessageScroller>{/* ... */}</MessageScroller>
+            </MessageScrollerProvider>
+          );
+        }
+      why: >-
+        The hook reads the context of a provider above the calling component;
+        here there is none, so the call throws. Move the call into a
+        component rendered inside the provider.

@@ -35,6 +35,7 @@
 import {
   type ComponentProps,
   type ComponentType,
+  type DOMAttributes,
   type ReactNode,
   createContext,
   useContext,
@@ -150,7 +151,7 @@ export function ChartContainer({
 
   return (
     <ChartContext.Provider value={{ config }}>
-      <div data-chart={chartId} className={cx(styles.container, className)} {...props}>
+      <div {...props} data-chart={chartId} className={cx(styles.container, className)}>
         <ChartStyle id={chartId} config={config} />
         <RechartsPrimitive.ResponsiveContainer initialDimension={initialDimension}>
           {children}
@@ -238,8 +239,22 @@ ${darkDeclarations}
 
 export const ChartTooltip = RechartsPrimitive.Tooltip;
 
+// A content renderer's root div takes the div's attributes but none of its
+// event handlers or content props: the chart hands the renderer props of
+// its own under those names, and the renderer supplies the content itself.
+type ContentRootAttributes = Omit<ComponentProps<'div'>, 'className' | 'content' | keyof DOMAttributes<HTMLDivElement>>;
+
+// Keeps every key a content renderer's root div must not receive off it: an
+// event handler (the chart's own are typed for its items, not for this
+// div) and whatever the chart passes in under a name of its own.
+function rootAttributes(props: object, rendererProps: ReadonlySet<string>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(props).filter(([key]) => !/^on[A-Z]/.test(key) && !rendererProps.has(key)),
+  );
+}
+
 export type ChartTooltipContentProps = ComponentProps<typeof RechartsPrimitive.Tooltip> &
-  Omit<ComponentProps<'div'>, 'className'> & {
+  ContentRootAttributes & {
     className?: string;
     hideLabel?: boolean;
     hideIndicator?: boolean;
@@ -247,6 +262,43 @@ export type ChartTooltipContentProps = ComponentProps<typeof RechartsPrimitive.T
     nameKey?: string;
     labelKey?: string;
   } & Omit<DefaultTooltipContentProps<TooltipValueType, TooltipNameType>, 'accessibilityLayer'>;
+
+// What Recharts' Tooltip hands its content renderer besides the rows it
+// reads: the tooltip's own settings, the active index and coordinate, and
+// the accessibility-layer flag - plus the two ways of supplying content that
+// the rows replace. None of them is an attribute of the root div.
+const TOOLTIP_RENDERER_PROPS: ReadonlySet<string> = new Set([
+  'accessibilityLayer',
+  'activeIndex',
+  'allowEscapeViewBox',
+  'animationDuration',
+  'animationEasing',
+  'axisId',
+  'children',
+  'content',
+  'contentStyle',
+  'coordinate',
+  'cursor',
+  'dangerouslySetInnerHTML',
+  'defaultIndex',
+  'filterNull',
+  'includeHidden',
+  'isAnimationActive',
+  'itemSorter',
+  'itemStyle',
+  'labelStyle',
+  'offset',
+  'payloadUniqBy',
+  'portal',
+  'position',
+  'reverseDirection',
+  'separator',
+  'shared',
+  'trigger',
+  'useTranslate3d',
+  'wrapperClassName',
+  'wrapperStyle',
+]);
 
 export function ChartTooltipContent({
   active,
@@ -262,6 +314,7 @@ export function ChartTooltipContent({
   color,
   nameKey,
   labelKey,
+  ...props
 }: ChartTooltipContentProps) {
   const { config } = useChart();
 
@@ -294,7 +347,7 @@ export function ChartTooltipContent({
   const nestLabel = payload.length === 1 && indicator !== 'dot';
 
   return (
-    <div className={cx(styles.tooltipContent, className)}>
+    <div {...rootAttributes(props, TOOLTIP_RENDERER_PROPS)} className={cx(styles.tooltipContent, className)}>
       {!nestLabel ? tooltipLabel : null}
       <div className={styles.tooltipItems}>
         {payload
@@ -372,11 +425,43 @@ export function ChartTooltipContent({
 
 export const ChartLegend = RechartsPrimitive.Legend;
 
-export type ChartLegendContentProps = Omit<ComponentProps<'div'>, 'className'> & {
+export type ChartLegendContentProps = ContentRootAttributes & {
   className?: string;
   hideIcon?: boolean;
   nameKey?: string;
-} & DefaultLegendContentProps;
+} & Omit<
+    DefaultLegendContentProps,
+    keyof DOMAttributes<HTMLDivElement> | Extract<keyof DefaultLegendContentProps, `on${Capitalize<string>}`>
+  >;
+
+// What Recharts' Legend hands its content renderer besides the payload: its
+// own layout settings and the chart's measurements - plus the two ways of
+// supplying content that the legend items replace. None of them is an
+// attribute of the root div; the legend's event handlers, which its default
+// content attaches to each item, are kept off it by rootAttributes.
+const LEGEND_RENDERER_PROPS: ReadonlySet<string> = new Set([
+  'align',
+  'chartHeight',
+  'chartWidth',
+  'children',
+  'content',
+  'dangerouslySetInnerHTML',
+  'formatter',
+  'height',
+  'iconSize',
+  'iconType',
+  'inactiveColor',
+  'itemSorter',
+  'labelStyle',
+  'layout',
+  'margin',
+  'offset',
+  'payloadUniqBy',
+  'portal',
+  'position',
+  'width',
+  'wrapperStyle',
+]);
 
 export function ChartLegendContent({
   className,
@@ -384,6 +469,7 @@ export function ChartLegendContent({
   payload,
   verticalAlign = 'bottom',
   nameKey,
+  ...props
 }: ChartLegendContentProps) {
   const { config } = useChart();
 
@@ -393,6 +479,7 @@ export function ChartLegendContent({
 
   return (
     <div
+      {...rootAttributes(props, LEGEND_RENDERER_PROPS)}
       className={cx(
         styles.legendContent,
         verticalAlign === 'top' ? styles.legendTop : styles.legendBottom,

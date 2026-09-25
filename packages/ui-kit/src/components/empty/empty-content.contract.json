@@ -1,0 +1,78 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "empty-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Hold arbitrary content at the foot of the placeholder, such as a search field or a short form, in a centered column.",
+  "typical_uses": [
+    "A field or small form that lets the user fill the empty state from where it is shown"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The foot holds only a row of buttons",
+      "instead": {
+        "target": "EmptyActions",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_actions.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "Empty",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.empty.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "centered-column-capped-at-24rem",
+      "text": "EmptyContent is a flex column capped at 24rem that centers its children, so a lone button keeps its own width instead of stretching, and spaces them var(--space-4) apart."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A search field at the foot of the placeholder",
+        "code": "<EmptyContent><Input type=\"search\" aria-label=\"Search projects\" /></EmptyContent>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Two buttons stacked by EmptyContent",
+        "code": "<EmptyContent>\n  <Button>New project</Button>\n  <Button variant=\"outline\">Import</Button>\n</EmptyContent>\n",
+        "why": "EmptyContent is a column, so the buttons stack one above the other; EmptyActions is the part that sets them side by side."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "empty",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit EmptyContent",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.progress_value.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "progress-value",
+  "forwards_to": "gts.frontx.uikit.element.dom_span.v1~",
+  "intent": "The visual readout of its progress root's current value.",
+  "typical_uses": [
+    "The percentage readout at the end of the row, beside a ProgressLabel"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A number readout that is not a progress root's value",
+      "instead": {
+        "target": "text in the consuming application's own markup",
+        "note": "A ProgressValue renders only the nearest root's formatted value and is hidden from assistive technology; the kit ships no generic readout component."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "Progress",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.progress.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "aria-hidden-visual-only",
+      "text": "The readout is always `aria-hidden`: the root's `aria-valuenow` carries the value to assistive technology, and the readout is for sighted users only."
+    },
+    {
+      "id": "value-span-empty-while-indeterminate",
+      "text": "With an indeterminate root the readout's span is empty - there is no percentage to show - and a function child receives the string \"indeterminate\" and a null value to decide what to show instead."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Pass text children to customize the readout",
+      "do_instead": "Pass a function child receiving the formatted value; a plain string child is ignored at runtime and rejected by tsc, so it never renders"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "the primitive's Progress.Value, which renders with aria-hidden always (verified in the @base-ui/react/progress source); progress.test.tsx asserts the rendered \"42%\" text"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is null, to render the root's formatted value, or a function of the formatted value and the raw value returning React nodes",
+      "because": "`null | ((formattedValue: string | null, value: number | null) => ReactNode)` - a union of null and a callback. The compiler emits one JSON type per property, and a function has no JSON Schema representation."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the value's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the value's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (status). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through progress.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "The live readout beside its caption",
+        "code": "<Progress value={42}>\n  <ProgressLabel>Uploading</ProgressLabel>\n  <ProgressValue />\n</Progress>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Text children glued to the percentage",
+        "code": "<ProgressValue>% done</ProgressValue>",
+        "why": "children must be null or a function: a string is ignored at runtime and rejected by tsc, so the suffix never renders. A function child formats the readout instead."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "progress",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ProgressValue",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "children": {
+        "description": "TS: ((formattedValue: string | null, value: number | null) => ReactNode) | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. children is null, to render the root's formatted value, or a function of the formatted value and the raw value returning React nodes. `null | ((formattedValue: string | null, value: number | null) => ReactNode)` - a union of null and a callback. The compiler emits one JSON type per property, and a function has no JSON Schema representation."
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ProgressValueState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the value's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: ProgressValueState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the value's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (status). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through progress.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

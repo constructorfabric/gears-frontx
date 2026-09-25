@@ -1,0 +1,98 @@
+# Semantic overlay for Textarea - the hand-written half of the contract.
+#
+# Machine-extractable facts stay out: the compiler reads Textarea's props
+# from textarea.tsx (a full native textarea attribute set, forwarded) and
+# refuses an overlay that restates them - one fact, one owner. This file
+# carries only what the code cannot express: intent, boundaries, invariants.
+component: textarea
+
+intent: Capture multi-line free text in a styled native textarea that grows with its content.
+
+typical_uses:
+  - A description, comment or message field in a form
+
+dont_use_when:
+  - situation: A single-line value - a search box, an email address, a short answer
+    instead:
+      target: Input
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.input.v1
+  - situation: Rich text entry with emphasis, lists or mentions
+    instead:
+      target: a third-party rich-text editor styled with the theme's tokens
+      note: >-
+        The kit ships no rich-text component and no kit component substitutes
+        for one; an editor is brought by the application and styled in its
+        own layout.
+
+# A textarea's content is its value: React warns against children on a
+# textarea and only treats them as a fallback initial value. Initial text
+# belongs in the value or defaultValue props, never in the element's content.
+accepts:
+  content: nothing
+
+invariants:
+  - id: value-wins-over-default-value
+    text: >-
+      `value` and `defaultValue` are both accepted; `defaultValue` seeds the
+      initial state and is ignored afterwards, and when `value` is given it
+      wins and the component follows it on every render.
+  - id: rows-sets-the-attribute-and-a-minimum-height-floor
+    text: >-
+      `rows` is forwarded to the DOM as the native attribute and also set as
+      a `--rows` custom property the stylesheet turns into a minimum-height
+      floor of N text lines: `field-sizing: content` ignores the attribute's
+      sizing contribution per the CSS Sizing spec, so in a browser that
+      supports it the custom property is what makes `rows` shape the box at
+      all.
+  - id: aria-invalid-restyles-destructive
+    text: >-
+      `aria-invalid` is forwarded unchanged and the stylesheet keys the
+      destructive border and ring off it; there is no separate error prop
+      and no invalid state of the component's own.
+  - id: no-automatic-field-registration
+    text: >-
+      The component registers with nothing: composed inside a Field it relies
+      on hand wiring - an `id` matched to the caption and an
+      `aria-describedby` pointing at the description - because there is no
+      primitive here to auto-connect the surrounding parts.
+
+anti_patterns:
+  - dont: Pass the initial text as children
+    do_instead: Set it with `defaultValue` (uncontrolled) or `value` with `onChange` (controlled) - React takes textarea children as the initial value only when neither prop is given, and warns; with `value` it ignores them, and with `defaultValue` it throws
+  - dont: Pin the height with a fixed inline style
+    do_instead: Pass `rows` to raise the starting floor, or cap growth with max-height in the consumer layout - the box sizes itself to its content where `field-sizing` is supported
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      textarea.test.tsx asserts getByLabelText('Notes') resolves a hand-wired
+      htmlFor/id pairing inside a Field, and that forwarded aria-invalid and
+      disabled reach the element; role and keyboard entry are the platform's
+      own for a native textarea
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Controlled multi-line field
+      code: <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Notes" />
+    - title: A starting height for a longer entry
+      code: <Textarea rows={6} defaultValue={draft} />
+  bad:
+    - title: Initial text passed as children
+      code: <Textarea>Default text</Textarea>
+      why: >-
+        With neither `value` nor `defaultValue` React takes the children as
+        the initial value and logs a warning; with `value` it ignores them,
+        and with `defaultValue` also set it throws. Set `defaultValue`, or
+        drive it with `value` and `onChange`.
+    - title: Fixed height fighting the content-driven sizing
+      code: "<Textarea style={{ height: 120 }} />"
+      why: >-
+        The stylesheet grows the box with its content where `field-sizing` is
+        supported, so a hard height either crops text or wastes space. Pass
+        `rows` for the starting floor, or cap growth with max-height in the
+        consumer layout.

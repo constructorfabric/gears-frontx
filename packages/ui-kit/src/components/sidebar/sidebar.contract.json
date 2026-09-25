@@ -1,0 +1,163 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sidebar",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The application shell's side panel, anchored to one edge and collapsible off-canvas or to an icon rail, shown as a slide-in sheet on narrow viewports.",
+  "typical_uses": [
+    "The persistent navigation panel of an application shell",
+    "A fixed-width side panel that never collapses (`collapsible=\"none\"`)"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A horizontal site navigation with dropdown panels",
+      "instead": {
+        "target": "NavigationMenu",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu.v1"
+      }
+    },
+    {
+      "situation": "Switching between panels of one page",
+      "instead": {
+        "target": "Tabs",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.tabs.v1"
+      }
+    },
+    {
+      "situation": "A side panel that slides in for one task and is dismissed",
+      "instead": {
+        "target": "Sheet",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_header.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_footer.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_separator.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_rail.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "SidebarProvider",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_provider.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "mobile-renders-a-sheet",
+      "text": "Below a 768px viewport, unless `collapsible` is `none`, the panel renders inside a Sheet opened by the provider's mobile state, with a visually hidden title \"Sidebar\"; the desktop element and its data attributes are not rendered."
+    },
+    {
+      "id": "collapsible-none-is-always-open",
+      "text": "With `collapsible=\"none\"` the panel is a plain fixed-width column at every viewport; it ignores the provider's open state and never becomes a sheet. `side` and `variant` have no effect in this mode; the column sits where it is placed among the provider's children."
+    },
+    {
+      "id": "state-on-data-attributes",
+      "text": "On desktop, unless `collapsible` is `none`, the outer element carries `data-state` (`expanded` or `collapsed`), `data-variant`, `data-side`, and `data-collapsible`, which holds the `collapsible` value only while collapsed and is empty while expanded."
+    },
+    {
+      "id": "props-land-on-the-panel",
+      "text": "`className` and every other forwarded prop land on the fixed panel element inside the outer element on desktop, on the sheet's popup on mobile, and on the column itself with `collapsible=\"none\"`."
+    },
+    {
+      "id": "reserves-its-width-in-flow",
+      "text": "The panel holds its width in the provider's row where it is placed, so a `side=\"right\"` Sidebar goes after SidebarInset; an inset card then does not apply, because it only follows an earlier inset-variant Sidebar."
+    },
+    {
+      "id": "panel-is-fixed-to-the-viewport",
+      "text": "The desktop panel is `position: fixed`, so it resolves against the viewport unless an ancestor creates a containing block for fixed descendants (a `transform`, a `filter`, or `contain: layout paint`)."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Mount a Sidebar outside a SidebarProvider",
+      "do_instead": "Put it inside SidebarProvider - it reads the provider's state through useSidebar, which throws without one"
+    },
+    {
+      "dont": "Place a Sidebar in a bounded box (a preview frame, a split pane) without a containing block",
+      "do_instead": "Give the box `contain: layout paint` or a `transform`, or the fixed panel pins itself to the viewport"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A panel collapsing to an icon rail, with its rail",
+        "code": "<Sidebar collapsible=\"icon\" variant=\"inset\">\n  <SidebarHeader>{workspaceSwitcher}</SidebarHeader>\n  <SidebarContent>{groups}</SidebarContent>\n  <SidebarFooter>{userMenu}</SidebarFooter>\n  <SidebarRail />\n</Sidebar>\n"
+      },
+      {
+        "title": "A panel that never collapses",
+        "code": "<Sidebar collapsible=\"none\">\n  <SidebarContent>{details}</SidebarContent>\n</Sidebar>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Styling expected on the outer element",
+        "code": "<Sidebar className={styles.wide} data-testid=\"nav\">{panel}</Sidebar>",
+        "why": "`className` and `data-testid` land on the inner fixed panel, not on the element that carries `data-state`; a selector or query written against the outer element finds neither."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sidebar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Sidebar",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "collapsible": {
+        "type": "string",
+        "enum": [
+          "icon",
+          "none",
+          "offcanvas"
+        ],
+        "default": "offcanvas"
+      },
+      "side": {
+        "type": "string",
+        "enum": [
+          "left",
+          "right"
+        ],
+        "default": "left"
+      },
+      "variant": {
+        "type": "string",
+        "enum": [
+          "floating",
+          "inset",
+          "sidebar"
+        ],
+        "default": "sidebar"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

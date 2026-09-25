@@ -1,0 +1,283 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.select.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "select",
+  "intent": "Hold the chosen value of a pick-one field and tie a trigger to the popup list of options it opens.",
+  "typical_uses": [
+    "A form field choosing one value from a fixed list of options",
+    "A compact toolbar control narrowing a list by one attribute"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A short list of choices that should all stay visible at once",
+      "instead": {
+        "target": "RadioGroup",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group.v1"
+      }
+    },
+    {
+      "situation": "A long list the user needs to search or filter by typing",
+      "instead": {
+        "target": "Combobox",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox.v1"
+      }
+    },
+    {
+      "situation": "A list of actions or commands rather than a value to keep",
+      "instead": {
+        "target": "DropdownMenu",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu.v1"
+      }
+    },
+    {
+      "situation": "A field where the platform's own picker is wanted (the native mobile wheel, native autofill)",
+      "instead": {
+        "target": "NativeSelect",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.native_select.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.select_trigger.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.select_content.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "ButtonGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button_group.v1"
+    },
+    {
+      "container": "Field",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "value-wins-over-default-value",
+      "text": "`value` and `defaultValue` are both accepted; `defaultValue` seeds the initial state and is ignored afterwards, and when `value` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "open-wins-over-default-open",
+      "text": "`open` and `defaultOpen` are both accepted; `defaultOpen` seeds the initial state and is ignored afterwards, and when `open` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "closed-label-comes-from-the-root",
+      "text": "The SelectValue in the trigger resolves the selected item's caption from the root alone: from `itemToStringLabel`, from a value object carrying `label`, or from `items`; with none of them it shows the value itself converted to a string, never the text of the matching SelectItem."
+    },
+    {
+      "id": "multiple-toggles-and-stays-open",
+      "text": "Without `multiple`, choosing an item sets the value and closes the popup; with `multiple`, `value` is an array, choosing an item adds it or removes it, and the popup stays open."
+    },
+    {
+      "id": "typing-on-the-closed-trigger-selects",
+      "text": "Without `multiple`, typing while the closed trigger has focus selects the next enabled item whose text starts with the typed characters and reports it through `onValueChange`, without opening the popup."
+    },
+    {
+      "id": "hidden-input-submits-the-value",
+      "text": "The root renders a hidden input carrying the value as a string; with `name` it submits with the enclosing form, and under `multiple` one hidden input per chosen value carries the name instead."
+    },
+    {
+      "id": "modal-while-open",
+      "text": "While open and `modal` is not false, the select locks page scroll and lays a backdrop that blocks pointer interaction outside it; Escape or a press outside closes it and reports the change through `onOpenChange`."
+    },
+    {
+      "id": "disabled-and-read-only-block-picking",
+      "text": "`disabled` and `readOnly` both stop the trigger from opening the popup and stop any item from being chosen, even in a popup held open through `open` or `defaultOpen`."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Leave out `items` when the item values are identifiers rather than the captions a user reads",
+      "do_instead": "Pass `items` as the same `{ value, label }` list the SelectItems are rendered from, so the closed trigger shows the caption"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "value": {
+      "states": "value is the chosen item's value, of the caller's own Value type, an array of them under `multiple`, or null for no choice",
+      "because": "`SelectValueType<Value, Multiple> | null` - typed by the root's own generic parameters, which the caller chooses, so no JSON Schema type can state what it holds."
+    },
+    "defaultValue": {
+      "states": "defaultValue is the initially chosen item's value, of the same type as `value`",
+      "because": "Same generic type as `value` above - `SelectValueType<Value, Multiple> | null`, chosen by the caller."
+    },
+    "onValueChange": {
+      "states": "onValueChange is a callback called with the next value and event details, not a value",
+      "because": "`(value, eventDetails) => void` - a function of the root's own generic value type plus Base UI's change-event details, including the reason (an item press, typeahead on the closed trigger, ...). No JSON Schema type covers a function."
+    },
+    "multiple": {
+      "states": "multiple switches the value to an array of chosen item values when true",
+      "because": "Typed as the root's own `Multiple` type parameter, which also retypes `value`, `defaultValue` and `onValueChange`; the schema can state that it is a boolean, not that coupling."
+    },
+    "items": {
+      "states": "items is the option data the root resolves the selected caption from - a value-to-label record, a list of `{ value, label }`, or a list of labelled groups of them",
+      "because": "`Record<string, ReactNode> | { label: ReactNode; value: any }[] | Group[]` - the compiler emits one JSON type per property, and the labels are React nodes."
+    },
+    "itemToStringLabel": {
+      "states": "itemToStringLabel is a function turning an item value into the caption the trigger shows",
+      "because": "`(itemValue: Value) => string` - a function, which no JSON Schema type covers. It is meant for object values without a `label`."
+    },
+    "itemToStringValue": {
+      "states": "itemToStringValue is a function turning an item value into the string the hidden input submits",
+      "because": "`(itemValue: Value) => string` - a function, which no JSON Schema type covers. It is meant for object values without a `value` field."
+    },
+    "isItemEqualToValue": {
+      "states": "isItemEqualToValue is a function deciding whether an item's value matches the chosen value; without it the root compares with Object.is",
+      "because": "`(itemValue: Value, value: Value) => boolean` - a function, which no JSON Schema type covers. It is meant for object values that are equal without being the same object."
+    },
+    "onOpenChange": {
+      "states": "onOpenChange is a callback called with the next open state and event details, not a value",
+      "because": "`(open: boolean, eventDetails) => void`; the second argument carries Base UI's change-event details, including the reason (a trigger press, an item press, an outside press, Escape, ...). No JSON Schema type covers a function."
+    },
+    "onOpenChangeComplete": {
+      "states": "onOpenChangeComplete is a callback called with the open state once the open or close animation has finished",
+      "because": "`(open: boolean) => void` - a function, which no JSON Schema type covers."
+    },
+    "actionsRef": {
+      "states": "actionsRef is a ref the root fills with an imperative `unmount` action",
+      "because": "`React.RefObject<SelectRootActions | null>` - a ref object holding a function, which no JSON Schema type covers."
+    },
+    "inputRef": {
+      "states": "inputRef is a ref to the hidden input the root renders for form submission",
+      "because": "`React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - the compiler emits one JSON type per property."
+    },
+    "children": {
+      "states": "children is the root's content, the parts listed under accepts",
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A controlled select with its caption data",
+        "code": "const REGIONS = [\n  { value: 'eu-central', label: 'Frankfurt' },\n  { value: 'us-east', label: 'Virginia' },\n];\n\n<Select value={region} onValueChange={setRegion} items={REGIONS}>\n  <SelectTrigger aria-label=\"Region\">\n    <SelectValue placeholder=\"Pick a region\" />\n  </SelectTrigger>\n  <SelectContent>\n    {REGIONS.map((region) => (\n      <SelectItem key={region.value} value={region.value}>\n        {region.label}\n      </SelectItem>\n    ))}\n  </SelectContent>\n</Select>\n"
+      },
+      {
+        "title": "An uncontrolled select submitted with a form",
+        "code": "<Select name=\"role\" defaultValue=\"viewer\" items={ROLES}>\n  <SelectTrigger aria-label=\"Role\">\n    <SelectValue />\n  </SelectTrigger>\n  <SelectContent>\n    <SelectItem value=\"viewer\">Viewer</SelectItem>\n    <SelectItem value=\"editor\">Editor</SelectItem>\n  </SelectContent>\n</Select>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A placeholder passed to the root",
+        "code": "<Select placeholder=\"Pick a region\" items={REGIONS}>\n  <SelectTrigger aria-label=\"Region\">\n    <SelectValue />\n  </SelectTrigger>\n  <SelectContent>\n    <SelectItem value=\"eu-central\">Frankfurt</SelectItem>\n  </SelectContent>\n</Select>\n",
+        "why": "The root takes no placeholder; it belongs to SelectValue, which shows it while nothing is chosen."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "select",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.select_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.select_group.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.select_item.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.select_label.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.select_scroll_down_button.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.select_scroll_up_button.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.select_separator.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.select_trigger.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.select_value.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Select",
+    "type": "object",
+    "properties": {
+      "actionsRef": {
+        "description": "TS: React.RefObject<SelectRootActions | null> | undefined. The compiler emits one JSON type per property; this type is left to tsc. actionsRef is a ref the root fills with an imperative `unmount` action. `React.RefObject<SelectRootActions | null>` - a ref object holding a function, which no JSON Schema type covers."
+      },
+      "autoComplete": {
+        "type": "string"
+      },
+      "children": {
+        "description": "TS: React.ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the root's content, the parts listed under accepts. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+      },
+      "defaultOpen": {
+        "type": "boolean"
+      },
+      "defaultValue": {
+        "description": "TS: SelectValueType<Value, Multiple> | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. defaultValue is the initially chosen item's value, of the same type as `value`. Same generic type as `value` above - `SelectValueType<Value, Multiple> | null`, chosen by the caller."
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "form": {
+        "type": "string"
+      },
+      "highlightItemOnHover": {
+        "type": "boolean"
+      },
+      "id": {
+        "type": "string"
+      },
+      "inputRef": {
+        "description": "TS: React.Ref<HTMLInputElement> | undefined. The compiler emits one JSON type per property; this type is left to tsc. inputRef is a ref to the hidden input the root renders for form submission. `React.Ref<HTMLInputElement>` is a union of a ref object and a callback function - the compiler emits one JSON type per property."
+      },
+      "isItemEqualToValue": {
+        "description": "TS: ((itemValue: Value, value: Value) => boolean) | undefined. The compiler emits one JSON type per property; this type is left to tsc. isItemEqualToValue is a function deciding whether an item's value matches the chosen value; without it the root compares with Object.is. `(itemValue: Value, value: Value) => boolean` - a function, which no JSON Schema type covers. It is meant for object values that are equal without being the same object."
+      },
+      "itemToStringLabel": {
+        "description": "TS: ((itemValue: Value) => string) | undefined. The compiler emits one JSON type per property; this type is left to tsc. itemToStringLabel is a function turning an item value into the caption the trigger shows. `(itemValue: Value) => string` - a function, which no JSON Schema type covers. It is meant for object values without a `label`."
+      },
+      "itemToStringValue": {
+        "description": "TS: ((itemValue: Value) => string) | undefined. The compiler emits one JSON type per property; this type is left to tsc. itemToStringValue is a function turning an item value into the string the hidden input submits. `(itemValue: Value) => string` - a function, which no JSON Schema type covers. It is meant for object values without a `value` field."
+      },
+      "items": {
+        "description": "TS: Record<string, React.ReactNode> | readonly { label: React.ReactNode; value: any; }[] | readonly Group<any>[] | undefined. The compiler emits one JSON type per property; this type is left to tsc. items is the option data the root resolves the selected caption from - a value-to-label record, a list of `{ value, label }`, or a list of labelled groups of them. `Record<string, ReactNode> | { label: ReactNode; value: any }[] | Group[]` - the compiler emits one JSON type per property, and the labels are React nodes."
+      },
+      "modal": {
+        "type": "boolean"
+      },
+      "multiple": {
+        "type": "boolean",
+        "description": "TS: Multiple | undefined. Not fully expressible in JSON Schema; what the type states beyond the kind above is checked by tsc. multiple switches the value to an array of chosen item values when true. Typed as the root's own `Multiple` type parameter, which also retypes `value`, `defaultValue` and `onValueChange`; the schema can state that it is a boolean, not that coupling."
+      },
+      "name": {
+        "type": "string"
+      },
+      "onOpenChange": {
+        "description": "TS: ((open: boolean, eventDetails: SelectRootChangeEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChange is a callback called with the next open state and event details, not a value. `(open: boolean, eventDetails) => void`; the second argument carries Base UI's change-event details, including the reason (a trigger press, an item press, an outside press, Escape, ...). No JSON Schema type covers a function."
+      },
+      "onOpenChangeComplete": {
+        "description": "TS: ((open: boolean) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChangeComplete is a callback called with the open state once the open or close animation has finished. `(open: boolean) => void` - a function, which no JSON Schema type covers."
+      },
+      "onValueChange": {
+        "description": "TS: ((value: SelectValueType<Value, Multiple> | (Multiple extends true ? never : null), eventDetails: SelectRootChangeEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onValueChange is a callback called with the next value and event details, not a value. `(value, eventDetails) => void` - a function of the root's own generic value type plus Base UI's change-event details, including the reason (an item press, typeahead on the closed trigger, ...). No JSON Schema type covers a function."
+      },
+      "open": {
+        "type": "boolean"
+      },
+      "readOnly": {
+        "type": "boolean"
+      },
+      "required": {
+        "type": "boolean"
+      },
+      "value": {
+        "description": "TS: SelectValueType<Value, Multiple> | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. value is the chosen item's value, of the caller's own Value type, an array of them under `multiple`, or null for no choice. `SelectValueType<Value, Multiple> | null` - typed by the root's own generic parameters, which the caller chooses, so no JSON Schema type can state what it holds."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,91 @@
+# Semantic overlay for AttachmentMedia - part of the attachment family, see
+# attachment.contract.yaml's `family_membership`. `mounted_in` is filled
+# from Attachment's accepted components, not authored here. The `variant`
+# axis and its default come from attachment.tsx's cva; this overlay only
+# says what each value means.
+component: attachment-media
+
+intent: Hold the attachment's preview, either a file-type icon on a filled square plate or an image thumbnail.
+
+typical_uses:
+  - A file-type icon beside the file's name
+  - A thumbnail of an attached image
+
+dont_use_when:
+  - situation: A person's or entity's picture with a fallback
+    instead:
+      target: Avatar
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.avatar.v1
+
+# An icon or an img: any element.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: sized-by-the-root
+    text: >-
+      The plate is a square sized from the ancestor Attachment's classes,
+      not from props: 2.5rem wide at the default size, 2rem at `size="sm"`
+      and 1.75rem at `size="xs"`; with `orientation="vertical"` it spans the
+      card's width at the default size only, since the sm and xs widths win
+      over it. Any descendant svg ignores the pointer and is sized to
+      var(--icon-size-sm), var(--icon-size-lg) in the vertical orientation
+      and var(--icon-size-xs) at `xs`, which wins over the vertical size.
+  - id: image-variant-covers-and-dims
+    text: >-
+      With `variant="image"` any descendant img is drawn square at the
+      plate's full width with `object-fit: cover`, and the plate is dimmed
+      to 60% opacity unless the ancestor Attachment's `state` is `done`
+      or `idle`.
+  - id: null-variant-is-default
+    text: >-
+      An explicit `variant={null}` renders the `icon` variant, in both the
+      class and the `data-variant` attribute.
+
+anti_patterns:
+  - dont: Put an img in AttachmentMedia without `variant="image"`
+    do_instead: Set `variant="image"` so the image is cropped square and fills the plate
+
+deprecations: {}
+
+# attachment.test.tsx asserts the class and data-variant only.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+companions:
+  - export: attachmentMediaVariants
+    typed_by: 'cva(...), returns (props: VariantProps<typeof attachmentMediaVariants> & { className?: string }) => string'
+    description: >-
+      The class-name builder AttachmentMedia uses for its base and
+      `variant` classes; it does not set the `data-variant` attribute the
+      component renders, and a `null` variant yields no variant class.
+
+examples:
+  good:
+    - title: An image thumbnail on a vertical card
+      code: |
+        <Attachment orientation="vertical">
+          <AttachmentMedia variant="image">
+            <img src="/preview.png" alt="" />
+          </AttachmentMedia>
+          <AttachmentContent>
+            <AttachmentTitle>workspace.png</AttachmentTitle>
+          </AttachmentContent>
+        </Attachment>
+  bad:
+    - title: A size prop on the media
+      code: |
+        <AttachmentMedia size="sm">
+          <FileIcon />
+        </AttachmentMedia>
+      why: >-
+        AttachmentMedia declares no `size` and its div surface has none, so
+        TypeScript rejects it; the plate takes its size from the ancestor
+        Attachment's `size`.
+
+family_membership:
+  name: attachment
+  role: part

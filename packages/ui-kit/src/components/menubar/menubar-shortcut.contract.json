@@ -1,0 +1,91 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_shortcut.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "menubar-shortcut",
+  "forwards_to": "gts.frontx.uikit.element.dom_span.v1~",
+  "intent": "The keyboard shortcut hint shown at the end of a menu row.",
+  "typical_uses": [
+    "The key combination that runs the same action outside the menu"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A key or key combination shown in running text or a tooltip, outside a menu row",
+      "instead": {
+        "target": "Kbd",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.kbd.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "MenubarCheckboxItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_checkbox_item.v1"
+    },
+    {
+      "container": "MenubarItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_item.v1"
+    },
+    {
+      "container": "MenubarRadioItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_radio_item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "display-only",
+      "text": "The shortcut is text only: it registers no key handler and adds no `aria-keyshortcuts`, so the application binds the keys itself."
+    },
+    {
+      "id": "pushed-to-the-row-end",
+      "text": "dropdown-menu.module.css pushes the shortcut to the inline end of its row and renders it in the muted foreground color, switching to the accent foreground while a MenubarItem, MenubarCheckboxItem or MenubarRadioItem holding it is highlighted."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A shortcut hint on a command",
+        "code": "<MenubarItem onClick={onSave}>\n  Save\n  <MenubarShortcut>⌘S</MenubarShortcut>\n</MenubarItem>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A shortcut placed as its own row in the popup",
+        "code": "<MenubarContent>\n  <MenubarItem onClick={onSave}>Save</MenubarItem>\n  <MenubarShortcut>⌘S</MenubarShortcut>\n</MenubarContent>\n",
+        "why": "The shortcut belongs inside the row whose action it names; on its own it is a stray span that arrow keys skip and nothing ties to the item."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "menubar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit MenubarShortcut",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

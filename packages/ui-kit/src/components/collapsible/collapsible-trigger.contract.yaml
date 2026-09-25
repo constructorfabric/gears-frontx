@@ -1,0 +1,104 @@
+# Semantic overlay for CollapsibleTrigger - a part of the Collapsible family,
+# see collapsible.contract.yaml's `family_membership` for how the three
+# contracts relate.
+component: collapsible-trigger
+
+intent: The button that opens and closes the panel of the Collapsible around it.
+
+typical_uses:
+  - The always-visible caption a user presses to show or hide its Collapsible's panel
+
+dont_use_when:
+  - situation: A standalone action with no panel to show or hide
+    instead:
+      target: Button
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+  - situation: A button that stays pressed or unpressed with no panel behind it
+    instead:
+      target: Toggle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.toggle.v1
+
+# `mounted_in` is filled from Collapsible's own accepted components, not
+# authored here. Content: the trigger's caption; a glyph reaches it through
+# children, since there is no dedicated icon prop.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: disabled-trigger-stays-focusable
+    text: >-
+      A disabled CollapsibleTrigger stays focusable and reports `aria-disabled`
+      instead of taking the native `disabled` attribute, and ignores clicks,
+      Enter and Space. Its own `disabled` replaces the root's for this
+      trigger, so `disabled={false}` re-enables it under a disabled root.
+  - id: open-state-is-data-panel-open
+    text: >-
+      The trigger carries `data-panel-open` while its panel is open and draws
+      no open/closed indicator of its own; an icon a caller adds to show the
+      state is styled off that attribute.
+
+anti_patterns:
+  - dont: Put a Button inside a CollapsibleTrigger
+    do_instead: >-
+      Give the trigger its caption directly - it already renders a native
+      button, and a button inside a button is invalid HTML
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      The primitive's Collapsible.Trigger renders a native button with
+      `aria-expanded` and, while open, `aria-controls` naming the panel's id;
+      collapsible.test.tsx asserts the trigger is found by role button under
+      its caption and that a click on a disabled one leaves the panel closed
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the trigger's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the trigger's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open, disabled, transitionStatus). The compiler emits one JSON type per property, so nothing is
+      asserted; the kit's own styling goes through collapsible.module.css,
+      not through this.
+
+examples:
+  good:
+    - title: A trigger captioning its Collapsible
+      code: |
+        <Collapsible>
+          <CollapsibleTrigger>Show details</CollapsibleTrigger>
+          <CollapsibleContent>Details go here.</CollapsibleContent>
+        </Collapsible>
+  bad:
+    - title: A trigger with no Collapsible around it
+      code: <CollapsibleTrigger>Show details</CollapsibleTrigger>
+      why: >-
+        CollapsibleTrigger reads the nearest Collapsible's state through Base
+        UI context and throws when there is none, so it cannot render on its
+        own.
+    - title: A non-button element rendered without turning off nativeButton
+      code: |
+        <Collapsible>
+          <CollapsibleTrigger render={<span />}>Show details</CollapsibleTrigger>
+          <CollapsibleContent>Details go here.</CollapsibleContent>
+        </Collapsible>
+      why: >-
+        `nativeButton` stays true, so Base UI adds no button role or keyboard
+        handling to the span and logs an error in development. Pass
+        `nativeButton={false}` with a non-button element, or keep the default
+        button.
+
+family_membership:
+  name: collapsible
+  role: part

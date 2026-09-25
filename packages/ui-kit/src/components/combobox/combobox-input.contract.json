@@ -1,0 +1,172 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_input.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "combobox-input",
+  "forwards_to": "gts.frontx.uikit.element.dom_input.v1~",
+  "intent": "The single-line text field of a one-value combobox, showing the chosen item's label and taking the query that filters the list.",
+  "typical_uses": [
+    "The field of a combobox that holds one value"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A combobox that holds several values",
+      "instead": {
+        "target": "ComboboxChips",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_chips.v1"
+      }
+    },
+    {
+      "situation": "A text field with no list of items to pick from",
+      "instead": {
+        "target": "Input",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.input.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_trigger.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Combobox",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "attributes-land-on-the-input",
+      "text": "`className` and every forwarded attribute, including `aria-label`, `placeholder` and `aria-invalid`, land on the `<input>`, not on the span that wraps it and the trailing buttons."
+    },
+    {
+      "id": "clear-replaces-the-trigger",
+      "text": "With `showClear`, the clear button is in the DOM only while there is a chosen value, and while it is there combobox.module.css hides the trigger button, so the two never show at once; pressing it empties the field and the value."
+    },
+    {
+      "id": "trailing-buttons-skip-the-tab-order",
+      "text": "The trigger and clear buttons take no keyboard focus (the primitive gives both `tabIndex` -1 while the field sits outside the popup); keyboard users open and operate the list from the field itself."
+    },
+    {
+      "id": "disabled-reaches-the-trailing-buttons",
+      "text": "`disabled` disables the input and both trailing buttons together."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Leave the field with no accessible name",
+      "do_instead": "Pass `aria-label`, or `aria-labelledby` pointing at a visible label; the placeholder is not a name"
+    },
+    {
+      "dont": "Keep the English default labels in a combobox shipped in another language",
+      "do_instead": "Pass `toggleLabel` and `clearLabel`; the trailing buttons are icon-only, so those strings are their only accessible names"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "the primitive gives the Combobox.Input element role=\"combobox\"; combobox.test.tsx asserts the field is found by role combobox and name \"Region\", the trailing buttons by role button and the names \"Toggle options\" and \"Clear value\", and the overrides \"Optionen umschalten\" and \"Auswahl löschen\" when `toggleLabel` and `clearLabel` are passed"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is React content, rendered inside the wrapping span after the input and its trailing buttons, such as a ComboboxTrigger replacing the field's own",
+      "because": "`ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the input's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the input's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, popupSide, listEmpty, readOnly, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through combobox.module.css, not through this."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "Combobox.Clear",
+      "reason": "Composed inside ComboboxInput behind `showClear`; the kit exports no clear button of its own."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "A field with a clear button",
+        "code": "<Combobox items={regions}>\n  <ComboboxInput aria-label=\"Region\" placeholder=\"Pick a region\" showClear />\n  <ComboboxContent>\n    <ComboboxList>\n      {(item) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}\n    </ComboboxList>\n  </ComboboxContent>\n</Combobox>\n"
+      },
+      {
+        "title": "Button names in another language",
+        "code": "<ComboboxInput\n  aria-label=\"Region\"\n  showClear\n  toggleLabel=\"Optionen umschalten\"\n  clearLabel=\"Auswahl löschen\"\n/>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A trigger nested inside the field",
+        "code": "<ComboboxInput aria-label=\"Region\">\n  <ComboboxTrigger />\n</ComboboxInput>\n",
+        "why": "ComboboxInput already renders its own trigger button (`showTrigger` is on unless turned off), so this puts a second one in the same slot; drop the child, or pass `showTrigger={false}` so the child is the only one."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "combobox",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {
+      "children": {
+        "typeText": "ReactNode",
+        "optional": true
+      }
+    },
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ComboboxInput",
+    "type": "object",
+    "properties": {
+      "children": {
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. children is React content, rendered inside the wrapping span after the input and its trailing buttons, such as a ComboboxTrigger replacing the field's own. `ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+      },
+      "className": {
+        "type": "string"
+      },
+      "clearLabel": {
+        "type": "string",
+        "default": "Clear value"
+      },
+      "showClear": {
+        "type": "boolean",
+        "default": false
+      },
+      "showTrigger": {
+        "type": "boolean",
+        "default": true
+      },
+      "toggleLabel": {
+        "type": "string",
+        "default": "Toggle options"
+      },
+      "disabled": {
+        "type": "boolean",
+        "default": false
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ComboboxInputState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the input's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: ComboboxInputState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the input's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, popupSide, listEmpty, readOnly, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through combobox.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

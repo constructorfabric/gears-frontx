@@ -1,0 +1,163 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.select_item.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "select-item",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "One option of a Select, identified by its value and captioned by its children.",
+  "typical_uses": [
+    "One entry in a Select's list of options"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "An entry that runs an action rather than setting a value",
+      "instead": {
+        "target": "DropdownMenuItem",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_item.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "SelectContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.select_content.v1"
+    },
+    {
+      "container": "SelectGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.select_group.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "value-identifies-the-item",
+      "text": "`value` identifies the item within its Select; the root marks it chosen by comparing this value with its own `value`, with `Object.is` unless the root's `isItemEqualToValue` says otherwise."
+    },
+    {
+      "id": "check-mark-while-chosen",
+      "text": "While the item is chosen it shows a check mark at its inline-end edge; an item that is not chosen renders no mark."
+    },
+    {
+      "id": "disabled-item-reached-but-not-chosen",
+      "text": "A disabled item is still reached by arrow keys but cannot be chosen by pointer or keyboard, typeahead skips it, and select.module.css dims it and ignores pointer events on it."
+    },
+    {
+      "id": "children-caption-typeahead",
+      "text": "Typeahead matches the item by its rendered text unless `label` gives the text to match instead."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Reuse the same `value` for two items under one Select",
+      "do_instead": "Give every item a unique `value`; items that share one show as chosen together and cannot be told apart"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "the primitive's Select.Item renders role=\"option\" with aria-selected; select.test.tsx asserts the option is found by the option role and its text name"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "value": {
+      "states": "value is the item's value, of any type the caller chooses; left out, it is null, and choosing the item sets the root's value to null",
+      "because": "Base UI types the item's `value` as `any` with a default of null, so no JSON Schema type can state what it holds."
+    },
+    "children": {
+      "states": "children is the item's caption",
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the item's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the item's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (selected, highlighted, disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through select.module.css, not through this."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "Select.ItemText",
+      "reason": "Composed inside SelectItem around its children; it is the text the trigger's caption and typeahead read."
+    },
+    {
+      "part": "Select.ItemIndicator",
+      "reason": "Composed inside SelectItem around the kit's fixed check mark; it has no props of its own on the item."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "Options with one disabled",
+        "code": "<SelectContent>\n  <SelectItem value=\"us-east\">Virginia</SelectItem>\n  <SelectItem value=\"us-west\" disabled>\n    Oregon (soon)\n  </SelectItem>\n</SelectContent>\n"
+      },
+      {
+        "title": "An option whose typeahead text differs from its caption",
+        "code": "<SelectItem value=\"de\" label=\"Germany\">Germany (DE)</SelectItem>"
+      }
+    ],
+    "bad": [
+      {
+        "title": "An option with no value",
+        "code": "<SelectContent>\n  <SelectItem>Frankfurt</SelectItem>\n  <SelectItem>Dublin</SelectItem>\n</SelectContent>\n",
+        "why": "Without `value` both items carry null, so choosing either one clears the Select instead of choosing it, and both show as chosen together."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "select",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {
+      "children": {
+        "typeText": "ReactNode",
+        "optional": true
+      }
+    },
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SelectItem",
+    "type": "object",
+    "properties": {
+      "children": {
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. children is the item's caption. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+      },
+      "className": {
+        "type": "string"
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "label": {
+        "type": "string"
+      },
+      "nativeButton": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, SelectItemState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the item's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: SelectItemState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the item's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (selected, highlighted, disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through select.module.css, not through this."
+      },
+      "value": {
+        "description": "TS: any. The compiler emits one JSON type per property; this type is left to tsc. value is the item's value, of any type the caller chooses; left out, it is null, and choosing the item sets the root's value to null. Base UI types the item's `value` as `any` with a default of null, so no JSON Schema type can state what it holds."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

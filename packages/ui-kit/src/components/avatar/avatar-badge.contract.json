@@ -1,0 +1,102 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar_badge.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "avatar-badge",
+  "forwards_to": "gts.frontx.uikit.element.dom_span.v1~",
+  "intent": "A small status mark pinned to the corner of an Avatar's circle.",
+  "typical_uses": [
+    "A person's presence or state shown on their avatar"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A status shown beside text rather than on an avatar's corner",
+      "instead": {
+        "target": "StatusDot",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.status_dot.v1"
+      }
+    },
+    {
+      "situation": "A count or a short label in a chip of its own",
+      "instead": {
+        "target": "Badge",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.badge.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "Avatar",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.avatar.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "pinned-to-the-root-corner",
+      "text": "The badge is absolutely positioned at the bottom-right corner of its Avatar root, the nearest positioned ancestor, and stacks above the image and the fallback; the root does not clip it."
+    },
+    {
+      "id": "diameter-follows-the-avatar-size",
+      "text": "The badge's diameter comes from avatar.module.css rules on the ancestor Avatar's size class and steps with each size; any svg inside is sized at the default and large sizes and hidden at `sm`, where the badge is a bare dot."
+    },
+    {
+      "id": "no-semantics-of-its-own",
+      "text": "The badge renders a plain span with no role and no text of its own, so on its own it conveys the state by color only."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Let the badge's color be the only signal of the state it marks",
+      "do_instead": "Say the state in text as well, beside the avatar or in the row it belongs to"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A status dot on a large avatar",
+        "code": "<Avatar size=\"lg\">\n  <AvatarImage src=\"/jane.jpg\" alt=\"Jane Doe\" />\n  <AvatarFallback>JD</AvatarFallback>\n  <AvatarBadge />\n</Avatar>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A badge placed beside the avatar instead of inside it",
+        "code": "<div>\n  <Avatar>\n    <AvatarFallback>JD</AvatarFallback>\n  </Avatar>\n  <AvatarBadge />\n</div>\n",
+        "why": "The badge's position and diameter come from its Avatar root: outside one it is placed against the nearest positioned ancestor, or the page when there is none, and no size rule gives it a diameter, so an empty badge collapses to a 4px dot in the page background color: its 2px box-shadow around a zero-size box."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "avatar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit AvatarBadge",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

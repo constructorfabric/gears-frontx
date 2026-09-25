@@ -1,0 +1,166 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_action.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "alert-dialog-action",
+  "forwards_to": "gts.frontx.uikit.element.dom_button.v1~",
+  "intent": "The button that confirms an alert dialog's question and closes it.",
+  "typical_uses": [
+    "The confirming answer of a confirmation, such as Delete or Discard",
+    "A confirm that runs asynchronous work and shows it with `loading` before the dialog closes"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The answer that backs out without doing anything",
+      "instead": {
+        "target": "AlertDialogCancel",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_cancel.v1"
+      }
+    },
+    {
+      "situation": "An action button outside an alert dialog",
+      "instead": {
+        "target": "Button",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true,
+    "icons_via": "icon"
+  },
+  "mounted_in": [
+    {
+      "container": "AlertDialogFooter",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_footer.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "closes-the-dialog-after-the-callers-click",
+      "text": "AlertDialogAction is the primitive's Close rendered as the kit's Button: a press runs the caller's `onClick` and closes the alert dialog, unless that handler calls `event.preventBaseUIHandler()`, which keeps the dialog open for the caller to close through `open`."
+    },
+    {
+      "id": "loading-blocks-a-second-press",
+      "text": "While `loading`, the action reports `aria-busy` and ignores presses, so the same confirm cannot be sent twice while its work is in flight."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Await asynchronous work in `onClick` and expect the dialog to wait for it",
+      "do_instead": "Call `event.preventBaseUIHandler()`, set `loading`, and set `open` to false once the work settles; without the call the dialog closes on the press"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "the primitive's Dialog.Close rendered through the kit's Button; alert-dialog.test.tsx asserts the action is found by role button under its caption (\"Continue\") and that it reports `aria-busy` \"true\" while `loading`"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "icon": {
+      "states": "icon is a React node, not a value",
+      "because": "`ReactNode` is a union, and the compiler emits one JSON type per property - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. It is handed to the rendered Button's own icon slot, which sizes and spaces it and hides it while `loading`."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies, including the kit Button the part renders by default",
+      "because": "Base UI's render prop takes an element or a function of the button's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property. alert-dialog.tsx spreads the caller's props after its own `render`, so a caller's `render` drops the Button and with it `variant`, `size`, `loading` and `icon`."
+    },
+    "style": {
+      "states": "style accepts a function of the button's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through `variant`/`size` and button.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A destructive confirm",
+        "code": "<AlertDialogFooter>\n  <AlertDialogCancel>Cancel</AlertDialogCancel>\n  <AlertDialogAction variant=\"destructive\" onClick={deleteProject}>Delete</AlertDialogAction>\n</AlertDialogFooter>\n"
+      },
+      {
+        "title": "An asynchronous confirm that closes when its work settles",
+        "code": "<AlertDialogAction\n  variant=\"destructive\"\n  loading={deleting}\n  onClick={(event) => {\n    event.preventBaseUIHandler();\n    setDeleting(true);\n    void deleteProject().finally(() => {\n      setDeleting(false);\n      setOpen(false);\n    });\n  }}\n>\n  Delete\n</AlertDialogAction>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A Button rendered through the action to style it",
+        "code": "<AlertDialogAction render={<Button variant=\"destructive\" />}>Delete</AlertDialogAction>\n",
+        "why": "The action already renders the kit's Button; pass `variant` to it directly. A caller's `render` replaces that Button, so `variant`, `size`, `loading` and `icon` given to the action stop reaching it."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "alert_dialog",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {
+      "icon": {
+        "typeText": "ReactNode",
+        "optional": true
+      }
+    },
+    "variant_sources": [],
+    "cannot_extract": [
+      "default: prop \"render\" is written before the rest spread as \"{<Button variant={variant} size={size} loading={loading} icon={icon} />}\", which is not a literal - the body gives no single literal default for it"
+    ]
+  },
+  "props": {
+    "title": "UiKit AlertDialogAction",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "destructive",
+          "outline",
+          "secondary",
+          "ghost",
+          "link",
+          "navigation",
+          "avatar",
+          "utility"
+        ],
+        "default": "default"
+      },
+      "size": {
+        "type": "string",
+        "enum": [
+          "default",
+          "sm",
+          "lg"
+        ],
+        "default": "default"
+      },
+      "className": {
+        "type": "string"
+      },
+      "icon": {
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. icon is a React node, not a value. `ReactNode` is a union, and the compiler emits one JSON type per property - an element, a string, a fragment and `false` are all valid and only tsc can tell them from a mistake. It is handed to the rendered Button's own icon slot, which sizes and spaces it and hides it while `loading`."
+      },
+      "loading": {
+        "type": "boolean"
+      },
+      "nativeButton": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, DialogCloseState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies, including the kit Button the part renders by default. Base UI's render prop takes an element or a function of the button's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property. alert-dialog.tsx spreads the caller's props after its own `render`, so a caller's `render` drops the Button and with it `variant`, `size`, `loading` and `icon`."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: DialogCloseState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the button's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through `variant`/`size` and button.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

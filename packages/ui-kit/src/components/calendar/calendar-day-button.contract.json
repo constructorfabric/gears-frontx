@@ -1,0 +1,108 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.calendar_day_button.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "calendar-day-button",
+  "forwards_to": "gts.frontx.uikit.element.dom_button.v1~",
+  "intent": "The button inside each day cell of a Calendar, carrying the selection state as data attributes and taking focus when keyboard navigation lands on its day.",
+  "typical_uses": [
+    "The inner element of a custom DayButton passed through Calendar's `components`, which adds content or behaviour around the kit's day button"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A button anywhere outside a Calendar's day grid",
+      "instead": {
+        "target": "Button",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "a custom DayButton passed as `components={{ DayButton }}` to Calendar, which receives the library's day button props and forwards them",
+      "note": "Calendar already renders CalendarDayButton for every day once `mode` or `onDayClick` is set; it is rendered by hand only inside such a replacement, with the `day` and `modifiers` the replacement received."
+    }
+  ],
+  "invariants": [
+    {
+      "id": "selection-data-attributes",
+      "text": "The button carries `data-selected-single` for a selected day outside any range, and `data-range-start`, `data-range-end` and `data-range-middle` for the parts of a range, all derived from `modifiers`; calendar.module.css keys the selection fill on them."
+    },
+    {
+      "id": "focus-follows-modifiers",
+      "text": "When `modifiers.focused` becomes true the button moves the browser's focus onto itself; this is how arrow-key navigation reaches it."
+    },
+    {
+      "id": "day-stays-off-the-dom",
+      "text": "`day` is read and dropped, never written to the button as an attribute; the ISO date is on the surrounding cell's `data-day`."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Render CalendarDayButton without the `day` and `modifiers` a DayButton slot receives",
+      "do_instead": "Forward every prop the replacement DayButton received, so the selection attributes and focus handling have their source"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "day": {
+      "states": "day is the library's CalendarDay object for the button's day",
+      "because": "`CalendarDay` is a class instance holding the date, the displayed month and whether the day is outside it; the compiler leaves the named type to tsc."
+    },
+    "modifiers": {
+      "states": "modifiers is an object mapping each modifier name to whether it applies to the day, such as selected, focused, range_start or disabled",
+      "because": "`Modifiers` is `Record<string, boolean>` keyed by the library's and the caller's modifier names; the compiler leaves the named type to tsc."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A replacement DayButton that marks days with events and keeps the kit's button",
+        "code": "function EventDayButton(props: DayButtonProps) {\n  return (\n    <CalendarDayButton {...props}>\n      {props.children}\n      {hasEvent(props.day.date) && <span aria-hidden=\"true\">*</span>}\n    </CalendarDayButton>\n  );\n}\n<Calendar mode=\"single\" selected={date} onSelect={setDate} components={{ DayButton: EventDayButton }} />\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A day button rendered by hand without the slot's props",
+        "code": "<CalendarDayButton>15</CalendarDayButton>",
+        "why": "`day` and `modifiers` are required and come from the Calendar's DayButton slot; without `modifiers` the component throws reading `modifiers.focused`."
+      }
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit CalendarDayButton",
+    "type": "object",
+    "properties": {
+      "day": {
+        "description": "TS: CalendarDay. The compiler emits one JSON type per property; this type is left to tsc. day is the library's CalendarDay object for the button's day. `CalendarDay` is a class instance holding the date, the displayed month and whether the day is outside it; the compiler leaves the named type to tsc."
+      },
+      "modifiers": {
+        "description": "TS: Modifiers. The compiler emits one JSON type per property; this type is left to tsc. modifiers is an object mapping each modifier name to whether it applies to the day, such as selected, focused, range_start or disabled. `Modifiers` is `Record<string, boolean>` keyed by the library's and the caller's modifier names; the compiler leaves the named type to tsc."
+      }
+    },
+    "required": [
+      "day",
+      "modifiers"
+    ],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_next.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "questionnaire-next",
+  "forwards_to": "gts.frontx.uikit.element.dom_button.v1~",
+  "intent": "Validate the current item of a Questionnaire and move to the next enabled item when it passes.",
+  "typical_uses": [
+    "The forward action of a questionnaire's navigation row"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "An action button outside a questionnaire",
+      "instead": {
+        "target": "Button",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "QuestionnaireActions",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_actions.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "variant-and-size-style-the-default-button",
+      "text": "`variant` and `size` are passed to the kit Button the component renders by default; when `render` is given it replaces that Button and both are ignored."
+    },
+    {
+      "id": "hidden-when-it-does-not-apply",
+      "text": "It is hidden on the last item, where QuestionnaireSubmit takes its place. While hidden it carries the native `hidden` and `inert` attributes, `aria-hidden` and tabIndex -1, and `data-hidden` in place of `data-visible`."
+    },
+    {
+      "id": "never-disables-itself",
+      "text": "The button stays enabled on an unanswered item: activating it runs the item's validation, and a failure keeps the item current, marks it invalid and focuses its first answer control. It advertises Enter in `aria-keyshortcuts` while visible and enabled."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "questionnaire.test.tsx asserts Next stays enabled on an unanswered required item, the item stays current and a role=\"alert\" message appears"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "The questionnaire engine's render prop takes an element or a function of the button's own state (`QuestionnaireNavigationState`: disabled, shortcut, status, visible), so its type is a union of a React element and a callback; the compiler emits one JSON type per property, so nothing is asserted. The kit defaults it to its own Button."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "The default Next button",
+        "code": "<QuestionnaireNext />"
+      },
+      {
+        "title": "A smaller Next button with its own text",
+        "code": "<QuestionnaireNext size=\"sm\">Continue</QuestionnaireNext>"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Next disabled until answered",
+        "code": "<QuestionnaireNext disabled={!answered} />",
+        "why": "Activating Next is what runs validation and shows the message; disabled, it leaves the user stuck with no explanation."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "questionnaire",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit QuestionnaireNext",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "destructive",
+          "outline",
+          "secondary",
+          "ghost",
+          "link",
+          "navigation",
+          "avatar",
+          "utility"
+        ],
+        "default": "default"
+      },
+      "size": {
+        "type": "string",
+        "enum": [
+          "default",
+          "sm",
+          "lg"
+        ],
+        "default": "default"
+      },
+      "className": {
+        "type": "string"
+      },
+      "render": {
+        "description": "TS: RenderProp<QuestionnaireNavigationState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. The questionnaire engine's render prop takes an element or a function of the button's own state (`QuestionnaireNavigationState`: disabled, shortcut, status, visible), so its type is a union of a React element and a callback; the compiler emits one JSON type per property, so nothing is asserted. The kit defaults it to its own Button."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

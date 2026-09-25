@@ -1,0 +1,130 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.resizable_handle.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "resizable-handle",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The draggable, keyboard-operable divider between two panels of a ResizablePanelGroup.",
+  "typical_uses": [
+    "The divider between two adjacent panels, optionally with a visible grip"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A static dividing line that nobody drags",
+      "instead": {
+        "target": "Separator",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.separator.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "ResizablePanelGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.resizable_panel_group.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "aria-orientation-is-the-line",
+      "text": "The handle's `aria-orientation` describes the drawn line, which is the opposite of the group's `orientation`: `vertical` in a horizontal group and `horizontal` in a vertical one. resizable.module.css keys the handle's geometry and the grip's 90 degree rotation on it."
+    },
+    {
+      "id": "keyboard-resizing",
+      "text": "A focused handle resizes its neighbours with the arrow keys along the group's axis and with Home and End, Enter collapses or expands the panel before the handle when it is `collapsible`, and F6 moves focus to the group's next handle (Shift+F6 to the previous). Double-clicking resets the first adjoining panel that has a `defaultSize` to it, unless `disableDoubleClick` is set; with no `defaultSize` on either it does nothing."
+    },
+    {
+      "id": "disabled-leaves-tab-order",
+      "text": "A `disabled` handle cannot be used to resize its neighbouring panels, is removed from the tab order and carries `aria-disabled`; its panels can still change size when another handle moves them."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put an icon or text inside the handle as children",
+      "do_instead": "Set `withHandle` for the kit's grip; the handle renders no consumer children"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "the primitive's Separator (role=\"separator\", aria-orientation, aria-valuenow, aria-valuemin, aria-valuemax, aria-controls, tabIndex 0 unless disabled, and arrow, Home, End and Enter keyboard resizing), plus resizable.test.tsx asserting role separator and aria-orientation vertical in a horizontal group and horizontal in a vertical one"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "elementRef": {
+      "states": "elementRef is a ref to the handle's div element",
+      "because": "`Ref<HTMLDivElement>` is a union of a ref object and a callback function - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style is a plain style object applied inline to the handle's div",
+      "because": "`CSSProperties` is React's style object type, which the compiler leaves to tsc. The library sets `flex-grow` and `flex-shrink` after it, so those two cannot be overridden; the kit's own styling goes through resizable.module.css."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "the grip",
+      "reason": "A div styled by resizable.module.css's `.grip`, holding a vertical grip icon, rendered only when `withHandle` is set; it is not a component of its own."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "A handle with a visible grip",
+        "code": "<ResizableHandle withHandle />"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A custom icon passed as children",
+        "code": "<ResizableHandle>\n  <GripHorizontalIcon />\n</ResizableHandle>\n",
+        "why": "The handle renders only the kit's grip; the icon never appears."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "resizable",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ResizableHandle",
+    "type": "object",
+    "properties": {
+      "withHandle": {
+        "type": "boolean"
+      },
+      "className": {
+        "type": "string"
+      },
+      "disableDoubleClick": {
+        "type": "boolean"
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "elementRef": {
+        "description": "TS: Ref<HTMLDivElement> | undefined. The compiler emits one JSON type per property; this type is left to tsc. elementRef is a ref to the handle's div element. `Ref<HTMLDivElement>` is a union of a ref object and a callback function - the compiler emits one JSON type per property."
+      },
+      "id": {
+        "type": "string"
+      },
+      "style": {
+        "description": "TS: CSSProperties | undefined. The compiler emits one JSON type per property; this type is left to tsc. style is a plain style object applied inline to the handle's div. `CSSProperties` is React's style object type, which the compiler leaves to tsc. The library sets `flex-grow` and `flex-shrink` after it, so those two cannot be overridden; the kit's own styling goes through resizable.module.css."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

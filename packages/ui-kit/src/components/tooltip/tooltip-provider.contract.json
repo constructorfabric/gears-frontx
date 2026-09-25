@@ -1,0 +1,106 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.tooltip_provider.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "tooltip-provider",
+  "intent": "Share the open delay across every tooltip in a subtree and group them, so once one opens its neighbours open instantly.",
+  "typical_uses": [
+    "A toolbar or icon rail whose triggers all carry tooltips",
+    "Once near the application root, grouping every tooltip below it"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A tooltip that should keep the primitive's standard hover delay",
+      "instead": {
+        "target": "Tooltip",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.tooltip.v1",
+        "note": "Mount the Tooltip without a provider around it; inside one, the kit's default provider delay of 0 opens it with no wait."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "invariants": [
+    {
+      "id": "renders-no-element",
+      "text": "TooltipProvider renders no DOM element; it only provides context to every Tooltip below it."
+    },
+    {
+      "id": "default-delay-opens-instantly",
+      "text": "Left at its default `delay` of 0, every tooltip inside opens with no wait and a TooltipTrigger's own `delay` is ignored; with a non-zero `delay` here, a trigger's own `delay` takes precedence over it."
+    },
+    {
+      "id": "neighbours-open-instantly-within-timeout",
+      "text": "Once one tooltip inside has opened, another one opened within `timeout` milliseconds of the previous closing opens with no delay and without its open transition."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Wrap each Tooltip in its own TooltipProvider",
+      "do_instead": "Wrap the whole group in one provider - each tooltip joins the nearest provider above it, so separate providers form separate groups"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is any React content; every Tooltip inside it, at any depth, joins the group",
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A toolbar whose tooltips open as a group",
+        "code": "<TooltipProvider>\n  <Tooltip>\n    <TooltipTrigger aria-label=\"Bold\">\n      <BoldIcon />\n    </TooltipTrigger>\n    <TooltipContent>Bold</TooltipContent>\n  </Tooltip>\n  <Tooltip>\n    <TooltipTrigger aria-label=\"Italic\">\n      <ItalicIcon />\n    </TooltipTrigger>\n    <TooltipContent>Italic</TooltipContent>\n  </Tooltip>\n</TooltipProvider>\n"
+      },
+      {
+        "title": "A group that waits before its first tooltip opens",
+        "code": "<TooltipProvider delay={600}>\n  <nav aria-label=\"Formatting\">{children}</nav>\n</TooltipProvider>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A per-trigger delay expected to slow a default provider",
+        "code": "<TooltipProvider>\n  <Tooltip>\n    <TooltipTrigger delay={600}>Share</TooltipTrigger>\n    <TooltipContent>Share with your team</TooltipContent>\n  </Tooltip>\n</TooltipProvider>\n",
+        "why": "Under a provider at its default delay of 0 the trigger's own `delay` is ignored and the tooltip opens with no wait; set `delay` on the provider instead."
+      }
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit TooltipProvider",
+    "type": "object",
+    "properties": {
+      "children": {
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is any React content; every Tooltip inside it, at any depth, joins the group. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+      },
+      "closeDelay": {
+        "type": "number"
+      },
+      "delay": {
+        "type": "number",
+        "default": 0
+      },
+      "timeout": {
+        "type": "number"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

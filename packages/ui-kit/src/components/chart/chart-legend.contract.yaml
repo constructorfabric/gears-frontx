@@ -1,0 +1,132 @@
+# Semantic overlay for ChartLegend - one of the six independent contracts in
+# this directory (see chart-container.contract.yaml). ChartLegend is the
+# library's Legend re-exported unchanged: the kit writes no body for it, and
+# the ARIA attributes its props type admits are handed to its content, so
+# the overlay states that no element of its own receives them. Its props
+# are the library's own, taken from its declarations.
+component: chart-legend
+
+intent: Place a key of the chart's series beside the plot, rendered by its `content`.
+
+typical_uses:
+  - A key naming each series of a chart with two or more series
+
+dont_use_when:
+  - situation: Text about the chart as a whole, such as a caption or a source note
+    instead:
+      target: text next to ChartContainer, outside the chart element
+      note: The legend lists series only; it has no place for free text.
+
+accepts:
+  content: nothing
+
+mounted_in:
+  - container: a Recharts chart element (BarChart, LineChart, AreaChart, PieChart and the like)
+    note: >-
+      The legend reads its items from the chart element's own state and
+      reserves room for itself in the chart's layout; outside one it renders
+      nothing. The chart element is the library's, not a kit component;
+      ChartLegendContent additionally needs ChartContainer around it.
+
+host_element:
+  none: the legend's attributes are passed to its content renderer as props; whether they reach an element depends on that renderer.
+
+invariants:
+  - id: default-content-reads-no-config
+    text: >-
+      Without `content` the legend renders the library's own default
+      content, which reads no ChartConfig; ChartLegendContent is the content
+      that resolves labels and icons from the config.
+  - id: content-receives-the-legend-props
+    text: >-
+      The element given as `content` is cloned on every render, or rendered
+      as a component when it is a function, with all of the legend's props,
+      its resolved layout and the chart's size and margin, plus the payload
+      of legend items.
+
+anti_patterns:
+  - dont: Give the legend an `onClick` to show or hide a series while `content` is ChartLegendContent
+    do_instead: >-
+      Leave `content` unset when items must react to clicks; only the
+      library's default content calls the legend's handlers per item
+
+deprecations: {}
+
+# The library's Legend is not exercised by chart.test.tsx, which renders the
+# content component directly.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: The kit's content above the plot
+      code: |
+        <ChartContainer config={chartConfig}>
+          <BarChart data={data}>
+            <Bar dataKey="desktop" fill="var(--color-desktop)" />
+            <ChartLegend verticalAlign="top" content={<ChartLegendContent />} />
+          </BarChart>
+        </ChartContainer>
+  bad:
+    - title: A legend outside the chart element
+      code: |
+        <ChartContainer config={chartConfig}>
+          <ChartLegend content={<ChartLegendContent />} />
+        </ChartContainer>
+      why: >-
+        The legend reads its items from a chart element; with none around
+        it, it renders nothing.
+
+# What each property the schema cannot state in full actually states, and
+# why - the compiler emits both halves into that property's description.
+prop_statements:
+  children:
+    states: 'children is passed to the legend''s content with its other props; neither the library''s default content nor ChartLegendContent renders it'
+    because: '`ReactNode` - an element tree, which no JSON Schema type covers.'
+  content:
+    states: 'content renders the legend''s body: an element the legend clones with its props, or a function of them; the kit''s is ChartLegendContent'
+    because: '`ReactElement | ((props) => ReactNode)` - an element or a function, which no JSON Schema type covers.'
+  dangerouslySetInnerHTML:
+    states: 'dangerouslySetInnerHTML is passed to the legend''s content with its other props; ChartLegendContent keeps it off its root'
+    because: '`{ __html: string }` - an object type the compiler emits no JSON type for.'
+  formatter:
+    states: 'formatter is passed to the legend''s content; the library''s default content calls it per item with its value, entry and index and shows its return as the item''s text, and ChartLegendContent''s contract says whether it reads it'
+    because: 'A function, which no JSON Schema type covers.'
+  height:
+    states: 'height is the legend box''s height, a number of pixels or a CSS length'
+    because: '`string | number` - the compiler emits one JSON type per property.'
+  itemSorter:
+    states: 'itemSorter orders the legend items by `value`, `dataKey` or a function of the item; `null` keeps the payload''s order'
+    because: 'A union of strings, a function and null, which no JSON Schema type covers.'
+  labelStyle:
+    states: 'labelStyle is a style object the library''s default content applies to each item''s text; ChartLegendContent does not read it'
+    because: '`CSSProperties` - an object type the compiler emits no JSON type for.'
+  onBBoxUpdate:
+    states: 'onBBoxUpdate is typed as a callback for the legend''s measured box, but the legend never calls it; it is passed to the legend''s content with the other props, and ChartLegendContent keeps it off its root'
+    because: 'A function, which no JSON Schema type covers.'
+  payloadUniqBy:
+    states: 'payloadUniqBy is a boolean or a function returning each item''s identity, deciding which duplicate items the legend drops before its content renders'
+    because: '`boolean | ((entry) => unknown)` - a function, which no JSON Schema type covers.'
+  portal:
+    states: 'portal is the element the legend renders into; without it the legend renders inside the chart''s wrapper'
+    because: '`HTMLElement | null` - a live DOM node, which no JSON Schema type covers.'
+  position:
+    states: 'position places the legend on a named side or inside position of the chart, or at an `{ x, y }` point, and overrides `align` and `verticalAlign` when given'
+    because: '`CartesianPosition` mixes strings with an object, which no JSON Schema type covers.'
+  width:
+    states: 'width is the legend box''s width, a number of pixels or a CSS length'
+    because: '`string | number` - the compiler emits one JSON type per property.'
+  wrapperStyle:
+    states: 'wrapperStyle is a style object for the legend''s positioned wrapper element'
+    because: '`CSSProperties` - an object type the compiler emits no JSON type for.'
+
+# One statement for the legend's event handlers, which all state the same
+# fact; onBBoxUpdate matches the pattern too but is no event handler, so it
+# carries a statement of its own above, which wins over the group.
+prop_statement_groups:
+  - match: '^on[A-Z]'
+    states: 'An event handler passed to the legend''s content: the library''s default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it'
+    because: 'A function, which no JSON Schema type covers.'

@@ -1,0 +1,92 @@
+# Semantic overlay for ProgressLabel - a part of the Progress family, see
+# progress.contract.yaml's `family_membership` for how the five contracts
+# relate.
+#
+# Machine-extractable facts (prop list, forwarded surface) do NOT belong
+# here: the compiler takes those from progress.tsx and the Base UI Progress
+# primitive it wraps, and rejects an overlay that tries to restate them -
+# one fact, one owner.
+component: progress-label
+
+intent: The visible caption that names what its progress bar is the progress of.
+
+typical_uses:
+  - The caption beside the bar, composed as a child of Progress
+
+dont_use_when:
+  - situation: A caption for anything that is not a progress bar
+    instead:
+      target: Label
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.label.v1
+
+# `mounted_in` is filled from Progress's own accepted components, not
+# authored here.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: names-the-bar-not-itself
+    text: >-
+      A ProgressLabel registers its id with the root, which wires it into
+      the progressbar's `aria-labelledby`, so the caption's text becomes
+      the bar's accessible name; the span itself renders
+      `role="presentation"` and nothing announces it as a separate element.
+
+anti_patterns:
+  - dont: Point a `<label htmlFor>` at the bar's id
+    do_instead: >-
+      Compose this ProgressLabel into the root - a `<label>` element cannot
+      name a div, and the root wires `aria-labelledby` only from a
+      ProgressLabel's registered id
+
+deprecations: {}
+
+# The wiring below is the primitive's (Progress.Label registering its id);
+# progress.test.tsx asserts the label's span and text only.
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Progress.Label, which registers its id with the root
+      for `aria-labelledby` and renders role="presentation" (verified in
+      the @base-ui/react/progress source); progress.test.tsx asserts the
+      label's span and its text
+  rtl:
+    outcome: unknown
+
+# What each property that reaches this contract asserting nothing (or only
+# part of its shape) actually states, and why - keyed on the property
+# itself. The compiler emits both halves into that property's own
+# description, beside the `TS:` text.
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the label's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the label's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (status). The compiler emits one JSON type per property, so nothing is asserted; the kit's own
+      styling goes through progress.module.css, not through this.
+
+examples:
+  good:
+    - title: A caption composed inside the wrapper
+      code: |
+        <Progress value={42}>
+          <ProgressLabel>Uploading</ProgressLabel>
+        </Progress>
+  bad:
+    - title: A label with no progress root around it
+      code: <ProgressLabel>Uploading</ProgressLabel>
+      why: >-
+        The label registers its id with the nearest progress root through
+        React context and throws when there is none.
+
+family_membership:
+  name: progress
+  role: part

@@ -1,0 +1,73 @@
+# Semantic overlay for SheetFooter - a part of the Sheet family, see
+# sheet.contract.yaml's `family_membership` for how the contracts relate.
+component: sheet-footer
+
+intent: The action region at the bottom of a sheet's panel.
+
+typical_uses:
+  - The primary action stacked with a Cancel
+
+dont_use_when:
+  - situation: The action region of a centered dialog
+    instead:
+      target: DialogFooter
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_footer.v1
+
+# The footer holds the sheet's actions - kit Buttons, a SheetClose, or any
+# other control a caller chooses - so its children are not constrained to
+# a list.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: stacked-column-at-every-width
+    text: >-
+      SheetFooter stacks its children in source order in a column spaced
+      var(--space-2) apart at every viewport width, with a var(--space-4)
+      padding on every side that replaces the panel's var(--space-6) inset
+      for this child, and a `margin-top: auto`, which pushes it to the
+      panel's bottom when the content is shorter than the panel.
+  - id: pinned-while-the-popup-scrolls
+    text: >-
+      SheetFooter is sticky at the bottom of the panel with the panel's own
+      opaque background, so content scrolling under it stays hidden.
+
+anti_patterns: []
+
+deprecations: {}
+
+# A plain div with no role; sheet.test.tsx renders it but asserts nothing
+# about it.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Save with a Cancel that closes the sheet
+      code: |
+        <SheetFooter>
+          <SheetClose render={<Button variant="outline" />}>Cancel</SheetClose>
+          <Button onClick={save}>Save</Button>
+        </SheetFooter>
+  bad:
+    - title: A footer placed outside the panel
+      code: |
+        <Sheet>
+          <SheetTrigger>Edit</SheetTrigger>
+          <SheetFooter>
+            <Button onClick={save}>Save</Button>
+          </SheetFooter>
+          <SheetContent>
+            <SheetTitle>Edit</SheetTitle>
+          </SheetContent>
+        </Sheet>
+      why: >-
+        Only SheetContent is portalled into the panel; a footer beside it
+        renders in the page, visible whether the sheet is open or not.
+
+family_membership:
+  name: sheet
+  role: part

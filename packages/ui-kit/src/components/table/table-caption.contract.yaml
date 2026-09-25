@@ -1,0 +1,77 @@
+# Semantic overlay for TableCaption - part of the Table family, see
+# table.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from the accepting member's own
+# `accepts`, not authored here.
+component: table-caption
+
+intent: Give a table its accessible name as a real <caption>, drawn below the rows.
+
+typical_uses:
+  - A one-line title or description of what a table lists
+
+dont_use_when:
+  - situation: The column headings of the table
+    instead:
+      target: TableHeader
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.table_header.v1
+  - situation: Naming the table's focusable scroll region for keyboard users
+    instead:
+      target: Table's `label` prop
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.table.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: drawn-below-the-rows
+    text: >-
+      HTML requires a <caption> to be the first child of its <table>, so
+      TableCaption is written first among Table's children; the table sets
+      caption-side bottom, which only changes where it is painted, below the
+      rows. It is the <table>'s caption in the accessibility tree.
+
+anti_patterns:
+  - dont: Put the table's title in a heading above Table with nothing linking the two
+    do_instead: >-
+      Use TableCaption, or keep the heading and pass aria-labelledby with
+      the heading's id to Table
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A caption as the table's first child
+      code: |
+        <Table>
+          <TableCaption>Recent invoices</TableCaption>
+          <TableBody>
+            <TableRow>
+              <TableCell>INV001</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+  bad:
+    - title: A caption outside the table
+      code: |
+        <TableCaption>Recent invoices</TableCaption>
+        <Table>
+          <TableBody>
+            <TableRow>
+              <TableCell>INV001</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      why: >-
+        A <caption> outside a <table> is invalid markup and names nothing;
+        TableCaption belongs inside Table.
+
+family_membership:
+  name: table
+  role: part

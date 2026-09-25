@@ -22,7 +22,7 @@
     "name": { "type": "string" },
     "type": { "type": "string", "enum": ["submit", "reset", "button"] },
     "value": {
-      "description": "TS: string | number | readonly string[]. Not expressible in JSON Schema, checked by tsc."
+      "description": "TS: string | number | readonly string[]. The compiler emits one JSON type per property, so this union is left to tsc."
     }
   },
   "patternProperties": {

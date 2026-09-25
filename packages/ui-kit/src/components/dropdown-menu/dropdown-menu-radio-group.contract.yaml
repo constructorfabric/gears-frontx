@@ -1,0 +1,116 @@
+# Semantic overlay for DropdownMenuRadioGroup - a part of the DropdownMenu
+# family, see dropdown-menu.contract.yaml's `family_membership` for how the
+# contracts relate. The forwarded surface is the primitive's div.
+component: dropdown-menu-radio-group
+
+intent: Hold the one selected value of a set of DropdownMenuRadioItems.
+
+typical_uses:
+  - A sort order or a view mode chosen from a menu
+
+dont_use_when:
+  - situation: A set of independent settings, any number of which can be on
+    instead:
+      target: DropdownMenuCheckboxItem
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_checkbox_item.v1
+  - situation: A single choice that belongs to a form, shown on the page
+    instead:
+      target: RadioGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_label.v1 # DropdownMenuLabel
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_radio_item.v1 # DropdownMenuRadioItem
+
+invariants:
+  - id: value-wins-over-default-value
+    text: >-
+      `value` and `defaultValue` are both accepted; `defaultValue` seeds the
+      initial state and is ignored afterwards, and when `value` is given it
+      wins and the component follows it on every render.
+  - id: selects-by-item-value
+    text: >-
+      The item whose `value` is strictly equal (`===`) to the group's value is checked; activating
+      another item reports that item's `value` through `onValueChange`.
+  - id: disabled-cascades-to-every-item
+    text: >-
+      Setting `disabled` on the group disables every DropdownMenuRadioItem
+      inside it; an item's own `disabled` can disable that one item further
+      but cannot re-enable it against a disabled group.
+  - id: named-by-its-label
+    text: >-
+      The group renders `role="group"` and takes its accessible name from the
+      DropdownMenuLabel inside it, through `aria-labelledby`, unless the
+      caller passes its own `aria-labelledby`.
+
+anti_patterns: []
+
+deprecations: {}
+
+# dropdown-menu.test.tsx asserts onValueChange receives the chosen item's
+# value; nothing asserts the group role or its name.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  children:
+    states: children is the group's label and radio items
+    because: >-
+      `React.ReactNode` is a union of elements, strings, numbers, fragments
+      and more; the compiler emits one JSON type per property.
+  value:
+    states: value is the selected item's value, of any type the caller chooses
+    because: >-
+      Typed `any` by the primitive, so no JSON Schema type can state what it
+      holds; items are matched against it by their own `value`.
+  defaultValue:
+    states: defaultValue is the initially selected item's value, of any type the caller chooses
+    because: >-
+      Typed `any` by the primitive, so no JSON Schema type can state what it
+      holds.
+  onValueChange:
+    states: onValueChange is a callback called with the chosen item's value and event details, not a value
+    because: >-
+      `(value: any, eventDetails) => void` - a function, which no JSON Schema
+      type covers.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the group's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the group's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own
+      styling goes through dropdown-menu.module.css, not through this.
+
+examples:
+  good:
+    - title: A view mode held in the caller's state
+      code: |
+        <DropdownMenuRadioGroup value={view} onValueChange={setView}>
+          <DropdownMenuLabel>View</DropdownMenuLabel>
+          <DropdownMenuRadioItem value="list">List</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="grid">Grid</DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+  bad:
+    - title: Selection tracked on each item instead of the group
+      code: |
+        <DropdownMenuRadioGroup>
+          <DropdownMenuRadioItem value="list" checked={view === 'list'}>List</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="grid" checked={view === 'grid'}>Grid</DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+      why: >-
+        A radio item takes no `checked`; the group's `value` decides which
+        item is checked.
+
+family_membership:
+  name: dropdown_menu
+  role: part

@@ -1,0 +1,90 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.carousel_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "carousel-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Hold a Carousel's slides in the clipped viewport the carousel engine scrolls.",
+  "typical_uses": [
+    "The one track inside a Carousel that holds its CarouselItem slides"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A clipped scrolling container outside any Carousel",
+      "instead": {
+        "target": "ScrollArea",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.scroll_area.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.carousel_item.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Carousel",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.carousel.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "props-reach-the-inner-track",
+      "text": "CarouselContent renders two nested divs: an outer viewport the engine attaches to, which clips overflow, and an inner flex track the engine moves. `className` and every forwarded prop land on the inner track, never on the outer viewport."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put more than one CarouselContent in a Carousel",
+      "do_instead": "Use one CarouselContent per Carousel; the root owns a single engine instance with a single viewport ref, so only one track is driven"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "The track holding the slides",
+        "code": "<Carousel aria-label=\"Photos\">\n  <CarouselContent>\n    <CarouselItem>1</CarouselItem>\n    <CarouselItem>2</CarouselItem>\n  </CarouselContent>\n</Carousel>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A track with no Carousel around it",
+        "code": "<CarouselContent>\n  <CarouselItem>1</CarouselItem>\n</CarouselContent>\n",
+        "why": "CarouselContent reads the root's context through useCarousel and throws \"useCarousel must be used within a <Carousel />\" when there is none."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "carousel",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit CarouselContent",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

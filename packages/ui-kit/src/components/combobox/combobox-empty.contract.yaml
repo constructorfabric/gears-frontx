@@ -1,0 +1,92 @@
+# Semantic overlay for ComboboxEmpty - a part of the Combobox family, see
+# combobox.contract.yaml's `family_membership`. It wraps Base UI's
+# Combobox.Empty; the forwarded surface is its div.
+component: combobox-empty
+
+intent: The message a Combobox's popup shows when no item matches the typed query, announced politely to assistive technology.
+
+typical_uses:
+  - A short no-results line beside the list
+
+dont_use_when:
+  - situation: A page or panel with no data to show at all
+    instead:
+      target: Empty
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.empty.v1
+
+# The message arrives as children, shown only while the filtered list is
+# empty.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: children-only-while-nothing-matches
+    text: >-
+      The element is always rendered, and its children only while the
+      root's filtered items are empty; that result exists only when the root
+      has `items`, so without `items` the message shows at all times.
+  - id: polite-live-region
+    text: >-
+      The element is a polite, atomic live region (role "status",
+      `aria-live="polite"`, `aria-atomic`), so assistive technology
+      announces the message when it appears.
+
+anti_patterns:
+  - dont: Mount ComboboxEmpty conditionally, or hide it with `hidden` or a display of none
+    do_instead: >-
+      Render it unconditionally and let it decide when to show its
+      children; a live region that is not in the DOM before its text
+      arrives is not announced reliably
+
+deprecations: {}
+
+# combobox.test.tsx asserts the message text and the kit class once nothing
+# matches; nothing asserts the live-region role.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the message's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the message's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (empty for this part). The compiler emits one JSON type per property, so nothing is asserted; the
+      kit's own styling goes through combobox.module.css, not through this.
+
+examples:
+  good:
+    - title: A no-results line beside the list
+      code: |
+        <ComboboxContent>
+          <ComboboxEmpty>No regions found.</ComboboxEmpty>
+          <ComboboxList>
+            {(item) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}
+          </ComboboxList>
+        </ComboboxContent>
+  bad:
+    - title: The message shown only when the caller decides
+      code: |
+        <ComboboxContent>
+          {results.length === 0 && <ComboboxEmpty>No regions found.</ComboboxEmpty>}
+          <ComboboxList>
+            {(item) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}
+          </ComboboxList>
+        </ComboboxContent>
+      why: >-
+        ComboboxEmpty already shows its children only while nothing matches;
+        mounting it conditionally drops the live region the announcement
+        needs.
+
+family_membership:
+  name: combobox
+  role: part

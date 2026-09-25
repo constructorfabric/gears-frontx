@@ -1,0 +1,78 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.item_actions.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "item-actions",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Hold the controls at the end of an item row.",
+  "typical_uses": [
+    "One or more buttons, a switch or a menu trigger that act on the row"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "One action beside a bounded panel's title",
+      "instead": {
+        "target": "CardAction",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_action.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "Item",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "centered-row-with-gap",
+      "text": "ItemActions is a flex row that centers its children vertically and spaces them var(--space-2) apart; it does not push itself to the end of the row, which is left to an ItemContent before it taking the free width."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Two buttons at the end of a row",
+        "code": "<Item>\n  <ItemContent>\n    <ItemTitle>Q3 report.pdf</ItemTitle>\n  </ItemContent>\n  <ItemActions>\n    <Button variant=\"outline\" size=\"sm\">Share</Button>\n    <Button size=\"sm\">Download</Button>\n  </ItemActions>\n</Item>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Actions with no content column before them",
+        "code": "<Item>\n  <ItemMedia variant=\"icon\">\n    <FileIcon />\n  </ItemMedia>\n  <ItemActions>\n    <Button size=\"sm\">Download</Button>\n  </ItemActions>\n</Item>\n",
+        "why": "Without an ItemContent to take the free width, the actions sit right after the media instead of at the end of the row."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "item",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ItemActions",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

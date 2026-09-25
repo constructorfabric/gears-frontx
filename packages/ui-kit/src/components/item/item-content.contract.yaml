@@ -1,0 +1,75 @@
+# Semantic overlay for ItemContent - part of the item family, see
+# item.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from Item's accepted components.
+component: item-content
+
+intent: Stack an item's title and description in the column that takes the row's free width.
+
+typical_uses:
+  - The title and description column of an Item
+
+dont_use_when:
+  - situation: The body of a bounded panel
+    instead:
+      target: CardContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_content.v1
+
+# The ONE authored statement of this nesting: ItemTitle's and
+# ItemDescription's `mounted_in` are filled from this list.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.item_title.v1 # ItemTitle
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.item_description.v1 # ItemDescription
+
+invariants:
+  - id: grows-and-may-shrink-below-its-text
+    text: >-
+      ItemContent is a flex column spaced var(--space-1) apart that grows
+      into the row's free width and has no minimum width, so a long title
+      or description is cut by its own truncation instead of widening the
+      row. An ItemContent that directly follows another ItemContent does not
+      grow; it keeps its content's width.
+
+anti_patterns:
+  - dont: Place two ItemContent blocks in a row expecting two equal columns
+    do_instead: >-
+      Use one ItemContent for the main text and a second one only for a
+      short trailing block, such as a timestamp, which keeps its own width
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A main column and a trailing timestamp
+      code: |
+        <Item>
+          <ItemContent>
+            <ItemTitle>Build finished</ItemTitle>
+            <ItemDescription>All checks passed</ItemDescription>
+          </ItemContent>
+          <ItemContent>
+            <ItemDescription>2m ago</ItemDescription>
+          </ItemContent>
+        </Item>
+  bad:
+    - title: Title and description placed straight in the row
+      code: |
+        <Item>
+          <ItemTitle>Build finished</ItemTitle>
+          <ItemDescription>All checks passed</ItemDescription>
+        </Item>
+      why: >-
+        The row is a wrapping flex row, so the two text parts sit side by
+        side instead of stacked, and neither takes the free width; wrap
+        them in ItemContent.
+
+family_membership:
+  name: item
+  role: part

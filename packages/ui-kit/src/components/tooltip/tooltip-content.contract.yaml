@@ -1,0 +1,136 @@
+# Semantic overlay for TooltipContent - a part of the Tooltip family, see
+# tooltip.contract.yaml's `family_membership` for how the three contracts
+# relate. It composes the primitive's Portal, Positioner, Popup and Arrow;
+# the forwarded surface is the Popup's div.
+component: tooltip-content
+
+intent: The floating hint, portalled and positioned beside its trigger with a caret, shown while its Tooltip is open.
+
+typical_uses:
+  - A one-line label for its trigger
+  - A label followed by the keyboard shortcut for the same action
+
+dont_use_when:
+  - situation: A card-like panel with a heading or several regions
+    instead:
+      target: PopoverContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.popover_content.v1
+
+# TooltipContent examines nothing about what a consumer nests inside it;
+# children render in an inline-flex row, followed by the caret.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: rendered-only-while-open
+    text: >-
+      The popup is in the DOM only while the tooltip is open or animating
+      closed; the kit passes no `keepMounted` to the portal, so a closed
+      tooltip renders nothing.
+  - id: portals-to-body-unless-container
+    text: >-
+      Without `container`, the popup portals into the node of the nearest
+      enclosing portal, or the document body when there is none; a theme
+      scoped to a subtree reaches the popup only when that subtree, or a
+      node inside it, is passed as `container`.
+  - id: caret-always-rendered
+    text: >-
+      Every popup renders a caret, hidden from assistive technology, against
+      the edge that faces the trigger; there is no prop to leave it out.
+  - id: reduced-motion-keeps-the-fade
+    text: >-
+      The popup fades and scales on open and close; under
+      `prefers-reduced-motion` tooltip.module.css drops the scale transition
+      and keeps the fade.
+
+anti_patterns:
+  - dont: Put paragraphs of text in the popup
+    do_instead: >-
+      Keep it to a short label - tooltip.module.css caps the popup at 20rem
+      wide, so longer text wraps into a tall block
+
+deprecations: {}
+
+# The caret's aria-hidden is the primitive's (TooltipArrow.js), but
+# tooltip.test.tsx asserts only that the caret exists, not how assistive
+# technology treats it.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+unexposed_parts:
+  - part: Tooltip.Portal
+    reason: Composed inside TooltipContent; only its `container` is exposed, as TooltipContent's own prop.
+  - part: Tooltip.Positioner
+    reason: Composed inside TooltipContent; its placement props are exposed on TooltipContent itself.
+  - part: Tooltip.Arrow
+    reason: Composed inside TooltipContent as the fixed caret, styled by tooltip.module.css.
+
+prop_statements:
+  container:
+    states: container is the DOM node, shadow root or ref to one that the popup portals into; an explicit null renders no popup until a node is passed
+    because: >-
+      `HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null`
+      - live DOM nodes and ref objects, which no JSON Schema type covers.
+  sideOffset:
+    states: sideOffset is the gap in pixels between trigger and popup, as a number or a function of side, align and both boxes' sizes
+    because: >-
+      `number | OffsetFunction` - the compiler emits one JSON type per
+      property, and the function form has no JSON Schema representation.
+  alignOffset:
+    states: alignOffset is the shift in pixels along the alignment axis, as a number or a function of side, align and both boxes' sizes
+    because: >-
+      `number | OffsetFunction` - the compiler emits one JSON type per
+      property, and the function form has no JSON Schema representation.
+  collisionBoundary:
+    states: collisionBoundary is the area the popup is kept inside, `clipping-ancestors`, an element, a list of elements or a rectangle
+    because: >-
+      `'clipping-ancestors' | Element | Element[] | Rect` mixes a string with
+      live DOM elements, which no JSON Schema type covers.
+  collisionPadding:
+    states: collisionPadding is the space in pixels kept from the collision boundary, one number or a per-side object
+    because: >-
+      `number | { top?, right?, bottom?, left? }` - the compiler emits one
+      JSON type per property.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the popup's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the popup's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open, side, align, instant,
+      transitionStatus). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through
+      tooltip.module.css, not through this.
+
+examples:
+  good:
+    - title: A hint below its trigger
+      code: |
+        <Tooltip>
+          <TooltipTrigger aria-label="Delete">
+            <TrashIcon />
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Delete</TooltipContent>
+        </Tooltip>
+    - title: A hint portalled into a themed subtree
+      code: |
+        <Tooltip>
+          <TooltipTrigger>Export</TooltipTrigger>
+          <TooltipContent container={themedSectionRef}>Export as CSV</TooltipContent>
+        </Tooltip>
+  bad:
+    - title: Content with no Tooltip root around it
+      code: <TooltipContent>Bold</TooltipContent>
+      why: >-
+        The primitive's Portal and Popup read the nearest Tooltip root's
+        state through context and throw when there is none.
+
+family_membership:
+  name: tooltip
+  role: part

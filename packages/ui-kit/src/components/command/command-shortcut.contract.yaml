@@ -1,0 +1,64 @@
+# Semantic overlay for CommandShortcut - a part of the Command family, see
+# command.contract.yaml's `family_membership`. It is the kit's own span, not
+# a library part.
+component: command-shortcut
+
+intent: The keyboard shortcut hint shown at the end of a CommandItem.
+
+typical_uses:
+  - The key combination that runs the same command outside the list
+
+dont_use_when:
+  - situation: A key or key combination shown in running text or a tooltip, outside a command row
+    instead:
+      target: Kbd
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.kbd.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: display-only
+    text: >-
+      The shortcut is text only: it registers no key handler and adds no
+      `aria-keyshortcuts`, so the application binds the keys itself.
+  - id: pushed-to-the-row-end
+    text: >-
+      command.module.css pushes the shortcut to the inline end of its row
+      and renders it in the muted foreground color, switching to the accent
+      foreground while the CommandItem holding it is highlighted.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A shortcut hint on a command
+      code: |
+        <CommandItem value="save" onSelect={onSave}>
+          Save
+          <CommandShortcut>⌘S</CommandShortcut>
+        </CommandItem>
+  bad:
+    - title: A shortcut placed as its own row in the list
+      code: |
+        <CommandList>
+          <CommandItem value="save" onSelect={onSave}>Save</CommandItem>
+          <CommandShortcut>⌘S</CommandShortcut>
+        </CommandList>
+      why: >-
+        The shortcut belongs inside the item whose command it names; on its
+        own in the list it is not tied to any item and is not hidden when
+        that item is filtered out.
+
+family_membership:
+  name: command
+  role: part

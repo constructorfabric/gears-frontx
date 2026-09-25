@@ -1,0 +1,57 @@
+# Semantic overlay for BreadcrumbPage - part of the Breadcrumb family, see
+# breadcrumb.contract.yaml. `mounted_in` is filled from BreadcrumbItem's
+# own accepted components, not authored here.
+component: breadcrumb-page
+
+intent: Name the current page as the last, non-navigable crumb of a breadcrumb trail.
+
+typical_uses:
+  - The final level of the trail, the page the user is on
+
+dont_use_when:
+  - situation: An ancestor level the user can navigate back to
+    instead:
+      target: BreadcrumbLink
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_link.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: current-page-is-not-activatable
+    text: >-
+      BreadcrumbPage renders a `span` with `role="link"`,
+      `aria-disabled="true"` and `aria-current="page"`: assistive tech
+      hears a disabled link marked as the current page, and it has no href
+      and no tab stop. The three attributes are set ahead of the consumer's
+      props, so a consumer value for any of them replaces the kit's.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      breadcrumb.test.tsx asserts role="link", aria-disabled="true" and
+      aria-current="page" on the current crumb
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: The current page
+      code: <BreadcrumbPage>Q3 summary</BreadcrumbPage>
+  bad:
+    - title: The current page given an href through a link
+      code: <BreadcrumbLink href="/reports/q3" aria-current="page">Q3 summary</BreadcrumbLink>
+      why: >-
+        The current page is not a destination; a link to it offers a click
+        that goes nowhere new. BreadcrumbPage carries the current-page
+        semantics and is not activatable.
+
+family_membership:
+  name: breadcrumb
+  role: part

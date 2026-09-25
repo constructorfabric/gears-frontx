@@ -1,0 +1,81 @@
+# Semantic overlay for DialogDescription - a part of the Dialog family, see
+# dialog.contract.yaml's `family_membership` for how the contracts relate.
+component: dialog-description
+
+intent: The supporting sentence under a DialogTitle that describes the dialog's popup to assistive technology.
+
+typical_uses:
+  - A sentence stating the consequence of the dialog's action
+
+dont_use_when:
+  - situation: The supporting text under a card's title on the page
+    instead:
+      target: CardDescription
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_description.v1
+
+# `mounted_in` is filled from DialogHeader's accepted components; the
+# description's own text arrives through children.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: muted-paragraph
+    text: >-
+      DialogDescription renders a p in the body type ramp with the muted
+      foreground color.
+
+anti_patterns:
+  - dont: Put the dialog's form fields or long content inside DialogDescription
+    do_instead: >-
+      Keep it to a short sentence and place fields and long content in
+      DialogContent after the header
+
+deprecations: {}
+
+# dialog.test.tsx asserts only the description's kit class; nothing asserts
+# the popup's aria-describedby.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the
+      description's state, so its type is a union of a React element and a
+      callback - the compiler emits one JSON type per property; the primitive passes an
+      empty state object.
+  style:
+    states: style accepts a function as well as a plain style object; the primitive passes that function an empty state object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)`, and the description's state
+      carries no fields. The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through
+      dialog.module.css, not through this.
+
+examples:
+  good:
+    - title: A description under the title
+      code: |
+        <DialogHeader>
+          <DialogTitle>Delete project</DialogTitle>
+          <DialogDescription>This permanently deletes the project and its files.</DialogDescription>
+        </DialogHeader>
+  bad:
+    - title: A form inside the description
+      code: |
+        <DialogDescription>
+          <Input placeholder="Project name" />
+        </DialogDescription>
+      why: >-
+        Everything inside the description becomes the popup's accessible
+        description through `aria-describedby`, announced when the dialog
+        opens, field included.
+
+family_membership:
+  name: dialog
+  role: part

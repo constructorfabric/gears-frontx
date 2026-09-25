@@ -59,15 +59,14 @@ prop_statements:
     states: render replaces the panel element with one the caller supplies
     because: >-
       Base UI's render prop takes an element or a function of the panel's
-      state; neither is expressible in JSON Schema. The panel is the
+      state; the compiler emits one JSON type per property. The panel is the
       element Base UI writes `--accordion-panel-height` on, so a replaced
       element still has to be the one the height animation measures.
   style:
     states: style accepts a function of the panel's state as well as a plain style object
     because: >-
       Base UI widens React's `CSSProperties` to
-      `CSSProperties | ((state) => CSSProperties)`; a JSON Schema `object`
-      would reject the function form.
+      `CSSProperties | ((state) => CSSProperties)`; the compiler emits one JSON type per property.
 
 examples:
   good:

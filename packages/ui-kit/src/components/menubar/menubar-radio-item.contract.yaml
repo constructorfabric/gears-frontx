@@ -1,0 +1,130 @@
+# Semantic overlay for MenubarRadioItem - a part of the Menubar family, see
+# menubar.contract.yaml's `family_membership` for how the contracts relate.
+# MenubarRadioItem is DropdownMenuRadioItem re-exported under this name, so
+# its behaviour and its styling in dropdown-menu.module.css are that part's.
+# The forwarded surface is the primitive's div.
+component: menubar-radio-item
+
+intent: One option of a MenubarRadioGroup, identified by a value unique within that group and showing a check while selected.
+
+typical_uses:
+  - One entry of a sort order or a view mode chosen from a menu
+
+dont_use_when:
+  - situation: A setting switched on and off on its own
+    instead:
+      target: MenubarCheckboxItem
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_checkbox_item.v1
+  - situation: An action that runs when chosen and selects nothing
+    instead:
+      target: MenubarItem
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_item.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_shortcut.v1 # MenubarShortcut
+  text: true
+
+invariants:
+  - id: throws-outside-a-radio-group
+    text: >-
+      Rendering the item outside a MenubarRadioGroup throws; the
+      primitive reads the selected value from the group's context.
+  - id: choosing-keeps-the-menu-open
+    text: >-
+      Activating the item selects it and leaves the menu open, unless
+      `closeOnClick` is true.
+  - id: check-glyph-only-while-checked
+    text: >-
+      A check glyph, hidden from assistive technology, is rendered at the
+      row's inline end only while the item is checked; the row reserves
+      padding on its right side for it.
+  - id: indicator-side-moves-the-check
+    text: >-
+      With `indicatorSide="start"` the glyph and its reserved padding move
+      to the row's inline start and a checked row is also filled with the
+      secondary color.
+  - id: disabled-stays-reachable
+    text: >-
+      A `disabled` row stays in arrow-key navigation and can take focus, but
+      pressing it or pressing Enter on it does nothing.
+  - id: descendant-svg-sized
+    text: >-
+      dropdown-menu.module.css sizes every descendant `svg` of the row to the
+      small icon size and keeps it from shrinking or taking pointer events,
+      so a leading icon passed in children needs no size of its own.
+
+anti_patterns:
+  - dont: Reuse the same `value` for two items in one group
+    do_instead: >-
+      Give every item a unique `value` within its group; items sharing the
+      group's value show as checked together and cannot be told apart
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Menu.RadioItem renders role="menuitemradio" with
+      aria-checked; menubar.test.tsx asserts the item is found by the
+      menuitemradio role and name and that clicking it reports its value
+      through the group's onValueChange
+  rtl:
+    outcome: failed
+    by: >-
+      dropdown-menu.module.css reserves the check glyph's space with a
+      physical right padding on the row while the glyph sits at the row's
+      inline end, so in a right-to-left page, at the default
+      `indicatorSide="end"`, the glyph overlaps the label at the left and
+      the reserved space stays empty on the right
+
+unexposed_parts:
+  - part: Menu.RadioItemIndicator
+    reason: Composed inside MenubarRadioItem with a fixed check icon; only its side is exposed, as `indicatorSide`.
+
+prop_statements:
+  value:
+    states: value is the item's own value, of any type the caller chooses, required and compared against the group's value
+    because: >-
+      The primitive declares `value: any` with no `?`, so no JSON Schema
+      type can state what it holds, only that it must be present.
+  onClick:
+    states: onClick is a callback called with the click event when the item is activated by pointer or keyboard
+    because: >-
+      A React event handler - a function, which no JSON Schema type covers.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the radio item's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the radio item's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (checked, disabled, highlighted). The compiler emits one JSON type per property, so nothing is asserted; the kit's own
+      styling goes through dropdown-menu.module.css, not through this.
+
+examples:
+  good:
+    - title: Options with the check on the leading edge
+      code: |
+        <MenubarRadioGroup value={sort} onValueChange={setSort}>
+          <MenubarRadioItem indicatorSide="start" value="name">Name</MenubarRadioItem>
+          <MenubarRadioItem indicatorSide="start" value="date">Date</MenubarRadioItem>
+        </MenubarRadioGroup>
+  bad:
+    - title: A radio item placed straight in the popup
+      code: |
+        <MenubarContent>
+          <MenubarRadioItem value="name">Name</MenubarRadioItem>
+        </MenubarContent>
+      why: >-
+        There is no group to hold the selection, so the primitive throws;
+        wrap the items in a MenubarRadioGroup.
+
+family_membership:
+  name: menubar
+  role: part

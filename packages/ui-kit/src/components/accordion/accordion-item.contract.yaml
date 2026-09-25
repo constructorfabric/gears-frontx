@@ -59,13 +59,12 @@ prop_statements:
     states: render replaces the item element with one the caller supplies
     because: >-
       Base UI's render prop takes an element or a function of the item's
-      state; neither is expressible in JSON Schema.
+      state; the compiler emits one JSON type per property.
   style:
     states: style accepts a function of the item's state as well as a plain style object
     because: >-
       Base UI widens React's `CSSProperties` to
-      `CSSProperties | ((state) => CSSProperties)`; a JSON Schema `object`
-      would reject the function form.
+      `CSSProperties | ((state) => CSSProperties)`; the compiler emits one JSON type per property.
 
 examples:
   good:

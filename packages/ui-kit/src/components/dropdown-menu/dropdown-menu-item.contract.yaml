@@ -1,0 +1,120 @@
+# Semantic overlay for DropdownMenuItem - a part of the DropdownMenu family,
+# see dropdown-menu.contract.yaml's `family_membership` for how the contracts
+# relate. The forwarded surface is the primitive's div.
+component: dropdown-menu-item
+
+intent: One action in a DropdownMenu, run when the user activates the row.
+
+typical_uses:
+  - A command such as Rename, Duplicate or Sign out
+  - An irreversible command such as Delete, drawn in the destructive variant
+
+dont_use_when:
+  - situation: A setting the user switches on and off from the menu
+    instead:
+      target: DropdownMenuCheckboxItem
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_checkbox_item.v1
+  - situation: One of several mutually exclusive options
+    instead:
+      target: DropdownMenuRadioItem
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_radio_item.v1
+  - situation: A row that only opens a nested list of further actions
+    instead:
+      target: DropdownMenuSubTrigger
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_sub_trigger.v1
+  - situation: A link to another page
+    instead:
+      target: a link outside the menu, such as the app router's link component
+      note: >-
+        The kit exports no link item for this menu; DropdownMenuItem renders a
+        div with the menuitem role, not a link.
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_shortcut.v1 # DropdownMenuShortcut
+  text: true
+
+invariants:
+  - id: activation-closes-the-menu
+    text: >-
+      Activating the item by pointer or by Enter calls `onClick` and closes
+      the whole menu, unless `closeOnClick` is false.
+  - id: disabled-stays-reachable
+    text: >-
+      A `disabled` row stays in arrow-key navigation and can take focus, but
+      pressing it or pressing Enter on it does nothing.
+  - id: destructive-keeps-its-red
+    text: >-
+      The destructive variant draws the text in the danger color at rest and
+      while highlighted; only a light danger tint behind it marks the
+      highlight.
+  - id: descendant-svg-sized
+    text: >-
+      dropdown-menu.module.css sizes every descendant `svg` of the row to the
+      small icon size and keeps it from shrinking or taking pointer events,
+      so a leading icon passed in children needs no size of its own.
+
+anti_patterns:
+  - dont: Put a Button inside an item to make the row clickable
+    do_instead: >-
+      Pass the handler to the item's `onClick`; the item is already the
+      interactive row, and a button inside it is a second focus target the
+      menu's arrow keys never reach
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Menu.Item renders role="menuitem"; dropdown-menu.test.tsx
+      asserts items are found by the menuitem role and name, that a disabled
+      item carries data-disabled and takes focus from ArrowDown, and that
+      Enter on a focused item calls onClick and closes the menu
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  onClick:
+    states: onClick is a callback called with the click event when the item is activated by pointer or keyboard
+    because: >-
+      A React event handler - a function, which no JSON Schema type covers.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the item's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the item's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (disabled, highlighted). The compiler emits one JSON type per property, so nothing is asserted; the kit's own
+      styling goes through dropdown-menu.module.css, not through this.
+
+examples:
+  good:
+    - title: A command with its shortcut hint
+      code: |
+        <DropdownMenuItem onClick={onDuplicate}>
+          Duplicate
+          <DropdownMenuShortcut>⌘D</DropdownMenuShortcut>
+        </DropdownMenuItem>
+    - title: A destructive command with a leading icon
+      code: |
+        <DropdownMenuItem variant="destructive" onClick={onDelete}>
+          <TrashIcon />
+          Delete
+        </DropdownMenuItem>
+  bad:
+    - title: A made-up onSelect handler from an older menu library
+      code: <DropdownMenuItem onSelect={onDuplicate}>Duplicate</DropdownMenuItem>
+      why: >-
+        The item reports activation through `onClick`, which fires for
+        pointer and keyboard alike; `onSelect` is the DOM's text-selection
+        event and never fires when the item is chosen.
+
+family_membership:
+  name: dropdown_menu
+  role: part

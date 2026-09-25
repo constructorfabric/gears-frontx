@@ -1,0 +1,127 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.select_value.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "select-value",
+  "forwards_to": "gts.frontx.uikit.element.dom_span.v1~",
+  "intent": "The caption inside a SelectTrigger that shows the chosen item's label, or a placeholder while nothing is chosen.",
+  "typical_uses": [
+    "The current choice shown in a Select's trigger"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A fixed caption the trigger shows whatever is chosen, such as a filter chip's name",
+      "instead": {
+        "target": "SelectTrigger",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.select_trigger.v1",
+        "note": "Put the caption straight into the trigger as text."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "SelectTrigger",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.select_trigger.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "placeholder-only-while-nothing-is-chosen",
+      "text": "`placeholder` is shown while the value is empty (null, a value that turns into an empty string, or an empty array under `multiple`) and the root's `items` give no label for a null value; `children` override both the placeholder and the resolved label."
+    },
+    {
+      "id": "multiple-labels-joined",
+      "text": "Under `multiple` the chosen items' labels are shown in order, joined by a comma and a space."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Pass the chosen value as children to show it",
+      "do_instead": "Leave children out and give the root `items`; children replace the resolved label, so a raw value passed as children shows the identifier instead of its caption"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children replaces the shown label, as React nodes or a function of the current value that returns them",
+      "because": "`ReactNode | ((value: any) => ReactNode)` - the compiler emits one JSON type per property, and a function has no JSON Schema representation."
+    },
+    "placeholder": {
+      "states": "placeholder is the content shown while nothing is chosen",
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the value's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the value's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (value, placeholder). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through select.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A placeholder until a region is chosen",
+        "code": "<SelectTrigger aria-label=\"Region\">\n  <SelectValue placeholder=\"Pick a region\" />\n</SelectTrigger>\n"
+      },
+      {
+        "title": "A count of chosen tags under multiple",
+        "code": "<Select multiple value={tags} onValueChange={setTags} items={TAGS}>\n  <SelectTrigger aria-label=\"Tags\">\n    <SelectValue>{(value) => `${value.length} selected`}</SelectValue>\n  </SelectTrigger>\n  <SelectContent>\n    <SelectItem value=\"bug\">Bug</SelectItem>\n    <SelectItem value=\"feature\">Feature</SelectItem>\n  </SelectContent>\n</Select>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The raw value passed as children",
+        "code": "<SelectTrigger aria-label=\"Region\">\n  <SelectValue>{region}</SelectValue>\n</SelectTrigger>\n",
+        "why": "Children replace the resolved label, so the trigger shows the identifier (eu-central) rather than its caption (Frankfurt)."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "select",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SelectValue",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "children": {
+        "description": "TS: ReactNode | ((value: any) => ReactNode). The compiler emits one JSON type per property; this type is left to tsc. children replaces the shown label, as React nodes or a function of the current value that returns them. `ReactNode | ((value: any) => ReactNode)` - the compiler emits one JSON type per property, and a function has no JSON Schema representation."
+      },
+      "placeholder": {
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. placeholder is the content shown while nothing is chosen. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, SelectValueState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the value's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: SelectValueState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the value's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (value, placeholder). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through select.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

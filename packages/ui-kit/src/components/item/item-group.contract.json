@@ -1,0 +1,96 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.item_group.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "item-group",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Stack a run of item rows into one spaced column exposed as a list.",
+  "typical_uses": [
+    "The rows of one collection, such as a file list or a notification feed"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Tabular data read across rows and columns",
+      "instead": {
+        "target": "Table",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.table.v1"
+      }
+    },
+    {
+      "situation": "A set of options the user picks exactly one of",
+      "instead": {
+        "target": "RadioGroup",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.item_separator.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "role-list-without-list-items",
+      "text": "ItemGroup renders a div with role=\"list\", which a consumer's own `role` replaces; Item sets no role of its own and ItemSeparator carries the primitive's role=\"separator\", so the list's rows are exposed as list items only when each Item is given role=\"listitem\"."
+    },
+    {
+      "id": "gap-follows-the-smallest-item-size",
+      "text": "The group is a full-width flex column spaced var(--space-4) apart; the gap becomes var(--space-3) when any Item inside it has `size=\"sm\"`, and var(--space-2) when any has `size=\"xs\"`."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Set a row size through a className and expect the group's gap to follow",
+      "do_instead": "Set `size` on each Item; the gap reads the size class Item emits from its own `size`, not a consumer class"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "failed",
+      "by": "item.test.tsx asserts the group's role=\"list\", while item.tsx gives Item no role and ItemSeparator keeps the primitive's role=\"separator\", so a group built as item.md shows exposes a list whose children are not list items, the role WAI-ARIA requires a list to own"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A run of rows exposed as list items",
+        "code": "<ItemGroup>\n  <Item role=\"listitem\">\n    <ItemContent>\n      <ItemTitle>Q3 report.pdf</ItemTitle>\n    </ItemContent>\n  </Item>\n  <Item role=\"listitem\">\n    <ItemContent>\n      <ItemTitle>Notes.txt</ItemTitle>\n    </ItemContent>\n  </Item>\n</ItemGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Rows wrapped in a list element of their own",
+        "code": "<ItemGroup>\n  <ul>\n    <li>\n      <Item>Q3 report.pdf</Item>\n    </li>\n  </ul>\n</ItemGroup>\n",
+        "why": "The group is already the list; a nested ul puts a second list inside it, and the rows are no longer the group's own children, so its column gap does not space them."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "item_group",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.item_separator.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ItemGroup",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

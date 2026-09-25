@@ -1,0 +1,91 @@
+# Semantic overlay for SelectSeparator - a part of the Select family, see
+# select.contract.yaml's `family_membership` for how the contracts relate.
+# It wraps the primitive's Separator; the forwarded surface is its div.
+component: select-separator
+
+intent: A horizontal rule between two sections of options in a SelectContent.
+
+typical_uses:
+  - A break between two captioned groups of options
+
+dont_use_when:
+  - situation: A rule between sections of a page or a card, outside any select
+    instead:
+      target: Separator
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.separator.v1
+
+accepts:
+  content: nothing
+
+invariants:
+  - id: spans-the-list-padding
+    text: >-
+      select.module.css pulls the rule out by the list's padding on both
+      sides, so it runs edge to edge across the popup, and gives it vertical
+      margin of its own.
+  - id: horizontal-only
+    text: >-
+      select.module.css draws only a horizontal rule; `orientation` changes
+      the announced `aria-orientation`, not the drawing.
+  - id: not-an-option
+    text: >-
+      The separator renders with role `separator`, takes no pointer events
+      and is not an option that arrow keys land on.
+
+anti_patterns:
+  - dont: Put a separator first or last in the popup, or two in a row
+    do_instead: Place separators only between options or groups; a rule at an edge or doubled draws a break with nothing on one side
+
+deprecations: {}
+
+# select.test.tsx renders no SelectSeparator.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the separator's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the separator's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (orientation). The compiler emits one JSON type per property, so nothing is asserted; the kit's own
+      styling goes through select.module.css, not through this.
+
+examples:
+  good:
+    - title: A rule between two groups
+      code: |
+        <SelectContent>
+          <SelectGroup>
+            <SelectLabel>Europe</SelectLabel>
+            <SelectItem value="eu-central">Frankfurt</SelectItem>
+          </SelectGroup>
+          <SelectSeparator />
+          <SelectGroup>
+            <SelectLabel>Americas</SelectLabel>
+            <SelectItem value="us-east">Virginia</SelectItem>
+          </SelectGroup>
+        </SelectContent>
+  bad:
+    - title: A general Separator used inside the popup
+      code: |
+        <SelectContent>
+          <SelectItem value="eu-central">Frankfurt</SelectItem>
+          <Separator />
+          <SelectItem value="us-east">Virginia</SelectItem>
+        </SelectContent>
+      why: >-
+        The popup accepts SelectSeparator, whose margins are set against the
+        list's padding; a general Separator stops short of the popup's edges.
+
+family_membership:
+  name: select
+  role: part

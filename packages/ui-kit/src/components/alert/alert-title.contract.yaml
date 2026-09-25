@@ -1,0 +1,72 @@
+# Semantic overlay for AlertTitle - part of the Alert family, see
+# alert.contract.yaml's `family_membership` for how the four contracts
+# relate. `mounted_in` is filled from Alert's own accepted components, not
+# authored here.
+component: alert-title
+
+intent: The alert's own headline - a short label for what the alert is about.
+
+typical_uses:
+  - The first line inside an Alert, naming the message before its longer description
+
+dont_use_when:
+  - situation: A heading anywhere outside of an Alert
+    instead:
+      target: a plain heading element, sized for its own surrounding context
+      note: >-
+        AlertTitle carries Alert's own typography and the icon-column
+        layout hook; this kit has no generic standalone heading component
+        to substitute.
+
+# AlertTitleProps declares no children field of its own beyond the
+# forwarded div surface; whatever a consumer passes renders as the
+# heading's own text or inline content.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: shifts-to-second-column-with-a-leading-icon
+    text: >-
+      When the enclosing Alert has a direct <svg> child, AlertTitle is the
+      part pushed into the icon layout's second column; AlertDescription is
+      not, because grid auto-placement already skips the icon's
+      row-spanning cell for it.
+
+anti_patterns:
+  - dont: Put the alert's leading icon inside AlertTitle
+    do_instead: >-
+      Render the <svg> as a direct child of Alert, before AlertTitle - the
+      icon layout is detected off Alert's direct <svg> children, not
+      AlertTitle's
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A short headline above the alert's description
+      code: |
+        <Alert>
+          <AlertTitle>Update available</AlertTitle>
+          <AlertDescription>A new version is ready to install.</AlertDescription>
+        </Alert>
+  bad:
+    - title: Leading icon nested inside AlertTitle
+      code: |
+        <Alert>
+          <AlertTitle><WarningIcon /> Payment failed</AlertTitle>
+        </Alert>
+      why: >-
+        The icon layout is detected off Alert's direct <svg> children, not
+        AlertTitle's; an icon nested here renders inline with the heading
+        text instead of switching to the icon column.
+
+family_membership:
+  name: alert
+  role: part

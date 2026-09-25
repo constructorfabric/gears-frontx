@@ -1,0 +1,88 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_badge.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sidebar-menu-badge",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "A small count or status text at the trailing end of one menu row.",
+  "typical_uses": [
+    "An unread count beside a navigation row"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A status label anywhere outside a sidebar menu row",
+      "instead": {
+        "target": "Badge",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.badge.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "SidebarMenuItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "pinned-to-the-row-end",
+      "text": "The badge is absolutely positioned 4px from the item's right edge and vertically centred on the row, at least 20px wide in tabular figures; it takes no pointer events and is not displayed in the icon rail."
+    },
+    {
+      "id": "follows-the-row-color",
+      "text": "While its item's SidebarMenuButton is hovered or active, the badge switches to the row's accent foreground color."
+    },
+    {
+      "id": "not-part-of-the-row-name",
+      "text": "The badge is a plain div beside the button, so its text is not part of the button's accessible name."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "failed",
+      "by": "sidebar.module.css positions .menuBadge with the physical `right` property, so it stays on the right edge under a right-to-left direction"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A count beside the row",
+        "code": "<SidebarMenuItem>\n  <SidebarMenuButton aria-describedby=\"inbox-count\">\n    <InboxIcon />\n    <span>Inbox</span>\n  </SidebarMenuButton>\n  <SidebarMenuBadge id=\"inbox-count\">24 unread</SidebarMenuBadge>\n</SidebarMenuItem>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A badge used as a button",
+        "code": "<SidebarMenuBadge onClick={markAllRead}>24</SidebarMenuBadge>",
+        "why": "The badge takes no pointer events and is not focusable, so the handler never runs; use a SidebarMenuAction for an action."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sidebar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SidebarMenuBadge",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,84 @@
+# Semantic overlay for BreadcrumbSeparator - part of the Breadcrumb family,
+# see breadcrumb.contract.yaml. `mounted_in` is filled from
+# BreadcrumbList's own accepted components, not authored here.
+component: breadcrumb-separator
+
+intent: Draw the decorative divider between two crumbs of a breadcrumb trail.
+
+typical_uses:
+  - The divider between two items, a chevron by default
+  - A replaced divider, such as a slash
+
+dont_use_when:
+  - situation: A rule dividing sections of a page or a menu
+    instead:
+      target: Separator
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.separator.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: decorative-list-item
+    text: >-
+      The separator renders its own `li` with `role="presentation"` and
+      `aria-hidden="true"`, so it is a sibling of the items in the list and
+      is never announced.
+  - id: children-replace-the-chevron
+    text: >-
+      Without children it renders a chevron icon; any children replace the
+      icon entirely. Any svg inside it, at any depth, is sized to the kit's
+      extra-small icon size (breadcrumb.module.css `.separator svg`).
+
+anti_patterns:
+  - dont: Put a link, a button or other interactive content inside the separator
+    do_instead: Keep every action in a BreadcrumbItem; the separator is hidden from assistive tech
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      breadcrumb.test.tsx asserts aria-hidden="true" and role="presentation"
+      on the separator and an svg inside it by default
+  rtl:
+    outcome: failed
+    by: >-
+      breadcrumb.tsx renders ChevronRightIcon as the default divider and
+      breadcrumb.module.css has no rule that mirrors it under a right-to-left
+      direction, so in a right-to-left trail it points against the reading
+      order
+
+unexposed_parts:
+  - part: the default chevron icon
+    reason: >-
+      breadcrumb.tsx renders a ChevronRightIcon when no children are given;
+      it is not exported as a component of its own, and the only control
+      over it is replacing it through children.
+
+prop_statements:
+  children:
+    states: children is a React node, not a value
+    because: >-
+      `ReactNode` is a union of elements, strings, numbers, fragments and
+      more; the compiler emits one JSON type per property. Whatever is
+      given replaces the default chevron.
+
+examples:
+  good:
+    - title: The default chevron
+      code: <BreadcrumbSeparator />
+    - title: A slash instead of the chevron
+      code: <BreadcrumbSeparator>/</BreadcrumbSeparator>
+  bad:
+    - title: A separator given an accessible label
+      code: <BreadcrumbSeparator aria-label="then">/</BreadcrumbSeparator>
+      why: >-
+        The separator is aria-hidden, so the label is never announced; the
+        list's order already tells assistive tech how the levels follow.
+
+family_membership:
+  name: breadcrumb
+  role: part

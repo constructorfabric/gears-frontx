@@ -1,0 +1,110 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_chips_input.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "combobox-chips-input",
+  "forwards_to": "gts.frontx.uikit.element.dom_input.v1~",
+  "intent": "The borderless text input that sits among the chips of a multiple-value Combobox and takes the query that filters the list.",
+  "typical_uses": [
+    "The query input at the end of ComboboxChips"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The field of a one-value combobox",
+      "instead": {
+        "target": "ComboboxInput",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_input.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "ComboboxChips",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_chips.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "backspace-removes-the-last-value",
+      "text": "Backspace in the empty input removes the last chosen value, and the arrow key toward the chips (left, or right in a right-to-left layout) at the start of the input moves focus onto the last chip."
+    },
+    {
+      "id": "no-border-of-its-own",
+      "text": "The input draws no border, background or focus ring; the enclosing ComboboxChips draws them for the whole field."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Leave the input with no accessible name",
+      "do_instead": "Pass `aria-label`, or `aria-labelledby` pointing at a visible label; the placeholder is not a name"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the input's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the input's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, popupSide, listEmpty, readOnly, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through combobox.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "The query input after the chips",
+        "code": "<ComboboxChips ref={anchor}>\n  <ComboboxValue>\n    {(values) => values.map((value) => <ComboboxChip key={value}>{value}</ComboboxChip>)}\n  </ComboboxValue>\n  <ComboboxChipsInput aria-label=\"Frameworks\" placeholder=\"Add a framework\" />\n</ComboboxChips>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The chips input used as a one-value field",
+        "code": "<Combobox items={regions}>\n  <ComboboxChipsInput aria-label=\"Region\" />\n</Combobox>\n",
+        "why": "Without ComboboxChips around it the input has no border, background or focus ring, so it draws as bare text; a one-value field is ComboboxInput."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "combobox",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ComboboxChipsInput",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ComboboxInputState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the input's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: ComboboxInputState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the input's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (open, popupSide, listEmpty, readOnly, ...). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through combobox.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

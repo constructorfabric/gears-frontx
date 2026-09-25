@@ -1,0 +1,161 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.spinner.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "spinner",
+  "forwards_to": "gts.frontx.uikit.element.dom_svg.v1~",
+  "intent": "Show that something is loading, as a small spinning glyph or, with a label, a self-contained loading block.",
+  "typical_uses": [
+    "A loading indicator beside text or inside a container (a card, a table cell) that has no button of its own to carry the loading state"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A loading state inside a Button",
+      "instead": {
+        "target": "Button's own `loading` prop",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1",
+        "note": "Button's `loading` already centers a spinner, sets `aria-busy` and keeps the button's own accessible name; rendering this component there duplicates that wiring by hand and can double the accessibility announcement."
+      }
+    },
+    {
+      "situation": "A placeholder that holds the shape of content still loading",
+      "instead": {
+        "target": "Skeleton",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.skeleton.v1"
+      }
+    },
+    {
+      "situation": "Work whose completed fraction is known",
+      "instead": {
+        "target": "Progress",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.progress.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "invariants": [
+    {
+      "id": "bare-shape-defaults-role-status-and-label-loading",
+      "text": "On the bare shape the rendered svg defaults to `role=\"status\"` and `aria-label=\"Loading\"`. Both are ordinary svg props a consumer may override by passing their own `role` or `aria-label`."
+    },
+    {
+      "id": "label-or-description-composes-the-block",
+      "text": "Passing a `label` or a `description` that actually renders something switches the component from the bare svg to the composed block; `undefined`, `null`, `false` and `\"\"` count as absent and leave the component on the bare shape, so a conditional such as `label={busy && 'Saving'}` does not open an empty live region when `busy` is false."
+    },
+    {
+      "id": "composed-block-is-the-live-region-glyph-is-decorative",
+      "text": "In the composed shape the outer block, not the glyph, is the live region: it defaults to `role=\"status\"` (a consumer's own `role`, including an explicit `role={undefined}` to opt out entirely, wins over the default) and receives any `aria-live`/`aria-atomic` the consumer passes. The glyph itself is always rendered `aria-hidden=\"true\"` and never takes the default `aria-label`; the block announces its visible label and description, not a second hardcoded \"Loading\". A consumer `aria-label` still lands on the hidden glyph and names nothing."
+    },
+    {
+      "id": "compact-marks-whichever-element-is-the-root",
+      "text": "`compact` is reflected as `data-compact` on whichever element is currently the root - the bare svg, or the composed block's outer element - never on the inner indicator or glyph directly."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Render this inside Button by hand",
+      "do_instead": "Use Button's own `loading` prop - it keeps the button's width and accessible name and reports `aria-busy` while staying focusable"
+    },
+    {
+      "dont": "Override the default accessible name with an empty `aria-label=\"\"`",
+      "do_instead": "Keep the default `aria-label=\"Loading\"` or supply a real one - an empty override announces nothing to assistive tech"
+    },
+    {
+      "dont": "Pass both `label` and `aria-label` expecting `aria-label` to win",
+      "do_instead": "With a `label` the block announces its visible text; a consumer `aria-label` lands on the aria-hidden glyph and names nothing, so put the wording in `label` itself"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "spinner.test.tsx's own role/aria-label assertions on the bare shape and its role/aria-live/aria-atomic/aria-hidden and role={undefined} assertions on the composed block"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "label": {
+      "states": "label is a React node, not a string",
+      "because": "`ReactNode` is a union, and the compiler emits one JSON type per property - a string, a number, a fragment or `false`/`null`/`undefined` (all of which count as absent, see the label-or-description-composes-the-block invariant) are all valid and only tsc can tell them apart. Its presence is what switches the component to the composed block, whose live region announces it."
+    },
+    "description": {
+      "states": "description is a React node, not a string",
+      "because": "`ReactNode`, for the same reason as `label`. It is the second line under the label, announced together with it once the block is composed."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "the composed block's indicator span",
+      "reason": "spinner.tsx renders it only in the composed shape to size and centre the glyph; it is not exported as a component of its own, so a consumer cannot reach or replace it independently - only the whole Spinner."
+    },
+    {
+      "part": "the composed block's label span",
+      "reason": "spinner.tsx renders it only when `label` renders something, to set the label's type; it is not exported as a component of its own, and what goes in it is the `label` prop."
+    },
+    {
+      "part": "the composed block's description span",
+      "reason": "spinner.tsx renders it only when `description` renders something, to set the second line's type; it is not exported as a component of its own, and what goes in it is the `description` prop."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "Bare, with the default \"Loading\" label",
+        "code": "<Spinner />"
+      },
+      {
+        "title": "The composed block, with a label and a second line",
+        "code": "<Spinner label=\"Saving\" description=\"This can take a minute\" />"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Rendered inside Button by hand",
+        "code": "<Button disabled={saving}>{saving && <Spinner />}Save</Button>",
+        "why": "Button already has a `loading` prop for this: it keeps the button's width, keeps its accessible name and reports `aria-busy` while staying focusable. A hand-rolled Spinner here also opens a second live region nested inside whatever announces the button itself."
+      },
+      {
+        "title": "Accessible name dropped with an empty override",
+        "code": "<Spinner aria-label=\"\" />",
+        "why": "An empty `aria-label` replaces the default \"Loading\" with nothing, so the bare spinner announces no accessible name at all to assistive tech. Keep the default or pass a real label instead."
+      }
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {
+      "description": {
+        "typeText": "ReactNode",
+        "optional": true
+      },
+      "label": {
+        "typeText": "ReactNode",
+        "optional": true
+      }
+    },
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Spinner",
+    "type": "object",
+    "properties": {
+      "compact": {
+        "type": "boolean"
+      },
+      "description": {
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. description is a React node, not a string. `ReactNode`, for the same reason as `label`. It is the second line under the label, announced together with it once the block is composed."
+      },
+      "label": {
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. label is a React node, not a string. `ReactNode` is a union, and the compiler emits one JSON type per property - a string, a number, a fragment or `false`/`null`/`undefined` (all of which count as absent, see the label-or-description-composes-the-block invariant) are all valid and only tsc can tell them apart. Its presence is what switches the component to the composed block, whose live region announces it."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

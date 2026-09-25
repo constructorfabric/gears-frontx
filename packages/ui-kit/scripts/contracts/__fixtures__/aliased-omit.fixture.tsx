@@ -6,10 +6,10 @@
 // local name collision, not a renamed import. This shadow is generic (so
 // the checker resolves it cleanly, no type error) but forwards its FIRST
 // argument verbatim instead of omitting keys from it - nothing like the
-// real Omit<T, K>. The old identifier-text match (`name === 'Omit' &&
-// args.length > 0`) did not know or care what the resolved shadow actually
-// does: it would have unwrapped `args[0]` (`ComponentProps<'span'>`) as if
-// it were the real Omit<T, K> pattern and silently resolved a `span`
+// real Omit<T, K>. An identifier-text match (`name === 'Omit' &&
+// args.length > 0`) does not know or care what the resolved shadow actually
+// does: it would unwrap `args[0]` (`ComponentProps<'span'>`) as if it were
+// the real Omit<T, K> pattern and silently resolve a `span`
 // forwarded kind/origin for props that DO exist on the checker-resolved
 // type (this shadow really does forward them) but were never reached
 // through the real Omit path the origin resolver is built around.

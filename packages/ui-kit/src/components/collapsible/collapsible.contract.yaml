@@ -1,0 +1,137 @@
+# Semantic overlay for Collapsible (the root) - the hand-written half of one
+# of three contracts describing this compound component. See
+# collapsible-trigger.contract.yaml and collapsible-content.contract.yaml for
+# the rest of the family, and `family_membership` below for how a reader (or
+# the conformance test) walks between them.
+#
+# Machine-extractable facts (prop list, defaults, forwarded surface) do NOT
+# belong here: the compiler takes those from collapsible.tsx and the Base UI
+# Collapsible primitive it wraps, and rejects an overlay that tries to
+# restate them - one fact, one owner.
+component: collapsible
+
+intent: Let a user show or hide one section of content in place, with the open state held on the root.
+
+typical_uses:
+  - One section of secondary content a user reveals on demand, under a trigger that stays visible
+
+dont_use_when:
+  - situation: Several sections, each under its own header, opened independently or one at a time
+    instead:
+      target: Accordion
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.accordion.v1
+  - situation: Content that floats over the page next to the control that opens it, instead of pushing the layout below it down
+    instead:
+      target: Popover
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.popover.v1
+  - situation: Switching between alternative panels where exactly one is always shown
+    instead:
+      target: Tabs
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.tabs.v1
+
+# The ONE authored statement of a nesting relationship: the compiler fills
+# every other contract's `mounted_in` from lists like this one, so the two
+# directions cannot disagree.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.collapsible_trigger.v1 # CollapsibleTrigger
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.collapsible_content.v1 # CollapsibleContent
+
+invariants:
+  - id: open-wins-over-default-open
+    text: >-
+      `open` and `defaultOpen` are both accepted; `defaultOpen` seeds the
+      initial state and is ignored afterwards, and when `open` is given it
+      wins and the component follows it on every render.
+  - id: disabled-root-makes-the-trigger-inert
+    text: >-
+      `disabled` on the root makes a CollapsibleTrigger that passes no
+      `disabled` of its own ignore clicks, Enter and Space; the trigger stays
+      rendered and focusable.
+
+anti_patterns:
+  - dont: Pass `open` with no `onOpenChange`
+    do_instead: >-
+      Pair `open` with `onOpenChange` and write the next value back, or drop
+      both and use `defaultOpen` - a controlled root with no change handler
+      never receives the trigger's toggle, so the panel never opens or closes
+
+deprecations: {}
+
+# One outcome per claim. "failed" (looked at, does not hold) and "unknown"
+# (nobody looked) are different answers - say which.
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      The primitive's Collapsible.Root holds the open state its
+      Collapsible.Trigger reflects in `aria-expanded` and, while open,
+      `aria-controls` naming the panel's id; collapsible.test.tsx asserts the
+      trigger is found by role button under its caption and that the panel
+      is absent until opened
+  rtl:
+    outcome: unknown
+
+# What each property that reaches this contract asserting nothing (or only
+# part of its shape) actually states, and why - keyed on the property
+# itself. The compiler emits both halves into that property's own
+# description, beside the `TS:` text.
+prop_statements:
+  onOpenChange:
+    states: onOpenChange is a function called with the next open value and event details, not a value
+    because: >-
+      A function type has no JSON Schema representation. Its second argument
+      carries Base UI's own change-event-details shape (a reason, the
+      triggering native event, and controls to cancel the change or allow it
+      to propagate), which only tsc can check.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the root's own
+      state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the root's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open, disabled, transitionStatus). The compiler emits one JSON type per property, so nothing is
+      asserted; the root carries no class from collapsible.module.css, so
+      nothing of the kit's own styling rides on it.
+
+examples:
+  good:
+    - title: Uncontrolled, starting closed
+      code: |
+        <Collapsible>
+          <CollapsibleTrigger>What is included?</CollapsibleTrigger>
+          <CollapsibleContent>Everything in the base plan, plus priority support.</CollapsibleContent>
+        </Collapsible>
+    - title: Controlled by the caller
+      code: |
+        <Collapsible open={open} onOpenChange={setOpen}>
+          <CollapsibleTrigger>Advanced options</CollapsibleTrigger>
+          <CollapsibleContent>Options go here.</CollapsibleContent>
+        </Collapsible>
+  bad:
+    - title: A stack of Collapsibles standing in for an accordion
+      code: |
+        <Collapsible>
+          <CollapsibleTrigger>Billing</CollapsibleTrigger>
+          <CollapsibleContent>Billing details.</CollapsibleContent>
+        </Collapsible>
+        <Collapsible>
+          <CollapsibleTrigger>Shipping</CollapsibleTrigger>
+          <CollapsibleContent>Shipping details.</CollapsibleContent>
+        </Collapsible>
+      why: >-
+        Each root holds only its own open state, so the sections cannot
+        coordinate (one open at a time) and share no keyboard navigation
+        between their headers. A set of headed sections is an `Accordion`.
+
+# Family membership. Every member names the same family and states its own
+# role; `members` is filled by the compiler on the root from every contract
+# naming this family as a part, so nothing here points at a sibling.
+family_membership:
+  name: collapsible
+  role: root

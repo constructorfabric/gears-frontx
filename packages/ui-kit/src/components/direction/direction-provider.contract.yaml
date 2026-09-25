@@ -1,0 +1,99 @@
+# Semantic overlay for DirectionProvider - a re-export of Base UI's own
+# DirectionProvider, the directory's one component export. It renders no
+# element and styles nothing; it only shares a reading direction through
+# context with the Base UI primitives below it.
+component: direction-provider
+
+intent: Share a right-to-left or left-to-right reading direction with the Base UI-backed kit components in a subtree that read it.
+
+typical_uses:
+  - Once near the root of an application, or of the subtree, that renders a right-to-left language
+
+dont_use_when:
+  - situation: An application that only renders left-to-right
+    instead:
+      target: no provider at all
+      note: >-
+        With no DirectionProvider mounted, `useDirection()` and every
+        primitive reading it fall back to `ltr`.
+  - situation: Setting the browser's own text direction for layout and bidirectional text
+    instead:
+      target: the `dir` attribute on the application's own root element
+      note: >-
+        DirectionProvider sets no `dir` attribute anywhere; it only shares a
+        value through context, which a root element can read with
+        `useDirection()` to set `dir` itself.
+
+# The provider renders its children unchanged and shares the direction
+# through context at any depth, so nothing about them is constrained.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: renders-no-element
+    text: >-
+      DirectionProvider renders no DOM element and sets no attribute; it
+      only provides context to the components below it.
+  - id: primitives-read-the-nearest-provider
+    text: >-
+      Base UI primitives that read the direction context (among them the
+      keyboard navigation of composite lists and menus, the slider, the
+      scroll area's scrollbar and the placement of anchored popups) take
+      the `direction` of the nearest DirectionProvider above them, and
+      `ltr` with none.
+
+anti_patterns: []
+
+deprecations: {}
+
+# The provider renders nothing and wires no ARIA. Its right-to-left claim is
+# the context value itself, which direction.test.tsx asserts.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: verified
+    by: >-
+      direction.test.tsx asserts that useDirection() returns "rtl" under
+      <DirectionProvider direction="rtl"> and "ltr" with no provider
+      mounted; the primitive's DirectionProvider provides that value
+      through context and nothing else
+
+prop_statements:
+  children:
+    states: children is any React content; every Base UI primitive inside it, at any depth, reads the direction
+    because: >-
+      `React.ReactNode` is a union of elements, strings, numbers, fragments
+      and more; the compiler emits one JSON type per property.
+
+companions:
+  - export: useDirection
+    typed_by: '() => TextDirection'
+    description: >-
+      Reads the `direction` of the nearest DirectionProvider, or `ltr` with
+      none mounted.
+  - export: TextDirection
+    typed_by: "'ltr' | 'rtl'"
+    description: The type of `direction` and of the value useDirection returns.
+
+examples:
+  good:
+    - title: A right-to-left application whose root element also carries dir
+      code: |
+        <DirectionProvider direction="rtl">
+          <App />
+        </DirectionProvider>
+
+        function App() {
+          const direction = useDirection();
+          return <div dir={direction}>{content}</div>;
+        }
+  bad:
+    - title: A dir prop on the provider
+      code: |
+        <DirectionProvider dir="rtl">
+          <App />
+        </DirectionProvider>
+      why: >-
+        The prop is `direction`; DirectionProvider renders no element, so a
+        `dir` it is given reaches no DOM node and the direction stays `ltr`.

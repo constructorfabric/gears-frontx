@@ -1,0 +1,294 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.date_picker.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "date-picker",
+  "intent": "Pick one day or a date range from a calendar that opens in a popover from a trigger button or a typed field.",
+  "typical_uses": [
+    "A form field or filter whose value is one day",
+    "A filter whose value is a start and an end date"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A calendar that stays visible on the page instead of opening behind a trigger",
+      "instead": {
+        "target": "Calendar",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.calendar.v1"
+      }
+    },
+    {
+      "situation": "A time of day, alone or next to a date",
+      "instead": {
+        "target": "Input",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.input.v1",
+        "note": "DatePicker selects whole days only; a time goes in its own field, such as an Input with `type=\"time\"`."
+      }
+    },
+    {
+      "situation": "A date typed in free form or in words, or a typed date range",
+      "instead": {
+        "target": "a parser of the consuming application's own choosing feeding a plain Input",
+        "note": "The `input` variant accepts only its one display format and exists in single mode only; the kit ships no free-form date parser."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "Field",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "open-wins-over-default-open",
+      "text": "`open` and `defaultOpen` are both accepted; `defaultOpen` seeds the initial state and is ignored afterwards, and when `open` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "selection-is-controlled-only",
+      "text": "The picker holds no selection of its own: the trigger label and the calendar's selected days always come from `selected`, and a pick only calls `onSelect`, so a caller that does not store the value it receives sees the trigger and the grid keep the previous selection. In single mode, picking the day already selected calls `onSelect(undefined)`. The one selection-related local state is the `input` variant's typed text, which resyncs to `selected` whenever `selected` changes from outside to a different time value."
+    },
+    {
+      "id": "mode-scoped-props",
+      "text": "`variant` (default `button`) is declared only by the single-mode props and `numberOfMonths` (default 2) only by the range-mode props. The schema lists both as optional properties without tying either to `mode`, so `mode=\"range\"` together with `variant` validates against it but does not type-check."
+    },
+    {
+      "id": "close-on-select-default-per-mode",
+      "text": "In single mode a picked day closes the popover unless `closeOnSelect` is false; in range mode the popover stays open unless `closeOnSelect` is true, and then it closes on every pick, the first endpoint included."
+    },
+    {
+      "id": "visible-month-follows-selection",
+      "text": "The calendar opens on the month of `selected` (of the range's start in range mode), including a value that arrives after mount; month navigation by the user holds until `selected` changes to a different time value. The comparison is by time, so a caller that builds a new Date for the same day on every render does not reset the month."
+    },
+    {
+      "id": "typed-field-commits-complete-dates-only",
+      "text": "In the `input` variant, `onSelect` receives a date only when the typed text parses as a real date against the field's display pattern `MMMM dd, yyyy` in `locale` and carries a four-digit year; emptying the field calls `onSelect(undefined)`, and any other text calls nothing. ArrowDown in the field opens the calendar."
+    },
+    {
+      "id": "locale-covers-grid-and-text",
+      "text": "`locale` is passed to the calendar grid and also formats the trigger label, the typed field's text and the parse of what is typed, so a localized picker reads in one language throughout."
+    },
+    {
+      "id": "disabled-matches-days-not-the-trigger",
+      "text": "`disabled` is not applied to the trigger button or the typed field, which stay focusable and keep opening the calendar."
+    },
+    {
+      "id": "where-forwarded-attributes-land",
+      "text": "`id`, `className` and `aria-label` go to the trigger button in the `button` variant and in range mode, and to the text field in the `input` variant. In the `input` variant the trailing calendar button is named by `aria-label` when one is given and by `openCalendarLabel` otherwise, so a consumer `aria-label` names the field and the button alike. Without `aria-label` the trigger button is named by its text, the formatted selection or the placeholder."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Assemble a Popover, a Calendar and a Button by hand for a date field",
+      "do_instead": "Use DatePicker, which wires the open state, the visible month and the trigger label"
+    },
+    {
+      "dont": "Keep a separate text state next to the `input` variant to hold what the user is typing",
+      "do_instead": "Store only what `onSelect` delivers; the field keeps its own typed text and commits once the date is complete"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "selected": {
+      "states": "selected is the committed value, a Date or undefined in single mode and a `{ from, to }` date range or undefined in range mode",
+      "because": "`Date | undefined` on the single-mode props and `DateRange | undefined` on the range-mode props, discriminated by `mode`; the compiler emits one JSON type per property, and a Date object has no JSON Schema representation."
+    },
+    "onSelect": {
+      "states": "onSelect is a callback called with the next value, typed like `selected` for the active mode, not a value",
+      "because": "`(date: Date | undefined) => void` in single mode and `(range: DateRange | undefined) => void` in range mode, discriminated by `mode` - functions, which no JSON Schema type covers."
+    },
+    "onOpenChange": {
+      "states": "onOpenChange is a callback called with the next open state of the calendar popover, not a value",
+      "because": "`(open: boolean) => void` - a function, which no JSON Schema type covers."
+    },
+    "disabled": {
+      "states": "disabled is the calendar's day matcher, one matcher or a list of them, that rules out the matching days",
+      "because": "`Matcher | Matcher[]`, where a matcher is a boolean, a Date, a list of Dates, a range, a before/after bound, a day of the week or a function of the day; the compiler emits one JSON type per property, and Dates and functions have no JSON Schema representation."
+    },
+    "locale": {
+      "states": "locale is a date-fns locale object",
+      "because": "`Locale` is an object holding a code, formatting and parsing functions (`formatDistance`, `localize`, `formatLong`, `match` and others) and week options; the functions have no JSON Schema representation."
+    },
+    "container": {
+      "states": "container is the DOM node, shadow root or ref to one that the calendar popup portals into; an explicit null renders no popup until a node is passed",
+      "because": "`HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null` - live DOM nodes and ref objects, which no JSON Schema type covers."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "Popover",
+      "reason": "Composed inside DatePicker as the open-state root; its open state is exposed as DatePicker's own `open`, `defaultOpen` and `onOpenChange`."
+    },
+    {
+      "part": "PopoverTrigger",
+      "reason": "Composed inside DatePicker and rendered as the trigger Button, or as the `input` variant's trailing calendar button."
+    },
+    {
+      "part": "PopoverContent",
+      "reason": "Composed inside DatePicker as the calendar's popup, made padding-free by date-picker.module.css; only its `container` is exposed, as DatePicker's own prop."
+    },
+    {
+      "part": "Calendar",
+      "reason": "Composed inside the popup; besides the selection, only `captionLayout`, `disabled`, `locale` and, in range mode, `numberOfMonths` reach it from DatePicker."
+    },
+    {
+      "part": "Button",
+      "reason": "Composed as the outline trigger with a calendar icon in its `icon` slot, or as the `input` variant's ghost icon button; neither takes a variant or size from DatePicker."
+    },
+    {
+      "part": "Input",
+      "reason": "Composed as the `input` variant's text field, with the calendar button in its `end` slot."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "One day, button trigger",
+        "code": "const [date, setDate] = useState<Date | undefined>();\n<DatePicker selected={date} onSelect={setDate} />\n"
+      },
+      {
+        "title": "A date range over two months",
+        "code": "const [range, setRange] = useState<DateRange | undefined>();\n<DatePicker mode=\"range\" selected={range} onSelect={setRange} />\n"
+      },
+      {
+        "title": "A typed field with a calendar button, days before today ruled out",
+        "code": "<DatePicker variant=\"input\" selected={date} onSelect={setDate} disabled={{ before: new Date() }} />\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "disabled used to switch the whole picker off",
+        "code": "<DatePicker selected={date} onSelect={setDate} disabled={saving} />",
+        "why": "`disabled` is the calendar's day matcher, so `true` rules out every day while the trigger stays clickable and keeps opening a grid with nothing to pick; it never disables the trigger."
+      },
+      {
+        "title": "A made-up defaultSelected prop for an uncontrolled picker",
+        "code": "<DatePicker defaultSelected={new Date()} />",
+        "why": "DatePicker has no uncontrolled selection: `selected` and `onSelect` are both required, and the value lives in the caller's state."
+      }
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {
+      "container": {
+        "typeText": "HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null | undefined",
+        "optional": true
+      },
+      "disabled": {
+        "typeText": "Matcher | Matcher[] | undefined",
+        "optional": true
+      },
+      "locale": {
+        "typeText": "Locale | undefined",
+        "optional": true
+      },
+      "onOpenChange": {
+        "typeText": "((open: boolean) => void) | undefined",
+        "optional": true
+      },
+      "onSelect": {
+        "typeText": "((date: Date | undefined) => void) | ((range: DateRange | undefined) => void)",
+        "optional": false
+      },
+      "selected": {
+        "typeText": "Date | DateRange | undefined",
+        "optional": false
+      }
+    },
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit DatePicker",
+    "type": "object",
+    "properties": {
+      "aria-label": {
+        "type": "string"
+      },
+      "captionLayout": {
+        "type": "string",
+        "enum": [
+          "dropdown",
+          "dropdown-months",
+          "dropdown-years",
+          "label"
+        ]
+      },
+      "className": {
+        "type": "string"
+      },
+      "closeOnSelect": {
+        "type": "boolean"
+      },
+      "container": {
+        "description": "Partially typed: HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null | undefined. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. container is the DOM node, shadow root or ref to one that the calendar popup portals into; an explicit null renders no popup until a node is passed. `HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null` - live DOM nodes and ref objects, which no JSON Schema type covers."
+      },
+      "defaultOpen": {
+        "type": "boolean"
+      },
+      "disabled": {
+        "description": "Partially typed: Matcher | Matcher[] | undefined. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. disabled is the calendar's day matcher, one matcher or a list of them, that rules out the matching days. `Matcher | Matcher[]`, where a matcher is a boolean, a Date, a list of Dates, a range, a before/after bound, a day of the week or a function of the day; the compiler emits one JSON type per property, and Dates and functions have no JSON Schema representation."
+      },
+      "id": {
+        "type": "string"
+      },
+      "locale": {
+        "description": "Partially typed: Locale | undefined. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. locale is a date-fns locale object. `Locale` is an object holding a code, formatting and parsing functions (`formatDistance`, `localize`, `formatLong`, `match` and others) and week options; the functions have no JSON Schema representation."
+      },
+      "mode": {
+        "type": "string",
+        "enum": [
+          "range",
+          "single"
+        ]
+      },
+      "numberOfMonths": {
+        "type": "number",
+        "description": "Declared only by DatePickerRangeProps of the props union; absent from the others."
+      },
+      "onOpenChange": {
+        "description": "Partially typed: ((open: boolean) => void) | undefined. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. onOpenChange is a callback called with the next open state of the calendar popover, not a value. `(open: boolean) => void` - a function, which no JSON Schema type covers."
+      },
+      "onSelect": {
+        "description": "Partially typed: ((date: Date | undefined) => void) | ((range: DateRange | undefined) => void). The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. onSelect is a callback called with the next value, typed like `selected` for the active mode, not a value. `(date: Date | undefined) => void` in single mode and `(range: DateRange | undefined) => void` in range mode, discriminated by `mode` - functions, which no JSON Schema type covers."
+      },
+      "open": {
+        "type": "boolean"
+      },
+      "openCalendarLabel": {
+        "type": "string"
+      },
+      "placeholder": {
+        "type": "string"
+      },
+      "selected": {
+        "description": "Partially typed: Date | DateRange | undefined. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. selected is the committed value, a Date or undefined in single mode and a `{ from, to }` date range or undefined in range mode. `Date | undefined` on the single-mode props and `DateRange | undefined` on the range-mode props, discriminated by `mode`; the compiler emits one JSON type per property, and a Date object has no JSON Schema representation."
+      },
+      "variant": {
+        "type": "string",
+        "enum": [
+          "button",
+          "input"
+        ],
+        "description": "Declared only by DatePickerSingleProps of the props union; absent from the others."
+      }
+    },
+    "required": [
+      "onSelect",
+      "selected"
+    ],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

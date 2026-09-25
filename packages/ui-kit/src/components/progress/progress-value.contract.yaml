@@ -1,0 +1,106 @@
+# Semantic overlay for ProgressValue - a part of the Progress family, see
+# progress.contract.yaml's `family_membership` for how the five contracts
+# relate.
+#
+# Machine-extractable facts (prop list, forwarded surface) do NOT belong
+# here: the compiler takes those from progress.tsx and the Base UI Progress
+# primitive it wraps, and rejects an overlay that tries to restate them -
+# one fact, one owner.
+component: progress-value
+
+intent: The visual readout of its progress root's current value.
+
+typical_uses:
+  - The percentage readout at the end of the row, beside a ProgressLabel
+
+dont_use_when:
+  - situation: A number readout that is not a progress root's value
+    instead:
+      target: text in the consuming application's own markup
+      note: >-
+        A ProgressValue renders only the nearest root's formatted value and
+        is hidden from assistive technology; the kit ships no generic
+        readout component.
+
+# ProgressValueProps declares children as null or a render function, never
+# free nodes: the component renders its own body, the root's formatted
+# value. There is nothing a consumer nests inside it.
+accepts:
+  content: nothing
+
+invariants:
+  - id: aria-hidden-visual-only
+    text: >-
+      The readout is always `aria-hidden`: the root's `aria-valuenow`
+      carries the value to assistive technology, and the readout is for
+      sighted users only.
+  - id: value-span-empty-while-indeterminate
+    text: >-
+      With an indeterminate root the readout's span is empty - there is no
+      percentage to show - and a function child receives the string
+      "indeterminate" and a null value to decide what to show instead.
+
+anti_patterns:
+  - dont: Pass text children to customize the readout
+    do_instead: >-
+      Pass a function child receiving the formatted value; a plain string
+      child is ignored at runtime and rejected by tsc, so it never renders
+
+deprecations: {}
+
+# The aria-hidden below is the primitive's (Progress.Value renders with it
+# always); progress.test.tsx asserts the rendered "42%" text only.
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Progress.Value, which renders with aria-hidden always
+      (verified in the @base-ui/react/progress source); progress.test.tsx
+      asserts the rendered "42%" text
+  rtl:
+    outcome: unknown
+
+# What each property that reaches this contract asserting nothing (or only
+# part of its shape) actually states, and why - keyed on the property
+# itself. The compiler emits both halves into that property's own
+# description, beside the `TS:` text.
+prop_statements:
+  children:
+    states: children is null, to render the root's formatted value, or a function of the formatted value and the raw value returning React nodes
+    because: >-
+      `null | ((formattedValue: string | null, value: number | null) =>
+      ReactNode)` - a union of null and a callback. The compiler emits one
+      JSON type per property, and a function has no JSON Schema
+      representation.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the value's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the value's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (status). The compiler emits one JSON type per property, so nothing is asserted; the kit's own
+      styling goes through progress.module.css, not through this.
+
+examples:
+  good:
+    - title: The live readout beside its caption
+      code: |
+        <Progress value={42}>
+          <ProgressLabel>Uploading</ProgressLabel>
+          <ProgressValue />
+        </Progress>
+  bad:
+    - title: Text children glued to the percentage
+      code: <ProgressValue>% done</ProgressValue>
+      why: >-
+        children must be null or a function: a string is ignored at runtime
+        and rejected by tsc, so the suffix never renders. A function child
+        formats the readout instead.
+
+family_membership:
+  name: progress
+  role: part

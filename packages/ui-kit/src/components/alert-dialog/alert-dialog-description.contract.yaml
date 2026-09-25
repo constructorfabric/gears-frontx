@@ -1,0 +1,77 @@
+# Semantic overlay for AlertDialogDescription - a part of the AlertDialog
+# family, see alert-dialog.contract.yaml's `family_membership` for how the
+# ten contracts relate. `mounted_in` is filled from AlertDialogHeader's
+# accepted components, not authored here; it may also sit straight in
+# AlertDialogContent, which accepts anything.
+component: alert-dialog-description
+
+intent: The paragraph that states what confirming an alert dialog will do, read out as the popup's description.
+
+typical_uses:
+  - The consequence of a confirmation, such as "This cannot be undone."
+
+dont_use_when:
+  - situation: The description of a dismissible modal
+    instead:
+      target: DialogDescription
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_description.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: muted-paragraph
+    text: >-
+      AlertDialogDescription renders a p in the body type ramp with the
+      muted foreground color.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the
+      description's state, so its type is a union of a React element and a
+      callback - the compiler emits one JSON type per property; the primitive passes an
+      empty state object.
+  style:
+    states: style accepts a function as well as a plain style object; the primitive passes that function an empty state object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)`, and the description's state
+      carries no fields. The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through
+      alert-dialog.module.css, not through this.
+
+examples:
+  good:
+    - title: The consequence under the question
+      code: |
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete this project?</AlertDialogTitle>
+          <AlertDialogDescription>Its files and history are removed for everyone.</AlertDialogDescription>
+        </AlertDialogHeader>
+  bad:
+    - title: A list nested in the description
+      code: |
+        <AlertDialogDescription>
+          <ul>
+            <li>All files</li>
+          </ul>
+        </AlertDialogDescription>
+      why: >-
+        The description renders a p, and a list inside a paragraph is
+        invalid HTML; keep the description to a sentence of text.
+
+family_membership:
+  name: alert_dialog
+  role: part

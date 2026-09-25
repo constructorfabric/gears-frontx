@@ -56,11 +56,11 @@
   "prop_statements": {
     "render": {
       "states": "render replaces the panel element with one the caller supplies",
-      "because": "Base UI's render prop takes an element or a function of the panel's state; neither is expressible in JSON Schema. The panel is the element Base UI writes `--accordion-panel-height` on, so a replaced element still has to be the one the height animation measures."
+      "because": "Base UI's render prop takes an element or a function of the panel's state; the compiler emits one JSON type per property. The panel is the element Base UI writes `--accordion-panel-height` on, so a replaced element still has to be the one the height animation measures."
     },
     "style": {
       "states": "style accepts a function of the panel's state as well as a plain style object",
-      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`; a JSON Schema `object` would reject the function form."
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`; the compiler emits one JSON type per property."
     }
   },
   "examples": {
@@ -101,10 +101,10 @@
         "type": "boolean"
       },
       "render": {
-        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, AccordionPanelState> | undefined. Not expressible in JSON Schema, checked by tsc. render replaces the panel element with one the caller supplies. Base UI's render prop takes an element or a function of the panel's state; neither is expressible in JSON Schema. The panel is the element Base UI writes `--accordion-panel-height` on, so a replaced element still has to be the one the height animation measures."
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, AccordionPanelState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the panel element with one the caller supplies. Base UI's render prop takes an element or a function of the panel's state; the compiler emits one JSON type per property. The panel is the element Base UI writes `--accordion-panel-height` on, so a replaced element still has to be the one the height animation measures."
       },
       "style": {
-        "description": "TS: CSSProperties | ((state: AccordionPanelState) => CSSProperties | undefined) | undefined. Not expressible in JSON Schema, checked by tsc. style accepts a function of the panel's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`; a JSON Schema `object` would reject the function form."
+        "description": "TS: CSSProperties | ((state: AccordionPanelState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the panel's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)`; the compiler emits one JSON type per property."
       }
     },
     "required": [],

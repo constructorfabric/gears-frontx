@@ -84,7 +84,7 @@ prop_statements:
   icon:
     states: icon is a React node, not a value
     because: >-
-      `ReactNode` has no JSON Schema representation - an element, a string,
+      `ReactNode` is a union, and the compiler emits one JSON type per property - an element, a string,
       a fragment and `false` are all valid and only tsc can tell them from
       a mistake. The slot exists so the icon gets sized, spaced, hidden
       while `loading` and marked decorative; what may go in it is
@@ -93,8 +93,7 @@ prop_statements:
     states: render replaces the rendered element with one the caller supplies
     because: >-
       Base UI's render prop takes an element or a function of the button's
-      own state, so its type is a union of a React element and a callback -
-      neither expressible in JSON Schema. It is what makes
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property. It is what makes
       `render={<a href="..." />}` with `nativeButton={false}` the way to
       keep an action reading as a button while it navigates.
   style:
@@ -102,8 +101,7 @@ prop_statements:
     because: >-
       Base UI widens React's `CSSProperties` to
       `CSSProperties | ((state) => CSSProperties)` so a caller can style off
-      the primitive's own state. A JSON Schema `object` would reject the
-      function form, so nothing is asserted; the kit's own styling goes
+      the primitive's own state. The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes
       through `variant`/`size` and CSS Modules, not through this.
 
 # Canonical snippets. `good` is what to copy, `bad` is what generation

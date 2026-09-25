@@ -1,0 +1,76 @@
+# Semantic overlay for QuestionnairePrevious - a part of the Questionnaire family,
+# see questionnaire.contract.yaml's `family_membership`. It renders the kit
+# Button unless `render` replaces it.
+component: questionnaire-previous
+
+intent: Move a Questionnaire back to the previous enabled item.
+
+typical_uses:
+  - The back action of a questionnaire's navigation row
+
+dont_use_when:
+  - situation: An action button outside a questionnaire
+    instead:
+      target: Button
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+
+# Children replace the default "Previous" text.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: variant-and-size-style-the-default-button
+    text: >-
+      `variant` and `size` are passed to the kit Button the component
+      renders by default; when `render` is given it replaces that Button and
+      both are ignored.
+  - id: hidden-when-it-does-not-apply
+    text: >-
+      It is hidden on the first item. While hidden it carries the native
+      `hidden` and `inert` attributes, `aria-hidden` and tabIndex -1, and
+      `data-hidden` in place of `data-visible`.
+  - id: goes-back-without-validating
+    text: >-
+      Going back never runs validation; the current item's answer stays as it is.
+
+anti_patterns:
+  - dont: Hide or remove QuestionnairePrevious yourself on the first item
+    do_instead: Mount it always; it hides itself where there is nowhere to go back to
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: questionnaire.test.tsx asserts Previous has the hidden property on the first item and loses it once the flow advances
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      The questionnaire engine's render prop takes an element or a function
+      of the button's own state (`QuestionnaireNavigationState`: disabled,
+      shortcut, status, visible), so its type is a union of a React element
+      and a callback; the compiler emits one JSON type per property, so
+      nothing is asserted. The kit defaults it to its own Button.
+
+examples:
+  good:
+    - title: The default Previous button
+      code: <QuestionnairePrevious />
+    - title: A smaller Previous button with its own text
+      code: <QuestionnairePrevious size="sm">Back</QuestionnairePrevious>
+  bad:
+    - title: Previous mounted only after the first item
+      code: "{current !== 'role' && <QuestionnairePrevious />}"
+      why: >-
+        The button already hides itself on the first item; a hand-written
+        condition repeats state the root owns and goes wrong as soon as the
+        first item is disabled or `items` changes order.
+
+family_membership:
+  name: questionnaire
+  role: part

@@ -1,0 +1,714 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.chart_legend.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "chart-legend",
+  "intent": "Place a key of the chart's series beside the plot, rendered by its `content`.",
+  "typical_uses": [
+    "A key naming each series of a chart with two or more series"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Text about the chart as a whole, such as a caption or a source note",
+      "instead": {
+        "target": "text next to ChartContainer, outside the chart element",
+        "note": "The legend lists series only; it has no place for free text."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "a Recharts chart element (BarChart, LineChart, AreaChart, PieChart and the like)",
+      "note": "The legend reads its items from the chart element's own state and reserves room for itself in the chart's layout; outside one it renders nothing. The chart element is the library's, not a kit component; ChartLegendContent additionally needs ChartContainer around it."
+    }
+  ],
+  "invariants": [
+    {
+      "id": "default-content-reads-no-config",
+      "text": "Without `content` the legend renders the library's own default content, which reads no ChartConfig; ChartLegendContent is the content that resolves labels and icons from the config."
+    },
+    {
+      "id": "content-receives-the-legend-props",
+      "text": "The element given as `content` is cloned on every render, or rendered as a component when it is a function, with all of the legend's props, its resolved layout and the chart's size and margin, plus the payload of legend items."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Give the legend an `onClick` to show or hide a series while `content` is ChartLegendContent",
+      "do_instead": "Leave `content` unset when items must react to clicks; only the library's default content calls the legend's handlers per item"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is passed to the legend's content with its other props; neither the library's default content nor ChartLegendContent renders it",
+      "because": "`ReactNode` - an element tree, which no JSON Schema type covers."
+    },
+    "content": {
+      "states": "content renders the legend's body: an element the legend clones with its props, or a function of them; the kit's is ChartLegendContent",
+      "because": "`ReactElement | ((props) => ReactNode)` - an element or a function, which no JSON Schema type covers."
+    },
+    "dangerouslySetInnerHTML": {
+      "states": "dangerouslySetInnerHTML is passed to the legend's content with its other props; ChartLegendContent keeps it off its root",
+      "because": "`{ __html: string }` - an object type the compiler emits no JSON type for."
+    },
+    "formatter": {
+      "states": "formatter is passed to the legend's content; the library's default content calls it per item with its value, entry and index and shows its return as the item's text, and ChartLegendContent's contract says whether it reads it",
+      "because": "A function, which no JSON Schema type covers."
+    },
+    "height": {
+      "states": "height is the legend box's height, a number of pixels or a CSS length",
+      "because": "`string | number` - the compiler emits one JSON type per property."
+    },
+    "itemSorter": {
+      "states": "itemSorter orders the legend items by `value`, `dataKey` or a function of the item; `null` keeps the payload's order",
+      "because": "A union of strings, a function and null, which no JSON Schema type covers."
+    },
+    "labelStyle": {
+      "states": "labelStyle is a style object the library's default content applies to each item's text; ChartLegendContent does not read it",
+      "because": "`CSSProperties` - an object type the compiler emits no JSON type for."
+    },
+    "onBBoxUpdate": {
+      "states": "onBBoxUpdate is typed as a callback for the legend's measured box, but the legend never calls it; it is passed to the legend's content with the other props, and ChartLegendContent keeps it off its root",
+      "because": "A function, which no JSON Schema type covers."
+    },
+    "payloadUniqBy": {
+      "states": "payloadUniqBy is a boolean or a function returning each item's identity, deciding which duplicate items the legend drops before its content renders",
+      "because": "`boolean | ((entry) => unknown)` - a function, which no JSON Schema type covers."
+    },
+    "portal": {
+      "states": "portal is the element the legend renders into; without it the legend renders inside the chart's wrapper",
+      "because": "`HTMLElement | null` - a live DOM node, which no JSON Schema type covers."
+    },
+    "position": {
+      "states": "position places the legend on a named side or inside position of the chart, or at an `{ x, y }` point, and overrides `align` and `verticalAlign` when given",
+      "because": "`CartesianPosition` mixes strings with an object, which no JSON Schema type covers."
+    },
+    "width": {
+      "states": "width is the legend box's width, a number of pixels or a CSS length",
+      "because": "`string | number` - the compiler emits one JSON type per property."
+    },
+    "wrapperStyle": {
+      "states": "wrapperStyle is a style object for the legend's positioned wrapper element",
+      "because": "`CSSProperties` - an object type the compiler emits no JSON type for."
+    }
+  },
+  "prop_statement_groups": [
+    {
+      "match": "^on[A-Z]",
+      "states": "An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it",
+      "because": "A function, which no JSON Schema type covers."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "The kit's content above the plot",
+        "code": "<ChartContainer config={chartConfig}>\n  <BarChart data={data}>\n    <Bar dataKey=\"desktop\" fill=\"var(--color-desktop)\" />\n    <ChartLegend verticalAlign=\"top\" content={<ChartLegendContent />} />\n  </BarChart>\n</ChartContainer>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A legend outside the chart element",
+        "code": "<ChartContainer config={chartConfig}>\n  <ChartLegend content={<ChartLegendContent />} />\n</ChartContainer>\n",
+        "why": "The legend reads its items from a chart element; with none around it, it renders nothing."
+      }
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": [
+      "host element: none - 53 React attribute(s) the props type admits are not described by an element surface (aria-activedescendant, aria-atomic, aria-autocomplete, aria-braillelabel, aria-brailleroledescription, aria-busy, aria-checked, aria-colcount, aria-colindex, aria-colindextext, aria-colspan, aria-controls, aria-current, aria-describedby, aria-description, aria-details, aria-disabled, aria-dropeffect, aria-errormessage, aria-expanded, aria-flowto, aria-grabbed, aria-haspopup, aria-hidden, aria-invalid, aria-keyshortcuts, aria-label, aria-labelledby, aria-level, aria-live, aria-modal, aria-multiline, aria-multiselectable, aria-orientation, aria-owns, aria-placeholder, aria-posinset, aria-pressed, aria-readonly, aria-relevant, aria-required, aria-roledescription, aria-rowcount, aria-rowindex, aria-rowindextext, aria-rowspan, aria-selected, aria-setsize, aria-sort, aria-valuemax, aria-valuemin, aria-valuenow, aria-valuetext): the legend's attributes are passed to its content renderer as props; whether they reach an element depends on that renderer."
+    ]
+  },
+  "props": {
+    "title": "UiKit ChartLegend",
+    "type": "object",
+    "properties": {
+      "align": {
+        "type": "string",
+        "enum": [
+          "center",
+          "left",
+          "right"
+        ]
+      },
+      "children": {
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is passed to the legend's content with its other props; neither the library's default content nor ChartLegendContent renders it. `ReactNode` - an element tree, which no JSON Schema type covers."
+      },
+      "content": {
+        "description": "TS: ContentType | undefined. The compiler emits one JSON type per property; this type is left to tsc. content renders the legend's body: an element the legend clones with its props, or a function of them; the kit's is ChartLegendContent. `ReactElement | ((props) => ReactNode)` - an element or a function, which no JSON Schema type covers."
+      },
+      "dangerouslySetInnerHTML": {
+        "description": "TS: { __html: string; } | undefined. The compiler emits one JSON type per property; this type is left to tsc. dangerouslySetInnerHTML is passed to the legend's content with its other props; ChartLegendContent keeps it off its root. `{ __html: string }` - an object type the compiler emits no JSON type for."
+      },
+      "formatter": {
+        "description": "TS: Formatter | undefined. The compiler emits one JSON type per property; this type is left to tsc. formatter is passed to the legend's content; the library's default content calls it per item with its value, entry and index and shows its return as the item's text, and ChartLegendContent's contract says whether it reads it. A function, which no JSON Schema type covers."
+      },
+      "height": {
+        "description": "TS: string | number | undefined. The compiler emits one JSON type per property; this type is left to tsc. height is the legend box's height, a number of pixels or a CSS length. `string | number` - the compiler emits one JSON type per property."
+      },
+      "iconSize": {
+        "type": "number"
+      },
+      "iconType": {
+        "type": "string",
+        "enum": [
+          "circle",
+          "cross",
+          "diamond",
+          "line",
+          "none",
+          "plainline",
+          "rect",
+          "square",
+          "star",
+          "triangle",
+          "wye"
+        ]
+      },
+      "inactiveColor": {
+        "type": "string"
+      },
+      "itemSorter": {
+        "description": "TS: LegendItemSorter | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. itemSorter orders the legend items by `value`, `dataKey` or a function of the item; `null` keeps the payload's order. A union of strings, a function and null, which no JSON Schema type covers."
+      },
+      "labelStyle": {
+        "description": "TS: CSSProperties | undefined. The compiler emits one JSON type per property; this type is left to tsc. labelStyle is a style object the library's default content applies to each item's text; ChartLegendContent does not read it. `CSSProperties` - an object type the compiler emits no JSON type for."
+      },
+      "layout": {
+        "type": "string",
+        "enum": [
+          "auto",
+          "horizontal",
+          "vertical"
+        ]
+      },
+      "offset": {
+        "type": "number"
+      },
+      "onAbort": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onAbortCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onAnimationEnd": {
+        "description": "TS: AdaptChildAnimationEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onAnimationEndCapture": {
+        "description": "TS: AdaptChildAnimationEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onAnimationIteration": {
+        "description": "TS: AdaptChildAnimationEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onAnimationIterationCapture": {
+        "description": "TS: AdaptChildAnimationEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onAnimationStart": {
+        "description": "TS: AdaptChildAnimationEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onAnimationStartCapture": {
+        "description": "TS: AdaptChildAnimationEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onAuxClick": {
+        "description": "TS: AdaptChildMouseEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onAuxClickCapture": {
+        "description": "TS: AdaptChildMouseEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onBBoxUpdate": {
+        "description": "TS: ((box: ElementOffset | null) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onBBoxUpdate is typed as a callback for the legend's measured box, but the legend never calls it; it is passed to the legend's content with the other props, and ChartLegendContent keeps it off its root. A function, which no JSON Schema type covers."
+      },
+      "onBeforeInput": {
+        "description": "TS: AdaptChildFormEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onBeforeInputCapture": {
+        "description": "TS: AdaptChildFormEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onBlur": {
+        "description": "TS: AdaptChildFocusEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onBlurCapture": {
+        "description": "TS: AdaptChildFocusEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onCanPlay": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onCanPlayCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onCanPlayThrough": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onCanPlayThroughCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onChange": {
+        "description": "TS: AdaptChildFormEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onChangeCapture": {
+        "description": "TS: AdaptChildFormEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onClick": {
+        "description": "TS: ((data: LegendPayload, index: number, event: MouseEvent<HTMLElement, globalThis.MouseEvent>) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onClickCapture": {
+        "description": "TS: AdaptChildMouseEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onCompositionEnd": {
+        "description": "TS: AdaptChildCompositionEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onCompositionEndCapture": {
+        "description": "TS: AdaptChildCompositionEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onCompositionStart": {
+        "description": "TS: AdaptChildCompositionEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onCompositionStartCapture": {
+        "description": "TS: AdaptChildCompositionEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onCompositionUpdate": {
+        "description": "TS: AdaptChildCompositionEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onCompositionUpdateCapture": {
+        "description": "TS: AdaptChildCompositionEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onContextMenu": {
+        "description": "TS: AdaptChildMouseEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onContextMenuCapture": {
+        "description": "TS: AdaptChildMouseEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onCopy": {
+        "description": "TS: AdaptChildClipboardEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onCopyCapture": {
+        "description": "TS: AdaptChildClipboardEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onCut": {
+        "description": "TS: AdaptChildClipboardEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onCutCapture": {
+        "description": "TS: AdaptChildClipboardEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDoubleClick": {
+        "description": "TS: AdaptChildMouseEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDoubleClickCapture": {
+        "description": "TS: AdaptChildMouseEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDrag": {
+        "description": "TS: AdaptChildDragEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDragCapture": {
+        "description": "TS: AdaptChildDragEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDragEnd": {
+        "description": "TS: AdaptChildDragEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDragEndCapture": {
+        "description": "TS: AdaptChildDragEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDragEnter": {
+        "description": "TS: AdaptChildDragEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDragEnterCapture": {
+        "description": "TS: AdaptChildDragEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDragExit": {
+        "description": "TS: AdaptChildDragEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDragExitCapture": {
+        "description": "TS: AdaptChildDragEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDragLeave": {
+        "description": "TS: AdaptChildDragEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDragLeaveCapture": {
+        "description": "TS: AdaptChildDragEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDragOver": {
+        "description": "TS: AdaptChildDragEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDragOverCapture": {
+        "description": "TS: AdaptChildDragEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDragStart": {
+        "description": "TS: AdaptChildDragEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDragStartCapture": {
+        "description": "TS: AdaptChildDragEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDrop": {
+        "description": "TS: AdaptChildDragEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDropCapture": {
+        "description": "TS: AdaptChildDragEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDurationChange": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onDurationChangeCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onEmptied": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onEmptiedCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onEncrypted": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onEncryptedCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onEnded": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onEndedCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onError": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onErrorCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onFocus": {
+        "description": "TS: AdaptChildFocusEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onFocusCapture": {
+        "description": "TS: AdaptChildFocusEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onGotPointerCapture": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onGotPointerCaptureCapture": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onInput": {
+        "description": "TS: AdaptChildFormEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onInputCapture": {
+        "description": "TS: AdaptChildFormEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onInvalid": {
+        "description": "TS: AdaptChildFormEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onInvalidCapture": {
+        "description": "TS: AdaptChildFormEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onKeyDown": {
+        "description": "TS: AdaptChildKeyboardEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onKeyDownCapture": {
+        "description": "TS: AdaptChildKeyboardEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onKeyPress": {
+        "description": "TS: AdaptChildKeyboardEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onKeyPressCapture": {
+        "description": "TS: AdaptChildKeyboardEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onKeyUp": {
+        "description": "TS: AdaptChildKeyboardEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onKeyUpCapture": {
+        "description": "TS: AdaptChildKeyboardEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onLoad": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onLoadCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onLoadStart": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onLoadStartCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onLoadedData": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onLoadedDataCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onLoadedMetadata": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onLoadedMetadataCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onLostPointerCapture": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onLostPointerCaptureCapture": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onMouseDown": {
+        "description": "TS: AdaptChildMouseEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onMouseDownCapture": {
+        "description": "TS: AdaptChildMouseEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onMouseEnter": {
+        "description": "TS: ((data: LegendPayload, index: number, event: MouseEvent<HTMLElement, globalThis.MouseEvent>) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onMouseLeave": {
+        "description": "TS: ((data: LegendPayload, index: number, event: MouseEvent<HTMLElement, globalThis.MouseEvent>) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onMouseMove": {
+        "description": "TS: AdaptChildMouseEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onMouseMoveCapture": {
+        "description": "TS: AdaptChildMouseEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onMouseOut": {
+        "description": "TS: AdaptChildMouseEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onMouseOutCapture": {
+        "description": "TS: AdaptChildMouseEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onMouseOver": {
+        "description": "TS: AdaptChildMouseEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onMouseOverCapture": {
+        "description": "TS: AdaptChildMouseEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onMouseUp": {
+        "description": "TS: AdaptChildMouseEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onMouseUpCapture": {
+        "description": "TS: AdaptChildMouseEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPaste": {
+        "description": "TS: AdaptChildClipboardEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPasteCapture": {
+        "description": "TS: AdaptChildClipboardEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPause": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPauseCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPlay": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPlayCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPlaying": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPlayingCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPointerCancel": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPointerCancelCapture": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPointerDown": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPointerDownCapture": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPointerEnter": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPointerEnterCapture": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPointerLeave": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPointerLeaveCapture": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPointerMove": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPointerMoveCapture": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPointerOut": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPointerOutCapture": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPointerOver": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPointerOverCapture": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPointerUp": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onPointerUpCapture": {
+        "description": "TS: AdaptChildPointerEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onProgress": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onProgressCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onRateChange": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onRateChangeCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onReset": {
+        "description": "TS: AdaptChildFormEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onResetCapture": {
+        "description": "TS: AdaptChildFormEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onScroll": {
+        "description": "TS: AdaptChildUIEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onScrollCapture": {
+        "description": "TS: AdaptChildUIEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onSeeked": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onSeekedCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onSeeking": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onSeekingCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onSelect": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onSelectCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onStalled": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onStalledCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onSubmit": {
+        "description": "TS: AdaptChildFormEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onSubmitCapture": {
+        "description": "TS: AdaptChildFormEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onSuspend": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onSuspendCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onTimeUpdate": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onTimeUpdateCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onTouchCancel": {
+        "description": "TS: AdaptChildTouchEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onTouchCancelCapture": {
+        "description": "TS: AdaptChildTouchEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onTouchEnd": {
+        "description": "TS: AdaptChildTouchEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onTouchEndCapture": {
+        "description": "TS: AdaptChildTouchEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onTouchMove": {
+        "description": "TS: AdaptChildTouchEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onTouchMoveCapture": {
+        "description": "TS: AdaptChildTouchEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onTouchStart": {
+        "description": "TS: AdaptChildTouchEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onTouchStartCapture": {
+        "description": "TS: AdaptChildTouchEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onTransitionEnd": {
+        "description": "TS: AdaptChildTransitionEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onTransitionEndCapture": {
+        "description": "TS: AdaptChildTransitionEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onVolumeChange": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onVolumeChangeCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onWaiting": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onWaitingCapture": {
+        "description": "TS: AdaptChildReactEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onWheel": {
+        "description": "TS: AdaptChildWheelEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "onWheelCapture": {
+        "description": "TS: AdaptChildWheelEventHandler<LegendPayload, ReactElement<unknown, string | JSXElementConstructor<any>>> | undefined. The compiler emits one JSON type per property; this type is left to tsc. An event handler passed to the legend's content: the library's default content calls it per item with the item, its index and the event; ChartLegendContent keeps it off its elements and never calls it. A function, which no JSON Schema type covers."
+      },
+      "payloadUniqBy": {
+        "description": "TS: UniqueOption<LegendPayload> | undefined. The compiler emits one JSON type per property; this type is left to tsc. payloadUniqBy is a boolean or a function returning each item's identity, deciding which duplicate items the legend drops before its content renders. `boolean | ((entry) => unknown)` - a function, which no JSON Schema type covers."
+      },
+      "portal": {
+        "description": "TS: HTMLElement | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. portal is the element the legend renders into; without it the legend renders inside the chart's wrapper. `HTMLElement | null` - a live DOM node, which no JSON Schema type covers."
+      },
+      "position": {
+        "description": "TS: CartesianPosition | undefined. The compiler emits one JSON type per property; this type is left to tsc. position places the legend on a named side or inside position of the chart, or at an `{ x, y }` point, and overrides `align` and `verticalAlign` when given. `CartesianPosition` mixes strings with an object, which no JSON Schema type covers."
+      },
+      "verticalAlign": {
+        "type": "string",
+        "enum": [
+          "bottom",
+          "middle",
+          "top"
+        ]
+      },
+      "width": {
+        "description": "TS: string | number | undefined. The compiler emits one JSON type per property; this type is left to tsc. width is the legend box's width, a number of pixels or a CSS length. `string | number` - the compiler emits one JSON type per property."
+      },
+      "wrapperStyle": {
+        "description": "TS: CSSProperties | undefined. The compiler emits one JSON type per property; this type is left to tsc. wrapperStyle is a style object for the legend's positioned wrapper element. `CSSProperties` - an object type the compiler emits no JSON type for."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,96 @@
+# Semantic overlay for ComboboxTrigger - a part of the Combobox family, see
+# combobox.contract.yaml's `family_membership`. It wraps Base UI's
+# Combobox.Trigger; the forwarded surface is the button element.
+component: combobox-trigger
+
+intent: The button that opens and closes its Combobox's popup, drawn as a chevron unless given children of its own.
+
+typical_uses:
+  - The chevron button of a ComboboxInput, placed as a child of the field when the field's own is turned off
+
+dont_use_when:
+  - situation: The chevron at the end of a single-line combobox field
+    instead:
+      target: ComboboxInput
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_input.v1
+      note: >-
+        ComboboxInput already renders this trigger, named by its
+        `toggleLabel`, unless `showTrigger` is false.
+  - situation: A button that runs an action rather than opening a list
+    instead:
+      target: Button
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+
+# children replace the default chevron glyph.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: children-replace-the-chevron
+    text: >-
+      Without children the button renders a chevron glyph; any children
+      replace it.
+  - id: positioned-at-the-field-end
+    text: >-
+      combobox.module.css positions the button absolutely at the inline end
+      of its nearest positioned ancestor, square at the small control size
+      and vertically centred; inside ComboboxInput that ancestor is the
+      field's wrapper, and while the field's clear button is mounted the
+      same rule that hides the field's own trigger hides this one.
+
+anti_patterns:
+  - dont: Render the default chevron with no `aria-label`
+    do_instead: >-
+      Pass `aria-label` (or visible children); the chevron alone gives the
+      button no accessible name
+
+deprecations: {}
+
+# combobox.test.tsx finds this button by role and name only as composed by
+# ComboboxInput, where the name comes from `toggleLabel`; nothing asserts a
+# standalone trigger's name.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  children:
+    states: children is any React content, shown in place of the default chevron
+    because: >-
+      `ReactNode` is a union of elements, strings, numbers, fragments and
+      more; the compiler emits one JSON type per property.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the button's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the button's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open, disabled, popupSide, listEmpty, ...).
+      The compiler emits one JSON type per property, so nothing is
+      asserted; the kit's own styling goes through combobox.module.css, not
+      through this.
+
+examples:
+  good:
+    - title: A named trigger in place of the field's own
+      code: |
+        <ComboboxInput aria-label="Region" showTrigger={false} showClear>
+          <ComboboxTrigger aria-label="Show regions" />
+        </ComboboxInput>
+  bad:
+    - title: A trigger outside any Combobox
+      code: <ComboboxTrigger aria-label="Show regions" />
+      why: >-
+        The primitive's Trigger reads the nearest Combobox root's state
+        through context and throws when there is none.
+
+family_membership:
+  name: combobox
+  role: part

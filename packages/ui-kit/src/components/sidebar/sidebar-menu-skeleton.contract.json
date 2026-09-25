@@ -1,0 +1,87 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_skeleton.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sidebar-menu-skeleton",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "A placeholder menu row shown while the menu's rows load.",
+  "typical_uses": [
+    "A few placeholder rows in a menu whose items are still being fetched"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A loading placeholder outside a sidebar menu",
+      "instead": {
+        "target": "Skeleton",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.skeleton.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "SidebarMenuItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "same-geometry-as-a-row",
+      "text": "The placeholder is a 32px row with the same 8px inset as a SidebarMenuButton, and collapses to the same 32px square in the icon rail, where only the icon placeholder stays (with `showIcon`; without it the square is empty)."
+    },
+    {
+      "id": "width-varies-deterministically",
+      "text": "The text placeholder's width is derived from the row's React id, so it varies between rows between 50% and 89% and is identical on the server and after hydration."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Placeholder rows while the projects load",
+        "code": "<SidebarMenu>\n  {[0, 1, 2].map((index) => (\n    <SidebarMenuItem key={index}>\n      <SidebarMenuSkeleton showIcon />\n    </SidebarMenuItem>\n  ))}\n</SidebarMenu>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A caption passed to the placeholder",
+        "code": "<SidebarMenuSkeleton>Loading projects</SidebarMenuSkeleton>",
+        "why": "The placeholder renders only its own Skeleton elements and drops children, so the text never appears."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sidebar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SidebarMenuSkeleton",
+    "type": "object",
+    "properties": {
+      "showIcon": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

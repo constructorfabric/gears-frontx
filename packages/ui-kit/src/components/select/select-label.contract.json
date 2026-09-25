@@ -1,0 +1,108 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.select_label.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "select-label",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The caption of a SelectGroup, shown above its options and used as the group's accessible name.",
+  "typical_uses": [
+    "A section caption such as a continent above its regions"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The caption naming the whole select field",
+      "instead": {
+        "target": "Label",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.label.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "SelectGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.select_group.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "throws-outside-a-group",
+      "text": "Rendering the label outside a SelectGroup throws; the primitive looks up the group it labels from context."
+    },
+    {
+      "id": "names-the-group-not-itself",
+      "text": "The label gives its id to the enclosing group's `aria-labelledby`; it is not an option, so it cannot be chosen and arrow keys skip it."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Use a disabled SelectItem as a section caption",
+      "do_instead": "Use a SelectLabel inside a SelectGroup; a disabled item is still reached by arrow keys and announced as an option"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the label's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the label's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (an empty object for a label). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through select.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A caption over a section of options",
+        "code": "<SelectGroup>\n  <SelectLabel>Europe</SelectLabel>\n  <SelectItem value=\"eu-central\">Frankfurt</SelectItem>\n</SelectGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A label straight under the popup",
+        "code": "<SelectContent>\n  <SelectLabel>Europe</SelectLabel>\n  <SelectItem value=\"eu-central\">Frankfurt</SelectItem>\n</SelectContent>\n",
+        "why": "There is no group for the label to name, so the primitive throws; wrap both in a SelectGroup."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "select",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SelectLabel",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, SelectGroupLabelState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the label's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: SelectGroupLabelState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the label's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (an empty object for a label). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through select.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

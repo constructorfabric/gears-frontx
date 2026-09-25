@@ -1,0 +1,100 @@
+# Semantic overlay for ItemGroup - the root of the item_group family, with
+# ItemSeparator as its one part. A group wraps several Item roots, so it
+# is not a part of the item family itself. ItemGroup declares no kit prop;
+# every prop is the native div's.
+component: item-group
+
+intent: Stack a run of item rows into one spaced column exposed as a list.
+
+typical_uses:
+  - The rows of one collection, such as a file list or a notification feed
+
+dont_use_when:
+  - situation: Tabular data read across rows and columns
+    instead:
+      target: Table
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.table.v1
+  - situation: A set of options the user picks exactly one of
+    instead:
+      target: RadioGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group.v1
+
+# The ONE authored statement of what a group hosts: Item's and
+# ItemSeparator's `mounted_in` entries for ItemGroup are filled from this
+# list. Item comes from outside this family. No text flag: text belongs in
+# the rows.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1 # Item
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.item_separator.v1 # ItemSeparator
+
+invariants:
+  - id: role-list-without-list-items
+    text: >-
+      ItemGroup renders a div with role="list", which a consumer's own
+      `role` replaces; Item sets no role of its own and ItemSeparator
+      carries the primitive's role="separator", so the list's rows are
+      exposed as list items only when each Item is given role="listitem".
+  - id: gap-follows-the-smallest-item-size
+    text: >-
+      The group is a full-width flex column spaced var(--space-4) apart;
+      the gap becomes var(--space-3) when any Item inside it has
+      `size="sm"`, and var(--space-2) when any has `size="xs"`.
+
+anti_patterns:
+  - dont: Set a row size through a className and expect the group's gap to follow
+    do_instead: >-
+      Set `size` on each Item; the gap reads the size class Item emits from
+      its own `size`, not a consumer class
+
+deprecations: {}
+
+# item.test.tsx asserts role="list" on the group; the WAI-ARIA list role
+# owns list items, and nothing in the family supplies one.
+attestations:
+  a11y:
+    outcome: failed
+    by: >-
+      item.test.tsx asserts the group's role="list", while item.tsx gives
+      Item no role and ItemSeparator keeps the primitive's
+      role="separator", so a group built as item.md shows exposes a list
+      whose children are not list items, the role WAI-ARIA requires a list
+      to own
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A run of rows exposed as list items
+      code: |
+        <ItemGroup>
+          <Item role="listitem">
+            <ItemContent>
+              <ItemTitle>Q3 report.pdf</ItemTitle>
+            </ItemContent>
+          </Item>
+          <Item role="listitem">
+            <ItemContent>
+              <ItemTitle>Notes.txt</ItemTitle>
+            </ItemContent>
+          </Item>
+        </ItemGroup>
+  bad:
+    - title: Rows wrapped in a list element of their own
+      code: |
+        <ItemGroup>
+          <ul>
+            <li>
+              <Item>Q3 report.pdf</Item>
+            </li>
+          </ul>
+        </ItemGroup>
+      why: >-
+        The group is already the list; a nested ul puts a second list inside
+        it, and the rows are no longer the group's own children, so its
+        column gap does not space them.
+
+family_membership:
+  name: item_group
+  role: root

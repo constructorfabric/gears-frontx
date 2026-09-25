@@ -1,0 +1,97 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.command_empty.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "command-empty",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The message a Command shows while no item is visible.",
+  "typical_uses": [
+    "A \"No results found.\" line in a CommandList"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "An empty state of a page, a table or a panel, outside a Command",
+      "instead": {
+        "target": "Empty",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.empty.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "CommandList",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.command_list.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "rendered-only-with-no-visible-item",
+      "text": "The component renders only while the root counts no item: with search text, while no item matches it; with an empty search or `shouldFilter={false}`, while no item is registered at all. Items with `forceMount` are not counted. Otherwise it renders nothing."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Render the empty message conditionally by hand",
+      "do_instead": "Always render CommandEmpty; it shows and hides itself from the root's own count"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is the message shown while no item is visible",
+      "because": "`React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "An empty message in a list",
+        "code": "<CommandList>\n  <CommandEmpty>No results found.</CommandEmpty>\n  <CommandItem value=\"calendar\">Calendar</CommandItem>\n</CommandList>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "An empty message shown by the caller's own check",
+        "code": "<CommandList>\n  {items.length === 0 ? <CommandEmpty>No results found.</CommandEmpty> : null}\n  {items.map((item) => <CommandItem key={item} value={item}>{item}</CommandItem>)}\n</CommandList>\n",
+        "why": "`items` is the full list, not what the search left visible, so the message never shows while filtering; CommandEmpty already reads the root's own count."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "command",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit CommandEmpty",
+    "type": "object",
+    "properties": {
+      "asChild": {
+        "type": "boolean"
+      },
+      "children": {
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. children is the message shown while no item is visible. `React.ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

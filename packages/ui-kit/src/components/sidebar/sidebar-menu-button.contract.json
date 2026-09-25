@@ -1,0 +1,169 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_button.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sidebar-menu-button",
+  "forwards_to": "gts.frontx.uikit.element.dom_button.v1~",
+  "intent": "The clickable row of a sidebar menu, an icon and a label that collapses to the icon alone in the icon rail.",
+  "typical_uses": [
+    "A navigation link row, rendered over the app's link element",
+    "The trigger row of a workspace switcher or user menu in the header or the footer"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "An action button outside a sidebar menu",
+      "instead": {
+        "target": "Button",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+      }
+    },
+    {
+      "situation": "A row of a nested sub-menu",
+      "instead": {
+        "target": "SidebarMenuSubButton",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_sub_button.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "SidebarMenuItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "last-span-truncates",
+      "text": "A direct `svg` child is sized to the small icon size and a direct `span` that is the last child truncates with an ellipsis; a bare text node does not truncate."
+    },
+    {
+      "id": "icon-rail-keeps-the-first-child",
+      "text": "Collapsed to the icon rail the row becomes a 32px square and every direct child after the first is not displayed, so the icon has to be the first child."
+    },
+    {
+      "id": "tooltip-only-while-collapsed",
+      "text": "`tooltip` is mounted only while the sidebar is collapsed on desktop; expanded or on mobile no tooltip is rendered."
+    },
+    {
+      "id": "is-active-is-visual-only",
+      "text": "`isActive` sets a bare `data-active` attribute and the active fill; it sets no `aria-current`."
+    },
+    {
+      "id": "lit-while-its-popup-is-open",
+      "text": "While the row is the trigger of an open popup (it carries `data-popup-open`), it keeps the hover fill."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Rely on `isActive` to tell assistive tech the current page",
+      "do_instead": "Pass `aria-current=\"page\"` beside `isActive` on the current link row"
+    },
+    {
+      "dont": "Put the label before the icon, or set an inline `display` on a direct child",
+      "do_instead": "Keep the icon first; an inline `display` outranks the rule that hides the other children in the icon rail"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "failed",
+      "by": "sidebar.module.css sets `text-align: left` on .menuButton and reserves the trailing space with the physical `padding-right`, so neither mirrors under a right-to-left direction"
+    }
+  },
+  "prop_statements": {
+    "tooltip": {
+      "states": "tooltip is a string or an object of TooltipContent props",
+      "because": "The type is `string | TooltipContentProps`, and the compiler emits one JSON type per property. A string is the tooltip's whole content; an object is spread over TooltipContent, so it also overrides the default `side=\"right\"` and `align=\"center\"`."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's useRender takes an element or a function of the row's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property. It is how the row renders as the app's link element."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "The current page's link row, with a tooltip for the icon rail",
+        "code": "<SidebarMenuButton isActive aria-current=\"page\" tooltip=\"Inbox\" render={<a href=\"/inbox\" />}>\n  <InboxIcon />\n  <span>Inbox</span>\n</SidebarMenuButton>\n"
+      },
+      {
+        "title": "A tall switcher row that stays lit while its menu is open",
+        "code": "<SidebarMenuItem>\n  <DropdownMenu>\n    <DropdownMenuTrigger render={<SidebarMenuButton size=\"lg\" />}>\n      <BuildingIcon />\n      <span>Acme Inc</span>\n    </DropdownMenuTrigger>\n    <DropdownMenuContent>{workspaces}</DropdownMenuContent>\n  </DropdownMenu>\n</SidebarMenuItem>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Label first, icon second",
+        "code": "<SidebarMenuButton tooltip=\"Inbox\">\n  <span>Inbox</span>\n  <InboxIcon />\n</SidebarMenuButton>\n",
+        "why": "In the icon rail only the first child stays, so the collapsed row shows a clipped label and no icon."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sidebar",
+    "role": "part"
+  },
+  "companions": [
+    {
+      "export": "sidebarMenuButtonVariants",
+      "typed_by": "cva(...), returns (props: VariantProps<typeof sidebarMenuButtonVariants> & { className?: string }) => string",
+      "description": "The variant and size class-name builder SidebarMenuButton uses; it does not set the `data-active` attribute the active fill reads, and the icon-rail rules only apply inside a Sidebar."
+    }
+  ],
+  "x-uikit": {
+    "partially_typed_props": {
+      "tooltip": {
+        "typeText": "SidebarMenuButtonTooltip | undefined",
+        "optional": true
+      }
+    },
+    "variant_sources": [
+      "VariantProps<typeof sidebarMenuButtonVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SidebarMenuButton",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "outline"
+        ],
+        "default": "default"
+      },
+      "size": {
+        "type": "string",
+        "enum": [
+          "default",
+          "sm",
+          "lg"
+        ],
+        "default": "default"
+      },
+      "isActive": {
+        "type": "boolean",
+        "default": false
+      },
+      "tooltip": {
+        "description": "Partially typed: SidebarMenuButtonTooltip | undefined. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. tooltip is a string or an object of TooltipContent props. The type is `string | TooltipContentProps`, and the compiler emits one JSON type per property. A string is the tooltip's whole content; an object is spread over TooltipContent, so it also overrides the default `side=\"right\"` and `align=\"center\"`."
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, {}> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's useRender takes an element or a function of the row's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property. It is how the row renders as the app's link element."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

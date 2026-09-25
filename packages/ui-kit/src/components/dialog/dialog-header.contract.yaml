@@ -1,0 +1,74 @@
+# Semantic overlay for DialogHeader - a part of the Dialog family, see
+# dialog.contract.yaml's `family_membership` for how the contracts relate.
+component: dialog-header
+
+intent: The heading region at the top of a DialogContent, stacking the dialog's title over its description and staying pinned while the popup scrolls.
+
+typical_uses:
+  - A DialogTitle over a one-line DialogDescription
+
+dont_use_when:
+  - situation: The heading region of a card on the page
+    instead:
+      target: CardHeader
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1
+
+# The ONE authored statement of what the header hosts: the compiler fills
+# the title's and the description's `mounted_in` from this list.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_title.v1 # DialogTitle
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_description.v1 # DialogDescription
+
+invariants:
+  - id: stacked-column
+    text: >-
+      DialogHeader is a flex column whose children are spaced var(--space-2)
+      apart.
+  - id: pinned-while-the-popup-scrolls
+    text: >-
+      DialogHeader is sticky at the top of its scroll container with the
+      popup's own opaque background, so as a direct child of DialogContent
+      it stays in view and masks the content scrolling under it.
+
+anti_patterns:
+  - dont: Give DialogHeader a transparent background through `className`
+    do_instead: >-
+      Keep the header's background opaque; content scrolling in the popup
+      paints through a transparent header while it stays pinned
+
+deprecations: {}
+
+# A plain div with no role; dialog.test.tsx renders it but asserts nothing
+# about it.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A title over its description
+      code: |
+        <DialogHeader>
+          <DialogTitle>Invite members</DialogTitle>
+          <DialogDescription>Invitations expire after seven days.</DialogDescription>
+        </DialogHeader>
+  bad:
+    - title: A header used outside a dialog popup
+      code: |
+        <Card>
+          <DialogHeader>
+            <DialogTitle>Usage</DialogTitle>
+          </DialogHeader>
+        </Card>
+      why: >-
+        DialogTitle needs an enclosing Dialog root and throws without one, and
+        the header's sticky, opaque styling is built for the popup; use
+        CardHeader and CardTitle in a card.
+
+family_membership:
+  name: dialog
+  role: part

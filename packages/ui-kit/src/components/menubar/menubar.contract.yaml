@@ -1,0 +1,146 @@
+# Semantic overlay for Menubar (the root) - the hand-written half of one of
+# fifteen contracts describing this compound component. The parts are the
+# other menubar-*.contract.yaml files in this directory; see
+# `family_membership` below for how a reader walks between them.
+#
+# Machine-extractable facts (prop list, defaults) do NOT belong here: the
+# compiler takes those from menubar.tsx and the Base UI Menubar it wraps. The
+# forwarded surface is the primitive's div. Every part past Menubar,
+# MenubarTrigger and MenubarContent is a DropdownMenu part re-exported under a
+# Menubar name.
+component: menubar
+
+intent: A persistent row of application menus, such as File, Edit and View, that moves focus between their triggers with the arrow keys and switches between the menus while one is open.
+
+typical_uses:
+  - The command bar across the top of an application or a document editor
+
+dont_use_when:
+  - situation: One menu of actions on its own, with no sibling menus beside it
+    instead:
+      target: DropdownMenu
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu.v1
+  - situation: Site or application navigation between pages
+    instead:
+      target: NavigationMenu
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu.v1
+  - situation: A row of buttons that each run an action directly, with no menu behind them
+    instead:
+      target: ButtonGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button_group.v1
+  - situation: A menu opened by right-clicking or long-pressing an area
+    instead:
+      target: ContextMenu
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu.v1
+
+# The ONE authored statement of the root's nesting: the compiler fills each
+# MenubarMenu's `mounted_in` from this list.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.menubar_menu.v1 # MenubarMenu
+
+invariants:
+  - id: one-tab-stop-with-roving-focus
+    text: >-
+      The bar renders `role="menubar"` with `aria-orientation` and holds one
+      tab stop; the arrow keys along its `orientation` move focus between
+      its MenubarTriggers, Home and End move to the first and the last, and
+      focus wraps at the ends unless `loopFocus` is false.
+  - id: switches-while-a-menu-is-open
+    text: >-
+      While one of its menus is open, moving to another MenubarTrigger of the
+      bar, by arrow key or by hovering it, opens that trigger's menu and
+      closes the first, with no click.
+  - id: modal-leaves-the-bar-usable
+    text: >-
+      While a menu of a modal bar (`modal`, true when not given) is open,
+      page scroll is locked and pointer interaction outside the bar and the
+      open popup is blocked, while the bar itself stays usable so the pointer
+      can move to a sibling trigger; with `modal={false}` the rest of the
+      page stays usable.
+  - id: disabled-disables-every-menu
+    text: >-
+      Setting `disabled` on the bar disables every MenubarTrigger in it and
+      every MenubarMenu it holds.
+  - id: orientation-changes-keys-not-layout
+    text: >-
+      menubar.module.css lays the triggers out in a row whatever the
+      `orientation`; `orientation` sets `aria-orientation` and which arrow
+      keys move between the triggers, and the menus still open below their
+      triggers.
+
+# The one misuse of the bar's own API, `modal` passed to a menu instead of
+# the bar, is stated once, on MenubarMenu.
+anti_patterns: []
+
+deprecations: {}
+
+# menubar.test.tsx finds the triggers by the menuitem role and asserts
+# keyboard and hover switching between menus; nothing asserts the menubar
+# role or its aria-orientation.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the menubar's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the menubar's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (orientation, modal, hasSubmenuOpen). The compiler emits one JSON type per property, so nothing is asserted;
+      the kit's own styling goes through menubar.module.css, not through
+      this.
+
+examples:
+  good:
+    - title: A File and a View menu in one bar
+      code: |
+        <Menubar>
+          <MenubarMenu>
+            <MenubarTrigger>File</MenubarTrigger>
+            <MenubarContent>
+              <MenubarItem>
+                New tab
+                <MenubarShortcut>⌘T</MenubarShortcut>
+              </MenubarItem>
+              <MenubarSeparator />
+              <MenubarItem variant="destructive">Close window</MenubarItem>
+            </MenubarContent>
+          </MenubarMenu>
+          <MenubarMenu>
+            <MenubarTrigger>View</MenubarTrigger>
+            <MenubarContent>
+              <MenubarCheckboxItem checked={showBookmarks} onCheckedChange={setShowBookmarks}>
+                Show bookmarks
+              </MenubarCheckboxItem>
+            </MenubarContent>
+          </MenubarMenu>
+        </Menubar>
+  bad:
+    - title: DropdownMenu parts assembled into a bar
+      code: |
+        <Menubar>
+          <DropdownMenu>
+            <DropdownMenuTrigger>File</DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem>New tab</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </Menubar>
+      why: >-
+        The bar accepts MenubarMenu; a DropdownMenuTrigger has no styling of
+        its own, so it draws as a bare button in the bar, and its popup keeps
+        the standalone placement instead of the bar's.
+
+family_membership:
+  name: menubar
+  role: root

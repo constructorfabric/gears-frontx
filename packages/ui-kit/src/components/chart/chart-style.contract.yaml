@@ -1,0 +1,79 @@
+# Semantic overlay for ChartStyle - one of the six independent contracts in
+# this directory (see chart-container.contract.yaml). It renders a <style>
+# element and takes no attributes for it, so it names no element surface.
+component: chart-style
+
+intent: Write the per-series color custom properties of one ChartConfig into a style element scoped to a chart id, for a chart shell built without ChartContainer.
+
+typical_uses:
+  - A chart shell of the caller's own that still reads series colors from a ChartConfig
+
+dont_use_when:
+  - situation: A chart inside ChartContainer
+    instead:
+      target: ChartContainer
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.chart_container.v1
+      note: ChartContainer already renders ChartStyle for its own `data-chart` id, which it builds as `chart-<id>`; a second ChartStyle given the container's `id` targets no element, and one given the prefixed id only duplicates the container's rules.
+
+accepts:
+  content: nothing
+
+invariants:
+  - id: scoped-to-the-data-chart-attribute
+    text: >-
+      The rules target `[data-chart='<id>']` with `id` reduced to letters,
+      digits, `_` and `-`; they reach an element only when the caller puts
+      the same reduced id on that element's `data-chart` attribute.
+  - id: dark-values-follow-the-kit-theme
+    text: >-
+      A `theme` entry's dark value applies under `[data-theme='dark']` and,
+      when no `data-theme='light'` is set on the root, under
+      `prefers-color-scheme: dark`; its light value applies otherwise.
+  - id: empty-config-renders-nothing
+    text: >-
+      An empty config renders no style element at all.
+
+anti_patterns:
+  - dont: Pair ChartStyle with ChartTooltipContent or ChartLegendContent in a chart shell of the caller's own
+    do_instead: >-
+      Use ChartContainer when the chart needs the kit's tooltip or legend
+      content; ChartStyle provides no config to them, and they throw without
+      the one ChartContainer provides
+
+deprecations: {}
+
+# chart.test.tsx asserts the generated CSS text; a style element exposes
+# nothing to assistive technology and has no direction.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  config:
+    states: config maps each series key to an optional label, icon component and a flat color or a light and dark color pair
+    because: >-
+      `ChartConfig` is a record of objects whose `icon` is a React component
+      and whose `color` and `theme` exclude each other, which the compiler
+      emits no JSON type for.
+
+examples:
+  good:
+    - title: Series colors for a chart shell of the caller's own
+      code: |
+        <div data-chart="usage">
+          <ChartStyle id="usage" config={chartConfig} />
+          <BarChart width={480} height={240} data={data}>
+            <Bar dataKey="desktop" fill="var(--color-desktop)" />
+          </BarChart>
+        </div>
+  bad:
+    - title: An id the selector reduces but the attribute keeps
+      code: |
+        <div data-chart="usage.q1">
+          <ChartStyle id="usage.q1" config={chartConfig} />
+        </div>
+      why: >-
+        The selector targets `usage_q1` while the attribute says
+        `usage.q1`, so no series color reaches the chart.

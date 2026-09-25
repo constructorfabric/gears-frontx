@@ -1,0 +1,131 @@
+# Semantic overlay for SidebarProvider - the root of the sidebar family. It
+# holds the open state every other part reads through useSidebar, and it is
+# the element the shell's panel and main area sit in side by side.
+component: sidebar-provider
+
+intent: Hold the application shell's sidebar state (expanded or collapsed on desktop, open or closed on mobile) and lay the sidebar and the main area out side by side.
+
+typical_uses:
+  - The outermost element of an application shell with a persistent side navigation panel
+
+dont_use_when:
+  - situation: A panel that opens for one task and is dismissed afterwards (filters, a form, item details)
+    instead:
+      target: Sheet
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.sheet.v1
+  - situation: A panel that slides in from an edge for one task and is dragged or swiped away
+    instead:
+      target: Drawer
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.drawer.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar.v1 # Sidebar
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_inset.v1 # SidebarInset
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_trigger.v1 # SidebarTrigger
+
+invariants:
+  - id: open-wins-over-default-open
+    text: >-
+      `open` and `defaultOpen` are both accepted; `defaultOpen` seeds the
+      initial state and is ignored afterwards, and when `open` is given it
+      wins and the component follows it on every render.
+  - id: desktop-state-persists-in-a-cookie
+    text: >-
+      Every desktop expand or collapse writes the `sidebar_state` cookie
+      (path `/`, seven days), controlled or not. With `defaultOpen` omitted
+      the provider renders expanded first and restores the cookie's value
+      after mount; with `defaultOpen` given, the cookie is not read.
+  - id: keyboard-shortcut-toggles
+    text: >-
+      Cmd+B or Ctrl+B pressed anywhere in the window toggles the sidebar
+      (the event's default is prevented), the same call SidebarTrigger and
+      SidebarRail make.
+  - id: mobile-toggle-bypasses-open
+    text: >-
+      Below a 768px viewport a toggle opens or closes the mobile sheet
+      instead of changing `open`, so `onOpenChange` is not called for it.
+  - id: tooltips-inside-open-instantly
+    text: >-
+      The provider wraps its subtree in a TooltipProvider with `delay` 0,
+      so every Tooltip inside it opens with no wait unless a nearer
+      TooltipProvider sets its own `delay`.
+  - id: widths-are-custom-properties
+    text: >-
+      The panel widths are the `--sidebar-width` (16rem) and
+      `--sidebar-width-icon` (3rem) custom properties set on the provider's
+      element; a `style` entry for either one overrides it for every part
+      inside. The mobile sheet is fixed at 18rem and ignores both.
+
+anti_patterns:
+  - dont: Pass `open` with no `onOpenChange`
+    do_instead: >-
+      Pair `open` with `onOpenChange` and write the next value back, or drop
+      both and use `defaultOpen` - a controlled provider never moves on its
+      own, so the trigger, the rail and the shortcut appear to do nothing
+  - dont: Read or write the `sidebar_state` cookie directly
+    do_instead: Observe and drive the state through `open` and `onOpenChange`; the cookie write is internal to the provider
+
+deprecations: {}
+
+# The provider's element is a plain div with no role; sidebar.test.tsx
+# asserts state, cookie and shortcut behaviour, no ARIA.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  onOpenChange:
+    states: onOpenChange is a function called with the next desktop open value, not a value
+    because: >-
+      A function type has no JSON Schema representation. It fires on every
+      desktop toggle whether or not `open` is controlled, and never for the
+      mobile sheet.
+
+companions:
+  - export: useSidebar
+    typed_by: "() => { state: 'expanded' | 'collapsed'; open: boolean; setOpen: Dispatch<SetStateAction<boolean>>; openMobile: boolean; setOpenMobile: Dispatch<SetStateAction<boolean>>; isMobile: boolean; toggleSidebar: () => void }"
+    description: >-
+      Reads the nearest SidebarProvider's state and controls, for a custom
+      trigger or for UI elsewhere in the shell that follows the sidebar.
+      Throws when called outside a SidebarProvider.
+
+examples:
+  good:
+    - title: Sidebar and main area as siblings under the provider
+      code: |
+        <SidebarProvider>
+          <Sidebar collapsible="icon">
+            <SidebarContent>{nav}</SidebarContent>
+          </Sidebar>
+          <SidebarInset>
+            <SidebarTrigger />
+            {page}
+          </SidebarInset>
+        </SidebarProvider>
+    - title: Controlled by the caller
+      code: |
+        <SidebarProvider open={open} onOpenChange={setOpen}>
+          <Sidebar>{panel}</Sidebar>
+          <SidebarInset>{page}</SidebarInset>
+        </SidebarProvider>
+  bad:
+    - title: The main area nested inside the panel
+      code: |
+        <SidebarProvider>
+          <Sidebar>
+            <SidebarContent>{nav}</SidebarContent>
+            <SidebarInset>{page}</SidebarInset>
+          </Sidebar>
+        </SidebarProvider>
+      why: >-
+        SidebarInset is the panel's sibling, not its content: inside Sidebar
+        it renders in the fixed panel, collapses with it and moves into the
+        mobile sheet.
+
+family_membership:
+  name: sidebar
+  role: root

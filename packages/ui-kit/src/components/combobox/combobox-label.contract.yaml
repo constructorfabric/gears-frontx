@@ -1,0 +1,83 @@
+# Semantic overlay for ComboboxLabel - a part of the Combobox family, see
+# combobox.contract.yaml's `family_membership`. It wraps Base UI's
+# Combobox.GroupLabel; the forwarded surface is its div.
+component: combobox-label
+
+intent: The heading of one ComboboxGroup, naming that group for assistive technology.
+
+typical_uses:
+  - The title of a section in a grouped combobox list
+
+dont_use_when:
+  - situation: The visible label of the combobox field itself
+    instead:
+      target: Label
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.label.v1
+      note: >-
+        ComboboxLabel names a group inside the list, not the field; name the
+        field with `aria-label` on ComboboxInput or a label pointing at it.
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: names-the-group-not-itself
+    text: >-
+      The label gives its id (its own `id` when given) to the enclosing
+      group's `aria-labelledby`; it is not an option, so it cannot be chosen
+      and arrow keys skip it.
+  - id: throws-outside-a-group
+    text: >-
+      The label reads the enclosing ComboboxGroup through context and throws
+      when there is none.
+
+anti_patterns: []
+
+deprecations: {}
+
+# combobox.test.tsx asserts the label text and its kit class; nothing
+# asserts the group's name.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the label's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the label's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (empty for this part). The compiler emits one JSON type per property, so nothing is asserted; the
+      kit's own styling goes through combobox.module.css, not through this.
+
+examples:
+  good:
+    - title: A group's heading
+      code: |
+        <ComboboxGroup>
+          <ComboboxLabel>Europe</ComboboxLabel>
+          <ComboboxItem value="frankfurt">Frankfurt</ComboboxItem>
+        </ComboboxGroup>
+  bad:
+    - title: A label outside any group
+      code: |
+        <ComboboxList>
+          <ComboboxLabel>Europe</ComboboxLabel>
+          <ComboboxItem value="frankfurt">Frankfurt</ComboboxItem>
+        </ComboboxList>
+      why: >-
+        A label must sit inside the group it names (see
+        throws-outside-a-group); wrap the label and its items in
+        ComboboxGroup.
+
+family_membership:
+  name: combobox
+  role: part

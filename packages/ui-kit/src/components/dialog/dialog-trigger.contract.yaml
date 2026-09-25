@@ -1,0 +1,111 @@
+# Semantic overlay for DialogTrigger - a part of the Dialog family, see
+# dialog.contract.yaml's `family_membership` for how the contracts relate.
+component: dialog-trigger
+
+intent: The button whose press opens its Dialog.
+
+typical_uses:
+  - The control that starts the task a dialog holds, such as an Edit or Delete button
+
+dont_use_when:
+  - situation: A button that opens nothing
+    instead:
+      target: Button
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+
+# `mounted_in` is filled from the Dialog root's accepted components, not
+# authored here. The trigger's own caption and any glyph arrive through
+# children; with `render`, the rendered element brings its own.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: unstyled-native-button
+    text: >-
+      DialogTrigger renders a native button with no kit class of its own; its
+      look comes from `className` or from the element passed through
+      `render`.
+  - id: announces-the-popup-it-opens
+    text: >-
+      The trigger carries `aria-haspopup="dialog"` and an `aria-expanded`
+      that is true while the dialog is open and was opened by this trigger;
+      while the dialog is open, the trigger that opened it, or the only
+      trigger when none is recorded as the opener, also carries
+      `aria-controls` with the popup's id.
+
+anti_patterns:
+  - dont: Render a non-button element through `render` while `nativeButton` stays at its default
+    do_instead: >-
+      Pass `nativeButton={false}` together with a `render` element that is
+      not a native button, so the primitive adds the button role and keyboard
+      handling itself
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Dialog.Trigger renders a native button with
+      aria-haspopup and aria-expanded; dialog.test.tsx
+      asserts getByRole('button', { name: 'Open' }) on it and that clicking it
+      opens the dialog ("opens on trigger click and renders content with kit
+      classes")
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  handle:
+    states: handle is an opaque object from the primitive's Dialog.createHandle(), tying this trigger to a Dialog root it is not placed inside
+    because: >-
+      `DialogHandle<Payload>` is a class instance holding the dialog's
+      store, not data; the kit re-exports no createHandle, so a caller
+      imports it from the primitive.
+  payload:
+    states: payload is any value handed to the root's function children when this trigger opens the dialog
+    because: >-
+      Typed by the caller's own `Payload` type parameter (`unknown` here), so
+      no JSON Schema type can state what it holds.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the trigger's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the trigger's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (disabled, open). The compiler emits one JSON type per property, so nothing is asserted; the kit sets no
+      style of its own on the trigger.
+
+examples:
+  good:
+    - title: The kit's Button rendered as the trigger
+      code: |
+        <Dialog>
+          <DialogTrigger render={<Button variant="outline" />}>Edit profile</DialogTrigger>
+          <DialogContent>
+            <DialogTitle>Edit profile</DialogTitle>
+          </DialogContent>
+        </Dialog>
+  bad:
+    - title: A kit Button nested inside the trigger
+      code: |
+        <Dialog>
+          <DialogTrigger>
+            <Button variant="outline">Edit profile</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogTitle>Edit profile</DialogTitle>
+          </DialogContent>
+        </Dialog>
+      why: >-
+        The trigger already renders a native button, so this nests a button
+        inside a button, which HTML does not allow; pass the Button through
+        `render` instead.
+
+family_membership:
+  name: dialog
+  role: part

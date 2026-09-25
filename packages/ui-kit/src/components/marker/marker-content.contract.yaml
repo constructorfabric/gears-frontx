@@ -1,0 +1,58 @@
+# Semantic overlay for MarkerContent - part of the marker family, see
+# marker.contract.yaml's `family_membership`. `mounted_in` is filled from
+# Marker's accepted components, not authored here. No primitive backs it:
+# it is a plain span styled by marker.module.css.
+component: marker-content
+
+intent: Carry the text a marker reports.
+
+typical_uses:
+  - The one line of text in a status, note or separator marker
+
+dont_use_when:
+  - situation: The text of a turn in the conversation
+    instead:
+      target: BubbleContent inside a Bubble
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.bubble_content.v1
+
+# Text, optionally with an inline link: any node.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: wraps-long-words
+    text: >-
+      The span may shrink below its content's width and breaks long
+      unbroken words (`overflow-wrap: break-word`) instead of widening the
+      row.
+
+anti_patterns: []
+
+deprecations: {}
+
+# marker.test.tsx asserts only the span tag and the class.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Status text with an inline link
+      code: |
+        <Marker variant="border">
+          <MarkerContent>
+            Opened <a href="/notes">implementation notes</a>
+          </MarkerContent>
+        </Marker>
+  bad:
+    - title: MarkerContent used outside a Marker as muted inline text
+      code: <p>Build finished. <MarkerContent>2 warnings</MarkerContent></p>
+      why: >-
+        MarkerContent carries only wrapping; the muted color, the row layout
+        and the link styling all come from the surrounding Marker.
+
+family_membership:
+  name: marker
+  role: part

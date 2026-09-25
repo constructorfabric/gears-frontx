@@ -104,15 +104,14 @@ prop_statements:
     states: render replaces the root element with one the caller supplies
     because: >-
       Base UI's render prop takes an element or a function of the root's
-      state; neither is expressible in JSON Schema. Replacing the root
+      state; the compiler emits one JSON type per property. Replacing the root
       element means taking over the wrapper the kit's own layout styles
       (`.root`) are attached to.
   style:
     states: style accepts a function of the root's state as well as a plain style object
     because: >-
       Base UI widens React's `CSSProperties` to
-      `CSSProperties | ((state) => CSSProperties)`; a JSON Schema `object`
-      would reject the function form.
+      `CSSProperties | ((state) => CSSProperties)`; the compiler emits one JSON type per property.
 
 examples:
   good:

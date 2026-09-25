@@ -1,0 +1,78 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.marker_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "marker-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_span.v1~",
+  "intent": "Carry the text a marker reports.",
+  "typical_uses": [
+    "The one line of text in a status, note or separator marker"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The text of a turn in the conversation",
+      "instead": {
+        "target": "BubbleContent inside a Bubble",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.bubble_content.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "Marker",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.marker.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "wraps-long-words",
+      "text": "The span may shrink below its content's width and breaks long unbroken words (`overflow-wrap: break-word`) instead of widening the row."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Status text with an inline link",
+        "code": "<Marker variant=\"border\">\n  <MarkerContent>\n    Opened <a href=\"/notes\">implementation notes</a>\n  </MarkerContent>\n</Marker>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "MarkerContent used outside a Marker as muted inline text",
+        "code": "<p>Build finished. <MarkerContent>2 warnings</MarkerContent></p>",
+        "why": "MarkerContent carries only wrapping; the muted color, the row layout and the link styling all come from the surrounding Marker."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "marker",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit MarkerContent",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

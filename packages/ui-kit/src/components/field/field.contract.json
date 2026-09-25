@@ -1,0 +1,183 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "field",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Lay out one form control together with its label, its description and its validation message.",
+  "typical_uses": [
+    "A labelled text entry with helper text below it",
+    "A switch or checkbox with its caption and description beside it, in the horizontal orientation"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A caption for a control outside any Field composition",
+      "instead": {
+        "target": "Label",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.label.v1"
+      }
+    },
+    {
+      "situation": "Several related fields presented under one shared title",
+      "instead": {
+        "target": "FieldSet",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_set.v1"
+      }
+    },
+    {
+      "situation": "A multi-step form answered one question at a time",
+      "instead": {
+        "target": "Questionnaire",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.field_label.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.field_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.field_description.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.field_error.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.textarea.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.native_select.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.select.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.checkbox.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.switch.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.slider.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.input_otp.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.date_picker.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "FieldGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_group.v1"
+    },
+    {
+      "container": "FieldSet",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_set.v1"
+    },
+    {
+      "container": "the consuming application's own form or section element",
+      "note": "A Field needs no FieldGroup or FieldSet around it; only the responsive orientation depends on a FieldGroup ancestor."
+    }
+  ],
+  "invariants": [
+    {
+      "id": "group-role-and-orientation-attribute",
+      "text": "Field always renders a div with role=\"group\" and a data-orientation attribute carrying the orientation, \"vertical\" when none is given."
+    },
+    {
+      "id": "wires-nothing-by-itself",
+      "text": "Field and its parts create no ids and no associations: FieldLabel's htmlFor, the control's id and the control's aria-describedby pointing at a FieldDescription or FieldError id are all set by the consumer."
+    },
+    {
+      "id": "data-invalid-tints-text-danger",
+      "text": "data-invalid=\"true\" on Field sets its text color to --danger, which FieldLabel, FieldTitle and every other descendant that declares no color of its own inherit. It sets nothing on the control: the control's own aria-invalid is set separately."
+    },
+    {
+      "id": "data-disabled-dims-captions-only",
+      "text": "data-disabled=\"true\" on Field dims every FieldLabel and FieldTitle inside it to the disabled opacity. It does not disable the control; the control's own disabled prop does that."
+    },
+    {
+      "id": "orientation-layout",
+      "text": "vertical stacks the direct children in a column at full width; horizontal lays them in a row centered on the cross axis, a direct FieldLabel child growing to fill the row, and switches to top alignment when a direct child is a FieldContent; responsive stays stacked until the nearest FieldGroup ancestor is at least 28rem wide and then lays out as horizontal does. It measures that FieldGroup, not the viewport, and with no FieldGroup ancestor it stays stacked."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put two controls in one Field",
+      "do_instead": "Give each control its own Field, and group the Fields with FieldGroup or FieldSet"
+    },
+    {
+      "dont": "Name the group with a label pointing at the Field",
+      "do_instead": "Point FieldLabel's htmlFor at the control's id; a `<label for>` cannot name the Field's div, which is not a labelable element"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "field.test.tsx asserts role=\"group\" on the rendered Field, and that getByLabelText finds the Input whose id a FieldLabel's htmlFor names"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A text field wired by hand to its label and description",
+        "code": "<Field>\n  <FieldLabel htmlFor=\"email\">Email</FieldLabel>\n  <Input id=\"email\" type=\"email\" aria-describedby=\"email-desc\" />\n  <FieldDescription id=\"email-desc\">We only use it for the invoice.</FieldDescription>\n</Field>\n"
+      },
+      {
+        "title": "An invalid field showing a validation message",
+        "code": "<Field data-invalid={Boolean(error)}>\n  <FieldLabel htmlFor=\"slug\">Slug</FieldLabel>\n  <Input id=\"slug\" aria-invalid={Boolean(error)} aria-describedby=\"slug-error\" />\n  <FieldError id=\"slug-error\">{error}</FieldError>\n</Field>\n"
+      },
+      {
+        "title": "A switch with its label and description beside it",
+        "code": "<Field orientation=\"horizontal\">\n  <FieldContent>\n    <FieldLabel htmlFor=\"updates\">Product updates</FieldLabel>\n    <FieldDescription>Release notes and roadmap changes.</FieldDescription>\n  </FieldContent>\n  <Switch id=\"updates\" />\n</Field>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Expecting the label to find the control by itself",
+        "code": "<Field>\n  <FieldLabel>Email</FieldLabel>\n  <Input />\n</Field>\n",
+        "why": "Field wires nothing: with no htmlFor on FieldLabel and no id on the Input the caption names nothing and clicking it focuses nothing."
+      },
+      {
+        "title": "A disabled prop on Field",
+        "code": "<Field disabled><Input id=\"email\" /></Field>",
+        "why": "Field is a div and has no disabled prop: tsc refuses it, and at runtime the attribute reaches the div and does nothing. Set `disabled` on the control, and data-disabled on Field to dim its captions."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "field",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.field_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.field_description.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.field_error.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.field_group.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.field_label.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.field_legend.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.field_separator.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.field_set.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.field_title.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof fieldVariants>"
+    ],
+    "cannot_extract": [
+      "default: prop \"orientation\" is read through `??` and also as its own value, so no one literal is its default - the body gives no single literal default for it"
+    ]
+  },
+  "props": {
+    "title": "UiKit Field",
+    "type": "object",
+    "properties": {
+      "orientation": {
+        "type": "string",
+        "enum": [
+          "vertical",
+          "horizontal",
+          "responsive"
+        ],
+        "default": "vertical"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "field-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Stack a control's caption, description and message in one column beside the control.",
+  "typical_uses": [
+    "The label and description column beside a Switch or a Checkbox in a horizontal Field"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A vertical Field where the caption, the control and the description already stack",
+      "instead": {
+        "target": "Field",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1",
+        "note": "Put FieldLabel, the control and FieldDescription directly inside the Field."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.field_label.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.field_title.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.field_description.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.field_error.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Field",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "column-that-takes-the-free-space",
+      "text": "FieldContent stacks its children in a column with a --space-1 gap and grows to take the row's free space."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put the control itself inside FieldContent",
+      "do_instead": "Keep the control a direct child of the Field, beside the FieldContent"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A checkbox with its label and description beside it",
+        "code": "<Field orientation=\"horizontal\">\n  <Checkbox id=\"terms\" />\n  <FieldContent>\n    <FieldLabel htmlFor=\"terms\">Accept the terms</FieldLabel>\n    <FieldDescription>You can withdraw at any time.</FieldDescription>\n  </FieldContent>\n</Field>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The control wrapped into the content column",
+        "code": "<Field orientation=\"horizontal\">\n  <FieldContent>\n    <FieldLabel htmlFor=\"terms\">Accept the terms</FieldLabel>\n    <Checkbox id=\"terms\" />\n  </FieldContent>\n</Field>\n",
+        "why": "The column stacks the checkbox under its caption instead of beside it; the control belongs directly in the Field."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "field",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit FieldContent",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

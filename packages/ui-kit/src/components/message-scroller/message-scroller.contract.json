@@ -1,0 +1,97 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "message-scroller",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Frame a scrolling message transcript that follows its newest content, keeps anchored messages in view and floats a jump button over its edge.",
+  "typical_uses": [
+    "A conversation transcript that grows at the end while the reader may be scrolled back into its history"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A generic scrollable panel with no following, anchoring or jumping to a message",
+      "instead": {
+        "target": "ScrollArea",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.scroll_area.v1"
+      }
+    },
+    {
+      "situation": "A list long enough to need windowing, where only the rows in view exist in the DOM",
+      "instead": {
+        "target": "a virtualizing list library",
+        "note": "Every MessageScrollerItem stays mounted; `content-visibility: auto` in message-scroller.module.css skips rendering work for items off screen but does not remove them. The kit ships no virtualized list."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller_viewport.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller_button.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "needs-a-bounded-height",
+      "text": "The frame is a relatively positioned flex column at `height: 100%` that clips its overflow; the viewport scrolls only when its parent gives it a bounded height, which the viewport then fills."
+    },
+    {
+      "id": "scrollable-edges-are-stamped",
+      "text": "The frame and the viewport both carry `data-scrollable` naming the edges past which more content lies (`start`, `end` or `start end`, absent when neither), and `data-autoscrolling` for a moment after a scroll to the end starts."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A transcript with a jump-to-end button, inside its provider",
+        "code": "<MessageScrollerProvider autoScroll>\n  <MessageScroller style={{ height: 480 }}>\n    <MessageScrollerViewport>\n      <MessageScrollerContent>\n        {messages.map((message, index) => (\n          <MessageScrollerItem\n            key={message.id}\n            messageId={message.id}\n            scrollAnchor={index === messages.length - 1}\n          >\n            <Message>\n              <MessageContent>\n                <Bubble>\n                  <BubbleContent>{message.text}</BubbleContent>\n                </Bubble>\n              </MessageContent>\n            </Message>\n          </MessageScrollerItem>\n        ))}\n      </MessageScrollerContent>\n    </MessageScrollerViewport>\n    <MessageScrollerButton direction=\"end\" />\n  </MessageScroller>\n</MessageScrollerProvider>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A scroller rendered without its provider",
+        "code": "<MessageScroller>\n  <MessageScrollerViewport>\n    <MessageScrollerContent>{items}</MessageScrollerContent>\n  </MessageScrollerViewport>\n</MessageScroller>\n",
+        "why": "Every part reads the scroller state from a MessageScrollerProvider above it and throws without one; wrap the scroller in the provider."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "message_scroller",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller_button.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller_item.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.message_scroller_viewport.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit MessageScroller",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

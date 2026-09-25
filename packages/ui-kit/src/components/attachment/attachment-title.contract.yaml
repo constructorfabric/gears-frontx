@@ -1,0 +1,60 @@
+# Semantic overlay for AttachmentTitle - part of the attachment family, see
+# attachment.contract.yaml's `family_membership`. `mounted_in` is filled
+# from AttachmentContent's accepted components, not authored here.
+component: attachment-title
+
+intent: Show the attachment's file name on one line.
+
+typical_uses:
+  - The name of an attached file, such as report.pdf
+
+dont_use_when:
+  - situation: The title of a card that is not a file
+    instead:
+      target: CardTitle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_title.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: one-line-truncated
+    text: >-
+      The title renders a span laid out as a block that never wraps and
+      cuts overflowing text with an ellipsis; it has no heading role.
+  - id: shimmer-while-in-progress
+    text: >-
+      The title adds the global `shimmer` class while the nearest
+      Attachment's `state` is `uploading` or `processing`, read from
+      React context; outside any Attachment it never shimmers, and the
+      class draws nothing unless the package's utilities.css is loaded.
+
+anti_patterns:
+  - dont: Put the file size or the upload status into the title
+    do_instead: Put them in AttachmentDescription; the title is one truncated line for the name
+
+deprecations: {}
+
+# attachment.test.tsx asserts the shimmer class per state, no role or name.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A file name
+      code: <AttachmentTitle>sales-dashboard.pdf</AttachmentTitle>
+  bad:
+    - title: The state passed to the title
+      code: <AttachmentTitle state="uploading">large-export.csv</AttachmentTitle>
+      why: >-
+        AttachmentTitle declares no `state` and its span surface has none,
+        so TypeScript rejects it; the title shimmers from the `state` of
+        the Attachment around it.
+
+family_membership:
+  name: attachment
+  role: part

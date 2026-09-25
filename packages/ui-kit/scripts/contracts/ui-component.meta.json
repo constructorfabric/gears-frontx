@@ -2,7 +2,7 @@
   "$id": "gts://gts.frontx.uikit._.component.v1~",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "UiKit component",
-  "description": "The type every kit component is a well-known INSTANCE of. A component is not a type derived from an abstract component type - that relationship ran in opposite directions for the two halves of the old split artifact, and only one of them was real - so this type carries the whole content model directly: the instance's identity, the version of the vocabulary it was compiled against, everything asserted about the component, what the extraction read off its source, and its props surface. A field whose shape another type owns is a reference to that type (gts.frontx.uikit.vocabulary.*) rather than an inline definition; only a sentence, a capped list of strings and the one reference gts-ts's own walk must find directly on a document property stay inline. See the domain model in the package DESIGN for how they relate.",
+  "description": "The type every kit component is a well-known INSTANCE of. A component is not a type derived from an abstract component type, so this type carries the whole content model directly: the instance's identity, the version of the vocabulary it was compiled against, everything asserted about the component, what the extraction read off its source, and its props surface. A field whose shape another type owns is a reference to that type (gts.frontx.uikit.vocabulary.*) rather than an inline definition; only a sentence, a capped list of strings and the one reference gts-ts's own walk must find directly on a document property stay inline. See the domain model in the package DESIGN for how they relate.",
   "type": "object",
   "properties": {
     "$id": {
@@ -105,6 +105,14 @@
       },
       "description": "What each property that reaches this contract asserting nothing (or only part of its shape) actually states, and why nothing checks it further - a generic, a function, a live object, a React node. Absent for a component whose whole surface the provider-safe subset can express, which no described component is today."
     },
+    "prop_statement_groups": {
+      "type": "array",
+      "items": {
+        "$ref": "gts://gts.frontx.uikit.vocabulary.prop_statement_group.v1~"
+      },
+      "minItems": 1,
+      "description": "Statements about sets of partially typed properties at once, each carried here once and emitted into the description of every property it covers. Absent for a component whose statements are each about one property."
+    },
     "unexposed_parts": {
       "type": "array",
       "items": {
@@ -177,7 +185,7 @@
     },
     "withheld": {
       "type": "array",
-      "description": "Props of the primitive underneath that this kit does not advertise, so they are left out of the contract's own properties - each with the reason it is not advertised, because a bare name leaves every later reader to rediscover why the prop is gone. Every `prop` is checked against the extracted prop list - a name the primitive no longer declares fails the compile rather than withholding nothing - and may not name a prop the component declares itself, which would be the overlay asking the compiler to drop what the source states. Absent for a component that advertises everything it forwards, which is most of them.",
+      "description": "Props of the primitive underneath that this kit does not advertise, so they are left out of the contract's own properties - each with the reason it is not advertised, because a bare name leaves every later reader to rediscover why the prop is gone. Every `prop` is checked against the extracted prop list - a name the primitive does not declare fails the compile rather than withholding nothing - and may not name a prop the component declares itself, which would be the overlay asking the compiler to drop what the source states. Absent for a component that advertises everything it forwards, which is most of them.",
       "items": {
         "$ref": "gts://gts.frontx.uikit.vocabulary.withheld_prop.v1~"
       },

@@ -56,13 +56,13 @@ import {
 } from './check-lib';
 import {
   compileContract,
+  exportNameOf,
   forwardsToToken,
   liftPropsSchema,
   loadComponentType,
   loadElementSurface,
   loadHostSurface,
   overlayStems,
-  pascalCase,
   registerContractTypes,
   resolveTargetExtraction,
   type CompiledContract,
@@ -185,7 +185,7 @@ export function defaultCheckContext(): CheckContext {
     // contributing no findings.
     nearMisses: (directory, exportStem) => {
       const contract = compileContract(directory, exportStem);
-      const component = pascalCase(exportStem);
+      const component = exportNameOf(directory, exportStem);
       const usages: { source: string; props: string[] }[] = [];
       const examples = contract.examples;
       for (const [kind, entries] of [
@@ -251,11 +251,11 @@ function runGit(ctx: CheckContext, args: string[]): GitResult {
   return { ok: result.status === 0, stdout: result.stdout ?? '', stderr: (result.stderr ?? '').trim() };
 }
 
-// Every git command whose failure is NOT a meaningful answer. Each of these
-// used to either throw execFileSync's whole spawn record (a page of JSON
+// Every git command whose failure is NOT a meaningful answer. Left to itself
+// each would either throw execFileSync's whole spawn record (a page of JSON
 // around a one-line fatal) or, worse, swallow the failure and return an empty
-// list that reads exactly like "there was nothing there" - which is how an
-// unresolvable ref could report every contract as new.
+// list that reads exactly like "there was nothing there" - which would let an
+// unresolvable ref report every contract as new.
 function gitOrThrow(ctx: CheckContext, args: string[], what: string): string {
   const result = runGit(ctx, args);
   if (!result.ok) {
@@ -367,9 +367,9 @@ function contractRenameMap(ctx: CheckContext, base: string): Map<string, string>
 // unit's current path did not exist at `base` and git's own rename detection
 // named nothing for it (M7), and `findRemovedContracts` subtracts everything
 // the run actually compared from it to find the contracts that exist only in
-// the past. The second reader is why this list may no longer degrade to empty
-// on a git failure: an empty pool used to mean "nothing to match against",
-// and now it would also mean "nothing was removed".
+// the past. The second reader is why this list may not degrade to empty on a
+// git failure: an empty pool would mean both "nothing to match against" and
+// "nothing was removed".
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compat-unit:p1:inst-cu-rename-resolve
 function listBaseRefContracts(ctx: CheckContext, base: string): BaseRefContractEntry[] {
   const prefix = packagePrefix(ctx);

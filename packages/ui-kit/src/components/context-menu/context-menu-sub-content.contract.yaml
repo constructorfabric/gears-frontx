@@ -1,0 +1,170 @@
+# Semantic overlay for ContextMenuSubContent - a part of the ContextMenu
+# family, see context-menu.contract.yaml's `family_membership` for how the
+# fourteen contracts relate. It renders ContextMenuContent with its own
+# class and placement defaults, so it composes the same Portal, Positioner
+# and Popup; the forwarded surface is the Popup's div.
+component: context-menu-sub-content
+
+intent: The popup of a nested submenu, placed beside the ContextMenuSubTrigger that opens it.
+
+typical_uses:
+  - The rows of one ContextMenuSub, such as a list of targets to send an item to
+
+dont_use_when:
+  - situation: The first popup a right click opens
+    instead:
+      target: ContextMenuContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_content.v1
+
+# The same rows the root popup hosts, including a further ContextMenuSub.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_group.v1 # ContextMenuGroup
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_item.v1 # ContextMenuItem
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_checkbox_item.v1 # ContextMenuCheckboxItem
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_radio_group.v1 # ContextMenuRadioGroup
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_separator.v1 # ContextMenuSeparator
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.context_menu_sub.v1 # ContextMenuSub
+
+invariants:
+  - id: rendered-only-while-open
+    text: >-
+      The submenu popup is in the DOM only while its submenu is open or
+      animating closed; the kit passes no `keepMounted` to the portal.
+  - id: inherits-the-parent-container
+    text: >-
+      Without `container`, the submenu popup portals into the container its
+      enclosing ContextMenuContent or ContextMenuSubContent resolved, so a
+      theme passed to the first-level popup holds in the submenu; its own
+      `container` wins when given.
+  - id: sized-to-its-content
+    text: >-
+      context-menu.module.css sizes the submenu popup to its own content
+      with an 8rem floor, not to the width of its sub-trigger.
+  - id: opens-on-the-physical-right
+    text: >-
+      The submenu opens on the physical right of its sub-trigger unless
+      `side` says otherwise; the default does not flip in a right-to-left
+      layout.
+  - id: reduced-motion-keeps-the-fade
+    text: >-
+      The popup fades and scales on open and close; under
+      `prefers-reduced-motion` context-menu.module.css drops the transform
+      transition and keeps the fade.
+
+anti_patterns:
+  - dont: Chain submenus more than one level deep
+    do_instead: >-
+      Flatten the deeper level into a ContextMenuGroup or
+      ContextMenuRadioGroup inside this popup; each extra level is another
+      popup to reach by hover or arrow keys
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      context-menu.test.tsx asserts that clicking the sub trigger renders
+      the submenu's item inside an element with role menu that carries the
+      subPopup class
+  rtl:
+    outcome: unknown
+
+unexposed_parts:
+  - part: ContextMenu.Portal
+    reason: Composed through ContextMenuContent; only its `container` is exposed, as a prop of the submenu popup itself.
+  - part: ContextMenu.Positioner
+    reason: Composed through ContextMenuContent; its placement and collision props are exposed on the submenu popup itself.
+
+prop_statements:
+  children:
+    states: children is the submenu popup's rows, the parts listed under accepts
+    because: >-
+      `React.ReactNode` is a union of elements, strings, numbers, fragments
+      and more; the compiler emits one JSON type per property.
+  container:
+    states: container is the DOM node, shadow root or ref to one that the popup portals into; null and undefined both mean no container of its own
+    because: >-
+      `HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null`
+      - live DOM nodes and ref objects, which no JSON Schema type covers. The
+      kit resolves it as `container ?? <the enclosing content's container>`,
+      so an explicit null falls through like an absent prop.
+  sideOffset:
+    states: sideOffset is the gap in pixels between the anchor and the popup, as a number or a function of side, align and both boxes' sizes
+    because: >-
+      `number | OffsetFunction` - the compiler emits one JSON type per
+      property, and the function form has no JSON Schema representation.
+  alignOffset:
+    states: alignOffset is the shift in pixels along the alignment axis, as a number or a function of side, align and both boxes' sizes
+    because: >-
+      `number | OffsetFunction` - the compiler emits one JSON type per
+      property, and the function form has no JSON Schema representation.
+  collisionBoundary:
+    states: collisionBoundary is the area the popup is kept inside, `clipping-ancestors`, an element, a list of elements or a rectangle
+    because: >-
+      `'clipping-ancestors' | Element | Element[] | Rect` mixes a string with
+      live DOM elements, which no JSON Schema type covers.
+  collisionPadding:
+    states: collisionPadding is the space in pixels kept from the collision boundary, one number or a per-side object
+    because: >-
+      `number | { top?, right?, bottom?, left? }` - the compiler emits one
+      JSON type per property.
+  finalFocus:
+    states: finalFocus decides where focus goes when the popup closes - true for the default, false for nowhere, a ref, or a function of the interaction type
+    because: >-
+      `boolean | RefObject<HTMLElement | null> | ((closeType) => boolean | HTMLElement | null | void)`
+      mixes a boolean with a ref object and a callback; the compiler emits
+      one JSON type per property.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the popup's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the popup's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open, side, align, nested, instant,
+      transitionStatus). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through
+      context-menu.module.css, not through this.
+
+examples:
+  good:
+    - title: A submenu of share targets
+      code: |
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>Share</ContextMenuSubTrigger>
+          <ContextMenuSubContent>
+            <ContextMenuItem onClick={onShareByEmail}>Email</ContextMenuItem>
+            <ContextMenuItem onClick={onCopyLink}>Copy link</ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+    - title: A submenu popup with its own container
+      code: |
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>Move to</ContextMenuSubTrigger>
+          <ContextMenuSubContent container={panelRef}>
+            <ContextMenuItem onClick={onMoveToArchive}>Archive</ContextMenuItem>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+  bad:
+    - title: A ContextMenuContent used as the submenu popup
+      code: |
+        <ContextMenuSub>
+          <ContextMenuSubTrigger>Share</ContextMenuSubTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem onClick={onCopyLink}>Copy link</ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenuSub>
+      why: >-
+        ContextMenuSub accepts ContextMenuSubContent, not ContextMenuContent;
+        the popup renders but carries only the root popup's class, with the
+        9rem floor meant for the first popup instead of the submenu's own
+        8rem sizing.
+
+family_membership:
+  name: context_menu
+  role: part

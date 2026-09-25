@@ -1,0 +1,84 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_title.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "empty-title",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Name what is missing in a short headline.",
+  "typical_uses": [
+    "The one-line headline of an Empty, such as \"No results\""
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The title of a card that holds real content",
+      "instead": {
+        "target": "CardTitle",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_title.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "EmptyHeader",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_header.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "renders-a-div-not-a-heading",
+      "text": "EmptyTitle renders a div with no heading role or level, so it does not appear in the page's heading outline."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put the explanation in EmptyTitle",
+      "do_instead": "Keep EmptyTitle to the short headline and give the explanation its own EmptyDescription beneath it"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A short headline",
+        "code": "<EmptyTitle>No results</EmptyTitle>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The explanation folded into the headline",
+        "code": "<EmptyHeader>\n  <EmptyTitle>No results. Try a different search term or clear your filters.</EmptyTitle>\n</EmptyHeader>\n",
+        "why": "EmptyTitle is the headline; the explanation belongs in EmptyDescription, which carries the muted body text."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "empty",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit EmptyTitle",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,82 @@
+# Semantic overlay for BreadcrumbLink - part of the Breadcrumb family, see
+# breadcrumb.contract.yaml. `mounted_in` is filled from BreadcrumbItem's
+# own accepted components, not authored here. Where the link navigates to
+# is the consuming application's router concern: `render` hands the
+# element to the app's own link component.
+component: breadcrumb-link
+
+intent: Link one ancestor level of a breadcrumb trail to the page it names.
+
+typical_uses:
+  - An ancestor level the user can navigate back to
+  - An ancestor rendered through the application's own router link component
+
+dont_use_when:
+  - situation: A navigation link outside a breadcrumb trail
+    instead:
+      target: the consuming application's own link component (a plain anchor when it has none)
+      note: >-
+        This kit ships no Link component, and no kit component is a
+        substitute for one: navigation belongs to the app's own router.
+  - situation: The current page at the end of the trail
+    instead:
+      target: BreadcrumbPage
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_page.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: anchor-unless-render
+    text: >-
+      BreadcrumbLink renders an `a` by default; `render` replaces that
+      element, and the kit's link class is merged into the rendered
+      element's own className rather than dropped.
+  - id: color-follows-the-trail
+    text: >-
+      The link inherits its color from the trail (breadcrumb.module.css
+      `.link`: `color: inherit`, no underline); on hover it takes
+      --foreground and an underline, and on keyboard focus it draws the
+      kit's --ring outline.
+
+anti_patterns:
+  - dont: Wrap the application's router link around a BreadcrumbLink
+    do_instead: Pass the router link through `render`, so the one rendered element carries both the route and the kit's link class
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      breadcrumb.test.tsx asserts getByRole('link', { name: 'Home' })
+      resolves to an A element carrying the href and the kit's link class
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      useRender's render prop takes an element or a function of the props to
+      spread (BreadcrumbLink passes no state of its own), so its type is a
+      union of a React element and a callback - the compiler emits one JSON
+      type per property.
+
+examples:
+  good:
+    - title: A plain anchor
+      code: <BreadcrumbLink href="/reports">Reports</BreadcrumbLink>
+    - title: Rendered through the application's router link
+      code: <BreadcrumbLink render={<RouterLink to="/reports" />}>Reports</BreadcrumbLink>
+  bad:
+    - title: asChild from another component library
+      code: <BreadcrumbLink asChild><RouterLink to="/reports">Reports</RouterLink></BreadcrumbLink>
+      why: >-
+        BreadcrumbLink has no `asChild`; the element is replaced through
+        `render`, which takes the element to render as.
+
+family_membership:
+  name: breadcrumb
+  role: part

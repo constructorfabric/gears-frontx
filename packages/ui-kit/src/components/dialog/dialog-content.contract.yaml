@@ -1,0 +1,201 @@
+# Semantic overlay for DialogContent - a part of the Dialog family, see
+# dialog.contract.yaml's `family_membership` for how the contracts relate.
+# It composes the primitive's Portal, Backdrop, Popup and a Close; the
+# forwarded surface is the Popup's div.
+component: dialog-content
+
+intent: The centered popup of a Dialog, portalled over a dimming backdrop, with a built-in close button.
+
+typical_uses:
+  - A title and description over the controls of a short task
+  - A form whose footer holds its submit and cancel actions
+
+dont_use_when:
+  - situation: A panel positioned beside its trigger rather than centered on the screen
+    instead:
+      target: PopoverContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.popover_content.v1
+
+# DialogContent examines nothing about what a consumer nests inside it: the
+# family's header, footer, title, description and close parts sit here
+# beside forms, fields and any other content.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: rendered-only-while-open
+    text: >-
+      The popup and its backdrop are in the DOM only while the dialog is open
+      or animating closed; the kit passes no `keepMounted` to the portal, so
+      a closed dialog renders nothing.
+  - id: portals-to-body-unless-container
+    text: >-
+      Without `container`, the popup portals into the node of the nearest
+      enclosing portal, or the document body when there is none; a theme
+      scoped to a subtree reaches the popup only when that subtree, or a
+      node inside it, is passed as `container`.
+  - id: named-by-its-title-described-by-its-description
+    text: >-
+      The popup takes its accessible name from the DialogTitle inside it and
+      its description from the DialogDescription, through `aria-labelledby`
+      and `aria-describedby`; without a title, pass `aria-label` on
+      DialogContent.
+  - id: focus-moves-into-the-popup-on-open
+    text: >-
+      Unless `initialFocus` says otherwise, opening moves focus to the first
+      tabbable element inside the popup, which is the built-in close button
+      when nothing before it is tabbable, or to the popup itself when it
+      holds none or the dialog was opened by touch.
+  - id: internal-backdrop-blocks-while-modal
+    text: >-
+      While the root's `modal` is `true` the primitive renders a transparent
+      backdrop of its own that blocks the page and closes the dialog on a
+      press outside the popup, so `showBackdrop={false}` alone removes the
+      dimming but not the blocking.
+  - id: width-cap-by-size
+    text: >-
+      Below 640px the popup is the viewport width minus 2rem; from 640px up
+      it is capped at 24rem, or at 36rem with `size="lg"`, and the popup
+      stamps `data-size` with the size.
+  - id: scrolls-when-taller-than-the-viewport
+    text: >-
+      The popup's height is capped at the viewport height minus 2rem and it
+      scrolls vertically past that; the built-in close button scrolls with
+      the content.
+  - id: inset-lives-on-direct-children
+    text: >-
+      The popup has no padding of its own: every direct child except the
+      built-in close button gets a horizontal padding of var(--space-6), the
+      first a top padding and the last one (right before the close button
+      when it is shown) a bottom padding of var(--space-6), and direct children are spaced
+      var(--space-6) apart. These rules carry single-class specificity, so a
+      child's own `className` padding can override them, and then replaces
+      the inset rather than adding to it.
+  - id: reduced-motion-keeps-the-fade
+    text: >-
+      The popup fades and scales on open and close; under
+      `prefers-reduced-motion` dialog.module.css drops the scale transition
+      and keeps the fade.
+
+anti_patterns:
+  - dont: Turn off `showCloseButton` without composing a DialogClose inside the popup
+    do_instead: >-
+      Keep the built-in close button, or place a DialogClose in the popup;
+      a modal dialog needs a close control inside it so touch screen reader
+      users can leave it
+  - dont: Leave out DialogTitle for a cleaner look
+    do_instead: >-
+      Render a DialogTitle and hide it visually through its `className` when
+      the design shows no heading, so the popup keeps an accessible name
+  - dont: Set `modal={false}` on the root and keep the backdrop
+    do_instead: >-
+      Pass `showBackdrop={false}` here together with `modal={false}` on
+      the root; the backdrop alone still covers the page and closes the
+      dialog when pressed
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Dialog.Popup renders role dialog; dialog.test.tsx
+      asserts getByRole('dialog') once the trigger is clicked, that Escape on
+      it removes it ("closes on Escape"), and that the built-in close button
+      is found by getByRole('button', { name: 'Close' }) and renamed by
+      `closeLabel` ("renames the built-in close button via closeLabel")
+  rtl:
+    outcome: unknown
+
+capabilities:
+  - name: close_button
+    enabled_by: showCloseButton
+    description: >-
+      Default true: the popup renders a close (X) button after its children,
+      a ghost kit Button placed var(--space-4) from the top and right edges,
+      whose accessible name is `closeLabel`; it is the popup's only built-in
+      close control, and pressing it closes the dialog.
+  - name: backdrop
+    enabled_by: showBackdrop
+    description: >-
+      Default true: a fixed layer behind the popup dims the page with the
+      var(--overlay-modal) scrim, and a press on it closes the dialog.
+
+unexposed_parts:
+  - part: Dialog.Portal
+    reason: Composed inside DialogContent; only its `container` is exposed, as DialogContent's own prop.
+  - part: Dialog.Backdrop
+    reason: Composed inside DialogContent as the dimming backdrop, switched by `showBackdrop` and styled by dialog.module.css.
+  - part: Dialog.Close
+    reason: Composed inside DialogContent as the built-in close button, switched by `showCloseButton` and named by `closeLabel`; the exported DialogClose is the same primitive for a consumer-composed close action.
+
+prop_statements:
+  container:
+    states: container is the DOM node, shadow root or ref to one that the popup portals into; an explicit null renders no popup until a node is passed
+    because: >-
+      `HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null`
+      - live DOM nodes and ref objects, which no JSON Schema type covers.
+  initialFocus:
+    states: initialFocus picks the element focused on open - true for the first tabbable element (the popup itself when opened by touch), false for no move, a ref to an element, or a function of the opening interaction type
+    because: >-
+      `boolean | RefObject<HTMLElement | null> | ((openType) => boolean | HTMLElement | null | void)`
+      - a ref object and a function, which no JSON Schema type covers.
+  finalFocus:
+    states: finalFocus picks the element focused on close - true for the trigger or the previously focused element, false for no move, a ref to an element, or a function of the closing interaction type
+    because: >-
+      `boolean | RefObject<HTMLElement | null> | ((closeType) => boolean | HTMLElement | null | void)`
+      - a ref object and a function, which no JSON Schema type covers.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the popup's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the popup's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open, nested, nestedDialogOpen,
+      transitionStatus). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through
+      dialog.module.css, not through this.
+
+examples:
+  good:
+    - title: A wide form popup
+      code: |
+        <Dialog>
+          <DialogTrigger render={<Button />}>New channel</DialogTrigger>
+          <DialogContent size="lg">
+            <DialogHeader>
+              <DialogTitle>New channel</DialogTitle>
+            </DialogHeader>
+            <ChannelForm />
+          </DialogContent>
+        </Dialog>
+    - title: A non-modal dialog that leaves the page usable
+      code: |
+        <Dialog modal={false}>
+          <DialogTrigger>Find</DialogTrigger>
+          <DialogContent showBackdrop={false}>
+            <DialogTitle>Find in page</DialogTitle>
+          </DialogContent>
+        </Dialog>
+  bad:
+    - title: A popup expected to inherit a theme scoped to a section
+      code: |
+        <section data-theme="dark">
+          <Dialog>
+            <DialogTrigger>Preferences</DialogTrigger>
+            <DialogContent>
+              <DialogTitle>Preferences</DialogTitle>
+            </DialogContent>
+          </Dialog>
+        </section>
+      why: >-
+        The popup portals to the document body, outside the section, so it
+        renders with the document root's theme; pass the section, or a node inside
+        it, as `container`.
+
+family_membership:
+  name: dialog
+  role: part

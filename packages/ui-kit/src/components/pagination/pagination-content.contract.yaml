@@ -1,0 +1,67 @@
+# Semantic overlay for PaginationContent - part of the Pagination family,
+# see pagination.contract.yaml. `mounted_in` is filled from Pagination's
+# own accepted components, not authored here.
+component: pagination-content
+
+intent: Hold the page items of a pagination as one row-shaped list.
+
+typical_uses:
+  - The one list inside a Pagination
+
+dont_use_when:
+  - situation: The list of crumbs inside a Breadcrumb
+    instead:
+      target: BreadcrumbList
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb_list.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.pagination_item.v1 # PaginationItem
+
+invariants:
+  - id: single-row-that-does-not-wrap
+    text: >-
+      The list is a flex row spaced var(--space-1) apart with no bullets,
+      margin or padding and no wrapping (pagination.module.css
+      `.content`), so a row wider than its container overflows it rather
+      than breaking onto a second line.
+
+anti_patterns:
+  - dont: Render every page number of a long result set
+    do_instead: Show the pages around the current one and stand a PaginationEllipsis in for the rest
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: pagination.test.tsx asserts getByRole('list') resolves to a UL element
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Two page items
+      code: |
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationLink href="?page=1">1</PaginationLink>
+          </PaginationItem>
+          <PaginationItem>
+            <PaginationLink href="?page=2" isActive>2</PaginationLink>
+          </PaginationItem>
+        </PaginationContent>
+  bad:
+    - title: Links without items
+      code: |
+        <PaginationContent>
+          <PaginationLink href="?page=1">1</PaginationLink>
+        </PaginationContent>
+      why: >-
+        A `ul` may only hold `li` children; wrap each link in a
+        PaginationItem.
+
+family_membership:
+  name: pagination
+  role: part

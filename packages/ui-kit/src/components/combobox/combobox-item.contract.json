@@ -1,0 +1,166 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_item.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "combobox-item",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "One choosable option in a Combobox's list, identified by its `value` and marked with a check while chosen.",
+  "typical_uses": [
+    "One entry of a combobox's list, rendered for one item of the root's `items`"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "An entry that runs a command rather than setting a value",
+      "instead": {
+        "target": "CommandItem",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.command_item.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "ComboboxCollection",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_collection.v1"
+    },
+    {
+      "container": "ComboboxGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_group.v1"
+    },
+    {
+      "container": "ComboboxList",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_list.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "value-identifies-the-item",
+      "text": "`value` is what choosing the item puts into the root's value; the root compares it with the chosen value by `Object.is` unless the root's `isItemEqualToValue` says otherwise."
+    },
+    {
+      "id": "check-mark-while-chosen",
+      "text": "While the item is chosen a check mark renders at its inline end; while it is not chosen the mark is not in the DOM."
+    },
+    {
+      "id": "disabled-item-reached-but-not-chosen",
+      "text": "A disabled item is still reached by arrow keys but cannot be chosen by pointer or keyboard, and combobox.module.css dims it and ignores pointer events on it."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Render the item as a `<button>` or another focusable element through `render`",
+      "do_instead": "Keep the default div; focus stays on the field while the highlight moves through the items, and a focusable item takes it away"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "the primitive's Combobox.Item sets role=\"option\" and aria-selected; combobox.test.tsx asserts the options are found by role option and that pressing the option named \"Europe\" reports \"Europe\" through onValueChange"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is the option's caption, any React content",
+      "because": "`ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+    },
+    "value": {
+      "states": "value is the item this option stands for, of the caller's own item type",
+      "because": "Typed `any` by the primitive, so the schema asserts nothing; it is one entry of the root's `items`."
+    },
+    "onClick": {
+      "states": "onClick is a callback called when the item is pressed with the pointer, or with Enter while highlighted",
+      "because": "A function of Base UI's wrapped mouse event, which no JSON Schema type covers."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the item's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the item's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, selected, highlighted). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through combobox.module.css, not through this."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "Combobox.ItemIndicator",
+      "reason": "Composed inside ComboboxItem as the trailing check mark, styled by combobox.module.css."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "An item rendered for one entry of the root's items",
+        "code": "<ComboboxList>\n  {(item) => (\n    <ComboboxItem key={item} value={item}>\n      {item}\n    </ComboboxItem>\n  )}\n</ComboboxList>\n"
+      },
+      {
+        "title": "A disabled item",
+        "code": "<ComboboxItem value=\"antarctica\" disabled>Antarctica</ComboboxItem>"
+      }
+    ],
+    "bad": [
+      {
+        "title": "An item with no value",
+        "code": "<ComboboxItem>Europe</ComboboxItem>",
+        "why": "Without `value` the item stands for null, so in a one-value combobox choosing it sets the root's value to null, the same as clearing it; give every item the entry of `items` it renders."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "combobox",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {
+      "children": {
+        "typeText": "ReactNode",
+        "optional": true
+      }
+    },
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ComboboxItem",
+    "type": "object",
+    "properties": {
+      "children": {
+        "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. children is the option's caption, any React content. `ReactNode` is a union of elements, strings, numbers, fragments and more; the compiler emits one JSON type per property."
+      },
+      "className": {
+        "type": "string"
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "index": {
+        "type": "number"
+      },
+      "nativeButton": {
+        "type": "boolean"
+      },
+      "onClick": {
+        "description": "TS: ((event: BaseUIEvent<MouseEvent<HTMLDivElement, MouseEvent>>) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onClick is a callback called when the item is pressed with the pointer, or with Enter while highlighted. A function of Base UI's wrapped mouse event, which no JSON Schema type covers."
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ComboboxItemState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the item's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: ComboboxItemState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the item's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (disabled, selected, highlighted). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through combobox.module.css, not through this."
+      },
+      "value": {
+        "description": "TS: any. The compiler emits one JSON type per property; this type is left to tsc. value is the item this option stands for, of the caller's own item type. Typed `any` by the primitive, so the schema asserts nothing; it is one entry of the root's `items`."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,67 @@
+# Semantic overlay for QuestionnaireDescription - a part of the
+# Questionnaire family, see questionnaire.contract.yaml's
+# `family_membership`.
+component: questionnaire-description
+
+intent: A supporting sentence under a question that describes its QuestionnaireItem to assistive technology.
+
+typical_uses:
+  - A hint under the question (pick one, select all that apply)
+
+dont_use_when:
+  - situation: A supporting line under one choice rather than under the question
+    instead:
+      target: QuestionnaireChoiceDescription
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.questionnaire_choice_description.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: describes-the-item
+    text: >-
+      It renders a `<p>` with an id (the caller's `id`, or a generated
+      one) that the item's fieldset lists in its `aria-describedby`.
+
+anti_patterns:
+  - dont: Put the validation message in QuestionnaireDescription
+    do_instead: Use QuestionnaireError, which shows only while the item is invalid and is announced as an alert
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      The questionnaire engine's render prop takes an element or a function
+      of the description's state (an empty state object for this part), so
+      its type is a union of a React element and a callback; the compiler
+      emits one JSON type per property, so nothing is asserted.
+
+examples:
+  good:
+    - title: A hint under the question
+      code: |
+        <QuestionnaireItem name="signals" multiple>
+          <QuestionnaireTitle>What should every update include?</QuestionnaireTitle>
+          <QuestionnaireDescription>Select all that apply.</QuestionnaireDescription>
+          <QuestionnaireChoices>{choices}</QuestionnaireChoices>
+          <QuestionnaireError />
+        </QuestionnaireItem>
+  bad:
+    - title: A validation message written as a description
+      code: <QuestionnaireDescription>Choose an answer to continue.</QuestionnaireDescription>
+      why: >-
+        The description is always shown and never announced as an alert;
+        QuestionnaireError is the part that appears when validation fails.
+
+family_membership:
+  name: questionnaire
+  role: part

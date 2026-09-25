@@ -1,0 +1,134 @@
+# Semantic overlay for DropdownMenuCheckboxItem - a part of the DropdownMenu
+# family, see dropdown-menu.contract.yaml's `family_membership` for how the
+# contracts relate. The forwarded surface is the primitive's div.
+component: dropdown-menu-checkbox-item
+
+intent: A menu row that switches one independent setting on or off, showing a check while it is on.
+
+typical_uses:
+  - A view setting toggled from a menu, such as showing a toolbar or a column
+
+dont_use_when:
+  - situation: One of several mutually exclusive options
+    instead:
+      target: DropdownMenuRadioItem
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_radio_item.v1
+  - situation: A one-off command with no on or off state
+    instead:
+      target: DropdownMenuItem
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_item.v1
+  - situation: An on/off value that belongs to a form
+    instead:
+      target: Checkbox
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.checkbox.v1
+  - situation: A setting that takes effect immediately, shown on the page rather than in a menu
+    instead:
+      target: Switch
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.switch.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu_shortcut.v1 # DropdownMenuShortcut
+  text: true
+
+invariants:
+  - id: checked-wins-over-default-checked
+    text: >-
+      `checked` and `defaultChecked` are both accepted; `defaultChecked`
+      seeds the initial state and is ignored afterwards, and when `checked`
+      is given it wins and the component follows it on every render.
+  - id: toggling-keeps-the-menu-open
+    text: >-
+      Activating the row flips its state, reports it through
+      `onCheckedChange` and leaves the menu open, unless `closeOnClick` is
+      true.
+  - id: check-glyph-only-while-checked
+    text: >-
+      A check glyph, hidden from assistive technology, is rendered at the
+      row's inline end only while the item is checked; the row always
+      reserves padding on its right side for it.
+  - id: disabled-stays-reachable
+    text: >-
+      A `disabled` row stays in arrow-key navigation and can take focus, but
+      pressing it or pressing Enter on it does nothing.
+  - id: descendant-svg-sized
+    text: >-
+      dropdown-menu.module.css sizes every descendant `svg` of the row to the
+      small icon size and keeps it from shrinking or taking pointer events,
+      so a leading icon passed in children needs no size of its own.
+
+anti_patterns:
+  - dont: Handle the toggle in `onClick` and flip the state yourself
+    do_instead: >-
+      Read the next state from `onCheckedChange`, or pass `defaultChecked`
+      and let the row keep its own state
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Menu.CheckboxItem renders role="menuitemcheckbox" with
+      aria-checked; dropdown-menu.test.tsx asserts the row is found by the
+      menuitemcheckbox role and name and that clicking it reports true
+      through onCheckedChange while the menu stays open
+  rtl:
+    outcome: failed
+    by: >-
+      dropdown-menu.module.css reserves the check glyph's space with a
+      physical right padding on the row while the glyph sits at the row's
+      inline end, so in a right-to-left page the glyph overlaps the label
+      at the left and the reserved space stays empty on the right
+
+unexposed_parts:
+  - part: Menu.CheckboxItemIndicator
+    reason: Composed inside DropdownMenuCheckboxItem with a fixed check icon; the kit exports no indicator to replace or place.
+
+prop_statements:
+  onCheckedChange:
+    states: onCheckedChange is a callback called with the next checked state and event details, not a value
+    because: >-
+      `(checked: boolean, eventDetails) => void` - a function, which no JSON
+      Schema type covers.
+  onClick:
+    states: onClick is a callback called with the click event when the row is activated by pointer or keyboard
+    because: >-
+      A React event handler - a function, which no JSON Schema type covers.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the checkbox item's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the checkbox item's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (checked, disabled, highlighted). The compiler emits one JSON type per property, so nothing is asserted; the kit's own
+      styling goes through dropdown-menu.module.css, not through this.
+
+examples:
+  good:
+    - title: A setting held in the caller's state
+      code: |
+        <DropdownMenuCheckboxItem checked={showToolbar} onCheckedChange={setShowToolbar}>
+          Show toolbar
+        </DropdownMenuCheckboxItem>
+  bad:
+    - title: A checkbox nested in a plain item
+      code: |
+        <DropdownMenuItem>
+          <Checkbox checked={showToolbar} onCheckedChange={setShowToolbar} />
+          Show toolbar
+        </DropdownMenuItem>
+      why: >-
+        The item closes the menu on activation and announces itself as a
+        plain menu item, while the checkbox inside is a second control the
+        menu's arrow keys never reach; a DropdownMenuCheckboxItem is the row
+        and the checkbox at once.
+
+family_membership:
+  name: dropdown_menu
+  role: part

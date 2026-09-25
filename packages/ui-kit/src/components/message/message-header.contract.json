@@ -1,0 +1,92 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.message_header.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "message-header",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Show a short line of metadata above a message's surface, such as the sender's name.",
+  "typical_uses": [
+    "The sender's name above the bubble",
+    "A sender's name together with the time the message was sent"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Text that is part of the message itself",
+      "instead": {
+        "target": "BubbleContent inside a Bubble",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.bubble_content.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "MessageContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.message_content.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "muted-meta-line",
+      "text": "The header is a flex row that centers its children vertically, is inset var(--space-3) on the inline sides and renders in the meta text size at the label weight in var(--muted-foreground)."
+    },
+    {
+      "id": "moves-with-end-alignment",
+      "text": "Under `align=\"end\"` on the row the header, as a direct child of MessageContent, is aligned to the end edge like the surface below it."
+    },
+    {
+      "id": "ghost-bubble-removes-the-inset",
+      "text": "When anything in the row carries `data-variant=\"ghost\"` (a Bubble with `variant=\"ghost\"` stamps it), the header's inline inset drops to zero so it sits flush with the frameless surface."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put the sender's name inside the Bubble",
+      "do_instead": "Put it in a MessageHeader above the Bubble, where it takes the muted meta style"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A sender name above the surface",
+        "code": "<MessageContent>\n  <MessageHeader>Assistant</MessageHeader>\n  <Bubble>\n    <BubbleContent>Four files changed.</BubbleContent>\n  </Bubble>\n</MessageContent>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The sender name written into the bubble",
+        "code": "<MessageContent>\n  <Bubble>\n    <BubbleContent>Assistant: Four files changed.</BubbleContent>\n  </Bubble>\n</MessageContent>\n",
+        "why": "The name becomes part of the message text, in the body style and inside the surface; MessageHeader sets it apart above the bubble in the muted meta style."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "message",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit MessageHeader",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

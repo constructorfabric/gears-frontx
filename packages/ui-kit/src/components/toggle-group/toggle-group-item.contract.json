@@ -1,0 +1,167 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.toggle_group_item.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "toggle-group-item",
+  "forwards_to": "gts.frontx.uikit.element.dom_button.v1~",
+  "intent": "One toggle button of a ToggleGroup, pressed when the group's value holds this item's value.",
+  "typical_uses": [
+    "One option in a ToggleGroup's set of related toggle buttons"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A single on/off control with no group around it",
+      "instead": {
+        "target": "Toggle",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.toggle.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "ToggleGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.toggle_group.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "pressed-state-comes-from-the-group",
+      "text": "Inside a ToggleGroup the item is pressed exactly when the group's value array contains this item's `value`; the item's own `pressed` and `defaultPressed` are ignored there."
+    },
+    {
+      "id": "value-identifies-item-within-its-group",
+      "text": "`value` is the string the group's value array records for this item. The types leave it optional, but without it the item falls back to a generated id, and a group whose `value` or `defaultValue` is set reports a development-mode error for the item."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Render a ToggleGroupItem outside a ToggleGroup",
+      "do_instead": "Use Toggle for a standalone control; outside a group the item has no shared value to join, and its own `variant` and `size` are ignored in favour of the defaults"
+    },
+    {
+      "dont": "Leave an icon-only item with no aria-label",
+      "do_instead": "Pass `aria-label` naming the option the glyph stands for"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "The primitive's Toggle (a native button carrying aria-pressed bound to the pressed state) plus toggle-group.test.tsx's getByRole('button', { name }) and data-pressed assertions on aria-labelled items"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "value": {
+      "states": "value is typed by the caller's own Value type parameter, not a plain string",
+      "because": "`ToggleGroupItemProps<Value extends string = string>` lets a caller narrow the value to its own literal union, the same one the group's value array holds; the compiler emits one JSON type per property, so only its base shape is asserted and the narrowing is checked by tsc."
+    },
+    "onPressedChange": {
+      "states": "onPressedChange is a callback of the next pressed state and event details, called before the group commits its change",
+      "because": "Base UI types it as `(pressed: boolean, eventDetails) => void`, and cancelling through eventDetails there also vetoes the group's value change; a function has no JSON Schema representation, so nothing beyond its presence is asserted."
+    },
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the item's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the item's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (pressed, disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through toggle-group.module.css and the Toggle classes, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A captioned item",
+        "code": "<ToggleGroup defaultValue={['day']} variant=\"outline\" aria-label=\"Range\">\n  <ToggleGroupItem value=\"day\">Day</ToggleGroupItem>\n  <ToggleGroupItem value=\"week\">Week</ToggleGroupItem>\n</ToggleGroup>"
+      },
+      {
+        "title": "An icon-only item named for assistive tech",
+        "code": "<ToggleGroup aria-label=\"Alignment\">\n  <ToggleGroupItem value=\"left\" iconOnly aria-label=\"Align left\"><AlignLeftIcon /></ToggleGroupItem>\n  <ToggleGroupItem value=\"right\" iconOnly aria-label=\"Align right\"><AlignRightIcon /></ToggleGroupItem>\n</ToggleGroup>"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Pressed state set on the item instead of the group",
+        "code": "<ToggleGroup aria-label=\"View\">\n  <ToggleGroupItem value=\"list\" pressed aria-label=\"List\"><ListIcon /></ToggleGroupItem>\n  <ToggleGroupItem value=\"grid\" aria-label=\"Grid\"><GridIcon /></ToggleGroupItem>\n</ToggleGroup>",
+        "why": "Inside a group the item's `pressed` is ignored; set the group's `value` or `defaultValue` to `['list']` instead."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "toggle_group",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof toggleVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ToggleGroupItem",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "outline",
+          "steel"
+        ],
+        "default": "default"
+      },
+      "size": {
+        "type": "string",
+        "enum": [
+          "default",
+          "sm",
+          "lg"
+        ],
+        "default": "default"
+      },
+      "className": {
+        "type": "string"
+      },
+      "iconOnly": {
+        "type": "boolean"
+      },
+      "defaultPressed": {
+        "type": "boolean"
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "nativeButton": {
+        "type": "boolean"
+      },
+      "onPressedChange": {
+        "description": "TS: ((pressed: boolean, eventDetails: { reason: \"none\"; event: Event; cancel: () => void; allowPropagation: () => void; isCanceled: boolean; isPropagationAllowed: boolean; trigger: Element | undefined; }) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onPressedChange is a callback of the next pressed state and event details, called before the group commits its change. Base UI types it as `(pressed: boolean, eventDetails) => void`, and cancelling through eventDetails there also vetoes the group's value change; a function has no JSON Schema representation, so nothing beyond its presence is asserted."
+      },
+      "pressed": {
+        "type": "boolean"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, ToggleState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the item's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: ToggleState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the item's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (pressed, disabled). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through toggle-group.module.css and the Toggle classes, not through this."
+      },
+      "value": {
+        "type": "string",
+        "description": "TS: Value | undefined. Not fully expressible in JSON Schema; what the type states beyond the kind above is checked by tsc. value is typed by the caller's own Value type parameter, not a plain string. `ToggleGroupItemProps<Value extends string = string>` lets a caller narrow the value to its own literal union, the same one the group's value array holds; the compiler emits one JSON type per property, so only its base shape is asserted and the narrowing is checked by tsc."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,88 @@
+# Semantic overlay for SelectScrollUpButton - a part of the Select family,
+# see select.contract.yaml's `family_membership` for how the contracts
+# relate. It wraps the primitive's ScrollArrow; the forwarded surface is its
+# div. SelectContent already renders one, so no kit contract accepts it.
+component: select-scroll-up-button
+
+intent: The arrow at the top edge of a Select popup that scrolls the option list up while the pointer rests on it.
+
+typical_uses:
+  - The top scroll affordance SelectContent renders before its list
+
+dont_use_when:
+  - situation: A scrolling region of a page or a panel, outside any select
+    instead:
+      target: ScrollArea
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.scroll_area.v1
+
+# The kit renders its own chevron inside the arrow after the caller's props,
+# so children a caller passes are never rendered.
+accepts:
+  content: nothing
+
+invariants:
+  - id: shown-only-while-there-is-more-to-scroll
+    text: >-
+      The arrow is in the DOM only while the list can scroll further up
+      and the popup was not opened by touch, unless `keepMounted` is true.
+  - id: hover-scrolls-item-by-item
+    text: >-
+      Moving the pointer over the arrow scrolls the list up one option
+      at a time until the pointer leaves or the list reaches its top edge;
+      the arrow is `aria-hidden` and takes no focus.
+
+anti_patterns:
+  - dont: Add a SelectScrollUpButton as a child of SelectContent
+    do_instead: >-
+      Leave it out; SelectContent already renders one, and a child lands
+      inside the list as a second arrow over the first
+
+deprecations: {}
+
+# select.test.tsx asserts only the arrow's box-sizing in the stylesheet;
+# nothing renders an arrow or asserts how assistive technology treats it.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the arrow's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the arrow's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (typed as an empty object for an arrow). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through
+      select.module.css, not through this.
+
+examples:
+  good:
+    - title: A popup whose built-in arrows appear once the list overflows
+      code: |
+        <SelectContent>
+          {TIME_ZONES.map((zone) => (
+            <SelectItem key={zone} value={zone}>
+              {zone}
+            </SelectItem>
+          ))}
+        </SelectContent>
+  bad:
+    - title: The arrow added again inside the popup
+      code: |
+        <SelectContent>
+          <SelectScrollUpButton />
+          <SelectItem value="eu-central">Frankfurt</SelectItem>
+        </SelectContent>
+      why: >-
+        SelectContent renders its own SelectScrollUpButton; this one is
+        mounted inside the list, so two arrows compete for the same edge.
+
+family_membership:
+  name: select
+  role: part

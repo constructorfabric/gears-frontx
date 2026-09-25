@@ -1,0 +1,82 @@
+# Semantic overlay for InputGroupTextarea - a part of the InputGroup family,
+# see input-group.contract.yaml. It renders the kit's Textarea with the
+# group's control classes; every prop is the native textarea's, carried by
+# the element surface this contract names.
+component: input-group-textarea
+
+intent: The multi-line text field an InputGroup frames, drawn without chrome of its own.
+
+typical_uses:
+  - The field of an InputGroup with a full-width addon row above or below it
+
+dont_use_when:
+  - situation: A multi-line field with no InputGroup around it
+    instead:
+      target: Textarea
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.textarea.v1
+  - situation: Single-line text inside an InputGroup
+    instead:
+      target: InputGroupInput
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_input.v1
+
+# A textarea's content is its value, never its children.
+accepts:
+  content: nothing
+
+invariants:
+  - id: value-wins-over-default-value
+    text: >-
+      `value` and `defaultValue` are both accepted; `defaultValue` seeds the
+      initial state and is ignored afterwards, and when `value` is given it
+      wins and the component follows it on every render.
+  - id: chrome-belongs-to-the-group
+    text: >-
+      Inside an InputGroup the textarea's own border, background, radius and
+      focus or invalid ring are removed, the resize handle is turned off, and
+      it stretches to fill the row; its `:focus-visible`,
+      `aria-invalid="true"` and `:disabled` states are what the surrounding
+      group draws.
+  - id: addons-align-to-the-top
+    text: >-
+      While the textarea is a direct child of the group, the group aligns its
+      addons to the top of the row instead of its middle, and the group grows
+      with the textarea past its size floor.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      input-group.test.tsx resolves the field by getByRole('textbox', { name:
+      'Message' }) from its aria-label, and asserts that clicking a
+      block-start addon moves document.activeElement to it
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Message field with a recipient row above it
+      code: |
+        <InputGroup>
+          <InputGroupAddon align="block-start">
+            <InputGroupText>To:</InputGroupText>
+          </InputGroupAddon>
+          <InputGroupTextarea rows={4} aria-label="Message" />
+        </InputGroup>
+  bad:
+    - title: Initial text passed as children
+      code: |
+        <InputGroup>
+          <InputGroupTextarea aria-label="Notes">Draft text</InputGroupTextarea>
+        </InputGroup>
+      why: >-
+        A textarea takes its text from `defaultValue` or `value`; React only
+        falls back to children with a warning, and throws beside
+        `defaultValue`.
+
+family_membership:
+  name: input_group
+  role: part

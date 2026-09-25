@@ -1,0 +1,191 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.tooltip.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "tooltip",
+  "intent": "Hold the open state of one tooltip and tie its trigger to the short visual hint that trigger shows on hover or keyboard focus.",
+  "typical_uses": [
+    "A short label for an icon-only control",
+    "The full text behind a truncated label"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Information a user needs to complete the task",
+      "instead": {
+        "target": "visible text on the page, next to the control",
+        "note": "A tooltip is supplementary: hovering opens it for mouse pointers only, and nothing links its text to the trigger for assistive technology, so touch and screen-reader users may never receive it."
+      }
+    },
+    {
+      "situation": "A floating panel the user interacts with (links, buttons, form fields)",
+      "instead": {
+        "target": "Popover",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.popover.v1"
+      }
+    },
+    {
+      "situation": "A preview of what a link points to, opened by hovering the link",
+      "instead": {
+        "target": "HoverCard",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.hover_card.v1"
+      }
+    },
+    {
+      "situation": "A list of actions anchored to a trigger",
+      "instead": {
+        "target": "DropdownMenu",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.tooltip_trigger.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.tooltip_content.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "open-wins-over-default-open",
+      "text": "`open` and `defaultOpen` are both accepted; `defaultOpen` seeds the initial state and is ignored afterwards, and when `open` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "no-aria-link-to-the-trigger",
+      "text": "The root wires no ARIA relationship between trigger and popup: the trigger receives no `aria-describedby` and the popup no `tooltip` role, so the popup's text is not announced as the trigger's name or description."
+    },
+    {
+      "id": "disabled-closes-and-blocks-every-trigger",
+      "text": "`disabled` on the root closes a tooltip that is open and keeps every trigger of this root from opening it, except a trigger that passes its own `disabled`, which takes precedence over the root's."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Leave an icon-only trigger without an accessible name, counting on the tooltip text to name it",
+      "do_instead": "Give the trigger an `aria-label` (or visible text) that matches the tooltip's content, so every user receives the same message"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is the root's content, either React nodes or a function of the active trigger's payload that returns them",
+      "because": "`React.ReactNode | PayloadChildRenderFunction<Payload>` - the function form receives `{ payload }` from whichever trigger opened the tooltip. The compiler emits one JSON type per property, and a function has no JSON Schema representation."
+    },
+    "onOpenChange": {
+      "states": "onOpenChange is a callback called with the next open state and event details, not a value",
+      "because": "`(open: boolean, eventDetails) => void`; the second argument carries Base UI's change-event details, including the reason (such as a trigger hover, focus or press, an outside press or Escape). No JSON Schema type covers a function."
+    },
+    "onOpenChangeComplete": {
+      "states": "onOpenChangeComplete is a callback called with the open state once the open or close animation has finished",
+      "because": "`(open: boolean) => void` - a function, which no JSON Schema type covers."
+    },
+    "actionsRef": {
+      "states": "actionsRef is a ref the root fills with imperative `close` and `unmount` actions",
+      "because": "`React.RefObject<TooltipRootActions | null>` - a ref object holding functions, which no JSON Schema type covers."
+    },
+    "handle": {
+      "states": "handle is an opaque object from the primitive's Tooltip.createHandle(), shared with a trigger placed outside this root",
+      "because": "`TooltipHandle<Payload>` is a class instance holding the tooltip's store, not data; the kit re-exports no createHandle, so a caller imports it from the primitive."
+    },
+    "triggerId": {
+      "states": "triggerId is the id of the trigger a controlled tooltip is open for, or null",
+      "because": "`string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
+    },
+    "defaultTriggerId": {
+      "states": "defaultTriggerId is the id of the trigger an initially open tooltip is open for, or null",
+      "because": "`string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A labelled icon-only trigger with its hint",
+        "code": "<Tooltip>\n  <TooltipTrigger aria-label=\"Bold\">\n    <BoldIcon />\n  </TooltipTrigger>\n  <TooltipContent>Bold</TooltipContent>\n</Tooltip>\n"
+      },
+      {
+        "title": "A kit Button as the trigger element",
+        "code": "<Tooltip>\n  <TooltipTrigger render={<Button variant=\"outline\">Save</Button>} />\n  <TooltipContent>Save changes</TooltipContent>\n</Tooltip>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "An icon-only trigger named only by its tooltip",
+        "code": "<Tooltip>\n  <TooltipTrigger>\n    <BoldIcon />\n  </TooltipTrigger>\n  <TooltipContent>Bold</TooltipContent>\n</Tooltip>\n",
+        "why": "The tooltip's text is not wired to the trigger for assistive technology, so a screen reader announces an unnamed button."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "tooltip",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.tooltip_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.tooltip_trigger.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Tooltip",
+    "type": "object",
+    "properties": {
+      "actionsRef": {
+        "description": "TS: React.RefObject<TooltipRootActions | null> | undefined. The compiler emits one JSON type per property; this type is left to tsc. actionsRef is a ref the root fills with imperative `close` and `unmount` actions. `React.RefObject<TooltipRootActions | null>` - a ref object holding functions, which no JSON Schema type covers."
+      },
+      "children": {
+        "description": "TS: React.ReactNode | PayloadChildRenderFunction<Payload>. The compiler emits one JSON type per property; this type is left to tsc. children is the root's content, either React nodes or a function of the active trigger's payload that returns them. `React.ReactNode | PayloadChildRenderFunction<Payload>` - the function form receives `{ payload }` from whichever trigger opened the tooltip. The compiler emits one JSON type per property, and a function has no JSON Schema representation."
+      },
+      "defaultOpen": {
+        "type": "boolean"
+      },
+      "defaultTriggerId": {
+        "description": "TS: string | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. defaultTriggerId is the id of the trigger an initially open tooltip is open for, or null. `string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
+      },
+      "disableHoverablePopup": {
+        "type": "boolean"
+      },
+      "disabled": {
+        "type": "boolean"
+      },
+      "handle": {
+        "description": "TS: TooltipHandle<Payload> | undefined. The compiler emits one JSON type per property; this type is left to tsc. handle is an opaque object from the primitive's Tooltip.createHandle(), shared with a trigger placed outside this root. `TooltipHandle<Payload>` is a class instance holding the tooltip's store, not data; the kit re-exports no createHandle, so a caller imports it from the primitive."
+      },
+      "onOpenChange": {
+        "description": "TS: ((open: boolean, eventDetails: TooltipRootChangeEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChange is a callback called with the next open state and event details, not a value. `(open: boolean, eventDetails) => void`; the second argument carries Base UI's change-event details, including the reason (such as a trigger hover, focus or press, an outside press or Escape). No JSON Schema type covers a function."
+      },
+      "onOpenChangeComplete": {
+        "description": "TS: ((open: boolean) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChangeComplete is a callback called with the open state once the open or close animation has finished. `(open: boolean) => void` - a function, which no JSON Schema type covers."
+      },
+      "open": {
+        "type": "boolean"
+      },
+      "trackCursorAxis": {
+        "type": "string",
+        "enum": [
+          "both",
+          "none",
+          "x",
+          "y"
+        ]
+      },
+      "triggerId": {
+        "description": "TS: string | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. triggerId is the id of the trigger a controlled tooltip is open for, or null. `string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

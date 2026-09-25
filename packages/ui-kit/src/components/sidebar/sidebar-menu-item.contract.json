@@ -1,0 +1,87 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_item.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sidebar-menu-item",
+  "forwards_to": "gts.frontx.uikit.element.dom_li.v1~",
+  "intent": "One row of a SidebarMenu, holding the row's button and what annotates it.",
+  "typical_uses": [
+    "A navigation row with an optional count, row action or nested sub-menu"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A row of a nested sub-menu",
+      "instead": {
+        "target": "SidebarMenuSubItem",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_sub_item.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_button.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_action.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_badge.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_sub.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_skeleton.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.collapsible.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "SidebarMenu",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "positions-action-and-badge",
+      "text": "SidebarMenuItem renders an `li` with `position: relative`, the box a SidebarMenuAction or SidebarMenuBadge inside it is pinned against; with either one present, its SidebarMenuButton reserves 32px on the right so the label truncates before them."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A row with a count",
+        "code": "<SidebarMenuItem>\n  <SidebarMenuButton>\n    <InboxIcon />\n    <span>Inbox</span>\n  </SidebarMenuButton>\n  <SidebarMenuBadge>24</SidebarMenuBadge>\n</SidebarMenuItem>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The badge inside the button",
+        "code": "<SidebarMenuItem>\n  <SidebarMenuButton>\n    <InboxIcon />\n    <span>Inbox</span>\n    <SidebarMenuBadge>24</SidebarMenuBadge>\n  </SidebarMenuButton>\n</SidebarMenuItem>\n",
+        "why": "The badge becomes the button's last child, so the label span no longer truncates and the count joins the button's accessible name; the badge is the button's sibling inside the item."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sidebar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SidebarMenuItem",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

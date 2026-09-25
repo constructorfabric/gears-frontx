@@ -1,0 +1,107 @@
+# Semantic overlay for CarouselPrevious - a part of the Carousel family, see
+# carousel.contract.yaml's `family_membership`. It renders the kit's Button,
+# so its prop list is Button's minus `icon`.
+component: carousel-previous
+
+intent: Step a Carousel back by one slide, with a fixed chevron icon.
+
+typical_uses:
+  - The built-in previous-slide control of a Carousel
+
+dont_use_when:
+  - situation: A step control with a different look or placement than the fixed chevron button
+    instead:
+      target: Button
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+      note: >-
+        Render a plain Button inside the Carousel and drive it from
+        useCarousel's `scrollPrev` and `canScrollPrev`.
+
+# Children, when given, render as a caption beside the fixed chevron.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: disabled-when-nothing-to-scroll
+    text: >-
+      The button is disabled whenever the engine reports nothing to scroll
+      to in this direction; a consumer `disabled` can only add a reason to
+      disable it and never re-enables it.
+  - id: consumer-on-click-runs-before-scroll
+    text: >-
+      A consumer `onClick` is called first and the step back runs after it
+      on every click; the consumer handler cannot replace the navigation.
+  - id: default-accessible-name
+    text: >-
+      Without `aria-label` the button is named "Previous slide"; the name is always
+      set, so a caption passed as children does not become the accessible
+      name unless `aria-label` repeats it.
+  - id: positioned-outside-the-carousel
+    text: >-
+      The button is absolutely positioned with its outer edge 3rem beyond the Carousel's box
+      (left of it when horizontal, above it, centred and rotated a quarter turn when
+      vertical), so the surrounding layout has to leave that room.
+
+anti_patterns:
+  - dont: Mount CarouselPrevious outside a Carousel
+    do_instead: >-
+      Place it inside the Carousel it steps; it reads the root's context
+      through useCarousel and throws "useCarousel must be used within a
+      <Carousel />" without one
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      carousel.test.tsx asserts a button with the accessible name
+      "Previous slide" and data-icon-only, and that it is disabled when the
+      engine reports nothing to scroll to
+  rtl:
+    outcome: failed
+    by: >-
+      carousel.tsx renders a hard-coded ChevronLeftIcon in the button
+      (carousel.tsx:231) and carousel.module.css places it with a physical
+      `left: -3rem` (carousel.module.css:81), with no rule that mirrors
+      either under a right-to-left direction, so in a right-to-left
+      carousel the button sits on the left and points against the reading
+      order
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the previous-slide button's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the previous-slide button's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (ButtonState, which carries `disabled`). The compiler emits one JSON type per property, so nothing is
+      asserted; the kit's own styling goes through button.module.css and
+      carousel.module.css, not through this.
+
+examples:
+  good:
+    - title: Default control, relabelled and restyled
+      code: |
+        <Carousel aria-label="Photos">
+          <CarouselContent>
+            <CarouselItem>1</CarouselItem>
+            <CarouselItem>2</CarouselItem>
+          </CarouselContent>
+          <CarouselPrevious aria-label="Show earlier photo" variant="ghost" size="lg" />
+        </Carousel>
+  bad:
+    - title: Swapping the glyph through an icon prop
+      code: <CarouselPrevious icon={<ArrowIcon />} />
+      why: >-
+        CarouselPrevious takes every Button prop except `icon`; the chevron is
+        fixed.
+
+family_membership:
+  name: carousel
+  role: part

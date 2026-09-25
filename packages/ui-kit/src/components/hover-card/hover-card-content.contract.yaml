@@ -1,0 +1,137 @@
+# Semantic overlay for HoverCardContent - a part of the HoverCard family, see
+# hover-card.contract.yaml's `family_membership` for how the three contracts
+# relate. It composes the primitive's Portal, Positioner and Popup; the
+# forwarded surface is the Popup's div.
+component: hover-card-content
+
+intent: The preview card, portalled and positioned beside its trigger, shown while its HoverCard is open.
+
+typical_uses:
+  - A short summary of what the trigger links to, such as a name, an avatar and a line of detail
+
+dont_use_when:
+  - situation: A one-line label for its trigger
+    instead:
+      target: TooltipContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.tooltip_content.v1
+  - situation: A panel with fields or buttons the user has to operate
+    instead:
+      target: PopoverContent
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.popover_content.v1
+
+# HoverCardContent examines nothing about what a consumer nests inside it.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: rendered-only-while-open
+    text: >-
+      The card is in the DOM only while the hover card is open or animating
+      closed; the kit passes no `keepMounted` to the portal, so a closed
+      card renders nothing.
+  - id: portals-to-body-unless-container
+    text: >-
+      Without `container`, the card portals into the node of the nearest
+      enclosing portal, or the document body when there is none; a theme
+      scoped to a subtree reaches the card only when that subtree, or a node
+      inside it, is passed as `container`.
+  - id: stays-open-while-the-pointer-is-on-it
+    text: >-
+      The pointer can travel from the trigger onto the card without closing
+      it, and the card stays open while the pointer rests on it.
+  - id: no-caret
+    text: >-
+      The card renders no caret pointing at its trigger; there is no prop to
+      add one.
+  - id: reduced-motion-keeps-the-fade
+    text: >-
+      The card fades, scales and slides on open and close; under
+      `prefers-reduced-motion` hover-card.module.css drops the transform
+      transition and keeps the fade.
+
+anti_patterns:
+  - dont: Fill the card with a long article or a form
+    do_instead: >-
+      Keep it to a preview - hover-card.module.css fixes the card at 16rem
+      wide, so longer content grows into a tall narrow column
+
+deprecations: {}
+
+# hover-card.test.tsx asserts the kit class on the popup and the portal
+# container; nothing in it asserts how assistive technology treats the card.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+unexposed_parts:
+  - part: PreviewCard.Portal
+    reason: Composed inside HoverCardContent; only its `container` is exposed, as HoverCardContent's own prop.
+  - part: PreviewCard.Positioner
+    reason: Composed inside HoverCardContent; its placement props are exposed on HoverCardContent itself.
+
+prop_statements:
+  container:
+    states: container is the DOM node, shadow root or ref to one that the card portals into; an explicit null renders no card until a node is passed
+    because: >-
+      `HTMLElement | ShadowRoot | RefObject<HTMLElement | ShadowRoot | null> | null`
+      - live DOM nodes and ref objects, which no JSON Schema type covers.
+  sideOffset:
+    states: sideOffset is the gap in pixels between trigger and card, as a number or a function of side, align and both boxes' sizes
+    because: >-
+      `number | OffsetFunction` - the compiler emits one JSON type per
+      property, and the function form has no JSON Schema representation.
+  alignOffset:
+    states: alignOffset is the shift in pixels along the alignment axis, as a number or a function of side, align and both boxes' sizes
+    because: >-
+      `number | OffsetFunction` - the compiler emits one JSON type per
+      property, and the function form has no JSON Schema representation.
+  collisionBoundary:
+    states: collisionBoundary is the area the card is kept inside, `clipping-ancestors`, an element, a list of elements or a rectangle
+    because: >-
+      `'clipping-ancestors' | Element | Element[] | Rect` mixes a string with
+      live DOM elements, which no JSON Schema type covers.
+  collisionPadding:
+    states: collisionPadding is the space in pixels kept from the collision boundary, one number or a per-side object
+    because: >-
+      `number | { top?, right?, bottom?, left? }` - the compiler emits one
+      JSON type per property.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the popup's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the popup's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open, side, align, instant,
+      transitionStatus). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through
+      hover-card.module.css, not through this.
+
+examples:
+  good:
+    - title: A card placed to the right of its trigger
+      code: |
+        <HoverCard>
+          <HoverCardTrigger href="/users/ada">@ada</HoverCardTrigger>
+          <HoverCardContent side="right" align="start">Ada Lovelace</HoverCardContent>
+        </HoverCard>
+    - title: A card portalled into a themed subtree
+      code: |
+        <HoverCard>
+          <HoverCardTrigger href="/docs/spec">Specification</HoverCardTrigger>
+          <HoverCardContent container={themedSectionRef}>The current draft.</HoverCardContent>
+        </HoverCard>
+  bad:
+    - title: Content with no HoverCard root around it
+      code: <HoverCardContent>Ada Lovelace</HoverCardContent>
+      why: >-
+        The primitive's Portal and Popup read the nearest HoverCard root's
+        state through context and throw when there is none.
+
+family_membership:
+  name: hover_card
+  role: part

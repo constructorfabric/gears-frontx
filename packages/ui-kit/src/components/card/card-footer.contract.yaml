@@ -1,0 +1,60 @@
+# Semantic overlay for CardFooter - part of the Card family, see
+# card.contract.yaml's `family_membership` for how the seven contracts
+# relate. `mounted_in` is filled from Card's own accepted components, not
+# authored here.
+component: card-footer
+
+intent: Lay out the row at the foot of a card, typically its actions.
+
+typical_uses:
+  - The buttons that act on the card's content, at its foot
+
+dont_use_when:
+  - situation: One action that belongs beside the card's title
+    instead:
+      target: CardAction
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_action.v1
+
+# A footer holds buttons as often as a line of text, so it is not
+# constrained to a list of components.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: flex-row-with-no-gap
+    text: >-
+      CardFooter is a flex row that centers its children vertically, with a
+      horizontal padding of --card-spacing and no gap between its children.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Two actions spaced on the footer
+      code: |
+        <CardFooter style={{ gap: 'var(--space-2)' }}>
+          <Button variant="outline">Cancel</Button>
+          <Button>Upgrade</Button>
+        </CardFooter>
+  bad:
+    - title: Two buttons with no gap between them
+      code: |
+        <CardFooter>
+          <Button variant="outline">Cancel</Button>
+          <Button>Upgrade</Button>
+        </CardFooter>
+      why: >-
+        CardFooter adds no gap of its own, so the two buttons render flush
+        against each other.
+
+family_membership:
+  name: card
+  role: part

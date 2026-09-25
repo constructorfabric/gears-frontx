@@ -1,0 +1,111 @@
+# Semantic overlay for Empty (the root) - the hand-written half of one of
+# eight contracts describing this family. The parts are empty-header,
+# empty-media, empty-title, empty-description, empty-detail, empty-content
+# and empty-actions; `family_membership` below is how a reader (or the
+# conformance test) walks between them.
+#
+# Machine-extractable facts (prop list, defaults, forwarded surface) do NOT
+# belong here: the compiler takes those from empty.tsx and rejects an
+# overlay that restates them. Empty wraps no primitive (every export is a
+# plain styled div, see empty.tsx), so no member carries prop_statements:
+# the only kit prop in the family is EmptyMedia's `variant` axis, which the
+# schema states fully as an enum.
+component: empty
+
+intent: Stand in for a list, table or panel that has settled with nothing to show, explaining why and offering a way forward.
+
+typical_uses:
+  - A list, table or search result that returned zero items
+  - A first-run panel shown before any data exists
+
+dont_use_when:
+  - situation: Data is still loading and the region is not yet known to be empty
+    instead:
+      target: Skeleton
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.skeleton.v1
+  - situation: A short loading indicator with no layout to hold
+    instead:
+      target: Spinner
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.spinner.v1
+  - situation: A status or error message about the page, such as a failed request
+    instead:
+      target: Alert
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.alert.v1
+  - situation: A bounded container around real content that is present
+    instead:
+      target: Card
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1
+
+# The ONE authored statement of a nesting relationship: the compiler fills
+# every other contract's `mounted_in` from lists like this one. The root
+# hosts the header (which carries media, title, description and detail)
+# and the two foot parts, as empty.md's composition line states. No text
+# flag: the root's text belongs in its parts.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.empty_header.v1 # EmptyHeader
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.empty_content.v1 # EmptyContent
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.empty_actions.v1 # EmptyActions
+
+invariants:
+  - id: no-role-or-live-region
+    text: >-
+      Empty and every part render a plain div with no role, no aria
+      attribute and no live region of their own; appearing or disappearing
+      announces nothing to assistive tech.
+  - id: centered-column-capped-at-32rem
+    text: >-
+      The root is a flex column that centers its children on the cross
+      axis, center-aligns its text, spaces its direct children
+      var(--space-6) apart and caps its own width at 32rem inside a dashed
+      border.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A search with no results, an icon, a detail line and two actions
+      code: |
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <SearchIcon />
+            </EmptyMedia>
+            <EmptyTitle>No results</EmptyTitle>
+            <EmptyDescription>Try a different search term or clear your filters.</EmptyDescription>
+            <EmptyDetail>3 filters applied</EmptyDetail>
+          </EmptyHeader>
+          <EmptyActions>
+            <Button onClick={createFirst}>New project</Button>
+            <Button variant="outline" onClick={clearFilters}>Clear filters</Button>
+          </EmptyActions>
+        </Empty>
+  bad:
+    - title: Empty rendered while the request is still in flight
+      code: |
+        {isLoading || rows.length === 0 ? (
+          <Empty>
+            <EmptyHeader>
+              <EmptyTitle>No projects yet</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <ProjectList rows={rows} />
+        )}
+      why: >-
+        The user reads "no projects yet" during the load and then sees rows
+        appear; a loading state belongs to Skeleton or Spinner, and Empty
+        only to a settled empty result.
+
+family_membership:
+  name: empty
+  role: root

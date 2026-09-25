@@ -1,0 +1,90 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "card-header",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Group a card's title, description and optional corner action into the block at its top.",
+  "typical_uses": [
+    "The top block of a Card holding its title, its description and one action beside them"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The top block of a placeholder for a region with nothing to show",
+      "instead": {
+        "target": "EmptyHeader",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_header.v1"
+      }
+    },
+    {
+      "situation": "The title block of a modal dialog",
+      "instead": {
+        "target": "DialogHeader",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_header.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.card_title.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.card_description.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.card_action.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Card",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "layout-follows-its-direct-parts",
+      "text": "CardHeader is a grid spaced var(--space-1) apart that switches layout on which parts are its direct children: a direct CardAction adds a second, content-sized column for the action, and a direct CardDescription gives the grid two rows, title then description. There is no prop for either; a part wrapped in another element is not detected."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Title, description and a corner action",
+        "code": "<CardHeader>\n  <CardTitle>Team plan</CardTitle>\n  <CardDescription>Billed monthly</CardDescription>\n  <CardAction>\n    <Button variant=\"ghost\" size=\"sm\">Manage</Button>\n  </CardAction>\n</CardHeader>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The text parts wrapped in an extra element",
+        "code": "<CardHeader>\n  <div>\n    <CardTitle>Team plan</CardTitle>\n    <CardDescription>Billed monthly</CardDescription>\n  </div>\n  <CardAction>\n    <Button variant=\"ghost\" size=\"sm\">Manage</Button>\n  </CardAction>\n</CardHeader>\n",
+        "why": "The header looks for CardDescription among its direct children only, so the wrapped description does not get its own grid row; the wrapper also puts a non-part element into the header."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "card",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit CardHeader",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

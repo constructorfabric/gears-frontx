@@ -1,0 +1,105 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.kbd.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "kbd",
+  "forwards_to": "gts.frontx.uikit.element.dom_kbd.v1~",
+  "intent": "Mark up a key cap or short label so it reads as a key on screen.",
+  "typical_uses": [
+    "A single key named in running help text or a menu item (Esc closes the dialog)",
+    "One key of a chorded shortcut, grouped by KbdGroup (Ctrl, K)"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "An interactive control that happens to look like a key",
+      "instead": {
+        "target": "Button",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+      }
+    },
+    {
+      "situation": "A command line or other text the user types verbatim",
+      "instead": {
+        "target": "the consuming application's own code or monospace text styling",
+        "note": "This kit ships no code text component, and no kit component is a substitute for one: Kbd marks key caps and short chords, not typed-out command lines."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "InputGroupAddon",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_addon.v1"
+    },
+    {
+      "container": "KbdGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.kbd_group.v1"
+    },
+    {
+      "container": "running text in the consuming application",
+      "note": "A single key is named inline in a paragraph or a hint, with no kit container around it."
+    }
+  ],
+  "invariants": [
+    {
+      "id": "display-only",
+      "text": "Kbd is display-only decoration: the kit's stylesheet renders it with `pointer-events: none` and `user-select: none`, so it never receives clicks, focus or selection, and it carries no ARIA role of its own - the semantics are the native kbd element's alone."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Attach the shortcut's click or key handler to the Kbd itself",
+      "do_instead": "Wire the handler on the real control (a Button, a menu item, a window keydown listener) and keep Kbd purely to name the key in text"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A key cap named in running text",
+        "code": "<p>Press <Kbd>Esc</Kbd> to close.</p>"
+      },
+      {
+        "title": "One key of a chord, grouped by KbdGroup",
+        "code": "<KbdGroup>\n  <Kbd>Ctrl</Kbd>\n  <Kbd>K</Kbd>\n</KbdGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Making the key cap itself clickable",
+        "code": "<Kbd onClick={openPalette}>Esc</Kbd>",
+        "why": "Kbd renders with `pointer-events: none` and carries no interaction of its own, so a handler on it never fires from a click on the glyph. Put the handler on a real control and keep Kbd for display."
+      },
+      {
+        "title": "A variant prop guessed from another component",
+        "code": "<Kbd variant=\"solid\">Esc</Kbd>",
+        "why": "Kbd takes no kit-specific props; every prop is the native kbd element's. There is no variant axis here - the look is fixed by the kit's stylesheet."
+      }
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Kbd",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.aspect_ratio.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "aspect-ratio",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Reserve a box at a fixed width-to-height ratio so the layout around it does not shift when its content loads.",
+  "typical_uses": [
+    "Holding space for an image, video or embed before it loads, so surrounding layout does not jump",
+    "Tiles in a grid or gallery that must share one proportion regardless of each item's natural size"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Content with a natural, already-fixed size (a fixed-size icon or badge)",
+      "instead": {
+        "target": "a plain wrapper element",
+        "note": "A ratio box buys nothing for content that does not stretch to fill it - render the content directly. The kit ships no component for this case beyond the plain element the host page already provides."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "invariants": [
+    {
+      "id": "consumer-style-merges-after-the-component",
+      "text": "A consumer's `style` is spread after the component's own inline `--ratio`, so a `--ratio` key inside a consumer style silently overrides the `ratio` prop."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Expect the box to crop or scale the child to fit",
+      "do_instead": "Size the child to the box yourself (a full-size img with `object-fit: cover`, for example); the box reserves proportions only"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Holding space for a photo before it loads",
+        "code": "<AspectRatio ratio={16 / 9}><img src=\"/photo.jpg\" alt=\"A description\" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></AspectRatio>"
+      },
+      {
+        "title": "Square tiles that share one proportion",
+        "code": "<AspectRatio ratio={1} className=\"tile\"><img src=\"/thumb.jpg\" alt=\"\" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></AspectRatio>"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Expecting the box to crop the child",
+        "code": "<AspectRatio ratio={4 / 3}><img src=\"/photo.jpg\" alt=\"A photo\" /></AspectRatio>",
+        "why": "Without sizing of its own the child does not fill the box, so the reserved space shows through and an oversized image spills out."
+      },
+      {
+        "title": "Ratio smuggled through a style key",
+        "code": "<AspectRatio ratio={16 / 9} style={{ '--ratio': 1 }}>content</AspectRatio>",
+        "why": "The style key wins over the `ratio` prop, so the box renders 1:1."
+      }
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit AspectRatio",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "ratio": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "ratio"
+    ],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

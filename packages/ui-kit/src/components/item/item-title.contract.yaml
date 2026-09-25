@@ -1,0 +1,63 @@
+# Semantic overlay for ItemTitle - part of the item family, see
+# item.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from ItemContent's accepted components.
+component: item-title
+
+intent: Name what one item row is, in a single line.
+
+typical_uses:
+  - The one-line name of an Item, such as a file name or a person's name
+
+dont_use_when:
+  - situation: The headline of a bounded panel
+    instead:
+      target: CardTitle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_title.v1
+  - situation: The headline of a placeholder for a region with nothing to show
+    instead:
+      target: EmptyTitle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.empty_title.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: one-line-clipped
+    text: >-
+      ItemTitle renders a div in the label weight that never wraps: it is
+      as wide as its text up to the space available, and text past that
+      width is clipped. It has no heading role.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A short name above its description
+      code: |
+        <ItemContent>
+          <ItemTitle>Jane Doe</ItemTitle>
+          <ItemDescription>Owner</ItemDescription>
+        </ItemContent>
+  bad:
+    - title: The explanation folded into the title
+      code: |
+        <ItemContent>
+          <ItemTitle>Jane Doe, owner of the workspace since March</ItemTitle>
+        </ItemContent>
+      why: >-
+        ItemTitle stays on one line and clips what does not fit, so the end
+        of the sentence is lost in a narrow row; the supporting text belongs
+        in ItemDescription, which wraps to two lines.
+
+family_membership:
+  name: item
+  role: part

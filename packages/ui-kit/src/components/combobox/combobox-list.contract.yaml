@@ -1,0 +1,106 @@
+# Semantic overlay for ComboboxList - a part of the Combobox family, see
+# combobox.contract.yaml's `family_membership`. It wraps Base UI's
+# Combobox.List; the forwarded surface is its div.
+component: combobox-list
+
+intent: The scrolling listbox inside a Combobox's popup that renders the items left after filtering.
+
+typical_uses:
+  - The list of a combobox's filtered items, flat or in groups
+
+dont_use_when:
+  - situation: The message shown when no item matches the query
+    instead:
+      target: ComboboxEmpty
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_empty.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_item.v1 # ComboboxItem
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_group.v1 # ComboboxGroup
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_separator.v1 # ComboboxSeparator
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.combobox_collection.v1 # ComboboxCollection
+
+invariants:
+  - id: function-children-map-the-filtered-items
+    text: >-
+      When children is a function, the list calls it once for every item
+      (or every group, when the root's `items` holds groups) left after
+      filtering, with the item and its index; a node child is rendered as
+      given, unfiltered.
+  - id: listbox-role
+    text: >-
+      The list renders with role "listbox", and with
+      `aria-multiselectable` when the root has `multiple`; with the root's
+      `grid` it renders role "grid" instead.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      the primitive's Combobox.List sets role="listbox" and
+      aria-multiselectable; combobox.test.tsx asserts the popup is found by
+      role listbox once opened and is absent while closed
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  children:
+    states: children is either React nodes or a function of an item and its index returning React nodes
+    because: >-
+      `ReactNode | ((item: any, index: number) => ReactNode)` - the compiler emits one JSON type per property, and a function has no JSON Schema representation.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the list's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the list's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (empty). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes
+      through combobox.module.css, not through this.
+
+examples:
+  good:
+    - title: A flat list rendered from the root's items
+      code: |
+        <ComboboxList>
+          {(item) => (
+            <ComboboxItem key={item} value={item}>
+              {item}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+    - title: Groups rendered from grouped items
+      code: |
+        <ComboboxList>
+          {(group) => (
+            <ComboboxGroup key={group.value} items={group.items}>
+              <ComboboxLabel>{group.label}</ComboboxLabel>
+              <ComboboxCollection>
+                {(item) => <ComboboxItem key={item} value={item}>{item}</ComboboxItem>}
+              </ComboboxCollection>
+            </ComboboxGroup>
+          )}
+        </ComboboxList>
+  bad:
+    - title: The no-results message put inside the list
+      code: |
+        <ComboboxList>
+          <ComboboxEmpty>No regions found.</ComboboxEmpty>
+          <ComboboxItem value="europe">Europe</ComboboxItem>
+        </ComboboxList>
+      why: >-
+        ComboboxEmpty belongs beside the list, as a child of ComboboxContent;
+        inside the listbox it becomes a non-option child of it.
+
+family_membership:
+  name: combobox
+  role: part

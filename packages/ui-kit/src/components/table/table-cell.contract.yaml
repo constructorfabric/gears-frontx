@@ -1,0 +1,69 @@
+# Semantic overlay for TableCell - part of the Table family, see
+# table.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from the accepting member's own
+# `accepts`, not authored here.
+component: table-cell
+
+intent: One data cell of a table row.
+
+typical_uses:
+  - One value of a record in a TableBody row
+  - A totals value in a TableFooter row
+
+dont_use_when:
+  - situation: The heading of a column or of a row
+    instead:
+      target: TableHead
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.table_head.v1
+
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: text-does-not-wrap-by-default
+    text: >-
+      Cell text does not wrap: a long value widens its column and the
+      table's wrapper scrolls horizontally. Under Table's
+      `variant="collection"` cell text wraps instead.
+  - id: sized-width-includes-padding
+    text: >-
+      TableCell is box-sizing border-box, so a width set through style or
+      className includes the cell's padding; a cell holding a
+      role="checkbox" descendant drops its inline-end padding.
+
+anti_patterns:
+  - dont: Set display flex or grid on a TableCell to lay out its content
+    do_instead: >-
+      Wrap the content in an inner element and lay that out; a non-table
+      display makes the cell stop being a table-cell box, so vertical-align
+      no longer applies and the 40px floor becomes a fixed height
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      table.test.tsx asserts getAllByRole('cell') finds all four data cells
+      of the rendered table
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A cell spanning two columns
+      code: |
+        <TableRow>
+          <TableCell colSpan={2}>No results</TableCell>
+        </TableRow>
+  bad:
+    - title: A flex layout on the cell itself
+      code: |
+        <TableCell style={{ display: 'flex', gap: 8 }}>INV001</TableCell>
+      why: >-
+        The cell stops being a table-cell box and loses its vertical
+        centering; put the flex layout on an element inside the cell.
+
+family_membership:
+  name: table
+  role: part

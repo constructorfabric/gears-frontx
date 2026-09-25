@@ -1,0 +1,81 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.table_body.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "table-body",
+  "forwards_to": "gts.frontx.uikit.element.dom_tbody.v1~",
+  "intent": "Hold a table's data rows.",
+  "typical_uses": [
+    "The data rows of a table, one TableRow per record"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A totals or summary row under the data",
+      "instead": {
+        "target": "TableFooter",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.table_footer.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.table_row.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Table",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.table.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "last-row-drops-its-rule",
+      "text": "When TableBody is the table's last child, its last row draws no bottom rule, since the container's own edge sits below it; with a TableFooter after it the rule stays."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Two data rows",
+        "code": "<TableBody>\n  <TableRow>\n    <TableCell>INV001</TableCell>\n  </TableRow>\n  <TableRow>\n    <TableCell>INV002</TableCell>\n  </TableRow>\n</TableBody>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A totals row appended to the body",
+        "code": "<TableBody>\n  <TableRow>\n    <TableCell>INV001</TableCell>\n  </TableRow>\n  <TableRow>\n    <TableCell>Total</TableCell>\n  </TableRow>\n</TableBody>\n",
+        "why": "The totals row reads as one more record and takes the body's hover and state tints; put it in TableFooter."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "table",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit TableBody",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.bubble_group.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "bubble-group",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Stack consecutive bubbles from the same sender into one tightly spaced column.",
+  "typical_uses": [
+    "Several turns in a row from one sender, without a Message row around each"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Consecutive turns that each carry an avatar, a header or a footer",
+      "instead": {
+        "target": "MessageGroup, with one Message per turn",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.message_group.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.bubble.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "flex-column-with-fixed-gap",
+      "text": "The group is a flex column that spaces its children var(--space-2) apart and lets each Bubble move itself to the end edge with its own `align`."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put bubbles from more than one sender in one BubbleGroup",
+      "do_instead": "Start a new BubbleGroup at each change of sender"
+    },
+    {
+      "dont": "Set an alignment on the group to move all of its bubbles",
+      "do_instead": "Set `align` on each Bubble; the group has no alignment prop"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Two consecutive turns from the current user",
+        "code": "<BubbleGroup>\n  <Bubble align=\"end\">\n    <BubbleContent>First message.</BubbleContent>\n  </Bubble>\n  <Bubble align=\"end\">\n    <BubbleContent>Second message.</BubbleContent>\n  </Bubble>\n</BubbleGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Alignment set on the group",
+        "code": "<BubbleGroup align=\"end\">\n  <Bubble>\n    <BubbleContent>First message.</BubbleContent>\n  </Bubble>\n</BubbleGroup>\n",
+        "why": "BubbleGroup declares no `align` and its div surface has none, so TypeScript rejects it; alignment belongs on each Bubble, and this one keeps its default start alignment."
+      }
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit BubbleGroup",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

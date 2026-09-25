@@ -1,0 +1,177 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "alert-dialog",
+  "intent": "Hold the open state of one modal confirmation that interrupts the user until they explicitly confirm or cancel.",
+  "typical_uses": [
+    "Confirming a destructive or irreversible action, such as deleting a record or discarding unsaved changes"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A modal the user may dismiss by pressing outside it, or one holding a form or other free content",
+      "instead": {
+        "target": "Dialog",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dialog.v1"
+      }
+    },
+    {
+      "situation": "A panel that slides in from an edge of the screen",
+      "instead": {
+        "target": "Sheet",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sheet.v1"
+      }
+    },
+    {
+      "situation": "A status message that sits in the page without blocking it",
+      "instead": {
+        "target": "Alert",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert.v1"
+      }
+    },
+    {
+      "situation": "A transient notification that needs no answer",
+      "instead": {
+        "target": "Toaster",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.toast_toaster.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_trigger.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_content.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "open-wins-over-default-open",
+      "text": "`open` and `defaultOpen` are both accepted; `defaultOpen` seeds the initial state and is ignored afterwards, and when `open` is given it wins and the component follows it on every render."
+    },
+    {
+      "id": "always-modal-never-closed-by-outside-press",
+      "text": "The alert dialog is always modal: while open it traps focus inside the popup and locks page scroll, and a press outside the popup, on the backdrop or elsewhere, never closes it. The root takes no `modal` and no `disablePointerDismissal` prop to change either."
+    },
+    {
+      "id": "closed-by-escape-or-a-close-part",
+      "text": "While open, the alert dialog closes on Escape, on AlertDialogAction or AlertDialogCancel, or when the caller sets `open` to false; each close the component makes is reported through `onOpenChange`. With nested dialogs open, Escape closes only the topmost one."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "children": {
+      "states": "children is the root's content, either React nodes or a function of the active trigger's payload that returns them",
+      "because": "`React.ReactNode | PayloadChildRenderFunction<Payload>` - the function form receives `{ payload }` from whichever trigger opened the dialog. The compiler emits one JSON type per property, and a function has no JSON Schema representation."
+    },
+    "onOpenChange": {
+      "states": "onOpenChange is a callback called with the next open state and event details, not a value",
+      "because": "`(open: boolean, eventDetails) => void`; the second argument carries Base UI's change-event details, including the reason (such as a trigger press, Escape or a close press). No JSON Schema type covers a function."
+    },
+    "onOpenChangeComplete": {
+      "states": "onOpenChangeComplete is a callback called with the open state once the open or close animation has finished",
+      "because": "`(open: boolean) => void` - a function, which no JSON Schema type covers."
+    },
+    "actionsRef": {
+      "states": "actionsRef is a ref the root fills with imperative `close` and `unmount` actions",
+      "because": "`React.RefObject<AlertDialogRootActions | null>` - a ref object holding functions, which no JSON Schema type covers."
+    },
+    "handle": {
+      "states": "handle is an opaque object from the primitive's AlertDialog.createHandle(), shared with a trigger placed outside this root",
+      "because": "`AlertDialogHandle<Payload>` is a class instance holding the dialog's store, not data; the kit re-exports no createHandle, so a caller imports it from the primitive."
+    },
+    "triggerId": {
+      "states": "triggerId is the id of the trigger a controlled dialog is open for, or null",
+      "because": "`string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
+    },
+    "defaultTriggerId": {
+      "states": "defaultTriggerId is the id of the trigger an initially open dialog is open for, or null",
+      "because": "`string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A destructive confirmation opened from its trigger",
+        "code": "<AlertDialog>\n  <AlertDialogTrigger render={<Button variant=\"destructive\" />}>Delete account</AlertDialogTrigger>\n  <AlertDialogContent>\n    <AlertDialogHeader>\n      <AlertDialogTitle>Delete this account?</AlertDialogTitle>\n      <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>\n    </AlertDialogHeader>\n    <AlertDialogFooter>\n      <AlertDialogCancel>Cancel</AlertDialogCancel>\n      <AlertDialogAction variant=\"destructive\" onClick={deleteAccount}>Delete</AlertDialogAction>\n    </AlertDialogFooter>\n  </AlertDialogContent>\n</AlertDialog>\n"
+      },
+      {
+        "title": "A confirmation opened from state the caller owns",
+        "code": "<AlertDialog open={open} onOpenChange={setOpen}>\n  <AlertDialogContent>\n    <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>\n    <AlertDialogFooter>\n      <AlertDialogCancel>Keep editing</AlertDialogCancel>\n      <AlertDialogAction onClick={discard}>Discard</AlertDialogAction>\n    </AlertDialogFooter>\n  </AlertDialogContent>\n</AlertDialog>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A made-up modal prop to let an outside press close it",
+        "code": "<AlertDialog modal={false}>\n  <AlertDialogTrigger>Delete</AlertDialogTrigger>\n  <AlertDialogContent>\n    <AlertDialogTitle>Delete this file?</AlertDialogTitle>\n  </AlertDialogContent>\n</AlertDialog>\n",
+        "why": "The alert dialog's root takes no `modal` prop; it is always modal and never closes on an outside press. A dismissible modal is Dialog."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "alert_dialog",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_action.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_cancel.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_description.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_footer.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_header.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_media.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_title.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog_trigger.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit AlertDialog",
+    "type": "object",
+    "properties": {
+      "actionsRef": {
+        "description": "TS: React.RefObject<DialogRootActions | null> | undefined. The compiler emits one JSON type per property; this type is left to tsc. actionsRef is a ref the root fills with imperative `close` and `unmount` actions. `React.RefObject<AlertDialogRootActions | null>` - a ref object holding functions, which no JSON Schema type covers."
+      },
+      "children": {
+        "description": "TS: React.ReactNode | PayloadChildRenderFunction<Payload>. The compiler emits one JSON type per property; this type is left to tsc. children is the root's content, either React nodes or a function of the active trigger's payload that returns them. `React.ReactNode | PayloadChildRenderFunction<Payload>` - the function form receives `{ payload }` from whichever trigger opened the dialog. The compiler emits one JSON type per property, and a function has no JSON Schema representation."
+      },
+      "defaultOpen": {
+        "type": "boolean"
+      },
+      "defaultTriggerId": {
+        "description": "TS: string | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. defaultTriggerId is the id of the trigger an initially open dialog is open for, or null. `string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
+      },
+      "handle": {
+        "description": "TS: AlertDialogHandle<Payload> | undefined. The compiler emits one JSON type per property; this type is left to tsc. handle is an opaque object from the primitive's AlertDialog.createHandle(), shared with a trigger placed outside this root. `AlertDialogHandle<Payload>` is a class instance holding the dialog's store, not data; the kit re-exports no createHandle, so a caller imports it from the primitive."
+      },
+      "onOpenChange": {
+        "description": "TS: ((open: boolean, eventDetails: AlertDialogRootChangeEventDetails) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChange is a callback called with the next open state and event details, not a value. `(open: boolean, eventDetails) => void`; the second argument carries Base UI's change-event details, including the reason (such as a trigger press, Escape or a close press). No JSON Schema type covers a function."
+      },
+      "onOpenChangeComplete": {
+        "description": "TS: ((open: boolean) => void) | undefined. The compiler emits one JSON type per property; this type is left to tsc. onOpenChangeComplete is a callback called with the open state once the open or close animation has finished. `(open: boolean) => void` - a function, which no JSON Schema type covers."
+      },
+      "open": {
+        "type": "boolean"
+      },
+      "triggerId": {
+        "description": "TS: string | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. triggerId is the id of the trigger a controlled dialog is open for, or null. `string | null` - the compiler emits one JSON type per property, so a string-or-null union is left unasserted."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

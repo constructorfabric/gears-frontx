@@ -1,0 +1,161 @@
+# Semantic overlay for Slider - the hand-written half of the contract.
+#
+# Machine-extractable facts (prop list, defaults, forwarded surface) do NOT
+# belong here: the compiler takes those from slider.tsx and the Base UI
+# Slider primitive it wraps, and rejects an overlay that tries to restate
+# them - one fact, one owner. This file carries only what the code cannot
+# express: intent, boundaries, invariants.
+component: slider
+
+intent: Let a user pick a number, or a range of two numbers, from a bounded scale by dragging, clicking the track, or pressing arrow keys.
+
+typical_uses:
+  - A single numeric value from a continuous or stepped range (volume, zoom, a price ceiling)
+  - A range of two values (a min/max price filter)
+
+dont_use_when:
+  - situation: A small, fixed set of discrete options
+    instead:
+      target: ToggleGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.toggle_group.v1
+  - situation: Mutually exclusive options presented as a fixed list rather than a scale
+    instead:
+      target: RadioGroup
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.radio_group.v1
+  - situation: Typing an exact number
+    instead:
+      target: Input with `type="number"`
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.input.v1
+
+# SliderProps declares no children field and the component renders only its
+# own track/indicator/thumb parts internally - there is no slot for anything
+# a consumer passes.
+accepts:
+  content: nothing
+
+invariants:
+  - id: value-wins-over-default-value
+    text: >-
+      `value` and `defaultValue` are both accepted; `defaultValue` seeds the
+      initial state and is ignored afterwards, and when `value` is given it
+      wins and the component follows it on every render.
+  - id: thumb-count-follows-the-resolved-value-shape
+    text: >-
+      A scalar `value`/`defaultValue` renders one thumb; a `[min, max]` array
+      renders one thumb per entry, so a two-element array renders a range
+      slider with two thumbs. With neither prop given the slider renders one
+      thumb at `min`, not a two-thumb range; a range slider needs an array
+      `value` or `defaultValue`.
+
+anti_patterns:
+  - dont: Render one without an accessible name on its thumbs
+    do_instead: >-
+      Pass `aria-labelledby` pointing at the id of a visible caption: it
+      reaches every thumb. `aria-label` names only the wrapping group, not
+      the thumbs a screen reader lands on
+  - dont: Use `onValueChange` to trigger a network call on every pixel of drag
+    do_instead: Use `onValueCommitted`, which fires once when the interaction ends
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      Base UI's own Slider primitive (pointer drag, click-on-track,
+      arrow-key/Page-key input, a hidden native range input per thumb for
+      form submission) plus slider.test.tsx's own role/value/disabled
+      assertions
+  rtl:
+    outcome: unknown
+
+# Internal structure this component composes that the kit does not expose as
+# a component of its own.
+unexposed_parts:
+  - part: Base UI's Slider.Control, Slider.Track, Slider.Indicator and Slider.Thumb
+    reason: >-
+      slider.tsx renders these directly inside its own Root wrapper to draw
+      the control, the track, the filled range and one Thumb per resolved
+      value entry; none of the four is exported as a component of its own,
+      so a consumer cannot reach or replace one independently - only the
+      whole Slider.
+
+# What each property that reaches this contract asserting nothing (or only
+# part of its shape) actually states, and why - keyed on the property
+# itself. The compiler emits both halves into that property's own
+# description, beside the `TS:` text.
+prop_statements:
+  value:
+    states: value is a number for a single-value slider, or a readonly array of numbers for a range slider
+    because: >-
+      The prop is generic over `Value extends number | readonly number[]`;
+      the compiler emits one JSON type per property, so this union is left
+      to tsc. Which shape applies is the caller's own choice: a scalar
+      renders one thumb, an array renders one thumb per entry.
+  defaultValue:
+    states: defaultValue is a number for a single-value slider, or a readonly array of numbers for a range slider
+    because: >-
+      Same generic `Value` union as `value`, seeding an uncontrolled
+      slider's initial state instead of controlling it.
+  onValueChange:
+    states: onValueChange is a function called with the next value and event details while dragging, not a value
+    because: >-
+      A function type has no JSON Schema representation. It fires on every
+      pointer move, keyboard step and track press while the interaction is
+      still in progress; `onValueCommitted` is what fires once it ends.
+  onValueCommitted:
+    states: onValueCommitted is a function called with the committed value and event details once an interaction ends, not a value
+    because: >-
+      A function type has no JSON Schema representation. It does not fire
+      when the value did not change or the change was canceled.
+  format:
+    states: format is an Intl.NumberFormatOptions object controlling how the value is formatted
+    because: >-
+      An object type with the full breadth of Intl's own formatting options
+      is not something this schema restates; the kit forwards it to Base UI
+      unchanged.
+  locale:
+    states: locale is a BCP 47 locale string, an array of them, or an Intl.Locale object, passed to Intl.NumberFormat
+    because: >-
+      Intl.LocalesArgument is a union of a string, a string array and an
+      Intl.Locale instance; the compiler emits one JSON type per property,
+      so this union is left to tsc.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the slider's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the slider's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (disabled, dragging, orientation, ...). The compiler emits one JSON type per property, so nothing is
+      asserted; the kit's own styling goes through slider.module.css, not
+      through this.
+
+examples:
+  good:
+    - title: Single value, uncontrolled, named by a visible caption
+      code: |-
+        <>
+          <Label id="volume-label">Volume</Label>
+          <Slider defaultValue={50} aria-labelledby="volume-label" />
+        </>
+    - title: Range, controlled and stepped
+      code: <Slider value={range} onValueChange={setRange} min={0} max={200} step={10} aria-labelledby="price-label" />
+  bad:
+    - title: Label text passed as children
+      code: <Slider defaultValue={50}>Volume</Slider>
+      why: >-
+        Slider takes no content - there is no slot for it, so the text never
+        names the thumbs. Pass `aria-labelledby` pointing at a visible
+        caption, which reaches every thumb; `aria-label` names only the
+        wrapping group.
+    - title: Controlled with no change handler
+      code: <Slider value={50} aria-labelledby="volume-label" />
+      why: >-
+        `value` with no `onValueChange` never gets its own update back, so
+        the slider is stuck at 50 and never responds to drag, click or
+        keyboard input. Pair `value` with `onValueChange`, or use
+        `defaultValue` instead.

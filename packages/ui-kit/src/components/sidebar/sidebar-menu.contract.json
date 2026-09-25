@@ -1,0 +1,90 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "sidebar-menu",
+  "forwards_to": "gts.frontx.uikit.element.dom_ul.v1~",
+  "intent": "The list of navigation rows in a sidebar section, header or footer.",
+  "typical_uses": [
+    "The rows of one sidebar section",
+    "A single switcher or user row in the header or the footer"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A menu of commands that opens from a button",
+      "instead": {
+        "target": "DropdownMenu",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.dropdown_menu.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_item.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "SidebarFooter",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_footer.v1"
+    },
+    {
+      "container": "SidebarGroupContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_group_content.v1"
+    },
+    {
+      "container": "SidebarHeader",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_header.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "unstyled-list",
+      "text": "SidebarMenu renders a `ul` with the list bullets, margin and padding removed, laying its items out as a full-width column with a 4px gap."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Two rows",
+        "code": "<SidebarMenu>\n  <SidebarMenuItem>\n    <SidebarMenuButton render={<a href=\"/inbox\" />}>\n      <InboxIcon />\n      <span>Inbox</span>\n    </SidebarMenuButton>\n  </SidebarMenuItem>\n  <SidebarMenuItem>\n    <SidebarMenuButton render={<a href=\"/drafts\" />}>\n      <FileIcon />\n      <span>Drafts</span>\n    </SidebarMenuButton>\n  </SidebarMenuItem>\n</SidebarMenu>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Rows straight in the list",
+        "code": "<SidebarMenu>\n  <SidebarMenuButton>Inbox</SidebarMenuButton>\n</SidebarMenu>\n",
+        "why": "A `ul` may only hold `li` children; wrap each row in a SidebarMenuItem."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "sidebar",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit SidebarMenu",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

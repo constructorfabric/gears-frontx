@@ -1,0 +1,73 @@
+# Semantic overlay for SidebarMenuSub - a part of the sidebar family, see
+# sidebar-provider.contract.yaml for the root.
+component: sidebar-menu-sub
+
+intent: A nested list of rows under one menu row, indented behind a vertical guide line.
+
+typical_uses:
+  - The child pages of one navigation row
+
+dont_use_when:
+  - situation: A second level that must show and hide on demand
+    instead:
+      target: Collapsible
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.collapsible.v1
+      note: Place a Collapsible inside the SidebarMenuItem; the sub-menu has no open state of its own.
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sidebar_menu_sub_item.v1 # SidebarMenuSubItem
+
+invariants:
+  - id: indented-list-with-a-guide
+    text: >-
+      SidebarMenuSub renders an unstyled `ul` indented 12px on each side
+      with a left border as the guide line; collapsed to the icon rail it
+      is not displayed.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: failed
+    by: >-
+      sidebar.module.css draws the .menuSub guide with the physical
+      `border-left`, so it stays on the left under a right-to-left
+      direction
+
+examples:
+  good:
+    - title: Child pages under a row
+      code: |
+        <SidebarMenuItem>
+          <SidebarMenuButton>
+            <BookIcon />
+            <span>Docs</span>
+          </SidebarMenuButton>
+          <SidebarMenuSub>
+            <SidebarMenuSubItem>
+              <SidebarMenuSubButton href="/docs/intro">
+                <span>Introduction</span>
+              </SidebarMenuSubButton>
+            </SidebarMenuSubItem>
+          </SidebarMenuSub>
+        </SidebarMenuItem>
+  bad:
+    - title: A sub-menu as a sibling of the item
+      code: |
+        <SidebarMenu>
+          <SidebarMenuItem>{docsRow}</SidebarMenuItem>
+          <SidebarMenuSub>{children}</SidebarMenuSub>
+        </SidebarMenu>
+      why: >-
+        A `ul` directly inside the menu's `ul` is invalid list markup; the
+        sub-menu goes inside the SidebarMenuItem it belongs to.
+
+family_membership:
+  name: sidebar
+  role: part

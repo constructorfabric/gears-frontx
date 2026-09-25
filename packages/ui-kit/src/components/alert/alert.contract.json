@@ -1,0 +1,122 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "alert",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Show a page-level status message that sits in the flow of the page rather than interrupting it.",
+  "typical_uses": [
+    "A status message tied to the current page or section",
+    "Pairing a short instruction with an optional action the user can take without leaving the page"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A message the user must acknowledge or dismiss before continuing",
+      "instead": {
+        "target": "AlertDialog",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_dialog.v1"
+      }
+    },
+    {
+      "situation": "A transient, self-dismissing notification",
+      "instead": {
+        "target": "toast() rendered by a mounted Toaster",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.toast_toaster.v1"
+      }
+    },
+    {
+      "situation": "A validation message tied to one form control",
+      "instead": {
+        "target": "FieldError",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_error.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_title.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_description.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_action.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "role-alert-announces-on-mount",
+      "text": "The root renders role=\"alert\" by default, so assistive tech announces it as soon as it mounts."
+    },
+    {
+      "id": "leading-svg-child-switches-to-icon-layout",
+      "text": "Any direct <svg> child switches Alert to the two-column icon layout, and every direct <svg> child is placed as an icon: sized to the small icon box and spanning both rows. An <svg> nested deeper, inside a part, is not detected."
+    },
+    {
+      "id": "alert-action-reserves-right-padding",
+      "text": "When an AlertAction is present as a direct child, the alert reserves a fixed amount of additional padding on its own right edge so body text never runs under it."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Put more than one direct <svg> child in an Alert",
+      "do_instead": "Use one leading <svg>; every direct <svg> is laid out as an icon, so a second one takes a grid cell meant for the title or description"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "verified",
+      "by": "alert.test.tsx asserts screen.getByRole('alert') resolves the rendered root, confirming role=\"alert\" is present by default"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "An icon-led alert with a destructive variant and a corner action",
+        "code": "<Alert variant=\"destructive\">\n  <WarningIcon />\n  <AlertTitle>Payment failed</AlertTitle>\n  <AlertDescription>We couldn't charge your card ending in 4242.</AlertDescription>\n  <AlertAction>\n    <Button size=\"sm\" variant=\"outline\">Retry</Button>\n  </AlertAction>\n</Alert>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Two leading icons on one alert",
+        "code": "<Alert>\n  <WarningIcon />\n  <InfoIcon />\n  <AlertTitle>Two icons</AlertTitle>\n</Alert>\n",
+        "why": "Every direct <svg> child is sized and placed as an icon spanning both rows, so the second icon lands in the column the title and description need and pushes them out of line."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "alert",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_action.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_description.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_title.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof alertVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Alert",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "destructive"
+        ],
+        "default": "default"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

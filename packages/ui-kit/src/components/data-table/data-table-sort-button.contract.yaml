@@ -89,7 +89,8 @@ prop_statements:
   children:
     states: children is a React node - the column's label
     because: >-
-      `ReactNode`, so an element is as valid as a string. Required, because
+      `ReactNode`, so an element is as valid as a string, and the compiler
+      emits one JSON type per property. Required, because
       a sort button with no label is a button whose only content is a
       direction arrow.
 

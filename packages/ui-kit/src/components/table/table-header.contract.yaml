@@ -1,0 +1,65 @@
+# Semantic overlay for TableHeader - part of the Table family, see
+# table.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from the accepting member's own
+# `accepts`, not authored here.
+component: table-header
+
+intent: Hold the row or rows of column headings at the top of a table.
+
+typical_uses:
+  - The heading row of a table, one TableHead per column
+
+dont_use_when:
+  - situation: A title or description of the whole table
+    instead:
+      target: TableCaption
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.table_caption.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.table_row.v1 # TableRow
+
+invariants: []
+
+anti_patterns:
+  - dont: Put the column headings in the first TableBody row as TableCell
+    do_instead: >-
+      Put them in TableHeader > TableRow > TableHead, so each cell is
+      announced with its column heading
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: One heading row
+      code: |
+        <TableHeader>
+          <TableRow>
+            <TableHead>Invoice</TableHead>
+            <TableHead>Status</TableHead>
+          </TableRow>
+        </TableHeader>
+  bad:
+    - title: Headings written as data cells
+      code: |
+        <TableBody>
+          <TableRow>
+            <TableCell>Invoice</TableCell>
+            <TableCell>Status</TableCell>
+          </TableRow>
+        </TableBody>
+      why: >-
+        Data cells in the body are not column headings: nothing is exposed
+        as a columnheader, and the row takes the body's hover and state
+        tints.
+
+family_membership:
+  name: table
+  role: part

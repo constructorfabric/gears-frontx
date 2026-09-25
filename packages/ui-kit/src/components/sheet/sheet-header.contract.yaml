@@ -1,0 +1,69 @@
+# Semantic overlay for SheetHeader - a part of the Sheet family, see
+# sheet.contract.yaml's `family_membership` for how the contracts relate.
+component: sheet-header
+
+intent: The heading region at the top of a sheet's panel, holding its title and description.
+
+typical_uses:
+  - The panel's title with a one-line description under it
+
+dont_use_when:
+  - situation: The heading region of a centered dialog
+    instead:
+      target: DialogHeader
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_header.v1
+
+# sheet.md's composition line places the title and the description here.
+# SheetContent accepts any content, so this part gains no filled mount
+# point from it.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_title.v1 # SheetTitle
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.sheet_description.v1 # SheetDescription
+
+invariants:
+  - id: stacked-column
+    text: >-
+      SheetHeader is a flex column whose children are spaced var(--space-1)
+      apart, with a var(--space-4) padding on every side that replaces the
+      panel's var(--space-6) inset for this child.
+  - id: pinned-while-the-popup-scrolls
+    text: >-
+      SheetHeader is sticky at the top of the panel with the panel's own
+      opaque background, so content scrolling under it stays hidden.
+
+anti_patterns: []
+
+deprecations: {}
+
+# A plain div with no role; sheet.test.tsx renders it but asserts nothing
+# about it.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A title with its description
+      code: |
+        <SheetHeader>
+          <SheetTitle>Edit profile</SheetTitle>
+          <SheetDescription>Changes apply when you save.</SheetDescription>
+        </SheetHeader>
+  bad:
+    - title: Footer actions placed in the header
+      code: |
+        <SheetHeader>
+          <SheetTitle>Edit profile</SheetTitle>
+          <Button onClick={save}>Save</Button>
+        </SheetHeader>
+      why: >-
+        The header stacks its children in a column under the title; actions
+        belong in SheetFooter, which stays pinned to the panel's bottom.
+
+family_membership:
+  name: sheet
+  role: part

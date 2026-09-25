@@ -1,0 +1,111 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.item_separator.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "item-separator",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Draw a line between two rows of an item group.",
+  "typical_uses": [
+    "A divider between two Items inside an ItemGroup"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A divider between sections outside a group of items",
+      "instead": {
+        "target": "Separator",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.separator.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "ItemGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.item_group.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "block-margin-on-top-of-the-gap",
+      "text": "ItemSeparator adds a var(--space-2) margin above and below on top of the group's gap."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Leave a separator exposed to assistive technology inside the group's list",
+      "do_instead": "Pass aria-hidden=\"true\" on ItemSeparator; the primitive's role separator is not a list item, and the rows' own boundaries already carry the structure"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered element with one the caller supplies",
+      "because": "Base UI's render prop takes an element or a function of the separator's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+    },
+    "style": {
+      "states": "style accepts a function of the separator's state as well as a plain style object",
+      "because": "Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (orientation). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through item.module.css, not through this."
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A decorative divider between two rows",
+        "code": "<ItemGroup>\n  <Item role=\"listitem\">Q3 report.pdf</Item>\n  <ItemSeparator aria-hidden=\"true\" />\n  <Item role=\"listitem\">Notes.txt</Item>\n</ItemGroup>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A plain Separator between rows",
+        "code": "<ItemGroup>\n  <Item>Q3 report.pdf</Item>\n  <Separator />\n  <Item>Notes.txt</Item>\n</ItemGroup>\n",
+        "why": "Separator is not a member of the group; ItemSeparator is the group's own divider and adds the block margin that spaces it from the rows."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "item_group",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ItemSeparator",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "orientation": {
+        "type": "string",
+        "enum": [
+          "horizontal",
+          "vertical"
+        ],
+        "default": "horizontal"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, SeparatorState> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered element with one the caller supplies. Base UI's render prop takes an element or a function of the separator's own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property."
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: SeparatorState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the separator's state as well as a plain style object. Base UI widens React's `CSSProperties` to `CSSProperties | ((state) => CSSProperties)` so a caller can style off the primitive's own state (orientation). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes through item.module.css, not through this."
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

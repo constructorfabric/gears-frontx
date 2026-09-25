@@ -1,0 +1,79 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert_description.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "alert-description",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "The alert's supporting detail - the sentence or two beneath its title explaining what happened or what to do.",
+  "typical_uses": [
+    "The line beneath AlertTitle giving the message's detail or its next step"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Supporting text anywhere outside of an Alert",
+      "instead": {
+        "target": "a plain paragraph, styled for its own surrounding context",
+        "note": "AlertDescription carries Alert's own muted color and text-wrap behavior; this kit has no generic standalone paragraph component to substitute."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "Alert",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert.v1"
+    }
+  ],
+  "invariants": [],
+  "anti_patterns": [
+    {
+      "dont": "Put the alert's detail text inside AlertTitle",
+      "do_instead": "Keep AlertTitle to the short headline and give the detail its own AlertDescription beneath it"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Supporting detail split into two paragraphs",
+        "code": "<AlertDescription>\n  <p>We could not reach the billing service.</p>\n  <p>Retry in a few minutes, or contact support if it persists.</p>\n</AlertDescription>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The detail folded into the title",
+        "code": "<Alert>\n  <AlertTitle>Payment failed. We couldn't charge your card ending in 4242.</AlertTitle>\n</Alert>\n",
+        "why": "AlertTitle is the headline; the detail belongs in AlertDescription, the part that carries the alert's supporting text."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "alert",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit AlertDescription",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

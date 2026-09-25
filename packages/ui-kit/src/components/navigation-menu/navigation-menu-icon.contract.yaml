@@ -1,0 +1,86 @@
+# Semantic overlay for NavigationMenuIcon - a part of the NavigationMenu
+# family, see navigation-menu.contract.yaml's `family_membership` for how the
+# contracts relate. The primitive's surface is a span; the kit renders it as
+# the chevron glyph through `render`.
+component: navigation-menu-icon
+
+intent: The chevron that marks a trigger as expandable and turns over while its item is open.
+
+typical_uses:
+  - Rendered by NavigationMenuTrigger after its caption; never placed by the caller in the ordinary composition
+
+dont_use_when:
+  - situation: Marking a NavigationMenuTrigger as expandable
+    instead:
+      target: NavigationMenuTrigger
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu_trigger.v1
+      note: >-
+        NavigationMenuTrigger already renders one NavigationMenuIcon after its
+        caption.
+  - situation: The arrow that points from the open trigger at the popup
+    instead:
+      target: NavigationMenuIndicator
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.navigation_menu_indicator.v1
+
+accepts:
+  content: nothing
+
+invariants:
+  - id: needs-an-item
+    text: >-
+      The icon reads its open state from the nearest NavigationMenuItem and
+      throws when rendered outside one.
+  - id: open-only-for-its-own-item
+    text: >-
+      The icon carries `data-popup-open`, and turns over, only while the menu
+      is open on its own item; it is hidden from assistive technology.
+
+anti_patterns:
+  - dont: Pass a different glyph through `render`
+    do_instead: >-
+      Keep the kit's chevron; a caller's `render` replaces the chevron
+      element together with the classes the kit and `className` put on it
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies, including the kit's own chevron
+    because: >-
+      Base UI's render prop takes an element or a function of the icon's own
+      state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property. The kit itself passes the chevron
+      through `render` and spreads the caller's props after it.
+  style:
+    states: style accepts a function of the icon's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (open). The compiler emits one JSON type per property, so nothing is asserted; the kit's own styling goes
+      through navigation-menu.module.css, not through this.
+
+examples:
+  good:
+    - title: The icon as the trigger renders it
+      code: |
+        <NavigationMenuItem>
+          <NavigationMenuTrigger>Products</NavigationMenuTrigger>
+          <NavigationMenuContent>
+            <NavigationMenuLink href="/products/a">Product A</NavigationMenuLink>
+          </NavigationMenuContent>
+        </NavigationMenuItem>
+  bad:
+    - title: An icon with no item around it
+      code: <NavigationMenuIcon />
+      why: >-
+        The icon reads its open state from the nearest NavigationMenuItem;
+        outside one the primitive throws.
+
+family_membership:
+  name: navigation_menu
+  role: part

@@ -1,0 +1,153 @@
+# Semantic overlay for ChartContainer - the hand-written half of the
+# contract. Six contracts live in this directory, one per component export
+# of chart.tsx; they are independent exports, not a compound family: the
+# tooltip and legend sit inside a Recharts chart element and their content
+# components go into a `content` prop, so no kit component nests another as
+# a child. ChartConfig is a type, not a component, and is stated here as a
+# companion.
+#
+# Machine-extractable facts (prop list, forwarded surface) do NOT belong
+# here: the compiler takes those from chart.tsx.
+component: chart-container
+
+intent: Size one Recharts chart to its box and give every series in it a color custom property from a ChartConfig.
+
+typical_uses:
+  - A bar, line, area or pie chart of a few series
+  - A chart whose tooltip and legend read series labels and colors from one config
+
+dont_use_when:
+  - situation: The reader needs exact values to compare or copy
+    instead:
+      target: Table
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.table.v1
+  - situation: One value measured against a range or a goal
+    instead:
+      target: Progress
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.progress.v1
+
+# ChartContainer examines nothing about its children; they render inside
+# Recharts' ResponsiveContainer, which sizes a chart element to the box.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: color-custom-property-per-config-key
+    text: >-
+      Every ChartConfig key becomes a `--color-<key>` custom property scoped
+      to this container's `data-chart` id, so a series paints with
+      `fill="var(--color-<key>)"` or `stroke="var(--color-<key>)"`. A key
+      with neither `color` nor `theme` takes `--chart-1` to `--chart-5` by
+      its own position in the config, wrapping after the fifth; an explicit
+      value wins without shifting the others.
+  - id: id-becomes-a-prefixed-data-chart
+    text: >-
+      `id` is not rendered as the div's `id` attribute: the div carries
+      `data-chart="chart-<id>"`, or `chart-` and a generated id when `id` is
+      not given, reduced to letters, digits, `_` and `-`. A `data-chart`
+      passed by the caller is replaced by it.
+  - id: unsafe-color-is-dropped
+    text: >-
+      Every config key is reduced to letters, digits, `_` and `-` before it
+      reaches the stylesheet, and a color containing `;`, a brace,
+      an angle bracket, a backslash or a comment marker is dropped whole:
+      its `--color-<key>` declaration is left out, so a flat color leaves
+      the property undefined, and a rejected dark value of a `theme` pair
+      falls back to its light value.
+  - id: children-wait-for-a-positive-size
+    text: >-
+      The chart mounts only while the container has a positive width and
+      height; until the first measurement it assumes `initialDimension`
+      (320 by 200 when not given). chart.module.css gives the container a
+      16 / 9 aspect ratio, which a consumer class can override.
+  - id: config-reaches-tooltip-and-legend-content
+    text: >-
+      ChartTooltipContent and ChartLegendContent read the same ChartConfig
+      through context to resolve each series' label and icon.
+
+anti_patterns:
+  - dont: Hard-code a series color on the chart element and leave the key out of the config
+    do_instead: >-
+      Put the color in the ChartConfig entry and paint with
+      `var(--color-<key>)`; the tooltip and legend read each series' label
+      from the same entry
+  - dont: Paint a series with `var(--muted-foreground)`
+    do_instead: >-
+      Use a `--chart-*` step or a brand color; the muted foreground is the
+      color of the chart's own axis text, so a series in it blends into the
+      chart's furniture
+
+deprecations: {}
+
+# chart.test.tsx asserts the data-chart id, className merging and the
+# generated CSS; nothing in it asserts how assistive technology reads a
+# chart.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+unexposed_parts:
+  - part: ResponsiveContainer
+    reason: Composed inside ChartContainer from the library; only `initialDimension` is exposed, as ChartContainer's own prop.
+
+prop_statements:
+  children:
+    states: children is the Recharts chart element the container sizes
+    because: >-
+      `ReactNode` - an element tree, which no JSON Schema type covers.
+  config:
+    states: config maps each series key to an optional label, icon component and a flat color or a light and dark color pair
+    because: >-
+      `ChartConfig` is a record of objects whose `icon` is a React component
+      and whose `color` and `theme` exclude each other, which the compiler
+      emits no JSON type for.
+  initialDimension:
+    states: initialDimension is the width and height in pixels the chart assumes before its first measurement
+    because: >-
+      `{ width: number; height: number }` - an object type the compiler
+      emits no JSON type for.
+
+companions:
+  - export: ChartConfig
+    typed_by: 'Record<string, { label?: ReactNode; icon?: ComponentType } & ({ color?: string; theme?: never } | { color?: never; theme: Record<"light" | "dark", string> })>'
+    description: The type of `config`, shared by ChartContainer and ChartStyle; declare a config with `satisfies ChartConfig`.
+
+examples:
+  good:
+    - title: A bar chart with a tooltip and a legend
+      code: |
+        const chartConfig = {
+          desktop: { label: 'Desktop', color: 'var(--chart-1)' },
+          mobile: { label: 'Mobile', color: 'var(--chart-2)' },
+        } satisfies ChartConfig;
+
+        <ChartContainer config={chartConfig}>
+          <BarChart data={data}>
+            <XAxis dataKey="month" />
+            <Bar dataKey="desktop" fill="var(--color-desktop)" />
+            <Bar dataKey="mobile" fill="var(--color-mobile)" />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <ChartLegend content={<ChartLegendContent />} />
+          </BarChart>
+        </ChartContainer>
+    - title: A fixed-height chart
+      code: |
+        <ChartContainer config={chartConfig} className={styles.chart} id="revenue">
+          <LineChart data={data}>
+            <Line dataKey="desktop" stroke="var(--color-desktop)" />
+          </LineChart>
+        </ChartContainer>
+  bad:
+    - title: A series color that bypasses the config
+      code: |
+        <ChartContainer config={{}}>
+          <BarChart data={data}>
+            <Bar dataKey="desktop" fill="#2563eb" />
+            <ChartLegend content={<ChartLegendContent />} />
+          </BarChart>
+        </ChartContainer>
+      why: >-
+        The legend resolves each series' label from the config, so a key
+        missing from it renders a swatch with no label.

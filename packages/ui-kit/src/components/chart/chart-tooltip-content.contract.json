@@ -1,0 +1,259 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.chart_tooltip_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "chart-tooltip-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Render a tooltip's box for the active chart point - a label and one row per series with its indicator, config label and value.",
+  "typical_uses": [
+    "The content of a ChartTooltip"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A tooltip body that needs a layout of its own",
+      "instead": {
+        "target": "a component of the caller's own passed as ChartTooltip's `content`",
+        "note": "The tooltip clones any element given as `content` with the same props, so a custom body receives the payload the same way."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "the `content` prop of ChartTooltip",
+      "note": "A prop, not a child: the tooltip clones the element with its active state, payload and label on every render. ChartTooltip is the library's Tooltip, so no kit contract accepts this component."
+    }
+  ],
+  "invariants": [
+    {
+      "id": "requires-a-chart-container",
+      "text": "It reads the ChartConfig through the context ChartContainer provides and throws when rendered outside one."
+    },
+    {
+      "id": "renders-only-while-active",
+      "text": "It renders nothing unless `active` is true and `payload` has at least one row; a row whose `type` is `none` is skipped."
+    },
+    {
+      "id": "row-name-and-label-from-config",
+      "text": "A row's name is the label of the config entry found by a key - `nameKey`, else the row's name, else its data key - where a string field of that name on the row or its data point supplies the entry's key; a row with no entry shows its own name. Without `labelKey`, the box label is the category the tooltip passes as `label`, shown as its config entry's label when it names one, whenever that category is a string; otherwise, and always with `labelKey`, it is the config label found for the first row by the same lookup, keyed on `labelKey`, else on the row's data key or name. When no entry matches, no label shows unless `labelFormatter` is given."
+    },
+    {
+      "id": "label-nests-for-one-row",
+      "text": "When `payload` has exactly one entry, counting an entry whose `type` is `none`, and the indicator is not `dot`, the label leaves the top of the box and shows inside that row, above its name - and only when the row renders its default body: if `formatter` replaces the row, or the one entry is skipped, no label shows at all. With more than one entry the label stays at the top, even when all but one are skipped."
+    },
+    {
+      "id": "indicator-color-and-icon",
+      "text": "A row's indicator takes `color` when given, else the fill of the row's data point, else the series color; a config entry with an `icon` shows that icon in place of the indicator, and `hideIndicator` removes the indicator but not the icon."
+    },
+    {
+      "id": "tooltip-settings-stay-off-the-root",
+      "text": "The tooltip's own settings, the active index and coordinate it passes in, and every event handler never reach the rendered box, and its props type admits no handler, `children` or `dangerouslySetInnerHTML`; `color` is read as the indicator color, `content` is dropped, and every other div attribute reaches the box, with `className` merged after the kit's classes."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Pass `formatter` to reformat only the number of each row",
+      "do_instead": "Expect `formatter` to replace the whole row, indicator and name included; to keep the default row, format the data before it reaches the chart"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "formatter": {
+      "states": "formatter is called for each row that has a value and a name, with the value, the name, the row, its index and the row's own data point - not the payload array its type declares for the fifth argument - and its return replaces the row's indicator, name and value",
+      "because": "A function, which no JSON Schema type covers."
+    },
+    "label": {
+      "states": "label is the category of the active point, passed in by the tooltip",
+      "because": "`ReactNode` - an element tree, which no JSON Schema type covers."
+    },
+    "labelFormatter": {
+      "states": "labelFormatter is called with the resolved label and the payload, and its return is shown as the label even when no label resolved; under `hideLabel` it is not called",
+      "because": "A function, which no JSON Schema type covers."
+    },
+    "payload": {
+      "states": "payload is the list of rows for the active point, passed in by the tooltip",
+      "because": "An array of the library's row entries, whose SVG attributes and nested data the compiler emits no JSON type for."
+    }
+  },
+  "prop_statement_groups": [
+    {
+      "match": "^(allowEscapeViewBox|animationEasing|axisId|content|contentStyle|cursor|defaultIndex|isAnimationActive|itemSorter|itemStyle|labelStyle|offset|payloadUniqBy|portal|position|reverseDirection|wrapperStyle)$",
+      "states": "A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it",
+      "because": "An object, a function or a union of types, which the compiler emits no single JSON type for."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "Rows with a dashed indicator and no label",
+        "code": "<ChartTooltip content={<ChartTooltipContent indicator=\"dashed\" hideLabel />} />\n"
+      },
+      {
+        "title": "Row names from a field of the data",
+        "code": "<ChartTooltip content={<ChartTooltipContent nameKey=\"browser\" labelKey=\"visitors\" />} />\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Content rendered outside ChartContainer",
+        "code": "<BarChart width={480} height={240} data={data}>\n  <ChartTooltip content={<ChartTooltipContent />} />\n</BarChart>\n",
+        "why": "ChartTooltipContent reads the ChartConfig from ChartContainer's context and throws without it."
+      }
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit ChartTooltipContent",
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string"
+      },
+      "hideIndicator": {
+        "type": "boolean",
+        "default": false
+      },
+      "hideLabel": {
+        "type": "boolean",
+        "default": false
+      },
+      "indicator": {
+        "type": "string",
+        "enum": [
+          "dashed",
+          "dot",
+          "line"
+        ],
+        "default": "dot"
+      },
+      "labelKey": {
+        "type": "string"
+      },
+      "nameKey": {
+        "type": "string"
+      },
+      "active": {
+        "type": "boolean"
+      },
+      "allowEscapeViewBox": {
+        "description": "TS: AllowInDimension | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
+      },
+      "animationDuration": {
+        "type": "number"
+      },
+      "animationEasing": {
+        "description": "TS: RechartsPrimitive.EasingInput | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
+      },
+      "axisId": {
+        "description": "TS: RechartsPrimitive.AxisId | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
+      },
+      "content": {
+        "description": "TS: ContentType<RechartsPrimitive.TooltipValueType, NameType> | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
+      },
+      "contentStyle": {
+        "description": "TS: CSSProperties | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
+      },
+      "cursor": {
+        "description": "TS: CursorDefinition | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
+      },
+      "defaultIndex": {
+        "description": "TS: number | RechartsPrimitive.TooltipIndex | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
+      },
+      "filterNull": {
+        "type": "boolean"
+      },
+      "formatter": {
+        "description": "TS: (Formatter<RechartsPrimitive.TooltipValueType, NameType> & ((value: RechartsPrimitive.TooltipValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: RechartsPrimitive.TooltipPayload) => ReactNode | [ReactNode, ReactNode]) & Formatter<RechartsPrimitive.TooltipValueType, TooltipNameType>) | undefined. The compiler emits one JSON type per property; this type is left to tsc. formatter is called for each row that has a value and a name, with the value, the name, the row, its index and the row's own data point - not the payload array its type declares for the fifth argument - and its return replaces the row's indicator, name and value. A function, which no JSON Schema type covers."
+      },
+      "includeHidden": {
+        "type": "boolean"
+      },
+      "isAnimationActive": {
+        "description": "TS: boolean | \"auto\" | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
+      },
+      "itemSorter": {
+        "description": "TS: (RechartsPrimitive.TooltipItemSorter<RechartsPrimitive.TooltipValueType, NameType> & RechartsPrimitive.TooltipItemSorter & RechartsPrimitive.TooltipItemSorter<RechartsPrimitive.TooltipValueType, TooltipNameType>) | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
+      },
+      "itemStyle": {
+        "description": "TS: CSSProperties | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
+      },
+      "label": {
+        "description": "TS: ReactNode. The compiler emits one JSON type per property; this type is left to tsc. label is the category of the active point, passed in by the tooltip. `ReactNode` - an element tree, which no JSON Schema type covers."
+      },
+      "labelClassName": {
+        "type": "string"
+      },
+      "labelFormatter": {
+        "description": "TS: (((label: ReactNode, payload: readonly RechartsPrimitive.TooltipPayloadEntry<RechartsPrimitive.TooltipValueType, NameType>[]) => ReactNode) & ((label: ReactNode, payload: RechartsPrimitive.TooltipPayload) => ReactNode) & ((label: ReactNode, payload: readonly RechartsPrimitive.TooltipPayloadEntry<RechartsPrimitive.TooltipValueType, TooltipNameType>[]) => ReactNode)) | undefined. The compiler emits one JSON type per property; this type is left to tsc. labelFormatter is called with the resolved label and the payload, and its return is shown as the label even when no label resolved; under `hideLabel` it is not called. A function, which no JSON Schema type covers."
+      },
+      "labelStyle": {
+        "description": "TS: CSSProperties | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
+      },
+      "offset": {
+        "description": "TS: number | RechartsPrimitive.Coordinate | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
+      },
+      "payload": {
+        "type": "array",
+        "description": "TS: readonly RechartsPrimitive.TooltipPayloadEntry<RechartsPrimitive.TooltipValueType, TooltipNameType>[] | undefined. Not fully expressible in JSON Schema; what the type states beyond the kind above is checked by tsc. payload is the list of rows for the active point, passed in by the tooltip. An array of the library's row entries, whose SVG attributes and nested data the compiler emits no JSON type for."
+      },
+      "payloadUniqBy": {
+        "description": "TS: UniqueOption<TooltipPayloadEntry> | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
+      },
+      "portal": {
+        "description": "TS: HTMLElement | null | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
+      },
+      "position": {
+        "description": "TS: Partial<RechartsPrimitive.Coordinate> | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
+      },
+      "reverseDirection": {
+        "description": "TS: AllowInDimension | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
+      },
+      "separator": {
+        "type": "string"
+      },
+      "shared": {
+        "type": "boolean"
+      },
+      "trigger": {
+        "type": "string",
+        "enum": [
+          "click",
+          "hover"
+        ]
+      },
+      "useTranslate3d": {
+        "type": "boolean"
+      },
+      "wrapperClassName": {
+        "type": "string"
+      },
+      "wrapperStyle": {
+        "description": "TS: CSSProperties | undefined. The compiler emits one JSON type per property; this type is left to tsc. A setting of the tooltip itself, passed in with its other props; ChartTooltipContent does not read it. An object, a function or a union of types, which the compiler emits no single JSON type for."
+      }
+    },
+    "required": [],
+    "patternProperties": {
+      "^on[A-Z]": {
+        "not": {},
+        "description": "The props type admits no name this family of the element surface matches, so none is accepted here."
+      }
+    },
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

@@ -1,0 +1,64 @@
+# Semantic overlay for InputGroupText - a part of the InputGroup family, see
+# input-group.contract.yaml. Every prop is the native span's, carried by the
+# element surface this contract names.
+component: input-group-text
+
+intent: Show static text, optionally with a small icon, inside an InputGroupAddon.
+
+typical_uses:
+  - A fixed prefix or suffix (a currency sign, a domain, a unit)
+  - A static status next to the field (a character count)
+
+dont_use_when:
+  - situation: An action the user clicks inside the addon
+    instead:
+      target: InputGroupButton
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.input_group_button.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: presentational-text
+    text: >-
+      InputGroupText renders a plain span with no role, taking the addon's
+      muted color and Label metrics; any svg inside it is sized to the small
+      icon box and takes no pointer events.
+
+anti_patterns:
+  - dont: Put an interactive control inside InputGroupText
+    do_instead: Put an InputGroupButton directly in the addon; the text part is static content only
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Domain suffix
+      code: |
+        <InputGroup>
+          <InputGroupInput placeholder="workspace" aria-label="Workspace address" />
+          <InputGroupAddon align="inline-end">
+            <InputGroupText>.example.com</InputGroupText>
+          </InputGroupAddon>
+        </InputGroup>
+  bad:
+    - title: Text part placed straight in the group
+      code: |
+        <InputGroup>
+          <InputGroupText>$</InputGroupText>
+          <InputGroupInput aria-label="Amount" />
+        </InputGroup>
+      why: >-
+        The inset, order and click-to-focus belong to InputGroupAddon; a text
+        part outside one gets none of them. Wrap it in an addon.
+
+family_membership:
+  name: input_group
+  role: part

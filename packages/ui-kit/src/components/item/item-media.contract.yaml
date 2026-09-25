@@ -1,0 +1,72 @@
+# Semantic overlay for ItemMedia - part of the item family, see
+# item.contract.yaml's `family_membership` for how the eight contracts
+# relate. `mounted_in` is filled from Item's accepted components. The
+# `variant` axis and its default are extracted from item.tsx, not restated
+# here.
+component: item-media
+
+intent: Hold the leading icon, image or avatar of an item row.
+
+typical_uses:
+  - An icon, a thumbnail or an avatar at the start of an Item
+
+dont_use_when:
+  - situation: The illustration of a region that has nothing to show
+    instead:
+      target: EmptyMedia
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.empty_media.v1
+  - situation: An image that runs to the edges of a bounded panel
+    instead:
+      target: Card, with the image as its direct child
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1
+
+# An svg, an img or an Avatar are all meaningful here, and the code
+# examines nothing about what is nested.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: variant-sizes-what-it-holds
+    text: >-
+      ItemMedia is a centered, non-shrinking flex box; `variant="icon"`
+      sizes every svg inside it to --icon-size-sm, and `variant="image"`
+      makes a 2.5rem square with a small radius that clips its content and
+      makes every img inside it cover the square. Every svg inside ItemMedia
+      ignores pointer events whatever the variant.
+
+anti_patterns: []
+
+deprecations: {}
+
+# item.test.tsx asserts the three variant classes only.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A thumbnail cropped to the media square
+      code: |
+        <Item>
+          <ItemMedia variant="image">
+            <img src="/covers/q3.png" alt="" />
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle>Q3 report</ItemTitle>
+          </ItemContent>
+        </Item>
+  bad:
+    - title: A size prop guessed for the image
+      code: |
+        <ItemMedia variant="image" size="sm">
+          <img src="/covers/q3.png" alt="" />
+        </ItemMedia>
+      why: >-
+        ItemMedia declares no `size`; the image square already shrinks to
+        follow the surrounding Item's `size`, so set `size="sm"` on the Item.
+
+family_membership:
+  name: item
+  role: part

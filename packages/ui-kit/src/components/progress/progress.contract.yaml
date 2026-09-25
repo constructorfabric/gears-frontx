@@ -1,0 +1,159 @@
+# Semantic overlay for Progress (the root) - the hand-written half of one of
+# five contracts describing this compound component. See progress-track,
+# progress-indicator, progress-label and progress-value for the rest of the
+# family, and `family_membership` below for how a reader (or the conformance
+# test) walks between them.
+#
+# Machine-extractable facts (prop list, forwarded surface) do NOT belong
+# here: the compiler takes those from progress.tsx and the Base UI Progress
+# primitive it wraps, and rejects an overlay that tries to restate them -
+# one fact, one owner. This file carries only what the code cannot express:
+# intent, boundaries, invariants.
+component: progress
+
+intent: Communicate how far a task has progressed, or that work is still running when progress cannot be measured.
+
+typical_uses:
+  - A long-running task with a known percentage
+  - A task of unknown duration, marked indeterminate with `value={null}`
+
+dont_use_when:
+  - situation: A short async action with no meaningful percentage
+    instead:
+      target: Spinner
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.spinner.v1
+      note: >-
+        On a Button, the `loading` prop carries the busy state inline
+        (aria-busy) without a second element.
+  - situation: A placeholder for content that has not arrived, with nothing to measure
+    instead:
+      target: Skeleton
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.skeleton.v1
+  - situation: Step-by-step navigation where the steps are themselves the interface
+    instead:
+      target: the consuming application's own step indicator
+      note: >-
+        The kit ships no stepper or wizard component, and a bar cannot carry
+        per-step state or navigation.
+
+# The ONE authored statement of a nesting relationship: the compiler fills
+# the label's and the value's `mounted_in` from this list. The wrapper draws
+# its own track and indicator after the children (progress.tsx), so a
+# ProgressTrack or ProgressIndicator of the consumer's own is NOT accepted
+# here - it would draw a second bar.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.progress_label.v1 # ProgressLabel
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.progress_value.v1 # ProgressValue
+
+invariants:
+  - id: always-renders-its-own-track
+    text: >-
+      Progress always renders its own track and indicator, after any
+      children; there is no prop to suppress them. Children are the parts
+      that belong beside the bar - a label, a readout - never a second
+      track.
+  - id: value-null-means-indeterminate
+    text: >-
+      `value={null}` marks the bar indeterminate: the root reports no
+      `aria-valuenow`, and every part of the family carries
+      `data-indeterminate`, which the stylesheet turns into a sweeping band
+      instead of a width fill.
+  - id: named-by-aria-label-or-label-part
+    text: >-
+      The root element is what receives the accessible name: an
+      `aria-label` on Progress, or a ProgressLabel child whose id the root
+      wires into `aria-labelledby`.
+
+anti_patterns:
+  - dont: Render one with no accessible name
+    do_instead: >-
+      Pass `aria-label`, or compose a ProgressLabel into it; a bar reports a
+      value but needs a name for what the progress is of
+  - dont: Fake an indeterminate look with a stuck value
+    do_instead: >-
+      Pass `value={null}` - a static value reports a false, frozen
+      percentage to assistive technology
+
+deprecations: {}
+
+# One outcome per claim. "failed" (looked at, does not hold) and "unknown"
+# (nobody looked) are different answers - say which.
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      Base UI's own Progress primitive (role="progressbar" with
+      aria-valuenow/-min/-max wiring, and a ProgressLabel's id wired into
+      aria-labelledby) plus progress.test.tsx's own accessible-name,
+      aria-valuenow/-min/-max and data-indeterminate assertions
+  rtl:
+    outcome: unknown
+
+# What each property that reaches this contract asserting nothing (or only
+# part of its shape) actually states, and why - keyed on the property
+# itself. The compiler emits both halves into that property's own
+# description, beside the `TS:` text.
+prop_statements:
+  value:
+    states: value is a number or null
+    because: >-
+      `number | null` - the compiler emits one JSON type per property, so a
+      number-or-null union is left unasserted.
+  getAriaValueText:
+    states: getAriaValueText is a function the root calls for the value's text alternative, not a value
+    because: >-
+      `(formattedValue: string | null, value: number | null) => string` - a
+      function of the formatted readout and the raw value. No JSON Schema
+      type covers a function.
+  format:
+    states: format is an Intl.NumberFormatOptions object controlling how the value is formatted
+    because: >-
+      An object type with the full breadth of Intl's own formatting options
+      is not something this schema restates; the kit forwards it to Base UI
+      unchanged.
+  locale:
+    states: locale is a BCP 47 locale string, an Intl.Locale object, or a readonly array of either, passed to Intl.NumberFormat
+    because: >-
+      Intl.LocalesArgument is a union of those shapes; the compiler emits
+      one JSON type per property, so this union is left to tsc.
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      Base UI's render prop takes an element or a function of the root's
+      own state, so its type is a union of a React element and a callback - the compiler emits one JSON type per property.
+  style:
+    states: style accepts a function of the root's state as well as a plain style object
+    because: >-
+      Base UI widens React's `CSSProperties` to
+      `CSSProperties | ((state) => CSSProperties)` so a caller can style off
+      the primitive's own state (status). The compiler emits one JSON type per property, so nothing is asserted; the kit's own
+      styling goes through progress.module.css, not through this.
+
+# Canonical snippets. Every prop named in one is a real prop of this
+# component.
+examples:
+  good:
+    - title: Determinate, named for assistive tech
+      code: <Progress value={64} aria-label="Uploading" />
+    - title: Composed with a caption and a live readout
+      code: |
+        <Progress value={42}>
+          <ProgressLabel>Uploading</ProgressLabel>
+          <ProgressValue />
+        </Progress>
+  bad:
+    - title: A bar with no name
+      code: <Progress value={64} />
+      why: >-
+        The progressbar has no accessible name, so assistive technology
+        announces a bare percentage with no name for what it is the
+        progress of.
+
+# Family membership. Every member names the same family and states its own
+# role; `members` is filled by the compiler on the root from every contract
+# naming this family as a part, so nothing here points at a sibling.
+family_membership:
+  name: progress
+  role: root

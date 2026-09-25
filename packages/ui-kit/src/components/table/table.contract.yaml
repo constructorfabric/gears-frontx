@@ -1,0 +1,167 @@
+# Semantic overlay for Table (the root) - the hand-written half of one of
+# eight contracts describing this family. The parts are table-caption,
+# table-header, table-body, table-footer, table-row, table-head and
+# table-cell, one per native table element; `family_membership` below is
+# how a reader (or the conformance test) walks between them.
+#
+# Machine-extractable facts (prop list, the `variant` axis and its default,
+# `density`, `label` and the two container props, the forwarded surface) do
+# NOT belong here: the compiler takes those from table.tsx and rejects an
+# overlay that restates them. Table wraps no primitive: every part renders
+# its matching native element, so the schema states every kit prop in the
+# family fully except `containerStyle`, whose CSSProperties type has no JSON
+# type; that one prop is the only prop_statement in the family.
+component: table
+
+intent: Lay out tabular data as a styled native HTML table, rows that share the same columns.
+
+typical_uses:
+  - Rows of records that share the same columns and are read down a column as well as across a row
+  - The markup layer under sorting, filtering or paging logic the caller owns
+
+dont_use_when:
+  - situation: Sorting, row selection and pagination that the component should own, from one columns/data pair
+    instead:
+      target: DataTable
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.data_table.v1
+  - situation: One record's key/value details or a summary panel
+    instead:
+      target: Card
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1
+  - situation: A list of similar entries that do not share columns (media, a title and a trailing action per row)
+    instead:
+      target: Item
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1
+
+# The ONE authored statement of a nesting relationship: the compiler fills
+# every other contract's `mounted_in` from lists like this one. No text
+# flag: a table's text belongs in its cells and its caption.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.table_caption.v1 # TableCaption
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.table_header.v1 # TableHeader
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.table_body.v1 # TableBody
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.table_footer.v1 # TableFooter
+
+invariants:
+  - id: props-land-on-the-table-not-the-wrapper
+    text: >-
+      Table renders a scrolling div around the <table>: it scrolls
+      horizontally when the table is wider than it, and vertically once it
+      is given a height. `label`, `containerClassName` (merged after the
+      wrapper's kit class) and `containerStyle` land on that wrapper. Every
+      other prop apart from `density` and `variant` - className, style,
+      aria attributes, event handlers - lands on the inner <table>.
+  - id: wrapper-is-always-a-focus-stop
+    text: >-
+      The wrapper always carries tabIndex 0, whether or not the table
+      overflows, so keyboard users can scroll it with the arrow keys.
+      `label` gives the wrapper role="region" and an aria-label; without
+      it the wrapper has no role and no name. `label` names the wrapper
+      only - the table's own accessible name comes from TableCaption or
+      from aria-label / aria-labelledby passed to Table.
+  - id: density-and-variant-are-independent
+    text: >-
+      `variant="collection"` switches the table to a fixed layout on a
+      960px minimum width, gives the header cells a taller band on the card
+      fill, sets body rows to a 4rem height and lets cell text wrap. `density="compact"`
+      lowers the header height and the cells' block padding and applies
+      inside either variant; in the collection view the body rows keep
+      their 4rem height.
+
+anti_patterns:
+  - dont: Wrap Table in your own div and put role="region" and aria-label on that div
+    do_instead: >-
+      Pass `label` to Table - the focusable scroll wrapper is Table's own,
+      and a name on an outer div lands on an element that never takes focus
+  - dont: Cap a long table through Table's style or through an outer div of your own
+    do_instead: >-
+      Put the max-height on Table's own scroll wrapper through
+      `containerStyle` or `containerClassName`. `style` lands on the
+      <table>, which does not scroll, and a sticky header sticks to its
+      nearest scrolling ancestor, which is that wrapper; with the height on
+      an outer div the wrapper never scrolls vertically, so the collection
+      view's header scrolls away with the rows
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: >-
+      table.test.tsx asserts getByRole('table') with three rows, two
+      columnheaders and four cells under it, and that `label` exposes the
+      wrapper as getByRole('region', { name: 'Quarterly results' })
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  containerStyle:
+    states: containerStyle is a plain React style object applied to the scroll wrapper, not to the <table>
+    because: >-
+      TableProps types it as React's `CSSProperties`; the compiler has no
+      JSON type for `CSSProperties`, so nothing is asserted. The wrapper's
+      own styling goes through table.module.css, not through this.
+
+unexposed_parts:
+  - part: the scroll wrapper div
+    reason: >-
+      Table renders a div around its <table> with overflow auto and
+      tabIndex 0; it is not exported, and `label`, `containerClassName`
+      and `containerStyle` are the only props that reach it.
+
+examples:
+  good:
+    - title: A captioned table with a header, a body and a totals footer
+      code: |
+        <Table>
+          <TableCaption>Recent invoices</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Invoice</TableHead>
+              <TableHead>Amount</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow>
+              <TableCell>INV001</TableCell>
+              <TableCell>$250.00</TableCell>
+            </TableRow>
+          </TableBody>
+          <TableFooter>
+            <TableRow>
+              <TableCell>Total</TableCell>
+              <TableCell>$250.00</TableCell>
+            </TableRow>
+          </TableFooter>
+        </Table>
+    - title: A compact collection view with a named scroll region
+      code: |
+        <Table variant="collection" density="compact" label="Projects">
+          <TableBody>
+            <TableRow>
+              <TableCell>Atlas</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+  bad:
+    - title: The region name put on an outer div
+      code: |
+        <div role="region" aria-label="Invoices">
+          <Table>
+            <TableBody>
+              <TableRow>
+                <TableCell>INV001</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      why: >-
+        The element that takes keyboard focus is Table's own wrapper inside
+        this div, and it stays nameless; pass `label="Invoices"` to Table
+        instead.
+
+family_membership:
+  name: table
+  role: root

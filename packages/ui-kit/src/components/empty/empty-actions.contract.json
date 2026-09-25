@@ -1,0 +1,81 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_actions.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "empty-actions",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Lay out the placeholder's actions as one centered, wrapping row of buttons.",
+  "typical_uses": [
+    "The one or two buttons at the foot of an Empty that create the first item or clear what filtered everything out"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The foot holds a field, a form or other content beyond buttons",
+      "instead": {
+        "target": "EmptyContent",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.empty_content.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "Empty",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.empty.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "no-margin-of-its-own",
+      "text": "EmptyActions sets no margin; the distance above it comes from its parent's gap, var(--space-6) as a direct child of Empty."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Two buttons side by side",
+        "code": "<EmptyActions>\n  <Button onClick={createFirst}>New project</Button>\n  <Button variant=\"outline\" onClick={clearFilters}>Clear filters</Button>\n</EmptyActions>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A margin added to reach the spacing above",
+        "code": "<EmptyActions style={{ marginTop: 24 }}>\n  <Button>New project</Button>\n</EmptyActions>\n",
+        "why": "The root's gap already puts var(--space-6) above the row; a margin doubles that distance."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "empty",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit EmptyActions",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

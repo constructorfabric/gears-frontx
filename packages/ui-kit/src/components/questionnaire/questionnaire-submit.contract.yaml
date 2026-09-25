@@ -1,0 +1,78 @@
+# Semantic overlay for QuestionnaireSubmit - a part of the Questionnaire family,
+# see questionnaire.contract.yaml's `family_membership`. It renders the kit
+# Button unless `render` replaces it.
+component: questionnaire-submit
+
+intent: Submit a Questionnaire from its last item, after every enabled item passes validation.
+
+typical_uses:
+  - The final action of a questionnaire's navigation row
+
+dont_use_when:
+  - situation: An action button outside a questionnaire
+    instead:
+      target: Button
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+
+# Children replace the default "Submit" text.
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: variant-and-size-style-the-default-button
+    text: >-
+      `variant` and `size` are passed to the kit Button the component
+      renders by default; when `render` is given it replaces that Button and
+      both are ignored.
+  - id: hidden-when-it-does-not-apply
+    text: >-
+      It is visible only on the last item, sharing the cell
+      QuestionnaireNext leaves there. While hidden it carries the native
+      `hidden` and `inert` attributes, `aria-hidden` and tabIndex -1, and
+      `data-hidden` in place of `data-visible`.
+  - id: submit-type-by-default
+    text: >-
+      It renders a `type="submit"` button, so activating it submits the
+      form and the root's validation of every item runs before `onSubmit`.
+
+anti_patterns:
+  - dont: Submit the answers from a click handler on QuestionnaireSubmit
+    do_instead: Handle the root's `onSubmit`; it is called only after every item passes, with the form's data ready to read
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: verified
+    by: questionnaire.test.tsx asserts Submit has the hidden property before the last item and loses it there
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      The questionnaire engine's render prop takes an element or a function
+      of the button's own state (`QuestionnaireNavigationState`: disabled,
+      shortcut, status, visible), so its type is a union of a React element
+      and a callback; the compiler emits one JSON type per property, so
+      nothing is asserted. The kit defaults it to its own Button.
+
+examples:
+  good:
+    - title: The default Submit button
+      code: <QuestionnaireSubmit />
+    - title: A smaller Submit button with its own text
+      code: <QuestionnaireSubmit size="sm">Save answers</QuestionnaireSubmit>
+  bad:
+    - title: Submission handled on the button
+      code: "<QuestionnaireSubmit onClick={() => save(answers)} />"
+      why: >-
+        The click runs before the root validates, so it saves answers the
+        questionnaire is about to reject; the root's `onSubmit` is the one
+        called only once every item passes.
+
+family_membership:
+  name: questionnaire
+  role: part

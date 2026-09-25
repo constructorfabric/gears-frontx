@@ -1,0 +1,185 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "attachment",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Show one file or image as a compact card with its preview, its name and details, its upload state and its actions.",
+  "typical_uses": [
+    "A file or image attached to a message or waiting in a composer before it is sent",
+    "One entry of an upload in progress, done or failed"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The visible surface of a text turn in a conversation",
+      "instead": {
+        "target": "Bubble",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.bubble.v1"
+      }
+    },
+    {
+      "situation": "A bounded panel of related content that is not a file",
+      "instead": {
+        "target": "Card",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1"
+      }
+    },
+    {
+      "situation": "A row in a list of similar things, such as a notification or a search result",
+      "instead": {
+        "target": "Item",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1"
+      }
+    },
+    {
+      "situation": "A short inline label for a file type or a count",
+      "instead": {
+        "target": "Badge",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.badge.v1"
+      }
+    },
+    {
+      "situation": "Picking the file to upload",
+      "instead": {
+        "target": "a native file input or the application's own drop zone",
+        "note": "The kit ships no file picker; Attachment only shows a file once the application has one, and its `idle` state is a styling of the card, not an input."
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_media.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_actions.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_trigger.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "AttachmentGroup",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_group.v1"
+    },
+    {
+      "container": "any parent in the consuming application",
+      "note": "A single Attachment may stand on its own, outside an AttachmentGroup."
+    }
+  ],
+  "invariants": [
+    {
+      "id": "state-reaches-parts-without-props",
+      "text": "`state` is set once on the root and reaches the parts without being passed again: `idle` dashes the root's border, `error` tints the root's border, AttachmentMedia's plate and AttachmentDescription's text, and AttachmentTitle shimmers while the state is `uploading` or `processing` (read from React context, the rest through attachment.module.css descendant selectors on the root's `data-state`)."
+    },
+    {
+      "id": "padding-needs-direct-content",
+      "text": "The root's padding is set only while an AttachmentContent is its direct child (attachment.module.css `.attachment.size*:has(> .attachmentContent)`); an attachment with no direct AttachmentContent renders with no padding."
+    },
+    {
+      "id": "whole-card-hover-needs-direct-button-or-link",
+      "text": "The whole-card hover tint applies only while a button or a link is a direct child of the root, as an AttachmentTrigger is (`.attachment:has(> a):hover, .attachment:has(> button):hover`); an AttachmentAction inside AttachmentActions does not turn it on."
+    },
+    {
+      "id": "focus-shows-on-the-card",
+      "text": "The root draws a 1px ring while any descendant has focus (`.attachment:focus-within`), which is the only focus indication an AttachmentTrigger gets, since the trigger sets `outline: none`."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Let the `error` state's color be the only sign that an upload failed",
+      "do_instead": "Say what failed in AttachmentDescription as well; the state adds no text or icon of its own"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A done file with a remove action",
+        "code": "<Attachment>\n  <AttachmentMedia>\n    <FileTextIcon />\n  </AttachmentMedia>\n  <AttachmentContent>\n    <AttachmentTitle>sales-dashboard.pdf</AttachmentTitle>\n    <AttachmentDescription>PDF, 2.4 MB</AttachmentDescription>\n  </AttachmentContent>\n  <AttachmentActions>\n    <AttachmentAction icon={<XIcon />} aria-label=\"Remove sales-dashboard.pdf\" />\n  </AttachmentActions>\n</Attachment>\n"
+      },
+      {
+        "title": "A failed upload that says why",
+        "code": "<Attachment state=\"error\">\n  <AttachmentMedia>\n    <FileIcon />\n  </AttachmentMedia>\n  <AttachmentContent>\n    <AttachmentTitle>large-export.csv</AttachmentTitle>\n    <AttachmentDescription>Upload failed: file is over 20 MB</AttachmentDescription>\n  </AttachmentContent>\n</Attachment>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Title and description placed straight into the root",
+        "code": "<Attachment>\n  <AttachmentMedia>\n    <FileIcon />\n  </AttachmentMedia>\n  <AttachmentTitle>report.pdf</AttachmentTitle>\n  <AttachmentDescription>PDF, 1 MB</AttachmentDescription>\n</Attachment>\n",
+        "why": "The root pads itself only while an AttachmentContent is its direct child, and AttachmentContent is what lets the title and description shrink and truncate; without it the card renders with no padding."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "attachment",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_action.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_actions.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_description.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_media.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_title.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.attachment_trigger.v1"
+    ]
+  },
+  "companions": [
+    {
+      "export": "attachmentVariants",
+      "typed_by": "cva(...), returns (props: VariantProps<typeof attachmentVariants> & { className?: string }) => string",
+      "description": "The class-name builder Attachment uses for its base, `size` and `orientation` classes. It does not set the `data-state`, `data-size` and `data-orientation` attributes the state styling reads, and it provides no state to AttachmentTitle."
+    }
+  ],
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof attachmentVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit Attachment",
+    "type": "object",
+    "properties": {
+      "size": {
+        "type": "string",
+        "enum": [
+          "default",
+          "sm",
+          "xs"
+        ],
+        "default": "default"
+      },
+      "orientation": {
+        "type": "string",
+        "enum": [
+          "horizontal",
+          "vertical"
+        ],
+        "default": "horizontal"
+      },
+      "state": {
+        "type": "string",
+        "enum": [
+          "done",
+          "error",
+          "idle",
+          "processing",
+          "uploading"
+        ],
+        "default": "done"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

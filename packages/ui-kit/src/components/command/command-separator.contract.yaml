@@ -1,0 +1,65 @@
+# Semantic overlay for CommandSeparator - a part of the Command family, see
+# command.contract.yaml's `family_membership`. The forwarded surface is the
+# library's separator div.
+component: command-separator
+
+intent: A horizontal rule between groups or items of a CommandList, shown while the search is empty.
+
+typical_uses:
+  - A divider between two CommandGroups
+
+dont_use_when:
+  - situation: A divider in page content or a toolbar, outside a Command
+    instead:
+      target: Separator
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.separator.v1
+
+accepts:
+  content: nothing
+
+invariants:
+  - id: rendered-only-while-search-is-empty
+    text: >-
+      The separator renders only while the search text is empty, unless
+      `alwaysRender` is true; it carries `role="separator"`.
+  - id: spans-the-list-width
+    text: >-
+      command.module.css draws it as a one-border-width rule whose negative
+      inline margin cancels CommandList's own padding, so it spans the
+      list's full width.
+
+anti_patterns:
+  - dont: Leave a separator between groups in a list the caller filters with `shouldFilter={false}`
+    do_instead: Pass `alwaysRender` when it should stay, since the separator still hides while any search text is typed
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A separator between groups
+      code: |
+        <CommandList>
+          <CommandGroup heading="Suggestions">
+            <CommandItem value="calendar">Calendar</CommandItem>
+          </CommandGroup>
+          <CommandSeparator />
+          <CommandGroup heading="Settings">
+            <CommandItem value="profile">Profile</CommandItem>
+          </CommandGroup>
+        </CommandList>
+  bad:
+    - title: A separator given a caption
+      code: <CommandSeparator>More</CommandSeparator>
+      why: >-
+        The separator is a rule, not a heading; name the next group with
+        CommandGroup's `heading` instead.
+
+family_membership:
+  name: command
+  role: part

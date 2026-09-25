@@ -1,0 +1,77 @@
+# Semantic overlay for CardTitle - part of the Card family, see
+# card.contract.yaml's `family_membership` for how the seven contracts
+# relate. `mounted_in` is filled from CardHeader's accepted components, not
+# authored here.
+component: card-title
+
+intent: Name what the card is about in a short headline.
+
+typical_uses:
+  - The one-line headline at the top of a Card
+
+dont_use_when:
+  - situation: The headline of a placeholder for a region with nothing to show
+    instead:
+      target: EmptyTitle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.empty_title.v1
+  - situation: The title of a modal dialog
+    instead:
+      target: DialogTitle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.dialog_title.v1
+  - situation: The title of a status message
+    instead:
+      target: AlertTitle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.alert_title.v1
+  - situation: The title of one row in a list of similar rows
+    instead:
+      target: ItemTitle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.item_title.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: panel-typography-wins-over-card-size
+    text: >-
+      Its default size follows the nearest Card's `size` (heading-2 at
+      default, body at sm); `typography="panel"` sets the body size at the
+      heading-2 weight with normal letter spacing whatever the Card's
+      `size`.
+
+anti_patterns:
+  - dont: Rely on CardTitle alone to give a card a place in the page's heading outline
+    do_instead: >-
+      Pass `role="heading"` and an `aria-level` on CardTitle, which keeps
+      the part's own styling while exposing it as a heading
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A short headline
+      code: |
+        <CardTitle>Team plan</CardTitle>
+    - title: A headline exposed as a level-3 heading
+      code: |
+        <CardTitle role="heading" aria-level={3}>Team plan</CardTitle>
+  bad:
+    - title: The explanation folded into the headline
+      code: |
+        <CardHeader>
+          <CardTitle>Team plan. Billed monthly, 5 seats in use.</CardTitle>
+        </CardHeader>
+      why: >-
+        CardTitle is the headline; the supporting sentence belongs in
+        CardDescription, which carries the muted body text and gets its own
+        header row.
+
+family_membership:
+  name: card
+  role: part
