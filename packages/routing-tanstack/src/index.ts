@@ -36,8 +36,9 @@ export { locationPreservingRedirect } from './location-preserving-redirect.js';
 export { createProviderRouter, createEngineProviderRouter, EngineProvider } from './router-creation.js';
 export type { EngineProviderProps, EngineProviderFromRouterProps, ProviderRouterOptions } from './router-creation.js';
 
-// DESIGN §3.3, "API Contracts" — the concrete engine's own component-tree
-// hooks and components this package's public surface lists alongside its
+// DESIGN §3.3, "API Contracts" — the concrete engine's own router and
+// route-tree construction, mounting, hooks, components, and route-resolution
+// helpers this package's public surface lists alongside its
 // own adapter, so a microfrontend using this package's default provider
 // never needs its own direct `@tanstack/react-router` import for these
 // (`cpt-frontx-constraint-routing-tanstack-sole-engine-import`): a
@@ -48,6 +49,7 @@ export {
   createRouter,
   createRootRoute,
   createRoute,
+  createRootRouteWithContext,
   RouterProvider,
   useNavigate,
   useParams,
