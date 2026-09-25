@@ -41,6 +41,18 @@ export type ProviderRouterOptions<TRouteTree extends AnyRoute> = Omit<
 >;
 
 /**
+ * The structural "no required properties" probe the two requiredness
+ * conditionals below key off (`EmptyRouterOptions extends ProviderRouterOptions<TRouteTree>`):
+ * true exactly when every member of `ProviderRouterOptions<TRouteTree>` — `context`
+ * chief among them — is itself optional, i.e. an empty object literal would
+ * already satisfy it. `object`/`unknown` cannot stand in for it: neither is
+ * structurally compatible with a type that has required named members, which
+ * is the one property this probe needs.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- intentional structural probe, not "any value"; see doc comment above.
+type EmptyRouterOptions = {};
+
+/**
  * Calls `createRouter({ ...options, routeTree, history })` with the microfrontend's own
  * route tree and the adapted, virtual history built by history adaptation
  * (`./history-adaptation.js`, `./composed-history-source.js`,
@@ -69,7 +81,21 @@ export type ProviderRouterOptions<TRouteTree extends AnyRoute> = Omit<
 export function createProviderRouter<TRouteTree extends AnyRoute>(
   routeTree: TRouteTree,
   history: RouterHistory,
-  options?: ProviderRouterOptions<TRouteTree>,
+  // A plain `options?: ProviderRouterOptions<TRouteTree>` would still leave
+  // `context` reachable as unset: `ProviderRouterOptions`'s own `context`
+  // member is conditionally required (see below), but that per-property
+  // requiredness is invisible to a caller who omits the *whole* argument —
+  // an optional parameter accepts no value at all, and TypeScript never
+  // checks what an absent value's own members would have required had it
+  // been supplied. Keying the parameter's own presence off the same
+  // condition (`EmptyRouterOptions extends ProviderRouterOptions<TRouteTree>`) closes that
+  // gap: the argument itself becomes required whenever the route tree
+  // declares a context, so a call site holding a concrete, context-bearing
+  // route tree cannot omit it at all, not merely fail to satisfy it once
+  // supplied.
+  ...[options]: EmptyRouterOptions extends ProviderRouterOptions<TRouteTree>
+    ? [options?: ProviderRouterOptions<TRouteTree>]
+    : [options: ProviderRouterOptions<TRouteTree>]
 ) {
   // `RouterConstructorOptions`'s own `context` field is conditionally
   // required, keyed off `TRouteTree`'s own inferred router-context type
@@ -78,7 +104,9 @@ export function createProviderRouter<TRouteTree extends AnyRoute>(
   // against a concrete one. The cast below is the one place that mismatch
   // is bridged. `ProviderRouterOptions` above is that same conditional type
   // minus the two fields this function supplies, so a call site holding a
-  // concrete route tree does get the requiredness checked; only this
+  // concrete route tree does get the requiredness checked — both that a
+  // supplied `context` matches, and, via the rest-parameter conditional
+  // above, that the argument itself was supplied at all; only this
   // generic body works with it unresolved.
   //
   // A route tree that declares a router context and is constructed without
@@ -129,7 +157,7 @@ export function createProviderRouter<TRouteTree extends AnyRoute>(
   // @cpt-end:cpt-frontx-flow-routing-engine-provider-swap-engine:p1:inst-construct-router
 }
 
-export interface EngineProviderProps<TRouteTree extends AnyRoute> {
+interface EngineProviderTreeProps<TRouteTree extends AnyRoute> {
   /** Expected stable for the lifetime of one mount, exactly like `history`
    * below — `EngineProvider`'s own `useMemo` rebuilds the router whenever
    * this identity changes. The teardown effect below is keyed on
@@ -143,17 +171,33 @@ export interface EngineProviderProps<TRouteTree extends AnyRoute> {
    * `history` member. */
   readonly routeTree: TRouteTree;
   readonly history: RouterHistory;
-  /** Forwarded verbatim to `createProviderRouter` above when this component
-   * builds the router itself — the seam a consumer states `context` (and
-   * every other engine construction option) through, since this shape is
-   * the only one of the two that constructs anything. Expected stable for
-   * the lifetime of one mount like the two props above: the `useMemo` below
-   * reads it, so a fresh object literal on every render rebuilds the
-   * router. The `{router}` shape has no counterpart by construction — a
-   * router handed in has already been built with whatever options its
-   * builder chose. */
-  readonly routerOptions?: ProviderRouterOptions<TRouteTree>;
 }
+
+/**
+ * Forwarded verbatim to `createProviderRouter` above when this component
+ * builds the router itself — the seam a consumer states `context` (and
+ * every other engine construction option) through, since this shape is
+ * the only one of the two that constructs anything. Expected stable for
+ * the lifetime of one mount like the two props above: the `useMemo` below
+ * reads it, so a fresh object literal on every render rebuilds the
+ * router. The `{router}` shape has no counterpart by construction — a
+ * router handed in has already been built with whatever options its
+ * builder chose.
+ *
+ * Required, not optional, whenever `TRouteTree` declares a router context
+ * (H5): a plain optional field here would repeat `createProviderRouter`'s
+ * own pre-fix gap one level up — a consumer building this props shape
+ * directly, not only one calling that function, could otherwise omit
+ * `routerOptions` for a context-bearing tree and have it type-check. Keyed
+ * off the same condition as that function's trailing parameter
+ * (`EmptyRouterOptions extends ProviderRouterOptions<TRouteTree>`) so the two stay in
+ * lockstep by construction rather than by two authors remembering to
+ * agree.
+ */
+export type EngineProviderProps<TRouteTree extends AnyRoute> = EngineProviderTreeProps<TRouteTree> &
+  (EmptyRouterOptions extends ProviderRouterOptions<TRouteTree>
+    ? { readonly routerOptions?: ProviderRouterOptions<TRouteTree> }
+    : { readonly routerOptions: ProviderRouterOptions<TRouteTree> });
 
 /**
  * `createEngineProviderRouter` below returns only a constructed

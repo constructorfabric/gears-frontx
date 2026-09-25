@@ -48,8 +48,8 @@ export type { EngineProviderProps, EngineProviderFromRouterProps, ProviderRouter
 export {
   createRouter,
   createRootRoute,
-  createRoute,
   createRootRouteWithContext,
+  createRoute,
   RouterProvider,
   useNavigate,
   useParams,

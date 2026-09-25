@@ -72,7 +72,10 @@ match nothing but this microfrontend's own slice of the URL.
 `createEngineProviderRouter` takes no such argument. It is typed against the engine-provider port
 the navigation substrate declares, whose input is exactly `{ history, entryAddress, routeTree }`,
 and widening that would put a concrete engine's construction surface into the substrate. A router
-built through it carries no context; reach the seam through the two exports above instead.
+built through it carries no context; reach the seam through the two exports above instead. A route
+tree built with `createRootRouteWithContext` is no exception — pass it through
+`createProviderRouter` or `routerOptions`, not through this port-typed entry, which has nowhere in
+its own signature to accept the context that tree requires.
 
 ## What an entry cannot carry
 
