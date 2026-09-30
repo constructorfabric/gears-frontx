@@ -1,0 +1,32 @@
+{
+  "$id": "gts://gts.frontx.mfes.comm.action.v1~frontx.mfes.function.run.v1~",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Action for running a single execution of a function by an extension. Internal action, sent by the function resolver extensions domain to a function resolver extension. The params value has already been validated by the domain against the schema declared in that extension's function signature.",
+  "allOf": [
+    { "$ref": "gts://gts.frontx.mfes.comm.action.v1~" }
+  ],
+  "type": "object",
+  "properties": {
+    "target": {
+      "x-gts-ref": "gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.functions_resolver.v1~*",
+      "$comment": "The run action is executed by a function resolver extension, so it targets the extension rather than the domain"
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "$comment": "Timestamp of the originating function execution request; it identifies a function execution request and its response"
+        },
+        "params": {
+          "type": "object",
+          "$ref": "gts://gts.frontx.func.params.v1~",
+          "$comment": "Function run params, already validated against the schema declared in the corresponding extension function signature"
+        }
+      },
+      "required": ["timestamp"]
+    }
+  },
+  "required": ["type", "target", "payload"]
+}

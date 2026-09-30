@@ -1,0 +1,24 @@
+{
+  "id": "gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.functions_resolver.v1",
+  "sharedProperties": [
+    "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.theme.v1~",
+    "gts.frontx.mfes.comm.shared_property.v1~frontx.mfes.comm.language.v1~"
+  ],
+  "actions": [
+    "gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~",
+    "gts.frontx.mfes.comm.action.v1~frontx.mfes.function.execute.v1~",
+    "gts.frontx.mfes.comm.action.v1~frontx.mfes.function.return.v1~"
+  ],
+  "extensionsActions": [
+    "gts.frontx.mfes.comm.action.v1~frontx.mfes.function.run.v1~"
+  ],
+  "extensionsTypeId": "gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.functions_resolver.v1~",
+  "defaultActionTimeout": 30000,
+  "lifecycleStages": [
+    "gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.init.v1"
+  ],
+  "extensionsLifecycleStages": [
+    "gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.activated.v1",
+    "gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1"
+  ]
+}

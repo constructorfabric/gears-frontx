@@ -1,0 +1,26 @@
+{
+  "$id": "gts://gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.functions_resolver.v1~",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Functions Resolver Extension Schema (Derived). A function resolver extension is implemented as an MFE entry. Function execution is triggered by that MFE entry receiving a function run action; upon finishing, the entry returns the result to the function resolver extensions domain by sending a function return action.",
+  "allOf": [
+    { "$ref": "gts://gts.frontx.mfes.ext.extension.v1~" }
+  ],
+  "properties": {
+    "signature": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "x-gts-ref": "gts.frontx.func.params.v1~*",
+          "$comment": "Function params schema. The params value of an execute or run action is validated against this schema by the function resolver extensions domain."
+        },
+        "result": {
+          "x-gts-ref": "gts.frontx.func.result.v1~*",
+          "$comment": "Function result schema. The function execution result value is validated against this schema by the function resolver extensions domain."
+        }
+      },
+      "required": [],
+      "$comment": "Function signature metadata"
+    }
+  },
+  "required": ["signature"]
+}
