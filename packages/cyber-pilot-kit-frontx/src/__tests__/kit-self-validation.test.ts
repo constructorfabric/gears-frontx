@@ -527,6 +527,9 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
     const DRIVER_ID = 'frontx_verify_walk';
     const DRIVER_SOURCE = 'skills/project-scaffolding/scripts/verify-walk.mjs';
     const driverPath = () => path.join(kitRoot, DRIVER_SOURCE);
+    // The driver has no default browser command, so every invocation below names
+    // a pinned one. The stubs answer whatever version is named.
+    const PINNED_BROWSER = ['--browser-cmd', 'npx --yes agent-browser@0.0.0-test'];
 
     it('is declared as a non-public script resource at the path the skill names', () => {
       const resource = resourceById(DRIVER_ID);
@@ -619,7 +622,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
       // required and leaves it out of the invocation form teaches the shorter
       // form, and the shorter form is refused.
       const usage = help.stdout.slice(help.stdout.indexOf('Usage:'), help.stdout.indexOf('Required:'));
-      for (const flag of ['--host', '--capdir']) {
+      for (const flag of ['--host', '--capdir', '--browser-cmd']) {
         expect(usage, `Usage: omits the required ${flag}`).toContain(flag);
       }
       // And both axes stay out of the required set, in the text a caller reads
@@ -642,6 +645,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
 
       const run = spawnSync(process.execPath, [
         driverPath(),
+        ...PINNED_BROWSER,
         '--host', 'http://127.0.0.1:1',
         '--variants', 'alpha,beta',
         '--checkpoints', 'orders:/orders:at-orders',
@@ -734,6 +738,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
 
       const run = spawnSync(process.execPath, [
         driverPath(),
+        ...PINNED_BROWSER,
         // A data URL is the stand-in for a served origin: it answers the host
         // probe, which is all the probe asks of it, and it keeps this test off
         // the network and off any port a parallel run might also want.
@@ -801,6 +806,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
 
         const run = spawnSync(process.execPath, [
           driverPath(),
+          ...PINNED_BROWSER,
           '--host', 'data:text/plain,ok',
           '--variants', 'alpha',
           '--checkpoints', 'orders:/orders:at-orders',
@@ -866,6 +872,7 @@ describe('kit self-validation — routing and scaffolding entry points (cpt-fron
 
       const run = spawnSync(process.execPath, [
         driverPath(),
+        ...PINNED_BROWSER,
         '--host', 'http://127.0.0.1:1',
         '--variants', 'alpha',
         '--checkpoints', 'orders:/orders:at-orders',
@@ -1091,6 +1098,7 @@ process.exit(0);
       const capdir = path.join(workdir, 'shots');
       const run = spawnSync(process.execPath, [
         driverPath(),
+        ...PINNED_BROWSER,
         // Answers the host probe without a port, exactly as in the eval test.
         '--host', 'data:text/plain,ok',
         '--capdir', capdir,
@@ -1155,6 +1163,7 @@ process.exit(0);
 
       const run = spawnSync(process.execPath, [
         driverPath(),
+        ...PINNED_BROWSER,
         '--host', 'http://127.0.0.1:1',
         '--capdir', capdir,
         ...points,
@@ -2076,6 +2085,45 @@ process.exit(0);
 
     });
 
+    // A package runner handed an unversioned package downloads whatever release
+    // is newest on every run, so the driver carries no default command and
+    // refuses that form before a browser is reached.
+    it('refuses a missing --browser-cmd, before a browser is reached', () => {
+      const capdir = path.join(tempDir('verify-walk-nocmd-'), 'shots');
+      const run = spawnSync(process.execPath, [
+        driverPath(),
+        '--host', 'http://127.0.0.1:1',
+        '--capdir', capdir,
+      ], { encoding: 'utf8', timeout: DRIVER_TIMEOUT_MS });
+
+      if (run.error) throw new Error(`the driver did not return: ${run.error.message}`);
+      expectResultRecord(run);
+      const parsed = JSON.parse(run.stdout) as { failures: { stage: string; detail: string }[] };
+      expect(run.status).not.toBe(0);
+      expect(parsed.failures.map((failure) => failure.stage)).toEqual(['arguments']);
+      expect(parsed.failures[0].detail).toBe('missing required argument --browser-cmd');
+      expect(fs.existsSync(capdir)).toBe(false);
+    });
+
+    it.each([
+      'npx --yes agent-browser',
+      'npx @scope/browser-cli',
+      'pnpm dlx agent-browser',
+      'npx -p agent-browser agent-browser',
+      'npx --yes agent-browser@latest',
+      'npx --yes agent-browser@^1.2.3',
+      'npm --silent exec -- agent-browser',
+      'npx -p helper@1.0.0 -p agent-browser agent-browser',
+      'npm exec --package=helper@1.0.0 agent-browser --package=agent-browser',
+    ])('refuses the unpinned package runner command "%s"', (value) => {
+      const run = runRefusal(['--browser-cmd', value]);
+
+      expect(run.status).not.toBe(0);
+      expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
+      expect(run.failures[0].detail).toContain('no pinned version');
+      expect(run.capdirExists).toBe(false);
+    });
+
     // The result has to reach the caller even when the path it was asked for
     // cannot be written: a record that went nowhere is indistinguishable from a
     // run that never happened.
@@ -2103,6 +2151,7 @@ process.exit(0);
 
       const run = spawnSync(process.execPath, [
         driverPath(),
+        ...PINNED_BROWSER,
         '--host', 'http://127.0.0.1:1',
         '--variants', 'alpha',
         '--checkpoints', 'orders:/orders:at-orders',
@@ -2228,6 +2277,7 @@ process.exit(0);
       const capdir = path.join(tempDir('verify-walk-missing-'), 'shots');
       const run = spawnSync(process.execPath, [
         driverPath(),
+        ...PINNED_BROWSER,
         '--variants', 'alpha',
         '--checkpoints', 'orders:/orders:at-orders',
         '--capdir', capdir,
