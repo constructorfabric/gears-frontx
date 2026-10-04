@@ -6,7 +6,6 @@
  */
 import type {
   DeriveExtensionToken,
-  DomainKey,
   ExtensionToken,
   NamesEqual,
   ValidateName,
@@ -65,14 +64,11 @@ export const namesEqual: NamesEqual = (a, b) => a === b;
 // @cpt-end:cpt-frontx-algo-routing-navigation-substrate-name-validity:p1:inst-name-equality
 
 /**
- * The `domain-key` production: `name`, or `domain-key "." extension "." name`
- * — an odd `.`-separated segment count, every segment a valid `name` (ADR
- * 0003, "Tokens"). Shared, unmarked infrastructure: this check is not itself
- * a numbered CDSL instruction — it is invoked *by* one at each of its three
- * call sites (Grammar Parse step 5.2, Grammar Serialize step 1.1, Domain-Key
- * Composition step 1), where the marker belongs.
+ * The `domain-key` production: a single `name` — a domain's own declared
+ * route, at any depth, never built from any enclosing domain's key (ADR
+ * 0003, "Tokens"; `cpt-frontx-routing-adr-domain-occupancy-addressing-granularity`).
+ * Checking one is therefore exactly `validateName`'s own check: every call
+ * site (Grammar Parse, Grammar Serialize, Observable Transition Signal, URL
+ * Back-Projection Helper) calls `validateName` directly and casts the
+ * result to the `DomainKey` brand.
  */
-export function isValidDomainKey(candidate: string): candidate is DomainKey {
-  const segments = candidate.split('.');
-  return segments.length % 2 === 1 && segments.every((segment) => validateName(segment));
-}

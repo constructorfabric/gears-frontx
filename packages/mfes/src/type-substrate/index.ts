@@ -245,22 +245,18 @@ export interface TypeSystemPlugin<TSchema = unknown> {
 }
 
 /**
- * Hierarchy-aware check: is `actionType` one of the framework's well-known
- * infrastructure lifecycle actions (`load_ext`, `mount_ext`, `unmount_ext`),
- * or a type derived from one of them?
+ * Is `actionType` one of the framework's well-known infrastructure lifecycle
+ * actions (`load_ext`, `mount_ext`, `unmount_ext`)?
  *
- * Resolves each base action ID from the injected plugin and delegates the
- * comparison to `typeSystem.isTypeOf` — never compares `actionType` against
- * a literal, so a domain that declares/dispatches a hierarchy-derived variant
- * of one of these actions (e.g. a non-GTS-notation "is-a" mount_ext) is still
- * correctly recognized as infrastructure.
+ * Resolves each action ID from the injected plugin and compares `actionType`
+ * to it by exact identity — never against a literal.
  *
  * Shared by contract-matching (rule 3 exemption) and the actions-chains
  * mediator (entry-declaration exemption) so both stay consistent.
  *
  * @param actionType - The action type ID to check (opaque string)
- * @param typeSystem - The injected type-system plugin to resolve base IDs from
- * @returns true if `actionType` is (or derives from) load_ext, mount_ext, or unmount_ext
+ * @param typeSystem - The injected type-system plugin to resolve IDs from
+ * @returns true if `actionType` is load_ext, mount_ext, or unmount_ext
  */
 // @cpt-begin:cpt-frontx-algo-type-substrate-port-type-of-resolution:p2:inst-is-infrastructure-action
 export function isInfrastructureLifecycleAction(
@@ -268,9 +264,9 @@ export function isInfrastructureLifecycleAction(
   typeSystem: TypeSystemPlugin
 ): boolean {
   return (
-    typeSystem.isTypeOf(actionType, typeSystem.resolveLoadExtActionId()) ||
-    typeSystem.isTypeOf(actionType, typeSystem.resolveMountExtActionId()) ||
-    typeSystem.isTypeOf(actionType, typeSystem.resolveUnmountExtActionId())
+    actionType === typeSystem.resolveLoadExtActionId() ||
+    actionType === typeSystem.resolveMountExtActionId() ||
+    actionType === typeSystem.resolveUnmountExtActionId()
   );
 }
 // @cpt-end:cpt-frontx-algo-type-substrate-port-type-of-resolution:p2:inst-is-infrastructure-action

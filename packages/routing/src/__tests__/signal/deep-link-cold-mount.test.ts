@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { composeDomainKey } from '../../grammar/compose.js';
 import { resolveNavigationHistory } from '../../history/singleton.js';
 import { createObserver, resetRealm, staticSource as source } from '../helpers.js';
-import type { DomainKey, ExtensionToken } from '../../types/index.js';
+import type { DomainKey } from '../../types/index.js';
 
 // FEATURE (route-ownership-signal) §2, "Deep Link Resolves Through The Route
 // Ownership Signal, One Domain At A Time"
@@ -20,13 +19,12 @@ beforeEach(() => {
 
 describe('deep-link-cold-mount — cold URL several domains deep', () => {
   it('resolves and mounts wave-by-wave: outer domain first, nested domain only once its own zone exists', () => {
-    resetRealm('/en?screen=tenants;tenantId=ABC&screen.tenants.tabs=contacts');
+    resetRealm('/en?screen=tenants;tenantId=ABC&tabs=contacts');
     const mounted: string[] = [];
     const unmounted: string[] = [];
 
     // Outer `screen` domain's own consumer creates its observer first
-    // (flow step 1) — nothing about the nested `screen.tenants.tabs` domain
-    // exists yet.
+    // (flow step 1) — nothing about the nested `tabs` domain exists yet.
     let nestedRelease: (() => void) | undefined;
     createObserver(
       'screen' as DomainKey,
@@ -36,19 +34,18 @@ describe('deep-link-cold-mount — cold URL several domains deep', () => {
           mounted.push(`screen=${added}`);
           if (added === 'tenants') {
             // Step 3.3: the mounted route owner's own zone contains a
-            // nested domain — its own consumer composes that domain's key
-            // and creates its own observer (step 3.3.1), repeating from
-            // step 1 at that domain.
-            const nestedKey = composeDomainKey('screen' as DomainKey, 'tenants' as ExtensionToken, 'tabs');
+            // nested domain, declared under its own flat route (`tabs`) —
+            // its own consumer creates that domain's own observer (step
+            // 3.3.1), repeating from step 1 at that domain.
             nestedRelease = createObserver(
-              nestedKey,
+              'tabs' as DomainKey,
               source([{ extension: 'contacts', routeOwner: 'ContactsTab' }]),
               (nestedTransition) => {
                 for (const nestedAdded of nestedTransition.diff.added) {
-                  mounted.push(`screen.tenants.tabs=${nestedAdded}`);
+                  mounted.push(`tabs=${nestedAdded}`);
                 }
                 for (const nestedRemoved of nestedTransition.diff.removed) {
-                  unmounted.push(`screen.tenants.tabs=${nestedRemoved}`);
+                  unmounted.push(`tabs=${nestedRemoved}`);
                 }
               },
             );
@@ -60,7 +57,7 @@ describe('deep-link-cold-mount — cold URL several domains deep', () => {
       },
     );
 
-    expect(mounted).toEqual(['screen=tenants', 'screen.tenants.tabs=contacts']);
+    expect(mounted).toEqual(['screen=tenants', 'tabs=contacts']);
     expect(unmounted).toEqual([]);
     nestedRelease?.();
   });
@@ -109,33 +106,33 @@ describe('deep-link-cold-mount — cold URL several domains deep', () => {
   });
 });
 
-describe('deep-link-cold-mount — nesting under a repeated domain key', () => {
-  it('resolves the one entry addressed to a nested key composed under one sibling occupant, leaving a same-named nested key under another sibling inert', () => {
-    resetRealm('/en?widgets=line-a;range=7d&widgets.line-a.legend=right&widgets=line-b;range=30d');
+describe('deep-link-cold-mount — nesting inside a domain holding several concurrent occupants', () => {
+  it('resolves the one entry addressed to a nested domain nothing but one occupant\'s own zone declares, leaving the widgets domain\'s own two entries unaffected', () => {
+    // `legend` is the route `line-a`'s own zone declares for its nested
+    // legend domain, carrying no reference to `widgets` or to `line-a` — a
+    // domain key never restates an ancestor (ADR 0003,
+    // `cpt-frontx-routing-adr-domain-occupancy-addressing-granularity`).
+    // `line-b` carries no legend entry of its own.
+    resetRealm('/en?widgets=line-a;range=7d&legend=right&widgets=line-b;range=30d');
 
     let legendTransition: string[] = [];
-    const releaseLineALegend = createObserver(
-      composeDomainKey('widgets' as DomainKey, 'line-a' as ExtensionToken, 'legend'),
+    const releaseLegend = createObserver(
+      'legend' as DomainKey,
       source([{ extension: 'right', routeOwner: 'RightLegend' }]),
       (transition) => {
         legendTransition = transition.entries.map((entry) => entry.extension);
       },
     );
 
-    // The `widgets.line-a.legend` observer resolves exactly the one entry
-    // addressed to it.
     expect(legendTransition).toEqual(['right']);
 
-    // `widgets.line-b.legend` is a domain key nothing observes here — inert,
-    // not an error — and `line-b` itself carries no legend entry at all: the
-    // `widgets` domain's own two entries are unaffected by the nested one.
     let widgetsTransition: string[] = [];
     const releaseWidgets = createObserver('widgets' as DomainKey, source([]), (transition) => {
       widgetsTransition = transition.entries.map((entry) => entry.extension);
     });
     expect(widgetsTransition).toEqual(['line-a', 'line-b']);
 
-    releaseLineALegend();
+    releaseLegend();
     releaseWidgets();
   });
 });

@@ -133,6 +133,8 @@ function getMonorepoPostChecks(): ArchCheck[] {
  *   cpt-frontx-constraint-mfes-no-layout-domain-values      (MFES-3) — ESLint eslint.config.js
  *   cpt-frontx-constraint-mfes-no-type-format-dependency    (MFES-4) — dep-cruiser
  *   cpt-frontx-constraint-mfes-opaque-schema-surface        (MFES-5) — grep check below
+ *   cpt-frontx-adr-mfe-load-isolation (trust-kernel annotation contract) — scripts/check-trust-kernel-annotations.mjs below
+ *   cpt-frontx-adr-mfe-load-isolation (RegExp/import confinement)        — ESLint eslint.config.js
  *   cpt-frontx-constraint-gts-plugin-owns-infra-schemas     (GTS-PLUGIN-1) — dep-cruiser
  *   cpt-frontx-constraint-gts-plugin-excludes-solution-schemas (GTS-PLUGIN-2) — dep-cruiser
  *   cpt-frontx-constraint-api-no-solution-content           (API-1) — dep-cruiser
@@ -185,6 +187,12 @@ function getEcosystemBoundaryChecks(): ArchCheck[] {
         'MFES-5 (cpt-frontx-constraint-mfes-opaque-schema-surface): mfes has no JSONSchema shape import',
     },
     // @cpt-end:cpt-frontx-constraint-mfes-opaque-schema-surface:p10:inst-arch-check
+    // @cpt-dod:cpt-frontx-dod-mfe-isolation-blob-core:p1
+    {
+      command: 'node scripts/check-trust-kernel-annotations.mjs',
+      description:
+        'cpt-frontx-dod-mfe-isolation-blob-core: mf-dynamic-module-ops.ts trust-kernel exports carry @safety-reviewed and @why',
+    },
     // @cpt-begin:cpt-frontx-constraint-cli-template-independence:p17:inst-dep-cruiser-check
     {
       command:

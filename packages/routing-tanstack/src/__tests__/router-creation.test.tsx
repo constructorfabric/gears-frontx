@@ -20,7 +20,8 @@ import {
 import { adaptComposedHistory } from '../composed-history-source.js';
 import { adaptStandaloneHistory } from '../standalone-history-source.js';
 import { attachAdaptedHistory } from '../history-adaptation.js';
-import { createProviderRouter, createEngineProviderRouter, EngineProvider, type ProviderRouterOptions } from '../router-creation.js';
+import { adaptProviderHistory } from '../engine-provider-history.js';
+import { createProviderRouter, EngineProvider, type ProviderRouterOptions } from '../router-creation.js';
 import { resetRealm } from './helpers/index.js';
 
 const ENTRY_ADDRESS: EntryAddress = { domainKey: 'screen' as DomainKey, extension: 'dashboard' as ExtensionToken };
@@ -350,21 +351,22 @@ describe('EngineProvider', () => {
   });
 });
 
-// `createEngineProviderRouter` (the
-// engine-provider port's own conforming instance) builds and internally
-// owns an adapted history that no plain `<RouterProvider router={router}/>`
-// mount can ever tear down, reopening the same subscription leak on the one
-// export typed against the port. `EngineProvider`'s `{router}` overload
-// (design: whoever the effect belongs to owns teardown) gives it the same
-// lifecycle hook the `{routeTree, history}` overload already has.
-describe('createEngineProviderRouter teardown', () => {
+// `adaptProviderHistory` + `createProviderRouter` — the two-step
+// composition any conforming engine-provider port instance performs — builds
+// and internally owns an adapted history that no plain
+// `<RouterProvider router={router}/>` mount can ever tear down, reopening
+// the same subscription leak on a router built this way. `EngineProvider`'s
+// `{router}` overload (design: whoever the effect belongs to owns teardown)
+// gives it the same lifecycle hook the `{routeTree, history}` overload
+// already has.
+describe('a router built from adaptProviderHistory + createProviderRouter', () => {
   it('reaches zero active subscriptions after unmount when mounted through EngineProvider({router})', async () => {
     resetRealm('/en?screen=dashboard;route=settings/general;orientation=left');
     const navigationHistory = resolveNavigationHistory();
     const subscriptions = countSubscriptions(navigationHistory);
     const routeTree = buildRouteTree();
 
-    const router = createEngineProviderRouter({ history: navigationHistory, entryAddress: ENTRY_ADDRESS, routeTree });
+    const router = createProviderRouter(routeTree, adaptProviderHistory(navigationHistory, ENTRY_ADDRESS));
     expect(subscriptions.active()).toBe(0);
 
     const container = document.createElement('div');
@@ -393,20 +395,16 @@ describe('createEngineProviderRouter teardown', () => {
 // consumer performs, deliberately excluded from this port. That correction
 // was carried as prose across seven files with nothing executable behind
 // it, so nothing stopped a later edit from drifting back to describing this
-// export as mounting. Pinned here as the one property the contract actually
-// states — not, e.g., which fields the returned router carries, which a
-// legitimate refactor is free to change.
-describe('createEngineProviderRouter return contract', () => {
+// composition as mounting. Pinned here as the one property the contract
+// actually states — not, e.g., which fields the returned router carries,
+// which a legitimate refactor is free to change.
+describe('adaptProviderHistory + createProviderRouter return contract', () => {
   it('returns a constructed router, not a mounted React element', () => {
     resetRealm('/en?screen=dashboard;route=settings/general;orientation=left');
     const navigationHistory = resolveNavigationHistory();
     const routeTree = buildRouteTree();
 
-    const router = createEngineProviderRouter({
-      history: navigationHistory,
-      entryAddress: ENTRY_ADDRESS,
-      routeTree,
-    });
+    const router = createProviderRouter(routeTree, adaptProviderHistory(navigationHistory, ENTRY_ADDRESS));
 
     expect(typeof router).toBe('object');
     expect(isValidElement(router)).toBe(false);
@@ -415,8 +413,7 @@ describe('createEngineProviderRouter return contract', () => {
 
 // `EngineProvider`'s `{router}` overload commits to an
 // unconditional contract — it owns the lifecycle of whatever `history` the
-// given router carries, adapted by this package or not — documented at
-// `createEngineProviderRouter`'s own "Teardown" comment and this
+// given router carries, adapted by this package or not — documented at this
 // overload's own doc comment above `EngineProviderFromRouterProps`.
 describe('EngineProvider({router}) destroys a consumer-owned, non-adapted history too', () => {
   it('calls destroy() on unmount even for a router built outside this package, over a plain memory history', async () => {

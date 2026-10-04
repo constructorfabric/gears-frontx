@@ -38,28 +38,31 @@
  * @internal
  */
 
-import type { ChildMfeBridge } from '../handler/types';
-import type { Action, ActionsChain } from '../types';
+import type { ChildMfeBridge } from '../handler/ChildMfeBridge';
+import type { Action } from '../types';
+import type { CrossHopEnvelope } from '../mediator/CrossHopRoute';
 
 // ─── Realm-global mounting-bridge rendezvous ───────────────────────────────
 // @cpt-algo:cpt-frontx-algo-mfe-host-communication-registration-propagation:p2
 
 /**
  * The rendezvous protocol version this copy of the package produces and
- * recognizes. Bumped to `2` to extend the rendezvous into a two-way handoff
- * within the same synchronous window: version 1 only carried the bridge
- * downward (mounting extension -> adopting registry); version 2 additionally
- * carries re-link callbacks back upward (adopting registry -> mount manager),
- * collected in `adopters` and returned by `popAmbientMountingBridge` so a
- * later mount of the SAME host extension can re-offer a fresh link to a
- * registry that was reused, not rebuilt. A stale v1 reader still finds the
- * entry and correctly degrades via the existing "unrecognized version"
- * diagnostic path, since only the entry's own version field changed — the
- * `RENDEZVOUS_KEY` is unchanged.
+ * recognizes. Every entry at version `3` carries a bridge whose attached
+ * `InboundBridgeLink.escalate` is `(envelope) => void` — it either accepts
+ * the hand-over synchronously or throws to refuse, never returning a
+ * `Promise`. A copy recognizing a different version must not adopt such an
+ * entry's link as its own, since its own escalation call sites assume that
+ * same synchronous accept-or-throw contract: adopting a link whose
+ * `escalate` instead resolves or rejects a `Promise` would let a caller
+ * mistake acceptance-in-progress for acceptance, or a refusal for a silent,
+ * unhandled rejection, skipping the fallback path entirely. Any reader that
+ * finds an entry tagged with a version it does not recognize therefore
+ * treats the rendezvous as empty via the "unrecognized version" diagnostic
+ * path, rather than binding a link whose contract it cannot rely on.
  */
-const RENDEZVOUS_PROTOCOL_VERSION = 2 as const;
+const RENDEZVOUS_PROTOCOL_VERSION = 3 as const;
 
-/** A callback through which a previously adopted `InboundBridgeLink` can be replaced (or cleared, with `null`) on a later mount of the same host extension. */
+/** A callback through which a registry's adopted `InboundBridgeLink` is replaced, or cleared with `null`, by the mount manager's retention record (supersede, unlink, re-offer). */
 export type InboundBridgeRelink = (link: InboundBridgeLink | null) => void;
 
 /**
@@ -73,9 +76,9 @@ export type InboundBridgeRelink = (link: InboundBridgeLink | null) => void;
  * `adopters` collects the re-link callback of every registry that adopts
  * `bridge` during this window (ordinarily zero or one) — published by
  * `adoptAmbientInboundBridgeLink` and handed back to the caller by
- * `popAmbientMountingBridge`, which is the sole channel through which a later
- * mount of the same host extension can reach an already-constructed registry.
- * Nothing persists at the rendezvous itself once the entry is popped.
+ * `popAmbientMountingBridge`, which is the sole channel through which the
+ * mount manager's retention record reaches an already-constructed registry
+ * (supersede, unlink, re-offer). Nothing persists at the rendezvous itself once the entry is popped.
  */
 interface RendezvousEntry {
   readonly v: number;
@@ -88,7 +91,7 @@ interface RendezvousEntry {
  * loaded copy of this package resolves to the exact same global symbol
  * registry key, and therefore the exact same backing array on `globalThis`,
  * regardless of which copy's module instance is executing. This mirrors the
- * existing `globalThis.__FRONTX_LAZY__` pattern (`lazy-loader-registry.ts`)
+ * existing `globalThis.__FRONTX_LAZY__` pattern (`LazyLoaderRegistry.ts`)
  * used for the identical reason.
  */
 const RENDEZVOUS_KEY = Symbol.for('@gears-frontx/mfes:mount-context:1');
@@ -174,25 +177,29 @@ export interface InboundBridgeLink {
    * `inst-collision-check`, `inst-collision-reject`,
    * `inst-record-forwarding-entry`, and `inst-repropagate-upward`.
    */
-  propagateAdvertisement(targetId: string, actionTypeIds: readonly string[]): boolean;
+  propagateAdvertisement(targetId: string): boolean;
 
   /**
    * Retract a previously propagated advertisement from the immediate parent
-   * registry, rejecting any in-flight action the parent had forwarded down
-   * to this target. Realizes `inst-retract-advertisements` and
-   * `inst-reject-inflight-retracted`.
+   * registry. Retraction acts on the route only: a sub-chain the far side
+   * already accepted keeps executing there. Realizes
+   * `inst-retract-advertisements`.
    */
   retractAdvertisement(targetId: string): void;
 
   /**
-   * Forward an unresolved chain to the immediate parent registry's mediator
-   * for resolution. Minted by the parent at link time (`inst-mint-escalation-on-link`);
-   * the parent's own implementation tags the chain with this link's `edge`
-   * as its arrival edge before forwarding, so the parent's own
-   * forwarding-entry resolution never re-selects it as the chain's next hop.
-   * Realizes `inst-escalation-lookup` and `inst-tag-arrival-edge`.
+   * Hand a sub-chain with no local route to the immediate parent registry,
+   * which executes it. Minted by the parent at link time
+   * (`inst-mint-escalation-on-link`); the parent's implementation tags the
+   * action with this link's `edge` as its arrival edge, so the parent's
+   * forwarding-entry resolution never routes that action back onto it.
+   *
+   * Throws to refuse — the escalating runtime then executes `fallback` — or
+   * returns having accepted; nothing comes back. Realizes
+   * `inst-escalation-lookup`, `inst-tag-arrival-edge`, and
+   * `inst-hand-over-node`.
    */
-  escalate(chain: ActionsChain): Promise<void>;
+  escalate(envelope: CrossHopEnvelope): void;
 }
 
 interface LinkCarryingBridge {
@@ -222,8 +229,7 @@ export function registerInboundBridgeLink(bridge: ChildMfeBridge, link: InboundB
  * The link's `propagateAdvertisement`/`retractAdvertisement`/`escalate`
  * closures all capture the parent registry's own `this`; leaving the
  * property in place after retraction would keep the bridge object — which
- * may outlive the link (e.g. an author-held reference, or a reused nested
- * registry per `inst-nested-registry-lifetime-scope`) — holding a strong
+ * may outlive the link (e.g. an author-held reference) — holding a strong
  * reference back into the ancestor registry for no further purpose. Safe to
  * call even if no link is attached (e.g. a root extension with no nested
  * registry ever adopted it).
@@ -251,8 +257,8 @@ export function unregisterInboundBridgeLink(bridge: ChildMfeBridge): void {
  * rendezvous entry's `adopters` array — never invoked from this function
  * itself — so `popAmbientMountingBridge` can hand it back to the mount
  * manager, which retains it against the host extension as the sole channel
- * through which a later mount of that same extension can reach this
- * already-constructed registry (`inst-publish-relink-callback`).
+ * through which its retention record reaches this already-constructed
+ * registry (`inst-publish-relink-callback`).
  */
 export function adoptAmbientInboundBridgeLink(
   relink: InboundBridgeRelink
@@ -269,6 +275,7 @@ export function adoptAmbientInboundBridgeLink(
   }
 
   if (entry.v !== RENDEZVOUS_PROTOCOL_VERSION) {
+    // @cpt-begin:cpt-frontx-algo-mfe-host-communication-registration-propagation:p2:inst-registry-is-root
     console.debug(
       '[DefaultMfeRegistry] Mount-context rendezvous entry carries an unrecognized ' +
       `protocol version (found ${entry.v}, this copy recognizes ${RENDEZVOUS_PROTOCOL_VERSION}). ` +
@@ -276,6 +283,7 @@ export function adoptAmbientInboundBridgeLink(
       'extension\'s bridge.'
     );
     return undefined;
+    // @cpt-end:cpt-frontx-algo-mfe-host-communication-registration-propagation:p2:inst-registry-is-root
   }
   // @cpt-end:cpt-frontx-algo-mfe-host-communication-registration-propagation:p2:inst-no-ambient-bridge
 

@@ -162,12 +162,13 @@ describe('Transition', () => {
 });
 
 describe('BackProjectionDelta', () => {
-  it('names five optional operations, each keyed by extension token', () => {
+  it('names five optional operations, each keyed by extension token, plus the optional clearedDomainKeys list', () => {
     expectTypeOf<BackProjectionDelta>().toHaveProperty('added');
     expectTypeOf<BackProjectionDelta>().toHaveProperty('removed');
     expectTypeOf<BackProjectionDelta>().toHaveProperty('payloadChanged');
     expectTypeOf<BackProjectionDelta>().toHaveProperty('replaced');
     expectTypeOf<BackProjectionDelta>().toHaveProperty('reordered');
+    expectTypeOf<BackProjectionDelta>().toHaveProperty('clearedDomainKeys');
     // An empty delta is a legal value — every field is optional.
     expectTypeOf<Record<string, never>>().toExtend<BackProjectionDelta>();
   });
@@ -209,7 +210,6 @@ describe('RoutingError', () => {
       | 'invalid-foreign-segment'
       | 'invalid-domain-key'
       | 'invalid-extension-token'
-      | 'invalid-name'
       | 'invalid-param-name'
       | 'duplicate-param-name'
       | 'duplicate-extension'

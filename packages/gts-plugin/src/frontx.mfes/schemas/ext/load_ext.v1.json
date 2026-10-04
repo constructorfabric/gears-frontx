@@ -1,8 +1,9 @@
 {
   "$id": "gts://gts.frontx.mfes.comm.action.v1~frontx.mfes.ext.load_ext.v1~",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$comment": "Schema for load_ext extension actions. Derives from action.v1 and requires a subject extension reference in payload.",
+  "$comment": "Schema for load_ext extension actions. Self-contained and closed: re-declares every property action.v1 would otherwise provide and rejects any undeclared field, on itself and on its own payload (cpt-frontx-dod-gts-type-provider-infra-schema-ownership). load_ext carries no history intent — that applies only to mount_ext and unmount_ext.",
   "type": "object",
+  "additionalProperties": false,
   "properties": {
     "type": {
       "x-gts-ref": "/$id",
@@ -14,6 +15,7 @@
     },
     "payload": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "subject": {
           "x-gts-ref": "gts.frontx.mfes.ext.extension.v1~*",

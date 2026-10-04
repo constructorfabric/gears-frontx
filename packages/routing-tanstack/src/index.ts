@@ -6,34 +6,27 @@
 // itself is specified by this package's own `engine-provider` FEATURE
 // (packages/routing-tanstack/architecture/features/engine-provider/FEATURE.md).
 //
-// This entry point re-exports the full engine-provider surface: history
-// adaptation and router creation (§3, "History Adaptation To The
-// RouterHistory Contract" and "Router Creation And Mount Over A Virtual
-// History"), the composed and standalone virtual-location sources, the
-// mode-selecting dispatch between them, the location-preserving navigation
-// helper, and teardown (`RouterHistory#destroy`, already part of the
-// history-adaptation surface below — no separate export, since the
-// teardown algorithm's own output is that same member), plus the port's
-// own type contract.
+// This entry point re-exports the engine-provider surface the framework
+// router actually needs: `adaptProviderHistory` (history adaptation, mode
+// dispatch between the composed and standalone cases, and teardown via the
+// returned `RouterHistory#destroy` — no separate export, since the teardown
+// algorithm's own output is that same member), `createProviderRouter` and
+// `EngineProvider` (router creation and mount), the location-preserving
+// navigation helper, and the port's own type contract. Every internal
+// building block `adaptProviderHistory` folds behind — the virtual-location
+// projection helpers, `VirtualLocationSource`/`adaptVirtualLocationHistory`,
+// `attachAdaptedHistory`, the composed and standalone sources and
+// adapters — is reached only through this package's own internal modules,
+// never through this entry point (AC2.1, resolved decisions: these stay
+// internal, folded behind `adaptProviderHistory`).
 export type { EngineProviderInput, EngineProviderPort, EntryAddress } from '@gears-frontx/routing';
 
-export { projectParamsToVirtualLocation, projectVirtualLocationToParams, ROUTE_PARAM_NAME } from './virtual-location.js';
-export type { VirtualLocationParts } from './virtual-location.js';
+export type { AdaptHistoryOptions } from './history-adaptation.js';
 
-export type { AdaptHistoryOptions, VirtualLocationSource } from './history-adaptation.js';
-// `attachAdaptedHistory` is published because an adapted history observes
-// nothing until a mount boundary establishes its registration: a consumer
-// that mounts a raw `RouterProvider` rather than `EngineProvider` needs it,
-// and its counterpart `destroy()` is already a member of the returned
-// `RouterHistory` (FEATURE §3, Teardown On Unmount, step 1).
-export { adaptVirtualLocationHistory, attachAdaptedHistory } from './history-adaptation.js';
-
-export { createComposedVirtualLocationSource, adaptComposedHistory } from './composed-history-source.js';
-export { createStandaloneVirtualLocationSource, adaptStandaloneHistory } from './standalone-history-source.js';
 export { adaptProviderHistory } from './engine-provider-history.js';
 export { locationPreservingRedirect } from './location-preserving-redirect.js';
 
-export { createProviderRouter, createEngineProviderRouter, EngineProvider } from './router-creation.js';
+export { createProviderRouter, EngineProvider } from './router-creation.js';
 export type { EngineProviderProps, EngineProviderFromRouterProps, ProviderRouterOptions } from './router-creation.js';
 
 // DESIGN §3.3, "API Contracts" — the concrete engine's own router and
@@ -65,11 +58,11 @@ export {
 // signatures, forwarded for the same reason as the values above: the
 // ecosystem guard forbidding a direct `@tanstack/*` import bites
 // `import type` exactly as it bites a value import, so without these a
-// consumer inside this ecosystem can call `adaptComposedHistory` but cannot
+// consumer inside this ecosystem can call `adaptProviderHistory` but cannot
 // name what it returns, and can pass a route tree to `EngineProviderProps`
 // but cannot name the constraint it satisfies. `RouterHistory` is the return
-// type of every history-adaptation entry point and the parameter type of
-// `attachAdaptedHistory` and `locationPreservingRedirect`; `AnyRoute` and
-// `AnyRouter` are the constraints on `ProviderRouterOptions`,
-// `EngineProviderProps`, and `EngineProviderFromRouterProps`.
+// type of `adaptProviderHistory` and the parameter type of
+// `locationPreservingRedirect`; `AnyRoute` and `AnyRouter` are the
+// constraints on `ProviderRouterOptions`, `EngineProviderProps`, and
+// `EngineProviderFromRouterProps`.
 export type { AnyRoute, AnyRouter, RouterHistory } from '@tanstack/react-router';

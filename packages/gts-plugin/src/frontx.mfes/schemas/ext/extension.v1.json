@@ -22,7 +22,7 @@
     },
     "route": {
       "type": "string",
-      "$comment": "Optional declared route, usable by an extension without a derived presentation. Validated against the routing grammar's name alphabet, and reconciled with presentation.route, by the mfes runtime at registration time, not by this schema."
+      "$comment": "Optional declared route of the extension, carried as declared."
     }
   },
   "required": ["id", "domain", "entry"],

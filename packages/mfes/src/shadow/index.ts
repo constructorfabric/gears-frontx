@@ -3,7 +3,6 @@
  *
  * Framework-agnostic Shadow DOM utilities for MFE style isolation.
  * Pure functions with no state - no class wrapper needed per architecture rules.
- * Extracted from the legacy screensets package in Phase 7 (extension-domain governance).
  *
  * @packageDocumentation
  */

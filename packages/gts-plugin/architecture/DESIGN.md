@@ -219,7 +219,7 @@ Not applicable. The package holds no database and no persistence; its schemas ar
 
 ## 4. Additional context
 
-The provider was extracted out of `packages/screensets` when the type-substrate port was formalized, which is why its component boundary matches the port exactly rather than carrying any runtime responsibility. The one deliberate asymmetry in its coupling — an exact pin on the runtime whose peer range points back at it — exists to guarantee a single resolved provider inside an application while both packages keep independent release lines.
+The provider implements the type-substrate port and nothing else, so its component boundary matches the port exactly and carries no runtime responsibility. The one deliberate asymmetry in its coupling — an exact pin on the runtime whose peer range points back at it — exists to guarantee a single resolved provider inside an application while both packages keep independent release lines.
 
 ## 5. Traceability
 

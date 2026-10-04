@@ -109,9 +109,12 @@ describe('url-back-projection — 7.1 reference link', () => {
 });
 
 describe('url-back-projection — 7.7 structural reset (from 7.2, the console example)', () => {
-  const CONSOLE_LAYOUT = '/en?screen=tenants;tenantId=ABC&screen.tenants.tabs=contacts&modal=create-contact';
+  // `tabs` is the route the `tenants` extension's own zone declares for its
+  // nested tabs domain, carrying no reference to `screen` or `tenants` — a
+  // domain key never restates an ancestor.
+  const CONSOLE_LAYOUT = '/en?screen=tenants;tenantId=ABC&tabs=contacts&modal=create-contact';
 
-  it('reproduces the structural reset worked example exactly: screen swaps tenants for settings, screen.tenants.tabs is removed, modal survives', () => {
+  it('reproduces the structural reset worked example exactly: screen swaps tenants for settings, tabs is removed via clearedDomainKeys, modal survives', () => {
     const adapter = resetRealm(CONSOLE_LAYOUT);
 
     backProjectEntries(
@@ -123,6 +126,7 @@ describe('url-back-projection — 7.7 structural reset (from 7.2, the console ex
             entry: { extension: 'settings' as ExtensionToken, params: [] },
           },
         ],
+        clearedDomainKeys: ['tabs' as DomainKey],
       },
       'push',
     );
@@ -130,7 +134,7 @@ describe('url-back-projection — 7.7 structural reset (from 7.2, the console ex
     expect(lastWrittenUrl(adapter)).toBe('/en?screen=settings&modal=create-contact');
   });
 
-  it('issues exactly one history write for the whole composed result (single push call, not one per removed subtree entry)', () => {
+  it('issues exactly one history write for the whole composed result (single push call, not one per cleared domain key)', () => {
     const adapter = resetRealm(CONSOLE_LAYOUT);
     let pushCount = 0;
     const originalPush = adapter.pushState.bind(adapter);
@@ -141,17 +145,36 @@ describe('url-back-projection — 7.7 structural reset (from 7.2, the console ex
 
     backProjectEntries(
       'screen' as DomainKey,
-      { replaced: [{ oldExtension: 'tenants' as ExtensionToken, entry: { extension: 'settings' as ExtensionToken, params: [] } }] },
+      {
+        replaced: [{ oldExtension: 'tenants' as ExtensionToken, entry: { extension: 'settings' as ExtensionToken, params: [] } }],
+        clearedDomainKeys: ['tabs' as DomainKey],
+      },
       'push',
     );
 
     expect(pushCount).toBe(1);
   });
+
+  it('had the call named no key to clear, the nested entry would have survived as a stranded entry', () => {
+    const adapter = resetRealm(CONSOLE_LAYOUT);
+
+    backProjectEntries(
+      'screen' as DomainKey,
+      {
+        replaced: [
+          { oldExtension: 'tenants' as ExtensionToken, entry: { extension: 'settings' as ExtensionToken, params: [] } },
+        ],
+      },
+      'push',
+    );
+
+    expect(lastWrittenUrl(adapter)).toBe('/en?screen=settings&tabs=contacts&modal=create-contact');
+  });
 });
 
 describe('url-back-projection — Replaced scenario (generic dashboard, §6 acceptance criteria)', () => {
-  it('swaps the entry at its old position for the new one and removes only that extension\'s own subtree', () => {
-    const adapter = resetRealm('/en?screen=dashboard;orientation=left&screen.dashboard.panel=info&modal=create-contact');
+  it('swaps the entry at its old position for the new one and removes exactly the clearedDomainKeys named, and no other entry', () => {
+    const adapter = resetRealm('/en?screen=dashboard;orientation=left&panel=info&modal=create-contact');
 
     backProjectEntries(
       'screen' as DomainKey,
@@ -159,6 +182,7 @@ describe('url-back-projection — Replaced scenario (generic dashboard, §6 acce
         replaced: [
           { oldExtension: 'dashboard' as ExtensionToken, entry: { extension: 'settings' as ExtensionToken, params: [] } },
         ],
+        clearedDomainKeys: ['panel' as DomainKey],
       },
       'replace',
     );
@@ -168,8 +192,8 @@ describe('url-back-projection — Replaced scenario (generic dashboard, §6 acce
 });
 
 describe('url-back-projection — payload-only change resets nothing nested', () => {
-  it('updates the entry\'s own payload in place and removes no subtree entry, because the extension token itself never changed', () => {
-    const adapter = resetRealm('/en?screen=dashboard;orientation=left&screen.dashboard.panel=info');
+  it('updates the entry\'s own payload in place and removes no entry, because the extension token itself never changed and the caller names no domain key to clear', () => {
+    const adapter = resetRealm('/en?screen=dashboard;orientation=left&panel=info');
 
     backProjectEntries(
       'screen' as DomainKey,
@@ -177,7 +201,58 @@ describe('url-back-projection — payload-only change resets nothing nested', ()
       'push',
     );
 
-    expect(lastWrittenUrl(adapter)).toBe('/en?screen=dashboard;orientation=right&screen.dashboard.panel=info');
+    expect(lastWrittenUrl(adapter)).toBe('/en?screen=dashboard;orientation=right&panel=info');
+  });
+});
+
+describe('url-back-projection — clearedDomainKeys', () => {
+  it('applies exactly as given, never inferred: a named key removes its entries, an unnamed sibling survives', () => {
+    const adapter = resetRealm('/en?screen=tenants;tenantId=ABC&tabs=contacts&legend=right&modal=create-contact');
+
+    backProjectEntries(
+      'screen' as DomainKey,
+      { payloadChanged: [{ extension: 'tenants' as ExtensionToken, params: [{ name: 'tenantId', value: 'ABC' }] }], clearedDomainKeys: ['tabs' as DomainKey] },
+      'push',
+    );
+
+    expect(lastWrittenUrl(adapter)).toBe('/en?screen=tenants;tenantId=ABC&legend=right&modal=create-contact');
+  });
+
+  it('a named key no entry carries removes nothing, and the call still issues its one write', () => {
+    const adapter = resetRealm('/en?screen=dashboard');
+
+    backProjectEntries(
+      'screen' as DomainKey,
+      { clearedDomainKeys: ['tabs' as DomainKey] },
+      'push',
+    );
+
+    expect(lastWrittenUrl(adapter)).toBe('/en?screen=dashboard');
+  });
+
+  it('naming the calling domain key itself clears nothing — this domain key\'s own entries are governed by the delta\'s other operations alone', () => {
+    const adapter = resetRealm('/en?screen=dashboard;orientation=left');
+
+    backProjectEntries(
+      'screen' as DomainKey,
+      {
+        payloadChanged: [{ extension: 'dashboard' as ExtensionToken, params: [{ name: 'orientation', value: 'right' }] }],
+        clearedDomainKeys: ['screen' as DomainKey],
+      },
+      'push',
+    );
+
+    expect(lastWrittenUrl(adapter)).toBe('/en?screen=dashboard;orientation=right');
+  });
+
+  it('throws invalid-domain-key for a malformed cleared domain key, before anything is written', () => {
+    const adapter = resetRealm('/en?screen=tenants&tabs=contacts');
+
+    const error = expectRoutingError(() =>
+      backProjectEntries('screen' as DomainKey, { clearedDomainKeys: ['Tabs!' as DomainKey] }, 'push'),
+    );
+    expect(error.code).toBe('invalid-domain-key');
+    expect(adapter.lastWrite).toBeUndefined();
   });
 });
 
@@ -289,6 +364,16 @@ describe('url-back-projection — synchronous validation', () => {
 
     const error = expectRoutingError(() => backProjectEntries('Screen!' as DomainKey, {}, 'push'));
     expect(error.code).toBe('invalid-domain-key');
+  });
+
+  // §6 Acceptance Criteria: "a domain key that is not a single valid name —
+  // `screen.tenants.tabs` among them".
+  it('throws RoutingError(invalid-domain-key) for the composite-shaped "screen.tenants.tabs", which is no longer a valid single-name domain key', () => {
+    const adapter = resetRealm('/en?screen=dashboard');
+
+    const error = expectRoutingError(() => backProjectEntries('screen.tenants.tabs' as DomainKey, {}, 'push'));
+    expect(error.code).toBe('invalid-domain-key');
+    expect(adapter.lastWrite).toBeUndefined();
   });
 
   it('throws RoutingError(invalid-extension-token) naming the first offending value in the delta\'s added list', () => {
@@ -435,7 +520,7 @@ describe('url-back-projection — reordered must be a permutation of the survivi
 // operation the pair asks for cannot be performed at all.
 describe('url-back-projection — replaced must name an entry this domain key currently carries', () => {
   it('throws RoutingError(replaced-old-extension-absent) and writes nothing when oldExtension is absent', () => {
-    const adapter = resetRealm('/en?w.a.x=q&z=1');
+    const adapter = resetRealm('/en?x=q&z=1');
 
     const error = expectRoutingError(() =>
       backProjectEntries(
@@ -451,14 +536,11 @@ describe('url-back-projection — replaced must name an entry this domain key cu
     expect(error.code).toBe('replaced-old-extension-absent');
 
     expect(adapter.lastWrite).toBeUndefined();
-    expect(currentUrl(adapter)).toBe('/en?w.a.x=q&z=1');
+    expect(currentUrl(adapter)).toBe('/en?x=q&z=1');
   });
 
-  it('leaves the subtree of the absent token in place — no structural reset runs', () => {
-    // The reset triggers only when an entry is removed or its own token
-    // changes (ADR 0003, "Structural reset"). Nothing changed here, so
-    // `w.a.x=q` must survive the refusal intact.
-    const adapter = resetRealm('/en?w=c&w.a.x=q&w.c.y=r');
+  it('leaves every other domain key\'s own entries in place — nothing is written at all on the refusal, clearedDomainKeys included', () => {
+    const adapter = resetRealm('/en?w=c&x=q&y=r');
 
     expectRoutingError(() =>
       backProjectEntries(
@@ -467,19 +549,20 @@ describe('url-back-projection — replaced must name an entry this domain key cu
           replaced: [
             { oldExtension: 'a' as ExtensionToken, entry: { extension: 'b' as ExtensionToken, params: [] } },
           ],
+          clearedDomainKeys: ['x' as DomainKey],
         },
         'push',
       ),
     );
 
     expect(adapter.lastWrite).toBeUndefined();
-    expect(currentUrl(adapter)).toBe('/en?w=c&w.a.x=q&w.c.y=r');
+    expect(currentUrl(adapter)).toBe('/en?w=c&x=q&y=r');
   });
 
   it('writes nothing at all when one replaced pair matches and another does not', () => {
     // The refusal is atomic: the matching pair is not written on its own,
     // partially applying a delta the caller gave as one unit.
-    const adapter = resetRealm('/en?w=c&w=d&w.c.y=r');
+    const adapter = resetRealm('/en?w=c&w=d&y=r');
 
     const error = expectRoutingError(() =>
       backProjectEntries(
@@ -496,7 +579,7 @@ describe('url-back-projection — replaced must name an entry this domain key cu
     expect(error.code).toBe('replaced-old-extension-absent');
 
     expect(adapter.lastWrite).toBeUndefined();
-    expect(currentUrl(adapter)).toBe('/en?w=c&w=d&w.c.y=r');
+    expect(currentUrl(adapter)).toBe('/en?w=c&w=d&y=r');
   });
 
   it('names the absent position ahead of a reordered list that is also not a permutation', () => {

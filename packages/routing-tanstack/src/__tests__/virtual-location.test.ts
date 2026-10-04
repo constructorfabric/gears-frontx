@@ -48,9 +48,22 @@ describe('projectVirtualLocationToParams', () => {
     expect(params[0]).toEqual({ name: 'route', value: 'settings/general' });
   });
 
-  it('writes an empty route value for the root pathname', () => {
-    const params = projectVirtualLocationToParams('/', '');
-    expect(params[0]).toEqual({ name: 'route', value: '' });
+  it('omits the route parameter for the root pathname', () => {
+    expect(projectVirtualLocationToParams('/', '')).toEqual([]);
+    expect(projectVirtualLocationToParams('', '')).toEqual([]);
+    expect(projectVirtualLocationToParams('/', '?last-ping=x')).toEqual([{ name: 'last-ping', value: 'x' }]);
+  });
+
+  it('reads a missing route and an explicitly empty route both as the root pathname', () => {
+    expect(projectParamsToVirtualLocation([{ name: 'last-ping', value: 'x' }])).toEqual({
+      pathname: '/',
+      search: '?last-ping=x',
+    });
+    expect(projectParamsToVirtualLocation([{ name: 'route', value: '' }]).pathname).toBe('/');
+  });
+
+  it('keeps a non-root path as the route parameter', () => {
+    expect(projectVirtualLocationToParams('/a/b', '')).toEqual([{ name: 'route', value: 'a/b' }]);
   });
 
   it('appends every search parameter after route, in the order the search string carries them', () => {

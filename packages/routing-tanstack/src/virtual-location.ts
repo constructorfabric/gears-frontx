@@ -45,8 +45,8 @@ export function projectParamsToVirtualLocation(params: readonly Param[]): Virtua
 /**
  * The reverse of `projectParamsToVirtualLocation`: builds the entry's own
  * new, full parameter list from a virtual location's pathname and search —
- * `route` first, with exactly one leading `/` stripped off the pathname,
- * then every remaining parameter as given, in the order the search string
+ * `route` first (omitted when the pathname is the root `/`), with exactly
+ * one leading `/` stripped off the pathname, then every remaining parameter as given, in the order the search string
  * itself carries them (TanStack's own search-serializer order, since this
  * package treats that string as opaque and never re-parses it beyond
  * splitting it into name/value pairs).
@@ -57,7 +57,10 @@ export function projectParamsToVirtualLocation(params: readonly Param[]): Virtua
 // @cpt-begin:cpt-frontx-algo-routing-engine-provider-history-adaptation:p2:inst-expose-direct-members
 export function projectVirtualLocationToParams(pathname: string, search: string): readonly Param[] {
   const routeValue = pathname.startsWith('/') ? pathname.slice(1) : pathname;
-  return [{ name: ROUTE_PARAM_NAME, value: routeValue }, ...parseSearchString(search)];
+  // The root path is the absence of `route`, so a root occupant's entry
+  // carries no bare `route` token.
+  const routeParams: readonly Param[] = routeValue === '' ? [] : [{ name: ROUTE_PARAM_NAME, value: routeValue }];
+  return [...routeParams, ...parseSearchString(search)];
 }
 // @cpt-end:cpt-frontx-algo-routing-engine-provider-history-adaptation:p2:inst-expose-direct-members
 

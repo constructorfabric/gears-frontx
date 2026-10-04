@@ -76,7 +76,7 @@ Because independently authored templates share one repository, the CLI treats ev
 - `cpt-frontx-adr-project-upgrade-mechanism`
 - `cpt-frontx-adr-contract-schema-ownership`
 - `cpt-frontx-adr-cli-internal-decomposition`
-- `cpt-frontx-adr-uniform-template-mechanism`
+- `cpt-frontx-adr-template-classification`
 - `cpt-frontx-adr-template-ownership-boundary-declaration`
 - `cpt-frontx-adr-assembly-conflict-prevention`
 
@@ -102,7 +102,7 @@ graph TD
 | Layer | Responsibility | Technology |
 |-------|---------------|------------|
 | Public surface | The library entry point and the `frontx` executable bin, dispatching every command to the internal component that owns its behavior | TypeScript, single entry point + declared `bin` |
-| Command surface | Argv parsing, command dispatch, usage/help output, exit-code mapping | TypeScript, one dispatch path over the uniform template mechanism |
+| Command surface | Argv parsing, command dispatch, usage/help output, exit-code mapping | TypeScript, one dispatch path over any template |
 | Lifecycle components | Resolution, pre-publish validation, assembly, conflict checking, provenance, change-set & upgrade | TypeScript modules, each a single-responsibility internal component |
 | Local persistence | Tracked template inventory and in-repository provenance records | Filesystem — inventory store and `.frontx/provenance.json` |
 
@@ -229,14 +229,14 @@ Project Developers and the AI agents acting for them need to drive the full temp
 
 ##### Responsibility scope
 
-- Owns the command surface, organized by lifecycle capability — install / list / update / validate a template; apply a template to seed a repository; add a template into an existing repository; assemble with a pre-flight conflict check; upgrade an applied template — dispatching each command to the owning internal component through one uniform mechanism that operates over any template ([Whether the Platform Classifies Templates or Applies Any Template Uniformly](../../../architecture/ADR/0030-uniform-template-mechanism.md)).
+- Owns the command surface, organized by lifecycle capability — install / list / update / validate a template; apply a template to seed a repository; add a template into an existing repository; assemble with a pre-flight conflict check; upgrade an applied template — dispatching each command to the owning internal component through one uniform mechanism that operates over any template ([Whether the Platform Classifies Templates or Applies Any Template Uniformly](../../../architecture/ADR/0030-template-classification.md)).
 - Composes the internal components — template resolver, pre-publish validator, assembler, conflict checker, provenance recorder, and change-set-&-upgrade engine — into the lifecycle the command surface exposes.
 - Holds the package's template-independence guarantee: it resolves templates by versioned source-spec at runtime and bundles none (CLI-1).
 
 ##### Responsibility boundaries
 
 - Owns no lifecycle mechanism directly; acquisition, validation, assembly, conflict checking, provenance, and upgrade are each owned by the corresponding internal component below.
-- The command surface operates identically over any template through one uniform mechanism ([Whether the Platform Classifies Templates or Applies Any Template Uniformly](../../../architecture/ADR/0030-uniform-template-mechanism.md)).
+- The command surface operates identically over any template through one uniform mechanism ([Whether the Platform Classifies Templates or Applies Any Template Uniformly](../../../architecture/ADR/0030-template-classification.md)).
 - Does not own the runtime mechanisms an assembled application uses (registration, type validation, communication) — those belong to the published libraries.
 - Does not own AI-driven orchestration of upgrades; that is layered above the change-set engine by the AI Tooling kit and not duplicated here.
 
@@ -269,7 +269,7 @@ The CLI owns no template, so a single component must turn a versioned source-spe
 ##### Responsibility boundaries
 
 - Bundles no template (CLI-1); is the one shared resolver across every application and assembly (CLI-2).
-- Resolves any template through the same path ([Whether the Platform Classifies Templates or Applies Any Template Uniformly](../../../architecture/ADR/0030-uniform-template-mechanism.md)).
+- Resolves any template through the same path ([Whether the Platform Classifies Templates or Applies Any Template Uniformly](../../../architecture/ADR/0030-template-classification.md)).
 - Does not materialize files into a repository (assembler), check boundaries for conflict (conflict checker), record provenance (provenance recorder), validate a candidate template for publication (pre-publish validator), or apply upgrades (change-set engine).
 
 ##### Related components (by ID)
@@ -314,7 +314,7 @@ The resolved set of templates must be materialized into a repository on disk —
 
 ##### Responsibility scope
 
-- Owns assembly and materialization of the resolved template set into a repository, seeding a new repository (`cpt-frontx-fr-cli-seed-repository`) or adding into an existing one (`cpt-frontx-fr-cli-add-template-to-repository`), composing a preset's referenced templates in one operation ([Multi-Template Assembly and Preset Reference Resolution](../../../architecture/ADR/0020-composed-template-resolution.md), [Whether the Platform Classifies Templates or Applies Any Template Uniformly](../../../architecture/ADR/0030-uniform-template-mechanism.md)).
+- Owns assembly and materialization of the resolved template set into a repository, seeding a new repository (`cpt-frontx-fr-cli-seed-repository`) or adding into an existing one (`cpt-frontx-fr-cli-add-template-to-repository`), composing a preset's referenced templates in one operation ([Multi-Template Assembly and Preset Reference Resolution](../../../architecture/ADR/0020-composed-template-resolution.md), [Whether the Platform Classifies Templates or Applies Any Template Uniformly](../../../architecture/ADR/0030-template-classification.md)).
 - Stages the assembly's intended writes for the conflict checker and, only after the check passes, materializes them and composes any shared files per their declared merges.
 - Triggers per-applied-template provenance recording as the final step of an apply.
 

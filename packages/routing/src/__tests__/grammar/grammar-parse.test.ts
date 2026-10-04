@@ -139,13 +139,13 @@ describe('parseGrammar — warning scope: only a segment plainly shaped as an en
     expect(parseGrammar(written).warnings).toEqual([]);
   });
 
-  it('still warns when the domain key carries the ancestry form, even though the extension is invalid', () => {
+  it('treats a dotted candidate domain key as a silent foreign segment — domain-key = name admits no "." at all', () => {
     const result = parseGrammar('/en?screen.app.panel=Bad_1&widgets=line-a;range=7d');
     expect(result.entries).toEqual([
       { domainKey: 'widgets', extension: 'line-a', params: [{ name: 'range', value: '7d' }] },
     ]);
     expect(result.foreignSegments).toEqual(['screen.app.panel=Bad_1']);
-    expect(result.warnings).toEqual([{ code: 'malformed-entry', rawEntry: 'screen.app.panel=Bad_1' }]);
+    expect(result.warnings).toEqual([]);
   });
 
   it('still warns when the raw segment carries ";" parameters, even for a single-segment key with an invalid extension', () => {

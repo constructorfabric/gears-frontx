@@ -12,8 +12,6 @@ import {
   type RouterConstructorOptions,
   type RouterHistory,
 } from '@tanstack/react-router';
-import type { EngineProviderPort } from '@gears-frontx/routing';
-import { adaptProviderHistory } from './engine-provider-history.js';
 import { attachAdaptedHistory } from './history-adaptation.js';
 
 /**
@@ -232,7 +230,7 @@ export type EngineProviderProps<TRouteTree extends AnyRoute> = EngineProviderTre
       });
 
 /**
- * `createEngineProviderRouter` below returns only a constructed
+ * `createProviderRouter` above returns only a constructed
  * router — a consumer mounting it directly through `RouterProvider`,
  * bypassing this component, has no lifecycle hook of its own from which to
  * attach that router's `history` or to call `router.history.destroy()`, so
@@ -267,7 +265,7 @@ export interface EngineProviderFromRouterProps<TRouter extends AnyRouter> {
  * `{routeTree, history}` (the same adapted `RouterHistory` a caller built
  * once via `adaptComposedHistory`/`adaptStandaloneHistory`,
  * `./engine-provider-history.js`) or mounts one already constructed
- * elsewhere — `createEngineProviderRouter`'s own output — via `{router}`.
+ * elsewhere — `createProviderRouter`'s own output — via `{router}`.
  * Mounting a standalone-adapted history runs through this identical
  * component (FEATURE §3, Standalone Deployment, step 5).
  *
@@ -368,47 +366,3 @@ export function EngineProvider(
   // @cpt-end:cpt-frontx-algo-routing-engine-provider-standalone-deployment:p2:inst-mount-standalone-router
   // @cpt-end:cpt-frontx-algo-routing-engine-provider-router-creation:p2:inst-mount-router-provider
 }
-
-/**
- * This package's own conforming instance of the navigation substrate's
- * `EngineProviderPort` (`@gears-frontx/routing`, FEATURE
- * (navigation-substrate) §1.5, "Engine-provider port shape"): a function
- * from `EngineProviderInput` (`history`, `entryAddress`, `routeTree`) to a
- * constructed router, typed against the port so a mismatch between this
- * package's own construction path and the port's normative contract is a
- * compile-time diagnostic, not a hoped-for convention (DESIGN §3.3
- * table row "`createRouter({ routeTree, history })`" reframed against the
- * port's own input shape). Composes `adaptProviderHistory`'s own mode
- * dispatch (`./engine-provider-history.js`) with `createProviderRouter`
- * above — the identical two-step construction path
- * `cpt-frontx-flow-routing-engine-provider-swap-engine`'s own worked
- * instance already names, exposed here as one callable a consumer can pass
- * anywhere the port itself is expected.
- *
- * Construction options: the port's own input is exactly
- * `{history, entryAddress, routeTree}` and this function keeps that
- * signature, so it passes `createProviderRouter` no options at all — the
- * router it returns carries no `context`. That silence is the point: the
- * port is declared by the core package, and admitting an engine-shaped
- * options field into it would put the engine's own construction surface
- * there. A consumer that needs `context` reaches the seam on this package's
- * own exports instead — `createProviderRouter`'s third argument, or
- * `EngineProvider`'s `routerOptions` prop.
- *
- * Teardown: the port's own signature likewise returns a router, not a
- * `{router, destroy}` pair — widening it would break the port typing this
- * function exists to satisfy. The returned router's own `history` member
- * (TanStack's `Router#history` field) is the same adapted `RouterHistory`
- * object `EngineProvider` attaches and tears down elsewhere in this file,
- * and it is unattached when this function returns; mount the result through
- * `<EngineProvider router={router} />` (the `EngineProviderFromRouterProps`
- * overload above), rather than a raw `<RouterProvider router={router} />`,
- * to get that attach on mount and the symmetric teardown on unmount. A
- * consumer that mounts the raw `RouterProvider` instead owns both:
- * `attachAdaptedHistory(router.history)` and `router.history.destroy()`.
- */
-export const createEngineProviderRouter: EngineProviderPort<AnyRoute, ReturnType<typeof createProviderRouter>> = ({
-  history,
-  entryAddress,
-  routeTree,
-}) => createProviderRouter(routeTree, adaptProviderHistory(history, entryAddress));

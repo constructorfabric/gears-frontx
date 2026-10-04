@@ -52,6 +52,12 @@ export interface ActionsChain {
   next?: ActionsChain;
   /** Fallback chain to execute on failure */
   fallback?: ActionsChain;
+  // @cpt-begin:cpt-frontx-flow-mfe-host-communication-dispatch-chain:p1:inst-assemble-chain
+  // No whole-chain budget field: per ADR `cpt-frontx-adr-action-dispatch-and-chaining`,
+  // there is no aggregate bound on a chain as a whole — bounding is stated
+  // per action (`Action.timeout`), where an author already states it, and
+  // nowhere else.
+  // @cpt-end:cpt-frontx-flow-mfe-host-communication-dispatch-chain:p1:inst-assemble-chain
 }
 
 // ---------------------------------------------------------------------------
@@ -131,12 +137,6 @@ export interface ExtensionPresentation {
   label: string;
   /** Optional icon identifier (e.g., "user", "settings") */
   icon?: string;
-  /**
-   * Single route-name token for navigation, in the routing grammar's `name`
-   * alphabet once one leading `/` is stripped (e.g. "profile", "/settings")
-   * — not a multi-segment path.
-   */
-  route: string;
   /** Optional sort order for menu items (lower numbers first) */
   order?: number;
 }
@@ -158,11 +158,10 @@ export interface Extension {
   /** Optional lifecycle hooks - explicitly declared actions for each stage */
   lifecycle?: LifecycleHook[];
   /**
-   * Optional declared route, usable by an extension without `presentation`.
+   * Optional declared route of the extension.
    * A deliberate exception to the "domain-specific fields go to derived
    * types" convention above — routability applies to an extension in any
-   * domain. When both this and `presentation.route` are set, they must agree
-   * once each is stripped of one leading `/`.
+   * domain.
    */
   route?: string;
   // Domain-specific fields are added via derived types, not defined here
@@ -172,11 +171,14 @@ export interface Extension {
  * Screen Extension (derived from Extension)
  * GTS Type: gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.screen.v1~
  *
- * Extends the base Extension type with presentation metadata required for screen domain.
- * Screen domain sets extensionsTypeId to reference this derived type, so all screen
- * extensions must include presentation metadata.
+ * Extends the base Extension type with a required declared route and the
+ * presentation metadata required for screen domain. Screen domain sets
+ * extensionsTypeId to reference this derived type, so all screen extensions
+ * must declare a route and include presentation metadata.
  */
 export interface ScreenExtension extends Extension {
+  /** Declared route for screen domain extensions (required) */
+  route: string;
   /** Presentation metadata for screen domain extensions (required) */
   presentation: ExtensionPresentation;
 }
@@ -231,6 +233,19 @@ export interface LoadExtPayload {
 }
 
 /**
+ * The history intent a `mount_ext` or `unmount_ext` action carries, passed to
+ * the router uninterpreted: the runtime reads, defaults, and rewrites none of
+ * it. An absent intent means `push`, but that reading is the router's, never
+ * the runtime's (`cpt-frontx-algo-mfe-host-communication-history-intent`).
+ * GTS Type: enum declared on the `history` field of
+ * gts.frontx.mfes.ext.mount_ext.v1~ and gts.frontx.mfes.ext.unmount_ext.v1~
+ */
+// @cpt-algo:cpt-frontx-algo-mfe-host-communication-history-intent:p2
+// @cpt-dod:cpt-frontx-dod-mfe-host-communication-history-intent:p1
+// @cpt-begin:cpt-frontx-algo-mfe-host-communication-history-intent:p1:inst-hi-declare
+export type HistoryIntent = 'none' | 'replace' | 'push';
+
+/**
  * Payload for mount_ext action. Pure data; no DOM references. Containers are
  * materialized by the domain implementation's `ContainerHooks` and attached
  * by the per-domain `ExtensionMounter`.
@@ -238,6 +253,11 @@ export interface LoadExtPayload {
 export interface MountExtPayload {
   /** The extension ID to mount (GTS subject reference) */
   subject: string;
+  /**
+   * Optional history intent, admitted by the closed `mount_ext` schema and
+   * passed to the router uninterpreted; absent means push.
+   */
+  history?: HistoryIntent;
 }
 
 /**
@@ -247,4 +267,10 @@ export interface MountExtPayload {
 export interface UnmountExtPayload {
   /** The extension ID to unmount (GTS subject reference) */
   subject: string;
+  /**
+   * Optional history intent, admitted by the closed `unmount_ext` schema and
+   * passed to the router uninterpreted; absent means push.
+   */
+  history?: HistoryIntent;
 }
+// @cpt-end:cpt-frontx-algo-mfe-host-communication-history-intent:p1:inst-hi-declare

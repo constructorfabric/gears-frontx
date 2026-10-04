@@ -1,19 +1,16 @@
 import { describe, it, expect, vi } from 'vitest';
 import { DefaultExtensionMounter } from '../DefaultExtensionMounter';
 import { ExtensionMounter } from '../ExtensionMounter';
-import { MountManager } from '../mount-manager';
-import { ConcurrentMountStrategy, ExclusiveMountStrategy, OptionalMountStrategy } from '../mount-strategies';
-import type { ActionPayload, ContainerHooks } from '../mount-strategy';
-import type { MfeRegistry } from '../../registry/MfeRegistry';
-import type { ParentMfeBridge } from '../../handler/types';
+import { MountManager } from '../MountManager';
+import { ExtensionReleaserProvider } from '../ExtensionReleaserProvider';
+import * as barrel from '../../index';
+import type { ParentMfeBridge } from '../../handler/ParentMfeBridge';
 
 // ─── Fakes ───────────────────────────────────────────────────────────────────
 
 class FakeMountManager extends MountManager {
   readonly mountCalls: Array<{ extensionId: string; container: Element }> = [];
   readonly unmountCalls: string[] = [];
-  unmountError: Error | undefined;
-  readonly unmountErrors = new Map<string, Error>();
 
   async loadExtension(_extensionId: string): Promise<void> {}
   async preloadExtension(_extensionId: string): Promise<void> {}
@@ -25,10 +22,6 @@ class FakeMountManager extends MountManager {
 
   async unmountExtension(extensionId: string): Promise<void> {
     this.unmountCalls.push(extensionId);
-    const error = this.unmountErrors.get(extensionId) ?? this.unmountError;
-    if (error) {
-      throw error;
-    }
   }
 
   releaseExtension(_extensionId: string): void {}
@@ -36,64 +29,22 @@ class FakeMountManager extends MountManager {
   setTheme(_cssVars: Record<string, string>): void {}
 }
 
-class TrackingContainerHooks implements ContainerHooks {
-  readonly created = new Map<string, Element>();
-  readonly destroyed: Array<{ extensionId: string; container: Element | undefined }> = [];
-
-  create(extensionId: string): Element {
-    const container = document.createElement('div');
-    this.created.set(extensionId, container);
-    return container;
-  }
-
-  destroy(extensionId: string, container?: Element): void {
-    this.destroyed.push({ extensionId, container });
-    if (!container || this.created.get(extensionId) === container) {
-      this.created.delete(extensionId);
-    }
-  }
-}
-
-/** A pre-container-identity hook implementation kept compatible by the API. */
-class IdKeyedContainerHooks implements ContainerHooks {
-  readonly created = new Map<string, Element>();
-
-  create(extensionId: string): Element {
-    const container = document.createElement('div');
-    this.created.set(extensionId, container);
-    return container;
-  }
-
-  destroy(extensionId: string): void {
-    this.created.delete(extensionId);
-  }
-}
-
-function payload(subject: string): ActionPayload {
-  return { subject };
-}
-
 // ─── Helper factory ───────────────────────────────────────────────────────────
 
 function makeFixture(overrides?: { mountManager?: MountManager }) {
   const DOMAIN = 'test-domain';
   const mountManager = overrides?.mountManager ?? new FakeMountManager();
+  const addMountedExtension = vi.fn<(domainId: string, extensionId: string) => void>();
+  const removeMountedExtension = vi.fn<(domainId: string, extensionId: string) => void>();
   const mounted: string[] = [];
-  const addMountedExtension = vi.fn((domainId: string, extensionId: string) => {
-    if (domainId === DOMAIN) mounted.push(extensionId);
-  });
-  const removeMountedExtension = vi.fn((domainId: string, extensionId: string) => {
-    if (domainId !== DOMAIN) return;
-    const index = mounted.indexOf(extensionId);
-    if (index !== -1) mounted.splice(index, 1);
-  });
   const getMountedExtensions = (_domainId: string): readonly string[] => mounted;
+
   const mounter = new DefaultExtensionMounter(
     DOMAIN,
     mountManager,
     addMountedExtension,
     removeMountedExtension,
-    getMountedExtensions
+    getMountedExtensions,
   );
 
   const root = document.createElement('div');
@@ -125,30 +76,6 @@ describe('DefaultExtensionMounter', () => {
       await expect(mounter.mount('ext-1', document.createElement('div')))
         .rejects.toThrow(/no root attached/);
     });
-
-    it('rolls back DOM, bookkeeping, and guest lifecycle when mount-set registration fails', async () => {
-      const mountManager = new FakeMountManager();
-      const registrationError = new Error('mount-set update failed');
-      const removeMountedExtension = vi.fn();
-      const mounter = new DefaultExtensionMounter(
-        'test-domain',
-        mountManager,
-        () => {
-          throw registrationError;
-        },
-        removeMountedExtension,
-        () => []
-      );
-      const root = document.createElement('div');
-      const container = document.createElement('div');
-      mounter.attach(root);
-
-      await expect(mounter.mount('ext-1', container)).rejects.toBe(registrationError);
-
-      expect(root.contains(container)).toBe(false);
-      expect(removeMountedExtension).toHaveBeenCalledWith('test-domain', 'ext-1');
-      expect(mountManager.unmountCalls).toEqual(['ext-1']);
-    });
   });
 
   describe('unmount', () => {
@@ -170,42 +97,6 @@ describe('DefaultExtensionMounter', () => {
 
       await expect(mounter.unmount('non-existent')).resolves.not.toThrow();
     });
-
-    it('clears the container and mount-set when extension teardown rejects', async () => {
-      const mountManager = new FakeMountManager();
-      const { mounter, DOMAIN, root, removeMountedExtension, mounted } = makeFixture({ mountManager });
-      mounter.attach(root);
-      const container = document.createElement('div');
-      await mounter.mount('ext-1', container);
-      const unmountError = new Error('extension teardown failed');
-      mountManager.unmountError = unmountError;
-
-      await expect(mounter.unmount('ext-1')).rejects.toBe(unmountError);
-
-      expect(root.contains(container)).toBe(false);
-      expect(removeMountedExtension).toHaveBeenCalledWith(DOMAIN, 'ext-1');
-      expect(mounted).toEqual([]);
-
-      const remountContainer = document.createElement('div');
-      await expect(mounter.mount('ext-1', remountContainer)).resolves.not.toThrow();
-      expect(root.contains(remountContainer)).toBe(true);
-      expect(mounted).toEqual(['ext-1']);
-    });
-
-    it('waits for an in-flight mount before tearing the extension down', async () => {
-      const { mounter, root, mounted, mountManager } = makeFixture();
-      mounter.attach(root);
-      const container = document.createElement('div');
-
-      const mounting = mounter.mount('ext-1', container);
-      const unmounting = mounter.unmount('ext-1');
-
-      await expect(mounting).resolves.toBeUndefined();
-      await expect(unmounting).resolves.toBeUndefined();
-      expect(root.contains(container)).toBe(false);
-      expect(mounted).toEqual([]);
-      expect((mountManager as FakeMountManager).unmountCalls).toEqual(['ext-1']);
-    });
   });
 
   describe('detach', () => {
@@ -216,12 +107,13 @@ describe('DefaultExtensionMounter', () => {
       const getMountedExtensions = (_domainId: string): readonly string[] => [...mounted];
       const addMountedExtension = vi.fn();
       const removeMountedExtension = vi.fn();
+
       const mounter = new DefaultExtensionMounter(
         DOMAIN,
         mountManager,
         addMountedExtension,
         removeMountedExtension,
-        getMountedExtensions
+        getMountedExtensions,
       );
       const root = document.createElement('div');
       mounter.attach(root);
@@ -231,92 +123,6 @@ describe('DefaultExtensionMounter', () => {
       // Both extensions were passed to mountManager.unmountExtension
       expect(mountManager.unmountCalls).toContain('ext-a');
       expect(mountManager.unmountCalls).toContain('ext-b');
-    });
-
-    it('tears down occupants in mount-set order while still completing every teardown', async () => {
-      class SequentialUnmountManager extends FakeMountManager {
-        private releaseFirstUnmount: (() => void) | undefined;
-        private readonly firstUnmountGate = new Promise<void>((resolve) => {
-          this.releaseFirstUnmount = resolve;
-        });
-        private signalFirstUnmount: (() => void) | undefined;
-        readonly firstUnmountStarted = new Promise<void>((resolve) => {
-          this.signalFirstUnmount = resolve;
-        });
-
-        override async unmountExtension(extensionId: string): Promise<void> {
-          this.unmountCalls.push(extensionId);
-          if (extensionId === 'ext-a') {
-            this.signalFirstUnmount?.();
-            await this.firstUnmountGate;
-          }
-        }
-
-        finishFirstUnmount(): void {
-          this.releaseFirstUnmount?.();
-        }
-      }
-
-      const mountManager = new SequentialUnmountManager();
-      const { mounter, root } = makeFixture({ mountManager });
-      mounter.attach(root);
-      await mounter.mount('ext-a', document.createElement('div'));
-      await mounter.mount('ext-b', document.createElement('div'));
-
-      const detaching = mounter.detach();
-      await mountManager.firstUnmountStarted;
-      expect(mountManager.unmountCalls).toEqual(['ext-a']);
-
-      mountManager.finishFirstUnmount();
-      await expect(detaching).resolves.toBeUndefined();
-      expect(mountManager.unmountCalls).toEqual(['ext-a', 'ext-b']);
-    });
-
-    it('allows a later occupant to remount while an earlier detach teardown is pending', async () => {
-      class DeferredFirstUnmountManager extends FakeMountManager {
-        private releaseFirstUnmount: (() => void) | undefined;
-        private readonly firstUnmountGate = new Promise<void>((resolve) => {
-          this.releaseFirstUnmount = resolve;
-        });
-        private signalFirstUnmount: (() => void) | undefined;
-        readonly firstUnmountStarted = new Promise<void>((resolve) => {
-          this.signalFirstUnmount = resolve;
-        });
-
-        override async unmountExtension(extensionId: string): Promise<void> {
-          this.unmountCalls.push(extensionId);
-          if (extensionId === 'ext-a') {
-            this.signalFirstUnmount?.();
-            await this.firstUnmountGate;
-          }
-        }
-
-        finishFirstUnmount(): void {
-          this.releaseFirstUnmount?.();
-        }
-      }
-
-      const mountManager = new DeferredFirstUnmountManager();
-      const { mounter, root: oldRoot, mounted } = makeFixture({ mountManager });
-      const hooks = new TrackingContainerHooks();
-      const strategy = new ConcurrentMountStrategy(mounter, hooks);
-      mounter.attach(oldRoot);
-      await strategy.mount(payload('ext-a'));
-      await strategy.mount(payload('ext-b'));
-
-      const detaching = mounter.detach();
-      await mountManager.firstUnmountStarted;
-      const freshRoot = document.createElement('div');
-      mounter.attach(freshRoot);
-      await strategy.mount(payload('ext-b'));
-
-      mountManager.finishFirstUnmount();
-      await expect(detaching).resolves.toBeUndefined();
-
-      const freshContainer = hooks.created.get('ext-b');
-      expect(freshContainer).toBeDefined();
-      expect(freshRoot.contains(freshContainer!)).toBe(true);
-      expect(mounted).toEqual(['ext-b']);
     });
 
     it('can attach again with a fresh root after detach', async () => {
@@ -331,164 +137,6 @@ describe('DefaultExtensionMounter', () => {
 
       // mount after re-attach should succeed
       await expect(mounter.mount('ext-x', document.createElement('div'))).resolves.not.toThrow();
-    });
-
-    it('fences an immediate detach before a fulfilled mount continuation can append an occupant', async () => {
-      const { mounter, root, mounted, mountManager } = makeFixture();
-      mounter.attach(root);
-      const container = document.createElement('div');
-
-      const mounting = mounter.mount('ext-1', container);
-      const detaching = mounter.detach();
-
-      await expect(detaching).resolves.toBeUndefined();
-      await expect(mounting).rejects.toThrow(/root was detached during mounting/);
-      expect(root.contains(container)).toBe(false);
-      expect(mounted).toEqual([]);
-      expect((mountManager as FakeMountManager).unmountCalls).toEqual(['ext-1']);
-    });
-
-    it('does not migrate an in-flight mount into a root attached after detach', async () => {
-      const { mounter, root, mounted } = makeFixture();
-      mounter.attach(root);
-      const container = document.createElement('div');
-
-      const mounting = mounter.mount('ext-1', container);
-      const detaching = mounter.detach();
-      const replacementRoot = document.createElement('div');
-      mounter.attach(replacementRoot);
-
-      await expect(detaching).resolves.toBeUndefined();
-      await expect(mounting).rejects.toThrow(/root was detached during mounting/);
-      expect(root.contains(container)).toBe(false);
-      expect(replacementRoot.contains(container)).toBe(false);
-      expect(mounted).toEqual([]);
-    });
-
-    it('preserves a stale-mount compensation failure as the detached error cause', async () => {
-      const { mounter, root, mountManager } = makeFixture();
-      const compensationError = new Error('compensation failed');
-      mounter.attach(root);
-      (mountManager as FakeMountManager).unmountError = compensationError;
-
-      const mounting = mounter.mount('ext-1', document.createElement('div'));
-      const detaching = mounter.detach();
-
-      await expect(detaching).resolves.toBeUndefined();
-      await expect(mounting).rejects.toMatchObject({
-        message: expect.stringMatching(/root was detached during mounting/),
-        cause: compensationError,
-      });
-    });
-
-    it('attempts every occupant and clears bookkeeping when one teardown rejects', async () => {
-      const mountManager = new FakeMountManager();
-      const { mounter, root, mounted } = makeFixture({ mountManager });
-      mounter.attach(root);
-      const containerA = document.createElement('div');
-      const containerB = document.createElement('div');
-      await mounter.mount('ext-a', containerA);
-      await mounter.mount('ext-b', containerB);
-      const unmountError = new Error('extension teardown failed');
-      mountManager.unmountErrors.set('ext-a', unmountError);
-
-      await expect(mounter.detach()).rejects.toBe(unmountError);
-
-      expect(mountManager.unmountCalls).toEqual(expect.arrayContaining(['ext-a', 'ext-b']));
-      expect(root.contains(containerA)).toBe(false);
-      expect(root.contains(containerB)).toBe(false);
-      expect(mounted).toEqual([]);
-      await expect(mounter.mount('ext-c', document.createElement('div'))).rejects.toThrow(/no root attached/);
-    });
-
-    it('reports multiple failed teardowns as the standard AggregateError', async () => {
-      const mountManager = new FakeMountManager();
-      const { mounter, root } = makeFixture({ mountManager });
-      mounter.attach(root);
-      await mounter.mount('ext-a', document.createElement('div'));
-      await mounter.mount('ext-b', document.createElement('div'));
-      const firstError = new Error('first teardown failed');
-      const secondError = new Error('second teardown failed');
-      mountManager.unmountErrors.set('ext-a', firstError);
-      mountManager.unmountErrors.set('ext-b', secondError);
-
-      let received: unknown;
-      try {
-        await mounter.detach();
-      } catch (error) {
-        received = error;
-      }
-
-      expect(received).toBeInstanceOf(AggregateError);
-      expect(received).toMatchObject({
-        name: 'AggregateError',
-        errors: [firstError, secondError],
-      });
-    });
-
-    it('releases strategy-owned container state during slot-style detach while preserving the lifecycle error', async () => {
-      const mountManager = new FakeMountManager();
-      const { mounter, root } = makeFixture({ mountManager });
-      const hooks = new TrackingContainerHooks();
-      const strategy = new ConcurrentMountStrategy(mounter, hooks);
-      mounter.attach(root);
-      await strategy.mount(payload('ext-1'));
-      const container = hooks.created.get('ext-1');
-      const lifecycleError = new Error('extension teardown failed');
-      mountManager.unmountError = lifecycleError;
-
-      await expect(mounter.detach()).rejects.toBe(lifecycleError);
-
-      expect(hooks.destroyed).toEqual([
-        { extensionId: 'ext-1', container },
-      ]);
-      expect(hooks.created).toEqual(new Map());
-      expect((strategy as unknown as { cleanupByExtension: Map<string, () => void> }).cleanupByExtension)
-        .toEqual(new Map());
-    });
-
-    it('does not let a delayed detach teardown remove a container remounted into a new root', async () => {
-      class DeferredUnmountManager extends FakeMountManager {
-        private releaseUnmount: (() => void) | undefined;
-        private readonly unmountGate = new Promise<void>((resolve) => {
-          this.releaseUnmount = resolve;
-        });
-        private signalUnmountStarted: (() => void) | undefined;
-        readonly unmountStarted = new Promise<void>((resolve) => {
-          this.signalUnmountStarted = resolve;
-        });
-
-        override async unmountExtension(extensionId: string): Promise<void> {
-          this.unmountCalls.push(extensionId);
-          this.signalUnmountStarted?.();
-          await this.unmountGate;
-        }
-
-        finishUnmount(): void {
-          this.releaseUnmount?.();
-        }
-      }
-
-      const mountManager = new DeferredUnmountManager();
-      const { mounter, root: oldRoot, mounted } = makeFixture({ mountManager });
-      mounter.attach(oldRoot);
-      const oldContainer = document.createElement('div');
-      await mounter.mount('ext-1', oldContainer);
-
-      const detaching = mounter.detach();
-      await mountManager.unmountStarted;
-      const freshRoot = document.createElement('div');
-      mounter.attach(freshRoot);
-      const freshContainer = document.createElement('div');
-      const remounting = mounter.mount('ext-1', freshContainer);
-
-      mountManager.finishUnmount();
-      await expect(detaching).resolves.toBeUndefined();
-      await expect(remounting).resolves.toBeUndefined();
-
-      expect(oldRoot.contains(oldContainer)).toBe(false);
-      expect(freshRoot.contains(freshContainer)).toBe(true);
-      expect(mounted).toEqual(['ext-1']);
     });
   });
 
@@ -549,104 +197,619 @@ describe('DefaultExtensionMounter', () => {
       mountManager.settle();
       await expect(first).resolves.not.toThrow();
     });
-
-    it('waits for stale cleanup before creating a replacement hook resource', async () => {
-      const mountManager = new DeferredMountManager();
-      const { mounter, root: oldRoot, mounted } = makeFixture({ mountManager });
-      const hooks = new IdKeyedContainerHooks();
-      const strategy = new ConcurrentMountStrategy(mounter, hooks);
-      mounter.attach(oldRoot);
-
-      const staleMount = strategy.mount(payload('ext-1'));
-      void mounter.detach();
-      const freshRoot = document.createElement('div');
-      mounter.attach(freshRoot);
-      const freshMount = strategy.mount(payload('ext-1'));
-
-      mountManager.settle();
-
-      await expect(staleMount).rejects.toThrow(/root was detached during mounting/);
-      await expect(freshMount).resolves.toBeUndefined();
-      expect(mountManager.mountCallCount).toBe(2);
-      const freshContainer = hooks.created.get('ext-1');
-      expect(freshContainer).toBeDefined();
-      expect(freshRoot.contains(freshContainer!)).toBe(true);
-      expect(mounted).toEqual(['ext-1']);
-    });
   });
 
-  describe('single-cardinality replacement after stale teardown', () => {
-    class DeferredRejectedUnmountManager extends FakeMountManager {
-      readonly teardownError = new Error('stale extension teardown failed');
-      private releaseUnmount: (() => void) | undefined;
-      private readonly unmountGate = new Promise<void>((resolve) => {
-        this.releaseUnmount = resolve;
-      });
-      private signalUnmountStarted: (() => void) | undefined;
-      readonly unmountStarted = new Promise<void>((resolve) => {
-        this.signalUnmountStarted = resolve;
+  describe('in-flight unmount coalescing', () => {
+    /** Mount manager whose `unmountExtension` doesn't resolve until `release()` is called. */
+    class DeferredUnmountMountManager extends MountManager {
+      unmountCallCount = 0;
+      private release: (() => void) | undefined;
+      private readonly gate = new Promise<void>((resolve) => {
+        this.release = resolve;
       });
 
-      override async unmountExtension(extensionId: string): Promise<void> {
-        this.unmountCalls.push(extensionId);
-        if (extensionId === 'ext-a') {
-          this.signalUnmountStarted?.();
-          await this.unmountGate;
-          throw this.teardownError;
+      async loadExtension(_extensionId: string): Promise<void> {}
+      async preloadExtension(_extensionId: string): Promise<void> {}
+
+      async mountExtension(extensionId: string, _container: Element): Promise<ParentMfeBridge> {
+        return { instanceId: extensionId, dispose: () => {} };
+      }
+
+      async unmountExtension(_extensionId: string): Promise<void> {
+        this.unmountCallCount += 1;
+        await this.gate;
+      }
+
+      releaseExtension(_extensionId: string): void {}
+      setTheme(_cssVars: Record<string, string>): void {}
+
+      settle(): void {
+        this.release?.();
+      }
+    }
+
+    it('overlapping unmount() calls for the same extension coalesce into one physical unmount, and both settle', async () => {
+      const mountManager = new DeferredUnmountMountManager();
+      const { mounter, root } = makeFixture({ mountManager });
+      mounter.attach(root);
+      await mounter.mount('ext-1', document.createElement('div'));
+
+      const first = mounter.unmount('ext-1');
+      const second = mounter.unmount('ext-1');
+
+      // Neither call has settled yet, so the first's cleanup could not have
+      // already deleted the tracked entry out from under the second.
+      expect(mountManager.unmountCallCount).toBe(1);
+
+      mountManager.settle();
+      await expect(first).resolves.not.toThrow();
+      await expect(second).resolves.not.toThrow();
+
+      // Only ONE physical unmount ran for both overlapping calls.
+      expect(mountManager.unmountCallCount).toBe(1);
+    });
+
+    it('a mount requested while an unmount for the same extension is in flight is reported via getUnmountInFlight until that unmount settles', async () => {
+      const mountManager = new DeferredUnmountMountManager();
+      const { mounter, root } = makeFixture({ mountManager });
+      mounter.attach(root);
+      await mounter.mount('ext-1', document.createElement('div'));
+
+      const unmountPromise = mounter.unmount('ext-1');
+      // A second, overlapping unmount for the same extension — proves the
+      // in-flight entry an interleaved mount request would consult is not
+      // torn down by one of the two overlapping calls settling early.
+      const secondUnmountPromise = mounter.unmount('ext-1');
+
+      expect(mounter.getUnmountInFlight('ext-1')).toBeDefined();
+
+      mountManager.settle();
+      await unmountPromise;
+      await secondUnmountPromise;
+
+      expect(mounter.getUnmountInFlight('ext-1')).toBeUndefined();
+    });
+
+    it('detach() routes every extension through the tracked unmount() path, so a concurrent unmount for the same extension coalesces with it', async () => {
+      const mountManager = new DeferredUnmountMountManager();
+      const DOMAIN = 'detach-race-domain';
+      const mounted = ['ext-a'];
+      const getMountedExtensions = (_domainId: string): readonly string[] => [...mounted];
+      const addMountedExtension = vi.fn();
+      const removeMountedExtension = vi.fn();
+
+      const mounter = new DefaultExtensionMounter(
+        DOMAIN,
+        mountManager,
+        addMountedExtension,
+        removeMountedExtension,
+        getMountedExtensions,
+      );
+      const root = document.createElement('div');
+      mounter.attach(root);
+
+      const detachPromise = mounter.detach();
+      // detach() is in flight and has already started ext-a's unmount
+      // through the tracked path — a second call for the same extension
+      // must coalesce with it rather than issuing a second physical unmount.
+      expect(mounter.getUnmountInFlight('ext-a')).toBeDefined();
+      const raceUnmount = mounter.unmount('ext-a');
+
+      mountManager.settle();
+      await detachPromise;
+      await raceUnmount;
+
+      expect(mountManager.unmountCallCount).toBe(1);
+    });
+
+    it('inst-me-await-unmount-settle: getUnmountInFlight reports the unmount as tracked from the SAME synchronous turn unmount() was called in — even during the physical unmount call\'s own synchronous prefix, before its first await', async () => {
+      /** Mount manager whose `unmountExtension` records what `getUnmountInFlight` reports BEFORE its own first `await`. */
+      class SynchronousPrefixMountManager extends MountManager {
+        unmountCallCount = 0;
+        reentrantCheckDuringSyncPrefix: Promise<void> | undefined;
+        private release: (() => void) | undefined;
+        private readonly gate = new Promise<void>((resolve) => {
+          this.release = resolve;
+        });
+
+        constructor(private readonly getMounterRef: () => DefaultExtensionMounter) {
+          super();
+        }
+
+        async loadExtension(_extensionId: string): Promise<void> {}
+        async preloadExtension(_extensionId: string): Promise<void> {}
+
+        async mountExtension(extensionId: string, _container: Element): Promise<ParentMfeBridge> {
+          return { instanceId: extensionId, dispose: () => {} };
+        }
+
+        async unmountExtension(extensionId: string): Promise<void> {
+          this.unmountCallCount += 1;
+          // Captured synchronously, in this call's own synchronous prefix —
+          // the exact window a `deactivated` hook or the lifecycle's own
+          // `unmount` could re-enter a mount check in, before this call has
+          // reached its own first `await` below.
+          this.reentrantCheckDuringSyncPrefix = this.getMounterRef().getUnmountInFlight(extensionId);
+          await this.gate;
+        }
+
+        releaseExtension(_extensionId: string): void {}
+        setTheme(_cssVars: Record<string, string>): void {}
+
+        settle(): void {
+          this.release?.();
         }
       }
 
-      rejectStaleUnmount(): void {
-        this.releaseUnmount?.();
+      const mounterRefHolder: { current?: DefaultExtensionMounter } = {};
+      const mountManager = new SynchronousPrefixMountManager(() => mounterRefHolder.current!);
+      const { mounter, root } = makeFixture({ mountManager });
+      mounterRefHolder.current = mounter;
+      mounter.attach(root);
+      await mounter.mount('ext-1', document.createElement('div'));
+
+      const unmountPromise = mounter.unmount('ext-1');
+
+      // The re-entrant check made from inside the physical unmount's own
+      // synchronous prefix already observes this unmount as tracked.
+      expect(mountManager.reentrantCheckDuringSyncPrefix).toBeDefined();
+
+      mountManager.settle();
+      await unmountPromise;
+
+      // The re-entrant caller's captured promise is the SAME tracked
+      // settlement as the outer unmount() call — it resolves alongside it.
+      await expect(mountManager.reentrantCheckDuringSyncPrefix).resolves.toBeUndefined();
+    });
+  });
+
+  describe('detach()', () => {
+    it('removes every mounted extension from the mount set', async () => {
+      const DOMAIN = 'detach-domain';
+      const mountManager = new FakeMountManager();
+      const mountedIds = ['ext-a', 'ext-b'];
+      const getMountedExtensions = (_domainId: string): readonly string[] => [...mountedIds];
+      const addMountedExtension = vi.fn();
+      const removeMountedExtension = vi.fn();
+
+      const mounter = new DefaultExtensionMounter(
+        DOMAIN,
+        mountManager,
+        addMountedExtension,
+        removeMountedExtension,
+        getMountedExtensions
+      );
+      const root = document.createElement('div');
+      mounter.attach(root);
+
+      await mounter.detach();
+
+      expect(removeMountedExtension).toHaveBeenCalledWith(DOMAIN, 'ext-a');
+      expect(removeMountedExtension).toHaveBeenCalledWith(DOMAIN, 'ext-b');
+    });
+  });
+
+  describe('slot-detach / mount-execution failure handling', () => {
+    /**
+     * Mount manager whose `mountExtension`/`unmountExtension` for a given
+     * extension id can be gated on a controlled deferred, and whose
+     * `unmountExtension` for a given id can be made to reject with a
+     * configured error — all without sleeps, real timers, or
+     * microtask-flush loops.
+     */
+    class GatedMountManager extends MountManager {
+      readonly mountCalls: string[] = [];
+      readonly unmountCalls: string[] = [];
+      private readonly mountGates = new Map<string, { promise: Promise<void>; resolve: () => void }>();
+      private readonly unmountGates = new Map<string, { promise: Promise<void>; resolve: () => void }>();
+      private readonly unmountFailures = new Map<string, Error>();
+
+      gateMount(extensionId: string): void {
+        let resolve!: () => void;
+        const promise = new Promise<void>((r) => {
+          resolve = r;
+        });
+        this.mountGates.set(extensionId, { promise, resolve });
       }
+
+      gateUnmount(extensionId: string): void {
+        let resolve!: () => void;
+        const promise = new Promise<void>((r) => {
+          resolve = r;
+        });
+        this.unmountGates.set(extensionId, { promise, resolve });
+      }
+
+      resolveMount(extensionId: string): void {
+        this.mountGates.get(extensionId)?.resolve();
+      }
+
+      resolveUnmount(extensionId: string): void {
+        this.unmountGates.get(extensionId)?.resolve();
+      }
+
+      failUnmount(extensionId: string, error: Error): void {
+        this.unmountFailures.set(extensionId, error);
+      }
+
+      async loadExtension(_extensionId: string): Promise<void> {}
+      async preloadExtension(_extensionId: string): Promise<void> {}
+
+      async mountExtension(extensionId: string, _container: Element): Promise<ParentMfeBridge> {
+        this.mountCalls.push(extensionId);
+        const gate = this.mountGates.get(extensionId);
+        if (gate) {
+          await gate.promise;
+        }
+        return { instanceId: extensionId, dispose: () => {} };
+      }
+
+      async unmountExtension(extensionId: string): Promise<void> {
+        this.unmountCalls.push(extensionId);
+        const gate = this.unmountGates.get(extensionId);
+        if (gate) {
+          await gate.promise;
+        }
+        const failure = this.unmountFailures.get(extensionId);
+        if (failure) {
+          throw failure;
+        }
+      }
+
+      releaseExtension(_extensionId: string): void {}
+      setTheme(_cssVars: Record<string, string>): void {}
     }
 
-    function makeRegistry(mounted: readonly string[]): MfeRegistry {
-      return {
-        getMountedExtensions: () => mounted,
-      } as unknown as MfeRegistry;
-    }
+    it('inst-sd-clear-root-first: a mount whose lifecycle mount settles while detach is unmounting another occupant is not placed under the departing root', async () => {
+      const DOMAIN = 'clear-root-first-domain';
+      const mountManager = new GatedMountManager();
+      const mounted: string[] = [];
+      const addMountedExtension = vi.fn((_domainId: string, extensionId: string) => {
+        mounted.push(extensionId);
+      });
+      const removeMountedExtension = vi.fn((_domainId: string, extensionId: string) => {
+        const index = mounted.indexOf(extensionId);
+        if (index >= 0) {
+          mounted.splice(index, 1);
+        }
+      });
+      const getMountedExtensions = (_domainId: string): readonly string[] => [...mounted];
 
-    it('Optional waits for the stale sibling epoch before mounting the replacement', async () => {
-      const mountManager = new DeferredRejectedUnmountManager();
-      const { mounter, root: oldRoot, mounted, DOMAIN } = makeFixture({ mountManager });
-      const hooks = new TrackingContainerHooks();
-      const strategy = new OptionalMountStrategy(mounter, hooks, makeRegistry(mounted), DOMAIN);
-      mounter.attach(oldRoot);
-      await strategy.mount(payload('ext-a'));
+      const mounter = new DefaultExtensionMounter(
+        DOMAIN,
+        mountManager,
+        addMountedExtension,
+        removeMountedExtension,
+        getMountedExtensions
+      );
+      const root = document.createElement('div');
+      mounter.attach(root);
 
-      const detaching = mounter.detach();
-      await mountManager.unmountStarted;
-      const freshRoot = document.createElement('div');
-      mounter.attach(freshRoot);
-      const replacement = strategy.mount(payload('ext-b'));
+      // ext-a mounts normally first, becoming detach's occupant.
+      await mounter.mount('ext-a', document.createElement('div'));
 
-      mountManager.rejectStaleUnmount();
-      await expect(detaching).rejects.toBe(mountManager.teardownError);
-      await expect(replacement).resolves.toBeUndefined();
-      expect(mounted).toEqual(['ext-b']);
-      expect(freshRoot.contains(hooks.created.get('ext-b')!)).toBe(true);
+      // ext-a's unmount is gated so detach() stays in flight while ext-b's
+      // own lifecycle mount settles.
+      mountManager.gateUnmount('ext-a');
+      mountManager.gateMount('ext-b');
+
+      const containerB = document.createElement('div');
+      const mountBPromise = mounter.mount('ext-b', containerB);
+      const detachPromise = mounter.detach();
+
+      mountManager.resolveMount('ext-b');
+      await expect(mountBPromise).rejects.toThrow(/detached/);
+
+      expect(root.contains(containerB)).toBe(false);
+      expect(mounted.includes('ext-b')).toBe(false);
+
+      mountManager.resolveUnmount('ext-a');
+      await detachPromise;
     });
 
-    it('Exclusive waits for the stale sibling epoch before mounting the replacement', async () => {
-      const mountManager = new DeferredRejectedUnmountManager();
-      const { mounter, root: oldRoot, mounted, DOMAIN } = makeFixture({ mountManager });
-      const hooks = new TrackingContainerHooks();
-      const strategy = new ExclusiveMountStrategy(mounter, hooks, makeRegistry(mounted), DOMAIN);
-      mounter.attach(oldRoot);
-      await strategy.mount(payload('ext-a'));
+    it('inst-me-mount-root-detached: a mount whose root is detached during its lifecycle mount fails with the detached-root error and compensates by unmounting the lifecycle', async () => {
+      const mountManager = new GatedMountManager();
+      const { mounter, root } = makeFixture({ mountManager });
+      mounter.attach(root);
 
-      const detaching = mounter.detach();
-      await mountManager.unmountStarted;
-      const freshRoot = document.createElement('div');
-      mounter.attach(freshRoot);
-      const replacement = strategy.mount(payload('ext-b'));
+      mountManager.gateMount('ext-1');
+      const container = document.createElement('div');
+      const mountPromise = mounter.mount('ext-1', container);
 
-      mountManager.rejectStaleUnmount();
-      await expect(detaching).rejects.toBe(mountManager.teardownError);
-      await expect(replacement).resolves.toBeUndefined();
-      expect(mounted).toEqual(['ext-b']);
-      expect(freshRoot.contains(hooks.created.get('ext-b')!)).toBe(true);
+      await mounter.detach();
+      mountManager.resolveMount('ext-1');
+
+      await expect(mountPromise).rejects.toThrow(/detached/);
+      expect(mountManager.unmountCalls).toContain('ext-1');
+    });
+
+    it('inst-me-mount-root-detached: when the compensating unmount also fails, the thrown error is the detached-root error and its cause is the compensation error', async () => {
+      const mountManager = new GatedMountManager();
+      const { mounter, root } = makeFixture({ mountManager });
+      mounter.attach(root);
+
+      const compensationError = new Error('compensation unmount failed');
+      mountManager.gateMount('ext-1');
+      mountManager.failUnmount('ext-1', compensationError);
+      const container = document.createElement('div');
+      const mountPromise = mounter.mount('ext-1', container);
+
+      await mounter.detach();
+      mountManager.resolveMount('ext-1');
+
+      let caught: unknown;
+      try {
+        await mountPromise;
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(Error);
+      expect((caught as Error).message).toMatch(/detached/);
+      expect((caught as Error).cause).toBe(compensationError);
+    });
+
+    it('inst-me-mount-rollback: a bookkeeping failure after a successful lifecycle mount is rolled back', async () => {
+      const DOMAIN = 'rollback-domain';
+      const mountManager = new GatedMountManager();
+      const addMountedExtension = vi.fn(() => {
+        throw new Error('record failed');
+      });
+      const removeMountedExtension = vi.fn();
+      const getMountedExtensions = (_domainId: string): readonly string[] => [];
+
+      const mounter = new DefaultExtensionMounter(
+        DOMAIN,
+        mountManager,
+        addMountedExtension,
+        removeMountedExtension,
+        getMountedExtensions
+      );
+      const root = document.createElement('div');
+      mounter.attach(root);
+
+      const container = document.createElement('div');
+      await expect(mounter.mount('ext-1', container)).rejects.toThrow('record failed');
+
+      expect(root.contains(container)).toBe(false);
+      expect(removeMountedExtension).toHaveBeenCalledWith(DOMAIN, 'ext-1');
+      expect(mountManager.unmountCalls).toContain('ext-1');
+    });
+
+    it('inst-um-failure-container-removed: an unmount whose lifecycle unmount fails still removes the container and mount-set entry', async () => {
+      const mountManager = new GatedMountManager();
+      const { mounter, root, DOMAIN, removeMountedExtension } = makeFixture({ mountManager });
+      mounter.attach(root);
+
+      const container = document.createElement('div');
+      await mounter.mount('ext-1', container);
+
+      const lifecycleError = new Error('lifecycle unmount failed');
+      mountManager.failUnmount('ext-1', lifecycleError);
+
+      await expect(mounter.unmount('ext-1')).rejects.toThrow(lifecycleError);
+
+      expect(root.contains(container)).toBe(false);
+      expect(removeMountedExtension).toHaveBeenCalledWith(DOMAIN, 'ext-1');
+    });
+
+    it('inst-sd-continue-on-failure / inst-sd-aggregate-failure: detach continues past a failed occupant and aggregates every failure in mount-set order', async () => {
+      const DOMAIN = 'aggregate-domain';
+      const mountManager = new GatedMountManager();
+      const mountedIds = ['ext-a', 'ext-b', 'ext-c'];
+      const getMountedExtensions = (_domainId: string): readonly string[] => [...mountedIds];
+      const addMountedExtension = vi.fn();
+      const removeMountedExtension = vi.fn();
+
+      const mounter = new DefaultExtensionMounter(
+        DOMAIN,
+        mountManager,
+        addMountedExtension,
+        removeMountedExtension,
+        getMountedExtensions
+      );
+      const root = document.createElement('div');
+      mounter.attach(root);
+
+      const errorA = new Error('ext-a unmount failed');
+      const errorC = new Error('ext-c unmount failed');
+      mountManager.failUnmount('ext-a', errorA);
+      mountManager.failUnmount('ext-c', errorC);
+
+      let caught: unknown;
+      try {
+        await mounter.detach();
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(AggregateError);
+      expect(Array.from((caught as AggregateError).errors)).toEqual([errorA, errorC]);
+      expect(mountManager.unmountCalls).toEqual(['ext-a', 'ext-b', 'ext-c']);
+    });
+
+    it('inst-sd-single-failure: detach rejects with exactly the one failure when only one occupant fails to unmount', async () => {
+      const DOMAIN = 'single-failure-domain';
+      const mountManager = new GatedMountManager();
+      const mountedIds = ['ext-a', 'ext-b', 'ext-c'];
+      const getMountedExtensions = (_domainId: string): readonly string[] => [...mountedIds];
+      const addMountedExtension = vi.fn();
+      const removeMountedExtension = vi.fn();
+
+      const mounter = new DefaultExtensionMounter(
+        DOMAIN,
+        mountManager,
+        addMountedExtension,
+        removeMountedExtension,
+        getMountedExtensions
+      );
+      const root = document.createElement('div');
+      mounter.attach(root);
+
+      const errorB = new Error('ext-b unmount failed');
+      mountManager.failUnmount('ext-b', errorB);
+
+      let caught: unknown;
+      try {
+        await mounter.detach();
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBe(errorB);
+      expect(mountManager.unmountCalls).toEqual(['ext-a', 'ext-b', 'ext-c']);
+    });
+  });
+
+  describe('ExtensionReleaserProvider.for(mounter).release()', () => {
+    it('a destroy callback that throws rejects release() with that error, cleans up, and a later release for the same id starts fresh and succeeds', async () => {
+      const mountManager = new FakeMountManager();
+      const { mounter, root } = makeFixture({ mountManager });
+      mounter.attach(root);
+      await mounter.mount('ext-1', document.createElement('div'));
+
+      const throwingDestroy = (): void => {
+        throw new Error('destroy boom');
+      };
+      ExtensionReleaserProvider.for(mounter).registerDestroy('ext-1', throwingDestroy);
+      await expect(ExtensionReleaserProvider.for(mounter).release('ext-1')).rejects.toThrow('destroy boom');
+      expect(mountManager.unmountCalls).toEqual(['ext-1']);
+
+      const normalDestroy = vi.fn();
+      ExtensionReleaserProvider.for(mounter).registerDestroy('ext-1', normalDestroy);
+      await expect(ExtensionReleaserProvider.for(mounter).release('ext-1')).resolves.toBeUndefined();
+      expect(normalDestroy).toHaveBeenCalledTimes(1);
+      // A fresh physical unmount ran for the second call — it did not join
+      // a stale entry left behind by the first, failed call.
+      expect(mountManager.unmountCalls).toEqual(['ext-1', 'ext-1']);
+    });
+
+    it('a retry from inside release()\'s own rejection handler starts fresh work instead of joining the rejected entry', async () => {
+      class FailOnceMountManager extends MountManager {
+        unmountCalls = 0;
+
+        async loadExtension(_extensionId: string): Promise<void> {}
+        async preloadExtension(_extensionId: string): Promise<void> {}
+
+        async mountExtension(extensionId: string, _container: Element): Promise<ParentMfeBridge> {
+          return { instanceId: extensionId, dispose: () => {} };
+        }
+
+        async unmountExtension(_extensionId: string): Promise<void> {
+          this.unmountCalls += 1;
+          if (this.unmountCalls === 1) {
+            throw new Error('boom');
+          }
+        }
+
+        releaseExtension(_extensionId: string): void {}
+        setTheme(_cssVars: Record<string, string>): void {}
+      }
+
+      const mountManager = new FailOnceMountManager();
+      const { mounter, root } = makeFixture({ mountManager });
+      mounter.attach(root);
+      await mounter.mount('ext-1', document.createElement('div'));
+
+      const retried = ExtensionReleaserProvider.for(mounter).release('ext-1').catch(() => ExtensionReleaserProvider.for(mounter).release('ext-1'));
+
+      await expect(retried).resolves.toBeUndefined();
+      expect(mountManager.unmountCalls).toBe(2);
+    });
+
+    it('a synchronous follow-up call from inside release()\'s own fulfillment handler starts fresh work', async () => {
+      const mountManager = new FakeMountManager();
+      const { mounter, root } = makeFixture({ mountManager });
+      mounter.attach(root);
+      await mounter.mount('ext-1', document.createElement('div'));
+
+      const followUp = ExtensionReleaserProvider.for(mounter).release('ext-1').then(() => ExtensionReleaserProvider.for(mounter).release('ext-1'));
+
+      await expect(followUp).resolves.toBeUndefined();
+      // Both the outer release and the follow-up release ran their own
+      // physical unmount — the follow-up did not join an already-settled
+      // entry left in the map by the outer call.
+      expect(mountManager.unmountCalls).toEqual(['ext-1', 'ext-1']);
+    });
+
+    it('a release joining in the microtask gap between reading the registered destroy and settling still has its destroy invoked exactly once', async () => {
+      let resolveUnmount!: () => void;
+      const unmountPromise = new Promise<void>((resolve) => {
+        resolveUnmount = resolve;
+      });
+
+      class ControllableMounter extends ExtensionMounter {
+        attach(_root: Element): void {}
+        async detach(): Promise<void> {}
+        async mount(_extensionId: string, _container: Element): Promise<void> {}
+        unmount(_extensionId: string): Promise<void> {
+          return unmountPromise;
+        }
+      }
+
+      const mounter = new ControllableMounter();
+      const destroy = vi.fn();
+      ExtensionReleaserProvider.for(mounter).registerDestroy('ext-1', destroy);
+
+      const first = ExtensionReleaserProvider.for(mounter).release('ext-1');
+      let second!: Promise<void>;
+      // A reaction registered directly on the SAME promise `unmount()`
+      // returned, above — it joins the in-flight release from the exact
+      // microtask gap between release()'s own read of the registered
+      // destroy and its cleanup + settlement, so the destroy read by the
+      // FIRST release still runs exactly once.
+      unmountPromise.then(() => {
+        second = ExtensionReleaserProvider.for(mounter).release('ext-1');
+      });
+
+      resolveUnmount();
+      await first;
+      await second;
+
+      expect(destroy).toHaveBeenCalledTimes(1);
+    });
+
+    it('overlapping releases for two DIFFERENT mounters and the same extension id do not coalesce with each other', async () => {
+      let resolveFirst!: () => void;
+      let resolveSecond!: () => void;
+      const firstUnmount = new Promise<void>((resolve) => {
+        resolveFirst = resolve;
+      });
+      const secondUnmount = new Promise<void>((resolve) => {
+        resolveSecond = resolve;
+      });
+
+      class ControllableMounter extends ExtensionMounter {
+        constructor(private readonly gate: Promise<void>) {
+          super();
+        }
+        attach(_root: Element): void {}
+        async detach(): Promise<void> {}
+        async mount(_extensionId: string, _container: Element): Promise<void> {}
+        unmount(_extensionId: string): Promise<void> {
+          return this.gate;
+        }
+      }
+
+      const mounterA = new ControllableMounter(firstUnmount);
+      const mounterB = new ControllableMounter(secondUnmount);
+
+      const destroyA = vi.fn();
+      const destroyB = vi.fn();
+      ExtensionReleaserProvider.for(mounterA).registerDestroy('ext-1', destroyA);
+      ExtensionReleaserProvider.for(mounterB).registerDestroy('ext-1', destroyB);
+
+      const releaseA = ExtensionReleaserProvider.for(mounterA).release('ext-1');
+      const releaseB = ExtensionReleaserProvider.for(mounterB).release('ext-1');
+
+      resolveFirst();
+      await releaseA;
+      expect(destroyA).toHaveBeenCalledTimes(1);
+      expect(destroyB).not.toHaveBeenCalled();
+
+      resolveSecond();
+      await releaseB;
+      expect(destroyB).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -656,6 +819,17 @@ describe('DefaultExtensionMounter', () => {
       // The abstract base ExtensionMounter defines only attach, detach, mount, unmount.
       const base = mounter as ExtensionMounter;
       expect('getMounted' in base).toBe(false);
+    });
+
+    it('release is not exposed on the ExtensionMounter prototype', () => {
+      expect('release' in ExtensionMounter.prototype).toBe(false);
+    });
+  });
+
+  describe('public barrel', () => {
+    it('does not export ExtensionReleaser or ExtensionReleaserProvider', () => {
+      expect('ExtensionReleaser' in (barrel as Record<string, unknown>)).toBe(false);
+      expect('ExtensionReleaserProvider' in (barrel as Record<string, unknown>)).toBe(false);
     });
   });
 });

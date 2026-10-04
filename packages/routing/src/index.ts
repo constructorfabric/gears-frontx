@@ -30,14 +30,13 @@ export { resolveNavigationHistory } from './history/index.js';
 export type { AdapterLocation, HistoryAdapter } from './history/index.js';
 
 // URL grammar codec (`cpt-frontx-feature-routing-navigation-substrate` §3:
-// Grammar Parse, Grammar Serialize, Name Validity And Equality,
-// Domain-Key Composition).
+// Grammar Parse, Grammar Serialize, Name Validity And Equality).
 export * from './errors.js';
-// Named exports, not `export *`: `isValidDomainKey` is shared, unmarked
-// infrastructure internal to the grammar codec (see its own doc comment in
-// `./grammar/name.js`), not part of this package's public surface.
+// Named exports, not `export *`: `domain-key = name`, so checking a
+// `domain-key` is exactly `validateName`'s own check (see
+// `./grammar/name.js`) — internal callers of that check stay internal to
+// the grammar codec, not part of this package's public surface.
 export { deriveExtensionToken, namesEqual, validateName } from './grammar/name.js';
-export * from './grammar/compose.js';
 export * from './grammar/parse.js';
 export * from './grammar/serialize.js';
 
@@ -45,10 +44,13 @@ export * from './grammar/serialize.js';
 // DoD `cpt-frontx-dod-routing-route-ownership-signal-resolution-and-observation`
 // / `cpt-frontx-dod-routing-route-ownership-signal-release` /
 // `cpt-frontx-dod-routing-route-ownership-signal-url-back-projection`) —
-// entry resolution, and `createRouteSignal` (the `history`-bound
-// construction path for the observable transition signal and the URL
-// back-projection helper — see `./signal/route-signal.js` for why the
-// previous unbound `createObserver`/`backProjectEntries` exports are gone,
-// with no compatibility shim left in their place).
-export * from './signal/entry-resolution.js';
+// `createRouteSignal` (the `history`-bound construction path for the
+// observable transition signal and the URL back-projection helper — see
+// `./signal/route-signal.js` for why this is the only construction path
+// exported: an unbound `createObserver`/`backProjectEntries` pair would let a
+// caller observe transitions without the `history` binding the observer
+// requires, so neither is part of this package's public surface). Entry
+// resolution (`./signal/entry-resolution.js`) is this package's own internal
+// primitive — DESIGN §3.3 names only the observer as public; a consumer
+// reaches resolution only through the transitions the observer reports.
 export * from './signal/route-signal.js';

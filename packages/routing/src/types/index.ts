@@ -145,31 +145,33 @@ export interface NavigationHistory {
 
 // ---------------------------------------------------------------------------
 // URL Grammar tokens — ADR 0003, "Tokens"; FEATURE (navigation-substrate) §3,
-// Name Validity And Equality / Domain-Key Composition
+// Name Validity And Equality
 // ---------------------------------------------------------------------------
 
 declare const domainKeyBrand: unique symbol;
 declare const extensionTokenBrand: unique symbol;
 
 /**
- * A value conforming to the grammar's `domain-key` production: `name`, or
- * `domain-key "." extension "." name` for a nested domain (ADR 0003,
- * "Tokens"). Branded rather than a bare `string` because every call site
- * that accepts one (observer creation, the back-projection helper,
- * domain-key composition) validates it synchronously and throws on a
- * malformed value (§2.3, O3a of DESIGN) — the brand marks "already validated
- * against the `domain-key` production", not merely "some string".
- * `ParamName`/`ParamValue` are not branded the same way: their own grammar
- * production admits any decoded string once escapes are resolved, so there
- * is no further lexical rule this package enforces on them the way it does
- * on `DomainKey`/`ExtensionToken` (see the `ParamName` doc comment below).
+ * A value conforming to the grammar's `domain-key` production: a single
+ * `name` — a domain's own declared route, at any depth, never built from any
+ * enclosing domain's key (ADR 0003, "Tokens";
+ * `cpt-frontx-routing-adr-domain-occupancy-addressing-granularity`).
+ * Branded rather than a bare `string` because every call site that accepts
+ * one (observer creation, the back-projection helper) validates it
+ * synchronously and throws on a malformed value (§2.3, O3a of DESIGN) — the
+ * brand marks "already validated against the `domain-key` production", not
+ * merely "some string". `ParamName`/`ParamValue` are not branded the same
+ * way: their own grammar production admits any decoded string once escapes
+ * are resolved, so there is no further lexical rule this package enforces on
+ * them the way it does on `DomainKey`/`ExtensionToken` (see the `ParamName`
+ * doc comment below).
  */
 export type DomainKey = string & { readonly [domainKeyBrand]: true };
 
 /**
  * A value conforming to the grammar's `name` alphabet, used as an entry's
  * own extension segment. Sourced from an extension registration's own
- * normalized `presentation.route` (`cpt-frontx-routing-adr-occupant-identity-stability`).
+ * normalized `Extension.route` (`cpt-frontx-routing-adr-occupant-identity-stability`).
  * Branded for the identical reason `DomainKey` is (see above).
  */
 export type ExtensionToken = string & { readonly [extensionTokenBrand]: true };
@@ -439,7 +441,8 @@ export interface PayloadChange {
  * One replaced pair: an existing entry's own extension token, `oldExtension`,
  * swapped for `entry` at that same position — triggering the identical
  * structural reset a removal of `oldExtension` would trigger, in the same
- * history write (FEATURE §1.5, "URL back-projection — input").
+ * history write, for exactly the domain keys the delta's own
+ * `clearedDomainKeys` names (FEATURE §1.5, "URL back-projection — input").
  */
 export interface ReplacedEntry {
   readonly oldExtension: ExtensionToken;
@@ -477,6 +480,19 @@ export interface BackProjectionDelta {
    * confined to the positions they already occupy. Absent means "no
    * reorder for this call." */
   readonly reordered?: readonly ExtensionToken[];
+  /**
+   * The exact domain keys of the nested routed domains the caller knows
+   * leave with an extension this delta removes or replaces — every entry
+   * under each named key is removed in this same single history write
+   * (structural reset). The helper infers no domain key to clear from any
+   * key's shape or from a lexical prefix: a domain key carries no ancestry
+   * of its own, so which domains nest in a departing extension's zone is a
+   * fact only the caller holds (FEATURE §1.5, "URL back-projection —
+   * input"). Naming this domain key itself here clears nothing — this
+   * domain key's own entries are governed by the delta's other four fields
+   * alone. Absent means "nothing to clear for this call."
+   */
+  readonly clearedDomainKeys?: readonly DomainKey[];
 }
 
 /**
@@ -541,9 +557,9 @@ export type EngineProviderPort<TRouteTree = unknown, TRouter = unknown> = (
 
 // ---------------------------------------------------------------------------
 // Errors thrown at validated input paths — ADR 0003, "Occupant Identity
-// Lexical Rule"; FEATURE (navigation-substrate) §3, Domain-Key Composition,
-// Grammar Serialize; FEATURE (route-ownership-signal) §3, Observable
-// Transition Signal, URL Back-Projection Helper
+// Lexical Rule"; FEATURE (navigation-substrate) §3, Grammar Serialize;
+// FEATURE (route-ownership-signal) §3, Observable Transition Signal, URL
+// Back-Projection Helper
 // ---------------------------------------------------------------------------
 
 /**
@@ -578,12 +594,9 @@ export type EngineProviderPort<TRouteTree = unknown, TRouter = unknown> = (
  * - `invalid-domain-key` — `value` (the offending key); `entry` set only
  *   when thrown by grammar serialize (FEATURE §3, Grammar Serialize, step
  *   2.1: "THROW an error naming this entry"), absent at every other throw
- *   site (observer creation, the back-projection helper, domain-key
- *   composition).
+ *   site (observer creation, the back-projection helper).
  * - `invalid-extension-token` — `value`; `entry` set only when thrown by
  *   grammar serialize, for the identical reason as above.
- * - `invalid-name` — `value`; thrown only by domain-key composition
- *   (FEATURE (navigation-substrate) §3, Domain-Key Composition, step 3).
  * - `invalid-param-name` — `entry`; a grammar-serialize input entry carried
  *   a param whose own name is the empty string — `param-name` requires at
  *   least one character (ADR 0003, "Tokens"), unlike `param-value`, which
@@ -674,13 +687,6 @@ export type DeriveExtensionToken = (route: string | undefined) => ExtensionToken
 
 /** `cpt-frontx-algo-routing-navigation-substrate-name-validity`, Equality (c). */
 export type NamesEqual = (a: string, b: string) => boolean;
-
-/** `cpt-frontx-algo-routing-navigation-substrate-domain-key-compose`. */
-export type ComposeDomainKey = (
-  parentDomainKey: DomainKey,
-  parentExtension: ExtensionToken,
-  name: string,
-) => DomainKey;
 
 /** `cpt-frontx-algo-routing-route-ownership-signal-entry-resolution`. */
 export type ResolveEntries = <TRouteOwner = unknown>(

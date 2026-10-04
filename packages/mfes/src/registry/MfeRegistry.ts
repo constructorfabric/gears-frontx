@@ -16,7 +16,7 @@
 // @cpt-state:cpt-frontx-state-mfe-registry-entry-lifecycle:p2
 
 import type { TypeSystemPlugin } from '../type-substrate';
-import type { ParentMfeBridge } from '../handler/types';
+import type { ParentMfeBridge } from '../handler/ParentMfeBridge';
 import type {
   ExtensionDomain,
   Extension,
@@ -133,13 +133,14 @@ export abstract class MfeRegistry {
   // --- Action Chains ---
 
   /**
-   * Execute an actions chain.
-   * Delegates to the ActionsChainsMediator for chain execution.
+   * Execute an actions chain: the action, then `next` recursively on
+   * success or `fallback` recursively on failure
+   * (`cpt-frontx-adr-action-dispatch-and-chaining`). Takes only the chain
+   * and returns nothing awaitable (`cpt-frontx-adr-mfe-runtime-public-surface`).
    *
-   * @param chain - Actions chain to execute
-   * @returns Promise resolving when execution is complete
+   * @param chain - Actions chain to execute.
    */
-  abstract executeActionsChain(chain: ActionsChain): Promise<void>;
+  abstract executeActionsChain(chain: ActionsChain): void;
 
   // --- Query ---
 

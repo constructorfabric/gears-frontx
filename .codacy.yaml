@@ -49,10 +49,38 @@ exclude_paths:
 
   # Audited trust kernel — this file concentrates patterns that static
   # analyzers flag as unsafe (non-literal RegExp with escaped inputs,
-  # dynamic import of blob URLs). Every function in it is required by a
-  # custom ESLint rule to document its safety argument via `@safety-reviewed`
-  # and `@why` JSDoc tags. Editing this file requires security review.
-  - "packages/mfes/src/handler/mf-dynamic-module-ops.ts"
+  # dynamic import of blob URLs). An ESLint `no-restricted-syntax` rule
+  # (eslint.config.js) confines `ImportExpression` and the identifier
+  # `RegExp` or its string spellings (in code or JSX tag position) to this
+  # file alone under packages/mfes/src/** — via `Identifier[name='RegExp']`
+  # (matching a bare reference, a member/property access, an argument, or an
+  # alias's initializer alike, since each is an Identifier node named
+  # `RegExp`), `JSXIdentifier[name='RegExp']` (the same name as a JSX tag),
+  # and `Literal`/`TemplateElement` selectors for the computed-string
+  # spellings — complete over how the word can be written, not an
+  # enumerated list of construction forms to maintain; deliberately
+  # over-broad, since it also rejects a legitimate local/import/property
+  # name or type-only reference named `RegExp` unrelated to the global
+  # constructor. Comments are not AST nodes, so prose mentioning "RegExp" is
+  # never flagged. That whole source tree stays in ESLint's file discovery
+  # via a negation in the global `ignores` array, so a file named like a
+  # config (e.g. `regexp.config.ts`) cannot escape this rule by name alone.
+  # scripts/check-trust-kernel-annotations.mjs (run via `npm run arch:check`,
+  # AST-based via `ts.getJSDocTags`) classifies every exported declaration
+  # here as function-valued (requiring a real, own-line `@safety-reviewed`
+  # and `@why` JSDoc tag with non-empty content), provably not
+  # function-valued (a `const` literal or type/interface/enum — skipped), or
+  # unsupported (FAILS the check — including a mutable `let`/`var` export,
+  # an `export =` assignment, an `export as namespace` declaration, or a
+  # file that does not parse cleanly; nothing is silently skipped). None of
+  # these reach module-state purity, host-capability imports, semantic
+  # indirection that constructs the word `RegExp` without ever writing it
+  # (e.g. `globalThis[/RegExp/.source]('x')`, character codes), or
+  # dynamic-code text embedded in a string/template literal —
+  # those remain security-review concerns (see
+  # cpt-frontx-adr-mfe-load-isolation). Editing
+  # this file requires security review.
+  - "packages/mfes/src/handler/mfe-handler-mf/mf-dynamic-module-ops.ts"
 
   # Monorepo package manifests.
   #

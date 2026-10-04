@@ -4,8 +4,8 @@
 // `cpt-frontx-dod-routing-navigation-substrate-imperative-navigation`).
 //
 // The grammar codec half of this FEATURE (`grammar-parse`/`grammar-serialize`
-// /name-validity/domain-key-composition) lives in `../grammar/` and is
-// re-exported from `../index.ts` on its own.
+// /name-validity) lives in `../grammar/` and is re-exported from
+// `../index.ts` on its own.
 //
 // `createNavigationHistory` and `createWindowHistoryAdapter` are
 // deliberately NOT re-exported here (DESIGN §3.3, public surface):

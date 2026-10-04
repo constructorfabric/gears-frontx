@@ -12,7 +12,7 @@
  */
 import { REENTRANT_ROUND_LIMIT, reportRoutingDefect } from '../diagnostics.js';
 import { RoutingError } from '../errors.js';
-import { isValidDomainKey, validateName } from '../grammar/name.js';
+import { validateName } from '../grammar/name.js';
 import { parseGrammar } from '../grammar/parse.js';
 import type {
   CreateObserver,
@@ -44,7 +44,7 @@ function validateDomainKeyAndRegistrations<TRouteOwner>(
   domainKey: string,
   source: RegisteredExtensionsSource<TRouteOwner>,
 ): asserts domainKey is DomainKey {
-  if (!isValidDomainKey(domainKey)) {
+  if (!validateName(domainKey)) {
     throw RoutingError.invalidDomainKey(domainKey);
   }
   validateRegistrations(source);

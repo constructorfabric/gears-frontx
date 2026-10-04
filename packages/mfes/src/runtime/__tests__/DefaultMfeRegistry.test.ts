@@ -8,13 +8,10 @@ import type { ExtensionDomain } from '../../types';
 import type { DomainContext } from '../DomainContext';
 import { ExtensionDomainImplementation } from '../ExtensionDomainImplementation';
 import { ExtensionDomainImplementationFactory } from '../ExtensionDomainImplementationFactory';
-import {
-  ConcurrentMountStrategy,
-  OptionalMountStrategy,
-  ExclusiveMountStrategy,
-} from '../mount-strategies';
-import type { ContainerHooks, ActionPayload, MountStrategy } from '../mount-strategy';
-import { ActionHandler } from '../../mediator/types';
+import { ConcurrentMountStrategy } from '../ConcurrentMountStrategy';
+import { ExclusiveMountStrategy } from '../ExclusiveMountStrategy';
+import type { ContainerHooks, ActionPayload, MountStrategy } from '../MountStrategy';
+import { ActionHandler } from '../../mediator/ActionHandler';
 import { ExtensionMounter } from '../ExtensionMounter';
 
 // Mock-plugin-local stand-ins for the framework's well-known lifecycle action
@@ -213,168 +210,6 @@ class ExclusiveDomainFactory extends ExtensionDomainImplementationFactory {
   }
 }
 
-// ─── Derived (hierarchy-aware) mount_ext action id ────────────────────────────
-//
-// The mock TypeSystemPlugin's isTypeOf treats any typeId that starts with a
-// baseTypeId as satisfying it. This id is a derivative of FRONTX_ACTION_MOUNT_EXT
-// (it is-a mount_ext) but is NOT string-equal to it — analogous to a CTI-based
-// domain declaration being semantically equivalent to the GTS constant.
-const DERIVED_MOUNT_EXT = `${FRONTX_ACTION_MOUNT_EXT}derived-variant.v1~`;
-// Analogous derived (is-a) variant of unmount_ext — NOT string-equal to the
-// GTS constant but satisfies the mock plugin's `startsWith`-based isTypeOf.
-const DERIVED_UNMOUNT_EXT = `${FRONTX_ACTION_UNMOUNT_EXT}derived-variant.v1~`;
-
-const DOMAIN_EXCL_DERIVED_ID = 'test.domain.exclusive.derived.v1';
-
-function makeExclusiveDerivedDomain(id: string = DOMAIN_EXCL_DERIVED_ID): ExtensionDomain {
-  return {
-    id,
-    // Declares a derived (is-a) mount_ext action, not the exact GTS constant.
-    actions: [FRONTX_ACTION_LOAD_EXT, DERIVED_MOUNT_EXT],
-    extensionsActions: [],
-    sharedProperties: [],
-    defaultActionTimeout: 5000,
-    lifecycleStages: [],
-    extensionsLifecycleStages: [],
-    extensionsTypeId: '',
-  } as unknown as ExtensionDomain;
-}
-
-class ExclusiveDomainImplDerived extends ExtensionDomainImplementation {
-  private readonly strategy: ExclusiveMountStrategy;
-
-  constructor(ctx: DomainContext, registry: MfeRegistry) {
-    super();
-    const hooks = new TestHooks();
-    this.strategy = new ExclusiveMountStrategy(ctx.mounter, hooks, registry, DOMAIN_EXCL_DERIVED_ID);
-    ctx.registerHandler(
-      DERIVED_MOUNT_EXT,
-      ActionHandler.fromFunction((_t, p) => this.strategy.mount(p as ActionPayload))
-    );
-    // Intentionally NO unmount handler — ExclusiveMountStrategy forbids unmount_ext.
-  }
-
-  protected getMountStrategies(): MountStrategy[] {
-    return [this.strategy];
-  }
-}
-
-class ExclusiveDomainFactoryDerived extends ExtensionDomainImplementationFactory {
-  constructor(private readonly reg: MfeRegistry) { super(); }
-
-  build(ctx: DomainContext): ExclusiveDomainImplDerived {
-    return new ExclusiveDomainImplDerived(ctx, this.reg);
-  }
-}
-
-// ─── Domain declaring a derived unmount_ext (for the ExclusiveMountStrategy FORBID test) ──
-
-const DOMAIN_EXCL_DERIVED_FORBID_ID = 'test.domain.exclusive.derived-forbid.v1';
-
-function makeExclusiveDerivedForbidDomain(id: string = DOMAIN_EXCL_DERIVED_FORBID_ID): ExtensionDomain {
-  return {
-    id,
-    // Declares a derived (is-a) unmount_ext action — still violates the FORBID rule,
-    // even though it is not string-equal to the GTS constant.
-    actions: [FRONTX_ACTION_LOAD_EXT, FRONTX_ACTION_MOUNT_EXT, DERIVED_UNMOUNT_EXT],
-    extensionsActions: [],
-    sharedProperties: [],
-    defaultActionTimeout: 5000,
-    lifecycleStages: [],
-    extensionsLifecycleStages: [],
-    extensionsTypeId: '',
-  } as unknown as ExtensionDomain;
-}
-
-// ─── Concurrent/Optional domains declaring only derived mount_ext/unmount_ext ──
-
-const DOMAIN_CONCURRENT_DERIVED_ID = 'test.domain.concurrent.derived.v1';
-const DOMAIN_OPTIONAL_DERIVED_ID = 'test.domain.optional.derived.v1';
-
-function makeConcurrentDerivedDomain(id: string = DOMAIN_CONCURRENT_DERIVED_ID): ExtensionDomain {
-  return {
-    id,
-    actions: [FRONTX_ACTION_LOAD_EXT, DERIVED_MOUNT_EXT, DERIVED_UNMOUNT_EXT],
-    extensionsActions: [],
-    sharedProperties: [],
-    defaultActionTimeout: 5000,
-    lifecycleStages: [],
-    extensionsLifecycleStages: [],
-    extensionsTypeId: '',
-  } as unknown as ExtensionDomain;
-}
-
-function makeOptionalDerivedDomain(id: string = DOMAIN_OPTIONAL_DERIVED_ID): ExtensionDomain {
-  return {
-    id,
-    actions: [FRONTX_ACTION_LOAD_EXT, DERIVED_MOUNT_EXT, DERIVED_UNMOUNT_EXT],
-    extensionsActions: [],
-    sharedProperties: [],
-    defaultActionTimeout: 5000,
-    lifecycleStages: [],
-    extensionsLifecycleStages: [],
-    extensionsTypeId: '',
-  } as unknown as ExtensionDomain;
-}
-
-class ConcurrentDomainImplDerived extends ExtensionDomainImplementation {
-  private readonly strategy: ConcurrentMountStrategy;
-
-  constructor(ctx: DomainContext) {
-    super();
-    const hooks = new TestHooks();
-    this.strategy = new ConcurrentMountStrategy(ctx.mounter, hooks);
-    ctx.registerHandler(
-      DERIVED_MOUNT_EXT,
-      ActionHandler.fromFunction((_t, p) => this.strategy.mount(p as ActionPayload))
-    );
-    ctx.registerHandler(
-      DERIVED_UNMOUNT_EXT,
-      ActionHandler.fromFunction((_t, p) => this.strategy.unmount!(p as ActionPayload))
-    );
-  }
-
-  protected getMountStrategies(): MountStrategy[] {
-    return [this.strategy];
-  }
-}
-
-class ConcurrentDomainFactoryDerived extends ExtensionDomainImplementationFactory {
-  build(ctx: DomainContext): ConcurrentDomainImplDerived {
-    return new ConcurrentDomainImplDerived(ctx);
-  }
-}
-
-class OptionalDomainImplDerived extends ExtensionDomainImplementation {
-  private readonly strategy: OptionalMountStrategy;
-
-  constructor(ctx: DomainContext, registry: MfeRegistry) {
-    super();
-    const hooks = new TestHooks();
-    this.strategy = new OptionalMountStrategy(ctx.mounter, hooks, registry, DOMAIN_OPTIONAL_DERIVED_ID);
-    ctx.registerHandler(
-      DERIVED_MOUNT_EXT,
-      ActionHandler.fromFunction((_t, p) => this.strategy.mount(p as ActionPayload))
-    );
-    ctx.registerHandler(
-      DERIVED_UNMOUNT_EXT,
-      ActionHandler.fromFunction((_t, p) => this.strategy.unmount!(p as ActionPayload))
-    );
-  }
-
-  protected getMountStrategies(): MountStrategy[] {
-    return [this.strategy];
-  }
-}
-
-class OptionalDomainFactoryDerived extends ExtensionDomainImplementationFactory {
-  constructor(private readonly reg: MfeRegistry) { super(); }
-
-  build(ctx: DomainContext): OptionalDomainImplDerived {
-    return new OptionalDomainImplDerived(ctx, this.reg);
-  }
-}
-
 // ─── Factory that partially registers then fails ──────────────────────────────
 
 class FailingAfterHandlerFactory extends ExtensionDomainImplementationFactory {
@@ -431,97 +266,13 @@ describe('DefaultMfeRegistry', () => {
       expect(() => reg.registerDomain(illegalDomain, new ConcurrentDomainFactory())).toThrow();
     });
 
-    it('ExclusiveMountStrategy factory with a hierarchy-derived mount_ext (is-a, not exact-match) satisfies the REQUIRE rule', () => {
-      const reg = freshRegistry();
-      expect(() =>
-        reg.registerDomain(makeExclusiveDerivedDomain(), new ExclusiveDomainFactoryDerived(reg))
-      ).not.toThrow();
-    });
-
-    it('ExclusiveMountStrategy factory without any action satisfying mount_ext (exact or is-a) still throws (REQUIRE rule)', () => {
+    it('ExclusiveMountStrategy factory without mount_ext declared still throws (REQUIRE rule)', () => {
       const reg = freshRegistry();
       const illegalDomain: ExtensionDomain = {
         ...makeExclusiveDomain(),
-        actions: [FRONTX_ACTION_LOAD_EXT, 'totally.unrelated.action.v1~'], // neither exact nor is-a match for mount_ext
+        actions: [FRONTX_ACTION_LOAD_EXT, 'totally.unrelated.action.v1~'], // no mount_ext
       } as unknown as ExtensionDomain;
       expect(() => reg.registerDomain(illegalDomain, new ExclusiveDomainFactory(reg))).toThrow();
-    });
-
-    it('ExclusiveMountStrategy factory with a hierarchy-derived unmount_ext (is-a, not exact-match) declared throws (FORBID rule)', () => {
-      const reg = freshRegistry();
-      expect(() =>
-        reg.registerDomain(makeExclusiveDerivedForbidDomain(), new ExclusiveDomainFactory(reg))
-      ).toThrow();
-    });
-
-    it('ConcurrentMountStrategy factory with hierarchy-derived mount_ext AND unmount_ext (is-a, not exact-match) satisfies the REQUIRE rule', () => {
-      const reg = freshRegistry();
-      expect(() =>
-        reg.registerDomain(makeConcurrentDerivedDomain(), new ConcurrentDomainFactoryDerived())
-      ).not.toThrow();
-    });
-
-    it('OptionalMountStrategy factory with hierarchy-derived mount_ext AND unmount_ext (is-a, not exact-match) satisfies the REQUIRE rule', () => {
-      const reg = freshRegistry();
-      expect(() =>
-        reg.registerDomain(makeOptionalDerivedDomain(), new OptionalDomainFactoryDerived(reg))
-      ).not.toThrow();
-    });
-  });
-
-  describe('hierarchy-aware dispatch (end-to-end, not just registerDomain admission)', () => {
-    // Registration passing is necessary but not sufficient — a domain that
-    // registers its handler under a hierarchy-derived action id must still be
-    // reachable when an action is actually DISPATCHED under the framework's
-    // base id (or vice versa). This exercises the full
-    // registerDomain -> executeActionsChain -> mediator.resolveHandler path.
-    // Uses a plain flag-setting handler (not the real ExclusiveMountStrategy.mount,
-    // which needs a DOM-attached mounter) — an ExclusiveMountStrategy instance is
-    // still captured so cardinality classification (`instanceof` check) applies.
-    it('a handler registered under a DERIVED mount_ext id actually fires when dispatched with the BASE literal', async () => {
-      class FlagHandlerImpl extends ExtensionDomainImplementation {
-        readonly strategy: ExclusiveMountStrategy;
-        mountHandlerFired = false;
-
-        constructor(ctx: DomainContext, registry: MfeRegistry) {
-          super();
-          this.strategy = new ExclusiveMountStrategy(ctx.mounter, new TestHooks(), registry, DOMAIN_EXCL_DERIVED_ID);
-          ctx.registerHandler(
-            DERIVED_MOUNT_EXT,
-            ActionHandler.fromFunction(async () => {
-              this.mountHandlerFired = true;
-            })
-          );
-        }
-
-        protected getMountStrategies(): MountStrategy[] {
-          return [this.strategy];
-        }
-      }
-
-      class FlagHandlerFactory extends ExtensionDomainImplementationFactory {
-        lastImpl: FlagHandlerImpl | null = null;
-        constructor(private readonly reg: MfeRegistry) { super(); }
-        build(ctx: DomainContext): FlagHandlerImpl {
-          const impl = new FlagHandlerImpl(ctx, this.reg);
-          this.lastImpl = impl;
-          return impl;
-        }
-      }
-
-      const reg = freshRegistry();
-      const factory = new FlagHandlerFactory(reg);
-      reg.registerDomain(makeExclusiveDerivedDomain(), factory);
-
-      await reg.executeActionsChain({
-        action: {
-          type: FRONTX_ACTION_MOUNT_EXT,
-          target: DOMAIN_EXCL_DERIVED_ID,
-          payload: { subject: 'ext-1' },
-        },
-      });
-
-      expect(factory.lastImpl?.mountHandlerFired).toBe(true);
     });
   });
 

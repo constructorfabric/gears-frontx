@@ -54,6 +54,45 @@ describe('serializeGrammar — round-trip (parse -> serialize is byte-exact for 
     expect(serializeGrammar(parsed)).toBe('/en?screen=dashboard#x');
   });
 
+  // AC7.2 (D20): `screen=widgets-host&widgets=widget-alpha;last-ping=…`
+  // round-trips as two independent flat-key entries, and no dotted
+  // composite domain key is ever produced by parse or accepted by serialize
+  // as a domain key — `domain-key = name`, with no composed form.
+  it('reproduces AC7.2 (D20) exactly: a flat-key round-trip with no composite domain key', () => {
+    const url = '/en?screen=widgets-host&widgets=widget-alpha;last-ping=2026-01-01T00:00:00.000Z';
+    const parsed = parseGrammar(url);
+    expect(parsed.entries).toEqual([
+      { domainKey: 'screen', extension: 'widgets-host', params: [] },
+      {
+        domainKey: 'widgets',
+        extension: 'widget-alpha',
+        params: [{ name: 'last-ping', value: '2026-01-01T00:00:00.000Z' }],
+      },
+    ]);
+    expect(parsed.warnings).toEqual([]);
+    expect(serializeGrammar(parsed)).toBe(url);
+  });
+
+  it('a dotted candidate domain key is never produced by parse — it parses as a silent foreign segment', () => {
+    const url = '/en?screen.widgets-host.tabs=contacts&widgets=widget-alpha';
+    const parsed = parseGrammar(url);
+    expect(parsed.entries).toEqual([entry('widgets', 'widget-alpha')]);
+    expect(parsed.foreignSegments).toEqual(['screen.widgets-host.tabs=contacts']);
+    expect(parsed.warnings).toEqual([]);
+  });
+
+  it('a dotted domain key is never accepted by serialize — it fails the single-`name` domain-key production', () => {
+    const input: SerializeInput = {
+      shellSubroute: '/en',
+      hash: undefined,
+      entries: [entry('screen.widgets-host.tabs', 'contacts')],
+      foreignSegments: [],
+    };
+    const error = expectRoutingError(() => serializeGrammar(input));
+    expect(error.code).toBe('invalid-domain-key');
+    expect(error.value).toBe('screen.widgets-host.tabs');
+  });
+
   // Direct on serializeGrammar, not routed through parseGrammar: parse
   // normalizes a present-but-empty hash to `undefined` before it ever
   // reaches serialize (see parse.ts), so a round-trip test alone cannot

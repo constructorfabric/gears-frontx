@@ -34,7 +34,7 @@ Defines and extracts the MFE Runtime's opaque type-substrate port — the narrow
 
 ### 1.2 Purpose
 
-The MFE Runtime must validate microfrontends and their extensions against type definitions and resolve type hierarchies for handler selection, yet it must carry no concrete type-format knowledge. This feature establishes the opaque port contract that makes this possible — `TypeSystemPlugin` — and extracts it from `packages/screensets` into the published `@gears-frontx/mfes` package, hardening the MFES-1, MFES-4, and MFES-5 boundaries so they are CI-enforceable invariants.
+The MFE Runtime must validate microfrontends and their extensions against type definitions and resolve type hierarchies for handler selection, yet it must carry no concrete type-format knowledge. This feature establishes the opaque port contract that makes this possible — `TypeSystemPlugin` — and publishes it from the `@gears-frontx/mfes` package, hardening the MFES-1, MFES-4, and MFES-5 boundaries so they are CI-enforceable invariants.
 
 **Requirements**: `cpt-frontx-fr-application-type-definitions`, `cpt-frontx-fr-mfe-type-validation`
 
@@ -128,7 +128,7 @@ Internal system functions and procedures that do not interact with actors direct
 4. [x] - `p1` - For the framework's well-known `load_ext` lifecycle action, delegate resolution of its base type identifier to the injected port's dedicated method, rather than the runtime holding any concrete type-format literal for this concept - `inst-resolve-load-ext`
 5. [x] - `p1` - For the framework's well-known `mount_ext` lifecycle action, delegate resolution of its base type identifier to the injected port's dedicated method, rather than the runtime holding any concrete type-format literal for this concept - `inst-resolve-mount-ext`
 6. [x] - `p1` - For the framework's well-known `unmount_ext` lifecycle action, delegate resolution of its base type identifier to the injected port's dedicated method, rather than the runtime holding any concrete type-format literal for this concept - `inst-resolve-unmount-ext`
-7. [x] - `p1` - Determine whether a given action type is (or derives from) one of the framework's well-known infrastructure lifecycle actions (load_ext, mount_ext, unmount_ext) by resolving each base ID from the injected port and delegating each comparison to `isTypeOf` — shared by contract-matching and mediator entry-declaration exemption so both stay consistent - `inst-is-infrastructure-action`
+7. [x] - `p1` - Determine whether a given action type is exactly one of the framework's well-known infrastructure lifecycle actions (load_ext, mount_ext, unmount_ext) by resolving each ID from the injected port and comparing identifiers — shared by contract-matching and mediator entry-declaration exemption so both stay consistent - `inst-is-infrastructure-action`
 8. [x] - `p1` - For the framework's well-known `init` lifecycle stage, delegate resolution of its type identifier to the injected port's dedicated method, rather than the runtime holding any concrete type-format literal for this concept - `inst-resolve-lifecycle-stage-init`
 9. [x] - `p1` - For the framework's well-known `activated` lifecycle stage, delegate resolution of its type identifier to the injected port's dedicated method, rather than the runtime holding any concrete type-format literal for this concept - `inst-resolve-lifecycle-stage-activated`
 10. [x] - `p1` - For the framework's well-known `deactivated` lifecycle stage, delegate resolution of its type identifier to the injected port's dedicated method, rather than the runtime holding any concrete type-format literal for this concept - `inst-resolve-lifecycle-stage-deactivated`
@@ -158,7 +158,7 @@ Specific implementation tasks derived from flows and algorithms above.
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-type-substrate-port-port-contract-extraction`
 
-The system **MUST** define and ship the `TypeSystemPlugin` port contract in `@gears-frontx/mfes`, extracted from `packages/screensets/src/mfe/plugins/types.ts`, so the opaque type-substrate port is the sole published surface that MFE Runtime consumers depend on.
+The system **MUST** define and ship the `TypeSystemPlugin` port contract in `@gears-frontx/mfes` (`packages/mfes/src/type-substrate/index.ts`), so the opaque type-substrate port is the sole published surface that MFE Runtime consumers depend on.
 
 **Implements**:
 - `cpt-frontx-flow-type-substrate-port-register-validate`
@@ -199,7 +199,7 @@ The system **MUST** delegate every schema validation and type-hierarchy-resoluti
 
 ## 6. Acceptance Criteria
 
-- [x] The `TypeSystemPlugin` port contract is published from `@gears-frontx/mfes` (target: extracted from `packages/screensets/src/mfe/plugins/types.ts`)
+- [x] The `TypeSystemPlugin` port contract is published from `@gears-frontx/mfes` (defined in `packages/mfes/src/type-substrate/index.ts`)
 - [x] A CI boundary check on MFE Runtime source returns 0 hits for any concrete type-definition format literals, schema field access beyond identifier, or format-specific imports
 - [x] A conforming `TypeSystemPlugin` implementation can be injected into the runtime without any runtime modification
 - [x] The runtime correctly rejects a microfrontend whose declared type identifier fails port validation, surfacing port-supplied error details to the caller

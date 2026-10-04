@@ -1,6 +1,6 @@
 {
   "name": "@gears-frontx/routing",
-  "version": "0.3.0-alpha.0",
+  "version": "0.3.0-alpha.1",
   "description": "FrontX navigation library - a framework-agnostic navigation substrate sharing one browser history across independently bundled microfrontends, plus a route ownership signal, with no dependency on any concrete router engine",
   "type": "module",
   "main": "./dist/index.cjs",

@@ -19,6 +19,7 @@ import { MfeRegistryFactory } from '../registry/MfeRegistryFactory';
 import type { MfeRegistry } from '../registry/MfeRegistry';
 import type { MfeRegistryConfig } from './config';
 import type { TypeSystemPlugin } from '../type-substrate';
+import type { RouterPort } from '../router/RouterPort';
 import { DefaultMfeRegistry } from './DefaultMfeRegistry';
 
 /**
@@ -39,6 +40,12 @@ export class DefaultMfeRegistryFactory extends MfeRegistryFactory {
   // would leave the mismatch check below comparing the new plugin against
   // itself and handing back a registry bound to the old one.
   private cachedTypeSystem: TypeSystemPlugin | null = null;
+  // A snapshot of the router (or its absence), taken from the configuration
+  // rather than the caller's config object, for the same reason as
+  // `cachedTypeSystem` above. `undefined` here means "built with no router",
+  // compared by identity so a router supplied after the first build omitted
+  // one, or omitted after one was supplied, is a mismatch like any other.
+  private cachedRouter: RouterPort | undefined = undefined;
 
   /**
    * Build a MfeRegistry instance with the provided configuration.
@@ -70,6 +77,21 @@ export class DefaultMfeRegistryFactory extends MfeRegistryFactory {
         );
         // @cpt-end:cpt-frontx-flow-mfe-registry-factory-build:p1:inst-flow-fb-02a
       }
+
+      // @cpt-begin:cpt-frontx-state-mfe-registry-factory-cache:p1:inst-state-fc-03
+      // Absence compared against absence matches; a router after none, no
+      // router after one, or a different router each mismatch by identity —
+      // the snapshot is taken from the configuration, never the live config
+      // object, for the same reason as `cachedTypeSystem` above.
+      if (config.router !== this.cachedRouter) {
+        throw new Error(
+          'MfeRegistry already built with a different router (or a different router ' +
+          'presence). Cannot rebuild with a different configuration. ' +
+          `Expected: ${this.cachedRouter ? 'a router' : 'no router'}, ` +
+          `Got: ${config.router ? 'a router' : 'no router'}`
+        );
+      }
+      // @cpt-end:cpt-frontx-state-mfe-registry-factory-cache:p1:inst-state-fc-03
       // @cpt-end:cpt-frontx-flow-mfe-registry-factory-build:p1:inst-flow-fb-02
 
       // @cpt-begin:cpt-frontx-flow-mfe-registry-factory-build:p1:inst-flow-fb-02b
@@ -82,6 +104,7 @@ export class DefaultMfeRegistryFactory extends MfeRegistryFactory {
     // @cpt-begin:cpt-frontx-flow-mfe-registry-factory-build:p1:inst-flow-fb-03
     // @cpt-begin:cpt-frontx-state-mfe-registry-factory-cache:p1:inst-state-fc-01
     this.cachedTypeSystem = config.typeSystem;
+    this.cachedRouter = config.router;
     this.instance = new DefaultMfeRegistry(config);
     return this.instance;
     // @cpt-end:cpt-frontx-state-mfe-registry-factory-cache:p1:inst-state-fc-01

@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import * as routingTanstack from '../index.js';
 
-// This package's entry point carries the full engine-provider runtime
-// surface: history adaptation and router creation (`../virtual-location.ts`,
-// `../composed-history-source.ts`, `../history-adaptation.ts`,
-// `../router-creation.tsx`), the standalone source and mode dispatch
-// (`../standalone-history-source.ts`, `../engine-provider-history.ts`), the
-// location-preserving redirect helper (`../location-preserving-redirect.ts`),
-// and — per DESIGN §3.3's public-surface table — the concrete engine's own
-// router and route-tree construction, mounting, hooks, components, and
+// This package's entry point carries only what the framework router needs:
+// history adaptation and router creation folded behind `adaptProviderHistory`
+// (`../engine-provider-history.ts`, `../composed-history-source.ts`,
+// `../standalone-history-source.ts`, `../history-adaptation.ts`,
+// `../virtual-location.ts` — all internal), `createProviderRouter` /
+// `EngineProvider` (`../router-creation.tsx`), the location-preserving
+// redirect helper (`../location-preserving-redirect.ts`), and — per DESIGN
+// §3.3's public-surface table — the concrete engine's own router and
+// route-tree construction, mounting, hooks, components, and
 // route-resolution helpers, re-exported so a microfrontend never
 // has to import `@tanstack/react-router` itself
 // (`cpt-frontx-constraint-routing-tanstack-sole-engine-import`). Teardown
@@ -19,22 +20,12 @@ describe('@gears-frontx/routing-tanstack entry point', () => {
     expect(routingTanstack).toBeDefined();
   });
 
-  it('exposes the full engine-provider runtime surface', () => {
+  it('exposes only the framework-router-facing engine-provider surface', () => {
     expect(Object.keys(routingTanstack).sort()).toEqual(
       [
-        'ROUTE_PARAM_NAME',
-        'projectParamsToVirtualLocation',
-        'projectVirtualLocationToParams',
-        'adaptVirtualLocationHistory',
-        'attachAdaptedHistory',
-        'createComposedVirtualLocationSource',
-        'adaptComposedHistory',
-        'createStandaloneVirtualLocationSource',
-        'adaptStandaloneHistory',
         'adaptProviderHistory',
         'locationPreservingRedirect',
         'createProviderRouter',
-        'createEngineProviderRouter',
         'EngineProvider',
         // DESIGN §3.3 public surface — the concrete engine's own re-exports.
         'createRouter',

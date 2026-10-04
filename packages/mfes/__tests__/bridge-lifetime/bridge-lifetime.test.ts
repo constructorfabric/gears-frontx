@@ -3,9 +3,9 @@
  * first mount, handed to every subsequent mount of that same extension as
  * the SAME object, and released only at that extension's permanent
  * unregistration (`inst-bridge-lifetime`). An ordinary unmount or a failed
- * mount only DEACTIVATES the pair — every action-delivery path through it
- * rejects explicitly with a target-inactive error, distinct from a
- * missing-handler failure, while handler registrations and property
+ * mount only DEACTIVATES the pair — every hand-over through it is refused,
+ * and a chain the child hands to it is not handed over, while handler
+ * registrations and property
  * subscriptions made through it survive untouched and resume the moment the
  * next mount reactivates it (`inst-bridge-deactivation`,
  * `inst-registration-survives-remount`).
@@ -15,21 +15,18 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { DefaultMfeRegistry } from '../../src/runtime/DefaultMfeRegistry';
-import type { ActionsChainsMediator } from '../../src/mediator/types';
+import type { ActionsChainsMediator } from '../../src/mediator/ActionsChainsMediator';
 import type { TypeSystemPlugin } from '../../src/type-substrate';
 import type { ActionsChain, Extension, ExtensionDomain, MfeEntry } from '../../src/types';
-import {
-  MfeHandler,
-  ChildMfeBridge,
-  type MfeEntryLifecycle,
-} from '../../src/handler/types';
-import { MfeBridgeFactoryDefault } from '../../src/handler/mfe-bridge-factory-default';
+import { MfeHandler, type MfeEntryLifecycle } from '../../src/handler/MfeHandler';
+import { ChildMfeBridge } from '../../src/handler/ChildMfeBridge';
+import { MfeBridgeFactoryDefault } from '../../src/bridge/MfeBridgeFactoryDefault';
 import { ExtensionDomainImplementation } from '../../src/runtime/ExtensionDomainImplementation';
 import { ExtensionDomainImplementationFactory } from '../../src/runtime/ExtensionDomainImplementationFactory';
 import type { DomainContext } from '../../src/runtime/DomainContext';
-import { ConcurrentMountStrategy } from '../../src/runtime/mount-strategies';
-import type { ContainerHooks, ActionPayload } from '../../src/runtime/mount-strategy';
-import { ActionHandler } from '../../src/mediator/types';
+import { ConcurrentMountStrategy } from '../../src/runtime/ConcurrentMountStrategy';
+import type { ContainerHooks, ActionPayload } from '../../src/runtime/MountStrategy';
+import { ActionHandler } from '../../src/mediator/ActionHandler';
 
 // ─── Mock-notation well-known action/domain/entry ids ──────────────────────
 
@@ -150,6 +147,17 @@ function actionChain(type: string, target: string, extra: Partial<ActionsChain> 
   return { action: { type, target, payload: {} }, ...extra };
 }
 
+/**
+ * Runs the registry mediator's internal recursion for `chain` and resolves
+ * once it has ended — the deterministic synchronisation point for asserting
+ * that a handler or branch did NOT run. The public `executeActionsChain`
+ * returns nothing awaitable (`cpt-frontx-adr-mfe-runtime-public-surface`).
+ */
+function executeToEnd(registry: DefaultMfeRegistry, chain: ActionsChain): Promise<void> {
+  return (registry as unknown as { mediator: { executeChain(chain: ActionsChain): Promise<void> } })
+    .mediator.executeChain(chain);
+}
+
 /** An `MfeHandler` whose `mount()`/`unmount()` bodies are fully controlled by the test. */
 class ControlledHandler extends MfeHandler {
   readonly bridgeFactory = new MfeBridgeFactoryDefault();
@@ -249,21 +257,22 @@ describe('Bridge lifetime: one pair per extension, reactivated (not recreated) a
 
     await mounter.mount(EXT, document.createElement('div'));
     await mounter.unmount(EXT);
+    const executeSpy = vi.spyOn(registry, 'executeActionsChain');
 
-    // Unmount alone does not destroy — inactive, not disposed.
-    await expect(capturedBridge!.executeActionsChain(actionChain(ACTION_PING, EXT))).rejects.toMatchObject({
-      code: 'BRIDGE_INACTIVE',
-    });
+    // Unmount alone does not destroy — inactive, not disposed. Per
+    // `cpt-frontx-adr-child-mfe-host-access` the inactive bridge hands
+    // nothing over.
+    expect(capturedBridge!.executeActionsChain(actionChain(ACTION_PING, EXT))).toBeUndefined();
+    expect(executeSpy).not.toHaveBeenCalled();
 
     await registry.unregisterExtension(EXT);
 
-    // Permanent unregistration destroys the bridge.
-    await expect(capturedBridge!.executeActionsChain(actionChain(ACTION_PING, EXT))).rejects.toMatchObject({
-      code: 'BRIDGE_DISPOSED',
-    });
+    // Permanent unregistration destroys the bridge — it hands nothing over.
+    expect(capturedBridge!.executeActionsChain(actionChain(ACTION_PING, EXT))).toBeUndefined();
+    expect(executeSpy).not.toHaveBeenCalled();
   });
 
-  it('(4) regression lock: unmount never calls unregisterAllHandlers; unregisterExtension calls it exactly once', async () => {
+  it('(4) unmount never calls unregisterAllHandlers; unregisterExtension calls it exactly once', async () => {
     const { registry, mounter } = await setupHost({
       onMount: (bridge) => {
         bridge.registerActionHandler(ACTION_PING, ActionHandler.fromFunction(async () => {}));
@@ -283,7 +292,7 @@ describe('Bridge lifetime: one pair per extension, reactivated (not recreated) a
     expect(unregisterAllSpy).toHaveBeenCalledWith(EXT);
   });
 
-  it('(5) dispatch to an unmounted extension with a fallback: the handler is never invoked, the fallback runs exactly once, and the chain completes', async () => {
+  it('(5) dispatch to an unmounted extension with a fallback: the handler is never invoked and the fallback runs exactly once', async () => {
     const pingCounter = { count: 0 };
     const rootCounter = { count: 0 };
     const { registry, mounter } = await setupHost({
@@ -299,18 +308,16 @@ describe('Bridge lifetime: one pair per extension, reactivated (not recreated) a
     await mounter.mount(EXT, document.createElement('div'));
     await mounter.unmount(EXT);
 
-    const result = await (registry as unknown as {
-      mediator: ActionsChainsMediator;
-    }).mediator.executeActionsChain(
+    await executeToEnd(
+      registry,
       actionChain(ACTION_PING, EXT, { fallback: actionChain(ACTION_ROOT, D0) })
     );
 
     expect(pingCounter.count).toBe(0);
     expect(rootCounter.count).toBe(1);
-    expect(result.completed).toBe(true);
   });
 
-  it('(6) dispatch to an unmounted extension with NO fallback: the chain does not complete and the error is BRIDGE_INACTIVE', async () => {
+  it('(6) dispatch to an unmounted extension with NO fallback: the handler is never invoked and the chain ends', async () => {
     const pingCounter = { count: 0 };
     const { registry, mounter } = await setupHost({
       onMount: (bridge) => {
@@ -324,16 +331,12 @@ describe('Bridge lifetime: one pair per extension, reactivated (not recreated) a
     await mounter.mount(EXT, document.createElement('div'));
     await mounter.unmount(EXT);
 
-    const result = await (registry as unknown as {
-      mediator: ActionsChainsMediator;
-    }).mediator.executeActionsChain(actionChain(ACTION_PING, EXT));
+    await executeToEnd(registry, actionChain(ACTION_PING, EXT));
 
     expect(pingCounter.count).toBe(0);
-    expect(result.completed).toBe(false);
-    expect(result.timedOut).toBeFalsy();
   });
 
-  it('(7) a forwarding entry into an unmounted host\'s nested subtree is rejected as inactive, so the fallback fires', async () => {
+  it('(7) a hand-over into an unmounted host\'s nested subtree is refused, so the fallback fires', async () => {
     const NESTED_ENTRY = 'entry.bridge-lifetime-nested.v1';
     const NESTED_EXT = 'ext.bridge-lifetime-nested.v1';
     const D_NESTED = 'domain.bridge-lifetime-nested.v1';
@@ -381,7 +384,7 @@ describe('Bridge lifetime: one pair per extension, reactivated (not recreated) a
       action: { type: ACTION_NESTED_LEAF, target: D_NESTED, payload: {} },
       fallback: actionChain(ACTION_ROOT, D0),
     };
-    await registry0.executeActionsChain(chain);
+    await executeToEnd(registry0, chain);
 
     expect(leafCounter.count).toBe(0);
     expect(rootCounter.count).toBe(1);
@@ -404,7 +407,7 @@ describe('Bridge lifetime: one pair per extension, reactivated (not recreated) a
     await mounter.unmount(EXT);
     await mounter.mount(EXT, document.createElement('div'));
 
-    await registry.executeActionsChain(
+    await executeToEnd(registry,
       actionChain(ACTION_PING, EXT, { fallback: actionChain(ACTION_ROOT, D0) })
     );
 
@@ -430,7 +433,7 @@ describe('Bridge lifetime: one pair per extension, reactivated (not recreated) a
     await mounter.unmount(EXT);
     await mounter.mount(EXT, document.createElement('div'));
 
-    await registry.executeActionsChain(actionChain(ACTION_PING, EXT));
+    await executeToEnd(registry, actionChain(ACTION_PING, EXT));
 
     expect(pingCounter.count).toBe(1);
   });

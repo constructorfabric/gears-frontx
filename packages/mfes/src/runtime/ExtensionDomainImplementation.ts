@@ -14,7 +14,7 @@
  */
 // @cpt-FEATURE:cpt-frontx-feature-mfe-registry:p2
 
-import type { MountStrategy } from './mount-strategy';
+import type { MountStrategy } from './MountStrategy';
 
 /**
  * Abstract base class for domain behavior implementations.

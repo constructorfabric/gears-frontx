@@ -92,14 +92,16 @@ Published libraries:
 * `cpt-frontx-adr-mfe-handler-resolution` — Abstracts the microfrontend handler and resolves it through the registry.
 * `cpt-frontx-adr-action-dispatch-and-chaining` — Routes host–microfrontend communication through an actions-chains mediator.
 * `cpt-frontx-adr-child-mfe-host-access` — Defines a narrow parent–child capability bridge between host and microfrontend.
-* `cpt-frontx-adr-extension-domain-occupancy` — Governs extension-domain occupancy through mount strategies and cardinality rules, and binds the addressed-action channel as the sole originator of an occupancy change after boot, leaving navigation to resolve a cold load and replay a restoration.
+* `cpt-frontx-adr-extension-domain-occupancy` — Governs extension-domain occupancy through mount strategies and cardinality rules, and binds the addressed-action channel as the sole channel of an occupancy change, restoration included: the injected router translates a cold load, reload, or history step into `mount_ext` and `unmount_ext` action chains, while unregistration and terminal disposal release occupants only as resource cleanup.
 * `cpt-frontx-adr-domain-extension-compatibility` — Admits extensions into domains by contract matching.
 * `cpt-frontx-adr-mfe-load-isolation` — Isolates loaded microfrontends at runtime.
 * `cpt-frontx-adr-lazy-import-resolution` — Separates the runtime ABI from the template-bound build through lazy import.
 * `cpt-frontx-adr-mfe-asset-discovery` — Discovers microfrontends through their manifest contract.
 * `cpt-frontx-adr-shared-dep-dedup-key` — Keys cross-microfrontend shared-dependency reuse to the identity of the producing build.
+* `cpt-frontx-adr-shared-dep-cache-reach` — Extends that reuse to one bounded, version-namespaced source-text cache per realm, shared by compatible independently loaded copies of the runtime without sharing module graphs.
 * `cpt-frontx-adr-api-surface-organization` — Separates request/response and streaming behind a common protocol surface.
 * `cpt-frontx-adr-api-transport-bypass-and-fetch-sharing` — Provides a plugin short-circuit and a realm-shared fetch cache.
+* `cpt-frontx-adr-extension-routing-port` — The runtime depends on an optional abstract router port supplied by injection, through which the injected router admits routed registrations, receives one report per settled `mount_ext` or `unmount_ext` execution, and keeps the URL and the mounts in agreement; occupant values are exchanged privately between runtime copies and the injected router, never through any interface handed to extension or host code.
 * `cpt-frontx-routing-adr-occupant-reference-boundary` — Names and carries occupant identity through route resolution and reporting without depending on the runtime's concrete extension type - owned by the routing member tree, `packages/routing/architecture/ADR/`.
 * `cpt-frontx-routing-adr-mount-trigger-ownership` — Shapes the navigation substrate's own surface under that rule as three publication acts — resolve, report, reflect — with nothing a consumer can wire as an instruction to mount - owned by the routing member tree, `packages/routing/architecture/ADR/`.
 * `cpt-frontx-routing-adr-domain-occupancy-addressing-granularity` — Addresses every domain, at any depth and any occupant count, through one uniform query-string entry grammar, with the pathname reserved to the shell - owned by the routing member tree, `packages/routing/architecture/ADR/`.
@@ -109,7 +111,7 @@ CLI (projects orchestration):
 
 * `cpt-frontx-adr-template-acquisition-and-location` — Externalizes templates and resolves them by source-spec at runtime, and publishes them from a templates repository of their own rather than from this one, so no template and nothing serving one is held here.
 * `cpt-frontx-adr-source-spec-syntax` — Defines the versioned source-spec syntax for template acquisition, including the optional subtree segment that lets one repository publish several addressable templates.
-* `cpt-frontx-adr-uniform-template-mechanism` — Establishes one uniform mechanism that operates over any template, each template declaring what it produces.
+* `cpt-frontx-adr-template-classification` — Establishes one uniform mechanism that operates over any template, each template declaring what it produces.
 * `cpt-frontx-adr-template-manifest-contract` — Defines the template manifest publication contract declaring identity, version, ownership boundaries, and referenced templates.
 * `cpt-frontx-adr-template-ownership-boundary-declaration` — Defines the two-tier ownership-boundary declaration (exclusive subtrees plus shared-file region ownership with a declared merge) - owned by the CLI member tree, `packages/cli/architecture/ADR/`.
 * `cpt-frontx-adr-assembly-conflict-prevention` — Detects and refuses conflicting assembly before any write via a pre-flight intersection check and a post-materialization boundary-honesty guard.
@@ -141,7 +143,7 @@ A candidate satisfying more than one of these is a defect in the candidate, not 
 
 **Within published libraries, two independent properties.** A library is **core** if it must remain UI-framework-agnostic; a library is **standalone** if it declares no intra-ecosystem package dependency, with the single exception of the type-substrate port. A library may hold either, both, or neither. Keeping them separate lets the agnostic-substrate guarantee (`cpt-frontx-principle-agnostic-core`, `cpt-frontx-fr-ui-framework-agnostic`) apply to a library that legitimately depends on another library, and permits a member bound to a concrete UI framework or engine to still be a full layer member that is simply not core.
 
-The two properties combine differently across the current members. The `mfes` runtime depends on `@gears-frontx/gts-plugin` through the type-substrate port — the one edge the standalone definition's stated exception covers (`cpt-frontx-adr-runtime-type-system-coupling`) — so it holds both properties. The navigation substrate (`@gears-frontx/routing`) is core and standalone at once: it declares no intra-ecosystem package dependency, and it carries no dependency on any UI framework or router engine — every such dependency is confined to a separate published member. That member, `@gears-frontx/routing-tanstack`, is the one that is not core, and also not standalone: it is bound to a concrete UI framework and a concrete routing engine, so it fails the core property, and it depends on `@gears-frontx/routing`, so it fails the standalone property too — a member can fail both properties at once, which is exactly why the two are kept independent rather than collapsed into a single "not core" label.
+The two properties combine differently across the current members. The `mfes` runtime depends on `@gears-frontx/gts-plugin` through the type-substrate port — the one edge the standalone definition's stated exception covers (`cpt-frontx-adr-runtime-type-system-coupling`) — so it holds both properties. The runtime also declares an optional abstract router port, filled by injection in the same way as the type-substrate port; the concrete router implementing it is provided by the template framework, outside the published-libraries layer, so the port adds no package dependency, no edge runs between `mfes` and either routing member in either direction, and the runtime keeps both properties (`cpt-frontx-adr-extension-routing-port`). The navigation substrate (`@gears-frontx/routing`) is core and standalone at once: it declares no intra-ecosystem package dependency, and it carries no dependency on any UI framework or router engine — every such dependency is confined to a separate published member. That member, `@gears-frontx/routing-tanstack`, is the one that is not core, and also not standalone: it is bound to a concrete UI framework and a concrete routing engine, so it fails the core property, and it depends on `@gears-frontx/routing`, so it fails the standalone property too — a member can fail both properties at once, which is exactly why the two are kept independent rather than collapsed into a single "not core" label.
 
 **Two categories outside the layers, both stated positively.** **Build internals** are packages that exist only to configure the build, are never published, and belong to no layer; they remain subject to the dependency-edge guard and are exempt from the member artifact chain and the publication gate. **Non-package code** — repository scripts and in-package demonstrations — has no package identity to carry layer membership; it remains scanned for traceability and holds no layer membership. Both are exemptions with a stated scope, not ignores.
 
@@ -171,6 +173,7 @@ graph TD
     ROUTINGTS -- "engine-provider port of" --> ROUTING
     CLI -. "applies / upgrades" .-> T
     T -. "produce projects composing" .-> Libs
+    T -. "template framework implements optional router port of" .-> MFES
 ```
 
 - [ ] `p3` - **ID**: `cpt-frontx-tech-ecosystem-stack`
@@ -286,7 +289,9 @@ graph TD
         ROUTINGTS[gears-frontx/routing-tanstack]
     end
     POL[ecosystem version policy - root-owned]
+    TFW["template framework router - template territory"]
     GTS -- "implements type-substrate port of" --> MFES
+    TFW -. "implements optional router port of" .-> MFES
     ROUTINGTS -- "implements engine-provider port of" --> ROUTING
     KIT -- "orchestrates command surface of" --> CLI
     POL -. "governs every published edge and release line" .-> Libs

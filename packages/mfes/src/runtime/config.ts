@@ -6,10 +6,12 @@
  *
  * @packageDocumentation
  */
+// @cpt-dod:cpt-frontx-dod-mfe-registry-router-configuration:p1
 
 import type { TypeSystemPlugin } from '../type-substrate';
-import type { MfeHandler } from '../handler/types';
-import type { RuntimeCoordinator } from './coordination/types';
+import type { MfeHandler } from '../handler/MfeHandler';
+import type { RuntimeCoordinator } from './coordination/RuntimeCoordinator';
+import type { RouterPort } from '../router/RouterPort';
 
 /**
  * Configuration for creating a MfeRegistry instance.
@@ -59,4 +61,17 @@ export interface MfeRegistryConfig {
    * Applications must explicitly provide handlers they want to use.
    */
   mfeHandlers?: MfeHandler[];
+
+  /**
+   * Optional router implementing the router port (`cpt-frontx-mfes-interface-router-port`).
+   * Where present, the registry presents each domain and extension
+   * registration to it before the registration becomes durable, obtains
+   * each extension's occupant value from it at mount, reports each settled
+   * `mount_ext`/`unmount_ext` execution to it, and sends it release
+   * notifications on unregistration and disposal. Where absent, the
+   * registry runs every extension standalone: it presents no registration,
+   * sends no release notification, assigns no occupant value, and reports
+   * no settled action to anyone (`cpt-frontx-dod-mfe-registry-router-configuration`).
+   */
+  router?: RouterPort;
 }

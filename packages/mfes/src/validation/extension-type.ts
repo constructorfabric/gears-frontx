@@ -2,7 +2,7 @@
  * Domain-Specific Extension Validation via Derived Types
  *
  * Validates that an Extension's type conforms to its domain's extensionsTypeId
- * requirement. Extracted from the legacy screensets package in Phase 7.
+ * requirement.
  *
  * @packageDocumentation
  */

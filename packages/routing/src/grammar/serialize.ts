@@ -6,7 +6,7 @@
  */
 import { RoutingError } from '../errors.js';
 import type { SerializeGrammar } from '../types/index.js';
-import { isValidDomainKey, validateName } from './name.js';
+import { validateName } from './name.js';
 import { encodePercent } from './percent-codec.js';
 
 // @cpt-algo:cpt-frontx-algo-routing-navigation-substrate-grammar-serialize:p1
@@ -59,7 +59,7 @@ export const serializeGrammar: SerializeGrammar = (input) => {
   for (let i = 0; i < entries.length; i += 1) {
     const entry = entries[i];
     // @cpt-begin:cpt-frontx-algo-routing-navigation-substrate-grammar-serialize:p1:inst-if-invalid-tokens
-    if (!isValidDomainKey(entry.domainKey)) {
+    if (!validateName(entry.domainKey)) {
       // @cpt-begin:cpt-frontx-algo-routing-navigation-substrate-grammar-serialize:p1:inst-throw-invalid-tokens
       throw RoutingError.invalidDomainKey(entry.domainKey, entry);
       // @cpt-end:cpt-frontx-algo-routing-navigation-substrate-grammar-serialize:p1:inst-throw-invalid-tokens

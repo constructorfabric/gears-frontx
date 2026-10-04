@@ -42,15 +42,18 @@ export abstract class ExtensionMounter {
    * Release the attached root and mass-unmount every currently-mounted extension
    * in the domain.
    *
-   * Attempts `mounter.unmount(extId)` for every extension in the registry's
-   * mount-set, so cleanup of one failed extension cannot prevent cleanup of
-   * its siblings. After detach, the mounter has no root; subsequent `mount`
-   * calls will throw until `attach` is called again. A single teardown error is
-   * rethrown unchanged; multiple failures are reported as one error with an
-   * `errors` array containing every teardown failure. A mount already in
-   * flight when detach begins is fenced from attaching to this root and
-   * compensates its own guest lifecycle; `detach()` does not wait for that
-   * compensation.
+   * The root is cleared first, before the mount set is even read, so a mount
+   * whose own lifecycle mount settles while this call is still unmounting an
+   * earlier occupant never places its container under the departing root.
+   * For each extension in the registry's mount-set, in mount-set order, this
+   * unmounts it and runs the destroy that extension's mount registered, so
+   * that the registry mount-set stays consistent. An unmount failure for one
+   * extension does not stop the rest: every extension is still attempted,
+   * and the failures collected this way are thrown together — the single
+   * failure unchanged if only one occurred, or one aggregate error carrying
+   * all of them, in mount-set order, if more than one did. After detach, the
+   * mounter has no root; subsequent `mount` calls will throw until `attach`
+   * is called again.
    *
    * Called by `ExtensionDomainSlot` from its cleanup callback.
    */
@@ -58,39 +61,13 @@ export abstract class ExtensionMounter {
 
   /**
    * Append `container` under the attached root and update the registry's
-   * mount-set to include `extensionId`. `onTeardown`, when supplied, is
-   * registered for this exact container and must run exactly once when its
-   * mount fails or when the mounter releases it through `unmount()` or
-   * `detach()`. This lets domain-owned `ContainerHooks` clean up resources
-   * without giving the mounter knowledge of their implementation.
-   * Shipped strategies coalesce overlapping mounts for one extension before
-   * creating a container. A custom strategy that permits overlapping mounts
-   * of the same extension must use identity-aware cleanup; a legacy hook keyed
-   * only by extension ID cannot distinguish the rejected container safely.
-   *
-   * The parameter remains optional only for source compatibility with legacy
-   * custom mounters. A custom mounter used with a strategy that supplies it
-   * must honour this cleanup contract on every teardown path, including slot
-   * detach; otherwise that custom mounter owns the resulting resource cleanup.
+   * mount-set to include `extensionId`.
    *
    * @param extensionId - ID of the extension being mounted.
    * @param container - Unattached host element provided by `ContainerHooks.create`.
-   * @param onTeardown - Domain-owned cleanup for this exact container.
    * @throws Error if no root has been attached via `attach()`.
    */
-  abstract mount(extensionId: string, container: Element, onTeardown?: () => void): Promise<void>;
-
-  /**
-   * Wait until an older root epoch has finished releasing an extension's
-   * container. Shipped strategies call this before `ContainerHooks.create()`
-   * so legacy hooks keyed only by extension id cannot have fresh state removed
-   * by stale cleanup. A custom mounter that supports root replacement should
-   * override this method with its own equivalent barrier; the default no-op is
-   * suitable only when it has no stale-root lifecycle state.
-   */
-  getStaleContainerRelease(_extensionId: string): Promise<void> | undefined {
-    return undefined;
-  }
+  abstract mount(extensionId: string, container: Element): Promise<void>;
 
   /**
    * Detach the per-extension container from the attached root and update

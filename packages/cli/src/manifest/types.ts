@@ -48,12 +48,11 @@ export interface TemplateManifest {
   ownershipBoundaries: OwnershipBoundary;     // (3) ownership boundaries
   referencedTemplates?: ReferencedTemplate[]; // (4) referenced templates (a preset applies together)
   // (5) description — the template's own prose statement of what it establishes
-  // and contributes, which selection matches a stated intent against. Optional
-  // so manifests published before the category was declared stay conforming and
-  // installable; the cost a template accepts by omitting it is that it is not
-  // selectable from an intent and is reachable only by its exact reference.
-  // Prose only, drawn from no closed set, so it reintroduces none of the
-  // template classification cpt-frontx-adr-uniform-template-mechanism removed.
+  // and contributes, which selection matches a stated intent against. Optional:
+  // a manifest without it conforms and installs, but is not selectable from an
+  // intent and is reachable only by its exact reference. Prose only, drawn
+  // from no closed set, so it carries no classification
+  // (`cpt-frontx-adr-template-classification`).
   description?: string;
 }
 
@@ -84,10 +83,6 @@ export type ReadFileFn = (path: string) => Promise<string>;
 // declared content-owning path (an exclusive subtree OR a shared-file path -
 // a bare directory or a single file either way), POSIX-relative to
 // `templateDir` (cpt-frontx-algo-template-manifest-validate-content-self-
-// containment:p2:inst-csc-enumerate-files). Named for what it actually
-// enumerates since the A3 review round widened enumeration to both
-// ownership-boundary kinds (CodeRabbit review finding on #493 - the prior
-// `ListSubtreeFilesFn` name undersold what the function already did).
-// Injected so the content self-containment algorithm never touches a real
-// filesystem itself.
+// containment:p2:inst-csc-enumerate-files). Injected so the content
+// self-containment algorithm never touches a real filesystem itself.
 export type ListContentOwnedFilesFn = (templateDir: string, contentOwnedPath: string) => Promise<string[]>;

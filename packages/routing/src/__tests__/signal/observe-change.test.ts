@@ -181,6 +181,15 @@ describe('createObserver — input validation', () => {
     expect(error.code).toBe('invalid-domain-key');
   });
 
+  // §6 Acceptance Criteria: "a domain key that is not a single valid name —
+  // `screen.tenants.tabs` among them".
+  it('throws invalid-domain-key for the composite-shaped "screen.tenants.tabs", which is no longer a valid single-name domain key', () => {
+    const error = expectRoutingError(() =>
+      createObserver('screen.tenants.tabs' as DomainKey, staticSource([]), vi.fn()),
+    );
+    expect(error.code).toBe('invalid-domain-key');
+  });
+
   it('throws invalid-extension-token synchronously naming a malformed registered extension', () => {
     const error = expectRoutingError(() =>
       createObserver('screen' as DomainKey, staticSource([{ extension: 'Bad', routeOwner: 'x' }]), vi.fn()),
@@ -802,25 +811,27 @@ describe('createObserver — inert and stale domain keys', () => {
     const adapter = resetRealm('/en');
     const onTransition = vi.fn<(transition: Transition<string>) => void>();
 
-    createObserver('screen.tenants.tabs' as DomainKey, staticSource([]), onTransition);
+    createObserver('tabs' as DomainKey, staticSource([]), onTransition);
     expect(onTransition.mock.calls[0][0].entries).toEqual([]);
     onTransition.mockClear();
 
-    resolveNavigationHistory(() => adapter).push('/en?screen.tenants.tabs=contacts');
+    resolveNavigationHistory(() => adapter).push('/en?tabs=contacts');
 
     expect(onTransition.mock.calls[0][0].diff.added).toEqual(['contacts']);
   });
 
-  it('a nested observer whose enclosing entry changed its own extension resolves an empty list under its now-stale key, as ordinary operation', () => {
-    const adapter = resetRealm('/en?screen=tenants;tenantId=ABC&screen.tenants.tabs=contacts');
+  it('an observer keeps resolving correctly against its own domain key once its own entry is removed by a write elsewhere in the URL, as ordinary operation', () => {
+    const adapter = resetRealm('/en?screen=tenants;tenantId=ABC&tabs=contacts');
     const onTransition = vi.fn<(transition: Transition<string>) => void>();
 
-    createObserver('screen.tenants.tabs' as DomainKey, staticSource([]), onTransition);
+    createObserver('tabs' as DomainKey, staticSource([]), onTransition);
     onTransition.mockClear();
 
-    // The enclosing `screen` entry switches from `tenants` to `settings` —
-    // the nested observer's own key (`screen.tenants.tabs`) is now stale,
-    // but it keeps running until its own enclosing consumer releases it.
+    // A structural reset elsewhere in the URL removes this domain's own
+    // entry without this observer's own domain key ever changing — a
+    // domain key carries no ancestry of its own and so cannot go "stale";
+    // the observer keeps running until its own enclosing consumer releases
+    // it.
     resolveNavigationHistory(() => adapter).push('/en?screen=settings');
 
     expect(onTransition).toHaveBeenCalledTimes(1);

@@ -7,13 +7,15 @@
  *
  * The single write path: parse the current location, apply the caller's
  * delta to one domain key's own entries (in place, at their existing
- * position), remove the structural-reset subtree of every removed or
- * replaced extension token, serialize the result, and issue exactly one
- * `push`/`replace` call against the shared history — never more than one,
- * regardless of how many subtree entries a structural reset removes.
+ * position), remove every entry under each domain key the delta's own
+ * `clearedDomainKeys` names — the nested routed domains the caller knows
+ * leave with a removed or replaced extension (structural reset) — serialize
+ * the result, and issue exactly one `push`/`replace` call against the shared
+ * history — never more than one, regardless of how many `clearedDomainKeys`
+ * entries a structural reset removes.
  */
 import { RoutingError } from '../errors.js';
-import { isValidDomainKey, validateName } from '../grammar/name.js';
+import { validateName } from '../grammar/name.js';
 import { parseGrammar } from '../grammar/parse.js';
 import { serializeGrammar } from '../grammar/serialize.js';
 import type {
@@ -26,23 +28,31 @@ import type {
 } from '../types/index.js';
 
 /**
- * Validates the domain key and every extension token any of the delta's
- * five operations names — the added list, removed list, the old and new
- * extension of every replaced pair, the payload-changed list's own
- * extension tokens, and the reordered list. ADR 0003, "Occupant Identity
- * Lexical Rule" ("the URL back-projection helper, where each delta names an
- * entry carrying an extension token") is a MUST that covers every one of
- * the delta's five operations, payload-changed included, not only the four
- * FEATURE §3 step 1.1 names by enumeration — the ADR is normative where the
- * two differ.
+ * Validates the domain key, every domain key `clearedDomainKeys` names, and
+ * every extension token any of the delta's five operations names — the
+ * added list, removed list, the old and new extension of every replaced
+ * pair, the payload-changed list's own extension tokens, and the reordered
+ * list. ADR 0003, "Occupant Identity Lexical Rule" ("the URL back-projection
+ * helper, where each delta names an entry carrying an extension token") is a
+ * MUST that covers every one of the delta's five operations, payload-changed
+ * included, not only the four FEATURE §3 step 1.1 names by enumeration — the
+ * ADR is normative where the two differ. `clearedDomainKeys` is validated
+ * against the same `domain-key` production the calling domain key itself is
+ * — synchronously, before any parsing or writing runs (FEATURE
+ * (route-ownership-signal) §3, step 1.1).
  */
 function validateBackProjectionInput(
   domainKey: string,
   delta: BackProjectionDelta,
 ): asserts domainKey is DomainKey {
   // @cpt-begin:cpt-frontx-algo-routing-route-ownership-signal-url-back-projection:p2:inst-validate-back-projection-tokens
-  if (!isValidDomainKey(domainKey)) {
+  if (!validateName(domainKey)) {
     throw RoutingError.invalidDomainKey(domainKey);
+  }
+  for (const clearedKey of delta.clearedDomainKeys ?? []) {
+    if (!validateName(clearedKey)) {
+      throw RoutingError.invalidDomainKey(clearedKey);
+    }
   }
   for (const added of delta.added ?? []) {
     if (!validateName(added.extension)) {
@@ -233,19 +243,20 @@ function runBackProjection(
   }
   // @cpt-end:cpt-frontx-algo-routing-route-ownership-signal-url-back-projection:p2:inst-compose-own-entries
 
-  // @cpt-begin:cpt-frontx-algo-routing-route-ownership-signal-url-back-projection:p2:inst-foreach-removed-token
-  // Structural reset applies only to a removed or replaced extension's own
-  // subtree — never to a token named only in a payload change or a
-  // reorder (Rationale, "the grammar's own edge rule").
-  const structuralResetPrefixes = [
-    ...removedTokens,
-    ...replacedByOldExtension.keys(),
-  ].map((token) => `${domainKey}.${token}.`);
-  // The actual removal happens in the single full-list pass below (step 5,
-  // `inst-structural-reset-subtree`), in the same history write as the
-  // own-key rewrite — `structuralResetPrefixes` is this step's own output,
+  // @cpt-begin:cpt-frontx-algo-routing-route-ownership-signal-url-back-projection:p2:inst-foreach-cleared-domain-key
+  // Exactly the domain keys the caller named in `clearedDomainKeys` — never a
+  // key inferred from any key's shape, from a lexical prefix, or from the
+  // delta's own removed/replaced tokens (structural reset,
+  // `cpt-frontx-routing-adr-domain-occupancy-addressing-granularity`).
+  // The calling domain key itself is excluded even if the caller names it:
+  // this domain key's own entries are governed by the delta's other four
+  // operations alone (`transformedByIndex`, above), never by this set.
+  const clearedDomainKeys = new Set((delta.clearedDomainKeys ?? []).filter((key) => key !== domainKey));
+  // The actual removal happens in the single full-list pass below
+  // (`inst-clear-nested-domain-entries`), in the same history write as the
+  // own-key rewrite — `clearedDomainKeys` is this step's own output,
   // consulted there.
-  // @cpt-end:cpt-frontx-algo-routing-route-ownership-signal-url-back-projection:p2:inst-foreach-removed-token
+  // @cpt-end:cpt-frontx-algo-routing-route-ownership-signal-url-back-projection:p2:inst-foreach-cleared-domain-key
 
   // @cpt-begin:cpt-frontx-algo-routing-route-ownership-signal-url-back-projection:p2:inst-compose-full-list
   const composed: Entry[] = [];
@@ -257,11 +268,11 @@ function runBackProjection(
       }
       return;
     }
-    // @cpt-begin:cpt-frontx-algo-routing-route-ownership-signal-url-back-projection:p2:inst-structural-reset-subtree
-    if (structuralResetPrefixes.some((prefix) => entry.domainKey.startsWith(prefix))) {
+    // @cpt-begin:cpt-frontx-algo-routing-route-ownership-signal-url-back-projection:p2:inst-clear-nested-domain-entries
+    if (clearedDomainKeys.has(entry.domainKey)) {
       return;
     }
-    // @cpt-end:cpt-frontx-algo-routing-route-ownership-signal-url-back-projection:p2:inst-structural-reset-subtree
+    // @cpt-end:cpt-frontx-algo-routing-route-ownership-signal-url-back-projection:p2:inst-clear-nested-domain-entries
     composed.push(entry);
   });
   for (const added of delta.added ?? []) {

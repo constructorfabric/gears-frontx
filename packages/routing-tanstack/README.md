@@ -7,10 +7,18 @@ constructs the engine's router over that virtual history, and mounts it into tha
 own component tree — the same construction path whether the microfrontend is composed inside an
 application or served standalone.
 
+This package has two callers. The framework router — the concrete router that implements the
+runtime's router port — obtains each microfrontend's entry address and calls this package's
+adaptation and construction surface (`adaptProviderHistory`, `createProviderRouter`,
+`EngineProvider`) to build and mount that microfrontend's router. A microfrontend's own code never
+calls that surface: it authors its own route tree with this package's re-exported builders, and may
+use the location-preserving navigation helper or the engine's own scoped route hooks from rendered
+code.
+
 The navigation substrate stays engine-agnostic by constraint; this package is the deliberately
 concrete side of that boundary. It is the only package in the ecosystem that imports a concrete
-router engine, so a microfrontend can adopt a different conforming provider without a change to
-the substrate, the host, or a sibling microfrontend.
+router engine, so a framework router can adopt a different conforming provider without a change to
+the substrate, the runtime, or a sibling microfrontend.
 
 The requirements (PRD), the structure and constraints (DESIGN), and the behavior the
 `engine-provider` FEATURE specifies live in this package's own `architecture/` tree in the FrontX
@@ -27,7 +35,7 @@ It takes one of two prop shapes:
   that build; see below. Optional unless the route tree declares a router context (built with
   `createRootRouteWithContext`), in which case it is required.
 - `{ router }` — mount a router that was already constructed elsewhere, for example through
-  `createEngineProviderRouter`.
+  `createProviderRouter`.
 
 Mounting through `EngineProvider` — either shape — is what connects the adapted history to the
 shared navigation history, and what releases it again when the microfrontend unmounts.
@@ -36,24 +44,20 @@ are exact inverses of each other, so a component that mounts and unmounts repeat
 React's development-mode double-mount) ends up with exactly one live subscription while it is
 mounted and none once it is gone.
 
-The subscription belongs to that pair and to nothing else. Building an adapted history —
-`adaptComposedHistory`, `adaptStandaloneHistory`, `adaptProviderHistory`, or
-`createEngineProviderRouter`, which builds one inside itself — subscribes to nothing. **Until
-something attaches it, an adapted history is inert**: its location holds whatever it projected when
-it was built, and no navigation from anywhere else reaches it. That is what makes a history safe to
-discard: one built for a mount that never happens, or the extra one React's development-mode
-double-render produces, holds no subscription to leak.
+The subscription belongs to that pair and to nothing else. Calling `adaptProviderHistory` or
+`createProviderRouter` subscribes to nothing. **Until `EngineProvider` mounts it, an adapted
+history is inert**: its location holds whatever it projected when it was built, and no navigation
+from anywhere else reaches it. That is what makes a history safe to discard: one built for a mount
+that never happens, or the extra one React's development-mode double-render produces, holds no
+subscription to leak.
 
-A raw `RouterProvider` mounted directly, bypassing `EngineProvider`, therefore owns both halves.
-Call `attachAdaptedHistory(router.history)` when that mount begins and `router.history.destroy()`
-when it ends; the first is what the router needs in order to see anything, and without the second
-nothing releases the subscription.
-
-Attaching also re-reads the shared history, so the adapted history's own location picks up a
-navigation that landed while it was detached, and the subscribers that stayed registered across
-that gap are told about the resync. A subscriber that went away with the unmount is not one of
-them: a view rendered by a router that was itself torn down and built again can still show the
-route it last rendered, until the next navigation brings it forward.
+`EngineProvider` is the only way to attach an adapted history to the shared navigation history: the
+attach step runs internally, at `EngineProvider`'s own mount boundary, and re-reads the shared
+history on attach, so the adapted history's own location picks up a navigation that landed while it
+was unmounted, and the subscribers that stayed registered across that gap are told about the resync.
+A subscriber that went away with the unmount is not one of them: a view rendered by a router that was
+itself torn down and built again can still show the route it last rendered, until the next
+navigation brings it forward.
 
 ## Router construction options
 
@@ -71,13 +75,11 @@ route loaders read, an API client being the common case:
 supplies both, and `history` in particular has to stay the adapted, virtual one for the router to
 match nothing but this microfrontend's own slice of the URL.
 
-`createEngineProviderRouter` takes no such argument. It is typed against the engine-provider port
-the navigation substrate declares, whose input is exactly `{ history, entryAddress, routeTree }`,
-and widening that would put a concrete engine's construction surface into the substrate. A router
-built through it carries no context; reach the seam through the two exports above instead. A route
-tree built with `createRootRouteWithContext` is no exception — pass it through
-`createProviderRouter` or `routerOptions`, not through this port-typed entry, which has nowhere in
-its own signature to accept the context that tree requires.
+The engine-provider port the navigation substrate declares, and that the framework router's own
+construction surface is typed against, takes exactly `{ history, entryAddress, routeTree }` — no
+further construction options — because widening it would put a concrete engine's construction
+surface into the substrate. A route tree built with `createRootRouteWithContext` reaches its context
+through `createProviderRouter`'s third argument or `EngineProvider`'s `routerOptions` prop instead.
 
 ## What an entry cannot carry
 

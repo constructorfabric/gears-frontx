@@ -13,46 +13,29 @@
  * @packageDocumentation
  * @internal
  */
+// @cpt-algo:cpt-frontx-algo-extension-domain-governance-slot-detach:p2
+// @cpt-algo:cpt-frontx-algo-extension-domain-governance-mount-execution:p2
 
 import { ExtensionMounter } from './ExtensionMounter';
-import type { MountManager } from './mount-manager';
-
-type NativeAggregateError = Error & { errors: Iterable<unknown> };
-
-const NativeAggregateError = (globalThis as unknown as {
-  AggregateError: new (errors: Iterable<unknown>, message?: string) => NativeAggregateError;
-}).AggregateError;
-
-function createTeardownFailuresError(failures: readonly unknown[]): NativeAggregateError {
-  return new NativeAggregateError(
-    failures,
-    `ExtensionMounter.detach: ${failures.length} extension teardowns failed`
-  );
-}
+import type { MountManager } from './MountManager';
+import { ExtensionReleaserProvider } from './ExtensionReleaserProvider';
 
 /**
  * @internal
  */
 export class DefaultExtensionMounter extends ExtensionMounter {
   private attachedRoot: Element | null = null;
-  private lifecycleEpoch = 0;
 
-  // Tracks the per-extension containers and their domain-owned cleanup so the
-  // mounter can release both its DOM and strategy-owned resources on every
-  // teardown path, including slot detach.
-  private readonly containers = new Map<string, {
-    container: Element;
-    onTeardown: () => void;
-    epoch: number;
-  }>();
+  // Tracks the per-extension containers so detach can remove them from root.
+  private readonly containers = new Map<string, Element>();
 
   /**
    * The in-flight `mount()` call for an extension currently being mounted,
    * keyed by extension id, together with the container that call was given.
-   * A second concurrent `mount()` call for the same extension id and epoch
-   * awaits the first only when it has the same container. A request from a
-   * later root epoch waits for the stale mount's compensation, then starts
-   * with its own container.
+   * A second concurrent `mount()` call for the same extension id AND THE
+   * SAME container object awaits the first's promise instead of running the
+   * mount pipeline (and appending a second, duplicate container) a second
+   * time.
    *
    * `container` is never supplied by an external caller or action payload —
    * every mount strategy creates it internally via `this.hooks.create(extensionId)`
@@ -60,18 +43,32 @@ export class DefaultExtensionMounter extends ExtensionMounter {
    * concurrent call for the same extension id with a DIFFERENT container can
    * only mean a bug in the calling strategy's own internal state management
    * (e.g. it created a container twice for what it thought were two mounts
-   * of the same extension). That remains an internal-invariant violation —
-   * see the hard invariant check in `mount()` below.
+   * of the same extension). That is not a legitimate case to route around
+   * gracefully — see the hard invariant check in `mount()` below.
    */
-  private readonly inFlightMountsByExtension = new Map<
-    string,
-    { promise: Promise<void>; container: Element; epoch: number }
-  >();
+  private readonly inFlightMountsByExtension = new Map<string, { promise: Promise<void>; container: Element }>();
 
-  // A detach can begin teardown without awaiting it (as React slot cleanup
-  // does). A later root must not mount the same extension until that old
-  // teardown has released its own container and mount-set record.
-  private readonly inFlightUnmountsByExtension = new Map<string, Promise<void>>();
+  /**
+   * The settlement promise of an extension currently being unmounted through
+   * this mounter, keyed by extension id — populated for the whole duration of
+   * `unmount()`, whether that call originates from the domain's explicit
+   * `unmount_ext` action handler or from a mount strategy's own eviction or
+   * displacement of a sibling. The mount-ext prologue (`MountExtActionHandler`,
+   * `cpt-frontx-algo-extension-domain-governance-mount-execution` `inst-me-await-unmount-settle`)
+   * consults this map for the extension it is about to mount, before any
+   * strategy runs, so a mount request arriving while that same extension is
+   * being unmounted waits for the unmount to settle instead of racing it.
+   */
+  private readonly unmountInFlightByExtension = new Map<string, Promise<void>>();
+
+  /**
+   * The SAME releaser `ExtensionReleaserProvider.for(this)` resolves for
+   * every caller targeting this mounter — strategies (`ConcurrentMountStrategy.ts`, `OptionalMountStrategy.ts`, `ExclusiveMountStrategy.ts`)
+   * resolve it independently through the same provider, so this mounter
+   * never owns a releaser of its own distinct from the one they reach.
+   * Resolved once, after `super()`, and reused for every `detach()` call.
+   */
+  private readonly releaser: ReturnType<typeof ExtensionReleaserProvider.for>;
 
   constructor(
     private readonly domainId: string,
@@ -81,99 +78,89 @@ export class DefaultExtensionMounter extends ExtensionMounter {
     private readonly getMountedExtensions: (domainId: string) => readonly string[]
   ) {
     super();
+    this.releaser = ExtensionReleaserProvider.for(this);
   }
 
   attach(root: Element): void {
-    if (this.attachedRoot === root) {
-      return;
-    }
-
     this.attachedRoot = root;
-    this.lifecycleEpoch += 1;
   }
 
   async detach(): Promise<void> {
-    // Fence every in-flight mount before taking the snapshot below. A mount
-    // continuation resumes after its loader promise and reads `attachedRoot`
-    // before it appends its container or records mount-set state; clearing the
-    // root synchronously makes that continuation fail instead of becoming an
-    // occupant that this detach did not see.
-    this.attachedRoot = null;
-    this.lifecycleEpoch += 1;
-
     // Mass-unmount every currently-mounted extension so the registry and
-    // any framework slice stay consistent.
+    // any framework slice stay consistent. Routed through `this.releaser`
+    // — not `unmount()` or `mountManager.unmountExtension` directly — so a
+    // mount request racing this detach observes each extension's unmount as
+    // in flight (`getUnmountInFlight`) and waits for it instead of racing
+    // it, AND a strategy's own explicit release of the same extension
+    // racing this detach still runs the destroy that strategy registered
+    // at mount time, through the shared releaser, exactly once.
+    //
+    // The root is cleared FIRST, synchronously, before the mount set is
+    // even read — so a mount whose own lifecycle mount settles while this
+    // loop is still unmounting an earlier occupant never finds a root to
+    // append its container under; it observes the root as already detached
+    // and rolls itself back instead of becoming an orphan occupant.
+    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-slot-detach:p2:inst-sd-clear-root-first
+    this.attachedRoot = null;
+    // @cpt-end:cpt-frontx-algo-extension-domain-governance-slot-detach:p2:inst-sd-clear-root-first
+
+    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-slot-detach:p2:inst-sd-no-report
+    // Resource cleanup, not an occupancy action: `this.releaser.release`
+    // below runs the ordinary physical-unmount path, which dispatches no
+    // `unmount_ext` action and therefore reaches no domain handler for a
+    // router to report through (`cpt-frontx-algo-extension-domain-governance-mount-execution`
+    // only reports executions that reach the handler via `mount_ext`/`unmount_ext`).
+    // @cpt-end:cpt-frontx-algo-extension-domain-governance-slot-detach:p2:inst-sd-no-report
     const mounted = Array.from(this.getMountedExtensions(this.domainId));
-    const containersAtDetachStart = new Map(
-      mounted.map((extensionId) => [extensionId, this.containers.get(extensionId)])
-    );
     const failures: unknown[] = [];
-    for (const extensionId of mounted) {
-      const mountedContainer = containersAtDetachStart.get(extensionId);
-      if (mountedContainer && this.containers.get(extensionId) !== mountedContainer) {
-        continue;
-      }
+    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-slot-detach:p2:inst-sd-each-occupant
+    for (const extId of mounted) {
       try {
-        await this.unmount(extensionId);
+        // @cpt-begin:cpt-frontx-algo-extension-domain-governance-slot-detach:p2:inst-sd-unmount-occupant
+        await this.releaser.release(extId);
+        // @cpt-end:cpt-frontx-algo-extension-domain-governance-slot-detach:p2:inst-sd-unmount-occupant
       } catch (error) {
+        // @cpt-begin:cpt-frontx-algo-extension-domain-governance-slot-detach:p2:inst-sd-continue-on-failure
         failures.push(error);
+        // @cpt-end:cpt-frontx-algo-extension-domain-governance-slot-detach:p2:inst-sd-continue-on-failure
       }
     }
+    // @cpt-end:cpt-frontx-algo-extension-domain-governance-slot-detach:p2:inst-sd-each-occupant
+
     if (failures.length === 1) {
+      // @cpt-begin:cpt-frontx-algo-extension-domain-governance-slot-detach:p2:inst-sd-single-failure
       throw failures[0];
+      // @cpt-end:cpt-frontx-algo-extension-domain-governance-slot-detach:p2:inst-sd-single-failure
     }
     if (failures.length > 1) {
-      throw createTeardownFailuresError(failures);
+      // @cpt-begin:cpt-frontx-algo-extension-domain-governance-slot-detach:p2:inst-sd-aggregate-failure
+      // Reached via `globalThis` — not the bare `AggregateError` identifier
+      // — because this package's own `lib` target predates it; the runtime
+      // host (browser or Node) still provides the constructor.
+      const { AggregateError: AggregateErrorCtor } = globalThis as unknown as {
+        AggregateError: new (errors: Iterable<unknown>, message?: string) => Error;
+      };
+      throw new AggregateErrorCtor(
+        failures,
+        `ExtensionMounter.detach: ${failures.length} extensions in domain '${this.domainId}' failed to unmount.`
+      );
+      // @cpt-end:cpt-frontx-algo-extension-domain-governance-slot-detach:p2:inst-sd-aggregate-failure
     }
+    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-slot-detach:p2:inst-sd-return
+    return;
+    // @cpt-end:cpt-frontx-algo-extension-domain-governance-slot-detach:p2:inst-sd-return
   }
 
-  override getStaleContainerRelease(extensionId: string): Promise<void> | undefined {
-    const inFlightUnmount = this.inFlightUnmountsByExtension.get(extensionId);
-    if (inFlightUnmount) {
-      return inFlightUnmount.catch(() => undefined);
-    }
-
-    const inFlightMount = this.inFlightMountsByExtension.get(extensionId);
-    if (inFlightMount && inFlightMount.epoch !== this.lifecycleEpoch) {
-      return inFlightMount.promise.catch(() => undefined);
-    }
-
-    const mountedContainer = this.containers.get(extensionId);
-    if (mountedContainer && mountedContainer.epoch !== this.lifecycleEpoch) {
-      return this.unmount(extensionId).catch(() => undefined);
-    }
-
-    return undefined;
-  }
-
-  async mount(extensionId: string, container: Element, onTeardown: () => void = () => {}): Promise<void> {
+  async mount(extensionId: string, container: Element): Promise<void> {
     if (!this.attachedRoot) {
-      this.releaseFailedMount(onTeardown);
       throw new Error(
         `ExtensionMounter.mount: no root attached for domain '${this.domainId}'. ` +
         'Call attach(element) before mounting extensions.'
       );
     }
-    const mountEpoch = this.lifecycleEpoch;
-
-    const inFlightUnmount = this.inFlightUnmountsByExtension.get(extensionId);
-    if (inFlightUnmount) {
-      await inFlightUnmount.catch(() => undefined);
-      return this.mount(extensionId, container, onTeardown);
-    }
 
     const inFlight = this.inFlightMountsByExtension.get(extensionId);
     if (inFlight) {
-      if (inFlight.epoch !== mountEpoch) {
-        // React may detach a slot fire-and-forget, attach a replacement root,
-        // and have URL observation request the same extension before the old
-        // lifecycle settles. The old epoch owns a different container and
-        // must compensate first; then this epoch may mount its own container.
-        // Its stale error is meaningful only to the old request, not this one.
-        await inFlight.promise.catch(() => undefined);
-        return this.mount(extensionId, container, onTeardown);
-      }
-
       if (inFlight.container !== container) {
         // Impossible in correct code: no caller of `mount()` ever supplies a
         // container from outside this mounter's own strategy — it is always
@@ -183,8 +170,7 @@ export class DefaultExtensionMounter extends ExtensionMounter {
         // tracking is broken (e.g. it invoked `mount()` twice for what it
         // believed were two distinct mounts of the same extension). This is
         // a hard internal-invariant violation, not a race to handle
-        // gracefully. Its just-created container still receives teardown.
-        this.releaseFailedMount(onTeardown);
+        // gracefully — no cleanup of the mismatched container is performed.
         throw new Error(
           `ExtensionMounter.mount: internal invariant violated for extension ` +
           `'${extensionId}' in domain '${this.domainId}' — a mount is already ` +
@@ -196,165 +182,128 @@ export class DefaultExtensionMounter extends ExtensionMounter {
       return inFlight.promise;
     }
 
-    const mountedContainer = this.containers.get(extensionId);
-    if (mountedContainer && mountedContainer.epoch !== mountEpoch) {
-      await this.unmount(extensionId).catch(() => undefined);
-      return this.mount(extensionId, container, onTeardown);
-    }
-
     const mountWork = (async (): Promise<void> => {
-      let lifecycleMounted = false;
-      let lifecycleCompensated = false;
-      let appended = false;
-      let mountSetRegistrationAttempted = false;
-      try {
-        await this.mountManager.mountExtension(extensionId, container);
-        lifecycleMounted = true;
+      await this.mountManager.mountExtension(extensionId, container);
 
-        // Append the container under the attached root and record it.
-        // Capture the root after the await completes and check it explicitly,
-        // since a concurrent detach() call could have cleared it during the await.
-        const root = this.attachedRoot;
-        if (!root || this.lifecycleEpoch !== mountEpoch) {
-          // `mountExtension()` has already activated the lifecycle and recorded
-          // its own mounted state. Compensate before rejecting this stale host
-          // lifecycle, otherwise a later mount would receive that cached bridge
-          // without invoking the lifecycle again. The detached-lifecycle error
-          // stays primary even if compensation itself rejects.
-          let compensationError: unknown;
-          let hasCompensationError = false;
-          try {
-            await this.mountManager.unmountExtension(extensionId);
-          } catch (error) {
-            compensationError = error;
-            hasCompensationError = true;
-          } finally {
-            lifecycleCompensated = true;
-          }
-          const detachedRootError = new Error(
-            `ExtensionMounter.mount: domain '${this.domainId}' root was detached ` +
-            `during mounting of extension '${extensionId}'. The domain's root element ` +
-            'must remain attached for the entire duration of the mount operation.'
-          );
-          if (hasCompensationError) {
-            (detachedRootError as Error & { cause?: unknown }).cause = compensationError;
-          }
-          throw detachedRootError;
+      // Append the container under the attached root and record it.
+      // Capture the root after the await completes and check it explicitly,
+      // since a concurrent detach() call could have cleared it during the await.
+      const root = this.attachedRoot;
+      if (!root) {
+        // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-mount-root-detached
+        const error = new Error(
+          `ExtensionMounter.mount: domain '${this.domainId}' root was detached ` +
+          `during mounting of extension '${extensionId}'. The domain's root element ` +
+          'must remain attached for the entire duration of the mount operation.'
+        );
+        try {
+          await this.mountManager.unmountExtension(extensionId);
+        } catch (compensationError) {
+          (error as Error & { cause?: unknown }).cause = compensationError;
         }
+        throw error;
+        // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-mount-root-detached
+      }
 
+      try {
         root.appendChild(container);
-        appended = true;
-        this.containers.set(extensionId, { container, onTeardown, epoch: mountEpoch });
+        this.containers.set(extensionId, container);
 
-        mountSetRegistrationAttempted = true;
         this.addMountedExtension(this.domainId, extensionId);
       } catch (error) {
-        const mountedContainer = this.containers.get(extensionId);
-        if (mountedContainer?.container === container) {
-          this.containers.delete(extensionId);
+        // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-mount-rollback
+        container.parentNode?.removeChild(container);
+        this.containers.delete(extensionId);
+        this.removeMountedExtension(this.domainId, extensionId);
+        try {
+          await this.mountManager.unmountExtension(extensionId);
+        } catch {
+          // The original error stays primary.
         }
-        if (appended && container.parentNode) {
-          container.parentNode.removeChild(container);
-        }
-        if (mountSetRegistrationAttempted) {
-          try {
-            this.removeMountedExtension(this.domainId, extensionId);
-          } catch {
-            // The original mount failure stays primary.
-          }
-        }
-        if (lifecycleMounted && !lifecycleCompensated) {
-          try {
-            await this.mountManager.unmountExtension(extensionId);
-          } catch {
-            // The original mount failure stays primary.
-          }
-        }
-        this.releaseFailedMount(onTeardown);
         throw error;
+        // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-mount-rollback
       }
     })();
 
-    const trackedMount = mountWork.finally(() => {
-      if (this.inFlightMountsByExtension.get(extensionId)?.promise === trackedMount) {
-        this.inFlightMountsByExtension.delete(extensionId);
-      }
-    });
-    this.inFlightMountsByExtension.set(extensionId, {
-      promise: trackedMount,
-      container,
-      epoch: mountEpoch,
-    });
-    return trackedMount;
+    this.inFlightMountsByExtension.set(extensionId, { promise: mountWork, container });
+    try {
+      await mountWork;
+    } finally {
+      this.inFlightMountsByExtension.delete(extensionId);
+    }
   }
 
+  // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-await-unmount-settle
+  /**
+   * @param extensionId - ID of the extension being unmounted.
+   */
   async unmount(extensionId: string): Promise<void> {
-    const inFlightUnmount = this.inFlightUnmountsByExtension.get(extensionId);
-    if (inFlightUnmount) {
-      return inFlightUnmount;
+    // Coalesce a second concurrent unmount request for the SAME extension:
+    // join the already-tracked settlement rather than running a second
+    // physical unmount and racing the first for the same map entry (each
+    // call's cleanup would otherwise delete whichever entry the map holds
+    // at that moment, including the other call's).
+    const inFlight = this.unmountInFlightByExtension.get(extensionId);
+    if (inFlight) {
+      return inFlight;
     }
 
-    const inFlightMount = this.inFlightMountsByExtension.get(extensionId);
-    if (inFlightMount) {
-      await inFlightMount.promise.catch(() => undefined);
-      return this.unmount(extensionId);
-    }
+    // A placeholder settlement is published in `unmountInFlightByExtension`
+    // BEFORE `mountManager.unmountExtension` is ever invoked — not after —
+    // so a call that re-enters `unmount` for the SAME extension id
+    // synchronously (from that call's own synchronous prefix, e.g. a
+    // `deactivated` hook or the lifecycle `unmount` itself dispatching a
+    // fresh mount before its first `await`) finds this entry already in
+    // flight and joins it instead of racing an untracked physical unmount.
+    let settlePlaceholder!: () => void;
+    let rejectPlaceholder!: (error: unknown) => void;
+    const placeholder = new Promise<void>((resolve, reject) => {
+      settlePlaceholder = resolve;
+      rejectPlaceholder = reject;
+    });
+    this.unmountInFlightByExtension.set(extensionId, placeholder);
 
-    // Capture the exact record before awaiting the lower lifecycle. A new root
-    // waits on this teardown barrier, and this cleanup must never touch a
-    // record from a later mount epoch.
-    const mountedContainer = this.containers.get(extensionId);
     const unmountWork = (async (): Promise<void> => {
-      let lifecycleError: unknown;
-      let hasLifecycleError = false;
       try {
         await this.mountManager.unmountExtension(extensionId);
-      } catch (error) {
-        lifecycleError = error;
-        hasLifecycleError = true;
       } finally {
-        // A failed extension teardown cannot leave this host's mount-set stale:
-        // the caller may destroy its root immediately and later remount the
-        // extension into a fresh host. Preserve the lifecycle error while
-        // always releasing the local container and registry bookkeeping.
-        if (mountedContainer?.container.parentNode) {
-          mountedContainer.container.parentNode.removeChild(mountedContainer.container);
-        }
+        // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-um-failure-container-removed
+        // Remove the container from its parent regardless of whether the
+        // attached root has since been cleared (e.g. by a concurrent
+        // detach()) — the container's own parent is the source of truth,
+        // not `this.attachedRoot`.
+        const container = this.containers.get(extensionId);
+        container?.parentNode?.removeChild(container);
+        this.containers.delete(extensionId);
 
-        if (this.containers.get(extensionId) === mountedContainer) {
-          this.containers.delete(extensionId);
-          this.removeMountedExtension(this.domainId, extensionId);
-        }
-
-        try {
-          mountedContainer?.onTeardown();
-        } catch (error) {
-          if (!hasLifecycleError) {
-            lifecycleError = error;
-            hasLifecycleError = true;
-          }
-        }
-      }
-
-      if (hasLifecycleError) {
-        throw lifecycleError;
+        this.removeMountedExtension(this.domainId, extensionId);
+        // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-um-failure-container-removed
       }
     })();
-    const trackedUnmount = unmountWork.finally(() => {
-      if (this.inFlightUnmountsByExtension.get(extensionId) === trackedUnmount) {
-        this.inFlightUnmountsByExtension.delete(extensionId);
-      }
-    });
-    this.inFlightUnmountsByExtension.set(extensionId, trackedUnmount);
-    return trackedUnmount;
-  }
 
-  private releaseFailedMount(onTeardown: () => void): void {
+    unmountWork.then(settlePlaceholder, rejectPlaceholder);
+
     try {
-      onTeardown();
-    } catch {
-      // A lifecycle failure remains primary. Hook cleanup errors are surfaced
-      // only when teardown had no lifecycle error (see unmount()).
+      await placeholder;
+    } finally {
+      // Identity-checked cleanup: remove this call's own entry only, never a
+      // later call's, so a settling earlier call can never delete a
+      // still-in-flight later one's tracking.
+      if (this.unmountInFlightByExtension.get(extensionId) === placeholder) {
+        this.unmountInFlightByExtension.delete(extensionId);
+      }
     }
+  }
+  // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-await-unmount-settle
+
+  /**
+   * The settlement promise of an unmount currently in flight for
+   * `extensionId` through this mounter, or `undefined` if none is in
+   * progress. Consulted by the mount-ext prologue — never by a strategy —
+   * so the check runs strategy-agnostically, above every strategy's own
+   * mount body.
+   */
+  getUnmountInFlight(extensionId: string): Promise<void> | undefined {
+    return this.unmountInFlightByExtension.get(extensionId);
   }
 }

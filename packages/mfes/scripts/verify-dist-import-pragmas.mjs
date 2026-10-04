@@ -4,7 +4,7 @@
  * Verify that the bundler pragmas on the blob-module dynamic import survive
  * the build into both published dist formats.
  *
- * `importBlobModule` (src/handler/mf-dynamic-module-ops.ts) relies on two
+ * `importBlobModule` (src/handler/mfe-handler-mf/mf-dynamic-module-ops.ts) relies on two
  * inline comments — `webpackIgnore: true` and `@vite-ignore` — to keep its
  * `import()` native under webpack/rspack/rsbuild and Vite hosts (#504).
  * Comments are the one part of the source a build step may legally drop:

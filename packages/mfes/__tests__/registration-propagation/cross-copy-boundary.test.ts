@@ -31,12 +31,10 @@ import type {
   ExtensionDomain,
   MfeEntry,
 } from '../../src/types';
-import type {
-  ChildMfeBridge,
-  MfeEntryLifecycle,
-} from '../../src/handler/types';
+import type { ChildMfeBridge } from '../../src/handler/ChildMfeBridge';
+import type { MfeEntryLifecycle } from '../../src/handler/MfeHandler';
 import type { DomainContext } from '../../src/runtime/DomainContext';
-import type { ContainerHooks, ActionPayload } from '../../src/runtime/mount-strategy';
+import type { ContainerHooks, ActionPayload } from '../../src/runtime/MountStrategy';
 
 // ─── Mock-notation well-known action ids (never real GTS strings — MFES-1) ──
 
@@ -121,7 +119,7 @@ function actionChain(type: string, target: string): ActionsChain {
  * `import()` calls) — so within one call to `loadCopy()`, every import below
  * resolves against one internally-consistent module graph, including
  * whatever `DefaultMfeRegistry.ts` itself transitively imports (e.g.
- * `ConcurrentMountStrategy` from `./mount-strategies`, the realm-global
+ * `ConcurrentMountStrategy` from `./ConcurrentMountStrategy`, the realm-global
  * rendezvous helpers from `./inbound-bridge-link`).
  *
  * Calling this twice, with `vi.resetModules()` in between, is what makes the
@@ -133,6 +131,37 @@ function actionChain(type: string, target: string): ActionsChain {
  * the one thing both copies still share, which is the entire premise the
  * realm-global rendezvous mechanism depends on.
  */
+/**
+ * An explicit settlement signal for a far-side effect a test cannot
+ * `await` directly: under the continuation model, the dispatching side's
+ * own settlement resolves the instant it hands a node over, well before
+ * the far side's own scheduled execution actually runs it. Counter-based
+ * rather than a single deferred, so a handler invoked more than once can
+ * be awaited to a specific count — never a blind microtask flush or a
+ * timer-based poll (mirrors the identical helper in the property suite).
+ */
+function makeCallCounter() {
+  let count = 0;
+  let notify: () => void = () => {};
+  return {
+    get count() {
+      return count;
+    },
+    increment(): void {
+      count += 1;
+      notify();
+    },
+    waitFor(target: number): Promise<void> {
+      if (count >= target) return Promise.resolve();
+      return new Promise((resolve) => {
+        notify = () => {
+          if (count >= target) resolve();
+        };
+      });
+    },
+  };
+}
+
 async function loadCopy() {
   const [
     registryModule,
@@ -146,13 +175,13 @@ async function loadCopy() {
     bridgeErrorsModule,
   ] = await Promise.all([
     import('../../src/runtime/DefaultMfeRegistry'),
-    import('../../src/handler/types'),
-    import('../../src/handler/mfe-bridge-factory-default'),
+    import('../../src/handler/MfeHandler'),
+    import('../../src/bridge/MfeBridgeFactoryDefault'),
     import('../../src/runtime/ExtensionDomainImplementation'),
     import('../../src/runtime/ExtensionDomainImplementationFactory'),
-    import('../../src/runtime/mount-strategies'),
-    import('../../src/mediator/types'),
-    import('../../src/bridge/ParentMfeBridge'),
+    import('../../src/runtime/ConcurrentMountStrategy'),
+    import('../../src/mediator/ActionHandler'),
+    import('../../src/bridge/ParentMfeBridgeImpl'),
     import('../../src/bridge/errors'),
   ]);
 
@@ -167,14 +196,30 @@ async function loadCopy() {
     // Same-generation imports (see the doc comment above): resolves to the
     // exact `ParentMfeBridgeImpl`/`BridgeInactiveError` this copy's own
     // `DefaultMfeRegistry` uses internally, so tests can spy on/assert
-    // against the actual mechanism instead of the (deliberately
-    // failure-reason-scrubbed, per D) console.error diagnostic text.
+    // against the actual mechanism.
     ParentMfeBridgeImpl: parentBridgeModule.ParentMfeBridgeImpl,
     BridgeInactiveError: bridgeErrorsModule.BridgeInactiveError,
   };
 }
 
 type Copy = Awaited<ReturnType<typeof loadCopy>>;
+
+/**
+ * Runs the registry mediator's internal recursion for `chain` and resolves
+ * once this registry's own part has ended — after a hand-over is accepted,
+ * that is before the far side executes it. The public `executeActionsChain`
+ * returns nothing awaitable (`cpt-frontx-adr-mfe-runtime-public-surface`);
+ * far-side effects are observed through counters a handler increments.
+ * Duck-typed (`as unknown as {...}`), since a registry here may belong to
+ * either independently loaded module copy.
+ */
+function awaitChain(
+  registry: InstanceType<Copy['DefaultMfeRegistry']>,
+  chain: ActionsChain
+): Promise<void> {
+  return (registry as unknown as { mediator: { executeChain(chain: ActionsChain): Promise<void> } })
+    .mediator.executeChain(chain);
+}
 
 /** Builds a `ConcurrentMountStrategy`-backed domain implementation bound to one specific copy's classes. */
 function makeDomainFactory(
@@ -262,9 +307,9 @@ interface Topology {
   shell: InstanceType<Copy['DefaultMfeRegistry']>;
   nested: InstanceType<Copy['DefaultMfeRegistry']>;
   siblingNested: InstanceType<Copy['DefaultMfeRegistry']> | undefined;
-  rootCounter: { count: number };
-  leafCounter: { count: number };
-  collideCounterFirst: { count: number };
+  rootCounter: ReturnType<typeof makeCallCounter>;
+  leafCounter: ReturnType<typeof makeCallCounter>;
+  collideCounterFirst: ReturnType<typeof makeCallCounter>;
   collideCounterSecond: { count: number };
   errorSpy: ReturnType<typeof vi.spyOn>;
 }
@@ -291,9 +336,9 @@ async function buildCrossCopyTopology(includeCollidingSibling = false): Promise<
   const plugin = createMockPlugin(entries);
   const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { /* silence expected diagnostics */ });
 
-  const rootCounter = { count: 0 };
-  const leafCounter = { count: 0 };
-  const collideCounterFirst = { count: 0 };
+  const rootCounter = makeCallCounter();
+  const leafCounter = makeCallCounter();
+  const collideCounterFirst = makeCallCounter();
   const collideCounterSecond = { count: 0 };
 
   let nested!: InstanceType<Copy['DefaultMfeRegistry']>;
@@ -307,9 +352,10 @@ async function buildCrossCopyTopology(includeCollidingSibling = false): Promise<
     nested.registerDomain(
       makeDomain(D1, [ACTION_LEAF, ACTION_HANG]),
       makeDomainFactory(copyB, [
-        [ACTION_LEAF, copyB.ActionHandler.fromFunction(async () => { leafCounter.count += 1; })],
-        // Never settles on its own — exercises forced rejection of an
-        // in-flight forwarded action on retraction.
+        [ACTION_LEAF, copyB.ActionHandler.fromFunction(async () => { leafCounter.increment(); })],
+        // Never settles on its own — proves a forwarded action already
+        // accepted here keeps executing, untouched, when the far side is
+        // later disposed.
         [ACTION_HANG, copyB.ActionHandler.fromFunction(() => new Promise<void>(() => { /* hangs */ }))],
       ])
     );
@@ -317,7 +363,7 @@ async function buildCrossCopyTopology(includeCollidingSibling = false): Promise<
       nested.registerDomain(
         makeDomain('domain.collide.v1', [ACTION_COLLIDE]),
         makeDomainFactory(copyB, [
-          [ACTION_COLLIDE, copyB.ActionHandler.fromFunction(async () => { collideCounterFirst.count += 1; })],
+          [ACTION_COLLIDE, copyB.ActionHandler.fromFunction(async () => { collideCounterFirst.increment(); })],
         ])
       );
     }
@@ -343,7 +389,7 @@ async function buildCrossCopyTopology(includeCollidingSibling = false): Promise<
   shell.registerDomain(
     makeDomain(D0, [ACTION_ROOT]),
     makeDomainFactory(copyA, [
-      [ACTION_ROOT, copyA.ActionHandler.fromFunction(async () => { rootCounter.count += 1; })],
+      [ACTION_ROOT, copyA.ActionHandler.fromFunction(async () => { rootCounter.increment(); })],
     ])
   );
 
@@ -396,49 +442,46 @@ describe('Cross-copy boundary: registration propagation, escalation, retraction 
   it('(1) inbound-bridge adoption and downward forwarding work across the copy boundary: shell (copy A) reaches the nested registry (copy B)', async () => {
     const { shell, leafCounter } = await buildCrossCopyTopology();
 
-    await shell.executeActionsChain(actionChain(ACTION_LEAF, D1));
+    void awaitChain(shell, actionChain(ACTION_LEAF, D1));
 
+    await leafCounter.waitFor(1);
     expect(leafCounter.count).toBe(1);
   });
 
   it('(2) upward escalation works across the copy boundary: the nested registry (copy B) reaches the shell (copy A)', async () => {
     const { nested, rootCounter } = await buildCrossCopyTopology();
 
-    await nested.executeActionsChain(actionChain(ACTION_ROOT, D0));
+    void awaitChain(nested, actionChain(ACTION_ROOT, D0));
 
+    await rootCounter.waitFor(1);
     expect(rootCounter.count).toBe(1);
   });
 
   it('(3) arrival-edge loop containment holds across the copy boundary: the shell never ping-pongs an escalated-from-nested dispatch back down through the same bridge', async () => {
-    const { nested, errorSpy } = await buildCrossCopyTopology();
+    const { nested, rootCounter } = await buildCrossCopyTopology();
 
     // The nested registry (copy B) does not declare ACTION_UNRESOLVABLE, so
     // it must escalate to the shell (copy A). The shell legitimately holds
     // a forwarding entry for D1 pointing right back down through the exact
-    // bridge this chain just arrived on (recorded when the nested registry
-    // advertised D1 upward during topology construction). Without
-    // cross-copy-correct arrival-edge tagging (`inst-tag-arrival-edge`) —
-    // the single spot most likely to break, since the tag is written by
+    // bridge this action just arrived on. Without cross-copy-correct
+    // arrival-edge tagging (`inst-tag-arrival-edge`) — the tag is written by
     // copy A's `buildInboundBridgeLinkFor` closure and must be read back by
     // copy A's own `resolveHandler`, never by copy B's WeakMap — the shell
-    // would resolve that forwarding entry and ping-pong the chain straight
-    // back down to the nested registry via `sendDown`.
-    const nestedExecuteSpy = vi.spyOn(nested, 'executeActionsChain');
-    errorSpy.mockClear();
+    // would hand the action straight back down to the nested registry.
+    const nestedReceiveSpy = vi.spyOn(
+      nested as unknown as { receiveCrossHopNode(envelope: unknown): void },
+      'receiveCrossHopNode'
+    );
 
-    await nested.executeActionsChain(actionChain(ACTION_UNRESOLVABLE, D1));
+    // The shell finds no handler and executes the chain's `fallback` — the
+    // synchronisation point for this test.
+    nested.executeActionsChain({
+      action: { type: ACTION_UNRESOLVABLE, target: D1, payload: {} },
+      fallback: actionChain(ACTION_ROOT, D0),
+    });
 
-    // Asserted on OUTCOME (the chain failed at all), not on the specific
-    // missing-handler wording: the `[MfeRegistry] Actions chain failed`
-    // diagnostic deliberately no longer carries failure-reason text (see D:
-    // `ChainResult.error` was removed as a matter of policy, uniformly
-    // across every failure path).
-    expect(errorSpy).toHaveBeenCalled();
-
-    // Exactly one invocation — this test's own call. A ping-pong back down
-    // through the excluded forwarding entry would have re-invoked it a
-    // second time via `sendDown`.
-    expect(nestedExecuteSpy).toHaveBeenCalledTimes(1);
+    await rootCounter.waitFor(1);
+    expect(nestedReceiveSpy).not.toHaveBeenCalled();
   });
 
   it('(4) the collision guard rejects a cross-copy advertisement collision between two independent copy-B subtrees mounted under the same copy-A shell', async () => {
@@ -454,41 +497,38 @@ describe('Cross-copy boundary: registration propagation, escalation, retraction 
     // The shell keeps routing to the FIRST-registered target; the second
     // copy-B subtree's own local domain of the same id is never reachable
     // through the shell.
-    await shell.executeActionsChain(actionChain(ACTION_COLLIDE, 'domain.collide.v1'));
+    void awaitChain(shell, actionChain(ACTION_COLLIDE, 'domain.collide.v1'));
+    await collideCounterFirst.waitFor(1);
     expect(collideCounterFirst.count).toBe(1);
     expect(collideCounterSecond.count).toBe(0);
   });
 
-  it('(5) disposing the nested (copy B) registry retracts its advertisements from the shell (copy A) and rejects an in-flight forwarded action, across the boundary', async () => {
-    const { shell, nested, errorSpy } = await buildCrossCopyTopology();
+  it('(5) the shell\'s dispatch hands a forwarded action over; disposing the nested (copy B) registry afterward leaves that accepted execution untouched and only retracts the route for LATER dispatches, across the boundary', async () => {
+    const { shell, nested, rootCounter } = await buildCrossCopyTopology();
 
-    // Dispatch a forwarded action to a handler that never settles on its
-    // own, then dispose the copy-B registry WITHOUT awaiting the dispatch
-    // first — forced rejection on retraction is what lets this resolve at
-    // all, and it must cross the boundary: the shell (copy A) is the one
-    // holding the forwarding entry and the one performing the rejection.
-    const dispatchPromise = shell.executeActionsChain(actionChain(ACTION_HANG, D1));
+    // Hand over a sub-chain whose handler never settles; the shell's own
+    // part ends once the far side (copy B) accepts it.
+    await awaitChain(shell, actionChain(ACTION_HANG, D1));
+
+    // Dispose the copy-B registry — the accepted sub-chain is untouched:
+    // disposal acts on the ROUTE only.
     nested.dispose();
 
-    // The fact this `await` settles at all (rather than timing out the
-    // test) is the proof the forced rejection fired — `ACTION_HANG`'s
-    // handler never resolves on its own.
-    await dispatchPromise;
+    // The shell's forwarding entry for D1 is gone.
+    const forwardingEntries = (shell as unknown as { forwardingEntries: Map<string, unknown> })
+      .forwardingEntries;
+    expect(forwardingEntries.has(D1)).toBe(false);
 
-    // Asserted on OUTCOME, not on the specific "was retracted while an
-    // action was in flight" wording: the `[MfeRegistry] Actions chain
-    // failed` diagnostic no longer carries the rejection's message (see D).
-    expect(errorSpy).toHaveBeenCalled();
-
-    // The shell's forwarding entry for D1 is gone entirely — a further
-    // dispatch now fails with a missing-handler error.
-    errorSpy.mockClear();
-    await shell.executeActionsChain(actionChain(ACTION_LEAF, D1));
-    expect(errorSpy).toHaveBeenCalled();
+    // A later dispatch finds no route: the action fails and its fallback runs.
+    await awaitChain(shell, {
+      action: { type: ACTION_LEAF, target: D1, payload: {} },
+      fallback: actionChain(ACTION_ROOT, D0),
+    });
+    expect(rootCounter.count).toBe(1);
   });
 
-  it('(6) unmounting the child extension deactivates the copy-B nested registry\'s bridge across the copy boundary: dispatch rejects as inactive, not as missing a handler', async () => {
-    const { shell, errorSpy, copyA } = await buildCrossCopyTopology();
+  it('(6) unmounting the child extension deactivates the copy-B nested registry\'s bridge across the copy boundary: the hand-over is refused as inactive, not as missing a handler', async () => {
+    const { shell, rootCounter, copyA } = await buildCrossCopyTopology();
 
     // Unmount child-ext directly through the shell's own mount manager,
     // WITHOUT ever calling `nested.dispose()` — an ordinary unmount only
@@ -498,30 +538,30 @@ describe('Cross-copy boundary: registration propagation, escalation, retraction 
     const mounter0 = shell.getMounter(D0);
     await mounter0.unmount(CHILD_EXT);
 
-    // The `[MfeRegistry] Actions chain failed` diagnostic no longer carries
-    // failure-reason text by design (see D), so the inactive-vs-missing-
-    // handler distinction is verified at the mechanism instead of the log —
-    // spying on copy A's own `ParentMfeBridgeImpl.sendActionsChain` (the
-    // exact class `shell`'s internal `sendDown` closure calls), same-copy
+    // Spy on copy A's own `ParentMfeBridgeImpl.sendCrossHopEnvelope` (the
+    // exact method `shell`'s internal `sendDown` closure calls), same-copy
     // generation as `shell` itself so `instanceof` holds.
-    const sendSpy = vi.spyOn(copyA.ParentMfeBridgeImpl.prototype, 'sendActionsChain');
-    errorSpy.mockClear();
-    await shell.executeActionsChain(actionChain(ACTION_LEAF, D1));
+    const sendSpy = vi.spyOn(copyA.ParentMfeBridgeImpl.prototype, 'sendCrossHopEnvelope');
+    await awaitChain(shell, {
+      action: { type: ACTION_LEAF, target: D1, payload: {} },
+      fallback: actionChain(ACTION_ROOT, D0),
+    });
 
-    // Outcome-level check: the dispatch failed at all.
-    expect(errorSpy).toHaveBeenCalled();
+    // Outcome-level check: the action failed, so its fallback ran.
+    expect(rootCounter.count).toBe(1);
 
     // Mechanism-level check: the forwarding entry for D1 WAS resolved and
-    // reached the bridge (not a missing-handler/no-route failure), and the
-    // bridge rejected specifically because it is inactive.
+    // reached the bridge (not a no-route failure), and the bridge refused
+    // the hand-over at the call because it is inactive.
     expect(sendSpy).toHaveBeenCalled();
     const lastCall = sendSpy.mock.results[sendSpy.mock.results.length - 1];
-    await expect(lastCall.value).rejects.toBeInstanceOf(copyA.BridgeInactiveError);
+    expect(lastCall.type).toBe('throw');
+    expect(lastCall.value).toBeInstanceOf(copyA.BridgeInactiveError);
 
     sendSpy.mockRestore();
   });
 
-  it('(7) a copy-B registry reused (not rebuilt) across a remount of its copy-A host extension keeps its already-adopted live link across the copy boundary and continues to advertise successfully', async () => {
+  it('(7) a copy-B registry keeps its already-adopted live link across an unmount and remount of its copy-A host extension, and continues to advertise successfully', async () => {
     vi.resetModules();
     const copyA = await loadCopy();
     vi.resetModules();
@@ -534,11 +574,11 @@ describe('Cross-copy boundary: registration propagation, escalation, retraction 
 
     const entries = new Map<string, MfeEntry>([[REUSE_ENTRY, makeEntry(REUSE_ENTRY)]]);
     const plugin = createMockPlugin(entries);
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { /* silence expected diagnostics */ });
-    const reuseCounter = { count: 0 };
+    vi.spyOn(console, 'error').mockImplementation(() => { /* silence expected diagnostics */ });
+    const reuseCounter = makeCallCounter();
 
     // Constructed exactly once, from copy B, the very first time `mount()`
-    // runs — never rebuilt on a later remount of its copy-A host extension.
+    // runs.
     let reusedNested: InstanceType<Copy['DefaultMfeRegistry']> | undefined;
 
     const reuseHandler = makeInjectableMountHandler(copyA, REUSE_ENTRY, () => {
@@ -547,13 +587,12 @@ describe('Cross-copy boundary: registration propagation, escalation, retraction 
         reusedNested.registerDomain(
           makeDomain(D_REUSE, [ACTION_REUSE]),
           makeDomainFactory(copyB, [
-            [ACTION_REUSE, copyB.ActionHandler.fromFunction(async () => { reuseCounter.count += 1; })],
+            [ACTION_REUSE, copyB.ActionHandler.fromFunction(async () => { reuseCounter.increment(); })],
           ])
         );
       }
-      // Remount: reused as-is — no new copy-B `DefaultMfeRegistry` is
-      // constructed here, so reachability depends entirely on copy A's
-      // mount manager re-offering the fresh link across the copy boundary.
+      // Remount: no new copy-B `DefaultMfeRegistry` is constructed here;
+      // the registry's adopted link stays live across the copy boundary.
     });
 
     const shell = new copyA.DefaultMfeRegistry({
@@ -567,20 +606,59 @@ describe('Cross-copy boundary: registration propagation, escalation, retraction 
     mounter0.attach(document.createElement('div'));
 
     await mounter0.mount(REUSE_EXT, document.createElement('div'));
-    await shell.executeActionsChain(actionChain(ACTION_REUSE, D_REUSE));
+    await awaitChain(shell, actionChain(ACTION_REUSE, D_REUSE));
+    await reuseCounter.waitFor(1);
     expect(reuseCounter.count).toBe(1);
 
     await mounter0.unmount(REUSE_EXT);
     await mounter0.mount(REUSE_EXT, document.createElement('div'));
 
-    errorSpy.mockClear();
-    await shell.executeActionsChain(actionChain(ACTION_REUSE, D_REUSE));
-    const failureLogged = errorSpy.mock.calls.some((call: unknown[]) =>
-      call.some((arg: unknown) => String(arg).includes('Actions chain failed') || String(arg).includes('No handler found'))
-    );
-    expect(failureLogged).toBe(false);
+    // The shell's own part ends at the hand-over; the terminal effect below
+    // is the observation.
+    await awaitChain(shell, actionChain(ACTION_REUSE, D_REUSE));
+    await reuseCounter.waitFor(2);
     expect(reuseCounter.count).toBe(2);
 
     vi.restoreAllMocks();
   });
+
+  it(
+    '(8) a cross-hop envelope version the receiving COPY does not recognize refuses the ' +
+      "hand-over, so the delivering runtime executes the fallback — exercised across two " +
+      'genuinely independently loaded copies (AC5.12)',
+    async () => {
+      const { shell, copyA } = await buildCrossCopyTopology();
+
+      // Intercept copy A's own transport call and bump the envelope's
+      // version by one before it crosses into copy B — simulating a peer
+      // built from a different release, never mutating the shared
+      // `CROSS_HOP_PROTOCOL_VERSION` constant itself.
+      const originalSend = copyA.ParentMfeBridgeImpl.prototype.sendCrossHopEnvelope;
+      const sendSpy = vi
+        .spyOn(copyA.ParentMfeBridgeImpl.prototype, 'sendCrossHopEnvelope')
+        .mockImplementation(function (this: InstanceType<Copy['ParentMfeBridgeImpl']>, envelope: unknown) {
+          const bumped = { ...(envelope as { version: number }), version: (envelope as { version: number }).version + 1 };
+          return originalSend.call(this, bumped as never);
+        });
+
+      let fallbackRan = false;
+      shell.registerDomain(
+        makeDomain('domain.version-fallback.v1', [ACTION_ROOT]),
+        makeDomainFactory(copyA, [
+          [ACTION_ROOT, copyA.ActionHandler.fromFunction(async () => { fallbackRan = true; })],
+        ])
+      );
+
+      await awaitChain(shell, {
+        action: { type: ACTION_LEAF, target: D1, payload: {} },
+        fallback: actionChain(ACTION_ROOT, 'domain.version-fallback.v1'),
+      });
+
+      // The hand-over was refused at the call — copy B took nothing — so
+      // the delivering runtime (copy A's own shell) executes the fallback.
+      expect(fallbackRan).toBe(true);
+
+      sendSpy.mockRestore();
+    }
+  );
 });

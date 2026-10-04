@@ -2,7 +2,6 @@
  * Contract Matching Validation
  *
  * Validates that MFE entries are compatible with extension domains before mounting.
- * Extracted from the legacy screensets package in Phase 7 (extension-domain governance).
  *
  * @packageDocumentation
  */
@@ -37,9 +36,9 @@ export interface ContractValidationResult {
  * 2. domain.extensionsActions ⊆ entry.actions
  * 3. entry.domainActions \ {infrastructure lifecycle actions} ⊆ domain.actions
  *
- * @param typeSystem - Injected plugin used to hierarchy-aware match rule 3's
- * infrastructure-action exemption (load_ext/mount_ext/unmount_ext and any
- * derived variant) — never a literal comparison.
+ * @param typeSystem - Injected plugin used to resolve rule 3's
+ * infrastructure-action exemption (load_ext/mount_ext/unmount_ext) — never a
+ * literal comparison.
  */
 export function validateContract(
   entry: MfeEntry,

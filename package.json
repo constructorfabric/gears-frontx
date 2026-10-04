@@ -77,8 +77,8 @@
     "@gears-frontx/api": "*"
   },
   "overrides": {
-    "axios": "1.14.0",
-    "fastify": "5.8.5",
+    "axios": "1.20.0",
+    "fastify": "5.12.5",
     "lodash": "4.18.1",
     "@fastify/ajv-compiler": {
       "ajv": "8.18.0"
@@ -94,10 +94,10 @@
     "pg-pool": "3.10.1",
     "pg-protocol": "1.10.3",
     "picomatch": "4.0.4",
-    "brace-expansion": "5.0.9",
+    "brace-expansion": "5.0.12",
     "fast-uri": "3.1.7",
     "esbuild": "0.25.12",
-    "js-yaml": "4.3.0",
+    "js-yaml": "4.3.2",
     "vitest": "4.1.4",
     "@vitest/coverage-v8": "4.1.4",
     "jsdom": "26.1.0",
@@ -116,7 +116,7 @@
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-unused-imports": "4.4.1",
     "globals": "15.12.0",
-    "js-yaml": "4.3.0",
+    "js-yaml": "4.3.2",
     "jsdom": "26.1.0",
     "knip": "5.68.0",
     "lodash": "4.18.1",

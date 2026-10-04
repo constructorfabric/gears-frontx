@@ -89,7 +89,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 
 ### 2.6 [Extension-Domain Governance: Mount Strategies, Cardinality & Contract Matching](../packages/mfes/architecture/features/extension-domain-governance/) - HIGH
 
-- [x] `p1` - **ID**: `cpt-frontx-feature-extension-domain-governance`
+- [ ] `p1` - **ID**: `cpt-frontx-feature-extension-domain-governance`
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/mfes/architecture/features/extension-domain-governance/FEATURE.md).
 
@@ -102,6 +102,9 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 - [ ] `p1` - **ID**: `cpt-frontx-feature-mfe-isolation`
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/mfes/architecture/features/mfe-isolation/FEATURE.md).
+
+**Installed-kit coverage references**:
+- `cpt-frontx-constraint-mfes-realm-shared-dep-cache`
 
 ### 2.8 [API Protocol Surface](../packages/api/architecture/features/api-protocol-surface/) - MEDIUM
 

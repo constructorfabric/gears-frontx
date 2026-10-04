@@ -22,7 +22,10 @@ import lifecycleHookSchema from './frontx.mfes/schemas/lifecycle/hook.v1.json';
 import manifestSchema from './frontx.mfes/schemas/mfe/mf_manifest.v1.json';
 import entryMfSchema from './frontx.mfes/schemas/mfe/entry_mf.v1.json';
 
-// Import action schema JSON files (derived from action.v1, each requires payload.subject)
+// Import action schema JSON files — each is self-contained and closed, re-declaring
+// every property action.v1 would otherwise provide (additionalProperties: false on
+// itself and on its own payload); action.v1 itself stays open for derivation.
+// mount_ext and unmount_ext also declare the optional history enum (none/replace/push).
 import loadExtActionSchema from './frontx.mfes/schemas/ext/load_ext.v1.json';
 import mountExtActionSchema from './frontx.mfes/schemas/ext/mount_ext.v1.json';
 import unmountExtActionSchema from './frontx.mfes/schemas/ext/unmount_ext.v1.json';
@@ -58,7 +61,7 @@ export function loadSchemas(): JSONSchema[] {
     // MF-specific types (2)
     manifestSchema as JSONSchema,
     entryMfSchema as JSONSchema,
-    // Extension action schemas (3) — derived from action.v1, require payload.subject
+    // Extension action schemas (3) — self-contained, closed leaves; require payload.subject
     loadExtActionSchema as JSONSchema,
     mountExtActionSchema as JSONSchema,
     unmountExtActionSchema as JSONSchema,

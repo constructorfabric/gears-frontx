@@ -2,8 +2,8 @@
  * `@gears-frontx/routing` — runtime error type.
  *
  * ADR 0003 ("Occupant Identity Lexical Rule") and FEATURE
- * (navigation-substrate) §3 (Domain-Key Composition, Grammar Serialize)
- * specify a *thrown* error at each of several synchronous input paths;
+ * (navigation-substrate) §3 (Grammar Serialize) specify a *thrown* error
+ * at each of several synchronous input paths;
  * FEATURE (route-ownership-signal) §3 (URL Back-Projection Helper) adds one
  * of its own. `resolveNavigationHistory`'s own default adapter adds another,
  * via this file's `noNavigationHistoryInRealm` factory:
@@ -43,7 +43,6 @@ export type RoutingErrorCode =
   | 'invalid-foreign-segment'
   | 'invalid-domain-key'
   | 'invalid-extension-token'
-  | 'invalid-name'
   | 'invalid-param-name'
   | 'duplicate-param-name'
   | 'duplicate-extension'
@@ -55,7 +54,7 @@ export type RoutingErrorCode =
 export class RoutingError extends Error {
   readonly code: RoutingErrorCode;
   /** Set only for `invalid-shell-subroute` / `invalid-foreign-segment` /
-   * `invalid-domain-key` / `invalid-extension-token` / `invalid-name`, and
+   * `invalid-domain-key` / `invalid-extension-token`, and
    * for `replaced-old-extension-absent`, where it is the old extension
    * token no entry under `domainKey` carries. */
   readonly value?: string;
@@ -154,11 +153,6 @@ export class RoutingError extends Error {
       `Invalid extension token: "${value}"`,
       { value, entry },
     );
-  }
-
-  /** A nested domain's own locally-chosen `name` argument failed the `name` alphabet. */
-  static invalidName(value: string): RoutingError {
-    return new RoutingError('invalid-name', `Invalid name: "${value}"`, { value });
   }
 
   /**

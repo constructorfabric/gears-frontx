@@ -15,6 +15,7 @@ import { describe, it, expect } from 'vitest';
 import { createMfeRegistryFactory } from '../DefaultMfeRegistryFactory';
 import type { MfeRegistryConfig } from '../config';
 import type { TypeSystemPlugin } from '../../type-substrate';
+import type { RouterPort } from '../../router/RouterPort';
 
 function createFakePlugin(name: string): TypeSystemPlugin {
   return {
@@ -72,4 +73,67 @@ describe('DefaultMfeRegistryFactory cache', () => {
     // plugin it closed over: refusing the rebuild is only half the guarantee.
     expect(registry.typeSystem).toBe(first);
   });
+
+  // @cpt-dod:cpt-frontx-dod-mfe-registry-router-configuration:p1
+  it('returns the cached instance for the same plugin and the same router', () => {
+    const plugin = createFakePlugin('RouterPlugin');
+    const router = createFakeRouter();
+    const factory = createMfeRegistryFactory();
+
+    const registry = factory.build({ typeSystem: plugin, router });
+
+    expect(factory.build({ typeSystem: plugin, router })).toBe(registry);
+  });
+
+  it('returns the cached instance for the same plugin and again no router', () => {
+    const plugin = createFakePlugin('NoRouterPlugin');
+    const factory = createMfeRegistryFactory();
+
+    const registry = factory.build({ typeSystem: plugin });
+
+    expect(factory.build({ typeSystem: plugin })).toBe(registry);
+  });
+
+  it('throws when a router is supplied after the first build supplied none', () => {
+    const plugin = createFakePlugin('RouterAfterNonePlugin');
+    const router = createFakeRouter();
+    const factory = createMfeRegistryFactory();
+
+    factory.build({ typeSystem: plugin });
+
+    expect(() => factory.build({ typeSystem: plugin, router })).toThrow(/router/i);
+  });
+
+  it('throws when no router is supplied after the first build supplied one', () => {
+    const plugin = createFakePlugin('NoRouterAfterOnePlugin');
+    const router = createFakeRouter();
+    const factory = createMfeRegistryFactory();
+
+    factory.build({ typeSystem: plugin, router });
+
+    expect(() => factory.build({ typeSystem: plugin })).toThrow(/router/i);
+  });
+
+  it('throws when a different router is supplied on a later build', () => {
+    const plugin = createFakePlugin('DifferentRouterPlugin');
+    const routerA = createFakeRouter();
+    const routerB = createFakeRouter();
+    const factory = createMfeRegistryFactory();
+
+    factory.build({ typeSystem: plugin, router: routerA });
+
+    expect(() => factory.build({ typeSystem: plugin, router: routerB })).toThrow(/router/i);
+  });
 });
+
+function createFakeRouter(): RouterPort {
+  return {
+    registerDomain: () => {},
+    registerExtension: () => {},
+    releaseDomain: () => {},
+    releaseExtension: () => {},
+    assignOccupantValue: () => undefined,
+    reportSettled: () => {},
+    supplyNavigation: () => {},
+  };
+}

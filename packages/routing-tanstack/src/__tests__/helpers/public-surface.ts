@@ -45,23 +45,24 @@ export const TANSTACK_RUNTIME_SURFACE = Object.keys(tanstackIndex).filter(
 // `export type { ... }` statement in `src/index.ts` and every DESIGN §3.3
 // row naming a type: the engine-provider port re-exported from
 // `@gears-frontx/routing` (`EngineProviderInput`, `EngineProviderPort`,
-// `EntryAddress`), the virtual-location projection shapes
-// (`VirtualLocationParts`, `VirtualLocationSource`), the shared history-
-// adaptation options (`AdaptHistoryOptions`), the component prop shapes
-// (`EngineProviderProps`, `EngineProviderFromRouterProps`), the
-// construction-options seam (`ProviderRouterOptions`), and the engine's own
-// type names this package forwards so a consumer can name what its own
-// signatures return and constrain (`RouterHistory`, `AnyRoute`,
-// `AnyRouter`) — these last three are pinned here, unlike their runtime
-// pass-through counterparts above, precisely because a consumer inside this
-// ecosystem has no other permitted route to them.
+// `EntryAddress`), the shared history-adaptation options
+// (`AdaptHistoryOptions` — the one member of that surface
+// `adaptProviderHistory`'s own signature still needs a caller to name), the
+// component prop shapes (`EngineProviderProps`,
+// `EngineProviderFromRouterProps`), the construction-options seam
+// (`ProviderRouterOptions`), and the engine's own type names this package
+// forwards so a consumer can name what its own signatures return and
+// constrain (`RouterHistory`, `AnyRoute`, `AnyRouter`) — these last three are
+// pinned here, unlike their runtime pass-through counterparts above,
+// precisely because a consumer inside this ecosystem has no other permitted
+// route to them. `VirtualLocationParts`/`VirtualLocationSource` stay internal,
+// folded behind `adaptProviderHistory` (AC2.1, resolved decisions), so
+// neither belongs in this list.
 export const TANSTACK_TYPE_ONLY_SURFACE = [
   'EngineProviderInput',
   'EngineProviderPort',
   'EntryAddress',
-  'VirtualLocationParts',
   'AdaptHistoryOptions',
-  'VirtualLocationSource',
   'EngineProviderProps',
   'EngineProviderFromRouterProps',
   'ProviderRouterOptions',
