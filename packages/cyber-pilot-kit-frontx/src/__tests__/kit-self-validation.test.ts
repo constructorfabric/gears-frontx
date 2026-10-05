@@ -2109,6 +2109,8 @@ process.exit(0);
       'npx --yes agent-browser',
       'npx @scope/browser-cli',
       'pnpm dlx agent-browser',
+      'bunx agent-browser',
+      'bun x agent-browser',
       'npx -p agent-browser agent-browser',
       'npx --yes agent-browser@latest',
       'npx --yes agent-browser@^1.2.3',
@@ -2122,6 +2124,20 @@ process.exit(0);
       expect(run.failures.map((failure) => failure.stage)).toEqual(['arguments']);
       expect(run.failures[0].detail).toContain('no pinned version');
       expect(run.capdirExists).toBe(false);
+    });
+
+    // The other side of the same check: a pinned package passes it, and so does
+    // `bun` running a local file rather than fetching a package. These runs get
+    // past the arguments and stop only at the host, which nothing answers.
+    it.each([
+      'bunx agent-browser@0.0.0-test',
+      'bun x agent-browser@0.0.0-test',
+      'bun ./browser-cli.ts --headless',
+    ])('accepts the browser command "%s" and goes on to the host', (value) => {
+      const run = runRefusal(['--browser-cmd', value]);
+
+      expect(run.status).not.toBe(0);
+      expect(run.failures.map((failure) => failure.stage)).toEqual(['host-probe']);
     });
 
     // The result has to reach the caller even when the path it was asked for

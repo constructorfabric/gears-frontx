@@ -53,9 +53,10 @@ Required:
   --browser-cmd <cmd>       command line the browser CLI is driven through: a
                             pinned package, e.g. 'npx --yes agent-browser@<version>',
                             or an installed binary. There is no default, and a
-                            package runner (npx, pnpm dlx, bunx, yarn dlx) handed
-                            a package with no version is refused. Quote a path
-                            that carries spaces, single or double quotes alike:
+                            package runner (npx, pnpx, npm exec, npm x, pnpm dlx,
+                            yarn dlx, bunx, bun x) handed a package with no version
+                            is refused. Quote a path that carries spaces, single or
+                            double quotes alike:
                             '"/path/with a space/browser-cli" --headless'
 
 Checkpoint axis - the points the walk visits, declared whole or not at all.
@@ -233,7 +234,7 @@ function tokenizeCommand(flag, raw) {
 // by what was installed rather than by the registry at run time.
 const PACKAGE_RUNNERS = new Map([
   ['npx', []], ['bunx', []], ['pnpx', []],
-  ['pnpm', ['dlx']], ['yarn', ['dlx']], ['npm', ['exec', 'x']],
+  ['pnpm', ['dlx']], ['yarn', ['dlx']], ['npm', ['exec', 'x']], ['bun', ['x']],
 ]);
 
 // An exact version only: a tag such as `latest` or a range such as `^1.2.3`
