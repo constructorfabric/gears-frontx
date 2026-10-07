@@ -54,16 +54,12 @@ export interface ContainerHooks {
  * Abstract base class for domain mount strategies.
  *
  * - `mount` is abstract — every concrete strategy must implement it.
- * - `unmount` is optional (declared but not abstract). Concrete strategies
- *   MAY implement it. `ExclusiveMountStrategy` does NOT implement `unmount`;
- *   `ConcurrentMountStrategy` and `OptionalMountStrategy` do. The strict
- *   cardinality matrix enforces this at registration time.
- *
- * LSP note: the optional `unmount` declaration on the base class is the correct
- * TypeScript idiom for "some subtypes have this, some don't". Every subtype
- * satisfies the abstract surface (`mount` required). The matrix
- * (`cpt-frontx-algo-mfe-registry-cross-validate-handlers`) enforces the
- * semantic constraint at registration, not at the type level.
+ * - `unmount` is declared optional on the base class; every shipped strategy
+ *   implements it:
+ *   `ConcurrentMountStrategy` and `OptionalMountStrategy` release the
+ *   subject; `ExclusiveMountStrategy` changes nothing and rejects. The strict
+ *   cardinality matrix requires `mount_ext` and `unmount_ext` for every
+ *   strategy.
  */
 export abstract class MountStrategy {
   /**
@@ -76,9 +72,8 @@ export abstract class MountStrategy {
   /**
    * Unmount the extension described in `payload`.
    *
-   * Optional: `ExclusiveMountStrategy` does not define this method.
-   * The registry enforces the omission at registration time via the strict
-   * cardinality matrix.
+   * Every shipped strategy implements this method; `ExclusiveMountStrategy`'s
+   * changes nothing and rejects.
    *
    * @param payload - Action payload; `payload.subject` carries the extension ID.
    */

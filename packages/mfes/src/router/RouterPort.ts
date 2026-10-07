@@ -19,7 +19,7 @@
  */
 // @cpt-dod:cpt-frontx-dod-mfe-host-communication-router-port-contract:p1
 
-import type { ExtensionDomain, Extension, MountExtPayload, UnmountExtPayload } from '../types';
+import type { ExtensionDomain, Extension, HistoryIntent } from '../types';
 
 /**
  * The opaque value a router assigns an extension at mount. The runtime
@@ -43,20 +43,24 @@ export interface OccupantValueAssignment {
 
 /**
  * The settled-action report a domain's handler path makes to the router,
- * exactly once per executed `mount_ext`/`unmount_ext` that reaches the
- * domain's registered handler
+ * exactly once per executed `mount_ext`/`unmount_ext` — a request for which
+ * the domain's strategy ran
  * (`cpt-frontx-algo-extension-domain-governance-mount-execution`
- * `inst-me-report-settled`).
+ * `inst-me-report-settled`). It states what physically happened: the router
+ * reads neither the action type nor the domain's cardinality, and the report
+ * carries no outcome. Displacements and evictions appear among `unmounted`;
+ * occupants nested in a hosted extension's own registry appear in no report
+ * of this registry.
  */
 export interface SettledActionReport {
-  /** The action type dispatched (mount_ext or unmount_ext). */
-  actionTypeId: string;
   /** The domain the executed action's handler belongs to. */
   domainId: string;
-  /** The executed action's payload, exactly as admitted, history intent included. */
-  payload: MountExtPayload | UnmountExtPayload;
-  /** Whether the domain's handler execution succeeded. */
-  succeeded: boolean;
+  /** The executed action's history intent, absent when the action carries none. */
+  history?: HistoryIntent;
+  /** The ids of the extensions the execution physically mounted. */
+  mounted: string[];
+  /** The ids of the extensions the execution physically unmounted. */
+  unmounted: string[];
 }
 
 /**

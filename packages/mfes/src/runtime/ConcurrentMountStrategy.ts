@@ -7,7 +7,7 @@
  * Selection guide:
  * - `ConcurrentMountStrategy` — multiple extensions mount simultaneously (e.g., widgets)
  * - `OptionalMountStrategy` — zero-or-one mount with explicit unmount (sidebar, popup, overlay)
- * - `ExclusiveMountStrategy` — pre-emptive single-mount, no explicit unmount (screen domain)
+ * - `ExclusiveMountStrategy` — pre-emptive single-mount, explicit unmount that does nothing and fails (screen domain)
  *
  * @packageDocumentation
  */

@@ -251,14 +251,14 @@ This feature also specifies the router port contract the package declares (`cpt-
 
 **Input**: A `mount_ext` or `unmount_ext` action handed to `executeActionsChain`, whose payload may carry a history intent
 
-**Output**: The action admitted with its history intent unchanged and, once executed, handed to the router uninterpreted inside the settled-action report; or the action rejected at admission, failing as any action fails
+**Output**: The action admitted with its history intent unchanged and, once executed, handed to the router uninterpreted in the settled-action report; or the action rejected at admission, failing as any action fails
 
 **Steps**:
 1. [ ] - `p1` - Every mount, restoration and opening included, is requested as a `mount_ext` actions chain, and every explicit unmount as an `unmount_ext` actions chain; each executes through the mediator like any other chain (`cpt-frontx-algo-mfe-host-communication-mediator-dispatch`) - `inst-hi-through-actions`
 2. [x] - `p1` - A `mount_ext` or `unmount_ext` payload may carry one optional `history` whose value is one of `none`, `replace`, or `push` - `inst-hi-declare`
 3. [ ] - `p1` - The action is admitted through the type-system provider of the registry that executes it (`inst-delegate-admit`), whose closed concrete schemas reject a `history` outside those three values and any undeclared field on the action or its payload (`cpt-frontx-feature-gts-type-provider`); an action that fails admission fails, and its chain's `fallback` executes, if present - `inst-hi-admit-strict`
-4. [ ] - `p1` - The runtime reads, defaults, and rewrites no history intent on either action: an absent intent stays absent, and reading an absent intent as `push` is the router's - `inst-hi-uninterpreted`
-5. [ ] - `p1` - The intent reaches the router only inside the executed payload of the settled-action report (`inst-me-report-settled` in `cpt-frontx-algo-extension-domain-governance-mount-execution`) - `inst-hi-reach-router`
+4. [x] - `p1` - The runtime reads, defaults, and rewrites no history intent on either action: an absent intent stays absent, and reading an absent intent as `push` is the router's - `inst-hi-uninterpreted`
+5. [x] - `p1` - The intent reaches the router only as the history intent the settled-action report carries, exactly as the executed action carries it (`inst-me-report-settled` in `cpt-frontx-algo-extension-domain-governance-mount-execution`) - `inst-hi-reach-router`
 6. [ ] - `p1` - **RETURN** the admitted action, or the admission failure - `inst-hi-return`
 
 ## 4. States (CDSL)
@@ -330,7 +330,7 @@ The system **MUST** declare the router port `RouterPort` — the abstract contra
 - `registerExtension(extension: Extension): void` — the registration notification for an extension; throwing rejects the registration.
 - `releaseDomain(domainId: string): void` and `releaseExtension(extensionId: string): void` — the release notifications that free what the router admitted.
 - `assignOccupantValue(assignment: OccupantValueAssignment): OccupantValue` — the value assignment at mount, where `OccupantValueAssignment` is `{ domain: ExtensionDomain; extension: Extension; enclosingValue: OccupantValue | undefined }`.
-- `reportSettled(report: SettledActionReport): void` — the settled-action report, where `SettledActionReport` is `{ actionTypeId: string; domainId: string; payload: MountExtPayload | UnmountExtPayload; succeeded: boolean }`, `payload` being the executed payload exactly as admitted, history intent included.
+- `reportSettled(report: SettledActionReport): void` — the settled-action report, where `SettledActionReport` is `{ domainId: string; history?: HistoryIntent; mounted: string[]; unmounted: string[] }`: `domainId` the domain the execution settled in, `history` the history intent exactly as the executed action carries it and absent when the action carries none, and `mounted` and `unmounted` the ids of the extensions that execution physically mounted and unmounted. The report carries no action type, no payload, and no outcome.
 - `supplyNavigation(readOccupantValue: () => OccupantValue | undefined): void` — the supply of an extension's navigation from its occupant value.
 
 `OccupantValue` **MUST** be an opaque type the runtime stores and hands over without inspecting it. The port **MUST** add no member to `MfeRegistry`, `ChildMfeBridge`, or `ParentMfeBridge`, and this package **MUST NOT** import `@gears-frontx/routing` or `@gears-frontx/routing-tanstack`, nor be imported by either.
@@ -381,7 +381,7 @@ The system **MUST** expose no occupant value on any interface it hands to extens
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-mfe-host-communication-history-intent`
 
-The system **MUST** declare `HistoryIntent` as `'none' | 'replace' | 'push'` and an optional `history?: HistoryIntent` on `MountExtPayload` and on `UnmountExtPayload`; **MUST** request every mount, restoration and opening included, as a `mount_ext` actions chain; **MUST** admit both actions through the injected type-system provider, so a malformed intent or an undeclared field fails the action; and **MUST NOT** read, default, or rewrite the intent, passing it to the router uninterpreted inside the reported payload, an absent intent staying absent.
+The system **MUST** declare `HistoryIntent` as `'none' | 'replace' | 'push'` and an optional `history?: HistoryIntent` on `MountExtPayload` and on `UnmountExtPayload`; **MUST** request every mount, restoration and opening included, as a `mount_ext` actions chain; **MUST** admit both actions through the injected type-system provider, so a malformed intent or an undeclared field fails the action; and **MUST NOT** read, default, or rewrite the intent, passing it to the router uninterpreted as the history intent the settled-action report carries, an absent intent staying absent.
 
 **Implements**:
 - `cpt-frontx-algo-mfe-host-communication-history-intent`
@@ -428,4 +428,4 @@ The system **MUST** declare `HistoryIntent` as `'none' | 'replace' | 'push'` and
 - [x] An `assignOccupantValue` that throws fails the mount before the lifecycle `mount` is invoked, and the chain's `fallback` executes
 - [ ] A registry built with no router associates no occupant value for any bridge and makes no `supplyNavigation` call
 - [ ] With a router test double whose `assignOccupantValue` returns a unique sentinel object it holds only in a closure, never on a property, a test mounts an extension and inspects, for each of `MfeRegistry`, the `ChildMfeBridge` handed to `mount` (abstract surface and concrete implementation), `ParentMfeBridge`, the inbound bridge link attached to that bridge, the `MfeMountContext`, every argument passed to the lifecycle `mount` and `unmount`, every action and actions chain dispatched or handed over during the mount and unmount, and every shared property value delivered to the extension, every own and inherited property — string- and symbol-keyed, enumerable or not — recursively through the plain objects and arrays reachable from it, and finds no reference to the sentinel; the same test finds the sentinel through the internal accessor keyed by that child bridge
-- [ ] A `mount_ext` and an `unmount_ext` carrying `history: 'none'`, `'replace'`, or `'push'` reach the router inside the reported payload with that value unchanged; one carrying no `history` reaches it with none; one carrying a `history` outside those values, or an undeclared payload field, fails admission and its chain's `fallback` executes
+- [ ] A `mount_ext` and an `unmount_ext` carrying `history: 'none'`, `'replace'`, or `'push'` reach the router in the report with that value unchanged; one carrying no `history` reaches it with none; one carrying a `history` outside those values, or an undeclared payload field, fails admission and its chain's `fallback` executes

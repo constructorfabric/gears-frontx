@@ -1012,6 +1012,12 @@ export class DefaultMfeRegistry extends MfeRegistry {
     // registers below, so joining, replacement, and at-turn evaluation hold
     // across both.
     const isConcurrent = mountStrategies[0] instanceof ConcurrentMountStrategy;
+    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-exclusive-unmount-fails
+    // An Exclusive domain's `unmount_ext` is passed straight to the domain's
+    // registered handler — outside the occupancy queue and the settled-action
+    // report — and the Exclusive strategy's unmount changes nothing and fails.
+    const isExclusive = mountStrategies[0] instanceof ExclusiveMountStrategy;
+    // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-exclusive-unmount-fails
     const concurrentJoiner = isConcurrent ? new ConcurrentMountJoiner() : undefined;
     const queue = isConcurrent ? undefined : new DomainOccupancyCoordinator(declaration.id);
     if (queue) {
@@ -1046,9 +1052,12 @@ export class DefaultMfeRegistry extends MfeRegistry {
           domainReader,
           queue,
           concurrentJoiner,
-          this.router
+          this.router,
+          () => this.extensionManager.getMountedExtensions(declaration.id)
         );
-      } else if (actionType === unmountExtActionId) {
+      // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-exclusive-unmount-fails
+      } else if (actionType === unmountExtActionId && !isExclusive) {
+      // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-exclusive-unmount-fails
         wrapped = new UnmountExtActionHandler(
           handler,
           declaration.id,
@@ -1058,7 +1067,8 @@ export class DefaultMfeRegistry extends MfeRegistry {
           domainReader,
           queue,
           concurrentJoiner,
-          this.router
+          this.router,
+          () => this.extensionManager.getMountedExtensions(declaration.id)
         );
       }
       this.mediator.registerHandler(declaration.id, actionType, wrapped);
@@ -1125,32 +1135,20 @@ export class DefaultMfeRegistry extends MfeRegistry {
     // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-identify-strategy
 
     // Identify strategy class and look up cardinality row.
-    let requireMount: boolean;
-    let requireUnmount: boolean;
-    let forbidUnmount: boolean;
     let strategyName: string;
 
     // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-match-strategy
     if (strategy instanceof ConcurrentMountStrategy) {
       // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-concurrent-row
       strategyName = 'ConcurrentMountStrategy';
-      requireMount = true;
-      requireUnmount = true;
-      forbidUnmount = false;
       // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-concurrent-row
     } else if (strategy instanceof OptionalMountStrategy) {
       // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-optional-row
       strategyName = 'OptionalMountStrategy';
-      requireMount = true;
-      requireUnmount = true;
-      forbidUnmount = false;
       // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-optional-row
     } else if (strategy instanceof ExclusiveMountStrategy) {
       // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-exclusive-row
       strategyName = 'ExclusiveMountStrategy';
-      requireMount = true;
-      requireUnmount = false;
-      forbidUnmount = true;
       // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-exclusive-row
     } else {
       // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-unknown-reject
@@ -1176,7 +1174,7 @@ export class DefaultMfeRegistry extends MfeRegistry {
     const hasMountExt = declaredActions.includes(mountExtActionId);
     const hasUnmountExt = declaredActions.includes(unmountExtActionId);
     // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-missing-required
-    if (requireMount && !hasMountExt) {
+    if (!hasMountExt) {
       // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-required-fail
       throw new Error(
         `Domain '${declaration.id}': ${strategyName} requires '${mountExtActionId}' in declaration.actions.`
@@ -1185,7 +1183,7 @@ export class DefaultMfeRegistry extends MfeRegistry {
     }
     // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-missing-required
     // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-missing-required
-    if (requireUnmount && !hasUnmountExt) {
+    if (!hasUnmountExt) {
       // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-required-fail
       throw new Error(
         `Domain '${declaration.id}': ${strategyName} requires '${unmountExtActionId}' in declaration.actions.`
@@ -1194,20 +1192,6 @@ export class DefaultMfeRegistry extends MfeRegistry {
     }
     // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-missing-required
     // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-required-check-loop
-
-    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-forbidden-check-loop
-    // Enforce FORBIDDEN actions in declaration.
-    // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-forbidden-present
-    if (forbidUnmount && hasUnmountExt) {
-    // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-forbidden-present
-      // @cpt-begin:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-forbidden-fail
-      throw new Error(
-        `Domain '${declaration.id}': ${strategyName} forbids '${unmountExtActionId}' in declaration.actions, ` +
-        `but declared action '${unmountExtActionId}' violates this rule.`
-      );
-      // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-forbidden-fail
-    }
-    // @cpt-end:cpt-frontx-algo-extension-domain-governance-strategy-cardinality:p1:inst-sc-forbidden-check-loop
 
     const collectedHandlers = ctx.getCollectedHandlers();
 

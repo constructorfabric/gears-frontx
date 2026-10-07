@@ -5,21 +5,19 @@ import { ExtensionReleaserProvider } from './ExtensionReleaserProvider';
 // @cpt-algo:cpt-frontx-algo-extension-domain-governance-slot-detach:p2
 
 /**
- * Pre-emptive single-mount with no public unmount path.
+ * Pre-emptive single-mount whose explicit unmount does nothing and fails.
  *
  * Mounting always evicts any other extension currently mounted in the domain
- * before mounting the new one. No `unmount` action is declared on the domain;
- * `ExclusiveMountStrategy` does NOT implement the optional `unmount` method.
- *
- * The strict cardinality matrix in
- * `cpt-frontx-algo-mfe-registry-cross-validate-handlers` rejects any
- * domain backed by this strategy that lists `unmount_ext` in
- * `declaration.actions`.
+ * before mounting the new one. `unmount` changes nothing and rejects: the
+ * occupant stays mounted and nothing is released. The occupant leaves
+ * through a replacing `mount_ext` that evicts it, through teardown of an
+ * ancestor caused by that ancestor's own action, or through terminal
+ * disposal of its registry, never through its own `unmount_ext`.
  *
  * Suitable for screen-domain-style use cases where exactly one extension is
  * ever active and navigation triggers a swap.
  *
- * Cardinality matrix: REQUIRES `mount_ext`, FORBIDS `unmount_ext` in `declaration.actions`.
+ * Cardinality matrix: REQUIRES `mount_ext` AND `unmount_ext` in `declaration.actions`.
  */
 export class ExclusiveMountStrategy extends MountStrategy {
   constructor(
@@ -78,7 +76,14 @@ export class ExclusiveMountStrategy extends MountStrategy {
   // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-exclusive-mount
   // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-exclusive-evict
 
-  // ExclusiveMountStrategy intentionally does NOT implement the optional
-  // `unmount` method declared on the MountStrategy base class. Eviction
-  // happens only as a side effect of mounting a different extension.
+  // @cpt-begin:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-exclusive-unmount-fails
+  override async unmount(payload: ActionPayload): Promise<void> {
+    throw new Error(
+      `ExclusiveMountStrategy.unmount: domain '${this.domainId}' does not unmount '${payload.subject}'; ` +
+      'an Exclusive domain\'s occupant leaves through a replacing mount_ext that evicts it, ' +
+      'through teardown of an ancestor caused by that ancestor\'s own action, ' +
+      'or through terminal disposal of its registry, never through its own unmount_ext.'
+    );
+  }
+  // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-me-exclusive-unmount-fails
 }

@@ -7,10 +7,11 @@
  * Isolated unit tests against `MountExtActionHandler`/`UnmountExtActionHandler`
  * directly, mirroring the house style of `MountExtActionHandler.test.ts`:
  * a fake `inner` handler and fake collaborators, no real strategy/mount
- * pipeline. Confirms exactly one `reportSettled` call per execution that
- * reaches the domain's handler, that it happens before the chain's own
- * `next`/`fallback` (observed via a shared ordered log both push into), and
- * that every path which never reaches the handler reports nothing.
+ * pipeline. Confirms exactly one `reportSettled` call per execution (a
+ * request for which the domain's strategy ran), that it happens before the
+ * chain's own `next`/`fallback` (observed via a shared ordered log both push
+ * into), and that every path on which the strategy never runs reports
+ * nothing.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { MountExtActionHandler } from '../MountExtActionHandler';
@@ -24,7 +25,7 @@ import { DomainOccupancyCoordinator } from '../DomainOccupancyCoordinator';
 import { ConcurrentMountJoiner } from '../ConcurrentMountJoiner';
 import { ActionTimeoutResolver } from '../../mediator/ActionTimeoutResolver';
 import { ActionHandler } from '../../mediator/ActionHandler';
-import type { RouterPort } from '../../router/RouterPort';
+import type { RouterPort, SettledActionReport } from '../../router/RouterPort';
 
 const DOMAIN_ID = 'domain-under-test';
 const DEFAULT_TIMEOUT = 5000;
@@ -56,8 +57,8 @@ function createRouterSpy(log: string[]): RouterPort {
     releaseDomain: () => {},
     releaseExtension: () => {},
     assignOccupantValue: () => undefined,
-    reportSettled: vi.fn((report) => {
-      log.push(`reportSettled:${report.succeeded ? 'ok' : 'fail'}`);
+    reportSettled: vi.fn((_report: SettledActionReport) => {
+      log.push('reportSettled');
     }),
     supplyNavigation: () => {},
   };
@@ -80,7 +81,8 @@ function makeConcurrentMountHandler(
     domainReader,
     undefined,
     joiner,
-    router
+    router,
+    () => []
   );
 }
 
@@ -101,7 +103,8 @@ function makeQueueMountHandler(
     domainReader,
     queue,
     undefined,
-    router
+    router,
+    () => []
   );
 }
 
@@ -121,10 +124,11 @@ describe('settled-action report — mount_ext', () => {
     log.push('caller-next');
 
     expect(router.reportSettled).toHaveBeenCalledTimes(1);
-    expect(log).toEqual(['inner-ran', 'reportSettled:ok', 'caller-next']);
+    expect(log).toEqual(['inner-ran', 'reportSettled', 'caller-next']);
+    expectReportShape(reportOf(router), { domainId: DOMAIN_ID });
   });
 
-  it('a fresh Concurrent mount that fails reports exactly once with a failed outcome, before the caller takes its own fallback', async () => {
+  it('a fresh Concurrent mount that fails reports exactly once, before the caller takes its own fallback', async () => {
     const log: string[] = [];
     const router = createRouterSpy(log);
     const inner = ActionHandler.fromFunction(async () => {
@@ -142,7 +146,9 @@ describe('settled-action report — mount_ext', () => {
     log.push('caller-fallback');
 
     expect(router.reportSettled).toHaveBeenCalledTimes(1);
-    expect(log).toEqual(['inner-ran', 'reportSettled:fail', 'caller-fallback']);
+    expect(log).toEqual(['inner-ran', 'reportSettled', 'caller-fallback']);
+    // The execution changed nothing: one report, empty, and no outcome member.
+    expect(reportOf(router)).toEqual({ domainId: DOMAIN_ID, mounted: [], unmounted: [] });
   });
 
   it('a fresh Optional/Exclusive-queue mount (at-turn) reports exactly once', async () => {
@@ -159,7 +165,8 @@ describe('settled-action report — mount_ext', () => {
     await handler.handleAction(MOUNT_ACTION, { subject: 'ext-a' });
 
     expect(router.reportSettled).toHaveBeenCalledTimes(1);
-    expect(log).toEqual(['inner-ran', 'reportSettled:ok']);
+    expect(log).toEqual(['inner-ran', 'reportSettled']);
+    expectReportShape(reportOf(router), { domainId: DOMAIN_ID });
   });
 
   it('an already-mounted mount reports nothing', async () => {
@@ -269,7 +276,7 @@ describe('settled-action report — mount_ext', () => {
 });
 
 describe('settled-action report — history intent passthrough', () => {
-  it('a history intent on the executed payload reaches the router inside the reported payload unchanged', async () => {
+  it('a history intent on the executed payload reaches the router as a top-level report member unchanged', async () => {
     const reportSettled = vi.fn();
     const router: RouterPort = {
       registerDomain: () => {}, registerExtension: () => {},
@@ -288,12 +295,14 @@ describe('settled-action report — history intent passthrough', () => {
 
     await handler.handleAction(MOUNT_ACTION, { subject: 'ext-a', history: 'replace' });
 
-    expect(reportSettled).toHaveBeenCalledWith(
-      expect.objectContaining({ payload: expect.objectContaining({ history: 'replace' }) })
-    );
+    expect(reportSettled).toHaveBeenCalledTimes(1);
+    const report = reportSettled.mock.calls[0][0] as SettledActionReport;
+    expect(report.history).toBe('replace');
+    expect(report).not.toHaveProperty('payload');
+    expectReportShape(report, { domainId: DOMAIN_ID, history: 'replace' });
   });
 
-  it('an absent history intent stays absent in the reported payload', async () => {
+  it('an absent history intent stays absent from the report', async () => {
     const reportSettled = vi.fn();
     const router: RouterPort = {
       registerDomain: () => {}, registerExtension: () => {},
@@ -312,8 +321,55 @@ describe('settled-action report — history intent passthrough', () => {
 
     await handler.handleAction(MOUNT_ACTION, { subject: 'ext-a' });
 
-    const reportedPayload = reportSettled.mock.calls[0][0].payload as Record<string, unknown>;
-    expect(reportedPayload.history).toBeUndefined();
+    const report = reportSettled.mock.calls[0][0] as SettledActionReport;
+    expect(report).not.toHaveProperty('history');
+    expectReportShape(report, { domainId: DOMAIN_ID });
+  });
+});
+
+describe('settled-action report — requests that never run the strategy (additional)', () => {
+  it('an ineligible mount request (extension admitted to another domain) reports nothing', async () => {
+    const log: string[] = [];
+    const router = createRouterSpy(log);
+    const inner = ActionHandler.fromFunction(async () => { log.push('inner-ran'); });
+    const readers = makeReaders({
+      domainOf: () => 'some-other-domain',
+      isMounted: () => false,
+      inFlight: () => undefined,
+    });
+
+    await expect(
+      makeConcurrentMountHandler(inner, readers, router).handleAction(MOUNT_ACTION, { subject: 'ext-a' })
+    ).rejects.toThrow(/not admitted/);
+    await expect(
+      makeQueueMountHandler(inner, readers, router).handleAction(MOUNT_ACTION, { subject: 'ext-a' })
+    ).rejects.toThrow(/not admitted/);
+
+    expect(router.reportSettled).not.toHaveBeenCalled();
+    expect(log).toEqual([]);
+  });
+
+  it('a mount that fails because the unmount it waited on failed reports nothing', async () => {
+    const log: string[] = [];
+    const router = createRouterSpy(log);
+    const inner = ActionHandler.fromFunction(async () => { log.push('inner-ran'); });
+    const unmountGate = Promise.reject(new Error('unmount failed'));
+    unmountGate.catch(() => {});
+    const readers = makeReaders({
+      domainOf: () => DOMAIN_ID,
+      isMounted: () => false,
+      inFlight: () => unmountGate,
+    });
+
+    await expect(
+      makeConcurrentMountHandler(inner, readers, router).handleAction(MOUNT_ACTION, { subject: 'ext-a' })
+    ).rejects.toThrow(/could not be mounted/);
+    await expect(
+      makeQueueMountHandler(inner, readers, router).handleAction(MOUNT_ACTION, { subject: 'ext-a' })
+    ).rejects.toThrow(/could not be mounted/);
+
+    expect(router.reportSettled).not.toHaveBeenCalled();
+    expect(log).toEqual([]);
   });
 });
 
@@ -333,12 +389,16 @@ describe('settled-action report — unmount_ext', () => {
       domainReader,
       new DomainOccupancyCoordinator(DOMAIN_ID),
       undefined,
-      router
+      router,
+      () => []
     );
 
-    await handler.handleAction('mock.action~unmount_ext.v1~', { subject: 'ext-a' });
+    await handler.handleAction('mock.action~unmount_ext.v1~', { subject: 'ext-a', history: 'push' });
 
     expect(router.reportSettled).toHaveBeenCalledTimes(1);
+    const report = reportOf(router);
+    expect(report.history).toBe('push');
+    expectReportShape(report, { domainId: DOMAIN_ID, history: 'push' });
   });
 
   it('an unmount of an absent subject reports nothing', async () => {
@@ -356,7 +416,8 @@ describe('settled-action report — unmount_ext', () => {
       domainReader,
       new DomainOccupancyCoordinator(DOMAIN_ID),
       undefined,
-      router
+      router,
+      () => []
     );
 
     await handler.handleAction('mock.action~unmount_ext.v1~', { subject: 'ext-a' });
@@ -389,6 +450,27 @@ describe('settled-action report — unmount_ext', () => {
     errorSpy.mockRestore();
   });
 });
+
+function reportOf(router: RouterPort): SettledActionReport {
+  const calls = (router.reportSettled as ReturnType<typeof vi.fn>).mock.calls;
+  return calls[0][0] as SettledActionReport;
+}
+
+/**
+ * The report carries exactly the domain, the history intent when the action
+ * carries one, and the mounted / unmounted lists: no action type, no payload,
+ * no outcome.
+ */
+function expectReportShape(
+  report: SettledActionReport,
+  expected: { domainId: string; history?: 'push' | 'replace' }
+): void {
+  const keys = ['domainId', 'mounted', 'unmounted', ...(expected.history ? ['history'] : [])].sort();
+  expect(Object.keys(report).sort()).toEqual(keys);
+  expect(report.domainId).toBe(expected.domainId);
+  expect(Array.isArray(report.mounted)).toBe(true);
+  expect(Array.isArray(report.unmounted)).toBe(true);
+}
 
 function inner_called(log: string[]): boolean {
   return log.includes('inner-ran');

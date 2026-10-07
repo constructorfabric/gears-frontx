@@ -204,8 +204,7 @@ class GatedBeforeStrategyDomainImpl extends ExtensionDomainImplementation {
   constructor(
     ctx: DomainContext,
     readonly strategy: MountStrategy,
-    private readonly gate: Promise<void>,
-    declaresUnmount: boolean = true
+    private readonly gate: Promise<void>
   ) {
     super();
     ctx.registerHandler(ACTION_MOUNT_EXT, ActionHandler.fromFunction(async (_t, p) => {
@@ -224,9 +223,7 @@ class GatedBeforeStrategyDomainImpl extends ExtensionDomainImplementation {
         this.onCompleted?.(subject);
       }
     }));
-    if (declaresUnmount) {
-      ctx.registerHandler(ACTION_UNMOUNT_EXT, ActionHandler.fromFunction((_t, p) => this.strategy.unmount!(p as { subject: string })));
-    }
+    ctx.registerHandler(ACTION_UNMOUNT_EXT, unmountHandlerFor(this.strategy));
   }
   protected getMountStrategies(): MountStrategy[] { return [this.strategy]; }
 }
@@ -248,7 +245,7 @@ class GatedBeforeStrategyDomainFactory extends ExtensionDomainImplementationFact
     this.strategy = this.strategyName === 'optional'
       ? new OptionalMountStrategy(ctx.mounter, this.hooks, this.reg, this.domainId)
       : new ExclusiveMountStrategy(ctx.mounter, this.hooks, this.reg, this.domainId);
-    this.impl = new GatedBeforeStrategyDomainImpl(ctx, this.strategy, this.gate, this.strategyName === 'optional');
+    this.impl = new GatedBeforeStrategyDomainImpl(ctx, this.strategy, this.gate);
     this.impl.onEntered = this.onEntered;
     this.impl.onCompleted = this.onCompleted;
     return this.impl;
@@ -268,8 +265,7 @@ class GatedFailBeforeStrategyDomainImpl extends ExtensionDomainImplementation {
     ctx: DomainContext,
     readonly strategy: MountStrategy,
     private readonly gate: Promise<void>,
-    private readonly failingSubject: string,
-    declaresUnmount: boolean = true
+    private readonly failingSubject: string
   ) {
     super();
     ctx.registerHandler(ACTION_MOUNT_EXT, ActionHandler.fromFunction(async (_t, p) => {
@@ -280,9 +276,7 @@ class GatedFailBeforeStrategyDomainImpl extends ExtensionDomainImplementation {
       }
       return this.strategy.mount(p as { subject: string });
     }));
-    if (declaresUnmount) {
-      ctx.registerHandler(ACTION_UNMOUNT_EXT, ActionHandler.fromFunction((_t, p) => this.strategy.unmount!(p as { subject: string })));
-    }
+    ctx.registerHandler(ACTION_UNMOUNT_EXT, unmountHandlerFor(this.strategy));
   }
   protected getMountStrategies(): MountStrategy[] { return [this.strategy]; }
 }
@@ -301,8 +295,13 @@ class GatedFailBeforeStrategyDomainFactory extends ExtensionDomainImplementation
     this.strategy = this.strategyName === 'optional'
       ? new OptionalMountStrategy(ctx.mounter, this.hooks, this.reg, this.domainId)
       : new ExclusiveMountStrategy(ctx.mounter, this.hooks, this.reg, this.domainId);
-    return new GatedFailBeforeStrategyDomainImpl(ctx, this.strategy, this.gate, this.failingSubject, this.strategyName === 'optional');
+    return new GatedFailBeforeStrategyDomainImpl(ctx, this.strategy, this.gate, this.failingSubject);
   }
+}
+
+/** The `unmount_ext` handler a test domain registers for its strategy. */
+function unmountHandlerFor(strategy: MountStrategy): ActionHandler {
+  return ActionHandler.fromFunction((_t, p) => strategy.unmount!(p as { subject: string }));
 }
 
 class TestHooks implements ContainerHooks {
@@ -328,12 +327,10 @@ function makeExtension(id: string, domain: string): Extension {
   return { id, domain, entry: ENTRY_ID } as Extension;
 }
 
-function makeDomain(id: string, requireUnmount: boolean): ExtensionDomain {
+function makeDomain(id: string): ExtensionDomain {
   return {
     id,
-    actions: requireUnmount
-      ? [ACTION_LOAD_EXT, ACTION_MOUNT_EXT, ACTION_UNMOUNT_EXT]
-      : [ACTION_LOAD_EXT, ACTION_MOUNT_EXT],
+    actions: [ACTION_LOAD_EXT, ACTION_MOUNT_EXT, ACTION_UNMOUNT_EXT],
     extensionsActions: [],
     sharedProperties: [],
     defaultActionTimeout: 5000,
@@ -386,6 +383,7 @@ class ExclusiveDomainImpl extends ExtensionDomainImplementation {
   constructor(ctx: DomainContext, readonly strategy: ExclusiveMountStrategy) {
     super();
     ctx.registerHandler(ACTION_MOUNT_EXT, ActionHandler.fromFunction((_t, p) => this.strategy.mount(p as { subject: string })));
+    ctx.registerHandler(ACTION_UNMOUNT_EXT, unmountHandlerFor(this.strategy));
   }
   protected getMountStrategies(): MountStrategy[] { return [this.strategy]; }
 }
@@ -418,7 +416,7 @@ function wireProbe(registry: DefaultMfeRegistry, domainId: string, actionType: s
 
 /** Create and register a probe-host domain with Concurrent strategy (non-queueing). */
 function createProbeDomain(registry: DefaultMfeRegistry, probeDomainId: string): void {
-  registry.registerDomain(makeDomain(probeDomainId, true), new ConcurrentDomainFactory());
+  registry.registerDomain(makeDomain(probeDomainId), new ConcurrentDomainFactory());
 }
 
 describe('mount-ext prologue — end to end', () => {
@@ -437,7 +435,7 @@ describe('mount-ext prologue — end to end', () => {
       } else {
         factory = new ExclusiveDomainFactory(registry, domainId);
       }
-      registry.registerDomain(makeDomain(domainId, strategyName !== 'exclusive'), factory);
+      registry.registerDomain(makeDomain(domainId), factory);
 
       await registry.registerExtension(makeExtension('ext-a', domainId));
       const mounter = registry.getMounter(domainId);
@@ -474,7 +472,7 @@ describe('mount-ext prologue — end to end', () => {
     const domainId = 'domain-join-success';
     const registry = freshRegistry(plugin);
     const factory = new ConcurrentDomainFactory();
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     registry.getMounter(domainId).attach(document.createElement('div'));
 
@@ -507,11 +505,11 @@ describe('mount-ext prologue — end to end', () => {
     const otherDomainId = 'domain-not-eligible';
     const registry = freshRegistry(plugin);
     const factory = new ConcurrentDomainFactory();
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     // A second, unrelated domain to dispatch against — 'ext-a' is registered
     // to `domainId`, never to `otherDomainId`.
     const otherFactory = new ConcurrentDomainFactory();
-    registry.registerDomain(makeDomain(otherDomainId, true), otherFactory);
+    registry.registerDomain(makeDomain(otherDomainId), otherFactory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
 
     const fallbackFired = wireProbe(registry, otherDomainId, 'fallback-probe');
@@ -533,7 +531,7 @@ describe('mount-ext prologue — end to end', () => {
     const domainId = 'domain-await-unmount';
     const registry = freshRegistry(plugin);
     const factory = new ConcurrentDomainFactory();
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     const mounter = registry.getMounter(domainId);
     mounter.attach(document.createElement('div'));
@@ -568,7 +566,7 @@ describe('mount-ext prologue — end to end', () => {
     // mount request waits on fail deterministically.
     const registry = freshRegistry(plugin, new ThrowingUnmountHandler(ENTRY_ID));
     const factory = new ConcurrentDomainFactory();
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     const mounter = registry.getMounter(domainId);
     mounter.attach(document.createElement('div'));
@@ -594,7 +592,7 @@ describe('mount-ext prologue — end to end', () => {
     const domainId = 'domain-next-on-already-mounted';
     const registry = freshRegistry(plugin);
     const factory = new ConcurrentDomainFactory();
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     const mounter = registry.getMounter(domainId);
     mounter.attach(document.createElement('div'));
@@ -620,7 +618,7 @@ describe('mount-ext prologue — end to end', () => {
       const factory = strategyName === 'optional'
         ? new OptionalDomainFactory(registry, domainId)
         : new ExclusiveDomainFactory(registry, domainId);
-      registry.registerDomain(makeDomain(domainId, strategyName === 'optional'), factory);
+      registry.registerDomain(makeDomain(domainId), factory);
       await registry.registerExtension(makeExtension('ext-a', domainId));
       await registry.registerExtension(makeExtension('ext-b', domainId));
       registry.getMounter(domainId).attach(document.createElement('div'));
@@ -659,7 +657,7 @@ describe('mount-ext prologue — end to end', () => {
     const domainId = 'domain-overlapping-unmounts';
     const registry = freshRegistry(plugin);
     const factory = new ConcurrentDomainFactory();
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     const mounter = registry.getMounter(domainId);
     mounter.attach(document.createElement('div'));
@@ -695,7 +693,7 @@ describe('mount-ext prologue — end to end', () => {
     const domainId = 'domain-detach-races-mount';
     const registry = freshRegistry(plugin);
     const factory = new ConcurrentDomainFactory();
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     const mounter = registry.getMounter(domainId);
     mounter.attach(document.createElement('div'));
@@ -733,7 +731,7 @@ describe('mount-ext prologue — end to end', () => {
     const handler = new GatedCountingMountHandler(ENTRY_ID, gate.promise, () => mountStarted.resolve());
     const registry = freshRegistry(plugin, handler);
     const factory = new ConcurrentDomainFactory();
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     const mounter = registry.getMounter(domainId);
     const root = document.createElement('div');
@@ -791,7 +789,7 @@ describe('mount-ext prologue — end to end', () => {
     const domainId = 'domain-explicit-unmount-races-mount';
     const registry = freshRegistry(plugin);
     const factory = new OptionalDomainFactory(registry, domainId);
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     await registry.registerExtension(makeExtension('ext-b', domainId));
     registry.getMounter(domainId).attach(document.createElement('div'));
@@ -844,7 +842,7 @@ describe('mount-ext prologue — end to end', () => {
     const domainId = 'domain-explicit-unmount-races-detach';
     const registry = freshRegistry(plugin);
     const factory = new ConcurrentDomainFactory();
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     const mounter = registry.getMounter(domainId);
     mounter.attach(document.createElement('div'));
@@ -903,7 +901,7 @@ describe('mount-ext prologue — end to end', () => {
     const handler = new GatedMountHandler(ENTRY_ID, gate.promise);
     const registry = freshRegistry(plugin, handler);
     const factory = new ConcurrentDomainFactory();
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     const mounter = registry.getMounter(domainId);
     mounter.attach(document.createElement('div'));
@@ -973,7 +971,7 @@ describe('mount-ext prologue — end to end', () => {
     const handler = new GatedMountHandler(ENTRY_ID, gate.promise, true);
     const registry = freshRegistry(plugin, handler);
     const factory = new ConcurrentDomainFactory();
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     const mounter = registry.getMounter(domainId);
     mounter.attach(document.createElement('div'));
@@ -1051,7 +1049,7 @@ describe('mount-ext prologue — end to end', () => {
     }
 
     const factory = new GatedOnlyADomainFactory();
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     await registry.registerExtension(makeExtension('ext-b', domainId));
     registry.getMounter(domainId).attach(document.createElement('div'));
@@ -1092,7 +1090,7 @@ describe('mount-ext prologue — end to end', () => {
     const handler = new GatedUnmountHandler(ENTRY_ID, gate.promise, () => unmountStarted.resolve());
     const registry = freshRegistry(plugin, handler);
     const factory = new ConcurrentDomainFactory();
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     const root = document.createElement('div');
     const mounter = registry.getMounter(domainId);
@@ -1170,7 +1168,7 @@ describe('mount-ext prologue — end to end', () => {
     const handler = new GatedUnmountHandler(ENTRY_ID, gate.promise, () => unmountStarted.resolve());
     const registry = freshRegistry(plugin, handler);
     const factory = new ConcurrentDomainFactory();
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     const mounter = registry.getMounter(domainId);
     mounter.attach(document.createElement('div'));
@@ -1220,7 +1218,7 @@ describe('mount-ext prologue — end to end', () => {
     const handler = new GatedUnmountHandler(ENTRY_ID, gate.promise, () => unmountStarted.resolve());
     const registry = freshRegistry(plugin, handler);
     const factory = new ConcurrentDomainFactory();
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     const mounter = registry.getMounter(domainId);
     mounter.attach(document.createElement('div'));
@@ -1280,7 +1278,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
       const registry = freshRegistry(plugin);
       const gate = createDeferred();
       const factory = new GatedBeforeStrategyDomainFactory(registry, domainId, strategyName, gate.promise);
-      registry.registerDomain(makeDomain(domainId, strategyName === 'optional'), factory);
+      registry.registerDomain(makeDomain(domainId), factory);
       for (const id of ['ext-a', 'ext-b', 'ext-c', 'ext-d']) {
         await registry.registerExtension(makeExtension(id, domainId));
       }
@@ -1334,7 +1332,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
       const registry = freshRegistry(plugin);
       const gate = createDeferred();
       const factory = new GatedBeforeStrategyDomainFactory(registry, domainId, strategyName, gate.promise);
-      registry.registerDomain(makeDomain(domainId, strategyName === 'optional'), factory);
+      registry.registerDomain(makeDomain(domainId), factory);
       await registry.registerExtension(makeExtension('ext-a', domainId));
       await registry.registerExtension(makeExtension('ext-b', domainId));
       await registry.registerExtension(makeExtension('ext-c', domainId));
@@ -1389,7 +1387,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
       const registry = freshRegistry(plugin);
       const gate = createDeferred();
       const factory = new GatedBeforeStrategyDomainFactory(registry, domainId, strategyName, gate.promise);
-      registry.registerDomain(makeDomain(domainId, strategyName === 'optional'), factory);
+      registry.registerDomain(makeDomain(domainId), factory);
       await registry.registerExtension(makeExtension('ext-x', domainId));
       await registry.registerExtension(makeExtension('ext-a', domainId));
       await registry.registerExtension(makeExtension('ext-b', domainId));
@@ -1439,7 +1437,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
       const registry = freshRegistry(plugin);
       const gate = createDeferred();
       const factory = new GatedBeforeStrategyDomainFactory(registry, domainId, strategyName, gate.promise);
-      registry.registerDomain(makeDomain(domainId, strategyName === 'optional'), factory);
+      registry.registerDomain(makeDomain(domainId), factory);
       await registry.registerExtension(makeExtension('ext-a', domainId));
       await registry.registerExtension(makeExtension('ext-b', domainId));
       registry.getMounter(domainId).attach(document.createElement('div'));
@@ -1501,7 +1499,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
         const registry = freshRegistry(plugin);
         const gate = createDeferred();
         const factory = new GatedBeforeStrategyDomainFactory(registry, domainId, strategyName, gate.promise);
-        registry.registerDomain(makeDomain(domainId, strategyName === 'optional'), factory);
+        registry.registerDomain(makeDomain(domainId), factory);
         await registry.registerExtension(makeExtension('ext-a', domainId));
         await registry.registerExtension(makeExtension('ext-b', domainId));
         registry.getMounter(domainId).attach(document.createElement('div'));
@@ -1551,7 +1549,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
       const registry = freshRegistry(plugin);
       const gate = createDeferred();
       const factory = new GatedBeforeStrategyDomainFactory(registry, domainId, 'optional', gate.promise);
-      registry.registerDomain(makeDomain(domainId, true), factory);
+      registry.registerDomain(makeDomain(domainId), factory);
       await registry.registerExtension(makeExtension('ext-a', domainId));
       await registry.registerExtension(makeExtension('ext-b', domainId));
       registry.getMounter(domainId).attach(document.createElement('div'));
@@ -1623,7 +1621,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
       const registry = freshRegistry(plugin);
       const gate = createDeferred();
       const factory = new GatedBeforeStrategyDomainFactory(registry, domainId, 'optional', gate.promise);
-      registry.registerDomain(makeDomain(domainId, true), factory);
+      registry.registerDomain(makeDomain(domainId), factory);
       await registry.registerExtension(makeExtension('ext-a', domainId));
       await registry.registerExtension(makeExtension('ext-b', domainId));
       registry.getMounter(domainId).attach(document.createElement('div'));
@@ -1693,7 +1691,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
       const registry = freshRegistry(plugin);
       const gate = createDeferred();
       const factory = new GatedBeforeStrategyDomainFactory(registry, domainId, strategyName, gate.promise);
-      registry.registerDomain(makeDomain(domainId, strategyName === 'optional'), factory);
+      registry.registerDomain(makeDomain(domainId), factory);
       await registry.registerExtension(makeExtension('ext-a', domainId));
       await registry.registerExtension(makeExtension('ext-b', domainId));
       registry.getMounter(domainId).attach(document.createElement('div'));
@@ -1732,7 +1730,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
     const registry = freshRegistry(plugin);
     const gate = createDeferred();
     const factory = new GatedBeforeStrategyDomainFactory(registry, domainId, 'optional', gate.promise);
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-x', domainId));
     await registry.registerExtension(makeExtension('ext-b', domainId));
     registry.getMounter(domainId).attach(document.createElement('div'));
@@ -1784,7 +1782,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
     const registry = freshRegistry(plugin);
     const gate = createDeferred();
     const factory = new GatedBeforeStrategyDomainFactory(registry, domainId, 'optional', gate.promise);
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     await registry.registerExtension(makeExtension('ext-x', domainId));
     registry.getMounter(domainId).attach(document.createElement('div'));
@@ -1825,7 +1823,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
     const registry = freshRegistry(plugin);
     const gate = createDeferred();
     const factory = new GatedBeforeStrategyDomainFactory(registry, domainId, 'optional', gate.promise);
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     registry.getMounter(domainId).attach(document.createElement('div'));
 
@@ -1857,7 +1855,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
     const registry = freshRegistry(plugin);
     const gate = createDeferred();
     const factory = new GatedFailBeforeStrategyDomainFactory(registry, domainId, 'optional', gate.promise, 'ext-a');
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     registry.getMounter(domainId).attach(document.createElement('div'));
 
@@ -1896,7 +1894,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
     const registry = freshRegistry(plugin);
     const gate = createDeferred();
     const factory = new GatedBeforeStrategyDomainFactory(registry, domainId, 'optional', gate.promise);
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-x', domainId));
     await registry.registerExtension(makeExtension('ext-a', domainId));
     registry.getMounter(domainId).attach(document.createElement('div'));
@@ -1946,7 +1944,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
     const registry = freshRegistry(plugin);
     const gate = createDeferred();
     const factory = new GatedBeforeStrategyDomainFactory(registry, domainId, 'optional', gate.promise);
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-x', domainId));
     await registry.registerExtension(makeExtension('ext-a', domainId));
     registry.getMounter(domainId).attach(document.createElement('div'));
@@ -1996,7 +1994,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
     const domainId = 'domain-unmount-absent';
     const registry = freshRegistry(plugin);
     const factory = new OptionalDomainFactory(registry, domainId);
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     registry.getMounter(domainId).attach(document.createElement('div'));
 
@@ -2025,7 +2023,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
       const registry = freshRegistry(plugin);
       const gate = createDeferred();
       const factory = new GatedBeforeStrategyDomainFactory(registry, domainId, strategyName, gate.promise);
-      registry.registerDomain(makeDomain(domainId, strategyName === 'optional'), factory);
+      registry.registerDomain(makeDomain(domainId), factory);
       createProbeDomain(registry, probeDomainId);
       await registry.registerExtension(makeExtension('ext-a', domainId));
       await registry.registerExtension(makeExtension('ext-b', domainId));
@@ -2049,11 +2047,14 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
       await bFallback;
 
       gate.resolve();
-      await Promise.race([aNext, aFallback]);
+      const aOutcome = await Promise.race([aNext.then(() => 'next'), aFallback.then(() => 'fallback')]);
       await unregisterPromise;
 
-      // Running entry A entered and completed: A is mounted, B never was.
-      // Pending B never started: no container was created for B.
+      // Running entry A entered, was unregistered mid-mount and failed, so its
+      // chain took its fallback and nothing stayed mounted. Pending B never
+      // started: no container was created for B.
+      expect(aOutcome).toBe('fallback');
+      expect(registry.getMountedExtensions(domainId)).toEqual([]);
       expect(factory.hooks.created).toEqual(['ext-a']);
       expect(factory.impl.entries.has('ext-a')).toBe(true);
       expect(factory.impl.entries.has('ext-b')).toBe(false);
@@ -2074,7 +2075,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
         const completed = createDeferred();
         factory.onEntered = (subject) => { if (subject === 'ext-a') entered.resolve(); };
         factory.onCompleted = (subject) => { if (subject === 'ext-a') completed.resolve(); };
-        registry.registerDomain(makeDomain(domainId, strategyName === 'optional'), factory);
+        registry.registerDomain(makeDomain(domainId), factory);
         createProbeDomain(registry, probeDomainId);
         await registry.registerExtension(makeExtension('ext-a', domainId));
         await registry.registerExtension(makeExtension('ext-b', domainId));
@@ -2151,7 +2152,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
           new GatedUnmountHandler(ENTRY_ID, teardownGate.promise, () => teardownStarted.resolve())
         );
         const factory = new GatedBeforeStrategyDomainFactory(registry, domainId, strategyName, Promise.resolve());
-        registry.registerDomain(makeDomain(domainId, strategyName === 'optional'), factory);
+        registry.registerDomain(makeDomain(domainId), factory);
         createProbeDomain(registry, probeDomainId);
         await registry.registerExtension(makeExtension('ext-a', domainId));
         await registry.registerExtension(makeExtension('ext-b', domainId));
@@ -2210,7 +2211,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
           new GatedUnmountHandler(ENTRY_ID, teardownGate.promise, () => teardownStarted.resolve())
         );
         const factory = new GatedBeforeStrategyDomainFactory(registry, domainId, strategyName, Promise.resolve());
-        registry.registerDomain(makeDomain(domainId, strategyName === 'optional'), factory);
+        registry.registerDomain(makeDomain(domainId), factory);
         createProbeDomain(registry, probeDomainId);
         await registry.registerExtension(makeExtension('ext-a', domainId));
         registry.getMounter(domainId).attach(document.createElement('div'));
@@ -2269,7 +2270,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
       // window without ever removing 'ext-a'.
       const gate = createDeferred();
       const factory = new GatedFailBeforeStrategyDomainFactory(registry, domainId, strategyName, gate.promise, 'ext-g');
-      registry.registerDomain(makeDomain(domainId, strategyName === 'optional'), factory);
+      registry.registerDomain(makeDomain(domainId), factory);
       await registry.registerExtension(makeExtension('ext-a', domainId));
       await registry.registerExtension(makeExtension('ext-g', domainId));
       registry.getMounter(domainId).attach(document.createElement('div'));
@@ -2319,7 +2320,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
     const handler = new GatedUnmountHandler(ENTRY_ID, unmountGate.promise, () => unmountStarted.resolve());
     const registry = freshRegistry(plugin, handler);
     const factory = new OptionalDomainFactory(registry, domainId);
-    registry.registerDomain(makeDomain(domainId, true), factory);
+    registry.registerDomain(makeDomain(domainId), factory);
     await registry.registerExtension(makeExtension('ext-a', domainId));
     const mounter = registry.getMounter(domainId);
     mounter.attach(document.createElement('div'));
@@ -2369,7 +2370,7 @@ describe('domain occupancy queue — two-slot semantics (Optional/Exclusive)', (
     const plugin = createPlugin();
     const domainId = 'domain-failed-unregister';
     const registry = freshRegistry(plugin, new ThrowingUnmountHandler(ENTRY_ID));
-    registry.registerDomain(makeDomain(domainId, true), new OptionalDomainFactory(registry, domainId));
+    registry.registerDomain(makeDomain(domainId), new OptionalDomainFactory(registry, domainId));
     await registry.registerExtension(makeExtension('ext-a', domainId));
     await registry.registerExtension(makeExtension('ext-b', domainId));
     const mounter = registry.getMounter(domainId);

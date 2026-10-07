@@ -76,7 +76,9 @@ function makeConcurrentHandler(
     timeoutResolver,
     domainReader,
     undefined,
-    joiner
+    joiner,
+    undefined,
+    () => []
   );
 }
 
@@ -96,7 +98,9 @@ function makeQueueHandler(
     timeoutResolver,
     domainReader,
     queue,
-    undefined
+    undefined,
+    undefined,
+    () => []
   );
 }
 
@@ -463,7 +467,9 @@ describe('UnmountExtActionHandler / MountExtActionHandler — same-domain occupa
       timeoutResolver,
       domainReader,
       queue,
-      undefined
+      undefined,
+      undefined,
+      () => []
     );
 
     // First mount(A): running, gated open.
