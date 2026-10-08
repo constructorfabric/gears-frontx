@@ -2334,7 +2334,7 @@ describe('MfeHandlerMF — undeclared shared-dep specifier diagnostic (warn, nev
  * nested registry constructed there never adopts its inbound bridge and the
  * MFE never learns its extension and domain.
  */
-describe('MfeHandlerMF — stylesheet wrapper keeps the mount contract', () => {
+describe('MfeHandlerMF - stylesheet wrapper keeps the mount contract', () => {
   class InertBridge extends ChildMfeBridge {
     readonly extDomainId = 'mock.domain';
     readonly extensionId = 'mock.extension';

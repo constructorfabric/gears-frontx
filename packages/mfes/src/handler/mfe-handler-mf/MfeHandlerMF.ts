@@ -941,8 +941,8 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       // Synchronous on purpose: the mount manager's rendezvous window covers
       // only the synchronous part of this call, so any await before the MFE's
       // own mount would close it and a registry built there would come up as
-      // a root. The link elements are appended before the MFE renders, and
-      // their loading was never awaited, so first paint is unchanged.
+      // a root. The link elements are appended before the MFE renders and
+      // their loading is not awaited, so first paint does not wait on it.
       mount: (container, bridge, mountContext) => {
         this.injectRemoteStylesheets(container, stylesheetPaths, baseUrl);
         return lifecycle.mount(container, bridge, mountContext);
