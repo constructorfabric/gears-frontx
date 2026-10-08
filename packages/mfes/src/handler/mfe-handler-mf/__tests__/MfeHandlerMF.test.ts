@@ -13,6 +13,8 @@
  *    source is an inline-content URL this load minted — no origin URL and
  *    no unrewritten bare specifier survives anywhere;
  *  - deterministic (cycle) failures not being retried;
+ *  - the stylesheet-injecting lifecycle wrapper staying transparent to the
+ *    mount contract (mount context, synchronous rendezvous window);
  *  - `LruCache` capacity eviction and MRU re-insertion.
  *
  * On the `publicPath` guard specifically: Module Federation emits
@@ -55,6 +57,15 @@ import { LruCache } from '../LruCache';
 import { MfeLoadError } from '../../../errors';
 import type { MfeEntryMF } from '../../../types/mfe-entry-mf';
 import type { MfManifest, MfManifestShared } from '../../../manifest/mf-manifest';
+import { ChildMfeBridge } from '../../ChildMfeBridge';
+import type { MfeMountContext } from '../../MfeHandler';
+import {
+  adoptAmbientInboundBridgeLink,
+  popAmbientMountingBridge,
+  pushAmbientMountingBridge,
+  registerInboundBridgeLink,
+  type InboundBridgeLink,
+} from '../../../runtime/inbound-bridge-link';
 
 // The shared-dependency source-text cache is REALM-shared
 // (`RealmSharedDepTextCacheProvider.getCache`, `RealmSharedDepTextCacheProvider.ts`) — every
@@ -2311,5 +2322,131 @@ describe('MfeHandlerMF — undeclared shared-dep specifier diagnostic (warn, nev
     blobModuleStub.current = undefined;
     warnSpy.mockRestore();
     fetchSpy.mockRestore();
+  });
+});
+
+/**
+ * An entry that declares stylesheets gets its lifecycle wrapped so the
+ * stylesheets land in the shadow root at mount. `DefaultMountManager` opens
+ * the mount-context rendezvous only for the synchronous portion of
+ * `lifecycle.mount(...)` and passes the host's `mountContext` as the third
+ * argument; the wrapper must deliver both to the MFE's own `mount`, or a
+ * nested registry constructed there never adopts its inbound bridge and the
+ * MFE never learns its extension and domain.
+ */
+describe('MfeHandlerMF — stylesheet wrapper keeps the mount contract', () => {
+  class InertBridge extends ChildMfeBridge {
+    readonly extDomainId = 'mock.domain';
+    readonly extensionId = 'mock.extension';
+    executeActionsChain(): void {}
+    subscribeToProperty(): () => void {
+      return () => {};
+    }
+    getProperty(): undefined {
+      return undefined;
+    }
+    registerActionHandler(): void {}
+  }
+
+  interface MountObservation {
+    mountContext: MfeMountContext | undefined;
+    adoptedLink: InboundBridgeLink | undefined;
+    stylesheetHrefs: string[];
+  }
+
+  // `extensionId` keys the handler's class-wide load cache, so each test
+  // passes its own to get a lifecycle closed over its own `observations`.
+  async function loadStyledLifecycle(
+    extensionId: string,
+    observations: MountObservation[]
+  ) {
+    const entry = buildEntry(buildManifest(PUBLIC_PATH));
+    entry.exposeAssets.css.sync = ['assets/style.css'];
+    const { fetchImpl } = createFetchRouter({
+      'lifecycle.js': { body: 'export default {};' },
+    });
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(fetchImpl as typeof fetch);
+    blobModuleStub.current = {
+      default: {
+        mount: (
+          container: Element | ShadowRoot,
+          _bridge: ChildMfeBridge,
+          mountContext?: MfeMountContext
+        ): void => {
+          observations.push({
+            mountContext,
+            // What a `DefaultMfeRegistry` constructed inside this mount reads.
+            adoptedLink: adoptAmbientInboundBridgeLink(() => {}),
+            stylesheetHrefs: Array.from(
+              container.querySelectorAll('link'),
+              (link) => link.href
+            ),
+          });
+        },
+        unmount: (): void => {},
+      },
+    };
+    try {
+      return await new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+        entry,
+        extensionId
+      );
+    } finally {
+      blobModuleStub.current = undefined;
+      fetchSpy.mockRestore();
+    }
+  }
+
+  it('passes the host mount context through to the MFE mount', async () => {
+    const observations: MountObservation[] = [];
+    const lifecycle = await loadStyledLifecycle('ext-styled-context', observations);
+    const mountContext: MfeMountContext = {
+      extensionId: 'mock.extension',
+      domainId: 'mock.domain',
+    };
+
+    await lifecycle.mount(
+      document.createElement('div').attachShadow({ mode: 'open' }),
+      new InertBridge(),
+      mountContext
+    );
+
+    expect(observations).toHaveLength(1);
+    expect(observations[0].mountContext).toBe(mountContext);
+  });
+
+  it('runs the MFE mount inside the synchronous rendezvous window, after its stylesheets are in the shadow root', async () => {
+    const observations: MountObservation[] = [];
+    const lifecycle = await loadStyledLifecycle('ext-styled-rendezvous', observations);
+    const bridge = new InertBridge();
+    const link: InboundBridgeLink = {
+      edge: bridge,
+      propagateAdvertisement: () => true,
+      retractAdvertisement: () => {},
+      escalate: () => {},
+    };
+    registerInboundBridgeLink(bridge, link);
+
+    // The same push / synchronous call / pop sequence `DefaultMountManager`
+    // runs around `lifecycle.mount`.
+    pushAmbientMountingBridge(bridge);
+    let pending: void | Promise<void>;
+    try {
+      pending = lifecycle.mount(
+        document.createElement('div').attachShadow({ mode: 'open' }),
+        bridge
+      );
+    } finally {
+      popAmbientMountingBridge();
+    }
+    await pending;
+
+    expect(observations).toHaveLength(1);
+    expect(observations[0].adoptedLink).toBe(link);
+    expect(observations[0].stylesheetHrefs).toEqual([
+      `${PUBLIC_PATH}assets/style.css`,
+    ]);
   });
 });

@@ -937,10 +937,17 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 
     return {
       // @cpt-begin:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-active
-      mount: async (container, bridge) => {
-        await this.injectRemoteStylesheets(container, stylesheetPaths, baseUrl);
-        await lifecycle.mount(container, bridge);
+      // @cpt-begin:cpt-frontx-algo-mfe-host-communication-registration-propagation:p2:inst-track-mounting-bridge
+      // Synchronous on purpose: the mount manager's rendezvous window covers
+      // only the synchronous part of this call, so any await before the MFE's
+      // own mount would close it and a registry built there would come up as
+      // a root. The link elements are appended before the MFE renders, and
+      // their loading was never awaited, so first paint is unchanged.
+      mount: (container, bridge, mountContext) => {
+        this.injectRemoteStylesheets(container, stylesheetPaths, baseUrl);
+        return lifecycle.mount(container, bridge, mountContext);
       },
+      // @cpt-end:cpt-frontx-algo-mfe-host-communication-registration-propagation:p2:inst-track-mounting-bridge
       // @cpt-end:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-active
       // @cpt-begin:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-disposed
       unmount: async (container) => {
@@ -952,11 +959,11 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   }
   // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-cache-promise
 
-  private async injectRemoteStylesheets(
+  private injectRemoteStylesheets(
     container: Element | ShadowRoot,
     stylesheetPaths: string[],
     baseUrl: string
-  ): Promise<void> {
+  ): void {
     stylesheetPaths.forEach((path, index) => {
       const targetId = `${RUNTIME_STYLE_ID_PREFIX}${index}`;
       this.upsertStyleElement(
