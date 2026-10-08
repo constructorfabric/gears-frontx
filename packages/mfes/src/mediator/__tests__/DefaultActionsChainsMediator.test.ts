@@ -402,6 +402,69 @@ describe('DefaultActionsChainsMediator — failure causes lead to `fallback`', (
   });
 });
 
+describe('DefaultActionsChainsMediator — missing-handler warning', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it.each([
+    ['whose target is not registered', 'unregistered-target'],
+    ['whose target has no handler for its type', 'domain-1'],
+  ])('logs the target, action type and payload of an action %s', async (_case, target) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const mediator = makeMediator();
+    const fallback = recordingHandler();
+    mediator.registerHandler('domain-1', ACTION_C, fallback.handler);
+    const payload = { subject: 'ext-1' };
+
+    mediator.executeActionsChain({
+      action: { type: ACTION_A, target, payload },
+      fallback: { action: { type: ACTION_C, target: 'domain-1' } },
+    });
+
+    await fallback.reached.promise;
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      `[ActionsChainsMediator] No handler found for target '${target}' and action type '${ACTION_A}'; payload:`,
+      payload
+    );
+  });
+
+  it('does not log an action whose handler resolves and then fails', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const mediator = makeMediator();
+    const fallback = recordingHandler();
+    mediator.registerHandler('domain-1', ACTION_A, failing());
+    mediator.registerHandler('domain-1', ACTION_C, fallback.handler);
+
+    mediator.executeActionsChain({
+      action: { type: ACTION_A, target: 'domain-1' },
+      fallback: { action: { type: ACTION_C, target: 'domain-1' } },
+    });
+
+    await fallback.reached.promise;
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('an action handed over to a runtime with no handler for it is logged once, by that runtime', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const farFallback = recordingHandler();
+    const far = makeMediator();
+    far.registerHandler('domain-1', ACTION_C, farFallback.handler);
+    const near = makeMediator({
+      resolveForwardingEntry: () => new CrossHopRoute((envelope) => far.receiveHandedOverChain(envelope.chain)),
+    });
+
+    near.executeActionsChain({
+      action: { type: ACTION_A, target: 'domain-1', payload: { subject: 'ext-1' } },
+      fallback: { action: { type: ACTION_C, target: 'domain-1' } },
+    });
+
+    await farFallback.reached.promise;
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('DefaultActionsChainsMediator — hand-over across a hop', () => {
   it('hands the sub-chain — the action with its `next` and `fallback` — over in a versioned envelope', async () => {
     const envelopes: CrossHopEnvelope[] = [];

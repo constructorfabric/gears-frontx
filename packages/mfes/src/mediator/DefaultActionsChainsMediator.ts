@@ -146,9 +146,15 @@ export class DefaultActionsChainsMediator extends ActionsChainsMediator {
       // @cpt-begin:cpt-frontx-algo-mfe-host-communication-mediator-dispatch:p1:inst-no-handler
       // @cpt-begin:cpt-frontx-state-mfe-host-communication-action-lifecycle:p2:inst-t-pending-failed-refused
       if (!resolved) {
+        const error = new NoHandlerForActionTargetError(action.target, action.type);
+        // @cpt-begin:cpt-frontx-flow-mfe-host-communication-dispatch-chain:p1:inst-no-handler-log
+        // @cpt-begin:cpt-frontx-algo-mfe-host-communication-mediator-dispatch:p1:inst-log-no-handler
+        console.warn(`[ActionsChainsMediator] ${error.message}; payload:`, action.payload);
+        // @cpt-end:cpt-frontx-algo-mfe-host-communication-mediator-dispatch:p1:inst-log-no-handler
+        // @cpt-end:cpt-frontx-flow-mfe-host-communication-dispatch-chain:p1:inst-no-handler-log
         // @cpt-begin:cpt-frontx-flow-mfe-host-communication-dispatch-chain:p1:inst-no-handler-fallback
         // @cpt-begin:cpt-frontx-algo-mfe-host-communication-mediator-dispatch:p1:inst-throw-no-handler
-        throw new NoHandlerForActionTargetError(action.target, action.type);
+        throw error;
         // @cpt-end:cpt-frontx-algo-mfe-host-communication-mediator-dispatch:p1:inst-throw-no-handler
         // @cpt-end:cpt-frontx-flow-mfe-host-communication-dispatch-chain:p1:inst-no-handler-fallback
       }
