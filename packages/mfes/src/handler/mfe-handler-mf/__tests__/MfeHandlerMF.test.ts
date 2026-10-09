@@ -2358,9 +2358,10 @@ describe('MfeHandlerMF - stylesheet wrapper keeps the mount contract', () => {
   // passes its own to get a lifecycle closed over its own `observations`.
   async function loadStyledLifecycle(
     extensionId: string,
-    observations: MountObservation[]
+    observations: MountObservation[],
+    publicPath: string = PUBLIC_PATH
   ) {
-    const entry = buildEntry(buildManifest(PUBLIC_PATH));
+    const entry = buildEntry(buildManifest(publicPath));
     entry.exposeAssets.css.sync = ['assets/style.css'];
     const { fetchImpl } = createFetchRouter({
       'lifecycle.js': { body: 'export default {};' },
@@ -2447,6 +2448,21 @@ describe('MfeHandlerMF - stylesheet wrapper keeps the mount contract', () => {
     expect(observations[0].adoptedLink).toBe(link);
     expect(observations[0].stylesheetHrefs).toEqual([
       `${PUBLIC_PATH}assets/style.css`,
+    ]);
+  });
+
+  it('resolves stylesheet hrefs against the host document when publicPath is root-relative', async () => {
+    const observations: MountObservation[] = [];
+    const lifecycle = await loadStyledLifecycle('ext-styled-root-relative', observations, '/');
+
+    await lifecycle.mount(
+      document.createElement('div').attachShadow({ mode: 'open' }),
+      new InertBridge()
+    );
+
+    expect(observations).toHaveLength(1);
+    expect(observations[0].stylesheetHrefs).toEqual([
+      `${window.location.origin}/assets/style.css`,
     ]);
   });
 });

@@ -964,11 +964,17 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     stylesheetPaths: string[],
     baseUrl: string
   ): void {
+    // A root-relative publicPath such as '/' or '/assets/' is valid manifest
+    // data, and the chunk fetches built from it resolve against the host
+    // document. `new URL(path, '/')` throws on a base without a scheme, so the
+    // base is resolved against `document.baseURI` first; an absolute
+    // publicPath resolves to itself, independent of the host document.
+    const base = new URL(baseUrl, document.baseURI);
     stylesheetPaths.forEach((path, index) => {
       const targetId = `${RUNTIME_STYLE_ID_PREFIX}${index}`;
       this.upsertStyleElement(
         container,
-        { href: new URL(path, baseUrl).href },
+        { href: new URL(path, base).href },
         targetId
       );
     });
