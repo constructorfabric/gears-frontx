@@ -8,16 +8,16 @@ These rules are loaded alongside the generated rules in `{cf-studio-path}/.gen/A
 ## Contribution Workflow Binding
 
 ```pdsl
-UNIT DevelopConflictResolution
+UNIT MainConflictResolution
 
 PURPOSE:
-  Bind conflict resolution with `develop` to the contribution workflow in `CONTRIBUTING.md`.
+  Bind conflict resolution with `main` to the contribution workflow in `CONTRIBUTING.md`.
 
 WHEN:
-  - REQUIRE resolving conflicts with `develop` on any branch with a PR targeting `develop`
+  - REQUIRE resolving conflicts with `main` on any branch with a PR targeting `main`
 
 DO:
-  - LOAD the "Resolving Conflicts with `develop`" section of `CONTRIBUTING.md` and follow its procedure
+  - LOAD the "Resolving Conflicts with `main`" section of `CONTRIBUTING.md` and follow its procedure
 ```
 
 ```pdsl
