@@ -102,6 +102,8 @@ User-facing interactions that start with an actor and describe the end-to-end fl
    6. [x] - `p1` - **IF** lifecycle contract not satisfied - `inst-if-bad-lifecycle`
       1. [x] - `p1` - System evicts the cache entry and raises an MFE load error - `inst-evict-raise`
    7. [x] - `p1` - System wraps the lifecycle with stylesheet injection logic and records the load promise in the instance-keyed cache - `inst-cache-promise`
+      1. [x] - `p1` - The stylesheet wrapper's `mount` passes every argument it receives to the microfrontend's own `mount`, `mountContext` included. It calls that `mount` within the same synchronous call and returns its result. It may insert the stylesheets first, but it never awaits before the call. This keeps open the synchronous window in which the mount manager records the mounting bridge (`cpt-frontx-algo-mfe-host-communication-registration-propagation`) - `inst-wrap-mount-synchronous`
+      2. [x] - `p1` - The stylesheet wrapper's `unmount` awaits the microfrontend's own `unmount` first. It removes the injected stylesheets afterwards, in a `finally`. The microfrontend stays styled while its asynchronous unmount is pending, and the stylesheets are removed even when that unmount throws - `inst-wrap-unmount-styles-last`
 6. [x] - `p1` - Actor mounts the returned lifecycle into the target domain container - `inst-actor-mount`
 7. [x] - `p1` - **RETURN** the mounted lifecycle instance - `inst-return-lifecycle`
 
@@ -357,5 +359,7 @@ The system **MUST** accept an entry's manifest either as the document itself or 
 - [x] A declared shared-dependency name that survives the rewrite as a bare specifier fails the load with a diagnostic naming the chunk, the surviving specifier, and the microfrontend.
 - [x] An undeclared, well-formed specifier that survives the rewrite is reported in a diagnostic naming the chunk, the specifier, and the microfrontend, and the load completes rather than failing.
 - [x] The adoption notice emitted when a shared dependency's manifest entry carries no content hash is deduplicated per package `name@version` and the manifest's own id, not per load, so distinct manifests declaring the same name and version each surface exactly one notice while repeated loads of the same manifest surface none after the first.
+- [x] For an entry that declares stylesheets, the wrapped lifecycle's `mount` delivers the shadow root, the child bridge and `mountContext` to the microfrontend's `mount` unchanged and calls it within the same synchronous call, after the stylesheets are in the shadow root, so a registry the microfrontend constructs during its mount adopts the mounting bridge instead of coming up as a root
+- [x] For an entry that declares stylesheets, the wrapped lifecycle's `unmount` leaves the stylesheets in the shadow root while the microfrontend's own `unmount` is pending and removes them once it settles, whether it resolves or rejects
 - [ ] An entry whose manifest is named by id loads when the manifest is registered with the type system of the registry the handler was registered into, without the id ever being cached by an earlier load
 - [ ] An entry whose manifest id no source resolves fails the load with a diagnostic naming that reference, both when a type system was supplied and when the handler belongs to no registry

@@ -937,31 +937,53 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 
     return {
       // @cpt-begin:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-active
-      mount: async (container, bridge) => {
-        await this.injectRemoteStylesheets(container, stylesheetPaths, baseUrl);
-        await lifecycle.mount(container, bridge);
+      // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-wrap-mount-synchronous
+      // Synchronous on purpose: the mount manager's rendezvous window covers
+      // only the synchronous part of this call, so any await before the MFE's
+      // own mount would close it and a registry built there would come up as
+      // a root. The link elements are appended before the MFE renders and
+      // their loading is not awaited, so first paint does not wait on it.
+      mount: (container, bridge, mountContext) => {
+        this.injectRemoteStylesheets(container, stylesheetPaths, baseUrl);
+        return lifecycle.mount(container, bridge, mountContext);
       },
+      // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-wrap-mount-synchronous
       // @cpt-end:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-active
       // @cpt-begin:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-disposed
+      // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-wrap-unmount-styles-last
+      // The host keeps the container attached while an asynchronous unmount
+      // is pending, so the stylesheets must outlive the MFE's own unmount or
+      // the MFE stays on screen unstyled until it is gone. The `finally`
+      // removes them even when that unmount throws.
       unmount: async (container) => {
-        this.removeInjectedStylesheets(container);
-        await lifecycle.unmount(container);
+        try {
+          await lifecycle.unmount(container);
+        } finally {
+          this.removeInjectedStylesheets(container);
+        }
       },
+      // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-wrap-unmount-styles-last
       // @cpt-end:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-disposed
     };
   }
   // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-cache-promise
 
-  private async injectRemoteStylesheets(
+  private injectRemoteStylesheets(
     container: Element | ShadowRoot,
     stylesheetPaths: string[],
     baseUrl: string
-  ): Promise<void> {
+  ): void {
+    // A root-relative publicPath such as '/' or '/assets/' is valid manifest
+    // data, and the chunk fetches built from it resolve against the host
+    // document. `new URL(path, '/')` throws on a base without a scheme, so the
+    // base is resolved against `document.baseURI` first; an absolute
+    // publicPath resolves to itself, independent of the host document.
+    const base = new URL(baseUrl, document.baseURI);
     stylesheetPaths.forEach((path, index) => {
       const targetId = `${RUNTIME_STYLE_ID_PREFIX}${index}`;
       this.upsertStyleElement(
         container,
-        { href: new URL(path, baseUrl).href },
+        { href: new URL(path, base).href },
         targetId
       );
     });
