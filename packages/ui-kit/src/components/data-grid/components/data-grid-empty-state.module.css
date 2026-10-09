@@ -1,0 +1,6 @@
+/* Centres the placeholder in the grid's main region. `flex: none` undoes Empty's own
+   `flex: 1 1 0%`, which would stretch it over the whole region. */
+.emptyState {
+  flex: none;
+  margin: auto;
+}

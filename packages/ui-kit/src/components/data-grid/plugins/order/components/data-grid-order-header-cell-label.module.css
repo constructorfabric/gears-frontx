@@ -1,0 +1,9 @@
+.orderLabel {
+  all: unset;
+  cursor: pointer;
+}
+
+.orderLabel:focus-visible {
+  outline: var(--border-width-focus) solid var(--ring);
+  outline-offset: 2px;
+}

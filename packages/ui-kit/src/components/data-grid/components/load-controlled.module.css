@@ -1,0 +1,6 @@
+/* Centres the stand-in in the flex column the grid lays itself out in. `flex: none` undoes
+   Empty's own `flex: 1 1 0%`, which would stretch it over the whole region. */
+.center {
+  flex: none;
+  margin: auto;
+}

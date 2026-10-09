@@ -13,7 +13,7 @@
 # from a component the page never imported (Table, Dialog — both have large,
 # distinctive CSS) absent.
 #
-# FOUR bundler-facing legs, not one, plus a types leg. This is not
+# FIVE bundler-facing legs, not one, plus a types leg. This is not
 # belt-and-braces — each guards something the others provably do not:
 #
 #   - [vite]: the ecosystem's own tooling; primary consumer check.
@@ -58,6 +58,15 @@
 #     [esbuild-barrel]'s assertions: a barrel entry cannot pass a CSS-absence
 #     check under esbuild today, and asserting it there would either be a
 #     permanently-red check or a silently-weakened one.
+#   - [esbuild-data-grid]: importing only the DataGrid core entry
+#     (`@gears-frontx/ui-kit/data-grid`) through raw esbuild. Exists because
+#     DataGrid's plugins are entries of their own
+#     (`@gears-frontx/ui-kit/data-grid/<plugin>`) and the core must not reach
+#     them: one stray import of a plugin module from the core would put that
+#     plugin's JS and CSS into every grid, with nothing else here noticing -
+#     the other legs never import DataGrid. Same bundler and same reason as
+#     [esbuild-subpath] (esbuild keeps every CSS file a module graph reaches),
+#     asserting presence of the core's own class and absence of each plugin's.
 #   - [webpack]: the barrel import through webpack 5 in production mode.
 #     Exists because webpack is the one bundler here that actually READS
 #     `sideEffects` from package.json — and the one bundler none of the
@@ -133,7 +142,13 @@ extract_hashed_class() {
 BUTTON_CLASS="$(extract_hashed_class "$UIKIT_DIR/dist/button.js" 'variantOutline')"
 TABLE_CLASS="$(extract_hashed_class "$UIKIT_DIR/dist/table.js" 'tableCaption')"
 DIALOG_CLASS="$(extract_hashed_class "$UIKIT_DIR/dist/dialog.js" 'backdrop')"
-for probe_name in BUTTON_CLASS TABLE_CLASS DIALOG_CLASS; do
+# DataGrid: one probe from the core entry, one from each plugin entry. The core
+# must stay free of every plugin's code and CSS (see [esbuild-data-grid] below).
+DATA_GRID_CLASS="$(extract_hashed_class "$UIKIT_DIR/dist/data-grid.js" 'dataGridLayoutMain')"
+DATA_GRID_PAGINATION_CLASS="$(extract_hashed_class "$UIKIT_DIR/dist/data-grid/pagination.js" 'pager')"
+DATA_GRID_ORDER_CLASS="$(extract_hashed_class "$UIKIT_DIR/dist/data-grid/order.js" 'orderPopover')"
+DATA_GRID_TEXT_SEARCH_CLASS="$(extract_hashed_class "$UIKIT_DIR/dist/data-grid/text-search.js" 'searchInput')"
+for probe_name in BUTTON_CLASS TABLE_CLASS DIALOG_CLASS DATA_GRID_CLASS DATA_GRID_PAGINATION_CLASS DATA_GRID_ORDER_CLASS DATA_GRID_TEXT_SEARCH_CLASS; do
   if [ -z "${!probe_name}" ]; then
     echo "FAIL: could not extract a hashed class probe ($probe_name) from dist/ — did a component's local class names change?"
     exit 1
@@ -154,7 +169,7 @@ echo "==> Probes: Button=$BUTTON_CLASS Table=$TABLE_CLASS Dialog=$DIALOG_CLASS"
 # reason. input-group/native-select/pagination compose Button/Input/
 # Textarea/Separator as plain JSX (no hook of their own), same as card/
 # table/tabs above.
-CLIENT_COMPONENTS=(attachment badge breadcrumb bubble button-group carousel chart combobox context-menu data-table drawer dropdown-menu marker sidebar status-dot table toast)
+CLIENT_COMPONENTS=(attachment badge breadcrumb bubble button-group carousel chart combobox context-menu data-grid data-table drawer dropdown-menu marker sidebar status-dot table toast)
 SERVER_COMPONENTS=(accordion alert alert-dialog aspect-ratio avatar button calendar card checkbox collapsible command date-picker dialog direction empty field hover-card input input-group input-otp item kbd label menubar message message-scroller native-select navigation-menu pagination popover progress questionnaire radio-group resizable scroll-area select separator sheet skeleton slider spinner switch tabs textarea toggle toggle-group tooltip)
 
 in_list() {
@@ -289,6 +304,35 @@ for name in "${SERVER_COMPONENTS[@]}" index; do
   fi
 done
 echo "==> 'use client': present on ${CLIENT_COMPONENTS[*]}, absent elsewhere (${#ALL_COMPONENTS[@]} components accounted for)"
+
+# The built-in plugins of a component are entries of their own
+# (src/components/<name>/plugins/<plugin>/public.ts, published as
+# dist/<name>/<plugin>.js). Each is rendered as a child of <DataGrid>, so a
+# Server Component can import and render it, and the component it returns calls
+# hooks: every one needs the banner. Its directive sits in a nested source file
+# that client-boundaries.test.ts (which scans a component's top-level files only)
+# does not read, so the built banner is checked here, against the source's own
+# list of plugin entries so a plugin that ships without one is not skipped.
+PLUGIN_ENTRY_COUNT=0
+for entry in "$UIKIT_DIR"/src/components/*/plugins/*/public.ts; do
+  component="$(basename "$(dirname "$(dirname "$(dirname "$entry")")")")"
+  plugin="$(basename "$(dirname "$entry")")"
+  built="$UIKIT_DIR/dist/$component/$plugin.js"
+  if [ ! -f "$built" ]; then
+    echo "FAIL: dist/$component/$plugin.js does not exist — did the build skip the $component/$plugin plugin entry?"
+    exit 1
+  fi
+  if ! head -c 20 "$built" | grep -qF "use client"; then
+    echo "FAIL: dist/$component/$plugin.js is missing its 'use client' banner — add the directive to the plugin's main source file"
+    exit 1
+  fi
+  PLUGIN_ENTRY_COUNT=$((PLUGIN_ENTRY_COUNT + 1))
+done
+if [ "$PLUGIN_ENTRY_COUNT" -eq 0 ]; then
+  echo "FAIL: found no plugin entries under src/components/*/plugins/*/public.ts — did the layout change?"
+  exit 1
+fi
+echo "==> 'use client': present on all $PLUGIN_ENTRY_COUNT plugin entries"
 
 # Present/absent assertions against a glob, with the glob's own emptiness
 # checked explicitly rather than left to grep's exit code. Without this, an
@@ -536,6 +580,74 @@ echo "==> [esbuild-subpath] Bundle report (Button-only via subpath, react/react-
 wc -c dist/out.js dist/out.css
 
 echo
+echo "==> [esbuild-data-grid] Scaffolding a raw-esbuild consumer of the DataGrid core entry in $WORKDIR/esbuild-data-grid"
+EB_DATA_GRID="$WORKDIR/esbuild-data-grid"
+mkdir -p "$EB_DATA_GRID/src"
+cd "$EB_DATA_GRID"
+
+cat > package.json <<'EOF'
+{ "name": "ui-kit-esbuild-data-grid-check", "private": true, "type": "module" }
+EOF
+
+# Importing the core entry (`.../data-grid`) must not pull in a plugin: each
+# plugin is an entry of its own (`.../data-grid/<plugin>`), so a grid that uses
+# none of them ships none of their code or CSS. esbuild is the right bundler for
+# the CSS half of that (see [esbuild-subpath]): it keeps all the CSS a module
+# graph reaches, so a plugin that leaked into the core's graph shows up here.
+cat > src/main.jsx <<'EOF'
+import '@gears-frontx/ui-kit/theme.css';
+
+import { DataGrid } from '@gears-frontx/ui-kit/data-grid';
+
+console.log(DataGrid);
+EOF
+
+echo "==> [esbuild-data-grid] Installing tarball and deps"
+npm install --no-audit --no-fund --silent \
+  "$TARBALL" "react@$REACT_VERSION" "react-dom@$REACT_VERSION" "esbuild@$ESBUILD_VERSION"
+
+echo "==> [esbuild-data-grid] Bundling (imports DataGrid from @gears-frontx/ui-kit/data-grid)"
+npx esbuild src/main.jsx --bundle --minify --format=esm --platform=browser \
+  --external:react --external:react-dom --external:react/jsx-runtime \
+  --loader:.css=css --outfile=dist/out.js
+
+echo "==> [esbuild-data-grid] Asserting the core's own styles and class map made it into the bundle"
+assert_present_in_glob "[esbuild-data-grid] DataGrid styles"    "$DATA_GRID_CLASS" 'dist/out.css'
+assert_present_in_glob "[esbuild-data-grid] DataGrid class map" "$DATA_GRID_CLASS" 'dist/out.js'
+
+echo "==> [esbuild-data-grid] Asserting no plugin's code or CSS came along"
+assert_absent_from_glob "[esbuild-data-grid] pagination styles"  "$DATA_GRID_PAGINATION_CLASS"  'dist/out.css'
+assert_absent_from_glob "[esbuild-data-grid] pagination JS"      "$DATA_GRID_PAGINATION_CLASS"  'dist/out.js'
+assert_absent_from_glob "[esbuild-data-grid] order styles"       "$DATA_GRID_ORDER_CLASS"       'dist/out.css'
+assert_absent_from_glob "[esbuild-data-grid] order JS"           "$DATA_GRID_ORDER_CLASS"       'dist/out.js'
+assert_absent_from_glob "[esbuild-data-grid] text-search styles" "$DATA_GRID_TEXT_SEARCH_CLASS" 'dist/out.css'
+assert_absent_from_glob "[esbuild-data-grid] text-search JS"     "$DATA_GRID_TEXT_SEARCH_CLASS" 'dist/out.js'
+
+echo "==> [esbuild-data-grid] Bundle report (DataGrid core only, react/react-dom external)"
+wc -c dist/out.js dist/out.css
+
+# The other direction: a plugin imported by its own subpath resolves at runtime
+# (the `./*` export maps `data-grid/pagination` to dist/data-grid/pagination.js)
+# and brings its own styles - and only its own.
+cat > src/with-plugin.jsx <<'EOF'
+import '@gears-frontx/ui-kit/theme.css';
+
+import { DataGrid } from '@gears-frontx/ui-kit/data-grid';
+import { DataGridPaginationPlugin } from '@gears-frontx/ui-kit/data-grid/pagination';
+
+console.log(DataGrid, DataGridPaginationPlugin);
+EOF
+
+echo "==> [esbuild-data-grid] Bundling (adds DataGridPaginationPlugin from @gears-frontx/ui-kit/data-grid/pagination)"
+npx esbuild src/with-plugin.jsx --bundle --minify --format=esm --platform=browser \
+  --external:react --external:react-dom --external:react/jsx-runtime \
+  --loader:.css=css --outfile=dist/with-plugin.js
+
+assert_present_in_glob "[esbuild-data-grid] pagination styles (plugin imported)"  "$DATA_GRID_PAGINATION_CLASS" 'dist/with-plugin.css'
+assert_present_in_glob "[esbuild-data-grid] pagination class map (plugin imported)" "$DATA_GRID_PAGINATION_CLASS" 'dist/with-plugin.js'
+assert_absent_from_glob "[esbuild-data-grid] order styles (plugin not imported)"   "$DATA_GRID_ORDER_CLASS"       'dist/with-plugin.css'
+
+echo
 echo "==> [webpack] Scaffolding a webpack consumer (barrel import) in $WORKDIR/webpack-consumer"
 WP="$WORKDIR/webpack-consumer"
 mkdir -p "$WP/src"
@@ -602,7 +714,7 @@ echo "==> [webpack] Bundle report (Button-only barrel consumer, react/react-dom 
 wc -c dist/out.js dist/out.css
 
 echo
-echo "==> [types] Type-checking the barrel and three subpaths under both moduleResolution settings"
+echo "==> [types] Type-checking the barrel and five subpaths (a data-grid core and plugin entry among them) under both moduleResolution settings"
 TYPES_CHECK="$WORKDIR/types-check"
 mkdir -p "$TYPES_CHECK/src"
 cd "$TYPES_CHECK"
@@ -623,9 +735,11 @@ import { Button, type ButtonProps } from '@gears-frontx/ui-kit';
 import { Button as ButtonSubpath } from '@gears-frontx/ui-kit/button';
 import { Table } from '@gears-frontx/ui-kit/table';
 import { Dialog } from '@gears-frontx/ui-kit/dialog';
+import { DataGrid, type DataGridTableColumn } from '@gears-frontx/ui-kit/data-grid';
+import { DataGridPaginationPlugin } from '@gears-frontx/ui-kit/data-grid/pagination';
 
-export { Button, ButtonSubpath, Table, Dialog };
-export type { ButtonProps };
+export { Button, ButtonSubpath, Table, Dialog, DataGrid, DataGridPaginationPlugin };
+export type { ButtonProps, DataGridTableColumn };
 EOF
 
 cat > tsconfig.nodenext.json <<'EOF'
@@ -670,4 +784,4 @@ echo "==> [types] tsc --noEmit under moduleResolution: bundler"
 npx tsc -p tsconfig.bundler.json || { echo 'FAIL: [types] bundler type-check failed — see tsc output above'; exit 1; }
 
 echo
-echo "OK: consumer check passed (vite + esbuild-barrel + esbuild-subpath + webpack + types)"
+echo "OK: consumer check passed (vite + esbuild-barrel + esbuild-subpath + esbuild-data-grid + webpack + types)"

@@ -1,0 +1,127 @@
+/* A cell of a grouped table carries the group border on its outer edges. */
+.cell:first-child {
+  border-inline-start: var(--_data-grid-table-group-border, 0 solid transparent);
+}
+
+.cell:last-child {
+  border-inline-end: var(--_data-grid-table-group-border, 0 solid transparent);
+}
+
+/*
+ * A pinned column. It needs a fill of its own: the cells scrolling under it would show through
+ * the row's transparent one. The row's hover tint is repeated here for the same reason (the kit
+ * paints it on the row, which a pinned cell now covers); `--card-hover` is the colour the kit's
+ * own hover rule uses.
+ */
+.stickyCell {
+  position: sticky;
+  z-index: 1;
+  background-color: var(--surface);
+}
+
+/* Body rows only, like the kit's own hover rule: a header row has no hover tint. */
+tbody tr:hover > .stickyCell {
+  background-color: var(--card-hover);
+}
+
+/*
+ * A pinned header cell of a sticky header. Table's own sticky header (`stickyHeader`) lifts every
+ * header cell to `z-index: 2`, so a pinned one has to sit one step above them, or the header
+ * cells scrolling in from the side would paint over it. Three classes, one more than the kit's
+ * rule, so the order the two stylesheets load in does not decide which wins.
+ */
+.cell.stickyCell.stickyHeaderCell {
+  z-index: 3;
+}
+
+/* Flex row wrapping .content + .endSlot -- only rendered when a cell has an endSlot (headers) */
+.contentRow {
+  display: flex;
+  align-items: center;
+  inline-size: min-content;
+  min-block-size: var(--space-6);
+}
+
+[data-overflow='nowrap'] .contentRow,
+[data-capped] .contentRow {
+  max-inline-size: 100%;
+}
+
+/* A plain `wrap` header (uncapped) has no rule above letting `.contentRow` fill the column, so it
+   collapses to its own `min-content` (the base rule) and shrink-wraps to its longest word instead
+   of using the width the column already has. `.contentRow` only renders for header cells (the
+   `endSlot` branch in DataGridCell), so this is header-scoped by construction -- and `data-overflow`
+   is absent for min-content columns (their `cellOverflow` is deliberately unset, see
+   DataGridHeaderCell), so this never fights their unclamped measurement target. */
+
+[data-overflow='wrap'] .contentRow {
+  inline-size: 100%;
+}
+
+/* A header cell with a custom `headerComponent` (e.g. a select-all checkbox) needs to fill the
+   row like a body cell does, instead of shrink-wrapping to its own min-content size the way a
+   default text label does -- see `fillContent`'s doc on DataGridCell. `data-header-fill` is only
+   ever set for that case (never for min-content columns, whose `.contentRow` doubles as a
+   ResizeObserver measurement target and must keep shrink-wrapping), so this can't fight the
+   min-content or default-label rules above. Higher specificity than the base `.contentRow` rule
+   (attribute selector + class vs. class alone) wins regardless of source order. */
+
+[data-header-fill] .contentRow {
+  inline-size: 100%;
+}
+
+[data-header-fill] .content {
+  flex: 1 1 auto;
+}
+
+/* Shared overflow-controlled content wrapper for header and body cells alike. `display: block`
+   keeps text-overflow/ellipsis reliable regardless of whether this is a bare `<td>` child or a
+   flex item inside .contentRow. */
+
+.content {
+  display: block;
+  min-inline-size: 0;
+  white-space: normal;
+}
+
+/* `nowrap` is the single-line clipping mode: stays on one line and clips with an ellipsis ("…")
+   on overflow -- there is no separate bare hard-clip (no-"…") mode. Flexbox/table intrinsic-kill:
+   `min-inline-size: 0` (inherited from .content above) lets the element shrink below its text's
+   own min-content size -- the standard fix for the "flex item won't shrink past its content"
+   problem -- so overflow:hidden + text-overflow:ellipsis can actually clip it, deferring to
+   whatever width the table algorithm/.contentRow already gave the column (the fixed track, or
+   100% of the th under [data-overflow='nowrap'] .contentRow above). Uncapped (`--_data-grid-col-max`
+   unset): max-inline-size falls back to `none` -- it must NOT default to 0, or the element
+   collapses to nothing and the text renders invisible. Capped (auto mode + maxWidth): the var
+   supplies the real cap. Verified to truncate under both `table-layout: fixed` and
+   `table-layout: auto`. */
+
+[data-overflow='nowrap'] .content {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-inline-size: var(--_data-grid-col-max, none);
+}
+
+/* `tableLayout="auto"` + `maxWidth` is a real cap for `wrap` too -- without this, the var is only
+   ever read by the nowrap rule above, so a `wrap` column with a `maxWidth` silently grows to its
+   content's intrinsic width instead of holding the cap. `overflow-wrap: anywhere` forces long
+   unbreakable tokens to break instead of pushing the column past the cap. Never matches under
+   `tableLayout="fixed"` -- `resolveColumnStyle` never sets `data-capped` there (`maxWidth` aliases
+   into the track). */
+
+[data-capped][data-overflow='wrap'] .content {
+  max-inline-size: var(--_data-grid-col-max, none);
+  overflow-wrap: anywhere;
+}
+
+.endSlot {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.endSlot:not(:empty) {
+  margin-inline-start: var(--space-1);
+}

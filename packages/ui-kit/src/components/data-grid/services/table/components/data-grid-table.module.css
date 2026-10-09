@@ -1,0 +1,52 @@
+/*
+ * The scroll container is Table's own wrapper (`containerClassName`), so the width and overflow
+ * come from the kit. `contain: inline-size` keeps its inline size independent of the table's
+ * content: a table wider than the wrapper scrolls inside it instead of stretching the grid.
+ */
+.tableWrapper {
+  contain: inline-size;
+}
+
+/*
+ * The table's width floor is consumer-overridable via the `--data-grid-table-min-inline-size`
+ * custom property. The `max-content` fallback is the historical behaviour, so a grid that sets
+ * nothing renders unchanged: the table never shrinks below its content width and the wrapper
+ * scrolls instead. Raise the floor (e.g. `964px`) to keep flexible columns legible in a container
+ * narrower than the grid needs, or drop it to `0` to let the table fit a wrapper that must not
+ * scroll.
+ *
+ * The header fill hands the consumer's `--data-grid-header-background` to the kit's own hook,
+ * `--table-header-fill`, which Table reads for a sticky header.
+ */
+.table {
+  --table-header-fill: var(--data-grid-header-background, var(--card));
+  min-inline-size: var(--data-grid-table-min-inline-size, max-content);
+}
+
+/*
+ * The per-mode rules below repeat what Table's own `.table` says (a width, a layout algorithm,
+ * the borders model), so each is a compound selector, `.table.layoutX`, one class more than the
+ * kit's: whichever stylesheet loads last, these win.
+ *
+ * Separated borders with no spacing in both modes: a pinned column is a sticky cell, and under
+ * the collapsed model the rule between rows belongs to the table's grid, so it would stay behind
+ * while the cell scrolled sideways.
+ */
+.table.layoutFixed {
+  border-collapse: separate;
+  border-spacing: 0;
+  inline-size: 100%;
+  table-layout: fixed;
+}
+
+.table.layoutAuto {
+  border-collapse: separate;
+  border-spacing: 0;
+  inline-size: 100%;
+  table-layout: auto;
+}
+
+.tableBordered {
+  --_data-grid-table-group-border: var(--border-width) solid var(--border);
+  --_data-grid-header-border-block-start: var(--border-width) solid var(--border);
+}

@@ -1,0 +1,24 @@
+.searchInput {
+  /*
+   * Width is consumer-overridable via the `--data-grid-text-search-inline-size`
+   * custom property. Default `initial` keeps the historical content-sized
+   * behaviour; set a fixed value (e.g. 240px) on an ancestor to give the
+   * search box a stable width so it does not shift when it gains focus or
+   * when the clear button appears/disappears. `fullWidth` still wins via
+   * `.searchInputFullWidth`.
+   */
+  inline-size: var(--data-grid-text-search-inline-size, initial);
+}
+
+.searchInputFullWidth {
+  flex: 1 1 auto;
+  inline-size: auto;
+}
+
+/* The field has its own clear button, so the browser's native one would be a second X. */
+.searchInput input[type='search']::-webkit-search-decoration,
+.searchInput input[type='search']::-webkit-search-cancel-button,
+.searchInput input[type='search']::-webkit-search-results-button,
+.searchInput input[type='search']::-webkit-search-results-decoration {
+  display: none;
+}

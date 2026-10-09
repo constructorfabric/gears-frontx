@@ -59,6 +59,10 @@ export function buildPlugin(): PluginOption[] {
    * per component, matching the flat dist/<name>.js chunk emitted for that
    * same entry — write that one-line re-export shim here, the same trick
    * react-kit's buildPlugin.ts uses for its own (deeper) entries/ layout.
+   *
+   * A plugin entry (src/components/<name>/plugins/<plugin>/public.ts, see
+   * `entryNameOf`) is one directory deeper in its name — `<name>/<plugin>` —
+   * so its shim lands in a subdirectory of dist/ that has to exist first.
    */
   function afterBuild(emittedFiles: Map<string, string>) {
     const distDir = path.resolve('dist');
@@ -69,15 +73,20 @@ export function buildPlugin(): PluginOption[] {
       }
 
       const entryPath = path.relative(distDir, filename);
+      const entryName = entryNameOf(path.dirname(entryPath));
+      const shimPath = path.resolve(distDir, `${entryName}.d.ts`);
+
       // Explicit .js extension: this specifier lands verbatim in a shipped
       // .d.ts, and moduleResolution: "nodenext" (unlike our own "bundler")
       // rejects an extensionless relative specifier in ESM declarations —
       // every symbol goes invisible under nodenext without it. See the same
       // note on src/index.ts, which needed the identical fix.
-      const content = `export * from './${entryPath.replace(/\.d\.ts$/, '.js')}'`;
-      const entryName = entryPath.replace(/^components\//, '').replace(/\/public\.d\.ts$/, '');
+      const target = path.relative(path.dirname(shimPath), path.resolve(distDir, entryPath));
+      const specifier = target.replace(/\.d\.ts$/, '.js').split(path.sep).join('/');
+      const content = `export * from '${specifier.startsWith('.') ? specifier : `./${specifier}`}'`;
 
-      fs.writeFileSync(path.resolve(distDir, `${entryName}.d.ts`), content, 'utf-8');
+      fs.mkdirSync(path.dirname(shimPath), { recursive: true });
+      fs.writeFileSync(shimPath, content, 'utf-8');
     }
   }
 
@@ -238,10 +247,33 @@ export function buildPlugin(): PluginOption[] {
     };
   }
 
+  /**
+   * The name a public.ts entry is published under: its directory relative to
+   * the components folder, with any `plugins/` segment dropped — `button`,
+   * `data-grid`, and for a plugin of a component `data-grid/order`. It names
+   * the JS chunk (dist/<name>.js), the types shim (dist/<name>.d.ts) and the
+   * `@gears-frontx/ui-kit/<name>` subpath the `./*` export resolves, so the
+   * plugin subpath reads the way the import does and not as a file tree.
+   *
+   * Takes the directory of the public.ts, relative to either src/components
+   * or dist/components, so the build entries and the types shims share it.
+   */
+  function entryNameOf(dir: string) {
+    return dir
+      .replace(/^(?:src\/)?components\//, '')
+      .split(/[\\/]/)
+      .filter((segment) => segment !== 'plugins')
+      .join('/');
+  }
+
   function getBuildConfig(): UserConfig {
-    const entries = fs
-      .globSync('src/components/*/public.ts')
-      .map((file) => [path.basename(path.dirname(file)), file]);
+    // One entry per component, plus one per plugin a component splits out
+    // (src/components/<name>/plugins/<plugin>/public.ts): a plugin is opt-in,
+    // so its code and CSS must not ride along with the component's own entry.
+    const entries = [
+      ...fs.globSync('src/components/*/public.ts'),
+      ...fs.globSync('src/components/*/plugins/*/public.ts'),
+    ].map((file) => [entryNameOf(path.dirname(file)), file]);
 
     return {
       build: {

@@ -1,0 +1,12 @@
+/* `contain: inline-size` keeps the inline size independent of the content, so a table wider than
+   the container cannot stretch this box — and with it the loader overlay's positioning reference
+   one level up — off to the side. */
+
+.dataGridLayoutMain {
+  display: flex;
+  overflow: auto;
+  flex-direction: column;
+  flex-grow: 1;
+  align-self: stretch;
+  contain: inline-size;
+}

@@ -1,0 +1,5 @@
+.dataGridPagination {
+  display: flex;
+  flex-direction: column;
+  margin-block-start: var(--space-3);
+}

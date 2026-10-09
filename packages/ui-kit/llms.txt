@@ -43,9 +43,10 @@ Rules for generated code:
   client-boundary module needed — unless it appears in the next line. The
   kit components that carry a `'use client'` banner of their own:
   Attachment, Badge, Breadcrumb, Bubble, ButtonGroup, Carousel, Chart,
-  Combobox, ContextMenu, DataTable, Drawer, DropdownMenu, Marker, Sidebar,
-  StatusDot, Table, Toast. Each calls a hook directly in its own render
-  body, so it always renders on the client, wherever it is imported from.
+  Combobox, ContextMenu, DataGrid, DataTable, Drawer, DropdownMenu, Marker,
+  Sidebar, StatusDot, Table, Toast. Each calls a hook directly in its own
+  render body, so it always renders on the client, wherever it is imported
+  from.
 - The kit paints the page itself from its tokens and sets `color-scheme`: with
   no `data-theme` attribute anywhere, `prefers-color-scheme: dark` alone
   yields a correct, legible dark page (background, text, and UA-owned
@@ -201,6 +202,13 @@ Rules for generated code:
   menu (ContextMenu/ContextMenuTrigger/ContextMenuContent + the same
   item/checkbox/radio/submenu parts as DropdownMenu); always modal, no
   hover-open; opens at the pointer position.
+- [DataGrid](dist/docs/data-grid.md): server-driven data grid (`DataGrid`
+  with a `load(ctx)` callback, `columns`, a slot-based layout and
+  `createDataGridPlugin`) rendered on `Table`; the built-in plugins are
+  opt-in entries of their own - pagination, text search, ordering and a
+  custom empty state, imported from `@gears-frontx/ui-kit/data-grid/<plugin>`
+  or the package root; state can persist to local/session storage, the URL
+  or memory.
 - [DataTable](dist/docs/data-table.md): sortable, paginated, optionally
   row-selectable table built on `Table` + `@tanstack/react-table` v9;
   productizes upstream's data-table *guide* into a real component

@@ -1,0 +1,23 @@
+/*
+ * The kit's `.pagination` is a centred row; the limit selector and the page text push themselves
+ * to either end with auto margins, which win over `justify-content`, so nothing here has to
+ * out-specify it.
+ */
+.pager {
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.limit {
+  margin-inline-end: auto;
+}
+
+.info {
+  margin-inline-start: auto;
+  color: var(--muted-foreground);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  font-weight: var(--text-body-weight);
+  letter-spacing: var(--text-body-tracking);
+  font-variant-numeric: tabular-nums;
+}

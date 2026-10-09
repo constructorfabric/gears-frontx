@@ -1,0 +1,20 @@
+.orderPopover {
+  display: flex;
+  overflow: hidden auto;
+  flex-direction: column;
+}
+
+/*
+ * The items sit in a menu that has no popup, so Base UI never highlights them as the pointer moves
+ * over them (that comes from the popup's list navigation). The same fill the kit's own menu items
+ * take when highlighted is applied on hover instead.
+ */
+.menuItem:hover:not([data-disabled]) {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+/* The mark of the current choice, at the trailing edge of its row. */
+.check {
+  margin-inline-start: auto;
+}

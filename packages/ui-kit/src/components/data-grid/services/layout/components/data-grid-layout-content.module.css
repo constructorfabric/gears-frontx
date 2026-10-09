@@ -1,0 +1,56 @@
+/*
+ * The grid's loading treatment: the content stays in place and is dimmed behind a scrim, with a
+ * loader centred over it.
+ *
+ * The scrim is mixed from the surface token rather than from a fixed dark or light colour: a fixed
+ * light scrim would flash bright over dark-theme content, and mixing the surface colour tracks
+ * the theme.
+ *
+ * Centring lives on this wrapper rather than on the loader itself: the loader runs a `spin`
+ * animation whose keyframes set `transform`, and animation declarations outrank normal author
+ * declarations in the cascade, so a `transform: translate(...)` on that element would be
+ * discarded for the whole animation. Flex centring on a full-inset wrapper also needs no
+ * directional offsets, which keeps it correct under `dir="rtl"`.
+ *
+ * `z-index` has to clear every sticky layer inside the table: the pinned cells (`.stickyCell`,
+ * `z-index: 1`), the pinned header cells (`.stickyCell.stickyHeaderCell`, `z-index: 3`) and the
+ * sticky header row group (`.theadSticky`, `z-index: 2`).
+ *
+ * The scrim fades in on the same delay the spinner uses, so a load that finishes quickly never shows
+ * anything at all. Without it the spinner would still be delayed but the dim would not, and every
+ * fast refetch would flash a grey grid with no explanation for it.
+ *
+ * `pointer-events` starts at `none` and is switched by the same animation, so the grid is only
+ * blocked once the scrim is actually visible. Blocking from the moment the load starts would swallow
+ * clicks with nothing on screen to explain why. Once visible the wrapper covers the whole grid, so
+ * it takes clicks on stale rows and on controls whose result is about to be replaced.
+ */
+
+.loaderOverlay {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Delayed fade-in so a brief load does not flash the overlay. These are animation timings for
+     this one effect, not a transition between two states, so they are not drawn from the
+     duration tokens. */
+  animation: appear 0.5s forwards;
+  animation-delay: 400ms;
+  background-color: color-mix(in srgb, var(--surface) 75%, transparent);
+  cursor: default;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes appear {
+  100% {
+    opacity: 1;
+
+    /* Discrete, so it flips midway through the fade rather than interpolating — the grid becomes
+       unclickable as the scrim becomes legible. */
+    pointer-events: auto;
+  }
+}

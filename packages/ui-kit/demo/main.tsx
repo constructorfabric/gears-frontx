@@ -105,6 +105,7 @@ import {
   SquareCheckIcon,
   SquareStackIcon,
   TableIcon,
+  TablePropertiesIcon,
   TagIcon,
   TextCursorInputIcon,
   TextIcon,
@@ -176,12 +177,13 @@ function baseSlug(slug: string): string {
 
 /** Base slugs with no shadcn/ui docs page under /docs/components/base/ -
  *  a real 404 (server status, not a client soft-404), checked directly
- *  against the live site rather than assumed. `status-dot` has no shadcn
- *  counterpart; `contracts-demo` and `eval-overview` are demo-only routes
+ *  against the live site rather than assumed. `status-dot` and `data-grid`
+ *  have no shadcn counterpart (`data-grid` is the kit's own grid, not a
+ *  shadcn part); `contracts-demo` and `eval-overview` are demo-only routes
  *  that ride the same examples/*.tsx glob without porting a shadcn part.
  *  Every other slug here, including ones that looked unlikely, resolved
  *  ("direction", "date-picker"/"data-table" all have real pages). */
-const NO_SHADCN_PAGE = new Set(['status-dot', 'contracts-demo', 'eval-overview']);
+const NO_SHADCN_PAGE = new Set(['status-dot', 'data-grid', 'contracts-demo', 'eval-overview']);
 
 function shadcnDocsUrl(slug: string): string {
   return `https://ui.shadcn.com/docs/components/base/${baseSlug(slug)}`;
@@ -328,6 +330,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   combobox: ListFilterIcon,
   command: CommandIcon,
   'context-menu': MousePointer2Icon,
+  'data-grid': TablePropertiesIcon,
   'data-table': DatabaseIcon,
   'date-picker': CalendarDaysIcon,
   dialog: AppWindowIcon,

@@ -34,7 +34,7 @@ status: draft
 
 ### 1.1 Architectural Vision
 
-The package is two things built on one component surface. It is a published React component library: behaviour taken from headless primitives, appearance expressed only through a semantic token vocabulary, one build entry per component so a consumer pays for what it imports, and documentation carried inside the artifact so a reader in a consuming project reads the version that project resolved. And it is the ecosystem's first attempt at making a component library's knowledge checkable rather than reviewable: for a component that has been described, a compiled contract states the component's meaning next to the prop facts read out of its own TypeScript.
+The package is two things built on one component surface. It is a published React component library: behaviour taken from headless primitives, appearance expressed only through a semantic token vocabulary, one build entry per component, and per opt-in plugin a component splits out, so a consumer pays for what it imports, and documentation carried inside the artifact so a reader in a consuming project reads the version that project resolved. And it is the ecosystem's first attempt at making a component library's knowledge checkable rather than reviewable: for a component that has been described, a compiled contract states the component's meaning next to the prop facts read out of its own TypeScript.
 
 The shape of the second half follows from one decision. The code is the owner of every fact the code can state - the exported components, their variant axes and defaults, the props they declare, the surface they inherit - and the hand-authored overlay owns only meaning: what the component is for, where it is the wrong choice, what may compose into it, what must never be done with it. The compiler joins the two and refuses an overlay that reaches into the machine's half. Everything downstream exists to keep that join honest: a conformance suite per described component, a freshness comparison that fails a change whose committed artifacts no longer equal a fresh compile, a compatibility comparison against the change's base reference that refuses a narrowing of a described surface unless the contract major moved, and a guard scoped to the components the change touches so the described set can grow without a kit-wide gate anyone would switch off.
 
@@ -46,7 +46,7 @@ The package is a full member of the published-libraries layer that is deliberate
 
 | Requirement | Design Response |
 |-------------|------------------|
-| `cpt-frontx-ui-kit-fr-component-set` | `cpt-frontx-ui-kit-component-package-build` emits one library entry per component's public barrel plus a package barrel, and the export map publishes the barrel, the per-component subpath and the three stylesheets while blocking every internal path. |
+| `cpt-frontx-ui-kit-fr-component-set` | `cpt-frontx-ui-kit-component-package-build` emits one library entry per component's public barrel, one per plugin barrel a component splits out, plus a package barrel, and the export map publishes the barrel, the per-component and per-plugin subpaths and the three stylesheets while blocking every internal path. |
 | `cpt-frontx-ui-kit-fr-token-styling` | `cpt-frontx-ui-kit-component-token-system` owns the whole appearance vocabulary; component stylesheets are CSS Modules that may consume only that vocabulary, and the seam is asserted rather than trusted (UIKIT-2). |
 | `cpt-frontx-ui-kit-fr-theme-selection` | The token system defines the light values on the root and redefines them under both the preference query and the explicit theme attribute, so both selection paths resolve the same values. |
 | `cpt-frontx-ui-kit-fr-client-boundary` | The build re-applies the client directive to the emitted chunk of every source module that declared one, deriving the classification from the source rather than from a maintained list. |
@@ -63,7 +63,7 @@ The package is a full member of the published-libraries layer that is deliberate
 
 | NFR ID | NFR Summary | Allocated To | Design Response | Verification Approach |
 |--------|-------------|--------------|-----------------|----------------------|
-| `cpt-frontx-ui-kit-nfr-selective-cost` | A consumer pays only for what it imports | `cpt-frontx-ui-kit-component-package-build` | One build entry per component, per-entry style emission, side effects declared for stylesheets only, and shared code split into chunks rather than inlined into every entry. | The consumer acceptance run asserts both directions on a real consumer build: the imported component's style rules present, every other component's absent. |
+| `cpt-frontx-ui-kit-nfr-selective-cost` | A consumer pays only for what it imports | `cpt-frontx-ui-kit-component-package-build` | One build entry per component and per opt-in plugin, per-entry style emission, side effects declared for stylesheets only, and shared code split into chunks rather than inlined into every entry. | The consumer acceptance run asserts both directions on a real consumer build: the imported component's style rules present, every other component's absent, and a component's core entry carrying none of its plugins' code or styles. |
 | `cpt-frontx-ui-kit-nfr-gate-adoptability` | Enforcement scoped to the change | `cpt-frontx-ui-kit-component-contract-harness` | The guard evaluates only the components the change touches; the enrolled set is an opt-in allowlist and the enrollment report never sets an exit code. | The harness's own unit suites fix the guard's decisions and the enrollment report's non-blocking behaviour. |
 | `cpt-frontx-ui-kit-nfr-standalone-verification` | Package-local verification | The package | Test and build configuration live in the package, including the contract tooling's own suites; nothing reaches into template territory. | The dependency-edge and boundary guards hold the package to its declared edges. |
 | `cpt-frontx-nfr-evolvability` | Versioned releases without lockstep upgrades | The published package | The package publishes on its own version line with React as a peer range, and a substantive change to its shipping sources requires a version bump before it can merge. | The ecosystem version-policy and version-bump checks. |
@@ -80,7 +80,7 @@ The package is a full member of the published-libraries layer that is deliberate
 ```mermaid
 graph TD
     subgraph Published[Published artifact]
-        Comp["Components (one build entry each)"]
+        Comp["Components (one build entry each, plus one per opt-in plugin)"]
         Tokens["Token system (theme, utilities, typeset)"]
         Docs["Agent documentation (index + per-component docs)"]
     end
@@ -103,7 +103,7 @@ graph TD
 |-------|---------------|------------|
 | Component surface | The exported components, their styles, their public entry points and the export map | React over TypeScript; headless primitives for behaviour; CSS Modules for styling; a variant-authoring library for the axes |
 | Appearance vocabulary | The tokens every component's styling consumes, and the theme selection over them | Plain CSS custom properties in three global stylesheets |
-| Package build | One entry per component, per-entry style emission, client-directive preservation, declaration emission and documentation copying | Library-mode bundler with a package-local build plugin |
+| Package build | One entry per component and per opt-in plugin, per-entry style emission, client-directive preservation, declaration emission and documentation copying | Library-mode bundler with a package-local build plugin |
 | Agent documentation | A usage document per component and the index that lists them, shipped inside the artifact | Markdown, copied into the artifact at build |
 | Contract harness | Fact extraction, contract compilation, conformance, freshness, compatibility, guard and enrollment | TypeScript run directly; the TypeScript compiler API for extraction; JSON Schema 2020-12 for the compiled surface; the ecosystem's type-definition specification for identifiers and one of the compatibility signals |
 
@@ -145,6 +145,14 @@ The hand-authored overlay may not restate a fact the compiler reads from the cod
 
 A component stylesheet may consume only variables the token system defines, plus the variables the underlying primitive supplies at runtime for positioning and animation. It may not declare a raw colour or an off-scale metric. The rule is asserted over the stylesheets themselves rather than left to review.
 
+Three local forms are admitted beside the vocabulary, and nothing else:
+
+- **A variable the same part declares**, read in a rule of that part.
+- **A consumer-override hook**, `--<component>-*`, named after the component's directory so that a component made of many stylesheets has one hook namespace. The kit never sets one; a consumer does. Hooks are API: documented in the component's usage document, renamed only as a breaking change.
+- **A private variable**, `--_<component>-*`: plumbing one stylesheet of the component (or its code, inline) sets and another reads. It is not API, may be renamed freely, and is never documented as a hook. The leading underscore is the kit's existing private form (the scroll-fade utility uses it).
+
+A hook and a private variable are both read with a fallback that is the kit default, so neither can resolve to nothing whether or not anyone sets it. A stylesheet may SET another component's documented hook - that is how a composition hands a value to a part it renders - but may not READ another component's variables; a composition that needs a value another component computes gets it through that component's own surface, not by reaching into its stylesheet.
+
 #### UIKIT-3 - A standalone published-libraries member that is not core
 
 - [x] `p2` - **ID**: `cpt-frontx-ui-kit-constraint-ui-committed-member`
@@ -163,7 +171,7 @@ Contracts, the schemas they are checked against, overlays and the harness that p
 
 | Entity | Definition | Representation |
 |--------|------------|----------------|
-| Component | One exported React component together with its stylesheet, its usage document, its unit suite and its public entry point. | A directory under the component root; one build entry per public barrel |
+| Component | One exported React component together with its stylesheet, its usage document, its unit suite and its public entry point. | A directory under the component root; one build entry per public barrel, and one per opt-in plugin barrel under the component's `plugins/` directory |
 | Token | A named appearance value the kit defines once for every component to consume. | A CSS custom property on the theme's root and theme blocks |
 | Overlay | The hand-authored half of a contract: everything asserted about a component that its code cannot state - what it is for, where it is the wrong answer, what may nest inside it, what it claims about itself, what its schema cannot assert. | A YAML document beside the component, one per described export |
 | Extraction | The machine-owned half: the exported components of a file with their variant axes, defaults, the host element each renders, and every prop filed by where its declaration lives - the component's own source, the primitive library's props for the part it wraps, or React's attributes for that element. | An in-memory result of reading the component's TypeScript through the compiler API |
@@ -302,12 +310,13 @@ A consuming application needs components whose behaviour it does not have to imp
 - Declares each component's variant axes and defaults in the code, which is what makes them machine-readable.
 - Redeclares the props the kit narrows or adds, leaving everything else to the primitive's own surface.
 - Carries the client-boundary directive in the source of exactly those components that call a hook in their own render body.
+- Keeps a component's opt-in extensions - its plugins - behind entries of their own, so the component's own entry never reaches them, and a consumer pays only for the plugins it renders.
 
 ##### Responsibility boundaries
 
 - Owns no appearance value: every one is a reference to the token system (UIKIT-2).
 - Owns no interaction mechanics that the primitive it wraps already provides.
-- Owns no application domain content and no data access.
+- Owns no application domain content and no data access. A component may hold view state and persist it to the browser's storage or the URL (DataGrid, for one, writes to `localStorage` unless the consumer picks another backend with `persistent`, including memory only); the data it shows always arrives through a consumer-supplied callback.
 - Does not decide how it is bundled or published; that is the package build's responsibility.
 
 ##### Related components (by ID)
@@ -354,10 +363,10 @@ Nearly every property a consumer depends on is decided at build time and invisib
 
 ##### Responsibility scope
 
-- Emits one library entry per component public entry point plus the package barrel, with shared code split into chunks rather than duplicated.
+- Emits one library entry per component public entry point, one per plugin entry point a component splits out (published as `<component>/<plugin>`), plus the package barrel, with shared code split into chunks rather than duplicated.
 - Emits each entry's styles as their own artifact and marks stylesheets as the package's only side effects, so a bundler that honours the declaration can drop the rest.
 - Re-applies the client-boundary directive to the emitted chunk of every source module that declared one, deriving the set from the source rather than from a maintained list.
-- Emits declarations and the flat re-export shims that make the per-component subpath resolve under both module-resolution modes.
+- Emits declarations and the re-export shims that make the per-component and per-plugin subpaths resolve under both module-resolution modes.
 - Copies the global stylesheets and the per-component usage documents into the published artifact.
 
 ##### Responsibility boundaries
@@ -449,9 +458,9 @@ The properties a consumer depends on most - that styles survive, that unimported
 ##### Responsibility scope
 
 - Packs the artifact and installs it into clean projects, one per bundler and module-resolution mode a consumer may use.
-- Asserts both directions on each: the imported component's code and styles present, every other component's absent, using probes taken from the just-built artifact rather than hardcoded.
+- Asserts both directions on each: the imported component's code and styles present, every other component's absent, using probes taken from the just-built artifact rather than hardcoded. For a component whose plugins are entries of their own, the same in miniature: its core entry alone carries none of its plugins, and a plugin imported by its subpath brings its own styles and no other plugin's.
 - Asserts that the artifact carries the documentation index and the per-component documents.
-- Asserts the client-boundary classification against the built artifact, and fails on a component the classification does not mention.
+- Asserts the client-boundary classification against the built artifact, including every plugin entry, and fails on a component the classification does not mention.
 
 ##### Responsibility boundaries
 
@@ -475,6 +484,7 @@ The properties a consumer depends on most - that styles survive, that unimported
 |----------------|---------|
 | Package barrel | Every exported component, for a consumer that prefers one import site. |
 | Per-component subpath | One component and its styles, for a consumer minimizing what it takes. |
+| Per-plugin subpath | One opt-in plugin of a component that splits its extensions out (`<component>/<plugin>`), for a consumer that renders the component without paying for plugins it does not use. The package barrel re-exports these too. |
 | Global stylesheets | The token vocabulary, the utility layer and the type ramp, imported once by an application. |
 | Documentation index and per-component documents | The agent-facing description, read from the install. |
 
@@ -508,6 +518,7 @@ What the package may depend on, and which members may depend on it, is not yet s
 | Dependency Module | Interface Used | Purpose |
 |-------------------|----------------|---------|
 | Data-grid library | Table model, column definitions, row selection, pagination | Supplies the data-table component's model layer, which is why that component's props carry type parameters the contract compiler can only record as slots. |
+| State-store library | Store creation and selector hooks | Supplies the data-grid component's per-instance service stores. Its types appear in that component's published declarations, which is accepted rather than wrapped. |
 | Charting library | Chart primitives | Supplies the chart component's rendering. |
 | Command-palette library | Filterable command list | Supplies the command component's matching and keyboard model. |
 | Date libraries | Calendar rendering and date arithmetic | Supply the calendar and date-picker components. |

@@ -1,0 +1,26 @@
+/*
+ * The grid root: the box the toolbar, the main view and the footer lay themselves out in.
+ *
+ * It is deliberately the host of the loader overlay rather than the main slot: it is not a scroll
+ * container, so the overlay stays pinned to the visible frame at any scroll offset, and it spans
+ * the whole grid -- toolbar, rows and pagination -- which is what the loading treatment has to
+ * cover (see data-grid-layout-content.module.css for the overlay itself).
+ *
+ * The kit ships no global preflight (border-box sizing, a button reset, a table width), so each
+ * grid-owned element that needs one of them states it on its own class, and what is left for the
+ * root to say is its own layout.
+ */
+.root {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+
+  /* Lets this box shrink below its content height instead of growing past the frame a
+     height-bounding parent gave it. Without it, a flex-column parent leaves the automatic minimum
+     size at `auto`, this element grows to content height, and the overlay -- positioned against it --
+     centres somewhere below the visible area. A grid parent with a `minmax(0, 1fr)` track does not
+     need it. */
+  min-block-size: 0;
+}

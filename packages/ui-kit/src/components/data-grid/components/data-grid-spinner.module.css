@@ -1,0 +1,16 @@
+/*
+ * Fades in 400ms after it mounts. The 400ms delay and the 0.5s fade are timing for this one
+ * effect, not a transition between two states, so they are not drawn from the duration tokens.
+ */
+.delayed {
+  display: inline-flex;
+  animation: appear 0.5s forwards;
+  animation-delay: 400ms;
+  opacity: 0;
+}
+
+@keyframes appear {
+  100% {
+    opacity: 1;
+  }
+}

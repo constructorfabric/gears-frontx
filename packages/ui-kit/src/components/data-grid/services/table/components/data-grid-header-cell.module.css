@@ -1,0 +1,26 @@
+.headerCell {
+  box-sizing: border-box;
+  border-inline-start: var(--_data-grid-table-group-border, 0 solid transparent);
+  border-block-start: var(--_data-grid-header-border-block-start, 0);
+  white-space: nowrap;
+}
+
+/* Used by DataGridHeaderCellContent -- the plain wrapper still used by group headers
+   (DataGridHeaderGroup) and extra-column headers (DataGridExtraHeaderCell), neither of which has
+   an overflow contract. Regular column headers compose their own equivalent structure directly
+   in DataGridCell (`.contentRow` / `.content` / `.endSlot` in data-grid-cell.module.css). */
+
+.headerCellContent {
+  display: flex;
+  align-items: center;
+  inline-size: min-content;
+  min-block-size: var(--space-6);
+  white-space: nowrap;
+}
+
+.extraHeaderCell {
+  box-sizing: border-box;
+  border-inline-start: var(--_data-grid-table-group-border, 0 solid transparent);
+  border-block-start: var(--_data-grid-header-border-block-start, 0);
+  white-space: nowrap;
+}
