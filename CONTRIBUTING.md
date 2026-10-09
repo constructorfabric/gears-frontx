@@ -3,33 +3,35 @@
 > **TARGET AUDIENCE:** Humans and agents
 > **PURPOSE:** Contribution guidelines and workflow for developers
 
-## Branching Model (Gitflow)
+## Branching Model
+
+`main` is the base branch. Feature and fix branches start from `main`, and their PRs target `main`.
 
 | Branch | Lifecycle | Purpose | Publishes to |
 |--------|-----------|---------|-------------|
-| `main` | permanent | Current stable major | `latest` npm dist-tag |
-| `develop` | permanent | Active development | `alpha` npm dist-tag |
-| `release/X.Y.Z` | short-lived | Release preparation (from develop → main) | `next` npm dist-tag |
+| `main` | permanent | Base for feature work; current stable major | `latest` npm dist-tag (`-alpha` versions go to `alpha`, `-rc` versions to `next`) |
+| `develop` | permanent | Former development branch; feature work no longer targets it | `alpha` npm dist-tag |
+| `release/X.Y.Z` | short-lived | Release preparation (merged into `main`) | — |
 | `release/vN` | long-lived | Maintenance line for major version N | `vN` npm dist-tag (e.g. `v1`) |
-| `feature/*` | short-lived | Feature branches (from develop) | — |
+| `feature/*` | short-lived | Feature branches (from `main`) | — |
 | `hotfix/*` | short-lived | Hotfix branches (from main → main + develop) | — |
 
 ### Standard Workflow
 
-1. Create a `feature/*` branch from `develop`
-2. Make changes, commit (signed off - see [Commit Requirements](#commit-requirements)), push, open PR targeting `develop`
-3. After review and merge, CI publishes alpha versions
-4. When ready for release, create `release/X.Y.Z` from `develop`
+1. Create a `feature/*` branch from `main`
+2. Make changes, commit (signed off - see [Commit Requirements](#commit-requirements)), push, open PR targeting `main`
+3. After review and merge, CI publishes each package whose version changed (see [Branch-to-Channel Mapping](#branch-to-channel-mapping) for the dist-tag)
+4. When ready for release, create `release/X.Y.Z`
 5. Finalize version bumps, merge `release/X.Y.Z` into `main`
 6. CI publishes stable versions, merge back to `develop`
 
-### Resolving Conflicts with `develop`
+### Resolving Conflicts with `main`
 
-**For any branch with a PR targeting `develop` (`feature/*`, `fix/*`, or otherwise), always rebase onto `develop`; never merge `develop` into your branch.** If your branch falls behind canonical `develop` and needs conflicts resolved, rebase onto it:
+**For any branch with a PR targeting `main` (`feature/*`, `fix/*`, or otherwise), always rebase onto `main`; never merge `main` into your branch.** If your branch falls behind canonical `main` and needs conflicts resolved, rebase onto it:
 
 ```bash
-git fetch origin develop
-git rebase origin/develop
+git fetch origin main
+git rebase origin/main
 # for each conflicted commit: resolve conflicts, then stage every resolved path
 git add -- path/to/resolved-file
 # substitute every actual resolved path before continuing
@@ -40,7 +42,7 @@ git push --force-with-lease
 
 To abandon the rebase and return to the previous branch state instead, run `git rebase --abort`. In a fork-based setup, replace `origin` with the remote that tracks `constructorfabric/gears-frontx`.
 
-A merge from `develop` into a work branch makes the merge commit and any conflict-resolution combined diff durable in branch history, which is hard to review.
+A merge from `main` into a work branch makes the merge commit and any conflict-resolution combined diff durable in branch history, which is hard to review.
 
 ### Previous-Major Maintenance
 
@@ -71,8 +73,8 @@ The project is **pre-1.0** — backward compatibility is not guaranteed.
 
 | Version format | Channel | Branch | Meaning |
 |---------------|---------|--------|---------|
-| `0.y.z-alpha.N` | `alpha` | `develop` | Development snapshot |
-| `0.y.z-rc.N` | `next` | `release/X.Y.Z` | Release candidate |
+| `0.y.z-alpha.N` | `alpha` | `main` or `develop` | Development snapshot |
+| `0.y.z-rc.N` | `next` | `main` | Release candidate |
 | `0.y.z` | `latest` | `main` | Stable release |
 | `N.y.z` | `vN` | `release/vN` | Previous major maintenance |
 
@@ -100,10 +102,11 @@ Publishing is automated via CI/CD. On push to a publishing branch, CI detects ve
 
 | Branch | Dist-tag | Trigger |
 |--------|----------|---------|
+| `main` | `latest`; `alpha` for `-alpha` versions; `next` for `-rc` versions | Every merge |
 | `develop` | `alpha` | Every merge |
-| `release/X.Y.Z` | `next` | RC prep merges |
-| `main` | `latest` | Release merges |
 | `release/vN` | `vN` | Maintenance patches |
+
+CI does not publish from `release/X.Y.Z` branches. The publish workflow ([`.github/workflows/publish-packages.yml`](.github/workflows/publish-packages.yml)) runs only on pushes to `main`, `develop` and `release/v*`.
 
 ### Publish Scope
 
