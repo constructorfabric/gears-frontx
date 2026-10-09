@@ -937,7 +937,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 
     return {
       // @cpt-begin:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-active
-      // @cpt-begin:cpt-frontx-algo-mfe-host-communication-registration-propagation:p2:inst-track-mounting-bridge
+      // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-wrap-mount-synchronous
       // Synchronous on purpose: the mount manager's rendezvous window covers
       // only the synchronous part of this call, so any await before the MFE's
       // own mount would close it and a registry built there would come up as
@@ -947,7 +947,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         this.injectRemoteStylesheets(container, stylesheetPaths, baseUrl);
         return lifecycle.mount(container, bridge, mountContext);
       },
-      // @cpt-end:cpt-frontx-algo-mfe-host-communication-registration-propagation:p2:inst-track-mounting-bridge
+      // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-wrap-mount-synchronous
       // @cpt-end:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-active
       // @cpt-begin:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-disposed
       unmount: async (container) => {
