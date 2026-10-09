@@ -102,7 +102,7 @@ User-facing interactions that start with an actor and describe the end-to-end fl
    6. [x] - `p1` - **IF** lifecycle contract not satisfied - `inst-if-bad-lifecycle`
       1. [x] - `p1` - System evicts the cache entry and raises an MFE load error - `inst-evict-raise`
    7. [x] - `p1` - System wraps the lifecycle with stylesheet injection logic and records the load promise in the instance-keyed cache - `inst-cache-promise`
-      1. [x] - `p1` - The stylesheet wrapper's `mount` forwards every argument it receives, `mountContext` included, to the microfrontend's own `mount` and invokes it synchronously within the same call, returning its result: it may insert the stylesheets before that call but never awaits before it, so the synchronous window in which the mount manager records the mounting bridge (`cpt-frontx-algo-mfe-host-communication-registration-propagation`) stays open for the microfrontend's `mount` - `inst-wrap-mount-synchronous`
+      1. [x] - `p1` - The stylesheet wrapper's `mount` passes every argument it receives to the microfrontend's own `mount`, `mountContext` included. It calls that `mount` within the same synchronous call and returns its result. It may insert the stylesheets first, but it never awaits before the call. This keeps open the synchronous window in which the mount manager records the mounting bridge (`cpt-frontx-algo-mfe-host-communication-registration-propagation`) - `inst-wrap-mount-synchronous`
 6. [x] - `p1` - Actor mounts the returned lifecycle into the target domain container - `inst-actor-mount`
 7. [x] - `p1` - **RETURN** the mounted lifecycle instance - `inst-return-lifecycle`
 
