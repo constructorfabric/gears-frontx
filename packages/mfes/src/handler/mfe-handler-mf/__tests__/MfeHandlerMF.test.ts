@@ -14,7 +14,8 @@
  *    no unrewritten bare specifier survives anywhere;
  *  - deterministic (cycle) failures not being retried;
  *  - the stylesheet-injecting lifecycle wrapper staying transparent to the
- *    mount contract (mount context, synchronous rendezvous window);
+ *    mount contract (mount context, synchronous rendezvous window) and
+ *    keeping the stylesheets until the MFE's own unmount settles;
  *  - `LruCache` capacity eviction and MRU re-insertion.
  *
  * On the `publicPath` guard specifically: Module Federation emits
@@ -2332,7 +2333,9 @@ describe('MfeHandlerMF — undeclared shared-dep specifier diagnostic (warn, nev
  * `lifecycle.mount(...)` and passes the host's `mountContext` as the third
  * argument; the wrapper must deliver both to the MFE's own `mount`, or a
  * nested registry constructed there never adopts its inbound bridge and the
- * MFE never learns its extension and domain.
+ * MFE never learns its extension and domain. On the way out the host keeps the
+ * container attached until `lifecycle.unmount(...)` settles, so the wrapper
+ * removes the stylesheets only after the MFE's own `unmount` settles.
  */
 describe('MfeHandlerMF - stylesheet wrapper keeps the mount contract', () => {
   class InertBridge extends ChildMfeBridge {
@@ -2359,7 +2362,8 @@ describe('MfeHandlerMF - stylesheet wrapper keeps the mount contract', () => {
   async function loadStyledLifecycle(
     extensionId: string,
     observations: MountObservation[],
-    publicPath: string = PUBLIC_PATH
+    publicPath: string = PUBLIC_PATH,
+    unmount: () => void | Promise<void> = () => {}
   ) {
     const entry = buildEntry(buildManifest(publicPath));
     entry.exposeAssets.css.sync = ['assets/style.css'];
@@ -2386,7 +2390,7 @@ describe('MfeHandlerMF - stylesheet wrapper keeps the mount contract', () => {
             ),
           });
         },
-        unmount: (): void => {},
+        unmount,
       },
     };
     try {
@@ -2464,5 +2468,49 @@ describe('MfeHandlerMF - stylesheet wrapper keeps the mount contract', () => {
     expect(observations[0].stylesheetHrefs).toEqual([
       `${window.location.origin}/assets/style.css`,
     ]);
+  });
+
+  it('keeps the stylesheets in the shadow root while the MFE unmount is pending and removes them once it resolves', async () => {
+    let finishUnmount: () => void = () => {};
+    const unmountSettles = new Promise<void>((resolve) => {
+      finishUnmount = resolve;
+    });
+    const lifecycle = await loadStyledLifecycle(
+      'ext-styled-unmount-pending',
+      [],
+      PUBLIC_PATH,
+      () => unmountSettles
+    );
+    const shadowRoot = document.createElement('div').attachShadow({ mode: 'open' });
+    await lifecycle.mount(shadowRoot, new InertBridge());
+
+    const unmounting = lifecycle.unmount(shadowRoot);
+    await Promise.resolve();
+    const hrefsWhilePending = Array.from(
+      shadowRoot.querySelectorAll('link'),
+      (link) => link.href
+    );
+    finishUnmount();
+    await unmounting;
+
+    expect(hrefsWhilePending).toEqual([`${PUBLIC_PATH}assets/style.css`]);
+    expect(shadowRoot.querySelectorAll('link')).toHaveLength(0);
+  });
+
+  it('removes the stylesheets when the MFE unmount rejects', async () => {
+    const unmountFailure = new Error('unmount failed');
+    const lifecycle = await loadStyledLifecycle(
+      'ext-styled-unmount-rejects',
+      [],
+      PUBLIC_PATH,
+      () => Promise.reject(unmountFailure)
+    );
+    const shadowRoot = document.createElement('div').attachShadow({ mode: 'open' });
+    await lifecycle.mount(shadowRoot, new InertBridge());
+
+    const unmounting = lifecycle.unmount(shadowRoot);
+
+    await expect(unmounting).rejects.toBe(unmountFailure);
+    expect(shadowRoot.querySelectorAll('link')).toHaveLength(0);
   });
 });

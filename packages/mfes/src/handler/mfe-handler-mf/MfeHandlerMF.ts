@@ -950,10 +950,19 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-wrap-mount-synchronous
       // @cpt-end:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-active
       // @cpt-begin:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-disposed
+      // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-wrap-unmount-styles-last
+      // The host keeps the container attached while an asynchronous unmount
+      // is pending, so the stylesheets must outlive the MFE's own unmount or
+      // the MFE stays on screen unstyled until it is gone. The `finally`
+      // removes them even when that unmount throws.
       unmount: async (container) => {
-        this.removeInjectedStylesheets(container);
-        await lifecycle.unmount(container);
+        try {
+          await lifecycle.unmount(container);
+        } finally {
+          this.removeInjectedStylesheets(container);
+        }
       },
+      // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-wrap-unmount-styles-last
       // @cpt-end:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-disposed
     };
   }
