@@ -1,0 +1,44 @@
+{
+  "$id": "gts://gts.frontx.mfes.comm.action.v1~frontx.mfes.function.execute.v1~",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Action for triggering a single function resolver extension execution. Upon receiving this action, the function resolver extensions domain validates the params value against the schema declared in the corresponding extension function signature, internally mounts that function extension, and sends a run action to the extension named in 'func'. The caller must support receiving the result of the execution via the result action.",
+  "allOf": [
+    { "$ref": "gts://gts.frontx.mfes.comm.action.v1~" }
+  ],
+  "type": "object",
+  "properties": {
+    "target": {
+      "x-gts-ref": "gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.functions_resolver.v1~*",
+      "$comment": "The execute action is executed by the function resolver extensions domain; the extension to run is named in payload.func"
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "func": {
+          "x-gts-ref": "gts.frontx.mfes.ext.extension.v1~frontx.screensets.layout.functions_resolver.v1~*",
+          "$comment": "Extension ID of the function to execute"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "$comment": "Timestamp of the function execution request; it identifies a function execution request and its response"
+        },
+        "params": {
+          "type": "object",
+          "$ref": "gts://gts.frontx.func.params.v1~",
+          "$comment": "Function run params, validated by the domain against the schema declared in the corresponding extension function signature"
+        },
+        "caller": {
+          "oneOf": [
+            { "x-gts-ref": "gts.frontx.mfes.ext.domain.v1~*" },
+            { "x-gts-ref": "gts.frontx.mfes.ext.extension.v1~*" }
+          ],
+          "$comment": "Caller of the function execution, a reference to an extension or an extensions domain. The execution result is returned to the caller by the result action, so the caller must support receiving it."
+        }
+      },
+      "required": ["func", "timestamp", "caller"],
+      "$comment": "Action payload with required extension reference"
+    }
+  },
+  "required": ["type", "target", "payload"]
+}

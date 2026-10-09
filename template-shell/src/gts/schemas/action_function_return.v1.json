@@ -1,0 +1,32 @@
+{
+  "$id": "gts://gts.frontx.mfes.comm.action.v1~frontx.mfes.function.return.v1~",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Action for returning the result of a single execution of a function by an extension. Internal action, sent by a function resolver extension back to the function resolver extensions domain. The domain validates the returned value against the schema declared in that extension's function signature.",
+  "allOf": [
+    { "$ref": "gts://gts.frontx.mfes.comm.action.v1~" }
+  ],
+  "type": "object",
+  "properties": {
+    "target": {
+      "x-gts-ref": "gts.frontx.mfes.ext.domain.v1~frontx.screensets.layout.functions_resolver.v1~*",
+      "$comment": "The return action is sent by a function resolver extension to its own domain, so it targets the domain"
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "$comment": "Timestamp of the originating function execution request; it correlates this return with the request that caused it"
+        },
+        "result": {
+          "type": "object",
+          "$ref": "gts://gts.frontx.func.result.v1~",
+          "$comment": "Result of the function execution, validated by the domain against the schema declared in the corresponding extension function signature"
+        }
+      },
+      "required": ["timestamp"]
+    }
+  },
+  "required": ["type", "target", "payload"]
+}
