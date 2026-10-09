@@ -17,6 +17,10 @@
  *   validation happens against the schema referenced by `type`.
  * - gts-ts uses Ajv INTERNALLY — we do NOT need Ajv as a direct dependency.
  *
+ * Realm sharing: every non-isolated instance in a JavaScript realm reads and
+ * writes one store pair per compatible copy of this package, so runtimes can
+ * rely on each other's registrations.
+ *
  * @packageDocumentation
  */
 
@@ -37,6 +41,28 @@ import {
 } from './constants';
 import type { JSONSchema } from './types';
 import { loadSchemas, loadLifecycleStages } from './loader';
+import { deepCopyJson } from './canonical';
+import { copyKeyInputs } from './copy-key';
+import {
+  createPair,
+  joinPair,
+  obtainSharedPair,
+  type StorePair,
+  type WriterToken,
+} from './store-pair';
+import { describeFailure, writeInstance, writeSchema } from './type-store';
+
+/** Options for constructing a provider instance. */
+export interface GtsPluginOptions {
+  /**
+   * Give this instance a private store pair that follows the same write rules
+   * and never touches the realm slot. Use it for tests that need to start
+   * from the built-in set alone. The default instance is never isolated.
+   */
+  isolated?: boolean;
+}
+
+const createLibraryStore = (): GtsStore => new GtsStore();
 
 /**
  * Concrete GTS plugin class implementing TypeSystemPlugin.
@@ -45,84 +71,79 @@ import { loadSchemas, loadLifecycleStages } from './loader';
  * are registered during construction -- the plugin is ready to use
  * immediately after instantiation.
  *
- * The gtsPlugin singleton constant is the only public instance.
- * Tests that need multiple isolated instances should construct new GtsPlugin() directly.
+ * The gtsPlugin singleton constant is the default instance. Instances share
+ * one store with every compatible copy in the realm, so a second
+ * `new GtsPlugin()` starts from what has already been registered, not from the
+ * built-in set. Tests that need a fresh store construct
+ * `new GtsPlugin({ isolated: true })`.
  *
- * @internal - Exported only for test usage. External code should use gtsPlugin singleton.
+ * Production wiring uses the `gtsPlugin` singleton. Construct the class directly
+ * only in tests, or when a caller needs a private store.
  */
 // @cpt-flow:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1
 // @cpt-state:cpt-frontx-state-gts-type-provider-init:p1
-// @cpt-algo:cpt-frontx-algo-gts-type-provider-infra-registration:p1
+// @cpt-algo:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1
+// @cpt-algo:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1
 export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
   readonly name = 'gts';
   readonly version = '1.0.0';
 
-  private readonly gtsStore: GtsStore;
-  /** Mirrors `gtsStore` so a candidate can be validated without touching it. */
-  private scratchStore: GtsStore;
+  /**
+   * Held for the instance's lifetime, but its stores are never kept: another
+   * instance on the same pair may replace the scratch store between calls, so
+   * every call reads `pair.store` and `pair.scratch` afresh.
+   */
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-realm-store-rendezvous:p1:inst-rs-hold-pair
+  private readonly pair: StorePair;
+  private readonly token: WriterToken;
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-realm-store-rendezvous:p1:inst-rs-hold-pair
 
-  constructor() {
-    // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-01
-    this.gtsStore = new GtsStore();
-    this.scratchStore = new GtsStore();
-    // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-01
-
-    // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-02
+  constructor(options: GtsPluginOptions = {}) {
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-load
     const schemas = loadSchemas();
-    // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-02
+    const lifecycleStages = loadLifecycleStages();
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-load
 
-    // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-03
-    for (const schema of schemas) {
-      // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-03a
-      const entity: JsonEntity = createJsonEntity(schema);
-      this.gtsStore.register(entity);
-      this.scratchStore.register(entity);
-      // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-03a
+    const inputs = copyKeyInputs([...schemas, ...lifecycleStages]);
+    if (options.isolated) {
+      // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-private
+      this.pair = createPair(inputs, createLibraryStore);
+      this.token = joinPair(this.pair);
+      // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-private
+    } else {
+      // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-shared
+      this.pair = obtainSharedPair(globalThis, inputs, createLibraryStore);
+      this.token = joinPair(this.pair);
+      // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-shared
     }
-    // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-03
+
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-schemas
+    for (const schema of schemas) {
+      writeSchema(this.pair, this.token, createJsonEntity(schema));
+    }
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-schemas
 
     // @cpt-begin:cpt-frontx-state-gts-type-provider-init:p1:inst-pi-01
     // Transition: UNINITIALIZED → INFRA_SCHEMAS_REGISTERED (all infra schemas registered)
     // @cpt-end:cpt-frontx-state-gts-type-provider-init:p1:inst-pi-01
 
-    // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-04
-    const lifecycleStages = loadLifecycleStages();
-    // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-04
-
-    // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-05
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-stages
     for (const instance of lifecycleStages) {
-      // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-05a
-      const entity: JsonEntity = createJsonEntity(instance);
-      this.gtsStore.register(entity);
-      this.scratchStore.register(entity);
-      // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-05a
+      // A rejected stage aborts construction. The error already names the
+      // instance and the reason, and nothing invalid stays in either store.
+      // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-stage-reject
+      writeInstance(this.pair, this.token, createJsonEntity(instance));
+      // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-stage-reject
     }
-    // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-05
-
-    // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-06
-    for (const instance of lifecycleStages) {
-      // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-06a
-      const result = this.gtsStore.validateInstance(instance.id);
-      // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-06a
-      // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-06b
-      if (!result.ok || !result.valid) {
-        // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-06b1
-        throw new Error(
-          `GTS validation failed for lifecycle stage '${instance.id}': ${result.error ?? 'invalid'}`
-        );
-        // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-06b1
-      }
-      // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-06b
-    }
-    // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-06
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-stages
 
     // @cpt-begin:cpt-frontx-state-gts-type-provider-init:p1:inst-pi-02
     // Transition: INFRA_SCHEMAS_REGISTERED → READY (all lifecycle instances validated)
     // @cpt-end:cpt-frontx-state-gts-type-provider-init:p1:inst-pi-02
 
-    // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-07
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-return
     // Provider is now READY with all infrastructure schemas and lifecycle instances registered.
-    // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration:p1:inst-ir-07
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-return
 
     // @cpt-begin:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-01
     // Provider is ready to accept actor-supplied extension type validation requests.
@@ -133,26 +154,39 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
   // First-class schemas are already registered during construction.
   // registerSchema is for vendor/dynamic schemas only.
 
-  // @cpt-algo:cpt-frontx-algo-gts-type-provider-runtime-registration:p1
+  /**
+   * Register a type definition. The first definition under an identifier
+   * stands: a later one with different content is ignored and reported once
+   * through a console warning, and never throws. A changed definition needs a
+   * new type identifier.
+   *
+   * @throws Error if the definition declares no `$schema`, is not
+   * representable as JSON, or has no valid type identifier
+   */
   registerSchema(schema: JSONSchema): void {
-    // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration:p1:inst-rr-01
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-schema-classify
     const entity: JsonEntity = createJsonEntity(schema);
-    // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration:p1:inst-rr-01
-    // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration:p1:inst-rr-02
-    this.gtsStore.register(entity);
-    this.scratchStore.register(entity);
-    // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration:p1:inst-rr-02
+    if (!entity.isSchema) {
+      throw new Error(
+        `GTS schema '${entity.id || '(no identifier)'}' refused: a schema must declare $schema naming a JSON Schema meta-schema.`
+      );
+    }
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-schema-classify
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-schema-write
+    writeSchema(this.pair, this.token, entity);
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-schema-write
   }
 
   getSchema(typeId: string): JSONSchema | undefined {
-    // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration:p1:inst-rr-05
-    const entity = this.gtsStore.get(typeId);
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-get-schema
+    const entity = this.pair.store.get(typeId);
     if (!entity) return undefined;
     if (!entity.content || typeof entity.content !== 'object') {
       return undefined;
     }
-    return entity.content as JSONSchema;
-    // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration:p1:inst-rr-05
+    // A copy for a schema, so a caller's change never reaches the stored definition.
+    return entity.isSchema ? deepCopyJson(entity.content) : entity.content;
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-get-schema
   }
 
   // === Instance Registry (GTS-native approach) ===
@@ -162,8 +196,9 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
    *
    * Schema-vs-instance determination is gts-ts's responsibility (per
    * gts-spec, the authoritative marker is the trailing `~` on the ID, not
-   * a `$id` field heuristic). This method delegates to `gts-ts` unchanged:
-   * whatever `gts-ts` accepts is accepted, whatever it rejects is rejected.
+   * a `$id` field heuristic). A schema delivered here follows the same rule
+   * as one delivered through `registerSchema`, so the outcome never depends
+   * on which method a runtime used or on load order.
    *
    * Named instance pattern: the schema is resolved from the chained instance
    * ID automatically (`gts.frontx.mfes.ext.extension.v1~acme.widget.v1` →
@@ -171,71 +206,45 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
    * (e.g., action payloads with no `id`), gts-ts uses the `type` field to
    * resolve the schema.
    *
-   * Validate-before-persist: `GtsStore` exposes no validate-only call —
-   * `validateInstance` requires the instance to already be resolvable in the
-   * store it is called on, both to look up its schema and to resolve any
-   * `x-gts-ref` cross-reference against sibling instances — and no call to
-   * remove an entity once registered. So this validates the candidate against
-   * a scratch store that mirrors the real store (every successful write goes
-   * to both), which resolves identically to the real store for both the
-   * schema lookup and any `x-gts-ref` check, without ever persisting failure
-   * into the store the rest of this plugin reads from. Only a candidate that
-   * validates clean is registered into the real, shared store. A failed call
-   * leaves that store exactly as it was before the call, and the scratch
-   * store, which then holds the rejected candidate, is rebuilt from the real
-   * store.
+   * Validate-before-persist: `GtsStore` exposes no validate-only call and no
+   * call to remove an entity once registered, so a candidate is validated in
+   * a scratch store that mirrors the real one and is written to the real
+   * store only once it validates clean. A failed call leaves the real store
+   * exactly as it was.
+   *
+   * Instances keep the last write: a valid instance replaces what the store
+   * held under its identifier.
    *
    * @param entity - The GTS instance to register and validate
    * @throws Error if schema validation fails
    */
   register(entity: unknown): void {
-    // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration:p1:inst-rr-06
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-synchronous
+    // Every store read and write below happens in this call with no await or
+    // callback between them, so calls on one pair never interleave.
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-synchronous
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-register-schema
     const jsonEntity: JsonEntity = createJsonEntity(entity);
-    // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration:p1:inst-rr-06
-    // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration:p1:inst-rr-07
-    this.scratchStore.register(jsonEntity);
-    const result = this.scratchStore.validateInstance(jsonEntity.id);
-    // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration:p1:inst-rr-07
-    // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration:p1:inst-rr-08
-    if (!result.ok || !result.valid) {
-      this.scratchStore = new GtsStore();
-      for (const existing of this.gtsStore.getAll()) {
-        this.scratchStore.register(existing);
-      }
-      // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration:p1:inst-rr-08a
-      const reason = result.ok
-        ? 'schema validation returned invalid'
-        : (result.error ?? 'unknown validation error');
-      const schema = jsonEntity.schemaId ? this.getSchema(jsonEntity.schemaId) : undefined;
-      // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration:p1:inst-rr-08a
-      // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration:p1:inst-rr-08b
-      throw new Error(
-        `GTS validation failed for instance '${jsonEntity.id || '(anonymous)'}'\n` +
-          `Reason: ${reason}\n` +
-          `Instance: ${JSON.stringify(entity, null, 2)}\n` +
-          `Schema: ${schema ? JSON.stringify(schema, null, 2) : '(schema not resolved)'}`
-      );
-      // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration:p1:inst-rr-08b
+    if (jsonEntity.isSchema) {
+      writeSchema(this.pair, this.token, jsonEntity);
+      return;
     }
-    // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration:p1:inst-rr-08
-
-    // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration:p1:inst-rr-09
-    // The candidate validated clean against the scratch store above, which
-    // already holds it: commit the same wrapped entity to the real, shared
-    // store. `gtsStore.register` does not itself re-validate, so this
-    // persists exactly what the candidate already proved valid.
-    this.gtsStore.register(jsonEntity);
-    // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration:p1:inst-rr-09
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-register-schema
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-register-instance
+    writeInstance(this.pair, this.token, jsonEntity);
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-register-instance
   }
 
   // @cpt-algo:cpt-frontx-algo-gts-type-provider-schema-validation:p1
   validateInstance(instanceId: string): ValidationResult {
     // Flow: runtime invokes validateInstance for the extension's instance (inst-vt-05)
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-validate
     // @cpt-begin:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-05
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-schema-validation:p1:inst-sv-01
-    const result = this.gtsStore.validateInstance(instanceId);
+    const result = this.pair.store.validateInstance(instanceId);
     // @cpt-end:cpt-frontx-algo-gts-type-provider-schema-validation:p1:inst-sv-01
     // @cpt-end:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-05
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-validate
 
     // @cpt-begin:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-06
     if (!result.ok) {
@@ -243,7 +252,7 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
       // @cpt-begin:cpt-frontx-algo-gts-type-provider-schema-validation:p1:inst-sv-03
       const unknownTypeResult: ValidationResult = {
         valid: false,
-        errors: [{ path: '', message: result.error ?? 'validation failed', keyword: 'gts-validation' }],
+        errors: [{ path: '', message: describeFailure(result.error ?? 'validation failed', this.pair), keyword: 'gts-validation' }],
       };
       // @cpt-end:cpt-frontx-algo-gts-type-provider-schema-validation:p1:inst-sv-03
       // @cpt-end:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-06a
@@ -283,7 +292,7 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
       errors: [
         {
           path: '',
-          message: result.error ?? 'validation failed',
+          message: describeFailure(result.error ?? 'validation failed', this.pair),
           keyword: 'gts-validation',
         },
       ],
@@ -440,4 +449,5 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
  */
 // @cpt-dod:cpt-frontx-dod-gts-type-provider-infra-schema-ownership:p1
 // @cpt-dod:cpt-frontx-dod-gts-type-provider-type-validation:p1
+// @cpt-dod:cpt-frontx-dod-gts-type-provider-realm-shared-store:p1
 export const gtsPlugin: TypeSystemPlugin<JSONSchema> = new GtsPlugin();

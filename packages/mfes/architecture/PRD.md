@@ -208,7 +208,7 @@ The system **MUST** meet measurable response-time and throughput targets for run
 **Thresholds**:
 - Admission: 100% of admitted microfrontends and extensions pass validation before running.
 - Access posture: a microfrontend receives no host state or capability beyond what its extension domain explicitly grants.
-- Isolation: a microfrontend receives no implicit access to other microfrontends.
+- Isolation: a microfrontend receives no implicit access to other microfrontends' module state or capabilities. Microfrontends in one realm whose type-system providers share a store also share type registrations. That sharing is deliberate, and it is accepted under the same-realm trust model.
 - Default deny: denied or unvalidated units are not admitted or placed.
 
 **Rationale**: Running independently-developed microfrontends — potentially from different teams or vendors — within one host makes default-deny access and admission validation essential for the trust enterprises require.
