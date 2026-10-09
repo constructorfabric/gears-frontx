@@ -44,7 +44,7 @@ The MFE Runtime reasons about types only by identity and delegates all schema, v
 
 ## Decision Outcome
 
-Chosen option: **a GTS-backed default provider shipped with the ecosystem**, because it is the only option that makes the ecosystem ready to validate microfrontends out of the box while confining the concrete type-definition specification to one component. The provider implements the runtime's type-substrate port over the Global Type System toolkit (`@globaltypesystem/gts-ts`) and, at construction, loads and registers the ecosystem infrastructure schemas and the default lifecycle-stage instances, validating those instances before it is considered ready (`packages/gts-plugin/src/plugin.ts`; the infrastructure schema and instance set is loaded from `packages/gts-plugin/src/loader.ts`). It answers the runtime's type-of questions over GTS type derivation and exposes a ready-to-use default instance. It owns the ecosystem infrastructure schemas only (`cpt-frontx-constraint-gts-plugin-owns-infra-schemas`); solution-specific schemas are registered by their owners at runtime and are excluded from it (`cpt-frontx-constraint-gts-plugin-excludes-solution-schemas`).
+Chosen option: **a GTS-backed default provider shipped with the ecosystem**, because it is the only option that makes the ecosystem ready to validate microfrontends out of the box while confining the concrete type-definition specification to one component. The provider implements the runtime's type-substrate port over the Global Type System toolkit (`@globaltypesystem/gts-ts`) and, at construction, loads and registers the ecosystem infrastructure schemas and the default lifecycle-stage instances, validating those instances before it is considered ready (`packages/gts-plugin/src/plugin.ts`; the infrastructure schema and instance set is loaded from `packages/gts-plugin/src/loader.ts`). The store it registers into is shared by every compatible copy of the provider in one JavaScript realm: copies with the same store format, the same GTS library version and the same built-in schemas (`cpt-frontx-adr-realm-shared-gts-store`). An instance constructed with the isolation option keeps a private store instead. Registering a schema again under an identifier the store already holds with the same content changes nothing. So every construction after the first on a store leaves the infrastructure set as the first construction registered it, and logs nothing. It answers the runtime's type-of questions over GTS type derivation and exposes a ready-to-use default instance. It owns the ecosystem infrastructure schemas only (`cpt-frontx-constraint-gts-plugin-owns-infra-schemas`); solution-specific schemas are registered by their owners at runtime and are excluded from it (`cpt-frontx-constraint-gts-plugin-excludes-solution-schemas`).
 
 Consistent with `cpt-frontx-adr-runtime-type-system-coupling`, the grammar of type identifiers is owned here, not by the runtime surface: deriving a package from an entity identifier (`packages/mfes/src/gts/extract-package.ts`) is GTS grammar and belongs to this provider, reaffirming the Q9 placement.
 
@@ -54,12 +54,13 @@ Consistent with `cpt-frontx-adr-runtime-type-system-coupling`, the grammar of ty
 * Good, because the concrete type-definition specification is confined to one component, keeping the runtime and other concerns agnostic.
 * Good, because the provider satisfies the runtime's port and therefore remains substitutable by any other conforming provider.
 * Good, because type-identifier grammar is owned alongside the concrete specification rather than in the runtime.
+* Neutral, because every construction registers the infrastructure set again, and on a shared store every construction after the first changes nothing.
 * Bad, because the default provider carries a dependency on the GTS toolkit and the GTS specification, which consumers of the default inherit.
 * Bad, because the provider must keep its infrastructure schema set conformant with the GTS specification as that specification evolves.
 
 ### Confirmation
 
-Architecture review confirms the provider implements the runtime's type-substrate port, owns the ecosystem infrastructure schemas and default lifecycle instances, and registers them at construction such that it is ready immediately. A continuous-integration check confirms the provider satisfies the port contract and that its owned schema set is the infrastructure set with no solution-specific schemas (`cpt-frontx-constraint-gts-plugin-owns-infra-schemas`, `cpt-frontx-constraint-gts-plugin-excludes-solution-schemas`), and that type-identifier grammar parsing is owned here rather than in the runtime.
+Architecture review confirms the provider implements the runtime's type-substrate port, owns the ecosystem infrastructure schemas and default lifecycle instances, and registers them at construction such that it is ready immediately. A continuous-integration check confirms the provider satisfies the port contract and that its owned schema set is the infrastructure set with no solution-specific schemas (`cpt-frontx-constraint-gts-plugin-owns-infra-schemas`, `cpt-frontx-constraint-gts-plugin-excludes-solution-schemas`), and that type-identifier grammar parsing is owned here rather than in the runtime. A test confirms that a second construction on one store changes no stored infrastructure entry and logs nothing.
 
 ## Pros and Cons of the Options
 
@@ -107,6 +108,8 @@ The present concrete instantiation of the default provider is `@gears-frontx/gts
 * REL — Not applicable because this governs the default provider's identity and ownership, not runtime availability or fault tolerance.
 * DATA — Not applicable here because schema content is owned by the provider and described at design altitude rather than enumerated in this record.
 * OPS — Not applicable because no deployed-service operational procedure is governed by this decision.
+
+Amended 2026-10-09 (#665): the store the provider registers into at construction is shared by every compatible copy in a realm unless the instance is isolated, and registering identical content again changes nothing.
 
 ## Traceability
 

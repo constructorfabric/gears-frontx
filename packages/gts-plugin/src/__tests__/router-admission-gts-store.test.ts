@@ -128,7 +128,7 @@ function buildRegistry(
 
 describe('extension registration leaves nothing in the real GTS store when the router rejects', () => {
   it('a router rejection leaves the extension unregistered with the type system, not merely absent from the registry map', async () => {
-    const plugin = new GtsPlugin();
+    const plugin = new GtsPlugin({ isolated: true });
     const router: RouterPort = {
       registerDomain: () => { /* domain admitted */ },
       registerExtension: () => { throw new Error('router: route conflict'); },
@@ -150,7 +150,7 @@ describe('extension registration leaves nothing in the real GTS store when the r
   });
 
   it('a router that admits the extension lets it reach the real GTS store', async () => {
-    const plugin = new GtsPlugin();
+    const plugin = new GtsPlugin({ isolated: true });
     const router: RouterPort = {
       registerDomain: () => { /* domain admitted */ },
       registerExtension: () => { /* extension admitted */ },
@@ -170,7 +170,7 @@ describe('extension registration leaves nothing in the real GTS store when the r
 
 describe('domain registration leaves nothing in the real GTS store when the router rejects', () => {
   it('a router rejection leaves the domain unregistered with the type system, not merely absent from the registry map', () => {
-    const plugin = new GtsPlugin();
+    const plugin = new GtsPlugin({ isolated: true });
     const router: RouterPort = {
       registerDomain: () => { throw new Error('router: domain route conflict'); },
       registerExtension: () => { /* unused */ },
@@ -194,7 +194,7 @@ describe('domain registration leaves nothing in the real GTS store when the rout
   });
 
   it('a router that admits the domain lets it reach the real GTS store', () => {
-    const plugin = new GtsPlugin();
+    const plugin = new GtsPlugin({ isolated: true });
     const router: RouterPort = {
       registerDomain: () => { /* domain admitted */ },
       registerExtension: () => { /* unused */ },
@@ -225,7 +225,7 @@ describe('domain registration leaves nothing in the real GTS store when the rout
  */
 describe('router admission is released when the router admits but type-system registration then fails', () => {
   it('an invalid extension is admitted by the router, rejected by the real GTS store, released from the router, and a corrected retry succeeds', async () => {
-    const plugin = new GtsPlugin();
+    const plugin = new GtsPlugin({ isolated: true });
     const released: string[] = [];
     const router: RouterPort = {
       registerDomain: () => { /* domain admitted */ },
@@ -255,8 +255,8 @@ describe('router admission is released when the router admits but type-system re
     await expect(registry.registerExtension(invalidExtension)).rejects.toThrow();
 
     // Validated against a disposable store mirroring the real one before ever
-    // touching it (`cpt-frontx-algo-gts-type-provider-runtime-registration`
-    // `inst-rr-07`): the real GtsStore never received this instance.
+    // touching it (`cpt-frontx-algo-gts-type-provider-instance-write`
+    // `inst-iw-validate`): the real GtsStore never received this instance.
     expect(plugin.getSchema(EXT_ID)).toBeUndefined();
 
     // The router had already admitted it before type-system validation ran;
@@ -268,7 +268,7 @@ describe('router admission is released when the router admits but type-system re
   });
 
   it('an invalid domain is admitted by the router, rejected by the real GTS store, released from the router, and a corrected retry succeeds', () => {
-    const plugin = new GtsPlugin();
+    const plugin = new GtsPlugin({ isolated: true });
     const released: string[] = [];
     const router: RouterPort = {
       // The router validates nothing about GTS shape — admitting here is

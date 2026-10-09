@@ -50,7 +50,7 @@ The MFE Runtime must validate microfrontends and their extensions against type d
 
 - **PRD**: [PRD.md](../../../../../architecture/PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
-- **ADRs**: `cpt-frontx-adr-runtime-type-system-coupling`, `cpt-frontx-adr-core-package-boundaries`
+- **ADRs**: `cpt-frontx-adr-runtime-type-system-coupling`, `cpt-frontx-adr-core-package-boundaries`, `cpt-frontx-adr-realm-shared-gts-store`
 - **Dependencies**: None
 
 ## 2. Actor Flows (CDSL)
@@ -148,7 +148,7 @@ Include when entities have explicit lifecycle states.
 
 **Transitions**:
 1. [x] - `p1` - **FROM** UNREGISTERED **TO** REGISTERED **WHEN** the application supplies the schema and the port records it by its identifier - `inst-transition-register`
-2. [x] - `p1` - **FROM** REGISTERED **TO** SUPERSEDED **WHEN** a schema with the same identifier is re-registered, replacing the prior record - `inst-transition-supersede`
+2. [x] - `p1` - **FROM** REGISTERED **TO** SUPERSEDED **WHEN** a schema with the same identifier is registered again and the provider replaces the prior record. Whether a provider replaces the prior record or keeps it is the provider's to define. The runtime registers no schema twice and relies on neither outcome. The default provider keeps the first record (`cpt-frontx-adr-realm-shared-gts-store`), so under it this transition does not occur - `inst-transition-supersede`
 
 ## 5. Definitions of Done
 
