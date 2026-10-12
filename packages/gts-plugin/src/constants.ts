@@ -36,3 +36,10 @@ export const FRONTX_LIFECYCLE_STAGE_DEACTIVATED =
   'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.deactivated.v1';
 export const FRONTX_LIFECYCLE_STAGE_DESTROYED =
   'gts.frontx.mfes.lifecycle.stage.v1~frontx.mfes.lifecycle.destroyed.v1';
+
+/**
+ * Pattern matching every shared-property value: an instance of the shared
+ * property type. Kept here with the other GTS literals this package owns, and
+ * matched through the GTS library, never by string prefix.
+ */
+export const FRONTX_SHARED_PROPERTY_PATTERN = 'gts.frontx.mfes.comm.shared_property.v1~*';

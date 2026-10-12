@@ -10,7 +10,7 @@ const ENTRY_ID = 'gts.frontx.mfes.mfe.entry.v1~test.storereuse.fixture.entry.v1'
 
 describe('GtsPlugin.register rejected candidate', () => {
   it('leaves the live store unchanged when the candidate is rejected', () => {
-    const plugin = new GtsPlugin();
+    const plugin = new GtsPlugin({ isolated: true });
     const bad = { id: ENTRY_ID, actions: [] } as unknown as MfeEntry;
 
     expect(() => plugin.register(bad)).toThrow(/GTS validation failed/);

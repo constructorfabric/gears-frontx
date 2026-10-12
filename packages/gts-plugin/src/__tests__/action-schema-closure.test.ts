@@ -7,7 +7,7 @@
  * mock would not reproduce.
  *
  * `cpt-frontx-dod-gts-type-provider-infra-schema-ownership`,
- * `cpt-frontx-algo-gts-type-provider-infra-registration` (inst-ir-02),
+ * `cpt-frontx-algo-gts-type-provider-infra-registration-v2` (inst-irv2-load),
  * `cpt-frontx-adr-extension-routing-port` (closed action schemas, history
  * intent).
  */
@@ -31,7 +31,7 @@ describe('closed concrete action schemas (mount_ext, unmount_ext, load_ext)', ()
   beforeEach(() => {
     // Fresh plugin per test: each constructs its own GtsStore, so registering
     // the same fixture ids across tests never collides.
-    plugin = new GtsPlugin();
+    plugin = new GtsPlugin({ isolated: true });
 
     const entry: MfeEntry = { id: ENTRY_ID, requiredProperties: [], actions: [], domainActions: [] };
     plugin.register(entry);
@@ -100,6 +100,23 @@ describe('closed concrete action schemas (mount_ext, unmount_ext, load_ext)', ()
     const action: Action = { type: LOAD_EXT, target: DOMAIN_ID, payload: { subject: EXT_ID, history: 'push' } };
     // load_ext carries no history intent — only mount_ext/unmount_ext do.
     expect(() => plugin.register(action)).toThrow();
+  });
+
+  describe('an undeclared field set to undefined', () => {
+    // A copy of the payload would drop the key, so validation must see the object as offered.
+    it.each([
+      ['mount_ext payload', () => mount({ subject: EXT_ID, extra: undefined })],
+      ['unmount_ext payload', () => unmount({ subject: EXT_ID, extra: undefined })],
+      ['load_ext payload', () => ({ type: LOAD_EXT, target: DOMAIN_ID, payload: { subject: EXT_ID, extra: undefined } })],
+      ['mount_ext top level', () => ({ ...mount({ subject: EXT_ID }), extra: undefined })],
+    ])('is rejected on a %s', (_name, build) => {
+      expect(() => plugin.register(build())).toThrow(/GTS validation failed/);
+    });
+
+    it('is rejected on a re-dispatch of a payload equal to one already accepted', () => {
+      expect(() => plugin.register(mount({ subject: EXT_ID }))).not.toThrow();
+      expect(() => plugin.register(mount({ subject: EXT_ID, extra: undefined }))).toThrow();
+    });
   });
 
   it('accepts a well-formed load_ext', () => {

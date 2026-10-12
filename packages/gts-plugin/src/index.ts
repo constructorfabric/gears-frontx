@@ -1,5 +1,5 @@
 export type { JSONSchema } from './types';
-export { GtsPlugin, gtsPlugin } from './plugin';
+export { GtsPlugin, gtsPlugin, type GtsPluginOptions } from './plugin';
 export { loadSchemas, loadLifecycleStages } from './loader';
 export {
   FRONTX_ACTION_LOAD_EXT,

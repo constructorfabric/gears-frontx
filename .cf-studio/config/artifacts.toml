@@ -225,6 +225,16 @@ pattern = "features/*/FEATURE.md"
 traceability = "FULL"
 required = true
 
+# The plugin owns one ADR: how far its type store reaches is a decision about this
+# package, so it lives in this member tree with package-local numbering, as the
+# routing member's ADRs do.
+# Declared `required = false` because owning an ADR is a member's option, not its
+# obligation.
+[systems.children.autodetect.artifacts.ADR]
+pattern = "ADR/**/*.md"
+traceability = "FULL"
+required = false
+
 [[systems.children.codebase]]
 path = "packages/gts-plugin/src"
 extensions = [".ts"]
