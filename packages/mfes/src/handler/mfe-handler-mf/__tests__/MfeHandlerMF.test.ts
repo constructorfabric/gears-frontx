@@ -3,6 +3,7 @@
  *
  * Covers, in file order:
  *  - the unresolved `publicPath` placeholder guard (`assertResolvedPublicPath`);
+ *  - a relative `publicPath` resolving to an absolute base at load time;
  *  - chunk-source fetch concurrency: sibling fan-out, cross-caller dedup,
  *    the build-wide fetch width, cross-branch dependency cycles, the
  *    per-attempt timeout, and declaration-order failure reporting;
@@ -357,6 +358,300 @@ function sharedDep(
     ...(opts.contentHash !== undefined ? { contentHash: opts.contentHash } : {}),
   };
 }
+
+/**
+ * A relative `publicPath` ('/' or a document-relative path) is valid manifest
+ * data. The handler resolves it once per load against `document.baseURI`, so
+ * every URL derived from it (chunk chain, shared dependencies, the
+ * `import.meta.url` rewrite, stylesheets) is absolute and does not move when
+ * the host document URL changes after the load.
+ */
+describe('MfeHandlerMF - relative publicPath resolves to an absolute base', () => {
+  const ROUTES = {
+    'lifecycle.js': {
+      body:
+        "import './a.js';\nimport \"react\";\n" +
+        "export const asset = new URL('./x.svg', import.meta.url).href;\n" +
+        'export default {};',
+    },
+    'a.js': { body: 'export const a = 1;' },
+    'react.js': { body: 'export const react = 1;' },
+    'http-helper.js': { body: 'export const helper = 1;' },
+  };
+  const SHARED = [sharedDep('react', 'shared/react.js')];
+
+  /** Run the loads in order on one handler, sharing one fetch router. */
+  async function loadAll(
+    loads: Array<[publicPath: string, extensionId: string]>,
+    shared: MfManifestShared[] = SHARED
+  ) {
+    const { fetchImpl, callCounts } = createFetchRouter(ROUTES);
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(fetchImpl as typeof fetch);
+    const minted = captureMintedSources();
+    blobModuleStub.current = {
+      default: { mount: (): void => {}, unmount: (): void => {} },
+    };
+    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    try {
+      const lifecycles = [];
+      for (const [publicPath, extensionId] of loads) {
+        const entry = buildEntry(buildManifest(publicPath, shared));
+        entry.exposeAssets.css.sync = ['assets/style.css'];
+        lifecycles.push(await handler.load(entry, extensionId));
+      }
+      return { lifecycles, callCounts, sources: await minted.sources() };
+    } finally {
+      blobModuleStub.current = undefined;
+      minted.restore();
+      fetchSpy.mockRestore();
+    }
+  }
+
+  async function loadWith(publicPath: string, extensionId: string) {
+    const { lifecycles, callCounts, sources } = await loadAll([[publicPath, extensionId]]);
+    return { lifecycle: lifecycles[0], fetchedUrls: [...callCounts.keys()], sources };
+  }
+
+  /** Load once and return the rejection, asserting no fetch was issued. */
+  async function rejectionOf(
+    publicPath: string,
+    extensionId: string,
+    shared: MfManifestShared[] = SHARED
+  ) {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    try {
+      const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+      const error = await handler
+        .load(buildEntry(buildManifest(publicPath, shared)), extensionId)
+        .then(() => undefined, (reason: unknown) => reason);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      return error;
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  }
+
+  afterEach(() => {
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('fetches a chunk once when two manifests name the same base as "/" and as an absolute URL', async () => {
+    const origin = window.location.origin;
+    const { callCounts } = await loadAll([
+      ['/', 'ext-dedupe-root-relative'],
+      [`${origin}/`, 'ext-dedupe-absolute'],
+    ]);
+
+    expect(Object.fromEntries(callCounts)).toEqual({
+      [`${origin}/assets/lifecycle.js`]: 1,
+      [`${origin}/assets/a.js`]: 1,
+      [`${origin}/shared/react.js`]: 1,
+    });
+  });
+
+  it('resolves an empty publicPath to the document directory, not to the document URL itself', async () => {
+    window.history.replaceState(null, '', '/host/page?q=1');
+    const { fetchedUrls } = await loadWith('', 'ext-empty-public-path');
+
+    const hostBase = `${window.location.origin}/host/`;
+    expect(fetchedUrls.sort()).toEqual([
+      `${hostBase}assets/a.js`,
+      `${hostBase}assets/lifecycle.js`,
+      `${hostBase}shared/react.js`,
+    ]);
+  });
+
+  it('reports a publicPath that is not a valid URL as an MfeLoadError naming the field and the entry', async () => {
+    const error = await rejectionOf('http://[', 'ext-malformed-public-path');
+
+    expect(error).toBeInstanceOf(MfeLoadError);
+    expect((error as MfeLoadError).entryTypeId).toBe(ENTRY_ID);
+    expect((error as MfeLoadError).message).toMatch(
+      /manifest\.metaData\.publicPath "http:\/\/\[" is not a valid URL/
+    );
+  });
+
+  // publicPath is an http(s) base. An opaque URL such as data:, blob: or
+  // javascript: has no directory to join chunk paths under, and file: is not
+  // a served origin, so each fails the load before any fetch.
+  it.each([
+    'data:text/javascript,x',
+    'blob:https://host.test/0b8f',
+    'javascript:alert(1)',
+    'file:///app/mfe/',
+  ])('rejects the publicPath %j as not an http(s) URL', async (publicPath) => {
+    const error = await rejectionOf(publicPath, `ext-non-http-public-path-${publicPath}`);
+
+    expect(error).toBeInstanceOf(MfeLoadError);
+    expect((error as MfeLoadError).entryTypeId).toBe(ENTRY_ID);
+    expect((error as MfeLoadError).message).toContain(
+      `manifest.metaData.publicPath "${publicPath}" is not an http(s) URL`
+    );
+  });
+
+  describe('in a realm without a document', () => {
+    beforeEach(() => {
+      vi.stubGlobal('document', undefined);
+    });
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('loads an MFE whose publicPath is absolute', async () => {
+      const { fetchedUrls } = await loadWith(PUBLIC_PATH, 'ext-no-document-absolute');
+
+      expect(fetchedUrls).toContain(`${PUBLIC_PATH}assets/lifecycle.js`);
+    });
+
+    it('reports a malformed absolute publicPath as not a valid URL rather than as relative', async () => {
+      const error = await rejectionOf('http://[', 'ext-no-document-malformed');
+
+      expect(error).toBeInstanceOf(MfeLoadError);
+      expect((error as MfeLoadError).message).toMatch(
+        /manifest\.metaData\.publicPath "http:\/\/\[" is not a valid URL/
+      );
+    });
+
+    it('rejects a relative publicPath with an MfeLoadError instead of failing on the missing document', async () => {
+      const error = await rejectionOf('/', 'ext-no-document-relative');
+
+      expect(error).toBeInstanceOf(MfeLoadError);
+      expect((error as MfeLoadError).message).toMatch(
+        /manifest\.metaData\.publicPath "\/" is relative and there is no document/
+      );
+    });
+  });
+
+  // `chunkPath` is relative to publicPath (MfManifestShared.chunkPath); a
+  // leading '/' still joins under the base, and an absolute http(s) URL is
+  // fetched as given.
+  it.each([
+    ['shared/react.js', 'https://host.test/host/mfe/x/shared/react.js'],
+    ['/shared/react.js', 'https://host.test/host/mfe/x/shared/react.js'],
+    ['http-helper.js', 'https://host.test/host/mfe/x/http-helper.js'],
+    ['https://cdn.test/shared/react.js', 'https://cdn.test/shared/react.js'],
+  ])('fetches the shared chunkPath %j at %s', async (chunkPath, expectedUrl) => {
+    const { callCounts } = await loadAll(
+      [['https://host.test/host/mfe/x/', `ext-chunk-path-${chunkPath}`]],
+      [sharedDep('dep', chunkPath)]
+    );
+
+    expect([...callCounts.keys()].filter((url) => !url.includes('/assets/'))).toEqual([
+      expectedUrl,
+    ]);
+  });
+
+  it('keys a hashless shared dep on its absolute URL, so a bare chunkPath is not reused across bases', async () => {
+    const { callCounts } = await loadAll(
+      [
+        ['https://host.test/a/', 'ext-bare-chunk-path-a'],
+        ['https://host.test/b/', 'ext-bare-chunk-path-b'],
+      ],
+      [sharedDep('helper', 'http-helper.js')]
+    );
+
+    expect(
+      Object.fromEntries([...callCounts].filter(([url]) => url.endsWith('http-helper.js')))
+    ).toEqual({
+      'https://host.test/a/http-helper.js': 1,
+      'https://host.test/b/http-helper.js': 1,
+    });
+  });
+
+  // A trailing '/' is added when missing and a query or hash is dropped, so
+  // the chunk chain (base + filename), the shared-dependency URL resolution
+  // and the stylesheets all name the same directory.
+  it.each([
+    ['https://cdn.test/mfe/x', 'https://cdn.test/mfe/x/'],
+    ['https://cdn.test/mfe/x?v=1#top', 'https://cdn.test/mfe/x/'],
+    ['mfe/x', `${window.location.origin}/host/mfe/x/`],
+  ])('treats publicPath %j as the directory %s', async (publicPath, base) => {
+    window.history.replaceState(null, '', '/host/');
+    const { lifecycle, fetchedUrls } = await loadWith(publicPath, `ext-dir-${publicPath}`);
+    const shadowRoot = document.createElement('div').attachShadow({ mode: 'open' });
+    await lifecycle.mount(shadowRoot, {} as ChildMfeBridge);
+
+    expect(fetchedUrls.sort()).toEqual([
+      `${base}assets/a.js`,
+      `${base}assets/lifecycle.js`,
+      `${base}shared/react.js`,
+    ]);
+    expect(
+      Array.from(shadowRoot.querySelectorAll('link'), (link) => link.href)
+    ).toEqual([`${base}assets/style.css`]);
+  });
+
+  // chunkPath is an http(s) URL or a path relative to publicPath; a
+  // protocol-relative or other-scheme value is neither, a scheme behind a
+  // leading '/' included, nor is a value carrying a backslash (which URL
+  // parsing reads as '/') or one that resolves outside the base once its
+  // leading '/' is dropped, URL parsing strips its whitespace or decodes its
+  // dot segments. Each fails the load before any fetch instead of being
+  // joined under the base. The root base keeps the climb check from catching
+  // what the earlier checks must.
+  it.each([
+    ...[
+      '//cdn.test/x.js',
+      '\\\\cdn.test\\x.js',
+      '/\\cdn.test/x.js',
+      'data:text/javascript,export default 1',
+      'blob:https://host.test/0b8f',
+      'ftp://cdn.test/x.js',
+      'javascript:void 0',
+      '/data:text/javascript,export default 1',
+      '/javascript:alert(1)',
+      '/http://cdn.test/x.js',
+      '\t//cdn.test/x.js',
+      ' //cdn.test/x.js',
+      'ht\ttp://evil.test/x.js',
+      '../../x.js',
+      '%2e%2e/%2e%2e/x.js',
+      'shared\\react.js',
+    ].map((chunkPath) => ['https://host.test/host/mfe/x/', chunkPath]),
+    ['https://host.test/', '\\shared/react.js'],
+    ['https://host.test/mfe/', '/https://host.test/mfe/shared/x.js'],
+  ])('rejects under the publicPath %j the shared chunkPath %j with an MfeLoadError naming the dependency', async (publicPath, chunkPath) => {
+    const error = await rejectionOf(publicPath, `ext-bad-chunk-path-${chunkPath}`, [
+      sharedDep('dep', chunkPath),
+    ]);
+
+    expect(error).toBeInstanceOf(MfeLoadError);
+    expect((error as MfeLoadError).entryTypeId).toBe(ENTRY_ID);
+    expect((error as MfeLoadError).message).toContain(
+      `manifest.shared "dep" chunkPath "${chunkPath}" is neither`
+    );
+  });
+
+  it('rewrites import.meta.url to an absolute chunk directory that new URL() accepts when publicPath is "/"', async () => {
+    const { sources } = await loadWith('/', 'ext-root-relative-meta-url');
+
+    const entrySource = sources.find((source) => source.includes('./x.svg'));
+    const literal = entrySource?.match(/new URL\('\.\/x\.svg', ("[^"]*")\)/)?.[1];
+    expect(literal).toBeDefined();
+    const chunkBase = JSON.parse(literal as string) as string;
+    expect(new URL('./x.svg', chunkBase).href).toBe(
+      `${window.location.origin}/assets/x.svg`
+    );
+  });
+
+  it('resolves a document-relative publicPath against the document base at load time, not at a later navigation', async () => {
+    window.history.replaceState(null, '', '/host/');
+    const { lifecycle, fetchedUrls } = await loadWith('mfe/x/', 'ext-document-relative');
+    const loadTimeBase = `${window.location.origin}/host/mfe/x/`;
+
+    window.history.pushState(null, '', '/host/deep/route/page');
+    const shadowRoot = document.createElement('div').attachShadow({ mode: 'open' });
+    await lifecycle.mount(shadowRoot, {} as ChildMfeBridge);
+
+    expect(fetchedUrls).toContain(`${loadTimeBase}assets/lifecycle.js`);
+    expect(fetchedUrls).toContain(`${loadTimeBase}shared/react.js`);
+    expect(
+      Array.from(shadowRoot.querySelectorAll('link'), (link) => link.href)
+    ).toEqual([`${loadTimeBase}assets/style.css`]);
+  });
+});
 
 /**
  * Concurrent-fetch behaviour of the two dependency-fanout loops

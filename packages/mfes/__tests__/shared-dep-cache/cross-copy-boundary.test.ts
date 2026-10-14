@@ -172,6 +172,15 @@ function jsResponse(body: string): Response {
   } as unknown as Response;
 }
 
+/**
+ * The absolute asset base a load resolves from the manifest and hands to the
+ * shared-dependency methods. Every manifest here carries an absolute
+ * publicPath, which resolves to itself.
+ */
+function baseUrlOf(manifest: MfManifest): string {
+  return new URL(manifest.metaData.publicPath).href;
+}
+
 /** Invoke a handler's private `fetchSharedDepSources` via reflection. */
 function fetchShared(
   handler: Handler,
@@ -179,9 +188,12 @@ function fetchShared(
 ): Promise<Map<string, string>> {
   return (
     handler as unknown as {
-      fetchSharedDepSources: (m: MfManifest) => Promise<Map<string, string>>;
+      fetchSharedDepSources: (
+        m: MfManifest,
+        b: string
+      ) => Promise<Map<string, string>>;
     }
-  ).fetchSharedDepSources(manifest);
+  ).fetchSharedDepSources(manifest, baseUrlOf(manifest));
 }
 
 /** Invoke a handler's private `buildSharedDepBlobUrls` via reflection. */
@@ -195,11 +207,12 @@ function buildSharedBlobUrls(
     handler as unknown as {
       buildSharedDepBlobUrls: (
         m: MfManifest,
+        b: string,
         e: string,
         x: string
       ) => Promise<Map<string, string>>;
     }
-  ).buildSharedDepBlobUrls(manifest, entryId, extensionId);
+  ).buildSharedDepBlobUrls(manifest, baseUrlOf(manifest), entryId, extensionId);
 }
 
 /** Reads a handler's `sharedDepTextCache` field via reflection. */

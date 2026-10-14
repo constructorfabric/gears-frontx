@@ -173,7 +173,7 @@ Internal system functions that implement the isolation mechanism.
 2. [x] - `p1` - **IF** the same package name is declared more than once, regardless of version - `inst-if-duplicate-name`
    1. [x] - `p1` - **RETURN** error — fail the load with a diagnostic naming the duplicated package and the manifest, because sources and rewrite maps are keyed by bare package name and a duplicate would silently displace the earlier declaration - `inst-raise-duplicate-name`
 3. [x] - `p1` - **FOR EACH** shared dependency declared in the manifest, visited in the manifest's enumeration order — which governs only the sequence of visits, so the enumeration may issue its fetches concurrently, admitted through the same fixed width `inst-fanout-bounded` names; this phase completes before the load's expose-chunk chain build begins, so the two phases never contribute to one another's in-flight count - `inst-for-each-dep`
-   1. [x] - `p1` - Derive the absolute chunk URL from the manifest's `publicPath` and the dependency's `chunkPath` - `inst-derive-url`
+   1. [x] - `p1` - Derive the absolute chunk URL from the load's absolute asset base URL (the manifest's `publicPath` resolved against the host document's base URL) and the dependency's `chunkPath` - `inst-derive-url`
    2. [x] - `p1` - **IF** the manifest's shared-dependency entry declares a content hash of its emitted chunk - `inst-if-hash-declared`
       1. [x] - `p1` - Compute the deduplication cache key as `name@version@<content hash>`, so reuse is scoped to loads whose declared hash agrees on the identity of the emitted build - `inst-compute-key-hash`
    3. [x] - `p1` - **ELSE** - `inst-else-no-hash`

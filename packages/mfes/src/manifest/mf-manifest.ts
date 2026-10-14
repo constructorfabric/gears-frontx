@@ -38,9 +38,14 @@ export interface MfManifestShared {
   /** Concrete resolved version (e.g. '19.2.4'). */
   version: string;
   /**
-   * Path to the standalone ESM file for this dependency, relative to
-   * the MFE's publicPath (e.g. "shared/react.js"). The handler resolves
-   * this against publicPath to form the fetch URL.
+   * The standalone ESM file for this dependency: an http(s) URL, fetched as
+   * given, or a path relative to the MFE's publicPath (e.g.
+   * "shared/react.js"), resolved against publicPath to form the fetch URL; a
+   * leading '/' is joined under publicPath, not the origin root. The
+   * resolved URL must stay under publicPath. Any other value, such as a
+   * protocol-relative '//host/x.js', another URL scheme (also behind a
+   * leading '/'), a path that climbs out of publicPath with '..', or a value
+   * containing a backslash, a space or a control character, fails the load.
    */
   chunkPath: string;
   /**
@@ -102,6 +107,16 @@ export interface MfManifestMetaData {
    * Public URL base path for all chunk assets.
    * All relative chunk paths in shared[].assets and expose assets are
    * resolved against this value (e.g. 'http://localhost:3001/' or '/').
+   * A relative value ('/' or a document-relative path) is resolved against
+   * the host document's base URL (`document.baseURI`) when the MFE is
+   * loaded, and every chunk, shared-dependency and stylesheet URL is built
+   * from that absolute base. The base always ends with '/': a value without
+   * a trailing '/' names a directory ('https://cdn/mfe/x' is
+   * 'https://cdn/mfe/x/'), and a query or hash is dropped. The empty string
+   * names the document's own directory, like './'. A relative value needs a
+   * host document; outside one, publicPath must be absolute. The resolved
+   * URL must be http(s); any other scheme, such as data:, blob:, javascript:
+   * or file:, fails the load.
    */
   publicPath: string;
 }
