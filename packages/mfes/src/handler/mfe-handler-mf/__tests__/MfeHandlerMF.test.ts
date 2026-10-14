@@ -380,9 +380,12 @@ describe('MfeHandlerMF - relative publicPath resolves to an absolute base', () =
   };
   const SHARED = [sharedDep('react', 'shared/react.js')];
 
-  /** Run the loads in order on one handler, sharing one fetch router. */
+  /**
+   * Run the loads in order on one handler, sharing one fetch router. A load
+   * may name its own shared dependencies in place of `shared`.
+   */
   async function loadAll(
-    loads: Array<[publicPath: string, extensionId: string]>,
+    loads: Array<[publicPath: string, extensionId: string, loadShared?: MfManifestShared[]]>,
     shared: MfManifestShared[] = SHARED
   ) {
     const { fetchImpl, callCounts } = createFetchRouter(ROUTES);
@@ -396,8 +399,8 @@ describe('MfeHandlerMF - relative publicPath resolves to an absolute base', () =
     const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
     try {
       const lifecycles = [];
-      for (const [publicPath, extensionId] of loads) {
-        const entry = buildEntry(buildManifest(publicPath, shared));
+      for (const [publicPath, extensionId, loadShared = shared] of loads) {
+        const entry = buildEntry(buildManifest(publicPath, loadShared));
         entry.exposeAssets.css.sync = ['assets/style.css'];
         lifecycles.push(await handler.load(entry, extensionId));
       }
@@ -526,7 +529,7 @@ describe('MfeHandlerMF - relative publicPath resolves to an absolute base', () =
 
   // `chunkPath` is relative to publicPath (MfManifestShared.chunkPath); a
   // leading '/' still joins under the base, and an absolute http(s) URL is
-  // fetched as given.
+  // fetched at its parsed href.
   it.each([
     ['shared/react.js', 'https://host.test/host/mfe/x/shared/react.js'],
     ['/shared/react.js', 'https://host.test/host/mfe/x/shared/react.js'],
@@ -558,6 +561,21 @@ describe('MfeHandlerMF - relative publicPath resolves to an absolute base', () =
       'https://host.test/a/http-helper.js': 1,
       'https://host.test/b/http-helper.js': 1,
     });
+  });
+
+  it('fetches a hashless shared dep once when two manifests spell its absolute chunkPath differently', async () => {
+    const { callCounts } = await loadAll([
+      ['https://host.test/a/', 'ext-chunk-path-spelling-a', [
+        sharedDep('react', 'HTTPS://CDN.test:443/shared/./react.js'),
+      ]],
+      ['https://host.test/b/', 'ext-chunk-path-spelling-b', [
+        sharedDep('react', 'https://cdn.test/shared/react.js'),
+      ]],
+    ]);
+
+    expect(
+      Object.fromEntries([...callCounts].filter(([url]) => url.endsWith('react.js')))
+    ).toEqual({ 'https://cdn.test/shared/react.js': 1 });
   });
 
   // A trailing '/' is added when missing and a query or hash is dropped, so

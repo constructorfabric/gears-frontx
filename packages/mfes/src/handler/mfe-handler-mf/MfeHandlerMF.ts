@@ -328,7 +328,8 @@ function asDirectoryBase(url: URL): string {
 
 /**
  * The absolute fetch URL of a shared dependency. `chunkPath` is an http(s)
- * URL, used as given, or a path relative to publicPath
+ * URL, taken as its parsed href so that equivalent spellings of one URL share
+ * one cache key and one fetch, or a path relative to publicPath
  * (`MfManifestShared.chunkPath`), so a leading '/' is joined under `baseUrl`
  * rather than resolved to the origin root. A protocol-relative value such as
  * '//cdn/x.js', a URL scheme other than http(s), also behind leading '/'s,
@@ -355,10 +356,11 @@ function resolveSharedChunkUrl(
     throw rejection();
   }
   if (/^https?:\/\//i.test(chunkPath)) {
-    if (!parseUrl(chunkPath)) {
+    const absolute = parseUrl(chunkPath);
+    if (!absolute) {
       throw rejection();
     }
-    return chunkPath;
+    return absolute.href;
   }
   const relativePath = chunkPath.replace(/^\/+/, '');
   if (chunkPath.startsWith('//') || hasUrlScheme(relativePath)) {
