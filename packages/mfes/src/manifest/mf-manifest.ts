@@ -39,15 +39,18 @@ export interface MfManifestShared {
   version: string;
   /**
    * The standalone ESM file for this dependency: an absolute URL starting
-   * with 'http://' or 'https://', fetched at its parsed form, or a path
+   * with 'http://' or 'https://' (in any case), fetched at its parsed form,
+   * or a path
    * relative to the MFE's publicPath (e.g. "shared/react.js"), resolved
    * against publicPath to form the fetch URL; a leading '/' is joined under
    * publicPath, not the origin root. The resolved URL must stay under
-   * publicPath, and either way it must name a file, not a directory. Any
+   * publicPath, and either way it must name a file: the resolved path must
+   * not end with '/'. Any
    * other value, such as a protocol-relative '//host/x.js', another URL
    * scheme (also behind a leading '/'), a path that climbs out of publicPath
    * with '..', a value containing a backslash, a space or a control
-   * character, or a value that resolves to a directory ('/', '.', '?v=1'),
+   * character, or a value that resolves to a directory ('/', '.', '?v=1',
+   * '#x'),
    * fails the load.
    * This is the contract of the mfe-loading FEATURE
    * (`cpt-frontx-algo-mfe-loading-manifest-discovery`,

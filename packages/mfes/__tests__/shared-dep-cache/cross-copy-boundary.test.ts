@@ -177,13 +177,16 @@ function jsResponse(body: string): Response {
  * resolved from the manifest by the handler's own private
  * `resolvePublicPath`, via reflection.
  */
-function baseUrlOf(handler: Handler, manifest: MfManifest): string {
+function baseUrlOf(handler: Handler, manifest: MfManifest, entryId: string): string {
   return (
     handler as unknown as {
       resolvePublicPath: (p: string, e: string) => string;
     }
-  ).resolvePublicPath(manifest.metaData.publicPath, manifest.id);
+  ).resolvePublicPath(manifest.metaData.publicPath, entryId);
 }
+
+/** The entry id `fetchShared` loads under. */
+const FETCH_ENTRY_ID = 'gts.x.test.mfe.entry.v1~x.test.cross_copy.v1';
 
 /** Invoke a handler's private `fetchSharedDepSources` via reflection. */
 function fetchShared(
@@ -198,7 +201,11 @@ function fetchShared(
         e: string
       ) => Promise<Map<string, string>>;
     }
-  ).fetchSharedDepSources(manifest, baseUrlOf(handler, manifest), manifest.id);
+  ).fetchSharedDepSources(
+    manifest,
+    baseUrlOf(handler, manifest, FETCH_ENTRY_ID),
+    FETCH_ENTRY_ID
+  );
 }
 
 /** Invoke a handler's private `buildSharedDepBlobUrls` via reflection. */
@@ -219,7 +226,7 @@ function buildSharedBlobUrls(
     }
   ).buildSharedDepBlobUrls(
     manifest,
-    baseUrlOf(handler, manifest),
+    baseUrlOf(handler, manifest, entryId),
     entryId,
     extensionId
   );

@@ -1757,6 +1757,12 @@ describe('MfeHandlerMF — deterministic failures are not retried', () => {
       [sharedDep('dep', '//cdn.test/x.js')],
       'chunkPath "//cdn.test/x.js" is neither',
     ],
+    [
+      'a shared chunkPath that is not a string',
+      PUBLIC_PATH,
+      [{ ...sharedDep('dep', 'x.js'), chunkPath: undefined } as unknown as MfManifestShared],
+      'chunkPath "undefined" is neither',
+    ],
   ];
 
   it.each(MANIFEST_REFUSALS)(
