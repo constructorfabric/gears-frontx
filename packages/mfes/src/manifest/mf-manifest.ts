@@ -46,6 +46,9 @@ export interface MfManifestShared {
    * protocol-relative '//host/x.js', another URL scheme (also behind a
    * leading '/'), a path that climbs out of publicPath with '..', or a value
    * containing a backslash, a space or a control character, fails the load.
+   * This is the contract of the mfe-loading FEATURE
+   * (`cpt-frontx-algo-mfe-loading-manifest-discovery`,
+   * `inst-md-resolve-chunk-path`), which binds every manifest producer.
    */
   chunkPath: string;
   /**
@@ -116,7 +119,9 @@ export interface MfManifestMetaData {
    * names the document's own directory, like './'. A relative value needs a
    * host document; outside one, publicPath must be absolute. The resolved
    * URL must be http(s); any other scheme, such as data:, blob:, javascript:
-   * or file:, fails the load.
+   * or file:, fails the load. This is the contract of the mfe-loading
+   * FEATURE (`cpt-frontx-algo-mfe-loading-manifest-discovery`,
+   * `inst-md-read-public-path`), which binds every manifest producer.
    */
   publicPath: string;
 }

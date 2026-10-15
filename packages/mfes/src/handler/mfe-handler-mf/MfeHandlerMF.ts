@@ -252,9 +252,11 @@ interface ChainBuildState {
 /**
  * Marker for a load failure a repeat attempt cannot change.
  *
- * A dependency cycle is a property of the microfrontend's build, so every
- * attempt reaches the same refusal: retrying only multiplies the source
- * fetches and delays the same user-visible error by the retry backoff. The
+ * A dependency cycle is a property of the microfrontend's build, and a
+ * refusal of the manifest's own data (`publicPath`, a shared `chunkPath`)
+ * depends only on the manifest, so every attempt reaches the same refusal:
+ * retrying only multiplies the source fetches and delays the same
+ * user-visible error by the retry backoff. The
  * marker is a module-private symbol rather than an error subclass so that
  * `MfeLoadError` — the handler's public error contract — is unchanged.
  */
@@ -294,83 +296,6 @@ function isDeterministicLoadFailure(error: unknown): boolean {
     error !== null &&
     (error as Record<symbol, unknown>)[DETERMINISTIC_LOAD_FAILURE] === true
   );
-}
-
-/** `new URL(value, base)`, or `undefined` where the constructor would throw. */
-function parseUrl(value: string, base?: string): URL | undefined {
-  try {
-    return new URL(value, base);
-  } catch {
-    return undefined;
-  }
-}
-
-/** Whether `value` starts with a URL scheme, so it is meant as an absolute URL. */
-function hasUrlScheme(value: string): boolean {
-  return /^[a-z][a-z\d+.-]*:/i.test(value);
-}
-
-/**
- * `url` as a directory base: its pathname ends with '/', and the query and
- * hash are dropped. Chunk URLs are built both by joining the base and a
- * filename and by URL resolution against the base; only a directory base
- * makes the two agree, and neither carries a query or hash of the base into
- * the chunk URL.
- */
-function asDirectoryBase(url: URL): string {
-  if (!url.pathname.endsWith('/')) {
-    url.pathname += '/';
-  }
-  url.search = '';
-  url.hash = '';
-  return url.href;
-}
-
-/**
- * The absolute fetch URL of a shared dependency. `chunkPath` is an http(s)
- * URL, taken as its parsed href so that equivalent spellings of one URL share
- * one cache key and one fetch, or a path relative to publicPath
- * (`MfManifestShared.chunkPath`), so a leading '/' is joined under `baseUrl`
- * rather than resolved to the origin root. A protocol-relative value such as
- * '//cdn/x.js', a URL scheme other than http(s), also behind leading '/'s,
- * a backslash anywhere (URL parsing reads it as '/') and a space or control
- * character (URL parsing strips or drops it) all fail the load. The relative
- * case is then checked on the resolved URL, not on the raw string: it must
- * stay under `baseUrl`, a directory with no query or hash
- * (`asDirectoryBase`), so another origin and a '..' climb out of the base,
- * however spelled, fail the load too.
- */
-function resolveSharedChunkUrl(
-  dep: MfManifestShared,
-  baseUrl: string,
-  entryId: string
-): string {
-  const { chunkPath } = dep;
-  const rejection = () =>
-    new MfeLoadError(
-      `manifest.shared "${dep.name}" chunkPath "${chunkPath}" is neither an ` +
-        'http(s) URL nor a path that stays under manifest.metaData.publicPath.',
-      entryId
-    );
-  if ([...chunkPath].some((char) => char.charCodeAt(0) <= 0x20 || char === '\\')) {
-    throw rejection();
-  }
-  if (/^https?:\/\//i.test(chunkPath)) {
-    const absolute = parseUrl(chunkPath);
-    if (!absolute) {
-      throw rejection();
-    }
-    return absolute.href;
-  }
-  const relativePath = chunkPath.replace(/^\/+/, '');
-  if (chunkPath.startsWith('//') || hasUrlScheme(relativePath)) {
-    throw rejection();
-  }
-  const url = parseUrl(relativePath, baseUrl);
-  if (!url?.href.startsWith(baseUrl)) {
-    throw rejection();
-  }
-  return url.href;
 }
 
 /**
@@ -617,11 +542,11 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // waits on, so a timeout releases exactly that attempt's entries and
     // the retry issues its own fetch (see `AttemptSourceTextLedger`).
     // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-if-deterministic-failure
-    // A deterministic refusal — today, a dependency cycle in the
-    // microfrontend's own chunk graph — is settled as a FULFILLED sentinel
-    // rather than a rejection, so `RetryHandler` sees nothing to retry: no
-    // further attempt is made, no backoff is waited, and the fetches are
-    // not multiplied. The sentinel is unwrapped back into the original
+    // A deterministic refusal (a dependency cycle in the microfrontend's own
+    // chunk graph, or manifest data the handler refuses) is settled as a
+    // FULFILLED sentinel rather than a rejection, so `RetryHandler` sees
+    // nothing to retry: no further attempt is made, no backoff is waited,
+    // and the fetches are not multiplied. The sentinel is unwrapped back into the original
     // rejection immediately below, so callers of `load()` see exactly the
     // error the attempt raised. Every other failure keeps rejecting and so
     // keeps its retries.
@@ -860,9 +785,12 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     baseUrl: string;
   }> {
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-public-path
-    // publicPath is the authoritative base URL for all chunks in this MFE.
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-derive-base-url
+    // publicPath, resolved once to an absolute directory URL, is the
+    // authoritative base URL for all chunks in this MFE.
     this.assertResolvedPublicPath(manifest.metaData.publicPath, entryId);
     const baseUrl = this.resolvePublicPath(manifest.metaData.publicPath, entryId);
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-derive-base-url
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-public-path
 
     // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-run-manifest-discovery
@@ -959,44 +887,139 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    */
   private resolvePublicPath(publicPath: string, entryId: string): string {
     const resolved = this.resolvePublicPathUrl(publicPath, entryId);
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid
     if (resolved.protocol !== 'http:' && resolved.protocol !== 'https:') {
-      throw new MfeLoadError(
+      throw MfeHandlerMF.manifestDataRejection(
         `manifest.metaData.publicPath "${publicPath}" is not an http(s) URL.`,
         entryId
       );
     }
-    return asDirectoryBase(resolved);
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid
+    return MfeHandlerMF.asDirectoryBase(resolved);
   }
 
   /** `publicPath` resolved to an absolute URL, against the document if relative. */
   private resolvePublicPathUrl(publicPath: string, entryId: string): URL {
     const value = publicPath === '' ? './' : publicPath;
-    const absolute = parseUrl(value);
+    const absolute = MfeHandlerMF.parseUrl(value);
     if (absolute) {
       return absolute;
     }
-    if (hasUrlScheme(value)) {
-      throw new MfeLoadError(
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid
+    if (MfeHandlerMF.hasUrlScheme(value)) {
+      throw MfeHandlerMF.manifestDataRejection(
         `manifest.metaData.publicPath "${publicPath}" is not a valid URL.`,
         entryId
       );
     }
     // `typeof` keeps a realm without `document` from throwing a ReferenceError.
     if (typeof document === 'undefined' || !document) {
-      throw new MfeLoadError(
+      throw MfeHandlerMF.manifestDataRejection(
         `manifest.metaData.publicPath "${publicPath}" is relative and there is ` +
           `no document to resolve it against; use an absolute URL.`,
         entryId
       );
     }
-    const resolved = parseUrl(value, document.baseURI);
+    const resolved = MfeHandlerMF.parseUrl(value, document.baseURI);
     if (!resolved) {
-      throw new MfeLoadError(
+      throw MfeHandlerMF.manifestDataRejection(
         `manifest.metaData.publicPath "${publicPath}" is not a valid URL.`,
         entryId
       );
     }
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid
     return resolved;
+  }
+
+  /**
+   * A load error for manifest data the handler refuses: an unresolvable or
+   * non-http(s) `publicPath`, the unresolved `"auto"` placeholder, or a
+   * shared `chunkPath` outside its rules. The refusal depends only on the
+   * manifest, so it is marked deterministic and the load is not retried.
+   */
+  private static manifestDataRejection(message: string, entryId: string): MfeLoadError {
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-manifest-invalid-fail
+    return markDeterministicLoadFailure(new MfeLoadError(message, entryId));
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-manifest-invalid-fail
+  }
+
+  /** `new URL(value, base)`, or `undefined` where the constructor would throw. */
+  private static parseUrl(value: string, base?: string): URL | undefined {
+    try {
+      return new URL(value, base);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Whether `value` starts with a URL scheme, so it is meant as an absolute URL. */
+  private static hasUrlScheme(value: string): boolean {
+    return /^[a-z][a-z\d+.-]*:/i.test(value);
+  }
+
+  /**
+   * `url` as a directory base: its pathname ends with '/', and the query and
+   * hash are dropped. Chunk URLs are built both by joining the base and a
+   * filename and by URL resolution against the base; only a directory base
+   * makes the two agree, and neither carries a query or hash of the base into
+   * the chunk URL.
+   */
+  private static asDirectoryBase(url: URL): string {
+    if (!url.pathname.endsWith('/')) {
+      url.pathname += '/';
+    }
+    url.search = '';
+    url.hash = '';
+    return url.href;
+  }
+
+  /**
+   * The absolute fetch URL of a shared dependency. `chunkPath` is an http(s)
+   * URL, taken as its parsed href so that equivalent spellings of one URL share
+   * one cache key and one fetch, or a path relative to publicPath
+   * (`MfManifestShared.chunkPath`), so a leading '/' is joined under `baseUrl`
+   * rather than resolved to the origin root. A protocol-relative value such as
+   * '//cdn/x.js', a URL scheme other than http(s), also behind leading '/'s,
+   * a backslash anywhere (URL parsing reads it as '/') and a space or control
+   * character (URL parsing strips or drops it) all fail the load. The relative
+   * case is then checked on the resolved URL, not on the raw string: it must
+   * stay under `baseUrl`, a directory with no query or hash
+   * (`asDirectoryBase`), so another origin and a '..' climb out of the base,
+   * however spelled, fail the load too.
+   */
+  private static resolveSharedChunkUrl(
+    dep: MfManifestShared,
+    baseUrl: string,
+    entryId: string
+  ): string {
+    const { chunkPath } = dep;
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid
+    const rejection = () =>
+      MfeHandlerMF.manifestDataRejection(
+        `manifest.shared "${dep.name}" chunkPath "${chunkPath}" is neither an ` +
+          'http(s) URL nor a path that stays under manifest.metaData.publicPath.',
+        entryId
+      );
+    if ([...chunkPath].some((char) => char.charCodeAt(0) <= 0x20 || char === '\\')) {
+      throw rejection();
+    }
+    if (/^https?:\/\//i.test(chunkPath)) {
+      const absolute = MfeHandlerMF.parseUrl(chunkPath);
+      if (!absolute) {
+        throw rejection();
+      }
+      return absolute.href;
+    }
+    const relativePath = chunkPath.replace(/^\/+/, '');
+    if (chunkPath.startsWith('//') || MfeHandlerMF.hasUrlScheme(relativePath)) {
+      throw rejection();
+    }
+    const url = MfeHandlerMF.parseUrl(relativePath, baseUrl);
+    if (!url?.href.startsWith(baseUrl)) {
+      throw rejection();
+    }
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid
+    return url.href;
   }
 
   /**
@@ -1027,8 +1050,9 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * misconfiguration.
    */
   private assertResolvedPublicPath(publicPath: string, entryId: string): void {
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid
     if (publicPath === 'auto' || publicPath === 'auto/') {
-      throw new MfeLoadError(
+      throw MfeHandlerMF.manifestDataRejection(
         `manifest.metaData.publicPath is the unresolved Module Federation ` +
           `placeholder "${publicPath}". This handler requires an already-` +
           `resolved absolute URL (or '/') — resolve "auto" to the MFE's real ` +
@@ -1037,6 +1061,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         entryId
       );
     }
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid
   }
 
   // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-if-bad-lifecycle
@@ -1108,11 +1133,10 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     stylesheetPaths: string[],
     baseUrl: string
   ): void {
-    // A root-relative publicPath such as '/' or '/assets/' is valid manifest
-    // data, and the chunk fetches built from it resolve against the host
-    // document. `new URL(path, '/')` throws on a base without a scheme, so the
-    // base is resolved against `document.baseURI` first; an absolute
-    // publicPath resolves to itself, independent of the host document.
+    // `baseUrl` is already absolute: `resolvePublicPath` resolved a relative
+    // publicPath against `document.baseURI` once, at load time, so the
+    // stylesheets name the same directory as the chunk fetches. Resolving it
+    // against `document.baseURI` again returns it unchanged.
     const base = new URL(baseUrl, document.baseURI);
     stylesheetPaths.forEach((path, index) => {
       const targetId = `${RUNTIME_STYLE_ID_PREFIX}${index}`;
@@ -1330,7 +1354,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-derive-url
     const resolvedDeps = manifest.shared.map((dep) => ({
       dep,
-      absoluteUrl: resolveSharedChunkUrl(dep, baseUrl, entryId),
+      absoluteUrl: MfeHandlerMF.resolveSharedChunkUrl(dep, baseUrl, entryId),
     }));
     // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-derive-url
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-resolve-chunk-path

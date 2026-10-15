@@ -56,7 +56,7 @@
           "chunkPath": {
             "type": "string",
             "minLength": 1,
-            "description": "The standalone ESM file for this dependency: an http(s) URL, fetched as given, or a path relative to metaData.publicPath (e.g. 'shared/react.js'), where a leading '/' is joined under publicPath, not the origin root. The resolved URL must stay under publicPath. Any other value, such as a protocol-relative '//host/x.js', another URL scheme (also behind a leading '/'), a path that climbs out of publicPath with '..', or a value containing a backslash, a space or a control character, fails the load."
+            "description": "The standalone ESM file for this dependency: an http(s) URL, or a path relative to metaData.publicPath that stays under it (e.g. 'shared/react.js'). The canonical rules, including the values that fail the load, are defined by @gears-frontx/mfes: MfManifestShared.chunkPath and the mfe-loading FEATURE (cpt-frontx-algo-mfe-loading-manifest-discovery, inst-md-resolve-chunk-path)."
           },
           "unwrapKey": {
             "description": "Named export key to unwrap the module from the chunk. Null when the chunk exports the module directly.",

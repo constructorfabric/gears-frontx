@@ -13,7 +13,7 @@
  *  - the per-load isolation invariant: every specifier in every minted
  *    source is an inline-content URL this load minted — no origin URL and
  *    no unrewritten bare specifier survives anywhere;
- *  - deterministic (cycle) failures not being retried;
+ *  - deterministic failures (cycles, refused manifest data) not being retried;
  *  - the stylesheet-injecting lifecycle wrapper staying transparent to the
  *    mount contract (mount context, synchronous rendezvous window) and
  *    keeping the stylesheets until the MFE's own unmount settles;
@@ -1696,6 +1696,53 @@ describe('MfeHandlerMF — deterministic failures are not retried', () => {
 
     fetchSpy.mockRestore();
   });
+
+  // A refusal of the manifest's own data depends on nothing a retry could
+  // change. Under the default `retries: 2` and its 1000ms / 2000ms backoff a
+  // retried refusal would reach the caller only after about 3s.
+  const MANIFEST_REFUSALS: Array<
+    [label: string, publicPath: string, shared: MfManifestShared[], message: string]
+  > = [
+    [
+      'the unresolved placeholder publicPath',
+      'auto',
+      [],
+      'unresolved Module Federation placeholder "auto"',
+    ],
+    [
+      'a non-http(s) publicPath',
+      'javascript:alert(1)',
+      [],
+      'publicPath "javascript:alert(1)" is not an http(s) URL',
+    ],
+    [
+      'a protocol-relative shared chunkPath',
+      PUBLIC_PATH,
+      [sharedDep('dep', '//cdn.test/x.js')],
+      'chunkPath "//cdn.test/x.js" is neither',
+    ],
+  ];
+
+  it.each(MANIFEST_REFUSALS)(
+    'makes one attempt at %s under the default retries',
+    async (_label, publicPath, shared, message) => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      try {
+        const handler = new MfeHandlerMF(ENTRY_BASE_ID);
+        const entry = buildEntry(buildManifest(publicPath, shared));
+
+        const startedAt = Date.now();
+        await expect(
+          handler.load(entry, `ext-no-retry-manifest-${publicPath}`)
+        ).rejects.toThrow(message);
+
+        expect(fetchSpy).not.toHaveBeenCalled();
+        expect(Date.now() - startedAt).toBeLessThan(1000);
+      } finally {
+        fetchSpy.mockRestore();
+      }
+    }
+  );
 
   it('still retries a failure a repeat attempt could change', async () => {
     // The guard above must not disable retrying in general: a transient
