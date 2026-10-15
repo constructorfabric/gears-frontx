@@ -38,14 +38,17 @@ export interface MfManifestShared {
   /** Concrete resolved version (e.g. '19.2.4'). */
   version: string;
   /**
-   * The standalone ESM file for this dependency: an http(s) URL, fetched as
-   * given, or a path relative to the MFE's publicPath (e.g.
-   * "shared/react.js"), resolved against publicPath to form the fetch URL; a
-   * leading '/' is joined under publicPath, not the origin root. The
-   * resolved URL must stay under publicPath. Any other value, such as a
-   * protocol-relative '//host/x.js', another URL scheme (also behind a
-   * leading '/'), a path that climbs out of publicPath with '..', or a value
-   * containing a backslash, a space or a control character, fails the load.
+   * The standalone ESM file for this dependency: an absolute URL starting
+   * with 'http://' or 'https://', fetched at its parsed form, or a path
+   * relative to the MFE's publicPath (e.g. "shared/react.js"), resolved
+   * against publicPath to form the fetch URL; a leading '/' is joined under
+   * publicPath, not the origin root. The resolved URL must stay under
+   * publicPath, and either way it must name a file, not a directory. Any
+   * other value, such as a protocol-relative '//host/x.js', another URL
+   * scheme (also behind a leading '/'), a path that climbs out of publicPath
+   * with '..', a value containing a backslash, a space or a control
+   * character, or a value that resolves to a directory ('/', '.', '?v=1'),
+   * fails the load.
    * This is the contract of the mfe-loading FEATURE
    * (`cpt-frontx-algo-mfe-loading-manifest-discovery`,
    * `inst-md-resolve-chunk-path`), which binds every manifest producer.
@@ -112,8 +115,8 @@ export interface MfManifestMetaData {
    * resolved against this value (e.g. 'http://localhost:3001/' or '/').
    * A relative value ('/' or a document-relative path) is resolved against
    * the host document's base URL (`document.baseURI`) when the MFE is
-   * loaded, and every chunk, shared-dependency and stylesheet URL is built
-   * from that absolute base. The base always ends with '/': a value without
+   * loaded, and every relative chunk, shared-dependency and stylesheet path
+   * resolves against that absolute base. The base always ends with '/': a value without
    * a trailing '/' names a directory ('https://cdn/mfe/x' is
    * 'https://cdn/mfe/x/'), and a query or hash is dropped. The empty string
    * names the document's own directory, like './'. A relative value needs a

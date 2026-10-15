@@ -900,6 +900,16 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 
   /** `publicPath` resolved to an absolute URL, against the document if relative. */
   private resolvePublicPathUrl(publicPath: string, entryId: string): URL {
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid
+    // A manifest that skipped schema validation (an inline one) may carry
+    // any JSON value here, and `new URL(undefined, base)` would resolve it.
+    if (typeof (publicPath as unknown) !== 'string') {
+      throw MfeHandlerMF.manifestDataRejection(
+        `manifest.metaData.publicPath ${String(publicPath)} is not a string.`,
+        entryId
+      );
+    }
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid
     const value = publicPath === '' ? './' : publicPath;
     const absolute = MfeHandlerMF.parseUrl(value);
     if (absolute) {
@@ -980,12 +990,16 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * (`MfManifestShared.chunkPath`), so a leading '/' is joined under `baseUrl`
    * rather than resolved to the origin root. A protocol-relative value such as
    * '//cdn/x.js', a URL scheme other than http(s), also behind leading '/'s,
-   * a backslash anywhere (URL parsing reads it as '/') and a space or control
-   * character (URL parsing strips or drops it) all fail the load. The relative
-   * case is then checked on the resolved URL, not on the raw string: it must
-   * stay under `baseUrl`, a directory with no query or hash
-   * (`asDirectoryBase`), so another origin and a '..' climb out of the base,
-   * however spelled, fail the load too.
+   * a backslash anywhere (URL parsing reads it as '/'), a space or a control
+   * character (URL parsing strips, drops or encodes it) and a value that is
+   * not a string at all fail the load. The relative case is then checked on
+   * the resolved URL, not on the raw string: it must stay under `baseUrl`, a
+   * directory with no query or hash (`asDirectoryBase`), so another origin
+   * and a '..' climb out of the base under URL resolution (a percent-encoded
+   * '%2e%2e' included) fail the load too. Either way the URL must name a
+   * file: a value that resolves to a directory, such as '/', '.', '?v=1' or
+   * '#x' (all the base itself), fails the load rather than fetching the
+   * directory as a module.
    */
   private static resolveSharedChunkUrl(
     dep: MfManifestShared,
@@ -996,16 +1010,26 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid
     const rejection = () =>
       MfeHandlerMF.manifestDataRejection(
-        `manifest.shared "${dep.name}" chunkPath "${chunkPath}" is neither an ` +
-          'http(s) URL nor a path that stays under manifest.metaData.publicPath.',
+        `manifest.shared "${dep.name}" chunkPath "${String(chunkPath)}" is neither ` +
+          'an http(s) URL of a file nor a file path that stays under ' +
+          'manifest.metaData.publicPath.',
         entryId
       );
-    if ([...chunkPath].some((char) => char.charCodeAt(0) <= 0x20 || char === '\\')) {
+    // A manifest that skipped schema validation (an inline one) may carry
+    // any JSON value here.
+    if (typeof (chunkPath as unknown) !== 'string') {
+      throw rejection();
+    }
+    const isControlOrSpace = (char: string): boolean => {
+      const code = char.charCodeAt(0);
+      return code <= 0x20 || (code >= 0x7f && code <= 0x9f);
+    };
+    if ([...chunkPath].some((char) => isControlOrSpace(char) || char === '\\')) {
       throw rejection();
     }
     if (/^https?:\/\//i.test(chunkPath)) {
       const absolute = MfeHandlerMF.parseUrl(chunkPath);
-      if (!absolute) {
+      if (!absolute || absolute.pathname.endsWith('/')) {
         throw rejection();
       }
       return absolute.href;
@@ -1015,7 +1039,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       throw rejection();
     }
     const url = MfeHandlerMF.parseUrl(relativePath, baseUrl);
-    if (!url?.href.startsWith(baseUrl)) {
+    if (!url?.href.startsWith(baseUrl) || url.pathname.endsWith('/')) {
       throw rejection();
     }
     // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid

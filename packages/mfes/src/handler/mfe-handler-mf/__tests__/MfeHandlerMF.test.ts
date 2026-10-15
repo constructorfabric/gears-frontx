@@ -606,9 +606,12 @@ describe('MfeHandlerMF - relative publicPath resolves to an absolute base', () =
   // leading '/' included, nor is a value carrying a backslash (which URL
   // parsing reads as '/') or one that resolves outside the base once its
   // leading '/' is dropped, URL parsing strips its whitespace or decodes its
-  // dot segments. Each fails the load before any fetch instead of being
-  // joined under the base. The root base keeps the climb check from catching
-  // what the earlier checks must.
+  // dot segments, nor one carrying DEL or a C1 control character (which URL
+  // parsing encodes), nor one that names a directory rather than a file
+  // ('/', '.', '?v=1' and '#x' all resolve to the base itself). Each fails
+  // the load before any fetch instead of being joined under the base. The
+  // root base keeps the climb check from catching what the earlier checks
+  // must.
   it.each([
     ...[
       '//cdn.test/x.js',
@@ -627,6 +630,15 @@ describe('MfeHandlerMF - relative publicPath resolves to an absolute base', () =
       '../../x.js',
       '%2e%2e/%2e%2e/x.js',
       'shared\\react.js',
+      'x\u007f.js',
+      'x\u0085.js',
+      '/',
+      '.',
+      './',
+      '?v=1',
+      '#x',
+      'shared/',
+      'https://cdn.test/shared/',
     ].map((chunkPath) => ['https://host.test/host/mfe/x/', chunkPath]),
     ['https://host.test/', '\\shared/react.js'],
     ['https://host.test/mfe/', '/https://host.test/mfe/shared/x.js'],
@@ -639,6 +651,30 @@ describe('MfeHandlerMF - relative publicPath resolves to an absolute base', () =
     expect((error as MfeLoadError).entryTypeId).toBe(ENTRY_ID);
     expect((error as MfeLoadError).message).toContain(
       `manifest.shared "dep" chunkPath "${chunkPath}" is neither`
+    );
+  });
+
+  // An inline manifest skips schema validation, so a field may hold any JSON
+  // value; the handler refuses it by name instead of resolving 'undefined'.
+  it('rejects a chunkPath that is not a string with an MfeLoadError naming the dependency', async () => {
+    const dep = { ...sharedDep('dep', 'x.js'), chunkPath: undefined } as unknown as MfManifestShared;
+    const error = await rejectionOf(PUBLIC_PATH, 'ext-non-string-chunk-path', [dep]);
+
+    expect(error).toBeInstanceOf(MfeLoadError);
+    expect((error as MfeLoadError).message).toContain(
+      'manifest.shared "dep" chunkPath "undefined" is neither'
+    );
+  });
+
+  it('rejects a publicPath that is not a string with an MfeLoadError naming the field', async () => {
+    const error = await rejectionOf(
+      undefined as unknown as string,
+      'ext-non-string-public-path'
+    );
+
+    expect(error).toBeInstanceOf(MfeLoadError);
+    expect((error as MfeLoadError).message).toContain(
+      'manifest.metaData.publicPath undefined is not a string'
     );
   });
 
