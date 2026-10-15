@@ -63,7 +63,7 @@ User-facing interactions that start with an actor (human or external system) and
 
 ### On-Demand MFE Load via Manifest Discovery
 
-- [x] `p1` - **ID**: `cpt-frontx-flow-mfe-loading-on-demand-load`
+- [ ] `p1` - **ID**: `cpt-frontx-flow-mfe-loading-on-demand-load`
 
 **Actor**: `cpt-frontx-actor-project-developer`
 
@@ -78,20 +78,20 @@ User-facing interactions that start with an actor (human or external system) and
 - A load attempt fails on a dependency cycle in the microfrontend's chunk graph or among its shared dependencies — the load fails on that attempt with the cycle diagnostic and is not retried, the outcome being identical on every attempt.
 
 **Steps**:
-1. [x] - `p1` - Registry receives the microfrontend entry with its manifest reference (`MfeEntry` with manifest field) and, at load start, resolves and caches the declared manifest — `inst-register-entry`
-2. [x] - `p1` - Registry triggers on-demand load for the entry when the extension is first needed — `inst-trigger-load`
-3. [ ] - `p1` - System validates that the entry's manifest carries the required declared fields (`metaData.publicPath`, `exposeAssets`, `shared[]`) — `inst-validate-manifest-fields`
-4. [ ] - `p1` - **IF** required manifest fields are absent or malformed — `inst-if-manifest-invalid`
-   1. [ ] - `p1` - **RETURN** load failure; entry transitions to LOAD_FAILED — `inst-manifest-invalid-fail`
-5. [ ] - `p1` - System derives the asset base URL from `manifest.metaData.publicPath` — `inst-derive-base-url`
-6. [x] - `p1` - System executes manifest-driven discovery (see §3 `cpt-frontx-algo-mfe-loading-manifest-discovery`) to build shared-dependency blob URLs and locate the expose chunk — `inst-run-manifest-discovery`
-7. [ ] - `p1` - System mints a per-load lazy-import ABI resolver stub and registers it with the host-side registry (see §3 `cpt-frontx-algo-mfe-loading-lazy-import-abi`) — `inst-mint-lazy-stub`
-8. [ ] - `p1` - System fetches and rewrites the expose chunk's bare specifiers to the per-load blob URLs, producing an isolated module blob URL — `inst-rewrite-expose-chunk`
-9. [ ] - `p1` - System imports the expose chunk blob URL and extracts the lifecycle module factory — `inst-import-expose-chunk`
-10. [ ] - `p1` - **IF** lazy chunks are exercised during mount — `inst-if-lazy-exercised`
-    1. [ ] - `p1` - System resolves each `__frontx_lazy(path)` call via the per-load ABI resolver; each lazy chunk joins the same isolated graph and inherits the parent load's shared-dependency bindings — `inst-resolve-lazy-chunks`
-11. [ ] - `p1` - System collects CSS paths from `exposeAssets.css.sync` and `exposeAssets.css.async` for stylesheet injection at mount — `inst-collect-css`
-12. [x] - `p1` - **RETURN** lifecycle module factory and stylesheet paths to the registry — `inst-return-lifecycle`
+1. [x] - `p1` - Registry receives the microfrontend entry with its manifest reference (`MfeEntry` with manifest field) and, at load start, resolves and caches the declared manifest - `inst-register-entry`
+2. [x] - `p1` - Registry triggers on-demand load for the entry when the extension is first needed - `inst-trigger-load`
+3. [ ] - `p1` - System validates that the entry's manifest carries the required declared fields (`metaData.publicPath`, `exposeAssets`, `shared[]`) - `inst-validate-manifest-fields`
+4. [ ] - `p1` - **IF** required manifest fields are absent or malformed - `inst-if-manifest-invalid`
+   1. [ ] - `p1` - **RETURN** load failure; entry transitions to LOAD_FAILED - `inst-manifest-invalid-fail`
+5. [ ] - `p1` - System derives the asset base URL from `manifest.metaData.publicPath` - `inst-derive-base-url`
+6. [x] - `p1` - System executes manifest-driven discovery (see §3 `cpt-frontx-algo-mfe-loading-manifest-discovery`) to build shared-dependency blob URLs and locate the expose chunk - `inst-run-manifest-discovery`
+7. [ ] - `p1` - System mints a per-load lazy-import ABI resolver stub and registers it with the host-side registry (see §3 `cpt-frontx-algo-mfe-loading-lazy-import-abi`) - `inst-mint-lazy-stub`
+8. [ ] - `p1` - System fetches and rewrites the expose chunk's bare specifiers to the per-load blob URLs, producing an isolated module blob URL - `inst-rewrite-expose-chunk`
+9. [ ] - `p1` - System imports the expose chunk blob URL and extracts the lifecycle module factory - `inst-import-expose-chunk`
+10. [ ] - `p1` - **IF** lazy chunks are exercised during mount - `inst-if-lazy-exercised`
+    1. [ ] - `p1` - System resolves each `__frontx_lazy(path)` call via the per-load ABI resolver; each lazy chunk joins the same isolated graph and inherits the parent load's shared-dependency bindings - `inst-resolve-lazy-chunks`
+11. [ ] - `p1` - System collects CSS paths from `exposeAssets.css.sync` and `exposeAssets.css.async` for stylesheet injection at mount - `inst-collect-css`
+12. [x] - `p1` - **RETURN** lifecycle module factory and stylesheet paths to the registry - `inst-return-lifecycle`
 
 **Recorded debt — flow specified ahead of the runtime**: the unchecked steps above stay unchecked on the same ground §4 records — where the behaviour exists in code at all, it lives under mfe-isolation's marked regions rather than under anchors of this feature's own.
 
@@ -101,46 +101,46 @@ Internal system functions and procedures that do not interact with actors direct
 
 ### Manifest-Driven Discovery
 
-- [x] `p1` - **ID**: `cpt-frontx-algo-mfe-loading-manifest-discovery`
+- [ ] `p1` - **ID**: `cpt-frontx-algo-mfe-loading-manifest-discovery`
 
 **Input**: `MfeEntry` with a resolved `MfManifest` (fields: `metaData.publicPath`, `shared[]` in the manifest's published enumeration order — a given entry may optionally declare a content hash of its emitted chunk — `exposeAssets` per entry)
 
 **Output**: asset base URL, expose chunk filename, stylesheet paths, shared-dependency blob URLs
 
 **Steps**:
-1. [x] - `p1` - Read `manifest.metaData.publicPath` as the asset base URL for all chunk references in this MFE — `inst-md-read-public-path`
-2. [x] - `p1` - Read `exposeAssets.js.sync[0]` as the expose chunk filename; if empty, emit a load error — `inst-md-read-expose-chunk`
-3. [x] - `p1` - Read `exposeAssets.css.sync` and `exposeAssets.css.async` as the stylesheet asset paths — `inst-md-read-css`
-4. [x] - `p1` - **FOR EACH** entry in `manifest.shared[]`, visited in the manifest's enumeration order, which fixes the sequence of visits and not the order in which the fetches are issued or completed (`cpt-frontx-adr-mfe-asset-discovery`) — `inst-md-for-each-shared`
-   1. [x] - `p1` - Resolve `shared.chunkPath` against the asset base URL to form the standalone ESM fetch URL — `inst-md-resolve-chunk-path`
-   2. [x] - `p1` - Fetch the standalone ESM source text for this shared dependency — `inst-md-fetch-shared-dep`
-   3. [x] - `p1` - Rewrite bare specifiers in the fetched source to the already-resolved blob URLs of the shared dependencies it imports, in the leaves-first order the consumer derives from the fetched sources themselves (`cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls`, step `inst-resolve-order`) — `inst-md-rewrite-specifiers`
-   4. [x] - `p1` - Mint a blob URL for this shared dependency and record it in the per-load shared-dep blob URL map — `inst-md-mint-shared-blob`
-5. [ ] - `p1` - **RETURN** asset base URL, expose chunk filename, stylesheet paths, and the completed shared-dep blob URL map — `inst-md-return`
+1. [x] - `p1` - Read `manifest.metaData.publicPath` as the asset base URL for all chunk references in this MFE - `inst-md-read-public-path`
+2. [x] - `p1` - Read `exposeAssets.js.sync[0]` as the expose chunk filename; if empty, emit a load error - `inst-md-read-expose-chunk`
+3. [x] - `p1` - Read `exposeAssets.css.sync` and `exposeAssets.css.async` as the stylesheet asset paths - `inst-md-read-css`
+4. [x] - `p1` - **FOR EACH** entry in `manifest.shared[]`, visited in the manifest's enumeration order, which fixes the sequence of visits and not the order in which the fetches are issued or completed (`cpt-frontx-adr-mfe-asset-discovery`) - `inst-md-for-each-shared`
+   1. [x] - `p1` - Resolve `shared.chunkPath` against the asset base URL to form the standalone ESM fetch URL - `inst-md-resolve-chunk-path`
+   2. [x] - `p1` - Fetch the standalone ESM source text for this shared dependency - `inst-md-fetch-shared-dep`
+   3. [x] - `p1` - Rewrite bare specifiers in the fetched source to the already-resolved blob URLs of the shared dependencies it imports, in the leaves-first order the consumer derives from the fetched sources themselves (`cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls`, step `inst-resolve-order`) - `inst-md-rewrite-specifiers`
+   4. [x] - `p1` - Mint a blob URL for this shared dependency and record it in the per-load shared-dep blob URL map - `inst-md-mint-shared-blob`
+5. [ ] - `p1` - **RETURN** asset base URL, expose chunk filename, stylesheet paths, and the completed shared-dep blob URL map - `inst-md-return`
 
 ### Lazy-Import ABI Resolution
 
-- [x] `p1` - **ID**: `cpt-frontx-algo-mfe-loading-lazy-import-abi`
+- [ ] `p1` - **ID**: `cpt-frontx-algo-mfe-loading-lazy-import-abi`
 
 **Input**: `LoadState` carrying the per-load shared-dep blob URL map, asset base URL, and entry chunk filename; a lazy chunk relative path emitted as `__frontx_lazy(path)` by the build-time transform
 
 **Output**: a blob URL for the lazy chunk, joined to the parent load's isolated graph with its shared-dependency bindings inherited
 
 **Steps**:
-1. [x] - `p1` - At load time, mint a per-load loader stub (tiny ESM blob) that re-exports `__frontx_lazy` as a function closed over this load's resolver identifier — `inst-lai-mint-stub`
-2. [x] - `p1` - Register the per-load resolver in the host-side `__FRONTX_LAZY__` global registry, keyed by the load's resolver identifier — `inst-lai-register-resolver`
-3. [ ] - `p1` - Inject the loader stub's blob URL into every chunk in this load that references the `__frontx_lazy` identifier, so compiled lazy calls reach this load's resolver — `inst-lai-inject-stub`
-4. [x] - `p1` - **WHEN** `__frontx_lazy(path)` is first exercised in a loaded chunk — `inst-lai-when-exercised`
-   1. [x] - `p1` - Resolve the relative path against the entry chunk's directory to obtain a filename relative to the asset base URL — `inst-lai-resolve-relative-path`
-   2. [ ] - `p1` - **IF** a blob URL for this filename already exists in the per-load blob URL map — `inst-lai-if-cached`
-      1. [ ] - `p1` - **RETURN** the cached blob URL, skipping re-fetch and re-rewrite — `inst-lai-return-cached`
-   3. [x] - `p1` - Fetch the lazy chunk source from the asset base URL — `inst-lai-fetch-lazy-chunk`
-   4. [ ] - `p1` - Rewrite bare specifiers in the lazy chunk source to the parent load's shared-dep blob URLs (inherited from the same `LoadState`) — `inst-lai-rewrite-lazy-specifiers`
-   5. [ ] - `p1` - Rewrite any nested `__frontx_lazy` references in the lazy chunk to the same per-load loader stub URL — `inst-lai-rewrite-nested-lazy`
-   6. [ ] - `p1` - Mint a blob URL for the lazy chunk and record it in the per-load blob URL map — `inst-lai-mint-lazy-blob`
-   7. [x] - `p1` - **RETURN** the lazy chunk's blob URL; the caller imports it, joining the parent load's isolated graph — `inst-lai-return-lazy-blob`
-5. [x] - `p1` - **IF** a lazy call reaches a loader identifier no resolver is registered for — the unresolvable-path failure itself surfaces inside the lazy-blob resolution above — `inst-lai-if-unknown`
-   1. [ ] - `p1` - **RETURN** load failure — `inst-lai-unknown-fail`
+1. [x] - `p1` - At load time, mint a per-load loader stub (tiny ESM blob) that re-exports `__frontx_lazy` as a function closed over this load's resolver identifier - `inst-lai-mint-stub`
+2. [x] - `p1` - Register the per-load resolver in the host-side `__FRONTX_LAZY__` global registry, keyed by the load's resolver identifier - `inst-lai-register-resolver`
+3. [ ] - `p1` - Inject the loader stub's blob URL into every chunk in this load that references the `__frontx_lazy` identifier, so compiled lazy calls reach this load's resolver - `inst-lai-inject-stub`
+4. [x] - `p1` - **WHEN** `__frontx_lazy(path)` is first exercised in a loaded chunk - `inst-lai-when-exercised`
+   1. [x] - `p1` - Resolve the relative path against the entry chunk's directory to obtain a filename relative to the asset base URL - `inst-lai-resolve-relative-path`
+   2. [ ] - `p1` - **IF** a blob URL for this filename already exists in the per-load blob URL map - `inst-lai-if-cached`
+      1. [ ] - `p1` - **RETURN** the cached blob URL, skipping re-fetch and re-rewrite - `inst-lai-return-cached`
+   3. [x] - `p1` - Fetch the lazy chunk source from the asset base URL - `inst-lai-fetch-lazy-chunk`
+   4. [ ] - `p1` - Rewrite bare specifiers in the lazy chunk source to the parent load's shared-dep blob URLs (inherited from the same `LoadState`) - `inst-lai-rewrite-lazy-specifiers`
+   5. [ ] - `p1` - Rewrite any nested `__frontx_lazy` references in the lazy chunk to the same per-load loader stub URL - `inst-lai-rewrite-nested-lazy`
+   6. [ ] - `p1` - Mint a blob URL for the lazy chunk and record it in the per-load blob URL map - `inst-lai-mint-lazy-blob`
+   7. [x] - `p1` - **RETURN** the lazy chunk's blob URL; the caller imports it, joining the parent load's isolated graph - `inst-lai-return-lazy-blob`
+5. [x] - `p1` - **IF** a lazy call reaches a loader identifier no resolver is registered for - the unresolvable-path failure itself surfaces inside the lazy-blob resolution above - `inst-lai-if-unknown`
+   1. [ ] - `p1` - **RETURN** load failure - `inst-lai-unknown-fail`
 
 **Recorded debt — algorithms specified ahead of the runtime**: the unchecked steps in both algorithms stay unchecked on the same ground §4 records — where the behaviour exists in code at all, it lives under mfe-isolation's marked regions rather than under anchors of this feature's own.
 
@@ -153,29 +153,29 @@ Internal system functions and procedures that do not interact with actors direct
 **Output**: The attempt's own outcome when it settles within the budget, or a diagnostic load error naming the entry and the elapsed budget; and, for a failed attempt, whether a further attempt may follow
 
 **Steps**:
-1. [x] - `p1` - Read the configured per-attempt timeout budget from the handler configuration — `inst-lto-read-budget`
-2. [x] - `p1` - **IF** the budget is absent or non-positive — `inst-lto-if-disabled`
-   1. [x] - `p1` - **RETURN** the attempt unraced, so a configured zero (the conventional "no timeout" idiom) or any other non-positive value disables the race instead of failing every attempt immediately — `inst-lto-return-unraced`
-3. [x] - `p1` - Race the attempt against the budget, so whichever settles first determines this attempt's outcome, and release the timer once either side settles — `inst-lto-race-attempt`
-4. [x] - `p1` - **IF** the budget elapses before the attempt settles — `inst-lto-if-elapsed`
-   1. [x] - `p1` - **RETURN** error — raise a load error naming the entry and the elapsed budget — `inst-lto-raise-timeout`
-   2. [x] - `p1` - Leave the abandoned attempt's in-flight work running: the race abandons the attempt's result, it does not cancel the work in progress, and anything that work goes on to produce stays subject to the retention invariant of `cpt-frontx-adr-mfe-load-isolation` — `inst-lto-no-cancel`
-   3. [x] - `p1` - Release the source-text cache entries the abandoned attempt was waiting on — both the per-chunk-URL entries (`cpt-frontx-algo-mfe-isolation-blob-url-chain`, step `inst-fetch-source`) and the per-shared-dependency-key entries (`cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls`, step `inst-fetch-and-cache`) — so that a subsequent attempt issues its own fetch instead of resolving to the abandoned attempt's in-flight one; without this the timeout bounds a hung fetch without recovering from it, because every retry rejoins the same hung result and expires against its own budget in turn — `inst-lto-release-abandoned-source-text`
-      1. [x] - `p1` - Record on the ledger, per entry, the cache object the attempt actually used together with the key and the promise, rather than a name for a cache to be looked up when the release runs: a shared-dependency entry may live in the cache the realm shares across compatible independently loaded copies or in the copy-local fallback that copy took instead (`cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous`), and only the cache that received that exact promise is the one to release it from — `inst-lto-release-record-cache`
-   4. [x] - `p1` - Make each release identity-checked against the recorded cache object: remove the mapping only while that cache still holds, under that key, the very in-flight result the abandoned attempt was waiting on, and never one a concurrent load has since registered under the same key — the same discipline those steps already require of their eviction on rejection, and the discipline that makes a release from one copy safe against a realm-shared cache another copy is also publishing into — `inst-lto-release-identity-checked`
-      1. [x] - `p1` - Treat that recorded promise as the generation the release is entitled to remove, which is why the promise and not merely the cache and key is recorded: where two copies joined one promise and the first copy's attempt timed out and deleted its mapping, a retry may publish a replacement promise under the same key, and the second copy's later release still carries the promise it joined, so the identity check fails against the replacement and the release cannot remove it — only an attempt that actually joined the replacement, and then exhausted its own budget, may release the replacement, so an abandoned attempt can never evict a generation it did not join — `inst-lto-release-generation-identity`
-   5. [x] - `p1` - Treat releasing an entry as distinct from cancelling the work behind it: the release removes the mapping only, `inst-lto-no-cancel` continues to hold unchanged, and the accepted cost is that the abandoned fetch and the retry's own fetch may be in flight for the same source at once — the price of a retry that can actually succeed — `inst-lto-release-not-cancel`
-      1. [x] - `p1` - Accept, where the released entry lived in the realm-shared cache, that the release reaches a key another independently loaded copy may be awaiting: that waiter is undisturbed, because it already holds the promise and the release removed only the mapping to it, while a caller arriving after the release finds no entry and starts a duplicate fetch for that source. A duplicate fetch therefore arises across genuine retry generations — the intended recovery when a fetch exceeds an attempt budget — and not from the number of copies that originally joined one promise, which `inst-lto-release-generation-identity` bounds. Leaving the mapping in place instead would make the timeout unrecoverable for every copy in the realm, and conditioning the release on an entry having no other waiter is not the remedy: while any other waiter remained, the timed-out attempt's own retry would rejoin the same possibly hung promise and could never recover, and staggered retries could hold such a count above zero indefinitely — so no waiter count is recorded anywhere in this release path — `inst-lto-release-realm-shared`
-5. [x] - `p1` - Apply the budget to one attempt and not to the load as a whole: every retry of a failed attempt is raced against its own fresh budget, so a single load's worst-case wall clock is the budget multiplied by the number of attempts plus the backoff between them — `inst-lto-per-attempt-budget`
-6. [x] - `p1` - **IF** an attempt fails for a reason a repeat attempt cannot change — a dependency cycle detected while building the load's isolated module graph (`cpt-frontx-algo-mfe-isolation-blob-url-chain`, `inst-raise-ancestor-cycle` and `inst-raise-join-cycle`; `cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls`, `inst-raise-shared-cycle`), which is a property of the microfrontend's build and is identical on every attempt — `inst-lto-if-deterministic-failure`
-   1. [x] - `p1` - **RETURN** that failure to the caller without a further attempt, so a deterministic refusal is not re-attempted: retrying it multiplies the source fetches and delays the same user-visible error by the backoff for no possible benefit — `inst-lto-no-retry-deterministic`
-7. [x] - `p1` - **RETURN** the attempt's own outcome when it settles within the budget — `inst-lto-return-attempt`
+1. [x] - `p1` - Read the configured per-attempt timeout budget from the handler configuration - `inst-lto-read-budget`
+2. [x] - `p1` - **IF** the budget is absent or non-positive - `inst-lto-if-disabled`
+   1. [x] - `p1` - **RETURN** the attempt unraced, so a configured zero (the conventional "no timeout" idiom) or any other non-positive value disables the race instead of failing every attempt immediately - `inst-lto-return-unraced`
+3. [x] - `p1` - Race the attempt against the budget, so whichever settles first determines this attempt's outcome, and release the timer once either side settles - `inst-lto-race-attempt`
+4. [x] - `p1` - **IF** the budget elapses before the attempt settles - `inst-lto-if-elapsed`
+   1. [x] - `p1` - **RETURN** error - raise a load error naming the entry and the elapsed budget - `inst-lto-raise-timeout`
+   2. [x] - `p1` - Leave the abandoned attempt's in-flight work running: the race abandons the attempt's result, it does not cancel the work in progress, and anything that work goes on to produce stays subject to the retention invariant of `cpt-frontx-adr-mfe-load-isolation` - `inst-lto-no-cancel`
+   3. [x] - `p1` - Release the source-text cache entries the abandoned attempt was waiting on - both the per-chunk-URL entries (`cpt-frontx-algo-mfe-isolation-blob-url-chain`, step `inst-fetch-source`) and the per-shared-dependency-key entries (`cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls`, step `inst-fetch-and-cache`) - so that a subsequent attempt issues its own fetch instead of resolving to the abandoned attempt's in-flight one; without this the timeout bounds a hung fetch without recovering from it, because every retry rejoins the same hung result and expires against its own budget in turn - `inst-lto-release-abandoned-source-text`
+      1. [x] - `p1` - Record on the ledger, per entry, the cache object the attempt actually used together with the key and the promise, rather than a name for a cache to be looked up when the release runs: a shared-dependency entry may live in the cache the realm shares across compatible independently loaded copies or in the copy-local fallback that copy took instead (`cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous`), and only the cache that received that exact promise is the one to release it from - `inst-lto-release-record-cache`
+   4. [x] - `p1` - Make each release identity-checked against the recorded cache object: remove the mapping only while that cache still holds, under that key, the very in-flight result the abandoned attempt was waiting on, and never one a concurrent load has since registered under the same key - the same discipline those steps already require of their eviction on rejection, and the discipline that makes a release from one copy safe against a realm-shared cache another copy is also publishing into - `inst-lto-release-identity-checked`
+      1. [x] - `p1` - Treat that recorded promise as the generation the release is entitled to remove, which is why the promise and not merely the cache and key is recorded: where two copies joined one promise and the first copy's attempt timed out and deleted its mapping, a retry may publish a replacement promise under the same key, and the second copy's later release still carries the promise it joined, so the identity check fails against the replacement and the release cannot remove it - only an attempt that actually joined the replacement, and then exhausted its own budget, may release the replacement, so an abandoned attempt can never evict a generation it did not join - `inst-lto-release-generation-identity`
+   5. [x] - `p1` - Treat releasing an entry as distinct from cancelling the work behind it: the release removes the mapping only, `inst-lto-no-cancel` continues to hold unchanged, and the accepted cost is that the abandoned fetch and the retry's own fetch may be in flight for the same source at once - the price of a retry that can actually succeed - `inst-lto-release-not-cancel`
+      1. [x] - `p1` - Accept, where the released entry lived in the realm-shared cache, that the release reaches a key another independently loaded copy may be awaiting: that waiter is undisturbed, because it already holds the promise and the release removed only the mapping to it, while a caller arriving after the release finds no entry and starts a duplicate fetch for that source. A duplicate fetch therefore arises across genuine retry generations - the intended recovery when a fetch exceeds an attempt budget - and not from the number of copies that originally joined one promise, which `inst-lto-release-generation-identity` bounds. Leaving the mapping in place instead would make the timeout unrecoverable for every copy in the realm, and conditioning the release on an entry having no other waiter is not the remedy: while any other waiter remained, the timed-out attempt's own retry would rejoin the same possibly hung promise and could never recover, and staggered retries could hold such a count above zero indefinitely - so no waiter count is recorded anywhere in this release path - `inst-lto-release-realm-shared`
+5. [x] - `p1` - Apply the budget to one attempt and not to the load as a whole: every retry of a failed attempt is raced against its own fresh budget, so a single load's worst-case wall clock is the budget multiplied by the number of attempts plus the backoff between them - `inst-lto-per-attempt-budget`
+6. [x] - `p1` - **IF** an attempt fails for a reason a repeat attempt cannot change - a dependency cycle detected while building the load's isolated module graph (`cpt-frontx-algo-mfe-isolation-blob-url-chain`, `inst-raise-ancestor-cycle` and `inst-raise-join-cycle`; `cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls`, `inst-raise-shared-cycle`), which is a property of the microfrontend's build and is identical on every attempt - `inst-lto-if-deterministic-failure`
+   1. [x] - `p1` - **RETURN** that failure to the caller without a further attempt, so a deterministic refusal is not re-attempted: retrying it multiplies the source fetches and delays the same user-visible error by the backoff for no possible benefit - `inst-lto-no-retry-deterministic`
+7. [x] - `p1` - **RETURN** the attempt's own outcome when it settles within the budget - `inst-lto-return-attempt`
 
 ## 4. States (CDSL)
 
 ### MFE Load Lifecycle State Machine
 
-- [x] `p1` - **ID**: `cpt-frontx-state-mfe-loading-load-lifecycle`
+- [ ] `p1` - **ID**: `cpt-frontx-state-mfe-loading-load-lifecycle`
 
 **States**: PENDING, MANIFEST_RESOLVED, LOADING, LOADED, LOAD_FAILED
 
@@ -184,11 +184,11 @@ Internal system functions and procedures that do not interact with actors direct
 **Recorded debt — machine specified ahead of the runtime**: no code reifies these states; the mount manager tracks `loadState: 'idle' | 'loading' | 'loaded' | 'error'` per extension instance instead, and several unchecked steps above describe behaviour that exists in code only under mfe-isolation's marked regions (the expose-chunk import and CSS collection, for instance). The transitions below stay unchecked until this feature's own anchors are placed or the machine is restated over `loadState`.
 
 **Transitions**:
-1. [ ] - `p1` - **FROM** PENDING **TO** MANIFEST_RESOLVED **WHEN** the entry's manifest is present and all required fields (`metaData.publicPath`, `exposeAssets`, `shared[]`) are validated — `inst-lt-pending-to-resolved`
-2. [ ] - `p1` - **FROM** PENDING **TO** LOAD_FAILED **WHEN** the manifest is absent, malformed, or required fields are missing — `inst-lt-pending-to-failed`
-3. [ ] - `p1` - **FROM** MANIFEST_RESOLVED **TO** LOADING **WHEN** shared-dep blob URLs are built, expose chunk filename is confirmed, and the per-load lazy-import ABI resolver stub is minted — `inst-lt-resolved-to-loading`
-4. [ ] - `p1` - **FROM** LOADING **TO** LOADED **WHEN** the expose chunk blob URL is minted, imported, and a valid lifecycle module factory is extracted — `inst-lt-loading-to-loaded`
-5. [ ] - `p1` - **FROM** LOADING **TO** LOAD_FAILED **WHEN** any step in blob URL chain construction, expose chunk fetch, or lifecycle import fails — `inst-lt-loading-to-failed`
+1. [ ] - `p1` - **FROM** PENDING **TO** MANIFEST_RESOLVED **WHEN** the entry's manifest is present and all required fields (`metaData.publicPath`, `exposeAssets`, `shared[]`) are validated - `inst-lt-pending-to-resolved`
+2. [ ] - `p1` - **FROM** PENDING **TO** LOAD_FAILED **WHEN** the manifest is absent, malformed, or required fields are missing - `inst-lt-pending-to-failed`
+3. [ ] - `p1` - **FROM** MANIFEST_RESOLVED **TO** LOADING **WHEN** shared-dep blob URLs are built, expose chunk filename is confirmed, and the per-load lazy-import ABI resolver stub is minted - `inst-lt-resolved-to-loading`
+4. [ ] - `p1` - **FROM** LOADING **TO** LOADED **WHEN** the expose chunk blob URL is minted, imported, and a valid lifecycle module factory is extracted - `inst-lt-loading-to-loaded`
+5. [ ] - `p1` - **FROM** LOADING **TO** LOAD_FAILED **WHEN** any step in blob URL chain construction, expose chunk fetch, or lifecycle import fails - `inst-lt-loading-to-failed`
 
 ## 5. Definitions of Done
 
