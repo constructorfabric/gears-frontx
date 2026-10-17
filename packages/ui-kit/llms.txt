@@ -44,9 +44,9 @@ Rules for generated code:
   kit components that carry a `'use client'` banner of their own:
   Attachment, Badge, Breadcrumb, Bubble, ButtonGroup, Carousel, Chart,
   Combobox, ContextMenu, DataGrid, DataTable, Drawer, DropdownMenu, Marker,
-  Sidebar, StatusDot, Table, Toast. Each calls a hook directly in its own
-  render body, so it always renders on the client, wherever it is imported
-  from.
+  PageHeader, Sidebar, StatusDot, Table, Toast. Each calls a hook directly in
+  its own render body, so it always renders on the client, wherever it is
+  imported from.
 - The kit paints the page itself from its tokens and sets `color-scheme`: with
   no `data-theme` attribute anywhere, `prefers-color-scheme: dark` alone
   yields a correct, legible dark page (background, text, and UA-owned
@@ -317,6 +317,15 @@ Rules for generated code:
   NavigationMenuList/NavigationMenuItem/NavigationMenuTrigger/
   NavigationMenuContent/NavigationMenuLink); one shared popup/Viewport
   morphs to each active item's measured size.
+- [PageHeader](dist/docs/page-header.md): the bar at the top of a page or
+  a section (PageHeader/PageHeaderLeading/PageHeaderContent/
+  PageHeaderEyebrow/PageHeaderTitle/PageHeaderMeta/PageHeaderDescription/
+  PageHeaderActions); no Base UI primitive; `size` sm|default|lg (56/64/80
+  minimum height), `border={false}` keeps the rule's height transparent;
+  `PageHeaderTitle` is an `h1` (`render={<h2 />}` for a section) with
+  `typography` heading|display; Leading, Meta and Actions take any content;
+  `--page-header-inset` sets the side inset (default `--space-6`); a header
+  kept above `main` passes `role="group"` so it is not a second banner.
 - [Pagination](dist/docs/pagination.md): page-number navigation from real
   anchors (Pagination/PaginationContent/PaginationItem/PaginationLink/
   PaginationPrevious/PaginationNext/PaginationEllipsis); `isActive` paints

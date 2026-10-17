@@ -1,0 +1,173 @@
+/*
+ * PageHeader styles - a layout frame for the header of a page or a section:
+ * a leading control, a text block and an actions row, on theme.css
+ * variables only, plus the one consumer hook, --page-header-inset.
+ */
+
+/*
+ * The header is a wrapping row: the leading control, the text block and the
+ * actions sit on one line wherever they fit, and the narrow layout at the
+ * end of this file breaks the actions onto a line of their own. The text
+ * block grows from zero (flex: 1 1 0), so on a wide header nothing wraps.
+ * The 4 above and below keeps a header whose content outgrows the minimum
+ * height off its edges; within the minimum heights it changes nothing.
+ */
+.pageHeader {
+  --_page-header-inset: var(--page-header-inset, var(--space-6));
+  container-type: inline-size;
+  container-name: page-header;
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-4);
+  min-width: 0;
+  padding-block: var(--space-1);
+  padding-inline: var(--_page-header-inset);
+  border-bottom: var(--border-width) solid var(--border);
+  color: var(--foreground);
+}
+
+/* The drawn heights, as minimums so a header whose content wraps can grow.
+   Dimensions, not guarded (see tokens.test.ts). */
+.sizeSm {
+  min-height: 3.5rem;
+}
+
+.sizeDefault {
+  min-height: 4rem;
+}
+
+.sizeLg {
+  min-height: 5rem;
+}
+
+/* Transparent, not removed: the rule's width stays in the height, so a
+   header without it lines up with one that has it. */
+.borderHidden {
+  border-bottom-color: transparent;
+}
+
+.pageHeaderLeading {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pageHeaderContent {
+  display: grid;
+  flex: 1 1 0;
+  min-width: 0;
+  grid-template-areas: "eyebrow eyebrow eyebrow" "title meta ." "description description description";
+  grid-template-columns: minmax(0, max-content) minmax(0, max-content) minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--space-5);
+}
+
+.pageHeaderEyebrow {
+  grid-area: eyebrow;
+  min-width: 0;
+  margin-bottom: var(--space-1);
+  overflow: hidden;
+  font-size: var(--text-meta-size);
+  line-height: var(--text-meta-line-height);
+  font-weight: var(--text-meta-weight);
+  letter-spacing: var(--text-meta-tracking);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+}
+
+.pageHeaderEyebrow a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.pageHeaderEyebrow a:hover {
+  color: var(--link-foreground);
+  text-decoration: underline;
+}
+
+.pageHeaderEyebrow a:focus-visible {
+  outline: var(--border-width-focus) solid var(--ring);
+  outline-offset: calc(-1 * var(--border-width-focus));
+  border-radius: var(--radius-xs);
+}
+
+.pageHeaderTitle {
+  grid-area: title;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.typographyHeading {
+  font-size: var(--text-heading-1-size);
+  line-height: var(--text-heading-1-line-height);
+  font-weight: var(--text-heading-1-weight);
+  letter-spacing: var(--text-heading-1-tracking);
+}
+
+.typographyDisplay {
+  font-size: var(--text-display-size);
+  line-height: var(--text-display-line-height);
+  font-weight: var(--text-display-weight);
+  letter-spacing: var(--text-display-tracking);
+}
+
+.pageHeaderMeta {
+  grid-area: meta;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.pageHeaderDescription {
+  grid-area: description;
+  min-width: 0;
+  margin-top: var(--space-1);
+  font-size: var(--text-meta-size);
+  line-height: var(--text-meta-line-height);
+  font-weight: var(--text-meta-weight);
+  letter-spacing: var(--text-meta-tracking);
+  color: var(--muted-foreground);
+}
+
+.pageHeaderActions {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-start: var(--space-2);
+}
+
+/*
+ * A container query measures the content box, so the 1024 is the header's
+ * width inside its side insets - 1072 outside them at the default 24.
+ */
+@container page-header (width < 64rem) {
+  .pageHeaderLeading,
+  .pageHeaderContent,
+  .pageHeaderActions {
+    margin-block: var(--space-2);
+  }
+
+  .pageHeaderContent {
+    grid-template-areas: "eyebrow" "title" "description" "meta";
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pageHeaderMeta {
+    margin-top: var(--space-2);
+  }
+
+  .pageHeaderActions {
+    flex-basis: 100%;
+    margin-inline-start: 0;
+  }
+}

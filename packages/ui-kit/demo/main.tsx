@@ -96,6 +96,7 @@ import {
   PanelBottomIcon,
   PanelLeftIcon,
   PanelRightIcon,
+  PanelTopIcon,
   PaperclipIcon,
   ProportionsIcon,
   RectangleEllipsisIcon,
@@ -177,13 +178,14 @@ function baseSlug(slug: string): string {
 
 /** Base slugs with no shadcn/ui docs page under /docs/components/base/ -
  *  a real 404 (server status, not a client soft-404), checked directly
- *  against the live site rather than assumed. `status-dot` and `data-grid`
- *  have no shadcn counterpart (`data-grid` is the kit's own grid, not a
+ *  against the live site rather than assumed. `status-dot`, `data-grid`
+ *  and `page-header` have no shadcn counterpart (`data-grid` is the kit's
+ *  own grid, `page-header` the Studio catalogue's page header, neither a
  *  shadcn part); `contracts-demo` and `eval-overview` are demo-only routes
  *  that ride the same examples/*.tsx glob without porting a shadcn part.
  *  Every other slug here, including ones that looked unlikely, resolved
  *  ("direction", "date-picker"/"data-table" all have real pages). */
-const NO_SHADCN_PAGE = new Set(['status-dot', 'data-grid', 'contracts-demo', 'eval-overview']);
+const NO_SHADCN_PAGE = new Set(['status-dot', 'data-grid', 'page-header', 'contracts-demo', 'eval-overview']);
 
 function shadcnDocsUrl(slug: string): string {
   return `https://ui.shadcn.com/docs/components/base/${baseSlug(slug)}`;
@@ -352,6 +354,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   'message-scroller': MessagesSquareIcon,
   'native-select': ListChevronsDownUpIcon,
   'navigation-menu': CompassIcon,
+  'page-header': PanelTopIcon,
   pagination: GalleryThumbnailsIcon,
   popover: MessageSquareDashedIcon,
   progress: LoaderIcon,

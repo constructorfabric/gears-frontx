@@ -39,12 +39,14 @@ generate screens consistently.
 - Framework-agnostic components (React is a hard requirement).
 - Form validation integration (RHF/zod), i18n helpers, Storybook.
 - The larger blocks the F-mockups draw over kit primitives - Sidebar
-  Navigation, Top Bar / Page Header, an App Shell, a Data Table toolbar with
+  Navigation, Top Bar, an App Shell, a Data Table toolbar with
   bulk-selection bar and row states, and the AI assistant cards. Those frames
   are titled "MVP Building blocks / shadcn compositions" in the design file
   itself: compositions over kit primitives, not kit components. They stay
   with consumers/templates; the kit's contribution is composition recipes
-  (see AI layer).
+  (see AI layer). The page header's frame is the exception: it ships as
+  `PageHeader` - layout and slots only, no kit component inside - and what
+  fills it stays the consumer's.
 
 `data-table`, `date-picker`, `calendar`, `chart` and `sidebar` ship and are
 exported from `src/index.ts`. `data-table` brings `@tanstack/react-table` as

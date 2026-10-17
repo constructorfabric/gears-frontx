@@ -1,0 +1,18 @@
+export {
+  PageHeader,
+  type PageHeaderProps,
+  PageHeaderActions,
+  type PageHeaderActionsProps,
+  PageHeaderContent,
+  type PageHeaderContentProps,
+  PageHeaderDescription,
+  type PageHeaderDescriptionProps,
+  PageHeaderEyebrow,
+  type PageHeaderEyebrowProps,
+  PageHeaderLeading,
+  type PageHeaderLeadingProps,
+  PageHeaderMeta,
+  type PageHeaderMetaProps,
+  PageHeaderTitle,
+  type PageHeaderTitleProps,
+} from './page-header.js';

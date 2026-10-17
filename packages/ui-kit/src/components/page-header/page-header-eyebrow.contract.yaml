@@ -1,0 +1,65 @@
+# Semantic overlay for PageHeaderEyebrow - part of the PageHeader family,
+# see page-header.contract.yaml's `family_membership` for how the eight
+# contracts relate. `mounted_in` is filled from PageHeaderContent's
+# accepted components, not authored here.
+component: page-header-eyebrow
+
+intent: Show a short line above the title, typically a link to the parent the page belongs to.
+
+typical_uses:
+  - A link to the list or the parent a page belongs to, above the object's name
+
+dont_use_when:
+  - situation: A full trail of links to every page above the current one
+    instead:
+      target: Breadcrumb
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: one-muted-line-above-the-title
+    text: >-
+      PageHeaderEyebrow sets the meta role (12/16) in --muted-foreground on
+      one line, truncated with an ellipsis, var(--space-1) above the title.
+      It holds text or a plain link - a link inside takes its colour, turns
+      --link-foreground with an underline on hover, and draws its focus ring
+      inside its own box, where the eyebrow's clipping cannot cut it - and no
+      Breadcrumb trail.
+
+anti_patterns:
+  - dont: Describe the page above its title
+    do_instead: Put the description under the title, in PageHeaderDescription
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A link to the parent list
+      code: |
+        <PageHeaderEyebrow>
+          <a href="/customers">Customers</a>
+        </PageHeaderEyebrow>
+  bad:
+    - title: The page's description set above the title
+      code: |
+        <PageHeaderContent>
+          <PageHeaderEyebrow>Every invoice sent to this customer.</PageHeaderEyebrow>
+          <PageHeaderTitle>Invoices</PageHeaderTitle>
+        </PageHeaderContent>
+      why: >-
+        The eyebrow places the page among its parents and is read before the
+        title; a sentence about the page reads after the title, in
+        PageHeaderDescription.
+
+family_membership:
+  name: page_header
+  role: part

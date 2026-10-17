@@ -1,0 +1,95 @@
+# Semantic overlay for PageHeaderTitle - part of the PageHeader family, see
+# page-header.contract.yaml's `family_membership` for how the eight
+# contracts relate. `mounted_in` is filled from PageHeaderContent's
+# accepted components, not authored here. Rendered through
+# useRender/mergeProps, so the one API prop it gains is `render`.
+component: page-header-title
+
+intent: Name the page, or the section of it, that the header heads.
+
+typical_uses:
+  - The name of the object a page shows, such as a customer or an order
+  - The name of a section under the page's own header, as an h2
+
+dont_use_when:
+  - situation: The title of a card
+    instead:
+      target: CardTitle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_title.v1
+  - situation: The headline of a placeholder with nothing to show
+    instead:
+      target: EmptyTitle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.empty_title.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: an-h1-unless-render-names-another-level
+    text: >-
+      PageHeaderTitle renders an h1, unless `render` substitutes another
+      element, which keeps the title's class and props.
+  - id: one-line-truncated
+    text: >-
+      The title stays on one line and truncates with an ellipsis when its
+      column runs out of room; its browser heading margins are cleared.
+  - id: typography-is-independent-of-size
+    text: >-
+      `typography` picks the ramp role - Heading 1 (20/28) for `heading`,
+      the Page Title role (26/32) for `display` - whatever the header's
+      `size`.
+
+anti_patterns:
+  - dont: Leave every header on the page an h1
+    do_instead: >-
+      Pass `render={<h2 />}` to the title of every header below the page's
+      own, so the page has one h1
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered h1 with an element the caller supplies
+    because: >-
+      useRender's render prop takes an element or a function that receives
+      the props to spread (PageHeaderTitle passes no state of its own), so
+      its type is a union of a React element and a callback - the compiler
+      emits one JSON type per property. It is for the heading level, such
+      as `render={<h2 />}` for a section's header.
+
+examples:
+  good:
+    - title: A section's title, one level under the page's own
+      code: <PageHeaderTitle render={<h2 />}>Invoices</PageHeaderTitle>
+    - title: An object's name in the Page Title role
+      code: <PageHeaderTitle typography="display">Acme Corporation</PageHeaderTitle>
+  bad:
+    - title: Two headers on one page, both titled with an h1
+      code: |
+        <main>
+          <PageHeader size="lg">
+            <PageHeaderContent>
+              <PageHeaderTitle typography="display">Acme Corporation</PageHeaderTitle>
+            </PageHeaderContent>
+          </PageHeader>
+          <PageHeader>
+            <PageHeaderContent>
+              <PageHeaderTitle>Invoices</PageHeaderTitle>
+            </PageHeaderContent>
+          </PageHeader>
+        </main>
+      why: >-
+        The section's title is an h1 as well, so the outline has two
+        top-level headings and the section no longer reads as part of the
+        page; it takes `render={<h2 />}`.
+
+family_membership:
+  name: page_header
+  role: part

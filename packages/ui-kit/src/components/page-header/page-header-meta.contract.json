@@ -1,0 +1,104 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.page_header_meta.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "page-header-meta",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Hold content beside the title, such as a badge, a status, section navigation or a small action.",
+  "typical_uses": [
+    "A badge with the type or state of the object the page shows",
+    "A status with a short summary of the object",
+    "Navigation between the sections of the page"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A sentence about the page",
+      "instead": {
+        "target": "PageHeaderDescription",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.page_header_description.v1"
+      }
+    },
+    {
+      "situation": "The actions the page is worked with",
+      "instead": {
+        "target": "PageHeaderActions",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.page_header_actions.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "PageHeaderContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.page_header_content.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "row-beside-the-title",
+      "text": "PageHeaderMeta is a flex row that centers its children vertically and spaces them var(--space-5) apart, var(--space-5) after the title. It is as wide as its content; when the row runs short it shares the row with the title, keeping its width while it is narrower than its share, so it does not paint over the actions."
+    },
+    {
+      "id": "moves-under-the-description-when-narrow",
+      "text": "When the header's width inside its side insets is below 64rem it moves under the description, onto a line of its own."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Use Tabs here for links that open other pages",
+      "do_instead": "Use a nav of links with aria-current=\"page\" on the current one; Tabs belong here only when they switch panels on the same page"
+    },
+    {
+      "dont": "Put a sentence about the page beside the title",
+      "do_instead": "Put it under the title, in PageHeaderDescription"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A badge beside a project's name",
+        "code": "<PageHeaderMeta>\n  <Badge variant=\"outline\">Platform</Badge>\n</PageHeaderMeta>\n"
+      },
+      {
+        "title": "A tab list beside the title, inside the Tabs that also holds the panels it switches",
+        "code": "<Tabs defaultValue=\"summary\">\n  <PageHeader>\n    <PageHeaderContent>\n      <PageHeaderTitle render={<h2 />}>Overview</PageHeaderTitle>\n      <PageHeaderMeta>\n        <TabsList variant=\"line\" aria-label=\"Overview sections\">\n          <TabsTrigger value=\"summary\">Summary</TabsTrigger>\n          <TabsTrigger value=\"delivery\">Delivery</TabsTrigger>\n        </TabsList>\n      </PageHeaderMeta>\n    </PageHeaderContent>\n  </PageHeader>\n  <TabsContent value=\"summary\">Summary panel</TabsContent>\n  <TabsContent value=\"delivery\">Delivery panel</TabsContent>\n</Tabs>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A sentence set beside the title",
+        "code": "<PageHeaderMeta>Every invoice sent to this customer, newest first.</PageHeaderMeta>\n",
+        "why": "Beside the title the sentence competes with it for one row and is squeezed to its share of it; under the title, in PageHeaderDescription, it keeps the whole width of the block."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "page_header",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit PageHeaderMeta",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

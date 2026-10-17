@@ -1,0 +1,139 @@
+# Semantic overlay for PageHeader (the root) - the hand-written half of one
+# of eight contracts describing this family. The parts are
+# page-header-leading, page-header-content, page-header-eyebrow,
+# page-header-title, page-header-meta, page-header-description and
+# page-header-actions; `family_membership` below is how a reader (or the
+# conformance test) walks between them.
+#
+# Machine-extractable facts (the `size` axis, `border`, the host element)
+# do NOT belong here: the compiler takes those from page-header.tsx and
+# rejects an overlay that restates them. PageHeader wraps no primitive.
+component: page-header
+
+intent: Head a page or a section of one with its title, the controls and content around the title, and the actions the page is worked with.
+
+typical_uses:
+  - The header of the page of one object - a customer, an order, a project, a document - with its name and a badge, a status or a link beside it
+  - The header of a section inside a page, such as a list with its "New" button or a project tab with its own navigation and actions
+
+dont_use_when:
+  - situation: The heading of a card or a panel that holds content
+    instead:
+      target: CardHeader
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1
+  - situation: A trail of links to the pages above the current one, with no title of its own
+    instead:
+      target: Breadcrumb
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb.v1
+  - situation: A message about the state of the page, such as a failed request
+    instead:
+      target: Alert
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.alert.v1
+
+# The ONE authored statement of a nesting relationship: the compiler fills
+# every other contract's `mounted_in` from lists like this one. The root
+# hosts the leading slot, the text block and the actions, as
+# page-header.md's composition line states. No text flag: the root's text
+# belongs in its parts.
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.page_header_leading.v1 # PageHeaderLeading
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.page_header_content.v1 # PageHeaderContent
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.page_header_actions.v1 # PageHeaderActions
+
+invariants:
+  - id: header-is-a-landmark-only-outside-sectioning
+    text: >-
+      The root renders a header element with no role of its own. Inside
+      main, article, aside, nav or section - or an element with role main,
+      article, complementary, navigation or region - it maps to no
+      landmark; outside them it is a banner.
+  - id: hidden-rule-keeps-its-width
+    text: >-
+      `border={false}` paints the bottom rule transparent rather than
+      removing it, so the root's height and the position of its content
+      are the same with and without the rule.
+  - id: size-is-a-minimum-height
+    text: >-
+      `size` sets the root's minimum height, the rule included - 56 for
+      `sm`, 64 for `default`, 80 for `lg` - and the root grows past it when
+      its content outgrows it, keeping var(--space-1) above and below its
+      content.
+  - id: narrow-layout-follows-the-header-width
+    text: >-
+      When the root's width inside its side insets is below 64rem - read by
+      a container query on the root rather than the viewport, so 64rem plus
+      both insets outside them - the content beside the title moves under
+      the description, the actions take a line of their own, the leading
+      control stays on the first line beside the text, and each line keeps
+      var(--space-2) above and below it, on top of the root's own
+      var(--space-1).
+
+anti_patterns:
+  - dont: Render the page header outside the page's main element as it is
+    do_instead: >-
+      Put it inside main, where its header element is no landmark; a header
+      the layout keeps above main passes role="group", so it is not a
+      second banner beside the application's top bar
+  - dont: Put a growing tab list or set of links straight into PageHeaderMeta
+    do_instead: >-
+      Wrap it in a block with overflow-x auto, so it scrolls rather than
+      running under the actions, and leave room in that block for focus
+      rings, which it clips vertically too
+  - dont: Remove the rule with a border style of your own
+    do_instead: >-
+      Pass `border={false}`, which keeps the rule's width inside the
+      header, so the text sits exactly where it does with the rule; a border
+      removed in CSS moves the text by half a rule and makes a header whose
+      content outgrows the minimum height one rule shorter
+  - dont: Place the page header in a flex row without a width of its own
+    do_instead: >-
+      Give it `flex: 1` or a width there - its narrow layout measures the
+      header, so it takes its width from its parent and collapses to its
+      side insets when the parent sizes it to its content
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A list's header with its title, a count and the button that adds to it
+      code: |
+        <PageHeader>
+          <PageHeaderContent>
+            <PageHeaderTitle render={<h2 />}>Invoices</PageHeaderTitle>
+            <PageHeaderDescription>12 invoices · 3 overdue</PageHeaderDescription>
+          </PageHeaderContent>
+          <PageHeaderActions>
+            <Button>New invoice</Button>
+          </PageHeaderActions>
+        </PageHeader>
+    - title: An object's page header above the page's main, in the tall size with the Page Title role
+      code: |
+        <PageHeader size="lg" role="group">
+          <PageHeaderContent>
+            <PageHeaderTitle typography="display">Acme Corporation</PageHeaderTitle>
+          </PageHeaderContent>
+        </PageHeader>
+  bad:
+    - title: The title and the actions put straight into the root
+      code: |
+        <PageHeader>
+          <PageHeaderTitle>Invoices</PageHeaderTitle>
+          <Button>New invoice</Button>
+        </PageHeader>
+      why: >-
+        The root is a row of three slots; without PageHeaderContent the title
+        loses its grid area and its truncation width, and without
+        PageHeaderActions the button gets neither the drawn 24 before it nor
+        a line of its own in the narrow layout.
+
+family_membership:
+  name: page_header
+  role: root

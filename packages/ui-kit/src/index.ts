@@ -72,6 +72,7 @@ export * from './components/message/public.js';
 export * from './components/message-scroller/public.js';
 export * from './components/native-select/public.js';
 export * from './components/navigation-menu/public.js';
+export * from './components/page-header/public.js';
 export * from './components/pagination/public.js';
 export * from './components/popover/public.js';
 export * from './components/progress/public.js';

@@ -1,0 +1,75 @@
+# Semantic overlay for PageHeaderLeading - part of the PageHeader family,
+# see page-header.contract.yaml's `family_membership` for how the eight
+# contracts relate. `mounted_in` is filled from PageHeader's own accepted
+# components, not authored here.
+component: page-header-leading
+
+intent: Hold a control placed before the header's text, such as a back link or a view switch.
+
+typical_uses:
+  - A back link to the list the page was opened from
+  - A toggle group switching a list between its table and gallery views
+
+dont_use_when:
+  - situation: An action on the page's content, such as creating or uploading
+    instead:
+      target: PageHeaderActions
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.page_header_actions.v1
+
+# A back link is a Button, a view switch a ToggleGroup, and either may be a
+# control of the consumer's own, so the slot is not constrained to a list.
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: unshrinking-row-before-the-text
+    text: >-
+      PageHeaderLeading is a flex row that centers its children vertically,
+      spaces them var(--space-2) apart and does not shrink; the root's gap
+      puts var(--space-4) between it and the text block.
+
+anti_patterns:
+  - dont: Put the page's primary action before the title
+    do_instead: Put it in PageHeaderActions, at the end of the header
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A back link before a project's title
+      code: |
+        <PageHeaderLeading>
+          <Button
+            variant="ghost"
+            icon={<ArrowLeftIcon />}
+            aria-label="Back to projects"
+            render={<a href="/projects" />}
+            nativeButton={false}
+          />
+        </PageHeaderLeading>
+  bad:
+    - title: The primary action placed before the title
+      code: |
+        <PageHeader>
+          <PageHeaderLeading>
+            <Button>New project</Button>
+          </PageHeaderLeading>
+          <PageHeaderContent>
+            <PageHeaderTitle>Projects</PageHeaderTitle>
+          </PageHeaderContent>
+        </PageHeader>
+      why: >-
+        The leading slot is for a control that orients the page, read before
+        its title; the page's actions belong at the end, in
+        PageHeaderActions, which also takes a line of its own when the
+        header is narrow.
+
+family_membership:
+  name: page_header
+  role: part

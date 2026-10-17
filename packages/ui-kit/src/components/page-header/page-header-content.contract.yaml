@@ -1,0 +1,89 @@
+# Semantic overlay for PageHeaderContent - part of the PageHeader family,
+# see page-header.contract.yaml's `family_membership` for how the eight
+# contracts relate. `mounted_in` is filled from PageHeader's own accepted
+# components, not authored here.
+component: page-header-content
+
+intent: Group the header's eyebrow, title, the content beside the title and the description into one text block.
+
+typical_uses:
+  - The text block of every PageHeader, between the leading control and the actions
+
+dont_use_when:
+  - situation: The text block of a card's header
+    instead:
+      target: CardHeader
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.page_header_eyebrow.v1 # PageHeaderEyebrow
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.page_header_title.v1 # PageHeaderTitle
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.page_header_meta.v1 # PageHeaderMeta
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.page_header_description.v1 # PageHeaderDescription
+
+invariants:
+  - id: named-areas-not-source-order
+    text: >-
+      PageHeaderContent is a grid of named areas - the eyebrow above, the
+      title and the meta on one line, the description under them - so each
+      part lands in its area whichever of the others are present.
+  - id: title-and-meta-share-the-row
+    text: >-
+      The block grows to fill the header's row. The title's column and the
+      meta's column are each as wide as their content, and an empty flexible
+      column takes the rest, so an eyebrow or a description wider than both
+      does not move the meta away from the title. When the row runs short
+      the title and the meta share it, so a meta narrower than its share
+      keeps its width and the title truncates, and when both are long each
+      gets half.
+
+anti_patterns:
+  - dont: Put PageHeaderActions inside the text block
+    do_instead: >-
+      Render PageHeaderActions as a direct child of PageHeader after the
+      content, where it stays at the end of the header and takes a line of
+      its own when the header is narrow
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: The four parts in the order they read
+      code: |
+        <PageHeaderContent>
+          <PageHeaderEyebrow>Customers</PageHeaderEyebrow>
+          <PageHeaderTitle>Northwind Traders</PageHeaderTitle>
+          <PageHeaderMeta>
+            <Badge variant="outline">Active</Badge>
+          </PageHeaderMeta>
+          <PageHeaderDescription>Customer since 2019.</PageHeaderDescription>
+        </PageHeaderContent>
+  bad:
+    - title: The actions folded into the text block
+      code: |
+        <PageHeader>
+          <PageHeaderContent>
+            <PageHeaderTitle>Projects</PageHeaderTitle>
+            <PageHeaderActions>
+              <Button>New project</Button>
+            </PageHeaderActions>
+          </PageHeaderContent>
+        </PageHeader>
+      why: >-
+        Inside the text block the actions have no area of their own, so the
+        grid puts them in its first free cell: above the title when there is
+        no eyebrow, beside the title or the meta when there is one - never on
+        a row under the title. As a child of PageHeader they sit at the end of
+        the header, var(--space-6) after the text.
+
+family_membership:
+  name: page_header
+  role: part

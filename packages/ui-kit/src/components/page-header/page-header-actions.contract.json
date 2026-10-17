@@ -1,0 +1,99 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.page_header_actions.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "page-header-actions",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Lay out the controls the page is worked with at the end of the header.",
+  "typical_uses": [
+    "The page's primary button, such as \"New project\"",
+    "A row of buttons with a menu of further actions"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Navigation between the sections of the page",
+      "instead": {
+        "target": "PageHeaderMeta",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.page_header_meta.v1"
+      }
+    },
+    {
+      "situation": "The actions of a card",
+      "instead": {
+        "target": "CardFooter",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.card_footer.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "unconstrained"
+  },
+  "mounted_in": [
+    {
+      "container": "PageHeader",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.page_header.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "unshrinking-row-at-the-end",
+      "text": "PageHeaderActions is a flex row that centers its children vertically, spaces them var(--space-2) apart, does not shrink, and wraps its children onto further lines, var(--space-2) apart, when they do not fit; the root's gap plus its own var(--space-2) margin puts var(--space-6) between it and the text block."
+    },
+    {
+      "id": "own-line-when-narrow",
+      "text": "When the header's width inside its side insets is below 64rem it takes a line of its own, flush with the start of the header."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Add a margin to space the actions from the title",
+      "do_instead": "Leave it - the root's gap and the part's own margin already make the drawn var(--space-6), and a margin of yours would add to it"
+    },
+    {
+      "dont": "Put the page's section navigation at the end of the header",
+      "do_instead": "Put it beside the title, in PageHeaderMeta"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Two buttons and a menu of further actions",
+        "code": "<PageHeaderActions>\n  <Button variant=\"outline\">Edit dashboard</Button>\n  <Button>New project</Button>\n  <Button variant=\"ghost\" icon={<EllipsisIcon />} aria-label=\"More actions\" />\n</PageHeaderActions>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Section links set among the actions",
+        "code": "<PageHeaderActions>\n  <a href=\"/components/gears\">Gears</a>\n  <a href=\"/components/plan\">Plan</a>\n  <Button>Create Gear</Button>\n</PageHeaderActions>\n",
+        "why": "Navigation between the page's sections belongs beside the title it divides, in PageHeaderMeta; among the actions it reads as one more command and loses its tie to the title."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "page_header",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit PageHeaderActions",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

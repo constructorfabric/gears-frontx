@@ -1,0 +1,85 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.page_header_description.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "page-header-description",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Say in one short line what the page holds or how much of it there is.",
+  "typical_uses": [
+    "A one-line summary under a section's title",
+    "The counts of what a list holds, such as \"12 invoices · 3 overdue\""
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A status or an error about the page, such as a failed request",
+      "instead": {
+        "target": "Alert",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.alert.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "PageHeaderContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.page_header_content.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "muted-line-under-the-title",
+      "text": "PageHeaderDescription sets the meta role (12/16) in --muted-foreground, var(--space-1) under the title, across the full width of the text block."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Write a paragraph into the header",
+      "do_instead": "Keep the description to one line and put a longer explanation in the page's own content"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "The counts under a list's title",
+        "code": "<PageHeaderDescription>12 invoices · 3 overdue</PageHeaderDescription>"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A paragraph of instructions in the header",
+        "code": "<PageHeaderDescription>\n  Connect a repository, a document store or a ticket tracker. Each source is read once an hour,\n  and you can trigger a read by hand from its own page. Removing a source keeps what was read.\n</PageHeaderDescription>\n",
+        "why": "The header is a bar of a drawn height; a paragraph grows it past that height and pushes the page's content down, and it reads as body text set in the header's muted meta role."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "page_header",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit PageHeaderDescription",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}
