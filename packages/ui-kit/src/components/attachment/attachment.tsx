@@ -236,9 +236,11 @@ function useHorizontalOverflow(ref: RefObject<HTMLDivElement | null>): boolean {
     if (!element) return undefined;
     const measure = () => setOverflowing(element.scrollWidth > element.clientWidth);
     measure();
-    if (typeof ResizeObserver === 'undefined') return undefined;
-    const resizeObserver = new ResizeObserver(measure);
+    // Each observer is optional on its own: without ResizeObserver the row
+    // still re-measures when children come or go.
+    const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure);
     const observeChildren = () => {
+      if (!resizeObserver) return;
       resizeObserver.disconnect();
       resizeObserver.observe(element);
       for (const child of element.children) resizeObserver.observe(child);
@@ -253,7 +255,7 @@ function useHorizontalOverflow(ref: RefObject<HTMLDivElement | null>): boolean {
           });
     mutationObserver?.observe(element, { childList: true });
     return () => {
-      resizeObserver.disconnect();
+      resizeObserver?.disconnect();
       mutationObserver?.disconnect();
     };
   }, [ref]);

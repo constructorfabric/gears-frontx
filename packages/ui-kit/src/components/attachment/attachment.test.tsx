@@ -230,7 +230,11 @@ describe('AttachmentGroup keyboard reachability', () => {
     expect(group.hasAttribute('tabindex')).toBe(false);
   });
 
-  it('re-measures when attachments are added to the row', async () => {
+  it.each([
+    ['with ResizeObserver', true],
+    ['without ResizeObserver', false],
+  ])('re-measures when attachments are added to the row (%s)', async (_name, hasResizeObserver) => {
+    if (!hasResizeObserver) vi.stubGlobal('ResizeObserver', undefined);
     widths = { scroll: 300, client: 300 };
     const { rerender } = render(
       <AttachmentGroup data-testid="group">
