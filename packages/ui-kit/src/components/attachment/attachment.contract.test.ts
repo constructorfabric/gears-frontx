@@ -203,10 +203,14 @@ describe('attachment: what the schema cannot assert', () => {
     }
   });
 
-  it('the group, the content column, the action row, the title and the description declare no kit prop', () => {
-    for (const stem of [GROUP, CONTENT, ACTIONS, ...CONTENT_HOSTED]) {
+  it('the content column, the action row, the title and the description declare no kit prop', () => {
+    for (const stem of [CONTENT, ACTIONS, ...CONTENT_HOSTED]) {
       expect(units[stem].contract.props.properties, stem).toEqual({});
     }
+  });
+
+  it('the group declares one kit prop, its string label', () => {
+    expect(units[GROUP].contract.props.properties).toEqual({ label: { type: 'string' } });
   });
 
   it('the two cva builders are companions of the contracts whose classes they build', () => {

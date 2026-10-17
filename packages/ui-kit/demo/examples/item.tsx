@@ -35,6 +35,28 @@ export default function ItemExample() {
         </Item>
       </Section>
 
+      <Section title="Line clamp">
+        <ItemGroup>
+          {([undefined, 3, 'none'] as const).map((lineClamp) => (
+            <Item key={String(lineClamp)} variant="outline">
+              <ItemMedia variant="icon">
+                <DemoIcon />
+              </ItemMedia>
+              <ItemContent>
+                <ItemTitle>{lineClamp === undefined ? 'Default (2 lines)' : `lineClamp={${JSON.stringify(lineClamp)}}`}</ItemTitle>
+                <ItemDescription lineClamp={lineClamp}>
+                  Settings set through the environment override the configuration file, and the
+                  configuration file overrides the built-in defaults. A value that names an unknown
+                  key is rejected at startup with the key in the message, so a typo never falls back
+                  silently. Long identifiers such as FRONTX_SHARED_PROPERTY_LANGUAGE_OVERRIDE wrap
+                  inside the description instead of being cut at its edge.
+                </ItemDescription>
+              </ItemContent>
+            </Item>
+          ))}
+        </ItemGroup>
+      </Section>
+
       <Section title="Variant">
         <ItemGroup>
           <Item variant="default">Default variant</Item>

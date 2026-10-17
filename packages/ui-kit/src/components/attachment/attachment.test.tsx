@@ -1,5 +1,6 @@
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { createRef } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   Attachment,
@@ -11,6 +12,7 @@ import {
   AttachmentMedia,
   AttachmentTitle,
   AttachmentTrigger,
+  type AttachmentGroupProps,
 } from './attachment';
 import styles from './attachment.module.css';
 
@@ -166,5 +168,130 @@ describe('AttachmentGroup', () => {
     expect(group.className).toContain(styles.attachmentGroup);
     expect(group.className).toContain('scroll-fade-x');
     expect(group.className).toContain('no-scrollbar');
+  });
+});
+
+describe('AttachmentGroup keyboard reachability', () => {
+  // jsdom lays nothing out, so the row's overflow is stubbed through the two
+  // widths the component compares.
+  let widths = { scroll: 0, client: 0 };
+  const resizeCallbacks: ResizeObserverCallback[] = [];
+
+  beforeEach(() => {
+    widths = { scroll: 0, client: 0 };
+    resizeCallbacks.length = 0;
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(() => widths.scroll);
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(() => widths.client);
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resizeCallbacks.push(callback);
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  function renderGroup(props: Partial<AttachmentGroupProps> = {}) {
+    return render(
+      <AttachmentGroup data-testid="group" {...props}>
+        <Attachment />
+        <Attachment />
+      </AttachmentGroup>,
+    );
+  }
+
+  it('is a tab stop while its content overflows', () => {
+    widths = { scroll: 600, client: 300 };
+    renderGroup();
+    expect(screen.getByTestId('group').getAttribute('tabindex')).toBe('0');
+  });
+
+  it('gains and drops the tab stop as a resize changes the overflow', () => {
+    widths = { scroll: 300, client: 300 };
+    renderGroup();
+    const group = screen.getByTestId('group');
+    expect(group.hasAttribute('tabindex')).toBe(false);
+
+    widths = { scroll: 600, client: 300 };
+    act(() => resizeCallbacks.forEach((callback) => callback([], {} as ResizeObserver)));
+    expect(group.getAttribute('tabindex')).toBe('0');
+
+    widths = { scroll: 300, client: 300 };
+    act(() => resizeCallbacks.forEach((callback) => callback([], {} as ResizeObserver)));
+    expect(group.hasAttribute('tabindex')).toBe(false);
+  });
+
+  it('re-measures when attachments are added to the row', async () => {
+    widths = { scroll: 300, client: 300 };
+    const { rerender } = render(
+      <AttachmentGroup data-testid="group">
+        <Attachment />
+      </AttachmentGroup>,
+    );
+    const group = screen.getByTestId('group');
+    expect(group.hasAttribute('tabindex')).toBe(false);
+
+    widths = { scroll: 900, client: 300 };
+    rerender(
+      <AttachmentGroup data-testid="group">
+        <Attachment />
+        <Attachment />
+        <Attachment />
+      </AttachmentGroup>,
+    );
+    await waitFor(() => expect(group.getAttribute('tabindex')).toBe('0'));
+  });
+
+  it('keeps the tab stop while focused after the row stops overflowing, and drops it on blur', () => {
+    widths = { scroll: 600, client: 300 };
+    renderGroup();
+    const group = screen.getByTestId('group');
+    act(() => group.focus());
+    expect(document.activeElement).toBe(group);
+
+    widths = { scroll: 300, client: 300 };
+    act(() => resizeCallbacks.forEach((callback) => callback([], {} as ResizeObserver)));
+    expect(group.getAttribute('tabindex')).toBe('0');
+    expect(document.activeElement).toBe(group);
+
+    act(() => group.blur());
+    expect(group.hasAttribute('tabindex')).toBe(false);
+  });
+
+  it('keeps a tabIndex the caller passes, overflowing or not', () => {
+    widths = { scroll: 600, client: 300 };
+    const { unmount } = renderGroup({ tabIndex: -1 });
+    expect(screen.getByTestId('group').getAttribute('tabindex')).toBe('-1');
+    unmount();
+
+    widths = { scroll: 300, client: 300 };
+    renderGroup({ tabIndex: 0 });
+    expect(screen.getByTestId('group').getAttribute('tabindex')).toBe('0');
+  });
+
+  it('names the row as a group with label, and has no role without it', () => {
+    const { unmount } = renderGroup({ label: 'Attached files' });
+    expect(screen.getByRole('group', { name: 'Attached files' })).toBe(screen.getByTestId('group'));
+    unmount();
+
+    renderGroup();
+    const group = screen.getByTestId('group');
+    expect(group.hasAttribute('role')).toBe(false);
+    expect(group.hasAttribute('aria-label')).toBe(false);
+  });
+
+  it('hands the caller ref the group element', () => {
+    const ref = createRef<HTMLDivElement>();
+    renderGroup({ ref });
+    expect(ref.current).toBe(screen.getByTestId('group'));
   });
 });

@@ -153,7 +153,10 @@ export default function AttachmentExample() {
       </Section>
 
       <Section title="Group">
-        <AttachmentGroup style={{ paddingBlockEnd: 'var(--space-2)' }}>
+        {/* A display-only row: no trigger or actions to tab to, so the group
+            itself becomes the tab stop once the row overflows, and `label`
+            names it. */}
+        <AttachmentGroup label="Attached images" style={{ paddingBlockEnd: 'var(--space-2)' }}>
           <Attachment orientation="vertical">
             <AttachmentMedia>
               <DemoIcon />
