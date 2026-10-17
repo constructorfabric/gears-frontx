@@ -285,6 +285,27 @@
   padding-block: var(--space-1);
 }
 
+/* The row is a tab stop while it overflows (see attachment.tsx), drawn
+ * with the borderless focus-stop ring of table.module.css's
+ * .tableContainer. The `scroll-fade-x` mask clips everything outside the
+ * border box and fades the inline edges, the outline included, so the mask
+ * is dropped while the ring shows: the ring marks the row's bounds then. */
+.attachmentGroup:focus-visible {
+  outline: var(--border-width-focus) solid var(--ring);
+  outline-offset: 2px;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+/* Forced-colors mode flattens the author --ring colour, so pin the ring to
+ * the system Highlight, as Table does. */
+@media (forced-colors: active) {
+  .attachmentGroup:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
 .attachmentGroup > .attachment {
   flex: none;
   scroll-snap-align: start;

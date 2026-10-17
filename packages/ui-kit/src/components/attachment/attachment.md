@@ -139,8 +139,14 @@ visual result is a slightly larger action button (32px) than upstream's
 
 ### AttachmentGroup
 
-Accepts only `className` (merged after the layout class, alongside the
-`scroll-fade-x`/`no-scrollbar` utility classes) plus native `<div>` props.
+| Prop    | Type     | Default | Description |
+| ------- | -------- | ------- | ----------- |
+| `label` | `string` | -       | Accessible name for the row: `role="group"` plus `aria-label`. Without it the group has no role. |
+
+Plus `className` (merged after the layout class, alongside the
+`scroll-fade-x`/`no-scrollbar` utility classes) and native `<div>` props.
+While its content overflows, the group is a tab stop (`tabIndex={0}`); a
+row that fits has none. A `tabIndex` you pass always wins.
 
 `attachmentVariants`/`attachmentMediaVariants` (the underlying `cva`
 recipes) are also exported.
@@ -205,7 +211,7 @@ import {
 ### Group
 
 ```tsx
-<AttachmentGroup>
+<AttachmentGroup label="Attached files">
   <Attachment size="sm">{/* … */}</Attachment>
   <Attachment size="sm">{/* … */}</Attachment>
 </AttachmentGroup>
@@ -235,11 +241,17 @@ real `<button>` (or your element via `render`).
   sits behind the actions in the stacking order, so an `AttachmentAction`
   and the `AttachmentTrigger` never trap each other — both remain
   separately focusable and clickable.
-- **Keyboard scrolling.** `AttachmentGroup` scrolls horizontally. When its
-  attachments are interactive (a trigger or actions), keyboard users reach
-  off-screen items by tabbing to them. For a row of presentational
-  attachments, make the group itself focusable and scrollable by adding
-  `tabIndex={0}`, `role="group"`, and an `aria-label`.
+- **Keyboard scrolling.** `AttachmentGroup` scrolls horizontally with a
+  hidden scrollbar. While its attachments overflow the row, the group puts
+  itself in the tab order, so a keyboard user can focus it and scroll with
+  the arrow keys, also for a row of presentational attachments with no
+  trigger or actions; the focus ring shows on keyboard focus, in forced
+  colors too. A row that fits gets no tab stop, so the usual one or two
+  composer attachments add none. Overflow is re-measured as the row or its
+  attachments resize and as attachments come or go; a focused row keeps its
+  stop until it loses focus. Pass `label` so the
+  focused row announces what it holds (`role="group"`, not a landmark, so
+  a thread with many rows does not flood landmark navigation).
 - **Meaning beyond color.** The `error` state uses a destructive color —
   keep the failure reason in `AttachmentDescription` so the state is not
   conveyed by color alone.

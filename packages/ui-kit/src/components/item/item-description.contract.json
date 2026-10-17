@@ -37,7 +37,7 @@
   "invariants": [
     {
       "id": "muted-paragraph-clamped-to-two-lines",
-      "text": "ItemDescription renders a p with no margin in the muted foreground color, cut after two lines; a link inside it is underlined and takes the link color on hover."
+      "text": "ItemDescription renders a p with no margin in the muted foreground color; a link inside it is underlined and takes the link color on hover. By default it is cut with an ellipsis after two lines and carries no inline style. `lineClamp` sets another line count, written inline as the private `--_item-line-clamp` custom property and rounded down to whole lines; `\"none\"`, a count below 1 or a non-finite count shows the full text with no clamp and no hidden overflow. A long unbroken token wraps inside the description (`overflow-wrap: anywhere`) at every line count instead of being cut at its edge. Every value keeps the item's media top-aligned."
     }
   ],
   "anti_patterns": [],
@@ -51,11 +51,21 @@
       "by": "item.module.css sets `.itemDescription { text-align: left }`, a physical alignment, so under a right-to-left direction the description stays aligned to the left edge while the title follows the direction"
     }
   },
+  "prop_statements": {
+    "lineClamp": {
+      "states": "lineClamp is the number of lines shown before the text is cut with an ellipsis, or \"none\" for the full text",
+      "because": "ItemDescriptionProps types it as `number | 'none'`, a union of a number and a string literal that the compiler emits no single JSON type for, so nothing is asserted beyond the default of 2."
+    }
+  },
   "examples": {
     "good": [
       {
         "title": "A description with an inline link",
         "code": "<ItemContent>\n  <ItemTitle>Invoice #1024</ItemTitle>\n  <ItemDescription>\n    Paid on Jan 4. <a href=\"/invoices/1024\">View receipt</a>\n  </ItemDescription>\n</ItemContent>\n"
+      },
+      {
+        "title": "A long description shown in full",
+        "code": "<ItemContent>\n  <ItemTitle>Retention policy</ItemTitle>\n  <ItemDescription lineClamp=\"none\">\n    Messages older than ninety days move to the archive, and archived\n    messages are deleted after a year unless a legal hold applies.\n  </ItemDescription>\n</ItemContent>\n"
       }
     ],
     "bad": [
@@ -71,14 +81,24 @@
     "role": "part"
   },
   "x-uikit": {
-    "partially_typed_props": {},
+    "partially_typed_props": {
+      "lineClamp": {
+        "typeText": "number | \"none\" | undefined",
+        "optional": true
+      }
+    },
     "variant_sources": [],
     "cannot_extract": []
   },
   "props": {
     "title": "UiKit ItemDescription",
     "type": "object",
-    "properties": {},
+    "properties": {
+      "lineClamp": {
+        "description": "Partially typed: number | \"none\" | undefined. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. lineClamp is the number of lines shown before the text is cut with an ellipsis, or \"none\" for the full text. ItemDescriptionProps types it as `number | 'none'`, a union of a number and a string literal that the compiler emits no single JSON type for, so nothing is asserted beyond the default of 2.",
+        "default": 2
+      }
+    },
     "required": [],
     "unevaluatedProperties": {
       "x-uikit-classification": "unchecked"

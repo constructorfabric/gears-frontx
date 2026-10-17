@@ -41,7 +41,11 @@
     },
     {
       "id": "no-role-and-not-focusable",
-      "text": "The group renders a div with no role and no tab stop of its own, so a row of attachments with no trigger or actions cannot be scrolled from the keyboard unless the caller makes the group focusable."
+      "text": "Without `label` the group renders a div with no role and no name; `label` gives it role=\"group\" and an aria-label (a group rather than a region, so that many attachment rows in one message list do not flood landmark navigation). While its content fits, the group has no tab stop of its own."
+    },
+    {
+      "id": "focus-stop-while-overflowing",
+      "text": "While its content overflows it horizontally, the group is a tab stop (tabIndex 0), so a keyboard user can scroll the row with the arrow keys. The overflow is re-measured when the group or one of its children resizes and when children are added or removed. A focused group keeps its tab stop until it loses focus, so focus never drops to the page body. A tabIndex the caller passes always wins. Keyboard focus draws the kit's focus ring, in the system Highlight color under forced colors, and drops the edge fade while the ring shows."
     }
   ],
   "anti_patterns": [],
@@ -57,8 +61,8 @@
   "examples": {
     "good": [
       {
-        "title": "Two small attachments in a row",
-        "code": "<AttachmentGroup>\n  <Attachment size=\"sm\">\n    <AttachmentContent>\n      <AttachmentTitle>notes.txt</AttachmentTitle>\n    </AttachmentContent>\n  </Attachment>\n  <Attachment size=\"sm\">\n    <AttachmentContent>\n      <AttachmentTitle>diagram.png</AttachmentTitle>\n    </AttachmentContent>\n  </Attachment>\n</AttachmentGroup>\n"
+        "title": "Two small attachments in a named row",
+        "code": "<AttachmentGroup label=\"Attached files\">\n  <Attachment size=\"sm\">\n    <AttachmentContent>\n      <AttachmentTitle>notes.txt</AttachmentTitle>\n    </AttachmentContent>\n  </Attachment>\n  <Attachment size=\"sm\">\n    <AttachmentContent>\n      <AttachmentTitle>diagram.png</AttachmentTitle>\n    </AttachmentContent>\n  </Attachment>\n</AttachmentGroup>\n"
       }
     ],
     "bad": [
@@ -77,7 +81,11 @@
   "props": {
     "title": "UiKit AttachmentGroup",
     "type": "object",
-    "properties": {},
+    "properties": {
+      "label": {
+        "type": "string"
+      }
+    },
     "required": [],
     "unevaluatedProperties": {
       "x-uikit-classification": "unchecked"

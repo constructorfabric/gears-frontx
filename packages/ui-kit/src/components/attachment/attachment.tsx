@@ -3,7 +3,7 @@
 import { mergeProps } from '@base-ui/react/merge-props';
 import { useRender } from '@base-ui/react/use-render';
 import { cva, cx, type VariantProps } from 'class-variance-authority';
-import { createContext, useContext, type ComponentProps } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ComponentProps, type RefObject } from 'react';
 
 import { Button, type ButtonProps } from '../button/button.js';
 import styles from './attachment.module.css';
@@ -205,14 +205,93 @@ export function AttachmentTrigger({ className, render, type, ...props }: Attachm
   });
 }
 
-export type AttachmentGroupProps = ComponentProps<'div'>;
+export interface AttachmentGroupProps extends ComponentProps<'div'> {
+  /**
+   * Accessible name for the row (`role="group"` + `aria-label`). Announced
+   * when keyboard focus lands on an overflowing row; without it the group
+   * has no role and no name.
+   */
+  label?: string;
+}
+
+/*
+ * The row hides its scrollbar, so while its attachments overflow it a
+ * keyboard user needs the row itself as a tab stop to scroll it with the
+ * arrow keys (WCAG 2.1.1), the same reason Table's scroll wrapper is one.
+ * Unlike Table, the stop is held only while the content overflows, the way
+ * Base UI's ScrollArea viewport does it: the usual composer row holds one or
+ * two attachments that fit, and an unconditional stop would add an empty one
+ * to every such row. Overflow is re-measured when the row or one of its
+ * children resizes and when children come or go. A focused row keeps its
+ * stop until it blurs. A `tabIndex` the caller passes always wins.
+ *
+ * `label` gives `role="group"`, not Table's `role="region"`: a message list
+ * can hold many attachment rows, and a landmark per row would flood
+ * landmark navigation.
+ */
+function useHorizontalOverflow(ref: RefObject<HTMLDivElement | null>): boolean {
+  const [overflowing, setOverflowing] = useState(false);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return undefined;
+    const measure = () => setOverflowing(element.scrollWidth > element.clientWidth);
+    measure();
+    // Each observer is optional on its own: without ResizeObserver the row
+    // still re-measures when children come or go.
+    const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure);
+    const observeChildren = () => {
+      if (!resizeObserver) return;
+      resizeObserver.disconnect();
+      resizeObserver.observe(element);
+      for (const child of element.children) resizeObserver.observe(child);
+    };
+    observeChildren();
+    const mutationObserver =
+      typeof MutationObserver === 'undefined'
+        ? undefined
+        : new MutationObserver(() => {
+            observeChildren();
+            measure();
+          });
+    mutationObserver?.observe(element, { childList: true });
+    return () => {
+      resizeObserver?.disconnect();
+      mutationObserver?.disconnect();
+    };
+  }, [ref]);
+  return overflowing;
+}
 
 /** Lays out attachments in a horizontally scrollable, snapping row with an
  * edge fade. Applies `scroll-fade-x` and `no-scrollbar` (this package's
- * global utilities — see this file's own header) directly, by class name,
+ * global utilities, see this file's own header) directly, by class name,
  * alongside the module's own layout class. */
-export function AttachmentGroup({ className, ...props }: AttachmentGroupProps) {
-  return <div className={cx(styles.attachmentGroup, 'scroll-fade-x', 'no-scrollbar', className)} {...props} />;
+export function AttachmentGroup({ className, label, tabIndex, ref, ...props }: AttachmentGroupProps) {
+  const groupRef = useRef<HTMLDivElement>(null);
+  const overflowing = useHorizontalOverflow(groupRef);
+  // Once focused, the row keeps its stop until it loses focus: dropping
+  // tabindex from the focused element (an attachment removed, the viewport
+  // widened) would send focus to the body and lose the user's place.
+  const [focused, setFocused] = useState(false);
+  return useRender({
+    defaultTagName: 'div',
+    ref: ref === undefined ? groupRef : [groupRef, ref],
+    props: mergeProps<'div'>(
+      {
+        role: label === undefined ? undefined : 'group',
+        'aria-label': label,
+        tabIndex: tabIndex ?? (overflowing || focused ? 0 : undefined),
+        onFocus: (event) => {
+          if (event.target === event.currentTarget) setFocused(true);
+        },
+        onBlur: (event) => {
+          if (event.target === event.currentTarget) setFocused(false);
+        },
+        className: cx(styles.attachmentGroup, 'scroll-fade-x', 'no-scrollbar', className),
+      },
+      props,
+    ),
+  });
 }
 
 export { attachmentMediaVariants, attachmentVariants };

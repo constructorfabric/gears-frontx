@@ -95,6 +95,52 @@ describe('Item', () => {
   });
 });
 
+describe('ItemDescription lineClamp', () => {
+  it('writes no inline style and no unclamp class by default or for an explicit 2, so the default markup is unchanged', () => {
+    const { rerender } = render(<ItemDescription>Paid on Jan 4</ItemDescription>);
+    for (const lineClamp of [undefined, 2]) {
+      rerender(<ItemDescription lineClamp={lineClamp}>Paid on Jan 4</ItemDescription>);
+      const description = screen.getByText('Paid on Jan 4');
+      expect(description.hasAttribute('style'), String(lineClamp)).toBe(false);
+      expect(description.className, String(lineClamp)).toBe(styles.itemDescription);
+    }
+  });
+
+  it('sets the private line-count property for a count other than 2 and keeps a caller style', () => {
+    render(
+      <ItemDescription lineClamp={3} style={{ color: 'red' }}>
+        Paid on Jan 4
+      </ItemDescription>,
+    );
+    const description = screen.getByText('Paid on Jan 4');
+    expect(description.style.getPropertyValue('--_item-line-clamp')).toBe('3');
+    expect(description.style.color).toBe('red');
+    expect(description.className).not.toContain(styles.itemDescriptionUnclamped);
+  });
+
+  it('drops the clamp with a class for "none" and for a count below 1 or not finite, writing no line count', () => {
+    const { rerender } = render(<ItemDescription lineClamp="none">Paid on Jan 4</ItemDescription>);
+    let description = screen.getByText('Paid on Jan 4');
+    expect(description.className).toContain(styles.itemDescription);
+    expect(description.className).toContain(styles.itemDescriptionUnclamped);
+    expect(description.style.getPropertyValue('--_item-line-clamp')).toBe('');
+
+    for (const lineClamp of [0, Number.POSITIVE_INFINITY]) {
+      rerender(<ItemDescription lineClamp={lineClamp}>Paid on Jan 4</ItemDescription>);
+      description = screen.getByText('Paid on Jan 4');
+      expect(description.className, String(lineClamp)).toContain(styles.itemDescriptionUnclamped);
+      expect(description.style.getPropertyValue('--_item-line-clamp'), String(lineClamp)).toBe('');
+    }
+  });
+
+  it('rounds a fractional count down to whole lines, down to the one-line minimum', () => {
+    const { rerender } = render(<ItemDescription lineClamp={3.7}>Paid on Jan 4</ItemDescription>);
+    expect(screen.getByText('Paid on Jan 4').style.getPropertyValue('--_item-line-clamp')).toBe('3');
+    rerender(<ItemDescription lineClamp={1}>Paid on Jan 4</ItemDescription>);
+    expect(screen.getByText('Paid on Jan 4').style.getPropertyValue('--_item-line-clamp')).toBe('1');
+  });
+});
+
 describe('ItemMedia', () => {
   it('defaults to the default variant and switches to icon/image', () => {
     const { rerender } = render(<ItemMedia data-testid="media" />);

@@ -43,8 +43,29 @@ Composition: `ItemGroup` (→ `Item`+, separated by optional
 |------|------|---------|
 | `variant` | `'default' \| 'icon' \| 'image'` — `image` also shrinks to match the ancestor `Item`'s `size` | `'default'` |
 
-Every other part (`ItemContent`, `ItemTitle`, `ItemDescription`,
-`ItemActions`, `ItemHeader`, `ItemFooter`, `ItemGroup`) takes no
+`ItemDescription`:
+
+| Prop | Type | Default |
+|------|------|---------|
+| `lineClamp` | `number \| 'none'` - lines shown before the text is cut with an ellipsis; `'none'` (or a number below 1) shows the full text | `2` |
+
+The default writes no inline style, so a plain `<ItemDescription>` renders
+the same markup as before. Another count travels inline as a private custom
+property; `'none'` adds a class that drops the clamp. At every value a long
+unbroken token (a URL, an identifier) wraps inside the description
+(`overflow-wrap: anywhere`) instead of being cut at its edge, and the
+item's media stays top-aligned. Use the prop rather than a `className` that
+resets the clamp: such a class competes with the kit's at equal specificity,
+so stylesheet order decides, and that order differs between the document and
+a shadow root.
+
+```tsx
+<ItemDescription lineClamp={3}>{summary}</ItemDescription>
+<ItemDescription lineClamp="none">{fullRuleText}</ItemDescription>
+```
+
+Every other part (`ItemContent`, `ItemTitle`, `ItemActions`, `ItemHeader`,
+`ItemFooter`, `ItemGroup`) takes no
 kit-specific props — native element props, forwarded as-is.
 `ItemSeparator` takes the kit `Separator`'s own props (its `orientation`
 is fixed to `'horizontal'`).

@@ -188,10 +188,11 @@ describe('item directory: what nests where', () => {
 });
 
 describe('item directory: what the schema cannot assert', () => {
-  it("Item's render and the separator's render and style carry prop statements, emitted into their descriptions", () => {
+  it("Item's render, the separator's render and style, and the description's lineClamp carry prop statements, emitted into their descriptions", () => {
     for (const [stem, props] of [
       [DIRECTORY, ['render']],
       ['item-separator', ['render', 'style']],
+      ['item-description', ['lineClamp']],
     ] as const) {
       const contract = units[stem].contract;
       expect(Object.keys(contract.prop_statements ?? {}).sort(), stem).toEqual([...props].sort());
@@ -201,11 +202,17 @@ describe('item directory: what the schema cannot assert', () => {
     }
   });
 
-  it('no other contract carries a prop statement, and none has a partially typed prop left over', () => {
+  it('no other contract carries a prop statement, and only the description keeps a partially typed prop', () => {
     for (const { stem, contract } of Object.values(units)) {
-      expect(Object.keys(contract['x-uikit'].partially_typed_props), stem).toEqual([]);
-      if (stem !== DIRECTORY && stem !== 'item-separator') expect(contract.prop_statements, stem).toBeUndefined();
+      expect(Object.keys(contract['x-uikit'].partially_typed_props), stem).toEqual(stem === 'item-description' ? ['lineClamp'] : []);
+      if (stem !== DIRECTORY && stem !== 'item-separator' && stem !== 'item-description') {
+        expect(contract.prop_statements, stem).toBeUndefined();
+      }
     }
+  });
+
+  it("the description's lineClamp reaches its contract with the default of 2", () => {
+    expect(units['item-description'].contract.props.properties.lineClamp).toMatchObject({ default: 2 });
   });
 
   it('the two cva axes reach Item and ItemMedia as typed enums with their defaults', () => {
@@ -222,7 +229,7 @@ describe('item directory: what the schema cannot assert', () => {
   });
 
   it('the plain parts and the group declare no kit prop of their own', () => {
-    for (const stem of [CONTENT, ...CONTENT_HOSTED, 'item-actions', 'item-header', 'item-footer', GROUP]) {
+    for (const stem of [CONTENT, 'item-title', 'item-actions', 'item-header', 'item-footer', GROUP]) {
       expect(units[stem].contract.props.properties, stem).toEqual({});
     }
   });
