@@ -1,7 +1,7 @@
 # Semantic overlay for AttachmentGroup - the ninth contract of this
 # directory. It belongs to no family: it wraps whole attachments, so it is
-# not a part of the attachment family itself. AttachmentGroup declares no
-# kit prop; every prop is the native div's.
+# not a part of the attachment family itself. AttachmentGroup declares one
+# kit prop, `label`; every other prop is the native div's.
 component: attachment-group
 
 intent: Lay out several attachments in one horizontally scrolling, snapping row.
@@ -37,17 +37,35 @@ invariants:
       The group adds the global `scroll-fade-x` and `no-scrollbar` classes;
       the edge fade and the hidden scrollbar draw only when the package's
       utilities.css is loaded.
+  # The id names the default: no label and a row that fits. Ids are never
+  # removed at an unchanged contract major, so it stays and its text grows
+  # the overflow and `label` behaviour, as item-description's clamp id does.
   - id: no-role-and-not-focusable
     text: >-
-      The group renders a div with no role and no tab stop of its own, so
-      a row of attachments with no trigger or actions cannot be scrolled
-      from the keyboard unless the caller makes the group focusable.
+      Without `label` the group renders a div with no role and no name;
+      `label` gives it role="group" and an aria-label (a group rather than
+      a region, so that many attachment rows in one message list do not
+      flood landmark navigation). While its content fits, the group has no
+      tab stop of its own.
+  - id: focus-stop-while-overflowing
+    text: >-
+      While its content overflows it horizontally, the group is a tab stop
+      (tabIndex 0), so a keyboard user can scroll the row with the arrow
+      keys. The overflow is re-measured when the group or one of its
+      children resizes and when children are added or removed. A focused
+      group keeps its tab stop until it loses focus, so focus never drops
+      to the page body. A tabIndex the caller passes always wins. Keyboard focus draws the kit's focus
+      ring, in the system Highlight color under forced colors, and drops
+      the edge fade while the ring shows.
 
 anti_patterns: []
 
 deprecations: {}
 
-# attachment.test.tsx asserts the group's classes only.
+# attachment.test.tsx asserts the group's classes, the tab stop against
+# stubbed overflow widths, the caller's tabIndex and the label's role and
+# name; jsdom lays nothing out, so the real overflow and arrow-key scrolling
+# are not asserted there.
 attestations:
   a11y:
     outcome: unknown
@@ -56,9 +74,9 @@ attestations:
 
 examples:
   good:
-    - title: Two small attachments in a row
+    - title: Two small attachments in a named row
       code: |
-        <AttachmentGroup>
+        <AttachmentGroup label="Attached files">
           <Attachment size="sm">
             <AttachmentContent>
               <AttachmentTitle>notes.txt</AttachmentTitle>

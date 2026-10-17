@@ -1,7 +1,7 @@
 import { mergeProps } from '@base-ui/react/merge-props';
 import { useRender } from '@base-ui/react/use-render';
 import { cva, cx, type VariantProps } from 'class-variance-authority';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, CSSProperties } from 'react';
 
 import { Separator, type SeparatorProps } from '../separator/separator';
 import styles from './item.module.css';
@@ -110,10 +110,37 @@ export function ItemTitle({ className, ...props }: ItemTitleProps) {
  * EmptyDescription's own typing/render mismatch elsewhere in this port —
  * Item's is consistent), kept as-is.
  */
-export type ItemDescriptionProps = ComponentProps<'p'>;
+export interface ItemDescriptionProps extends ComponentProps<'p'> {
+  /**
+   * Lines shown before the text is cut with an ellipsis, rounded down to a
+   * whole line. `'none'` shows the full text; a number below 1 or a
+   * non-finite one does the same, so a description never clamps to zero
+   * lines.
+   * @default 2
+   */
+  lineClamp?: number | 'none';
+}
 
-export function ItemDescription({ className, ...props }: ItemDescriptionProps) {
-  return <p className={cx(styles.itemDescription, className)} {...props} />;
+/*
+ * Upstream hardcodes a two-line clamp and leaves any other count to a
+ * `className` override. Under CSS Modules that override competes with
+ * `.itemDescription` at equal specificity, so stylesheet order decides, and
+ * that order differs between the document and a shadow root. `lineClamp`
+ * is the declared way out instead. A count other than 2 travels as the
+ * private `--_item-line-clamp` custom property (the inline-variable idiom of
+ * Textarea's `--rows`); the default writes no inline style, so the default
+ * markup stays what it was. `'none'` swaps in a class that drops the clamp.
+ */
+export function ItemDescription({ className, style, lineClamp = 2, ...props }: ItemDescriptionProps) {
+  const lines = lineClamp === 'none' || !Number.isFinite(lineClamp) || lineClamp < 1 ? undefined : Math.floor(lineClamp);
+  const unclamped = lines === undefined;
+  return (
+    <p
+      className={cx(styles.itemDescription, unclamped && styles.itemDescriptionUnclamped, className)}
+      style={lines === undefined || lines === 2 ? style : ({ '--_item-line-clamp': lines, ...style } as CSSProperties)}
+      {...props}
+    />
+  );
 }
 
 export type ItemActionsProps = ComponentProps<'div'>;

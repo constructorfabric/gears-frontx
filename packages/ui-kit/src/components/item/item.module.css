@@ -200,11 +200,24 @@
   color: var(--muted-foreground);
   text-align: left;
   font-weight: var(--text-body-weight); /* upstream's font-normal */
-  /* line-clamp-2 */
+  /* `anywhere` rather than `break-word`: it also lowers the min-content
+     width, so a long unbroken token wraps inside ItemContent's
+     `min-width: 0` column instead of being clipped at its edge (the same
+     choice as data-grid-cell.module.css). Text that fits is unchanged. */
+  overflow-wrap: anywhere;
+  /* upstream's line-clamp-2; ItemDescription's `lineClamp` sets the private
+     --_item-line-clamp inline for any other count. */
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: var(--_item-line-clamp, 2);
+}
+
+/* `lineClamp="none"` (or a count below 1): the full text, no clamp. */
+.itemDescriptionUnclamped {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
 }
 
 .itemDescription a {

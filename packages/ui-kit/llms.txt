@@ -107,7 +107,9 @@ Rules for generated code:
   chat composers and message threads (Attachment/AttachmentMedia/
   AttachmentContent/AttachmentActions/AttachmentTrigger, AttachmentGroup);
   upload-state axis drives the `shimmer` utility automatically via
-  context; no Base UI primitive.
+  context; no Base UI primitive. `AttachmentGroup` is a tab stop only
+  while its row overflows (arrow keys scroll it; a caller `tabIndex`
+  wins); its `label` gives `role="group"` + `aria-label`.
 - [Avatar](dist/docs/avatar.md): profile picture with a loading fallback
   (Avatar/AvatarImage/AvatarFallback/AvatarBadge, AvatarGroup+
   AvatarGroupCount); sizes sm|default|lg; wraps the Base UI Avatar
@@ -285,6 +287,9 @@ Rules for generated code:
   (ItemGroup/Item/ItemMedia/ItemContent/ItemTitle/ItemDescription/
   ItemActions/ItemHeader/ItemFooter); `Item`'s `render` prop makes the
   whole row a link; variant default|outline|muted, size default|sm|xs.
+  `ItemDescription` clamps to two lines by default; `lineClamp={n}` sets
+  another count and `lineClamp="none"` shows the full text (use the prop,
+  not a className that resets the clamp); long tokens always wrap.
 - [Kbd](dist/docs/kbd.md): visual keyboard-key/shortcut representation
   (Kbd, KbdGroup); plain `<kbd>`, no interactive or ARIA behavior —
   decoration only.
