@@ -33,7 +33,9 @@ invariants:
       `collapsible="none"` Sidebar inside it sticks to the top of the
       container with a --sidebar-border line toward the content, and below
       768px the wrapper stacks the sidebar above the content, full width
-      with the line below it, and caps the SidebarContent at 190px.
+      with the line below it, and caps the SidebarContent at 190px. A
+      contained provider reads and writes no `sidebar_state` cookie and
+      registers no Cmd/Ctrl+B shortcut.
   - id: open-wins-over-default-open
     text: >-
       `open` and `defaultOpen` are both accepted; `defaultOpen` seeds the

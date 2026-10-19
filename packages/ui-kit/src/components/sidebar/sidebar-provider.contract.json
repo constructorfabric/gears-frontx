@@ -35,7 +35,7 @@
   "invariants": [
     {
       "id": "contained-fills-its-parent",
-      "text": "With `contained` the wrapper fills its parent (height 100%, no viewport minimum) instead of the screen height; a `collapsible=\"none\"` Sidebar inside it sticks to the top of the container with a --sidebar-border line toward the content, and below 768px the wrapper stacks the sidebar above the content, full width with the line below it, and caps the SidebarContent at 190px."
+      "text": "With `contained` the wrapper fills its parent (height 100%, no viewport minimum) instead of the screen height; a `collapsible=\"none\"` Sidebar inside it sticks to the top of the container with a --sidebar-border line toward the content, and below 768px the wrapper stacks the sidebar above the content, full width with the line below it, and caps the SidebarContent at 190px. A contained provider reads and writes no `sidebar_state` cookie and registers no Cmd/Ctrl+B shortcut."
     },
     {
       "id": "open-wins-over-default-open",

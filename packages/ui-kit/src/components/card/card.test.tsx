@@ -213,7 +213,6 @@ describe('Card render', () => {
   });
 });
 
-// jsdom does no layout, so the states a link card draws are read from the module source.
 describe('Card panel variant', () => {
   it('applies the panel class and keeps the default class otherwise', () => {
     const { rerender } = render(<Card data-testid="card" />);
@@ -231,6 +230,7 @@ describe('Card panel variant', () => {
   });
 });
 
+// jsdom does no layout, so the states a link card draws are read from the module source.
 describe('Card render drawn rules', () => {
   const declaredRule = declaredIn(import.meta.url, 'card.module.css');
 

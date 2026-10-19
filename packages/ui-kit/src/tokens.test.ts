@@ -735,6 +735,8 @@ describe('theme tokens', () => {
       // per theme without a separate light/dark declaration.
       '--popover-border',
       '--popover-shadow',
+      // Card's panel lift, not popover chrome: mixed from --foreground the
+      // same way, so it needs no light/dark declaration of its own.
       '--panel-shadow',
       // Radius scale derived from --radius. Corner shape isn't a light/dark
       // concern — consumers rebrand it by overriding --radius alone, in

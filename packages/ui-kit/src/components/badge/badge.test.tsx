@@ -256,13 +256,18 @@ describe('Badge status tone labels', () => {
   const declared = declaredIn(import.meta.url, 'badge.module.css');
 
   it('writes the success, warning and danger labels in the tone text token on the soft fill', () => {
-    expect(declared('.variantDestructive', 'color')).toBe('var(--danger-foreground)');
-    expect(declared('.variantDestructive .dot', 'background-color')).toBe('var(--destructive)');
     for (const tone of ['success', 'warning', 'danger']) {
       const Tone = tone.charAt(0).toUpperCase() + tone.slice(1);
       expect(declared(`.variant${Tone}`, 'background-color')).toBe(`var(--${tone}-soft)`);
       expect(declared(`.variant${Tone}`, 'color')).toBe(`var(--${tone}-foreground)`);
       expect(declared(`.variant${Tone} .dot`, 'background-color')).toBe(`var(--${tone})`);
     }
+  });
+});
+
+describe('Badge destructive label', () => {
+  it('writes the label in the danger text token and keeps the dot in --destructive', () => {
+    const declared = declaredIn(import.meta.url, 'badge.module.css');
+    expect(declared('.variantDestructive .dot', 'background-color')).toBe('var(--destructive)');
   });
 });

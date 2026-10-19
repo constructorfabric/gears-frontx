@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { declaredIn, extractRules } from '../../__test-utils__/css-rules';
+import { declarationMap, declaredIn, extractRules } from '../../__test-utils__/css-rules';
 import {
   Item,
   ItemActions,
@@ -129,6 +129,18 @@ describe('Item inside ItemGroup', () => {
     expect(link.parentElement?.className).toBe(styles.itemListItem);
     expect(screen.getByTestId('own').getAttribute('role')).toBe('presentation');
     expect(screen.getByTestId('own').parentElement?.getAttribute('role')).toBe('list');
+  });
+
+  it('adds no wrapper when the Item or the rendered element brings its own role', () => {
+    render(
+      <ItemGroup>
+        <Item role="presentation" render={<button type="button" />}>
+          Own role on the Item
+        </Item>
+        <Item render={<button type="button" role="menuitem" />}>Own role on the element</Item>
+      </ItemGroup>,
+    );
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0);
   });
 
   it('wraps a button row in a list item, and nothing outside a group', () => {
@@ -259,9 +271,14 @@ describe('Item drawn rules', () => {
     const selection = rules("[aria-pressed='true']");
     expect(selection.some((rule) => rule.includes('background-color: var(--secondary)'))).toBe(true);
     expect(selection.some((rule) => rule.includes('color: var(--secondary-foreground)'))).toBe(true);
-    const current = rules('aria-current=\'page\'');
-    expect(current.some((rule) => rule.includes('var(--accent)'))).toBe(true);
-    expect(current.some((rule) => rule.includes('var(--accent-foreground)'))).toBe(true);
+    const current = rules("[aria-current='page']").map((body) => declarationMap(body));
+    expect(
+      current.some(
+        (map) =>
+          map.get('background-color') === 'var(--accent)' &&
+          map.get('color') === 'var(--accent-foreground)',
+      ),
+    ).toBe(true);
   });
 
   it('keeps an anchor root in the text colour, without an underline, with the hover fill', () => {

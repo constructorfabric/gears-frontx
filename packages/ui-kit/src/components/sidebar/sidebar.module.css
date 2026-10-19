@@ -1132,6 +1132,12 @@
   border-inline-end: var(--border-width) solid var(--sidebar-border);
 }
 
+/* The content beside it scrolls inside the container, not past it. */
+.contained > .inset {
+  min-height: 0;
+  overflow: auto;
+}
+
 @media (max-width: 767px) {
   .wrapper.contained {
     flex-direction: column;
@@ -1140,6 +1146,7 @@
   .contained > .none {
     position: static;
     width: 100%;
+    height: auto;
     border-inline-end: 0;
     border-block-end: var(--border-width) solid var(--sidebar-border);
   }

@@ -8,9 +8,9 @@
 # the forwarded surface) do NOT belong here: the compiler takes those from
 # card.tsx and rejects an overlay that restates them. Card wraps no
 # primitive (every export is a plain styled div, see card.tsx), so no
-# member carries prop_statements or unexposed_parts: the only kit props in
-# the family are Card's `size` and the text parts' `typography` axes, which
-# the schema states fully as enums.
+# member carries prop_statements or unexposed_parts beyond `render`: the
+# other kit props in the family are Card's `variant` and `size` and the text
+# parts' `typography` axes, which the schema states fully as enums.
 component: card
 
 intent: Frame one self-contained unit of related content and its actions on a flat bordered surface.

@@ -17,9 +17,9 @@
  * solid-fill, bordered, or borderless badge at all — so `default`,
  * `destructive`, `outline`, `ghost` and `link` keep their upstream paint
  * rather than being overwritten by a tone that never claimed their slot.
- * `destructive` (solid red under --destructive-foreground) and `danger`
- * (soft red fill, red label) are therefore both here on purpose: two
- * emphasis levels of the one red theme.css already names twice.
+ * `destructive` (a red tint) and `danger` (the soft red fill) are
+ * therefore both here on purpose, both labelled in the danger text token:
+ * two emphasis levels of the one red theme.css already names twice.
  *
  * Geometry is the size axis below, not this rule: padding, type and the one
  * explicit height belong to whichever step is active. What stays here is
@@ -185,14 +185,16 @@ a.variantSecondary:hover {
 
 /*
  * The drawn destructive badge is a TINT, not a solid fill: --destructive at
- * 10% of transparent in light, 20% in dark, under a --destructive label.
- * Button's destructive variant carries the identical recipe; the two are
- * meant to stay in step.
+ * 10% of transparent in light, 20% in dark. The tint is Button's
+ * destructive recipe; the label is not: it is written in the danger text
+ * token (--danger-foreground), because the --destructive label Button keeps
+ * is 3.66:1 on this tint in light, under the 4.5:1 a 12px label needs. Keep
+ * the tint in step with Button, not the label.
  *
  * The standing ban on destructive colour-mixes targets mixes anchored to
  * --foreground, which lighten in dark and drop a --destructive-foreground
- * label below its floor. This mix is anchored to `transparent` and carries
- * a --destructive label instead, so that failure mode does not apply.
+ * label below its floor. This mix is anchored to `transparent`, so that
+ * failure mode does not apply.
  *
  * The strength is a local so the theme overrides below restate one number
  * instead of the whole recipe twice.

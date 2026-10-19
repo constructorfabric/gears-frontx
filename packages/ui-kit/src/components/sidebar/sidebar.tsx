@@ -171,8 +171,11 @@ export function SidebarProvider({
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen ?? true);
   const open = openProp ?? uncontrolledOpen;
 
+  // A contained provider is one section of a page, not its shell: it keeps
+  // its own state, out of the shared cookie and the global shortcut, so it
+  // never moves with (or against) the page's app sidebar.
   useEffect(() => {
-    if (defaultOpen !== undefined) {
+    if (defaultOpen !== undefined || contained) {
       return;
     }
     // Reading a browser-owned store that has no render-time equivalent is
@@ -181,16 +184,18 @@ export function SidebarProvider({
     // (same call, same reasoning, as carousel.tsx's embla snapshot).
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setUncontrolledOpen(readOpenCookie(true));
-  }, [defaultOpen]);
+  }, [defaultOpen, contained]);
 
   const setOpen = useCallback<Dispatch<SetStateAction<boolean>>>(
     (value) => {
       const next = typeof value === 'function' ? value(open) : value;
       onOpenChange?.(next);
       setUncontrolledOpen(next);
-      writeOpenCookie(next);
+      if (!contained) {
+        writeOpenCookie(next);
+      }
     },
-    [open, onOpenChange],
+    [open, onOpenChange, contained],
   );
 
   const toggleSidebar = useCallback(() => {
@@ -204,6 +209,9 @@ export function SidebarProvider({
   // Cmd/Ctrl+B toggles the sidebar from anywhere in the document —
   // upstream's own shortcut, kept at the same key.
   useEffect(() => {
+    if (contained) {
+      return;
+    }
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === SIDEBAR_KEYBOARD_SHORTCUT && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
@@ -212,7 +220,7 @@ export function SidebarProvider({
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggleSidebar]);
+  }, [toggleSidebar, contained]);
 
   const state: SidebarContextValue['state'] = open ? 'expanded' : 'collapsed';
 

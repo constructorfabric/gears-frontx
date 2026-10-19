@@ -94,7 +94,7 @@
   "attestations": {
     "a11y": {
       "outcome": "failed",
-      "by": "theme.css token contrast measured with src/__test-utils__/contrast.ts: the success, warning and danger labels are written in their text tokens and clear 4.5:1 on their soft fills in both themes (tokens.test.ts), and so does the `destructive` label, written in the danger text token; the `category` chip in the dark theme stays under the 4.5:1 WCAG 1.4.3 asks of Badge's 12px label, with no drawn alternative. badge.test.tsx itself asserts the dot's aria-hidden=\"true\" and a link role with its accessible name when rendered over an anchor."
+      "by": "theme.css token contrast measured with src/__test-utils__/contrast.ts: the success, warning and danger labels are written in their text tokens and clear 4.5:1 on their soft fills in both themes (tokens.test.ts); the `destructive` label, written in the danger text token, measured 4.90:1 light and 4.92:1 dark on its tint over the page in the kit demo (axe color-contrast clean); the `category` chip in the dark theme stays under the 4.5:1 WCAG 1.4.3 asks of Badge's 12px label (axe in the kit demo), with no drawn alternative. badge.test.tsx itself asserts the dot's aria-hidden=\"true\" and a link role with its accessible name when rendered over an anchor."
     },
     "rtl": {
       "outcome": "unknown"

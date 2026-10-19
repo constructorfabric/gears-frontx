@@ -75,22 +75,24 @@
  * aria-current="true") takes the --secondary pair; the current place in a
  * navigation (aria-current="page" and the other location values) takes the
  * --accent pair, as navigation does across the kit. Both hold under the
- * pointer, and a description on the accent fill follows the row's text.
+ * pointer (the doubled class outranks the link row's hover fill), a
+ * description on the accent fill follows the row's text, and a chip in a
+ * current row turns to the inverse pair so it stays a tile.
  */
-.item:is([aria-pressed='true'], [aria-selected='true'], [aria-current='true']),
-.item:is([aria-pressed='true'], [aria-selected='true'], [aria-current='true']):hover {
+.item.item:is([aria-pressed='true'], [aria-selected='true'], [aria-current='true']),
+.item.item:is([aria-pressed='true'], [aria-selected='true'], [aria-current='true']):hover {
   background-color: var(--secondary);
   color: var(--secondary-foreground);
 }
 
-.item:is(
+.item.item:is(
     [aria-current='page'],
     [aria-current='step'],
     [aria-current='location'],
     [aria-current='date'],
     [aria-current='time']
   ),
-.item:is(
+.item.item:is(
     [aria-current='page'],
     [aria-current='step'],
     [aria-current='location'],
@@ -110,6 +112,13 @@
   )
   .itemDescription {
   color: inherit;
+}
+
+@media (forced-colors: active) {
+  .item:is([aria-pressed='true'], [aria-selected='true'], [aria-current]:not([aria-current='false'])) {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
 }
 
 /* The list item a link or button row sits in inside ItemGroup (see
@@ -216,6 +225,18 @@
 .itemMediaVariantChip svg {
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
+}
+
+.item:is(
+    [aria-current='page'],
+    [aria-current='step'],
+    [aria-current='location'],
+    [aria-current='date'],
+    [aria-current='time']
+  )
+  .itemMediaVariantChip {
+  background-color: var(--accent-foreground);
+  color: var(--accent);
 }
 
 .itemMediaVariantChipRound {

@@ -229,8 +229,11 @@ viewer, a settings section) rather than to the app shell: pass
 and render `SidebarInset` as a `div` so the page keeps its own main. The
 wrapper then fills its parent instead of the screen height, the sidebar
 sticks to the top of the container with a `--sidebar-border` line toward
-the content, and on a narrow screen it stacks above the content with its
-list capped at 190px and scrolling. Set the width through
+the content, the content scrolls inside the container, and on a narrow
+screen the sidebar stacks above the content with its list capped at 190px
+and scrolling. A contained provider keeps its own state: it reads and
+writes no `sidebar_state` cookie and does not answer Cmd/Ctrl+B, so it
+never moves with the page's app sidebar. Set the width through
 `--sidebar-width` as above (the drawn explorer uses `14rem`).
 
 ```tsx

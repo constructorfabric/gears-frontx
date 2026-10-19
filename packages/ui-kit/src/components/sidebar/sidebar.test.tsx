@@ -437,6 +437,25 @@ describe('SidebarProvider contained', () => {
     expect(screen.getByTestId('sidebar').className).toContain(styles.none);
   });
 
+  it('neither answers the shortcut nor writes the shared cookie', () => {
+    document.cookie = 'sidebar_state=; path=/; max-age=0';
+    const onOpenChange = vi.fn();
+    render(
+      <SidebarProvider contained defaultOpen onOpenChange={onOpenChange}>
+        <Sidebar collapsible="none">Files</Sidebar>
+      </SidebarProvider>,
+    );
+    fireEvent.keyDown(window, { key: 'b', ctrlKey: true });
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(document.cookie).not.toContain('sidebar_state');
+  });
+
+  it('caps the stacked list on a narrow screen', () => {
+    const declared = declaredIn(import.meta.url, 'sidebar.module.css');
+    expect(declared('.contained > .none .content', 'max-height')).toBe('190px');
+    expect(declared('.contained > .inset', 'overflow')).toBe('auto');
+  });
+
   it('fills its parent and sticks the sidebar to the top of it', () => {
     const declared = declaredIn(import.meta.url, 'sidebar.module.css');
     expect(declared('.wrapper.contained', 'height')).toBe('100%');

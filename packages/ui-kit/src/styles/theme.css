@@ -108,7 +108,9 @@
   --popover-shadow: 0 8px 24px 0 var(--popover-border);
   /* The lifted panel a workbench or a file explorer sits in (Card's panel
    * variant): a soft drop shadow pulled 16px under the edge, mixed from
-   * --foreground like the popover chrome, so it flips per theme by itself. */
+   * --foreground like the popover chrome, so it follows the document's
+   * theme (a nested data-theme scope inherits the root's mix, as the
+   * popover shadow does). */
   --panel-shadow: 0 5px 22px -16px color-mix(in oklab, var(--foreground) 22%, transparent);
 
   /*
@@ -229,7 +231,10 @@
    *   micro     <- the drawn 10/14 step in the UI face, in three weights
    *                (400/500/600); 500 is the role's default
    * All Studio/Type styles carry letter-spacing 0, so every role's
-   * tracking is normalized to 0 with them. heading-1 (20/28) has NO
+   * tracking is normalized to 0 with them, except the two KPI steps at the
+   * end, which are taken from the designer's site with their negative
+   * tracking (a large figure set at 0 looks loose). Their 550 weight needs
+   * a variable Inter to render as drawn; a static cut rounds it. heading-1 (20/28) has NO
    * counterpart in the new ramp — the kit keeps it as an interpolated step
    * between Page Title and Section Title rather than collapsing two
    * heading roles onto one size. Also deliberately not carried: Display
