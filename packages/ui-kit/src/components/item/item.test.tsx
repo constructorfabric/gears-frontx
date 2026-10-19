@@ -1,11 +1,7 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
+import { declaredIn } from '../../__test-utils__/css-rules';
 import {
   Item,
   ItemActions,
@@ -112,6 +108,24 @@ describe('ItemTitle truncation', () => {
     expect(text.textContent).toBe('Q3 report.pdf');
   });
 
+  it('wraps text passed through a fragment and drops a whitespace-only run between elements', () => {
+    const first = 'Jane';
+    render(
+      <ItemTitle data-testid="title">
+        <svg data-testid="icon" /> <svg data-testid="badge" />
+        <>
+          {first} Doe
+        </>
+      </ItemTitle>,
+    );
+    const title = screen.getByTestId('title');
+    expect(title.children).toHaveLength(3);
+    expect(title.children[0]).toBe(screen.getByTestId('icon'));
+    expect(title.children[1]).toBe(screen.getByTestId('badge'));
+    expect(title.children[2]?.className).toBe(styles.itemTitleText);
+    expect(title.children[2]?.textContent).toBe('Jane Doe');
+  });
+
   it('renders element children as they are, beside the text span', () => {
     render(
       <ItemTitle data-testid="title">
@@ -130,13 +144,7 @@ describe('ItemTitle truncation', () => {
  * form depend on are read from the module source.
  */
 describe('Item drawn rules', () => {
-  const rules = extractRules(
-    readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'item.module.css'), 'utf8'),
-  );
-  function declared(selector: string, prop: string) {
-    const rule = rules.find((candidate) => candidate.selector === selector);
-    return rule ? declarationMap(rule.body).get(prop) : undefined;
-  }
+  const declared = declaredIn(import.meta.url, 'item.module.css');
 
   it('caps the title at its column and lets the text span draw the ellipsis', () => {
     expect(declared('.itemTitle', 'max-width')).toBe('100%');

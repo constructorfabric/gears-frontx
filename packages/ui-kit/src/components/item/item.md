@@ -43,8 +43,12 @@ beside it, and gets the same `--muted` hover fill as a link nested in a row.
 
 `ItemTitle` stays on one line. A short title is as wide as its text; a long
 one stops at the width of its column and ends with an ellipsis. Its text is
-wrapped in a span that draws the ellipsis; an icon or badge passed beside
-the text renders as it is.
+wrapped in a span that draws the ellipsis (text inside a fragment counts);
+an icon or badge passed beside the text renders as it is. Text that a child
+component renders (a translation component, a `<strong>`) is not wrapped and
+is clipped without an ellipsis: pass the string itself, or wrap that child
+in an element that sets `min-width: 0; overflow: hidden; text-overflow:
+ellipsis`.
 
 `ItemMedia`:
 

@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 /*
  * A lightweight rule splitter, not a real CSS parser — shared by every test
  * that reads selector/declaration pairs out of a stylesheet (tokens.test.ts's
@@ -69,4 +73,24 @@ export function declarations(body: string): CssDeclaration[] {
  */
 export function declarationMap(body: string): Map<string, string> {
   return new Map(declarations(body).map(({ prop, value }) => [prop, value]));
+}
+
+/*
+ * Reads one stylesheet and answers "what does this exact selector declare
+ * for this property". For the tests that pin a drawn value jsdom cannot
+ * compute (no layout). The FIRST rule with the selector is read, so a
+ * selector repeated inside an @media block resolves to its plain copy.
+ */
+export function declaredIn(
+  moduleUrl: string,
+  file: string,
+): (selector: string, prop: string) => string | undefined {
+  // `moduleUrl` is the calling test's `import.meta.url`, and `file` sits
+  // beside it. Not `new URL(file, import.meta.url)`: Vite rewrites that
+  // pattern into an asset URL, which is no file path.
+  const rules = extractRules(readFileSync(join(dirname(fileURLToPath(moduleUrl)), file), 'utf8'));
+  return (selector, prop) => {
+    const rule = rules.find((candidate) => candidate.selector === selector);
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  };
 }

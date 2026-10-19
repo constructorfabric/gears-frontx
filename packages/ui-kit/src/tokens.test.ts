@@ -98,6 +98,24 @@ const moduleFiles = readdirSync(componentsDir, { recursive: true, encoding: 'utf
 // The properties the metric-scale guard below polices. Module scope, because
 // the guard and its synthetic fixture must test the SAME pattern — two
 // copies would let an edit to one keep passing against the other.
+/*
+ * What is left of a metric value once every token reference and the
+ * arithmetic around it are removed; anything left is a literal. A consumer
+ * hook read with a fallback (`var(--sheet-inset, var(--space-6))`) passes
+ * when its fallback does: the hook's own `var(--name,` opener is dropped and
+ * the fallback is checked like any other value, so a literal fallback
+ * (`var(--sheet-inset, 24px)`) is still caught. An empty fallback keeps its
+ * opener, so it is reported as well.
+ */
+function metricLeftover(value: string): string {
+  return value
+    .replace(/var\(--[a-z0-9_-]+\s*,(?!\s*\))/g, ' ')
+    .replace(/var\(--[a-z0-9_-]+\)/g, ' ')
+    .replace(/calc\(|\)|[+*]|-1\b/g, ' ')
+    .replace(/\b(?:0|auto|normal)\b/g, ' ')
+    .trim();
+}
+
 const GUARDED_PROP =
   /^(?:padding|margin|scroll-margin)(?:-[a-z]+)*$|^(?:gap|row-gap|column-gap|font-size|line-height|letter-spacing|font-weight|border-spacing)$/;
 
@@ -523,16 +541,7 @@ describe('theme tokens', () => {
           if (!GUARDED_PROP.test(prop) || EXCEPTIONS.has(`${base}|${prop}|${value}`)) {
             continue;
           }
-          // A consumer hook read with a fallback (`var(--sheet-inset,
-          // var(--space-6))`) passes when its fallback does: the hook's own
-          // `var(--name,` opener is dropped and the fallback is checked
-          // like any other value, so a literal fallback is still caught.
-          const leftover = value
-            .replace(/var\(--[a-z0-9_-]+\)/g, ' ')
-            .replace(/var\(--[a-z0-9_-]+,/g, ' ')
-            .replace(/calc\(|\)|[+*]|-1\b/g, ' ')
-            .replace(/\b(?:0|auto|normal)\b/g, ' ')
-            .trim();
+          const leftover = metricLeftover(value);
           expect(
             leftover,
             `literal metric "${prop}: ${value}" in ${base} — use the token scales (or add a reasoned exception)`,
@@ -561,6 +570,13 @@ describe('theme tokens', () => {
       prop: 'padding',
       value: '12px',
     });
+  });
+
+  it('checks the fallback of a consumer hook like any other metric value', () => {
+    expect(metricLeftover('var(--sheet-inset, var(--space-6))')).toBe('');
+    expect(metricLeftover('var(--sheet-inset , var(--space-6))')).toBe('');
+    expect(metricLeftover('var(--sheet-inset, 24px)')).toBe('24px');
+    expect(metricLeftover('var(--sheet-inset,)')).not.toBe('');
   });
 
   // Function notations plus the named colors someone might actually reach

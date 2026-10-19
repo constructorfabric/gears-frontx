@@ -152,10 +152,14 @@ the panel's full width and reach its top and bottom edges. Padding on the
 scroll container would have left strips that no sticky region can cover -
 see `dialog.md`'s "Scrolling content" for the mechanism. Consequence when
 styling children: the inset rules read the `--sheet-inset` custom property
-(default `var(--space-6)`, 24px). A region that should run edge to edge (a
-navigation column, a full-width list with dividers, a media header) sets
-`--sheet-inset: 0` on itself; setting it on `SheetContent` changes the
-inset of every region. Use the property rather than a `padding` override:
+(default `var(--space-6)`, 24px). It sets a region's side inset and, on the
+first and last regions, their top and bottom inset too. A region that should
+run edge to edge (a navigation column, a full-width list with dividers, a
+media header) sets `--sheet-inset: 0` on itself; as the first region it then
+also starts at the panel's top edge, under the close button, so put it after
+`SheetHeader` or give it its own top padding. Setting it on `SheetContent`
+changes the inset of every region except `SheetHeader` and `SheetFooter`,
+which keep their own 16px, and leaves the 24px gap between regions as it is. Use the property rather than a `padding` override:
 a class that sets `padding` on a region has the same weight as the kit
 rule, so it wins only when its stylesheet loads after the kit's.
 

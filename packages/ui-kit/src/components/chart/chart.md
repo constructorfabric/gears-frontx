@@ -51,7 +51,11 @@ with a height or a stretching parent:
 Set the custom property rather than overriding `aspect-ratio` from a
 class: a class has the same weight as the kit's rule, so it wins only when
 its stylesheet happens to load after the kit's. Any other ratio works the
-same way (`--chart-aspect-ratio: 4 / 3`).
+same way (`--chart-aspect-ratio: 4 / 3`). Two things to know: the property
+inherits, so set on a dashboard wrapper it reaches every chart inside,
+including one with no height of its own; and a value that is not a ratio
+(`16:9`) makes `aspect-ratio` fall back to `auto`, not to 16:9, so a chart
+with no height then collapses to nothing.
 
 ## Series colors: `ChartConfig`, with the `--chart-*` palette behind it
 

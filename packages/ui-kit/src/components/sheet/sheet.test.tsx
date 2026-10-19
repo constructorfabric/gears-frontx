@@ -1,11 +1,7 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
+import { declaredIn } from '../../__test-utils__/css-rules';
 import {
   Sheet,
   SheetClose,
@@ -183,20 +179,10 @@ describe('Sheet', () => {
   });
 });
 
-function declaredIn(file: string) {
-  const rules = extractRules(
-    readFileSync(join(dirname(fileURLToPath(import.meta.url)), file), 'utf8'),
-  );
-  return (selector: string, prop: string) => {
-    const rule = rules.find((candidate) => candidate.selector === selector);
-    return rule ? declarationMap(rule.body).get(prop) : undefined;
-  };
-}
-
 // jsdom does no layout, so the inset hook is read from the module source.
 describe('SheetContent inset', () => {
   it('reads every region inset from --sheet-inset, var(--space-6) by default', () => {
-    const declared = declaredIn('sheet.module.css');
+    const declared = declaredIn(import.meta.url, 'sheet.module.css');
     const inset = 'var(--sheet-inset, var(--space-6))';
     const region = '.popup > :where(*:not(.closeButton))';
     expect(declared(region, 'padding-inline')).toBe(inset);
