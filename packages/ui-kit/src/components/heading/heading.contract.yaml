@@ -25,6 +25,10 @@ dont_use_when:
     instead:
       target: AlertTitle
       component: gts.frontx.uikit._.component.v1~frontx.uikit._.alert_title.v1
+  - situation: The title of a page or section header with its actions and meta
+    instead:
+      target: PageHeaderTitle, inside PageHeader
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.page_header_title.v1
   - situation: Running text, a caption or a meta line
     instead:
       target: Text

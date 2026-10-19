@@ -1,21 +1,20 @@
 /*
  * Link styles. The anchor inherits the font of its line (size, line height,
  * weight), so a link inside a 14/20 body line leaves the line box at 20.
- * Underline on hover, a focus outline on --ring at --border-width-focus as
- * the kit's other focusable parts draw it. Consumes only theme.css
+ * Underlined at rest, as shadcn/ui's typography draws a link: inside
+ * running text the colour alone is not enough to mark it (WCAG 1.4.1, axe
+ * link-in-text-block; the dark theme's --link-foreground is under 3:1
+ * against --foreground). A focus outline on --ring at --border-width-focus
+ * as the kit's other focusable parts draw it. Consumes only theme.css
  * variables.
  */
 
 .link {
   font: inherit;
-  text-decoration-line: none;
+  text-decoration-line: underline;
   text-underline-offset: 0.2em;
   border-radius: var(--radius-xs);
   transition: color var(--duration-micro) var(--ease-standard);
-}
-
-.link:hover {
-  text-decoration-line: underline;
 }
 
 .link:focus-visible {
@@ -43,11 +42,10 @@
 
 /*
  * Inside coloured text (an Alert, a destructive message) the link keeps the
- * text's colour, so the underline is what marks it, always drawn.
+ * text's colour, so the underline is what marks it.
  */
 .variantInherit {
   color: inherit;
-  text-decoration-line: underline;
 }
 
 /*

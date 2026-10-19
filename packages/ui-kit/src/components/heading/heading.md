@@ -16,6 +16,9 @@ independent. No Base UI primitive; `render` comes from
 - Inside a kit component that has its own title part: use `CardTitle`,
   `EmptyTitle`, `AlertTitle` (each takes `render` for the heading element),
   `DialogTitle` or `ItemTitle`.
+- The title of a page header: use `PageHeaderTitle`, which takes the same
+  two top roles (its `typography` `display` is this `display`, its
+  `heading` this `heading-1`).
 - Running text, captions and meta lines: use `Text`.
 
 ## Props (kit level)

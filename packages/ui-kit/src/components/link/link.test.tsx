@@ -106,7 +106,8 @@ describe('Link drawn rules', () => {
     expect(declared('.variantDefault', 'color')).toBe('var(--link-foreground)');
     expect(declared('.variantMuted', 'color')).toBe('var(--muted-foreground)');
     expect(declared('.variantMuted:hover', 'color')).toBe('var(--link-foreground)');
-    expect(declared('.variantInherit', 'text-decoration-line')).toBe('underline');
+    expect(declared('.link', 'text-decoration-line')).toBe('underline');
+    expect(declared('.variantInherit', 'color')).toBe('inherit');
     expect(declared('.link:focus-visible', 'outline')).toBe(
       'var(--border-width-focus) solid var(--ring)',
     );

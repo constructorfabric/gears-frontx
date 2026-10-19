@@ -51,8 +51,9 @@ invariants:
       `aria-hidden`; the accessible wording stays with the caller.
   - id: inherit-variant-always-underlined
     text: >-
-      The inherit variant keeps the text's colour and always draws the
-      underline, which is then the only thing that marks it as a link.
+      Every variant draws the underline at rest; the inherit variant keeps
+      the text's colour, so the underline is then the only thing that
+      marks it as a link.
   - id: icon-follows-the-text
     text: >-
       An svg placed directly in the link, the external arrow or the

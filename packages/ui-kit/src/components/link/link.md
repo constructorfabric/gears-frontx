@@ -18,12 +18,12 @@ An inline anchor that inherits font size and line height from its line, so it ne
 
 | Prop | Type | Default |
 |------|------|---------|
-| `variant` | `'default' \| 'muted' \| 'inherit'` - `--link-foreground`; `--muted-foreground` turning `--link-foreground` on hover; `currentColor`, always underlined | `'default'` |
+| `variant` | `'default' \| 'muted' \| 'inherit'` - `--link-foreground`; `--muted-foreground` turning `--link-foreground` on hover; `currentColor` | `'default'` |
 | `external` | `boolean` - `target="_blank"` and `rel="noopener noreferrer"` unless passed, plus an arrow icon with `aria-hidden` | `false` |
 | `render` | `ReactElement` or callback - the router's link component | `a` |
 | `className` | `string` | - |
 
-Hover underlines; keyboard focus draws an outline on `--ring` at `--border-width-focus`. `linkVariants` is exported for a router component that cannot take `render`.
+Underlined at rest, so a link inside text never relies on colour alone; keyboard focus draws an outline on `--ring` at `--border-width-focus`. `linkVariants` is exported for a router component that cannot take `render`.
 
 An icon placed directly in the link (the external arrow or the caller's own) takes a 1em square from the link text, sits on its baseline and keeps a 0.25em gap on the text side: before a trailing icon, after a leading icon that is followed by an element (wrap the text in a `span`). The rules carry no specificity, so a caller that sizes or spaces its icons itself keeps its own values.
 
