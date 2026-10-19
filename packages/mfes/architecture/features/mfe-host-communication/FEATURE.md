@@ -297,7 +297,7 @@ This feature also specifies the abstract router contract the package declares (`
    1. [x] - `p1` - Enumerate the extension states through the extension manager so every active root is reached - `inst-ht-enumerate`
 3. [x] - `p1` - After creating a shadow root and before calling its lifecycle `mount`, apply the retained theme; if no theme has been set, leave the root and host unchanged - `inst-ht-mount`
 4. [x] - `p1` - When an attribute name is configured, set it on the shadow host for a supplied appearance and remove it when appearance is absent; without a configured name write no appearance attribute - `inst-ht-appearance`
-5. [x] - `p1` - For a nonempty variables map, keep one `__frontx-css-variables__` style: use `:host { ... }` without a configured attribute and appearance, or `:host([A='V']), [A='V'][A='V'] { ... }` with them, so variables outrank a same-name `[A='V']` rule inside the shadow root - `inst-ht-variables`
+5. [x] - `p1` - For a nonempty variables map, keep one `__frontx-css-variables__` style: use `:host([A='V']), [A='V'][A='V'] { ... }` when both an attribute name A is configured and an appearance V is supplied, and `:host { ... }` otherwise, so variables outrank a same-name `[A='V']` rule inside the shadow root; a scope attribute or value that is not a plain name (a letter, then letters, digits, `_` or `-`) is refused with an error, since both are written unescaped into a quoted selector - `inst-ht-variables`
 6. [x] - `p1` - Apply the retained appearance and variables to a shadow host and root; remove stale appearance and variable style when the new theme omits them - `inst-ht-apply`
 
 ### Mount Context
@@ -451,7 +451,7 @@ The system **MUST** declare `HistoryIntent` as `'none' | 'replace' | 'push'` and
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-mfe-host-communication-host-theme`
 
-The registry **MUST** refuse an appearance other than `light` or `dark`, and **MUST** otherwise retain a copy of the latest theme variables and optional appearance, apply them to existing shadow roots at `setTheme` and to new roots before lifecycle mount, and leave roots untouched until the first theme call. A configured application-supplied appearance attribute **MUST** be validated, stamped or removed with appearance, and used to scope variable selectors; an empty variables map **MUST** remove the variables style.
+The registry **MUST** refuse an appearance other than `light` or `dark`, and **MUST** otherwise retain a copy of the latest theme variables and optional appearance, apply them to existing shadow roots at `setTheme` and to new roots before lifecycle mount, and leave roots untouched until the first theme call. A configured application-supplied appearance attribute **MUST** be validated, stamped or removed with appearance, and used to scope the variables rule whenever an appearance is supplied; an empty variables map **MUST** remove the variables style.
 
 **Implements**:
 - `cpt-frontx-algo-mfe-host-communication-host-theme`
@@ -464,7 +464,7 @@ The registry **MUST** refuse an appearance other than `light` or `dark`, and **M
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-mfe-host-communication-mount-context`
 
-The runtime **MUST** pass `extensionId`, `domainId`, and a configured `hostBaseUrl` unchanged to lifecycle mount, omitting `hostBaseUrl` when absent. A screen that builds a nested registry passes the host base from its own mount context into that registry's configuration.
+The runtime **MUST** pass `extensionId`, `domainId`, and a configured `hostBaseUrl` unchanged to lifecycle mount, omitting `hostBaseUrl` when absent. The runtime does not carry the value into a nested registry: a screen that builds one passes it on from its own mount context into that registry's configuration.
 
 **Implements**:
 - `cpt-frontx-algo-mfe-host-communication-mount-context`

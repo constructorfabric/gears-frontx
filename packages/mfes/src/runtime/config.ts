@@ -83,7 +83,10 @@ export interface MfeRegistryConfig {
   /**
    * Application-supplied attribute name stamped on each shadow host when an
    * appearance is set. The runtime owns no theme vocabulary. When absent, no
-   * appearance attribute is written.
+   * appearance attribute is written. Once configured, the runtime owns that
+   * attribute on every shadow host: it sets it at each theme with an
+   * appearance and removes it at each theme without one, so the name must not
+   * be one the host markup itself relies on.
    */
   themeAppearanceAttribute?: string;
 

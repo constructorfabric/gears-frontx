@@ -20,4 +20,15 @@ describe('injectCssVariables', () => {
       ":host([data-appearance='dark']), [data-appearance='dark'][data-appearance='dark'] {\n  --accent: blue;\n}"
     );
   });
+
+  it.each([
+    ['a value carrying a quote', { attribute: 'data-appearance', value: "dark'] * { color: red } [x='" }],
+    ['an attribute carrying a bracket', { attribute: 'data-appearance]', value: 'dark' }],
+  ])('refuses %s and leaves the root without a variables style', (_case, scope) => {
+    const root = document.createElement('div').attachShadow({ mode: 'open' });
+
+    expect(() => injectCssVariables(root, { '--accent': 'blue' }, scope)).toThrow(/Invalid CSS variables scope/);
+
+    expect(root.getElementById('__frontx-css-variables__')).toBeNull();
+  });
 });

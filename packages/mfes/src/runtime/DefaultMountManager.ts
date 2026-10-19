@@ -25,10 +25,9 @@ import type { ActionsChain } from '../types';
 import { DefaultExtensionManager } from './DefaultExtensionManager';
 import type { MfeRegistry } from '../registry/MfeRegistry';
 import { MountManager } from './MountManager';
-import type { ActionsChainDispatcher, LifecycleTrigger } from './MountManager';
+import type { ActionsChainDispatcher, LifecycleTrigger, ThemeAppearance } from './MountManager';
 import { RuntimeBridgeFactory } from './RuntimeBridgeFactory';
-import { createShadowRoot, injectCssVariables } from '../shadow';
-import type { ThemeAppearance } from './MountManager';
+import { CSS_VARIABLES_STYLE_ID, createShadowRoot, injectCssVariables } from '../shadow';
 import {
   popAmbientMountingBridge,
   pushAmbientMountingBridge,
@@ -704,7 +703,7 @@ export class DefaultMountManager extends MountManager {
           : undefined
       );
     } else {
-      shadowRoot.getElementById('__frontx-css-variables__')?.remove();
+      shadowRoot.getElementById(CSS_VARIABLES_STYLE_ID)?.remove();
     }
   }
   // @cpt-end:cpt-frontx-algo-mfe-host-communication-host-theme:p1:inst-ht-apply

@@ -227,7 +227,7 @@ describe('host theme and mount context', () => {
     await registry.dispose();
   });
 
-    it('passes the configured host base unchanged through the mount context', async () => {
+  it('passes the configured host base unchanged through the mount context', async () => {
     const { registry, handler } = await mountExtension({ hostBaseUrl: 'https://host.example/app/' });
 
     expect(handler.context).toEqual({ extensionId: EXTENSION, domainId: DOMAIN, hostBaseUrl: 'https://host.example/app/' });

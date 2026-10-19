@@ -260,7 +260,7 @@ Applications need to gain user-facing functionality from independently developed
 ##### Responsibility scope
 
 - Owns microfrontend registration and on-demand loading, exposed through an abstract registry facade (`MfeRegistry`, built via `createMfeRegistryFactory()`).
-- Applies host CSS variables and optional appearance to every extension shadow root when the theme changes and before each lifecycle mount. The application supplies the appearance attribute name (`cpt-frontx-mfes-principle-opaque-substrate-vocabulary`).
+- Applies host CSS variables and optional appearance to every extension shadow root when the theme changes and before each lifecycle mount. The application supplies the appearance attribute name (`cpt-frontx-mfes-principle-opaque-substrate-vocabulary`); the appearance values are the platform's own `light` and `dark`, the values of the CSS `color-scheme` and `prefers-color-scheme` features, not a solution vocabulary.
 - Passes `extensionId`, `domainId`, and an optional host-supplied `hostBaseUrl` in each mount context without interpreting the base URL.
 - Owns extension-domain governance, mount-strategy selection (concurrent / optional / exclusive), and the cardinality rules that admit or reject occupants.
 - Owns the actions-chains mediator that routes communication between microfrontends and the host, and the narrow parent–child capability bridge.
