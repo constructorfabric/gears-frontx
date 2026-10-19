@@ -276,10 +276,13 @@ describe('Avatar soft status tones', () => {
   });
 });
 
-describe('Avatar solid warning', () => {
-  it('paints solid warning from the theme warning text pair', () => {
+describe('Avatar solid status tones', () => {
+  it('paints solid success, warning and danger from the theme status text pairs', () => {
     const declared = declaredIn(import.meta.url, 'avatar.module.css');
-    expect(declared('.variantSolid.toneWarning', 'background-color')).toBe('var(--warning-soft)');
-    expect(declared('.variantSolid.toneWarning', 'color')).toBe('var(--warning-foreground)');
+    for (const tone of ['success', 'warning', 'danger']) {
+      const Tone = tone.charAt(0).toUpperCase() + tone.slice(1);
+      expect(declared(`.variantSolid.tone${Tone}`, 'background-color')).toBe(`var(--${tone}-soft)`);
+      expect(declared(`.variantSolid.tone${Tone}`, 'color')).toBe(`var(--${tone}-foreground)`);
+    }
   });
 });

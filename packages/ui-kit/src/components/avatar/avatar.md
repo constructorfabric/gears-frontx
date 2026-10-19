@@ -53,9 +53,11 @@ then.
 strength with an on-primary label, `soft` puts the tone's own label color
 on its soft surface (for `success`, `warning` and `danger` the tone's text
 token, `--success-foreground` and so on, which clears 4.5:1 where the fill
-tone does not). Solid `warning` is painted like soft `warning`: the drawn
-amber takes no ink at 4.5:1, so it uses the theme's warning text pair
-(`--warning-foreground` on `--warning-soft`, 6.59:1 light, 10.03:1 dark). The `neutral`/`soft` default is the plain
+tone does not). Solid `success`, `warning` and `danger` are painted like their soft
+treatment: the drawn fill tones take no ink at 4.5:1 in light, so they use
+the theme's status text pair (`--success-foreground` on `--success-soft`
+and so on, 5.00:1, 6.59:1 and 5.72:1 in light; `tokens.test.ts` checks
+both themes). The `neutral`/`soft` default is the plain
 muted-on-muted fill, so a fallback given neither prop looks exactly as it
 did before these axes existed.
 

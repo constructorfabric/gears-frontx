@@ -87,7 +87,7 @@ ellipsis`.
 
 | Prop | Type | Default |
 |------|------|---------|
-| `variant` | `'default' \| 'icon' \| 'image' \| 'chip' \| 'chip-round'` - `image` also shrinks to match the ancestor `Item`'s `size`; `chip` is a 29px rounded square on the `--accent` pair with a 16px glyph, `chip-round` a 30px circle on `--surface` with the glyph in `--primary`, the icon tile a dashboard row or an activity feed leads with | `'default'` |
+| `variant` | `'default' \| 'icon' \| 'image' \| 'chip' \| 'chip-round'` - `image` also shrinks to match the ancestor `Item`'s `size`; `chip` is a 29px rounded square on the `--accent` pair with a 16px glyph, `chip-round` a 30px circle on `--secondary` with the glyph in `--primary`, the icon tile a dashboard row or an activity feed leads with | `'default'` |
 
 `ItemDescription`:
 

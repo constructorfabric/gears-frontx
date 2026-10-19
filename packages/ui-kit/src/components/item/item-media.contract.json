@@ -36,7 +36,7 @@
   "invariants": [
     {
       "id": "variant-sizes-what-it-holds",
-      "text": "ItemMedia is a centered, non-shrinking flex box; `variant=\"icon\"` sizes every svg inside it to --icon-size-sm, and `variant=\"image\"` makes a 2.5rem square with a small radius that clips its content and makes every img inside it cover the square. `variant=\"chip\"` is a 29px square at --radius-md on the --accent / --accent-foreground pair with a 16px glyph, and `variant=\"chip-round\"` a 30px circle on --surface with a 15px glyph in --primary. Every svg inside ItemMedia ignores pointer events whatever the variant."
+      "text": "ItemMedia is a centered, non-shrinking flex box; `variant=\"icon\"` sizes every svg inside it to --icon-size-sm, and `variant=\"image\"` makes a 2.5rem square with a small radius that clips its content and makes every img inside it cover the square. `variant=\"chip\"` is a 29px square at --radius-md on the --accent / --accent-foreground pair with a 16px glyph, and `variant=\"chip-round\"` a 30px circle on --secondary with a 15px glyph in --primary. Every svg inside ItemMedia ignores pointer events whatever the variant."
     }
   ],
   "anti_patterns": [],

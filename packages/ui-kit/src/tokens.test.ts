@@ -951,6 +951,20 @@ describe('theme tokens', () => {
         }
       });
 
+      // A selected row, a pressed toggle and a secondary button paint the
+      // --secondary pair: its text must read on it, and in dark the fill
+      // must differ from the page it sits on, or the selection shows only
+      // through its text tone.
+      it('secondary text clears 4.5:1 on the secondary fill, which differs from the page', () => {
+        for (const [themeName, tokens] of themes) {
+          expect(
+            contrastRatio(token(tokens, '--secondary-foreground'), token(tokens, '--secondary')),
+            themeName,
+          ).toBeGreaterThanOrEqual(4.5);
+          expect(token(tokens, '--secondary'), themeName).not.toBe(token(tokens, '--background'));
+        }
+      });
+
       // The table header label against the header bar's own fill
       // (--surface, not --background — see table.module.css).
       it('table header text clears 4.5:1 against the header bar fill', () => {

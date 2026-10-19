@@ -213,7 +213,8 @@
  * An icon chip: a glyph on a small filled tile, as a dashboard row or an
  * activity feed leads with. `chip` is a 29px rounded square on the
  * --accent pair with a 16px glyph; `chip-round` is a 30px circle on
- * --surface with the glyph in --primary at 15px. Dimensions, not spacing.
+ * --secondary with the glyph in --primary at 15px (--surface, the drawn
+ * fill, equals the page in dark). Dimensions, not spacing.
  */
 .itemMediaVariantChip {
   width: 1.8125rem;
@@ -244,7 +245,7 @@
   width: 1.875rem;
   height: 1.875rem;
   border-radius: var(--radius-full);
-  background-color: var(--surface);
+  background-color: var(--secondary);
   color: var(--primary);
 }
 
