@@ -34,7 +34,7 @@ invariants:
       makes every img inside it cover the square. `variant="chip"` is a
       29px square at --radius-md on the --accent / --accent-foreground pair
       with a 16px glyph, and `variant="chip-round"` a 30px circle on
-      --secondary with a 15px glyph in --primary. Every svg inside ItemMedia
+      --secondary with a 15px glyph in --link-foreground. Every svg inside ItemMedia
       ignores pointer events whatever the variant.
 
 anti_patterns: []

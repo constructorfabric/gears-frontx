@@ -124,7 +124,8 @@
  * the axes verbatim - "treatment: solid |
  * soft; tone: neutral | accent | info | success | warning | danger".
  *
- * `solid` paints the tone at full strength; `soft` inverts the pair — the
+ * `solid` paints the tone at full strength (except success, warning and
+ * danger, which match `soft`, see below); `soft` inverts the pair — the
  * tone's own -soft surface carries the tone as the label color, written in
  * the tone's drawn text token (`--x-foreground`) where theme.css has one
  * (success, warning, danger), since the fill tone misses 4.5:1 as text.

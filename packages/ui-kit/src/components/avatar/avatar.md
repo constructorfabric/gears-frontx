@@ -50,10 +50,10 @@ then.
 | `className` | `string` — merged after the kit class | — |
 
 `tone` × `variant` is the fill matrix: `solid` paints the tone at full
-strength with an on-primary label, `soft` puts the tone's own label color
+strength for `neutral`, `accent` and `info`, `soft` puts the tone's own label color
 on its soft surface (for `success`, `warning` and `danger` the tone's text
 token, `--success-foreground` and so on, which clears 4.5:1 where the fill
-tone does not). Solid `success`, `warning` and `danger` are painted like their soft
+tone does not). Solid `success`, `warning` and `danger` look exactly like their soft
 treatment: the drawn fill tones take no ink at 4.5:1 in light, so they use
 the theme's status text pair (`--success-foreground` on `--success-soft`
 and so on, 5.00:1, 6.59:1 and 5.72:1 in light; `tokens.test.ts` checks

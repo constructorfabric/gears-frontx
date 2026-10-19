@@ -47,6 +47,22 @@
   background-color: var(--secondary);
 }
 
+/*
+ * In dark the --secondary fill (one slate step above the page) leaves the
+ * --primary range at 2.77:1 against the rest of the track, under the 3:1 a
+ * graphic needs, so the dark track takes the page-level --muted value
+ * instead (the range then reads 3.38:1 against it, as it always has).
+ */
+[data-theme='dark'] .track {
+  background-color: var(--muted);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .track {
+    background-color: var(--muted);
+  }
+}
+
 .control[data-orientation='horizontal'] .track {
   height: 0.375rem;
 }

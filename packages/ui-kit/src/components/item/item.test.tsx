@@ -267,7 +267,7 @@ describe('Item drawn rules', () => {
     expect(declared('.itemMediaVariantChip', 'color')).toBe('var(--accent-foreground)');
     expect(declared('.itemMediaVariantChip', 'border-radius')).toBe('var(--radius-md)');
     expect(declared('.itemMediaVariantChipRound', 'background-color')).toBe('var(--secondary)');
-    expect(declared('.itemMediaVariantChipRound', 'color')).toBe('var(--primary)');
+    expect(declared('.itemMediaVariantChipRound', 'color')).toBe('var(--link-foreground)');
     expect(declared('.itemMediaVariantChipRound', 'border-radius')).toBe('var(--radius-full)');
   });
 

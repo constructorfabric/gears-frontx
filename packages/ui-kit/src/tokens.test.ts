@@ -961,7 +961,15 @@ describe('theme tokens', () => {
             contrastRatio(token(tokens, '--secondary-foreground'), token(tokens, '--secondary')),
             themeName,
           ).toBeGreaterThanOrEqual(4.5);
-          expect(token(tokens, '--secondary'), themeName).not.toBe(token(tokens, '--background'));
+          expect(
+            contrastRatio(token(tokens, '--secondary'), token(tokens, '--background')),
+            `${themeName} --secondary against the page`,
+          ).toBeGreaterThan(1.02);
+          // The round icon chip's glyph on its --secondary tile (1.4.11).
+          expect(
+            contrastRatio(token(tokens, '--link-foreground'), token(tokens, '--secondary')),
+            `${themeName} chip glyph`,
+          ).toBeGreaterThanOrEqual(3);
         }
       });
 

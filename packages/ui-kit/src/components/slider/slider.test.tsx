@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { declaredIn } from '../../__test-utils__/css-rules';
 import { Slider } from './slider';
 import styles from './slider.module.css';
 
@@ -131,5 +132,13 @@ describe('Slider names', () => {
       </>,
     );
     expect(await screen.findAllByRole('slider', { name: 'Volume' })).toHaveLength(1);
+  });
+});
+
+describe('Slider dark track', () => {
+  it('keeps the dark track at the page-level --muted so the range reads at 3:1', () => {
+    const declared = declaredIn(import.meta.url, 'slider.module.css');
+    expect(declared('.track', 'background-color')).toBe('var(--secondary)');
+    expect(declared("[data-theme='dark'] .track", 'background-color')).toBe('var(--muted)');
   });
 });
