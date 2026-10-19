@@ -1,8 +1,8 @@
 # Switch
 
 An on/off toggle with immediate effect. Wraps the Base UI Switch primitive
-(Root + Thumb): renders a `role="switch"` button with a hidden native input
-for forms, state via `data-checked`/`data-unchecked`.
+(Root + Thumb): renders a `span` with `role="switch"` and a hidden native
+input for forms, state via `data-checked`/`data-unchecked`.
 
 ## When to use
 
@@ -54,4 +54,4 @@ import { Label, Switch } from '@gears-frontx/ui-kit';
 - Do not rely on a wrapping `Label` alone for the name: the switch is a
   `span` with `role="switch"`, which a wrapping label does not name (axe
   `aria-toggle-field-name`). Point `aria-labelledby` at the label text, or
-  use `FieldLabel htmlFor` with the switch's `id`.
+  pass `aria-label`.

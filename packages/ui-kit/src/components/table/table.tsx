@@ -173,23 +173,41 @@ function TableColumnResizer({ minWidth }: TableColumnResizerProps) {
   const [width, setWidth] = useState<number | null>(null);
   // The column's width and its bounds as the handle reports them: a
   // focusable separator is a widget, and assistive technology reads its
-  // value from aria-valuenow (axe `aria-required-attr` without it). Read
-  // once at mount; `width` above takes over once the user resizes.
+  // value from aria-valuenow (axe `aria-required-attr` without it). Read at
+  // mount and again whenever the handle takes focus, since dragging a
+  // neighbour's handle changes this column too; `width` above takes over
+  // while this handle resizes. The floor is the one the resize clamps to.
   const [bounds, setBounds] = useState<{ now: number; min: number; max: number } | null>(null);
 
-  useEffect(() => {
+  const measure = useCallback(() => {
     const cell = handleRef.current?.closest('th');
-    setColumnName(cell?.textContent?.trim() ?? '');
-    if (cell instanceof HTMLTableCellElement) {
-      setBounds({
-        now: Math.round(cell.getBoundingClientRect().width),
-        min: Math.round(minWidthOf(cell, minWidth)),
-        max: Math.round(cell.closest('table')?.getBoundingClientRect().width ?? 0),
-      });
+    if (!(cell instanceof HTMLTableCellElement)) {
+      return;
+    }
+    const cells = Array.from(cell.parentElement?.children ?? []).filter(
+      (sibling): sibling is HTMLTableCellElement => sibling instanceof HTMLTableCellElement,
+    );
+    setBounds({
+      now: Math.round(cell.getBoundingClientRect().width),
+      min: Math.round(minSelfOf(cells, cells.indexOf(cell), minWidth)),
+      max: Math.round(cell.closest('table')?.getBoundingClientRect().width ?? 0),
+    });
+    // A focus that starts a drag keeps the drag's own width.
+    if (!dragRef.current) {
+      setWidth(null);
     }
   }, [minWidth]);
 
+  useEffect(() => {
+    setColumnName(handleRef.current?.closest('th')?.textContent?.trim() ?? '');
+    measure();
+  }, [measure]);
+
+  // Kept inside [min, max]: a column the layout squeezed below its floor
+  // reports the floor it is at, never a value under aria-valuemin.
   const valueNow = width ?? bounds?.now ?? 0;
+  const valueMin = Math.min(bounds?.min ?? 0, valueNow);
+  const valueMax = Math.max(bounds?.max ?? 0, valueNow);
 
   /*
    * The cursor and the text selection are locked for the DURATION of the
@@ -319,8 +337,9 @@ function TableColumnResizer({ minWidth }: TableColumnResizerProps) {
       aria-orientation="vertical"
       aria-label={`${columnName || 'Column'} width${width === null ? '' : `, ${width} pixels`}`}
       aria-valuenow={valueNow}
-      aria-valuemin={bounds?.min ?? 0}
-      aria-valuemax={Math.max(bounds?.max ?? 0, valueNow)}
+      aria-valuemin={valueMin}
+      aria-valuemax={valueMax}
+      onFocus={measure}
       tabIndex={0}
       className={styles.columnResizer}
       style={{ width: HANDLE_WIDTH, insetInlineEnd: -HANDLE_WIDTH / 2 }}

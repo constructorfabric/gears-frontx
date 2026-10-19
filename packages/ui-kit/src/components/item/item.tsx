@@ -1,3 +1,5 @@
+'use client';
+
 import { mergeProps } from '@base-ui/react/merge-props';
 import { useRender } from '@base-ui/react/use-render';
 import { cva, cx, type VariantProps } from 'class-variance-authority';
@@ -64,9 +66,12 @@ const ItemGroupContext = createContext(false);
 
 /*
  * Inside an ItemGroup a plain Item is the list's `listitem` (axe
- * `aria-required-children` on the group otherwise). An Item rendered as a
- * link or a button through `render` keeps that element's own role, which a
- * listitem role would replace; a `role` the caller passes always wins.
+ * `aria-required-children` on the group otherwise). An Item with `render`
+ * keeps the rendered element's role, which a listitem role would replace
+ * on a link or a button; a `role` the caller passes always wins. Each Item
+ * resets the context for its own children, so an Item nested in a row (or
+ * in a popup opened from one) is not taken for a row of the list. The
+ * context and the hook are why this module ships `'use client'`.
  */
 export function Item({ className, variant, size, render, ...props }: ItemProps) {
   const inGroup = useContext(ItemGroupContext);
@@ -77,7 +82,7 @@ export function Item({ className, variant, size, render, ...props }: ItemProps) 
   // `{ variant, size }` pair.
   const resolvedVariant = variant ?? 'default';
   const resolvedSize = size ?? 'default';
-  return useRender({
+  const element = useRender({
     defaultTagName: 'div',
     render,
     state: { variant: resolvedVariant, size: resolvedSize },
@@ -93,6 +98,7 @@ export function Item({ className, variant, size, render, ...props }: ItemProps) 
       props,
     ),
   });
+  return <ItemGroupContext.Provider value={false}>{element}</ItemGroupContext.Provider>;
 }
 
 const itemMediaVariants = cva(styles.itemMedia, {
@@ -243,10 +249,12 @@ export type ItemGroupProps = ComponentProps<'div'>;
 /** A `role="list"` container for a run of `Item`s, spacing them apart
  * (the gap shrinks to match the smallest `size` of Item it contains — see
  * item.module.css). */
-export function ItemGroup({ className, ...props }: ItemGroupProps) {
+// Its rows are list items only while the group is a list: a `role` the
+// caller passes replaces `list`, and then no row takes `listitem`.
+export function ItemGroup({ className, role = 'list', ...props }: ItemGroupProps) {
   return (
-    <ItemGroupContext.Provider value={true}>
-      <div role="list" className={cx(styles.itemGroup, className)} {...props} />
+    <ItemGroupContext.Provider value={role === 'list'}>
+      <div role={role} className={cx(styles.itemGroup, className)} {...props} />
     </ItemGroupContext.Provider>
   );
 }

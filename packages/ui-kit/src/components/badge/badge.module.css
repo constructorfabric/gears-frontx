@@ -301,7 +301,8 @@ a.variantLink:hover {
  * its label is written in"), which clears it in both themes; in dark the
  * text token equals the tone. Info has no drawn text tone and keeps
  * `--info`, which clears the floor already. tokens.test.ts checks every
- * pair. No local literal: the pairs are the theme's own.
+ * pair. No local literal: the pairs are the theme's own. The dot keeps the
+ * tone itself, as StatusDot's does.
  *
  * Hover does not recolor the fill. The idiom `a.variantDestructive` above
  * once used mixes toward --foreground, which flips direction with the
@@ -315,6 +316,10 @@ a.variantLink:hover {
   color: var(--success-foreground);
 }
 
+.variantSuccess .dot {
+  background-color: var(--success);
+}
+
 a.variantSuccess:hover {
   text-decoration: underline;
 }
@@ -324,6 +329,10 @@ a.variantSuccess:hover {
   color: var(--warning-foreground);
 }
 
+.variantWarning .dot {
+  background-color: var(--warning);
+}
+
 a.variantWarning:hover {
   text-decoration: underline;
 }
@@ -331,6 +340,10 @@ a.variantWarning:hover {
 .variantDanger {
   background-color: var(--danger-soft);
   color: var(--danger-foreground);
+}
+
+.variantDanger .dot {
+  background-color: var(--danger);
 }
 
 a.variantDanger:hover {

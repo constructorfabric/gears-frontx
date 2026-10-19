@@ -341,16 +341,46 @@ describe('TableHead column resize', () => {
     expect(nameCell?.style.width).toBe('240px');
   });
 
-  it('reports its width as the separator value, before and during a resize', () => {
-    renderResizable();
-    const handle = screen.getByRole('separator');
+  it('reports its width, floor and table width as the separator value, kept in range', () => {
+    const { container } = renderResizable();
+    const handle = screen.getAllByRole('separator')[0] as HTMLElement;
+    // jsdom lays nothing out, so the mount reading is a zero width under
+    // the 72px floor: the floor is lowered to it rather than reported above
+    // the value.
     expect(handle.getAttribute('aria-valuenow')).toBe('0');
-    expect(handle.getAttribute('aria-valuemin')).toBe('72');
+    expect(handle.getAttribute('aria-valuemin')).toBe('0');
     stubWidths([200, 200]);
+    const table = container.querySelector('table') as HTMLTableElement;
+    vi.spyOn(table, 'getBoundingClientRect').mockImplementation(() => ({ width: 400 }) as DOMRect);
+    fireEvent.focus(handle);
+    expect(handle.getAttribute('aria-valuenow')).toBe('200');
+    expect(handle.getAttribute('aria-valuemin')).toBe('72');
+    expect(handle.getAttribute('aria-valuemax')).toBe('400');
     fireEvent(handle, pointerEvent('pointerdown', { clientX: 0 }));
     fireEvent(handle, pointerEvent('pointermove', { clientX: 40 }));
     expect(handle.getAttribute('aria-valuenow')).toBe('240');
-    expect(Number(handle.getAttribute('aria-valuemax'))).toBeGreaterThanOrEqual(240);
+  });
+
+  it("re-reads a column the neighbour's handle resized when its own handle takes focus", () => {
+    render(
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead resizable>Name</TableHead>
+            <TableHead resizable>Owner</TableHead>
+          </TableRow>
+        </TableHeader>
+      </Table>,
+    );
+    const cells = stubWidths([200, 200]);
+    const [first, second] = screen.getAllByRole('separator') as HTMLElement[];
+    fireEvent(first as HTMLElement, pointerEvent('pointerdown', { clientX: 0 }));
+    fireEvent(first as HTMLElement, pointerEvent('pointermove', { clientX: 40 }));
+    vi.spyOn(cells[1] as HTMLElement, 'getBoundingClientRect').mockImplementation(
+      () => ({ width: 160 }) as DOMRect,
+    );
+    fireEvent.focus(second as HTMLElement);
+    expect(second?.getAttribute('aria-valuenow')).toBe('160');
   });
 
   it('trades width with the trailing neighbour and leaves the total stable', () => {

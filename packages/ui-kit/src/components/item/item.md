@@ -43,9 +43,12 @@ beside it, and gets the same `--muted` hover fill as a link nested in a row.
 
 Inside `ItemGroup` (a `role="list"`) each `Item` is a list item
 (`role="listitem"`) and `ItemSeparator` is hidden from assistive
-technology, so a group of rows reads as a list. An `Item` rendered as a
-link or a button keeps that element's role instead, and a `role` passed to
-an `Item` always wins.
+technology, so a group of plain rows reads as a list. An `Item` with
+`render` keeps the rendered element's role instead, so a link or button
+row inside `ItemGroup` leaves the list with a child that is not a list
+item (axe `aria-required-children`); for a list of link rows, give the
+group `role="none"` or wrap each row in its own list item. A `role` passed
+to an `Item` always wins.
 
 `ItemTitle` stays on one line. A short title is as wide as its text; a long
 one stops at the width of its column and ends with an ellipsis. Its text is

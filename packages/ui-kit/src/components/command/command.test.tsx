@@ -76,6 +76,22 @@ describe('Command', () => {
     expect(screen.getByRole('listbox').querySelector('[role="separator"]')).toBeNull();
   });
 
+  it('keeps a separator with alwaysRender while a search is typed', () => {
+    render(
+      <Command>
+        <CommandInput placeholder="Find" />
+        <CommandList>
+          <CommandGroup heading="A">
+            <CommandItem value="alpha">Alpha</CommandItem>
+          </CommandGroup>
+          <CommandSeparator alwaysRender />
+        </CommandList>
+      </Command>,
+    );
+    fireEvent.change(screen.getByPlaceholderText('Find'), { target: { value: 'al' } });
+    expect(document.querySelector('[cmdk-separator]')?.getAttribute('role')).toBe('none');
+  });
+
   it('hides the separator while a search is typed', () => {
     renderMenu();
     fireEvent.change(screen.getByPlaceholderText('Type a command or search...'), {

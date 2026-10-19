@@ -119,7 +119,10 @@ export function CommandShortcut({ className, ...props }: CommandShortcutProps) {
   return <span className={cx(styles.shortcut, className)} {...props} />;
 }
 
-export type CommandSeparatorProps = ComponentProps<typeof CommandPrimitive.Separator>;
+export interface CommandSeparatorProps extends ComponentProps<'div'> {
+  /** Keep the separator while a search is typed. @default false */
+  alwaysRender?: boolean;
+}
 
 /*
  * cmdk's own Separator always sets `role="separator"` (after the caller's
@@ -135,5 +138,12 @@ export function CommandSeparator({ className, alwaysRender, ...props }: CommandS
   if (searching && !alwaysRender) {
     return null;
   }
-  return <div role="none" className={cx(styles.separator, className)} {...props} />;
+  return (
+    <div
+      role="none"
+      cmdk-separator=""
+      className={cx(styles.separator, className)}
+      {...props}
+    />
+  );
 }

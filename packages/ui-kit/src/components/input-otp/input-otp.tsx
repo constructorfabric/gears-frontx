@@ -37,13 +37,14 @@ const InputOtpLabelContext = createContext<string | undefined>(undefined);
  * left every slot unnamed (axe `label`). With an `aria-label` and no
  * `aria-labelledby`, the root renders that text in a hidden span and every
  * slot points at it through `aria-labelledby`. A slot's own
- * `aria-labelledby` still wins, and a `<label htmlFor>` or FieldLabel keeps
- * working as before, since then no `aria-label` is passed.
+ * `aria-labelledby` or `aria-label` still wins. Name the field one way: an
+ * `aria-label` on the root takes over from a `<label htmlFor>` naming it.
  */
 export function InputOtp({ className, children, ...props }: InputOtpProps) {
   const labelId = useId();
   const ariaLabel = props['aria-label'];
-  const labelled = ariaLabel != null && props['aria-labelledby'] == null;
+  const labelled =
+    typeof ariaLabel === 'string' && ariaLabel !== '' && props['aria-labelledby'] === undefined;
   return (
     <InputOtpLabelContext.Provider value={labelled ? labelId : undefined}>
       <OTPFieldPrimitive.Root className={cx(styles.root, className)} {...props}>
@@ -77,7 +78,7 @@ export function InputOtpSlot({ className, ...props }: InputOtpSlotProps) {
   return (
     <OTPFieldPrimitive.Input
       className={cx(styles.slot, className)}
-      aria-labelledby={labelId}
+      aria-labelledby={props['aria-label'] === undefined ? labelId : undefined}
       {...props}
     />
   );

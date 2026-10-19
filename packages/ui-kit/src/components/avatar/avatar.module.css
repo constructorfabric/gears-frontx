@@ -135,9 +135,11 @@
  * deviation is the kit's own and sits on a part no specimen covers: the
  * spec draws a photo avatar, not an initials fallback, so there is no
  * drawn label binding here to take literally. It invents no tokens either.
- * Each status tone's solid label is that tone's own -soft value, the exact
- * inverse of the `soft` treatment below, which puts dark ink on light
- * fills and light ink on dark fills by construction in both themes. Where
+ * Each status tone's solid label is that tone's own -soft value, the
+ * inverse of the `soft` fill below (whose success, warning and danger
+ * labels use the darker -foreground text token instead of the tone), which
+ * puts dark ink on light fills and light ink on dark fills by construction
+ * in both themes. Where
  * the drawn tone is itself a pale amber no ink clears 4.5:1 on it (light
  * warning measures 2.00:1, the tightest pair here; dark warning is the
  * loosest at 10.03:1) - that is a finding for the designer, since the tone

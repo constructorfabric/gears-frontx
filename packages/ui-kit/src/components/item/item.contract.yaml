@@ -97,9 +97,10 @@ invariants:
   - id: list-item-inside-a-group
     text: >-
       Inside an ItemGroup (`role="list"`) an Item without `render` takes
-      `role="listitem"`; an Item rendered as a link or a button keeps that
-      element's role, and a `role` the caller passes wins. Outside a group
-      an Item has no role.
+      `role="listitem"`; an Item with `render` keeps the rendered element's
+      role, and a `role` the caller passes wins. Outside a group, inside a
+      group given another role, or nested inside another Item, an Item has
+      no role.
   - id: link-root-looks-like-a-row
     text: >-
       Item sets `color: inherit` and `text-decoration: none` on its own

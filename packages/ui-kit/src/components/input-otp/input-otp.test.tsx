@@ -104,15 +104,31 @@ describe('InputOtp slot names', () => {
     expect(screen.getAllByRole('textbox', { name: 'Verification code' })).toHaveLength(1);
   });
 
-  it('adds nothing when the root is named another way', () => {
+  it('keeps a slot named by its own aria-label', () => {
     render(
-      <>
-        <label htmlFor="otp">Code</label>
-        <InputOtp id="otp" length={2}>
-          <InputOtpSlot />
-          <InputOtpSlot />
-        </InputOtp>
-      </>,
+      <InputOtp length={2} aria-label="Verification code">
+        <InputOtpSlot />
+        <InputOtpSlot aria-label="Digit 2 of 2" />
+      </InputOtp>,
+    );
+    expect(screen.getByRole('textbox', { name: 'Digit 2 of 2' })).toBeDefined();
+  });
+
+  it('injects no name when the root has no aria-label, or an empty one', () => {
+    const { rerender } = render(
+      <InputOtp length={2}>
+        <InputOtpSlot />
+        <InputOtpSlot />
+      </InputOtp>,
+    );
+    for (const slot of screen.getAllByRole('textbox')) {
+      expect(slot.getAttribute('aria-labelledby') ?? '').not.toMatch(/_r_/);
+    }
+    rerender(
+      <InputOtp length={2} aria-label="">
+        <InputOtpSlot />
+        <InputOtpSlot />
+      </InputOtp>,
     );
     expect(document.querySelector('span[hidden]')).toBeNull();
   });

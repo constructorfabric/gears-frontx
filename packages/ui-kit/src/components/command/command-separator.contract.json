@@ -81,9 +81,6 @@
     "properties": {
       "alwaysRender": {
         "type": "boolean"
-      },
-      "asChild": {
-        "type": "boolean"
       }
     },
     "required": [],

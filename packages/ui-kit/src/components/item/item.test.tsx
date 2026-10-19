@@ -124,6 +124,26 @@ describe('Item inside ItemGroup', () => {
     expect(screen.getByTestId('own').getAttribute('role')).toBe('presentation');
   });
 
+  it('gives no role to an Item nested in a row, or in a group with another role', () => {
+    render(
+      <>
+        <ItemGroup>
+          <Item data-testid="row">
+            <ItemContent>
+              <Item data-testid="nested">Nested</Item>
+            </ItemContent>
+          </Item>
+        </ItemGroup>
+        <ItemGroup role="none">
+          <Item data-testid="unlisted">Row</Item>
+        </ItemGroup>
+      </>,
+    );
+    expect(screen.getByTestId('row').getAttribute('role')).toBe('listitem');
+    expect(screen.getByTestId('nested').hasAttribute('role')).toBe(false);
+    expect(screen.getByTestId('unlisted').hasAttribute('role')).toBe(false);
+  });
+
   it('keeps the separator out of the accessibility tree', () => {
     render(
       <ItemGroup>

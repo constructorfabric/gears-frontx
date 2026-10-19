@@ -34,7 +34,7 @@
   "invariants": [
     {
       "id": "role-list-without-list-items",
-      "text": "ItemGroup renders a div with role=\"list\", which a consumer's own `role` replaces. Each Item inside it without `render` takes role=\"listitem\" and ItemSeparator is aria-hidden, so a group of plain rows is a well-formed list; a row rendered as a link or a button keeps that role and is not a list item."
+      "text": "ItemGroup renders a div with role=\"list\", which a consumer's own `role` replaces. Each Item inside it without `render` takes role=\"listitem\" and ItemSeparator is aria-hidden, so a group of plain rows is a well-formed list; a row with `render` keeps the rendered element's role and is not a list item. With another `role` on the group, no row takes listitem."
     },
     {
       "id": "gap-follows-the-smallest-item-size",
@@ -82,7 +82,9 @@
   "x-uikit": {
     "partially_typed_props": {},
     "variant_sources": [],
-    "cannot_extract": []
+    "cannot_extract": [
+      "default: prop \"role\" defaults to \"list\", but the contract states no property for it - the default is not stated"
+    ]
   },
   "props": {
     "title": "UiKit ItemGroup",
