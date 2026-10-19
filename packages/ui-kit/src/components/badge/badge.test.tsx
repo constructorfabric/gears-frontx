@@ -260,6 +260,7 @@ describe('Badge status tone labels', () => {
       const Tone = tone.charAt(0).toUpperCase() + tone.slice(1);
       expect(declared(`.variant${Tone}`, 'background-color')).toBe(`var(--${tone}-soft)`);
       expect(declared(`.variant${Tone}`, 'color')).toBe(`var(--${tone}-foreground)`);
+      expect(declared(`.variant${Tone} .dot`, 'background-color')).toBe(`var(--${tone})`);
     }
   });
 });

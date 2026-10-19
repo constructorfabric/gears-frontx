@@ -361,6 +361,24 @@ describe('TableHead column resize', () => {
     expect(handle.getAttribute('aria-valuenow')).toBe('240');
   });
 
+  it("bases the last column's floor on the other columns' rendered widths before any resize", () => {
+    render(
+      <Table style={{ minWidth: 450 }}>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead resizable>Owner</TableHead>
+          </TableRow>
+        </TableHeader>
+      </Table>,
+    );
+    stubWidths([200, 300]);
+    const handle = screen.getByRole('separator');
+    fireEvent.focus(handle);
+    expect(handle.getAttribute('aria-valuemin')).toBe('250');
+    expect(handle.getAttribute('aria-valuenow')).toBe('300');
+  });
+
   it("re-reads a column the neighbour's handle resized when its own handle takes focus", () => {
     render(
       <Table>

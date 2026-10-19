@@ -55,8 +55,8 @@ invariants:
       also carries the value assistive technology reads: aria-valuenow is
       the column's width in pixels (read at mount and whenever the handle
       takes focus, live while it resizes), aria-valuemin the floor the
-      resize clamps to and aria-valuemax the table's width, with the value
-      always kept inside the two.
+      resize clamps to (lowered to the width when the layout renders the
+      column narrower than that) and aria-valuemax the table's width.
   - id: sized-width-includes-padding
     text: >-
       TableHead is box-sizing border-box, so a width set through style or

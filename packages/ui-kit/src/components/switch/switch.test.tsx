@@ -40,3 +40,15 @@ describe('Switch', () => {
     expect(onCheckedChange).not.toHaveBeenCalled();
   });
 });
+
+describe('Switch name', () => {
+  it('is named by the label text it points at with aria-labelledby', () => {
+    render(
+      <label>
+        <Switch aria-labelledby="notify-label" />
+        <span id="notify-label">Email notifications</span>
+      </label>,
+    );
+    expect(screen.getByRole('switch', { name: 'Email notifications' })).toBeDefined();
+  });
+});

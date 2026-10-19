@@ -93,6 +93,7 @@ function minSelfOf(
   cells: HTMLTableCellElement[],
   index: number,
   override: number | undefined,
+  widthOf: (cell: HTMLTableCellElement) => number = frozenWidthOf,
 ): number {
   const self = cells[index];
   if (!self) {
@@ -107,7 +108,7 @@ function minSelfOf(
   if (!Number.isFinite(tableFloor)) {
     return own;
   }
-  const others = cells.slice(0, index).reduce((sum, column) => sum + frozenWidthOf(column), 0);
+  const others = cells.slice(0, index).reduce((sum, column) => sum + widthOf(column), 0);
   return Math.max(own, Math.ceil(tableFloor - others));
 }
 
@@ -184,17 +185,22 @@ function TableColumnResizer({ minWidth }: TableColumnResizerProps) {
     if (!(cell instanceof HTMLTableCellElement)) {
       return;
     }
-    const cells = Array.from(cell.parentElement?.children ?? []).filter(
-      (sibling): sibling is HTMLTableCellElement => sibling instanceof HTMLTableCellElement,
-    );
+    const cells = headerCellsOf(cell);
+    const now = Math.round(cell.getBoundingClientRect().width);
+    // Before the first resize no column has an inline width yet, so the
+    // floor reads each other column's rendered width, as the drag will once
+    // it freezes them.
+    const renderedWidthOf = (column: HTMLTableCellElement) =>
+      frozenWidthOf(column) || column.getBoundingClientRect().width;
     setBounds({
-      now: Math.round(cell.getBoundingClientRect().width),
-      min: Math.round(minSelfOf(cells, cells.indexOf(cell), minWidth)),
+      now,
+      min: Math.round(minSelfOf(cells, cells.indexOf(cell), minWidth, renderedWidthOf)),
       max: Math.round(cell.closest('table')?.getBoundingClientRect().width ?? 0),
     });
-    // A focus that starts a drag keeps the drag's own width.
+    // A width already announced follows the column (a neighbour's drag may
+    // have changed it); a focus that starts a drag keeps the drag's own.
     if (!dragRef.current) {
-      setWidth(null);
+      setWidth((announced) => (announced === null ? null : now));
     }
   }, [minWidth]);
 
@@ -204,7 +210,8 @@ function TableColumnResizer({ minWidth }: TableColumnResizerProps) {
   }, [measure]);
 
   // Kept inside [min, max]: a column the layout squeezed below its floor
-  // reports the floor it is at, never a value under aria-valuemin.
+  // reports its real width, and the minimum is lowered to it rather than
+  // announced above the value.
   const valueNow = width ?? bounds?.now ?? 0;
   const valueMin = Math.min(bounds?.min ?? 0, valueNow);
   const valueMax = Math.max(bounds?.max ?? 0, valueNow);

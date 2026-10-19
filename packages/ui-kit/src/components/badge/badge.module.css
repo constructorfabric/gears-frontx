@@ -74,7 +74,9 @@
  * The optional status dot, a 6px round lead-in the spec draws on the badge
  * (and, under two other master names, on the same anatomy elsewhere).
  * `currentColor` rather than a rule per variant: every variant already sets
- * `color` to its own label tone, so the dot follows the tone for free, and
+ * `color` to its own label tone, so the dot follows the tone for free
+ * (success, warning and danger, whose label is the darker text token,
+ * paint the dot in the tone itself further down), and
  * it sits in the badge's own `gap` so the spacing is not dot-specific.
  * 6px has no --space-* step and is not spacing anyway - it is the drawn
  * size of a shape.

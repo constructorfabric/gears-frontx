@@ -59,9 +59,11 @@ invariants:
   - id: dot-is-decorative-and-follows-the-label-tone
     text: >-
       With `dot`, a 6px dot span is rendered as the badge's first child with
-      `aria-hidden="true"`, painted from `currentColor`, so it always takes
-      the label colour the variant sets and adds nothing to the accessible
-      name. Without `dot` no dot element is rendered at all.
+      `aria-hidden="true"`, painted from `currentColor`, so it takes the
+      label colour the variant sets, except success, warning and danger,
+      whose dot is the tone itself while the label is the darker text
+      token. It adds nothing to the accessible name. Without `dot` no dot
+      element is rendered at all.
   - id: hover-paint-only-on-an-anchor
     text: >-
       Every hover rule in badge.module.css selects an anchor carrying a

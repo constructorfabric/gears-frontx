@@ -43,9 +43,9 @@ invariants:
 
 anti_patterns:
   - dont: Render a switch with no visible label and no aria-label
-    do_instead: Pair it with `Label` for a shared click target, or pass `aria-label` directly when there is no visible text
+    do_instead: Pair it with `Label` for a shared click target and point `aria-labelledby` at the label text (a wrapping label does not name a role="switch" span), or pass `aria-label` directly when there is no visible text
   - dont: Pass label text as children
-    do_instead: Switch takes no content - wrap the switch and the label text together in `Label`, which is also what gives the pair one shared click target
+    do_instead: Switch takes no content - wrap the switch and the label text together in `Label` for one shared click target, and name the switch with `aria-labelledby` pointing at the text
   - dont: Pass `checked` with no `onCheckedChange`
     do_instead: A controlled switch with no change handler never receives its own toggle back - pair `checked` with `onCheckedChange`, or drop both and use `defaultChecked` for an uncontrolled switch
 
@@ -109,7 +109,8 @@ examples:
     - title: Labelled toggle, one click target
       code: |-
         <Label>
-          <Switch checked={notify} onCheckedChange={setNotify} /> Email notifications
+          <Switch checked={notify} onCheckedChange={setNotify} aria-labelledby="notify-label" />
+          <span id="notify-label">Email notifications</span>
         </Label>
     - title: Compact, unlabelled row named for assistive tech
       code: <Switch size="sm" defaultChecked aria-label="Enable rule" />
@@ -120,7 +121,8 @@ examples:
         Switch takes no content - there is no slot for it, and the text is
         silently dropped because the component's own Thumb always renders in
         its place. Wrap the switch and the text together in `Label` instead,
-        which is also what gives the pair one shared click target.
+        which gives the pair one shared click target, and name the switch
+        with `aria-labelledby` pointing at the text.
     - title: Controlled with no change handler
       code: <Switch checked={true} aria-label="Notifications" />
       why: >-

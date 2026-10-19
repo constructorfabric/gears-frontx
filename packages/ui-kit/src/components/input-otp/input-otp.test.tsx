@@ -122,7 +122,7 @@ describe('InputOtp slot names', () => {
       </InputOtp>,
     );
     for (const slot of screen.getAllByRole('textbox')) {
-      expect(slot.getAttribute('aria-labelledby') ?? '').not.toMatch(/_r_/);
+      expect(slot.hasAttribute('aria-labelledby')).toBe(false);
     }
     rerender(
       <InputOtp length={2} aria-label="">
@@ -131,5 +131,8 @@ describe('InputOtp slot names', () => {
       </InputOtp>,
     );
     expect(document.querySelector('span[hidden]')).toBeNull();
+    for (const slot of screen.getAllByRole('textbox')) {
+      expect(slot.hasAttribute('aria-labelledby')).toBe(false);
+    }
   });
 });
