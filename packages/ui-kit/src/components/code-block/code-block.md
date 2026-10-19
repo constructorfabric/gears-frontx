@@ -41,7 +41,9 @@ consumer; a consumer that highlights renders the tokens inside
 | | `copyLabel`, `copiedLabel` | `string` - the button's name before and after a copy, and the announcement | `'Copy'`, `'Copied'` |
 
 `CodeBlockCopyButton` is a kit `Button` (`variant="ghost"`, `size="sm"`,
-icon-only) and takes every other Button prop. `CodeBlockHeader`,
+icon-only) and takes the other Button props except `icon`, `end`,
+`children`, `render`, `nativeButton` and `aria-label`: it draws its own
+glyph and names itself from `copyLabel` and `copiedLabel`. `CodeBlockHeader`,
 `CodeBlockTitle`, `CodeBlockActions` and `CodeBlockFooter` take their
 element's props. The family ships `'use client'` (the copy button holds
 state).
@@ -67,8 +69,9 @@ scrolls with no fade.
   the top end of the block and show on hover or focus, and always on a
   touch screen.
 - The copy button writes `value`, switches to a check glyph and
-  `copiedLabel` for two seconds and says `copiedLabel` once in a polite
-  live region. A refused write changes nothing.
+  `copiedLabel` for two seconds (a second copy restarts the two seconds)
+  and says `copiedLabel` once in a polite live region. A refused write, or
+  a page with no clipboard (an insecure context), changes nothing.
 - Cap a long block's height with a `max-height` on `CodeBlockContent`; it
   scrolls inside the block.
 

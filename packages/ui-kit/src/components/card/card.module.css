@@ -185,15 +185,21 @@
 }
 
 /*
- * A Card whose root is a link or a button (`render`): no UA underline or
- * button font, a --ring border on hover, and on keyboard focus the kit's
- * border recolour plus inset ring, the same rules as item.module.css. The
- * reset sits at zero specificity, so the card's own rules still win.
+ * A Card rendered as another element (`render`): no UA underline or button
+ * font, at zero specificity so the card's own rules still win. Only a link
+ * or a button root then gets a --ring border on hover and, on keyboard
+ * focus, the kit's border recolour plus inset ring, the same rules as
+ * item.module.css.
  */
 :where(.interactive) {
   font: inherit;
   text-align: start;
   text-decoration: none;
+}
+
+/* Only a link or a button root is a control: the pointer, the custom focus
+ * state in place of the UA outline, and the border crossfade. */
+.interactive:where(a[href], button) {
   cursor: pointer;
   outline: none;
   transition: border-color var(--duration-micro) var(--ease-standard);
@@ -216,7 +222,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :where(.interactive) {
+  .interactive:where(a[href], button) {
     transition: none;
   }
 }

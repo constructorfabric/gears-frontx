@@ -61,12 +61,15 @@ title keeps its look, and the page keeps a document outline. Where the
 element cannot change, `role="heading"` with `aria-level` is the
 fallback.
 
-`Card` takes `render` too. `render={<a href="..." />}` (or a router link,
-or a `button`) makes the whole card one control: no underline, the
-page's font, a `--ring` border on hover and the kit's focus ring on
-keyboard focus. Such a card must hold no other link or button, since HTML
-allows no interactive content inside a link; for a row with its own
-actions use `Item`, or keep the card a `div` and make its title the link.
+`Card` takes `render` too. `render={<a href="..." />}` (or a router link)
+makes the whole card one link: no underline, the page's font, a `--ring`
+border on hover and the kit's focus ring on keyboard focus. Such a card
+must hold no other link or button, since HTML allows no interactive
+content inside a link; for a row with its own actions use `Item`, or keep
+the card a `div` and make its title the link. A `button` root is not
+offered: a button allows only phrasing content, and a card's header and
+title are blocks. Another element (`<article>`, `<section>`) gains no
+hover, pointer or focus styling.
 
 ```tsx
 <Card render={<a href="/guides/setup" />}>

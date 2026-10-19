@@ -536,11 +536,10 @@ describe('theme tokens', () => {
       'empty.module.css|line-height|1.5rem',
       // An icon inside a Link is sized in em so it follows whatever line the
       // link sits in (a 14px body line or a 26px display heading), and its
-      // gap to the text is a quarter of that same em. A step of the space
+      // gap on each side is a quarter of that same em. A step of the space
       // scale is a fixed rem and would not scale with the text, which is
-      // the drawn rule for icons in links. link.test.tsx pins both.
-      'link.module.css|margin-inline-start|0.25em',
-      'link.module.css|margin-inline-end|0.25em',
+      // the drawn rule for icons in links. link.test.tsx pins it.
+      'link.module.css|margin-inline|0.25em',
       // CodeBlock is a port of shadcn/ui's, which sets three 6px steps
       // (its *-1.5 classes: the gap after a title glyph, the header-side
       // top inset of a small block, and the actions' pull to the edge) and

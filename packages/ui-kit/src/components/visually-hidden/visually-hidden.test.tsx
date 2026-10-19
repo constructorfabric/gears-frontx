@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -72,14 +72,21 @@ describe('visually hidden rule copies', () => {
     });
   });
 
-  it.each([
-    [join(componentsDir, '..', 'styles', 'utilities.css'), '.sr-only'],
-    [join(componentsDir, 'breadcrumb', 'breadcrumb.module.css'), '.srOnly'],
-    [join(componentsDir, 'code-block', 'code-block.module.css'), '.srOnly'],
-    [join(componentsDir, 'command', 'command.module.css'), '.srOnly'],
-    [join(componentsDir, 'pagination', 'pagination.module.css'), '.srOnly'],
-    [join(componentsDir, 'sidebar', 'sidebar.module.css'), '.srOnly'],
-  ])('matches the copy in %s', (file, selector) => {
-    expect(rule(file, selector)).toEqual(reference);
+  // Every module that carries its own copy, found rather than listed, so a
+  // copy added later is checked too.
+  const copies = readdirSync(componentsDir, { recursive: true, encoding: 'utf8' })
+    .filter((file) => file.endsWith('.module.css'))
+    .map((file) => join(componentsDir, file))
+    .filter((file) => extractRules(readFileSync(file, 'utf8')).some((r) => r.selector === '.srOnly'));
+
+  it('finds the internal copies', () => {
+    expect(copies.length).toBeGreaterThanOrEqual(5);
   });
+
+  it.each([[join(componentsDir, '..', 'styles', 'utilities.css'), '.sr-only'] as const, ...copies.map((file) => [file, '.srOnly'] as const)])(
+    'matches the copy in %s',
+    (file, selector) => {
+      expect(rule(file, selector)).toEqual(reference);
+    },
+  );
 });

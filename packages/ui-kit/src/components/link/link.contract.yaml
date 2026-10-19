@@ -58,7 +58,7 @@ invariants:
     text: >-
       An svg placed directly in the link, the external arrow or the
       caller's own, is a 1em square on the text's baseline with a 0.25em
-      gap on the text side, so it scales with the line. The rules carry no
+      gap on both sides, so it scales with the line. The rules carry no
       specificity, so a caller that sizes or spaces its icon keeps its own
       values.
 

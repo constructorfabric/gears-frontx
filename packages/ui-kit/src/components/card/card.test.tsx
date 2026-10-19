@@ -222,6 +222,13 @@ describe('Card render drawn rules', () => {
     expect(declaredRule(':where(.interactive)', 'font')).toBe('inherit');
   });
 
+  it('gives only a link or button root the pointer and drops the UA outline only there', () => {
+    expect(declaredRule(':where(.interactive)', 'cursor')).toBeUndefined();
+    expect(declaredRule(':where(.interactive)', 'outline')).toBeUndefined();
+    expect(declaredRule('.interactive:where(a[href], button)', 'cursor')).toBe('pointer');
+    expect(declaredRule('.interactive:where(a[href], button)', 'outline')).toBe('none');
+  });
+
   it('draws the hover border and the focus ring only on a link or button root', () => {
     expect(declaredRule('.interactive:where(a[href], button):hover', 'border-color')).toBe(
       'var(--ring)',

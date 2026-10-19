@@ -220,8 +220,10 @@
 }
 
 /* Mirrors the inline gradient so the crisp/faded edges follow reading
- * direction, same idiom as scroll-fade-s/-e below. */
-.scroll-fade-x:where([dir='rtl'], [dir='rtl'] *) {
+ * direction. `:dir(rtl)` rather than an attribute match on any ancestor:
+ * an element that sets `dir="ltr"` inside a right-to-left page (a code
+ * block's content) scrolls left to right and keeps the unmirrored fade. */
+.scroll-fade-x:dir(rtl) {
   --scroll-fade-inline: linear-gradient(
     to left,
     transparent 0,

@@ -50,25 +50,17 @@
 
 /*
  * An icon placed directly in the link scales with the line and sits on its
- * baseline, a dimension rather than a step of the space scale. The gap is on
- * the text side: before a trailing icon, after a leading icon that is
- * followed by an element (the text in a span). The rules carry no
- * specificity, so a caller that sizes or spaces its icons itself keeps its
- * own values.
+ * baseline, with a quarter-em gap on both sides (the drawn rule for icons
+ * in links), so it keeps its distance from the text before or after it
+ * whatever the text nodes around it. Zero specificity, so a caller that
+ * sizes or spaces its icon itself keeps its own values.
  */
 :where(.link > svg) {
   display: inline-block;
   width: 1em;
   height: 1em;
+  margin-inline: 0.25em;
   vertical-align: -0.125em;
-}
-
-:where(.link > svg:last-child) {
-  margin-inline-start: 0.25em;
-}
-
-:where(.link > svg:first-child:not(:last-child)) {
-  margin-inline-end: 0.25em;
 }
 
 @media (prefers-reduced-motion: reduce) {

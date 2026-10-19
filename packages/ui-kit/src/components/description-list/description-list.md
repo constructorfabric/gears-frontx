@@ -25,7 +25,11 @@ No part takes `render`: the elements are the point of the component. Terms use t
 
 ## Accessibility
 
-- Real description list semantics; horizontal items sit on a subgrid, so every term lines up in one column at any width.
+- Real description list semantics; horizontal items sit on a subgrid, so every term lines up in one column.
+
+## Layout
+
+The horizontal term column is as wide as the longest term and does not shrink, so it suits short terms (Owner, Path, Updated). In a panel narrower than the longest term, use the vertical orientation.
 
 ## Examples
 

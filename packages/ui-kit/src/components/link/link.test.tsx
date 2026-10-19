@@ -113,13 +113,10 @@ describe('Link drawn rules', () => {
     );
   });
 
-  it('sizes an icon in the link to the text, on its baseline, with a gap on the text side', () => {
+  it('sizes an icon in the link to the text, on its baseline, with a gap on both sides', () => {
     expect(declared(':where(.link > svg)', 'width')).toBe('1em');
     expect(declared(':where(.link > svg)', 'height')).toBe('1em');
     expect(declared(':where(.link > svg)', 'vertical-align')).toBe('-0.125em');
-    expect(declared(':where(.link > svg:last-child)', 'margin-inline-start')).toBe('0.25em');
-    expect(declared(':where(.link > svg:first-child:not(:last-child))', 'margin-inline-end')).toBe(
-      '0.25em',
-    );
+    expect(declared(':where(.link > svg)', 'margin-inline')).toBe('0.25em');
   });
 });

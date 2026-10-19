@@ -31,6 +31,11 @@
   color: var(--destructive);
 }
 
+/* Declared, though empty, so the default size class exists and the size
+ * axis always emits one class. Do not delete. */
+.sizeDefault {
+}
+
 .sizeSm {
   font-size: var(--text-meta-size);
   line-height: var(--text-meta-line-height);
@@ -153,7 +158,10 @@
 }
 
 .codeBlock > .actions > button {
-  background-color: var(--background);
+  /* Button's own fill hooks, so its --muted hover fill still applies. */
+  --button-bg: var(--background);
+  --button-bg-hover: var(--muted);
+
   box-shadow: 0 0 0 var(--border-width) color-mix(in oklab, var(--foreground) 10%, transparent);
 }
 
@@ -191,8 +199,11 @@
   padding-block-end: var(--space-2);
 }
 
+/* `anywhere` rather than upstream's break-word: it also lowers the
+ * min-content width, so a long unbroken token (a URL, a hash) wraps inside
+ * the grid instead of widening it. */
 .wrap {
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 
@@ -208,7 +219,8 @@
   grid-template-columns: auto 1fr;
 }
 
-.wrap .code {
+.wrap .code,
+.wrap .line {
   min-width: 0;
 }
 

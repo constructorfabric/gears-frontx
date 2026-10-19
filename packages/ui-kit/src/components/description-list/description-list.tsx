@@ -8,7 +8,7 @@ import styles from './description-list.module.css';
  * technology keeps the term-to-value relation. `DescriptionListItem` is the
  * `div` grouping HTML allows inside `dl`, so a row can carry a separator
  * or a key. No `render` on the parts: the elements are the point of the
- * component. `orientation` has the values and meaning of Field's.
+ * component. `orientation` takes two of Field's values with their meaning.
  */
 const descriptionListVariants = cva(styles.descriptionList, {
   variants: {

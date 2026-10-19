@@ -2,7 +2,7 @@
 
 import { cva, cx, type VariantProps } from 'class-variance-authority';
 import { CheckIcon, CopyIcon } from 'lucide-react';
-import { type ComponentProps, type CSSProperties, useEffect, useState } from 'react';
+import { Children, type ComponentProps, type CSSProperties, useEffect, useState } from 'react';
 
 import { Button, type ButtonProps } from '../button/button';
 import styles from './code-block.module.css';
@@ -75,7 +75,10 @@ export function CodeBlockActions({ className, ...props }: CodeBlockActionsProps)
 }
 
 export interface CodeBlockCopyButtonProps
-  extends Omit<ButtonProps, 'icon' | 'end' | 'children' | 'render' | 'nativeButton'> {
+  extends Omit<
+    ButtonProps,
+    'icon' | 'end' | 'children' | 'render' | 'nativeButton' | 'aria-label'
+  > {
   /** The text written to the clipboard. */
   value: string;
   /** The button's accessible name before a copy. @default 'Copy' */
@@ -87,9 +90,11 @@ export interface CodeBlockCopyButtonProps
 /*
  * Upstream's copy flow: write `value`, switch to the check glyph and the
  * copied name for two seconds, and say it once in a polite live region. A
- * refused write changes nothing (upstream swallows it the same way). The
- * reset timer lives in an effect keyed on `copied`, so a second copy
- * within the two seconds restarts it and an unmount clears it.
+ * refused write changes nothing (upstream swallows it the same way), and
+ * so does a missing clipboard (an insecure context), which would otherwise
+ * throw before any promise exists. The reset timer lives in an effect
+ * keyed on the time of the last copy, so a second copy within the two
+ * seconds restarts it, and an unmount clears it.
  */
 export function CodeBlockCopyButton({
   value,
@@ -101,15 +106,16 @@ export function CodeBlockCopyButton({
   onClick,
   ...props
 }: CodeBlockCopyButtonProps) {
-  const [copied, setCopied] = useState(false);
+  const [copiedAt, setCopiedAt] = useState<number | null>(null);
+  const copied = copiedAt !== null;
 
   useEffect(() => {
-    if (!copied) {
+    if (copiedAt === null) {
       return;
     }
-    const timeout = setTimeout(() => setCopied(false), 2000);
+    const timeout = setTimeout(() => setCopiedAt(null), 2000);
     return () => clearTimeout(timeout);
-  }, [copied]);
+  }, [copiedAt]);
 
   return (
     <>
@@ -121,9 +127,9 @@ export function CodeBlockCopyButton({
         icon={copied ? <CheckIcon /> : <CopyIcon />}
         onClick={(event) => {
           onClick?.(event);
-          navigator.clipboard
-            .writeText(value)
-            .then(() => setCopied(true))
+          Promise.resolve()
+            .then(() => navigator.clipboard.writeText(value))
+            .then(() => setCopiedAt(Date.now()))
             .catch(() => {});
         }}
         {...props}
@@ -212,11 +218,9 @@ export interface CodeBlockLineProps
 
 export function CodeBlockLine({ className, variant, children, ...props }: CodeBlockLineProps) {
   // An empty line holds a newline so copying a selection keeps blank lines.
-  const empty =
-    children === undefined ||
-    children === null ||
-    children === '' ||
-    (Array.isArray(children) && children.length === 0);
+  // `Children.toArray` drops null, undefined and booleans, so a line whose
+  // children all render nothing counts as empty too.
+  const empty = Children.toArray(children).every((child) => child === '');
 
   return (
     <span className={codeBlockLineVariants({ variant, className })} {...props}>

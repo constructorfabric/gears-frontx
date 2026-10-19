@@ -127,8 +127,14 @@ describe('CodeBlock', () => {
   });
 
   it('keeps a newline in an empty line so a copied selection keeps it', () => {
-    render(<CodeBlockLine data-testid="line" />);
-    expect(screen.getByTestId('line').textContent).toBe('\n');
+    render(
+      <>
+        <CodeBlockLine data-testid="none" />
+        <CodeBlockLine data-testid="falsy">{false}</CodeBlockLine>
+      </>,
+    );
+    expect(screen.getByTestId('none').textContent).toBe('\n');
+    expect(screen.getByTestId('falsy').textContent).toBe('\n');
   });
 });
 
@@ -161,6 +167,45 @@ describe('CodeBlockCopyButton', () => {
     expect(screen.getByRole('button', { name: 'Kopiert' })).toBeDefined();
   });
 
+  it('restarts the two seconds when copied again', async () => {
+    vi.useFakeTimers();
+    render(<CodeBlockCopyButton value="x" />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copied' }));
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+    expect(screen.getByRole('button', { name: 'Copied' })).toBeDefined();
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeDefined();
+  });
+
+  it('changes nothing and throws nothing on a page with no clipboard', async () => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+    const thrown: unknown[] = [];
+    const onError = (event: ErrorEvent) => {
+      thrown.push(event.error);
+      event.preventDefault();
+    };
+    window.addEventListener('error', onError);
+    render(<CodeBlockCopyButton value="x" />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    });
+    window.removeEventListener('error', onError);
+    expect(thrown).toEqual([]);
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeDefined();
+  });
+
   it('changes nothing when the clipboard refuses the write', async () => {
     writeText.mockImplementation(() => Promise.reject(new Error('denied')));
     render(<CodeBlockCopyButton value="x" />);
@@ -183,6 +228,11 @@ describe('CodeBlock drawn rules', () => {
     expect(declared('.codeBlock:has(> .content:focus-visible)', 'box-shadow')).toBe(
       'inset 0 0 0 var(--ring-inset) var(--ring)',
     );
+  });
+
+  it('wraps a long unbroken token inside the block and keeps the floating button hover', () => {
+    expect(declared('.wrap', 'overflow-wrap')).toBe('anywhere');
+    expect(declared('.codeBlock > .actions > button', '--button-bg-hover')).toBe('var(--muted)');
   });
 
   it('sets the code in the mono family on the relaxed line', () => {

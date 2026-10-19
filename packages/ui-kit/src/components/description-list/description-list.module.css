@@ -23,6 +23,9 @@
 
 .orientationHorizontal {
   display: grid;
+  /* The term column takes the widest term, so every term lines up; the
+   * value takes the rest. Meant for short terms: in a panel narrower than
+   * its longest term, use the vertical orientation. */
   grid-template-columns: max-content minmax(0, 1fr);
   column-gap: var(--space-4);
 }

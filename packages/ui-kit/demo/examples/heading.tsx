@@ -24,7 +24,9 @@ export default function HeadingExample() {
           <Heading typography="heading-2" render={<h3 />}>
             An h3 on the heading-2 role
           </Heading>
-          <Text tone="muted">The element sets the outline level; `typography` sets the look.</Text>
+          <Text tone="muted">
+            The element sets the outline level; <code>typography</code> sets the look.
+          </Text>
         </div>
       </Section>
     </>

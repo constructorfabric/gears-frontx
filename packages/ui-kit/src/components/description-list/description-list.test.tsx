@@ -86,5 +86,6 @@ describe('DescriptionList drawn rules', () => {
     expect(declared('.descriptionDetails', 'font-size')).toBe('var(--text-body-size)');
     expect(declared('.descriptionDetails', 'margin')).toBe('0');
     expect(declared('.typographyMono', 'font-family')).toBe('var(--font-mono)');
+    expect(declared('.sizeSm .descriptionDetails', 'font-size')).toBe('var(--text-meta-size)');
   });
 });

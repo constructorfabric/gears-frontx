@@ -45,7 +45,7 @@
     },
     {
       "id": "horizontal-terms-in-one-column",
-      "text": "Horizontal is a two-column grid sized to the widest term, with each item on a subgrid, so every term lines up in one column at any width."
+      "text": "Horizontal is a two-column grid whose term column is as wide as the widest term and does not shrink, with each item on a subgrid, so every term lines up in one column; the value takes the rest."
     },
     {
       "id": "tokens-only",

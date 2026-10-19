@@ -81,7 +81,7 @@
     },
     {
       "id": "interactive-only-as-a-link-or-button",
-      "text": "With `render={<a href />}` or `render={<button />}` the whole card is the control: the UA underline and button font are reset, the border turns --ring on hover, and keyboard focus draws the --ring border with the inset ring (a Highlight outline under forced colours). A card without `render`, or rendered as another element, gains no hover and no focus ring."
+      "text": "With `render={<a href />}` the whole card is the link: the UA underline is reset, the pointer shows, the border turns --ring on hover, and keyboard focus draws the --ring border with the inset ring (a Highlight outline under forced colours). A card without `render`, or rendered as an element that is not a link or a button, gains no pointer, hover or focus styling and keeps the UA focus outline."
     }
   ],
   "anti_patterns": [
