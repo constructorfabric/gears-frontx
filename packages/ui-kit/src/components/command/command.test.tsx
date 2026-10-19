@@ -92,6 +92,22 @@ describe('Command', () => {
     expect(document.querySelector('[cmdk-separator]')?.getAttribute('role')).toBe('none');
   });
 
+  it('passes the separator props to its child with asChild', () => {
+    render(
+      <Command>
+        <CommandList>
+          <CommandSeparator asChild className="consumer">
+            <hr data-testid="rule" />
+          </CommandSeparator>
+        </CommandList>
+      </Command>,
+    );
+    const rule = screen.getByTestId('rule');
+    expect(rule.getAttribute('role')).toBe('none');
+    expect(rule.className).toContain(styles.separator);
+    expect(rule.className).toContain('consumer');
+  });
+
   it('hides the separator while a search is typed', () => {
     renderMenu();
     fireEvent.change(screen.getByPlaceholderText('Type a command or search...'), {

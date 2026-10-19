@@ -3,7 +3,7 @@
 import { Command as CommandPrimitive, useCommandState } from 'cmdk';
 import { cx } from 'class-variance-authority';
 import { SearchIcon } from 'lucide-react';
-import type { ComponentProps, ReactNode } from 'react';
+import { cloneElement, type ComponentProps, isValidElement, type ReactNode } from 'react';
 
 import {
   Dialog,
@@ -119,10 +119,7 @@ export function CommandShortcut({ className, ...props }: CommandShortcutProps) {
   return <span className={cx(styles.shortcut, className)} {...props} />;
 }
 
-export interface CommandSeparatorProps extends ComponentProps<'div'> {
-  /** Keep the separator while a search is typed. @default false */
-  alwaysRender?: boolean;
-}
+export type CommandSeparatorProps = ComponentProps<typeof CommandPrimitive.Separator>;
 
 /*
  * cmdk's own Separator always sets `role="separator"` (after the caller's
@@ -133,17 +130,30 @@ export interface CommandSeparatorProps extends ComponentProps<'div'> {
  * line instead: the groups already separate the options for assistive
  * technology.
  */
-export function CommandSeparator({ className, alwaysRender, ...props }: CommandSeparatorProps) {
+export function CommandSeparator({
+  className,
+  alwaysRender,
+  asChild,
+  children,
+  ...props
+}: CommandSeparatorProps) {
   const searching = useCommandState((state) => state.search !== '');
   if (searching && !alwaysRender) {
     return null;
   }
+  const own = { role: 'none', 'cmdk-separator': '' } as const;
+  // `asChild`, as cmdk offers it: the single child element takes the
+  // separator's props instead of a div.
+  if (asChild && isValidElement<{ className?: string }>(children)) {
+    return cloneElement(children, {
+      ...props,
+      ...own,
+      className: cx(styles.separator, className, children.props.className),
+    });
+  }
   return (
-    <div
-      role="none"
-      cmdk-separator=""
-      className={cx(styles.separator, className)}
-      {...props}
-    />
+    <div {...own} className={cx(styles.separator, className)} {...props}>
+      {children}
+    </div>
   );
 }
