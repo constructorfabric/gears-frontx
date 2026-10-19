@@ -92,9 +92,11 @@ invariants:
       With `render={<a href />}` the whole card is the link: the UA
       underline is reset, the pointer shows, the border turns --ring on
       hover, and keyboard focus draws the --ring border with the inset ring
-      (a Highlight outline under forced colours). A card without `render`,
-      or rendered as an element that is not a link or a button, gains no
-      pointer, hover or focus styling and keeps the UA focus outline.
+      (a Highlight outline under forced colours). A `button` root gets the
+      same styling but is not a supported form, since a button holds only
+      phrasing content. A card without `render`, or rendered as another
+      element, gains no pointer, hover or focus styling and keeps the UA
+      focus outline.
 
 anti_patterns:
   - dont: Render the Card as a link while it holds other links or buttons

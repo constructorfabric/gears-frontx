@@ -73,7 +73,8 @@ describe('visually hidden rule copies', () => {
   });
 
   // Every module that carries its own copy, found rather than listed, so a
-  // copy added later is checked too.
+  // copy added later is checked too. A copy must use the `.srOnly` name,
+  // as the existing ones do, to be found.
   const copies = readdirSync(componentsDir, { recursive: true, encoding: 'utf8' })
     .filter((file) => file.endsWith('.module.css'))
     .map((file) => join(componentsDir, file))
