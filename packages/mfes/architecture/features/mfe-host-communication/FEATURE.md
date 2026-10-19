@@ -20,6 +20,8 @@ description: Specifies host-MFE communication — the actions-chains mediator wi
   - [Bridge Delegation to Registry](#bridge-delegation-to-registry)
   - [Occupant-Value Rendezvous](#occupant-value-rendezvous)
   - [History Intent on Lifecycle Actions](#history-intent-on-lifecycle-actions)
+  - [Host Theme on Extension Shadow Roots](#host-theme-on-extension-shadow-roots)
+  - [Mount Context](#mount-context)
 - [4. States (CDSL)](#4-states-cdsl)
   - [Action State Machine](#action-state-machine)
 - [5. Definitions of Done](#5-definitions-of-done)
@@ -29,6 +31,8 @@ description: Specifies host-MFE communication — the actions-chains mediator wi
   - [Occupant-Value Rendezvous — Definition of Done](#occupant-value-rendezvous--definition-of-done)
   - [Occupant Values Exposed on No Interface](#occupant-values-exposed-on-no-interface)
   - [History Intent on Lifecycle Actions — Definition of Done](#history-intent-on-lifecycle-actions--definition-of-done)
+  - [Host Theme Applied to Extension Shadow Roots](#host-theme-applied-to-extension-shadow-roots)
+  - [Mount Context Content](#mount-context-content)
 - [6. Acceptance Criteria](#6-acceptance-criteria)
 
 <!-- /toc -->
@@ -40,7 +44,7 @@ description: Specifies host-MFE communication — the actions-chains mediator wi
 
 ### 1.1 Overview
 
-The host runtime routes actions to microfrontend targets through an actions-chains mediator keyed by target identifier and action type, and that routing reaches any target regardless of how many nesting levels separate sender and target: each registry automatically propagates its admitted targets to its ancestors and escalates an unresolved action not handed down from its parent to its own parent, so the mediator chain composes transitively up to the shell; an action handed down from the parent that finds no local handler runs its `fallback`, if present, or nothing. A narrow parent–child capability bridge gives child microfrontends exactly the participation capabilities they need, delegating each to the registry and its mediator, while the property channel carries no solution-specific vocabulary. `executeActionsChain` on either surface takes only the chain and returns nothing awaitable: the runtime executes each action and then its `next` or `fallback` recursively. Where a target lives in another runtime, the current runtime hands the sub-chain over and nothing comes back. The package also declares the optional abstract router a registry can be built with: the runtime hands the injected router the registry's actions-chain executor and type system, registers with it each domain and extension whose declaration carries `route`, tells it when a domain's root attaches and detaches, obtains from it each extension's opaque occupant value at mount, hands that value to the extension's own copy of the package through a private realm rendezvous associated with the extension's bridge, and receives through it the URL commands the runtime issues, whose acceptance verb the history intent `mount_ext` and `unmount_ext` carry selects — while no interface handed to extension or host code exposes an occupant value, and no interface handed to domain or MFE code reaches the router or its commands.
+The host runtime routes actions to microfrontend targets through an actions-chains mediator keyed by target identifier and action type, and that routing reaches any target regardless of how many nesting levels separate sender and target: each registry automatically propagates its admitted targets to its ancestors and escalates an unresolved action not handed down from its parent to its own parent, so the mediator chain composes transitively up to the shell; an action handed down from the parent that finds no local handler runs its `fallback`, if present, or nothing. A narrow parent–child capability bridge gives child microfrontends exactly the participation capabilities they need, delegating each to the registry and its mediator, while the property channel carries no solution-specific vocabulary. The registry applies host theme variables and optional appearance to extension shadow roots and passes identity and an optional host base URL in each mount context. `executeActionsChain` on either surface takes only the chain and returns nothing awaitable: the runtime executes each action and then its `next` or `fallback` recursively. Where a target lives in another runtime, the current runtime hands the sub-chain over and nothing comes back. The package also declares the optional abstract router a registry can be built with: the runtime hands the injected router the registry's actions-chain executor and type system, registers with it each domain and extension whose declaration carries `route`, tells it when a domain's root attaches and detaches, obtains from it each extension's opaque occupant value at mount, hands that value to the extension's own copy of the package through a private realm rendezvous associated with the extension's bridge, and receives through it the URL commands the runtime issues, whose acceptance verb the history intent `mount_ext` and `unmount_ext` carry selects — while no interface handed to extension or host code exposes an occupant value, and no interface handed to domain or MFE code reaches the router or its commands.
 
 ### 1.2 Purpose
 
@@ -279,6 +283,34 @@ This feature also specifies the abstract router contract the package declares (`
 5. [x] - `p1` - The intent itself never reaches the router: a command carries the domain's id, the projected occupancy, and the verb, and no part of the action - `inst-hi-not-to-router`
 6. [x] - `p1` - **RETURN** the admitted action, or the admission failure - `inst-hi-return`
 
+### Host Theme on Extension Shadow Roots
+
+- [x] `p2` - **ID**: `cpt-frontx-algo-mfe-host-communication-host-theme`
+
+**Input**: `setTheme(cssVars, appearance?)`, optional application-supplied `themeAppearanceAttribute`, and extension mounts
+
+**Output**: Each active or newly mounted extension shadow root carries the current host variables and optional appearance; a registry without a theme leaves roots unchanged
+
+**Steps**:
+1. [x] - `p1` - Validate `themeAppearanceAttribute` at registry construction against `/^[A-Za-z][A-Za-z0-9_-]*$/`; reject an invalid name with an error naming its value - `inst-ht-config`
+2. [x] - `p1` - On `setTheme`, refuse an appearance other than `light` or `dark` with an error naming it, leaving the retained theme and every shadow root unchanged; otherwise copy the variables map, retain the optional appearance, and apply that snapshot to every extension state holding a shadow root - `inst-ht-set`
+   1. [x] - `p1` - Enumerate the extension states through the extension manager so every active root is reached - `inst-ht-enumerate`
+3. [x] - `p1` - After creating a shadow root and before calling its lifecycle `mount`, apply the retained theme; if no theme has been set, leave the root and host unchanged - `inst-ht-mount`
+4. [x] - `p1` - When an attribute name is configured, set it on the shadow host for a supplied appearance and remove it when appearance is absent; without a configured name write no appearance attribute - `inst-ht-appearance`
+5. [x] - `p1` - For a nonempty variables map, keep one `__frontx-css-variables__` style: use `:host { ... }` without a configured attribute and appearance, or `:host([A='V']), [A='V'][A='V'] { ... }` with them, so variables outrank a same-name `[A='V']` rule inside the shadow root - `inst-ht-variables`
+6. [x] - `p1` - Apply the retained appearance and variables to a shadow host and root; remove stale appearance and variable style when the new theme omits them - `inst-ht-apply`
+
+### Mount Context
+
+- [x] `p2` - **ID**: `cpt-frontx-algo-mfe-host-communication-mount-context`
+
+**Input**: An extension mount and optional host-supplied `hostBaseUrl` in registry configuration
+
+**Output**: The extension lifecycle receives its identity and, when configured, the unchanged host base URL
+
+**Steps**:
+1. [x] - `p1` - Build the mount context with `extensionId` and `domainId`; include `hostBaseUrl` only when configured and pass its value unchanged to the lifecycle `mount` - `inst-mc-build`
+
 ## 4. States (CDSL)
 
 ### Action State Machine
@@ -415,7 +447,39 @@ The system **MUST** declare `HistoryIntent` as `'none' | 'replace' | 'push'` and
 - Interface: `cpt-frontx-interface-mfe-runtime`
 - Component: `cpt-frontx-component-mfe-runtime`
 
+### Host Theme Applied to Extension Shadow Roots
+
+- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-host-communication-host-theme`
+
+The registry **MUST** refuse an appearance other than `light` or `dark`, and **MUST** otherwise retain a copy of the latest theme variables and optional appearance, apply them to existing shadow roots at `setTheme` and to new roots before lifecycle mount, and leave roots untouched until the first theme call. A configured application-supplied appearance attribute **MUST** be validated, stamped or removed with appearance, and used to scope variable selectors; an empty variables map **MUST** remove the variables style.
+
+**Implements**:
+- `cpt-frontx-algo-mfe-host-communication-host-theme`
+
+**Touches**:
+- Interface: `cpt-frontx-interface-mfe-runtime`
+- Component: `cpt-frontx-component-mfe-runtime`
+
+### Mount Context Content
+
+- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-host-communication-mount-context`
+
+The runtime **MUST** pass `extensionId`, `domainId`, and a configured `hostBaseUrl` unchanged to lifecycle mount, omitting `hostBaseUrl` when absent. A screen that builds a nested registry passes the host base from its own mount context into that registry's configuration.
+
+**Implements**:
+- `cpt-frontx-algo-mfe-host-communication-mount-context`
+
+**Touches**:
+- Entities: `MfeMountContext`
+- Component: `cpt-frontx-component-mfe-runtime`
+
 ## 6. Acceptance Criteria
+
+- [x] A theme set before mount is visible on the shadow host and in its variables style inside lifecycle mount; later theme calls update mounted roots without duplicate styles, and an empty map removes the style.
+- [x] A configured appearance attribute accepts only valid names, follows the latest optional appearance, and scopes the variable selector; without it no appearance attribute is written and variables use `:host`.
+- [x] A registry that never receives `setTheme` writes no theme style or appearance attribute.
+- [x] A `setTheme` call with an appearance other than `light` or `dark` throws an error naming it and changes no shadow host or root.
+- [x] A mount context carries extension and domain identity plus the unchanged configured `hostBaseUrl`; absent configuration omits that key.
 
 - [x] The actions-chains mediator resolves a handler by the `(targetId, actionTypeId)` pair and a handler matches only its exact action type
 - [x] When no handler is registered for the exact pair, resolution continues through a downward forwarding entry and, when the registry has an inbound bridge and the action was not handed down from the parent, a final upward-escalation handler, before treating the target as unresolved

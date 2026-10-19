@@ -14,6 +14,8 @@
 // @cpt-flow:cpt-frontx-flow-mfe-registry-factory-build:p2
 // @cpt-algo:cpt-frontx-algo-mfe-registry-handler-resolution:p1
 // @cpt-state:cpt-frontx-state-mfe-registry-entry-lifecycle:p2
+// @cpt-algo:cpt-frontx-algo-mfe-host-communication-host-theme:p2
+// @cpt-dod:cpt-frontx-dod-mfe-host-communication-host-theme:p1
 
 import type { TypeSystemPlugin } from '../type-substrate';
 import type {
@@ -23,6 +25,7 @@ import type {
 } from '../types';
 import type { ExtensionDomainImplementationFactory } from '../runtime/ExtensionDomainImplementationFactory';
 import type { ExtensionMounter } from '../runtime/ExtensionMounter';
+import type { ThemeAppearance } from '../runtime/MountManager';
 
 /**
  * Abstract MfeRegistry - public contract for the MFE runtime facade.
@@ -210,11 +213,13 @@ export abstract class MfeRegistry {
   // --- Theme ---
 
   /**
-   * Apply theme CSS custom properties via the mount manager.
+   * Apply host CSS custom properties and optional appearance to every extension
+   * shadow root, including roots created after this call.
    *
-   * @param cssVars - CSS custom property name→value map
+   * @param cssVars - CSS custom property name-to-value map
+   * @param appearance - Optional host appearance
    */
-  abstract setTheme(cssVars: Record<string, string>): void;
+  abstract setTheme(cssVars: Record<string, string>, appearance?: ThemeAppearance): void;
 
   // --- Lifecycle ---
 

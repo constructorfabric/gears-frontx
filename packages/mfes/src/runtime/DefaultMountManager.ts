@@ -10,6 +10,10 @@
 // @cpt-algo:cpt-frontx-algo-extension-domain-governance-mount-execution:p2
 // @cpt-state:cpt-frontx-state-extension-domain-governance-admission:p1
 // @cpt-dod:cpt-frontx-dod-extension-domain-governance-default-deny:p1
+// @cpt-algo:cpt-frontx-algo-mfe-host-communication-host-theme:p2
+// @cpt-dod:cpt-frontx-dod-mfe-host-communication-host-theme:p1
+// @cpt-algo:cpt-frontx-algo-mfe-host-communication-mount-context:p2
+// @cpt-dod:cpt-frontx-dod-mfe-host-communication-mount-context:p1
 
 import type { ChildMfeBridge } from '../handler/ChildMfeBridge';
 import type { MfeHandler, MfeMountContext } from '../handler/MfeHandler';
@@ -23,7 +27,8 @@ import type { MfeRegistry } from '../registry/MfeRegistry';
 import { MountManager } from './MountManager';
 import type { ActionsChainDispatcher, LifecycleTrigger } from './MountManager';
 import { RuntimeBridgeFactory } from './RuntimeBridgeFactory';
-import { createShadowRoot } from '../shadow';
+import { createShadowRoot, injectCssVariables } from '../shadow';
+import type { ThemeAppearance } from './MountManager';
 import {
   popAmbientMountingBridge,
   pushAmbientMountingBridge,
@@ -63,6 +68,24 @@ export class DefaultMountManager extends MountManager {
   private readonly retractInboundBridgeLink: (childBridge: ChildMfeBridge) => void;
   /** The router snapshotted by the factory, or `undefined` for a registry built with no router. */
   private readonly router: RouterPort | undefined;
+  /**
+   * The attribute name the application chose for the appearance stamp, or
+   * `undefined` when it chose none. The runtime owns no theme vocabulary
+   * (`cpt-frontx-mfes-principle-opaque-substrate-vocabulary`), so without a
+   * configured name no attribute is ever written on a shadow host.
+   */
+  private readonly themeAppearanceAttribute: string | undefined;
+  /** The host base from the registry configuration, handed on unread. */
+  private readonly hostBaseUrl: string | undefined;
+  /**
+   * The latest theme `setTheme` received, kept so a shadow root created by a
+   * later mount starts from it rather than from no theme at all. `undefined`
+   * until the first call: an application that never sets a theme gets no
+   * style and no attribute written by the runtime. The variables are a copy,
+   * so a caller mutating its map afterwards cannot change what a later mount
+   * applies.
+   */
+  private theme: { cssVars: Record<string, string>; appearance?: ThemeAppearance } | undefined;
 
   /**
    * The `ChildMfeBridge` whose inbound link is registered for each extension,
@@ -123,6 +146,8 @@ export class DefaultMountManager extends MountManager {
     ) => InboundBridgeLink;
     retractInboundBridgeLink: (childBridge: ChildMfeBridge) => void;
     router?: RouterPort;
+    themeAppearanceAttribute?: string;
+    hostBaseUrl?: string;
   }) {
     super();
     this.extensionManager = config.extensionManager;
@@ -138,6 +163,8 @@ export class DefaultMountManager extends MountManager {
     this.buildInboundBridgeLink = config.buildInboundBridgeLink;
     this.retractInboundBridgeLink = config.retractInboundBridgeLink;
     this.router = config.router;
+    this.themeAppearanceAttribute = config.themeAppearanceAttribute;
+    this.hostBaseUrl = config.hostBaseUrl;
   }
 
   async loadExtension(extensionId: string): Promise<void> {
@@ -293,6 +320,9 @@ export class DefaultMountManager extends MountManager {
         const hostElement = container as HTMLElement;
         const shadowRoot = createShadowRoot(hostElement);
         extensionState.shadowRoot = shadowRoot;
+        // @cpt-begin:cpt-frontx-algo-mfe-host-communication-host-theme:p1:inst-ht-mount
+        this.applyTheme(hostElement, shadowRoot);
+        // @cpt-end:cpt-frontx-algo-mfe-host-communication-host-theme:p1:inst-ht-mount
 
         const lifecycle = extensionState.lifecycle;
         if (!lifecycle) {
@@ -301,10 +331,13 @@ export class DefaultMountManager extends MountManager {
             `This should not happen - loadExtension should have cached the lifecycle.`
           );
         }
+        // @cpt-begin:cpt-frontx-algo-mfe-host-communication-mount-context:p1:inst-mc-build
         const mountContext: MfeMountContext = {
           extensionId,
           domainId: extensionState.extension.domain,
+          ...(this.hostBaseUrl !== undefined ? { hostBaseUrl: this.hostBaseUrl } : {}),
         };
+        // @cpt-end:cpt-frontx-algo-mfe-host-communication-mount-context:p1:inst-mc-build
 
         // @cpt-algo:cpt-frontx-algo-mfe-host-communication-occupant-value-rendezvous:p1
         // @cpt-begin:cpt-frontx-algo-mfe-host-communication-occupant-value-rendezvous:p1:inst-ov-standalone
@@ -617,7 +650,62 @@ export class DefaultMountManager extends MountManager {
   }
   // @cpt-end:cpt-frontx-algo-mfe-host-communication-registration-propagation:p2:inst-retract-advertisements
 
-  setTheme(_cssVars: Record<string, string>): void {
-    // No-op: CSS custom properties inherit across Shadow DOM boundaries
+  // @cpt-begin:cpt-frontx-algo-mfe-host-communication-host-theme:p1:inst-ht-set
+  setTheme(cssVars: Record<string, string>, appearance?: ThemeAppearance): void {
+    // The appearance is written into a CSS selector and an attribute value, so
+    // a value outside the closed type (reachable from untyped callers) is
+    // refused rather than written into the shadow root's stylesheet.
+    if (appearance !== undefined && appearance !== 'light' && appearance !== 'dark') {
+      throw new Error(`Invalid theme appearance: '${String(appearance)}'. Expected 'light' or 'dark'.`);
+    }
+    this.theme = { cssVars: { ...cssVars }, appearance };
+    for (const extensionState of this.extensionManager.getExtensionStates()) {
+      if (extensionState.shadowRoot) {
+        this.applyTheme(extensionState.shadowRoot.host as HTMLElement, extensionState.shadowRoot);
+      }
+    }
   }
+  // @cpt-end:cpt-frontx-algo-mfe-host-communication-host-theme:p1:inst-ht-set
+
+  /**
+   * Bring one shadow host and its root in line with the retained theme.
+   *
+   * Every call rewrites the whole theme state of that root, so applying the
+   * same theme twice is a no-op and a theme that drops its appearance or its
+   * variables leaves no stale attribute or style behind: the attribute is
+   * removed when the theme has no appearance, and the variables style is
+   * removed when the map is empty. The variables are scoped to the appearance
+   * only when both an attribute name and an appearance exist; the scoped rule
+   * outranks a same-name declaration on a single-attribute selector inside
+   * the root (see `injectCssVariables`), which the unscoped `:host` rule does
+   * not.
+   */
+  // @cpt-begin:cpt-frontx-algo-mfe-host-communication-host-theme:p1:inst-ht-apply
+  private applyTheme(hostElement: HTMLElement, shadowRoot: ShadowRoot): void {
+    if (!this.theme) return;
+
+    const attribute = this.themeAppearanceAttribute;
+    // @cpt-begin:cpt-frontx-algo-mfe-host-communication-host-theme:p1:inst-ht-appearance
+    if (attribute) {
+      if (this.theme.appearance) {
+        hostElement.setAttribute(attribute, this.theme.appearance);
+      } else {
+        hostElement.removeAttribute(attribute);
+      }
+    }
+    // @cpt-end:cpt-frontx-algo-mfe-host-communication-host-theme:p1:inst-ht-appearance
+
+    if (Object.keys(this.theme.cssVars).length > 0) {
+      injectCssVariables(
+        shadowRoot,
+        this.theme.cssVars,
+        attribute && this.theme.appearance
+          ? { attribute, value: this.theme.appearance }
+          : undefined
+      );
+    } else {
+      shadowRoot.getElementById('__frontx-css-variables__')?.remove();
+    }
+  }
+  // @cpt-end:cpt-frontx-algo-mfe-host-communication-host-theme:p1:inst-ht-apply
 }

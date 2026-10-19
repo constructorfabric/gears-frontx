@@ -10,6 +10,7 @@
  */
 // @cpt-flow:cpt-frontx-flow-mfe-registry-factory-build:p1
 // @cpt-state:cpt-frontx-state-mfe-registry-factory-cache:p1
+// @cpt-dod:cpt-frontx-dod-mfe-registry-host-configuration:p1
 import { describe, it, expect } from 'vitest';
 // @internal - colocated test, direct relative import is permitted.
 import { createMfeRegistryFactory } from '../DefaultMfeRegistryFactory';
@@ -123,6 +124,38 @@ describe('DefaultMfeRegistryFactory cache', () => {
     factory.build({ typeSystem: plugin, router: routerA });
 
     expect(() => factory.build({ typeSystem: plugin, router: routerB })).toThrow(/router/i);
+  });
+
+  it.each([
+    ['host base value', { hostBaseUrl: '/host/' }, { hostBaseUrl: '/other/' }, 'hostBaseUrl'],
+    ['removed host base', { hostBaseUrl: '/host/' }, {}, 'hostBaseUrl'],
+    ['added host base', {}, { hostBaseUrl: '/host/' }, 'hostBaseUrl'],
+    ['appearance attribute value', { themeAppearanceAttribute: 'data-appearance' }, { themeAppearanceAttribute: 'data-mode' }, 'themeAppearanceAttribute'],
+    ['removed appearance attribute', { themeAppearanceAttribute: 'data-appearance' }, {}, 'themeAppearanceAttribute'],
+    ['added appearance attribute', {}, { themeAppearanceAttribute: 'data-appearance' }, 'themeAppearanceAttribute'],
+  ] as const)('refuses a changed %s after the first build', (_condition, first, second, field) => {
+    const plugin = createFakePlugin('ConfigPlugin');
+    const factory = createMfeRegistryFactory();
+    const registry = factory.build({ typeSystem: plugin, ...first });
+
+    expect(() => factory.build({ typeSystem: plugin, ...second })).toThrow(field);
+    expect(factory.build({ typeSystem: plugin, ...first })).toBe(registry);
+  });
+
+  it('returns the cached registry when both optional host fields match', () => {
+    const plugin = createFakePlugin('SameConfigPlugin');
+    const factory = createMfeRegistryFactory();
+    const config = { typeSystem: plugin, themeAppearanceAttribute: 'data-appearance', hostBaseUrl: '/host/' };
+
+    const registry = factory.build(config);
+
+    expect(factory.build({ ...config })).toBe(registry);
+  });
+
+  it.each(['', '1mode', 'data:mode', 'data mode'])('rejects invalid appearance attribute %s', (attribute) => {
+    const factory = createMfeRegistryFactory();
+
+    expect(() => factory.build({ typeSystem: createFakePlugin('InvalidConfigPlugin'), themeAppearanceAttribute: attribute })).toThrow(`Invalid themeAppearanceAttribute: '${attribute}'`);
   });
 });
 

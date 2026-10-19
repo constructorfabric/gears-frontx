@@ -14,6 +14,7 @@
  */
 // @cpt-flow:cpt-frontx-flow-mfe-registry-factory-build:p1
 // @cpt-state:cpt-frontx-state-mfe-registry-factory-cache:p1
+// @cpt-dod:cpt-frontx-dod-mfe-registry-host-configuration:p1
 
 import { MfeRegistryFactory } from '../registry/MfeRegistryFactory';
 import type { MfeRegistry } from '../registry/MfeRegistry';
@@ -46,36 +47,42 @@ export class DefaultMfeRegistryFactory extends MfeRegistryFactory {
   // compared by identity so a router supplied after the first build omitted
   // one, or omitted after one was supplied, is a mismatch like any other.
   private cachedRouter: RouterPort | undefined = undefined;
+  // Snapshots of the two optional string fields, compared by value: the
+  // cached registry stamps every shadow host with the first attribute name
+  // and hands every mount the first host base, so a later build naming
+  // another value (or adding or dropping one) would be served a registry
+  // that silently ignores it.
+  private cachedThemeAppearanceAttribute: string | undefined;
+  private cachedHostBaseUrl: string | undefined;
 
   /**
    * Build a MfeRegistry instance with the provided configuration.
    *
-   * On first call: creates a new DefaultMfeRegistry, caches it alongside the
-   * plugin it was bound to, returns it.
-   * On subsequent calls: validates the supplied plugin is the one the cached
-   * registry was built with, returns cached instance.
+   * On first call: creates a new DefaultMfeRegistry and snapshots the plugin,
+   * router, appearance attribute, and host base URL.
+   * On subsequent calls: returns the cached instance only when those fields
+   * match their snapshots.
    *
    * @param config - Registry configuration (must include typeSystem)
    * @returns The MfeRegistry singleton instance
-   * @throws Error if called with a different plugin after first build
+   * @throws Error if a snapshotted field differs after the first build
    */
   // @cpt-begin:cpt-frontx-flow-mfe-registry-factory-build:p1:inst-flow-fb-01
   build(config: MfeRegistryConfig): MfeRegistry {
   // @cpt-end:cpt-frontx-flow-mfe-registry-factory-build:p1:inst-flow-fb-01
     // @cpt-begin:cpt-frontx-flow-mfe-registry-factory-build:p1:inst-flow-fb-02
     if (this.instance) {
+      // @cpt-begin:cpt-frontx-flow-mfe-registry-factory-build:p1:inst-flow-fb-02a
       // The plugin identity, not its shape, is what the cached registry closed
       // over: every handler, mediator and domain it built asks that instance
       // for type resolution, so a second plugin cannot be adopted afterwards.
       if (this.cachedTypeSystem && config.typeSystem !== this.cachedTypeSystem) {
-        // @cpt-begin:cpt-frontx-flow-mfe-registry-factory-build:p1:inst-flow-fb-02a
         throw new Error(
           'MfeRegistry already built with a different TypeSystemPlugin. ' +
           'Cannot rebuild with a different configuration. ' +
           `Expected: ${this.cachedTypeSystem.name}, ` +
           `Got: ${config.typeSystem.name}`
         );
-        // @cpt-end:cpt-frontx-flow-mfe-registry-factory-build:p1:inst-flow-fb-02a
       }
 
       // @cpt-begin:cpt-frontx-state-mfe-registry-factory-cache:p1:inst-state-fc-03
@@ -91,7 +98,24 @@ export class DefaultMfeRegistryFactory extends MfeRegistryFactory {
           `Got: ${config.router ? 'a router' : 'no router'}`
         );
       }
+      if (config.themeAppearanceAttribute !== this.cachedThemeAppearanceAttribute) {
+        throw new Error(
+          'MfeRegistry already built with a different themeAppearanceAttribute. ' +
+          'Cannot rebuild with a different configuration. ' +
+          `Expected: ${describeOptional(this.cachedThemeAppearanceAttribute)}, ` +
+          `Got: ${describeOptional(config.themeAppearanceAttribute)}`
+        );
+      }
+      if (config.hostBaseUrl !== this.cachedHostBaseUrl) {
+        throw new Error(
+          'MfeRegistry already built with a different hostBaseUrl. ' +
+          'Cannot rebuild with a different configuration. ' +
+          `Expected: ${describeOptional(this.cachedHostBaseUrl)}, ` +
+          `Got: ${describeOptional(config.hostBaseUrl)}`
+        );
+      }
       // @cpt-end:cpt-frontx-state-mfe-registry-factory-cache:p1:inst-state-fc-03
+      // @cpt-end:cpt-frontx-flow-mfe-registry-factory-build:p1:inst-flow-fb-02a
       // @cpt-end:cpt-frontx-flow-mfe-registry-factory-build:p1:inst-flow-fb-02
 
       // @cpt-begin:cpt-frontx-flow-mfe-registry-factory-build:p1:inst-flow-fb-02b
@@ -105,11 +129,17 @@ export class DefaultMfeRegistryFactory extends MfeRegistryFactory {
     // @cpt-begin:cpt-frontx-state-mfe-registry-factory-cache:p1:inst-state-fc-01
     this.cachedTypeSystem = config.typeSystem;
     this.cachedRouter = config.router;
+    this.cachedThemeAppearanceAttribute = config.themeAppearanceAttribute;
+    this.cachedHostBaseUrl = config.hostBaseUrl;
     this.instance = new DefaultMfeRegistry(config);
     return this.instance;
     // @cpt-end:cpt-frontx-state-mfe-registry-factory-cache:p1:inst-state-fc-01
     // @cpt-end:cpt-frontx-flow-mfe-registry-factory-build:p1:inst-flow-fb-03
   }
+}
+
+function describeOptional(value: string | undefined): string {
+  return value === undefined ? 'none' : `'${value}'`;
 }
 
 /**

@@ -126,7 +126,7 @@ export type {
 
 // Mount manager
 export { MountManager } from './runtime/MountManager';
-export type { ActionsChainDispatcher, LifecycleTrigger } from './runtime/MountManager';
+export type { ActionsChainDispatcher, LifecycleTrigger, ThemeAppearance } from './runtime/MountManager';
 
 // Runtime bridge factory
 export { RuntimeBridgeFactory } from './runtime/RuntimeBridgeFactory';

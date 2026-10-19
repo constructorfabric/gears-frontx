@@ -6,6 +6,7 @@
  *
  * @packageDocumentation
  */
+// @cpt-algo:cpt-frontx-algo-mfe-host-communication-host-theme:p2
 
 export interface ShadowRootOptions {
   mode?: 'open' | 'closed';
@@ -41,9 +42,15 @@ export function createShadowRoot(
   return shadowRoot;
 }
 
+/**
+ * A scoped selector repeats the appearance attribute to outrank a same-name
+ * declaration on a single-attribute selector inside the shadow root.
+ */
+// @cpt-begin:cpt-frontx-algo-mfe-host-communication-host-theme:p1:inst-ht-variables
 export function injectCssVariables(
   shadowRoot: ShadowRoot,
-  variables: Record<string, string>
+  variables: Record<string, string>,
+  scope?: { attribute: string; value: string }
 ): void {
   const styleId = '__frontx-css-variables__';
   let styleElement = shadowRoot.getElementById(styleId) as HTMLStyleElement | null;
@@ -58,12 +65,16 @@ export function injectCssVariables(
     .map(([key, value]) => `  ${key}: ${value};`)
     .join('\n');
 
+  const selector = scope
+    ? `:host([${scope.attribute}='${scope.value}']), [${scope.attribute}='${scope.value}'][${scope.attribute}='${scope.value}']`
+    : ':host';
   styleElement.textContent = `
-:host {
+${selector} {
 ${cssRules}
 }
   `.trim();
 }
+// @cpt-end:cpt-frontx-algo-mfe-host-communication-host-theme:p1:inst-ht-variables
 
 export function injectStylesheet(
   shadowRoot: ShadowRoot,

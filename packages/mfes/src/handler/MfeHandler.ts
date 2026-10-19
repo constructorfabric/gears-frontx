@@ -9,6 +9,8 @@
 // @cpt-dod:cpt-frontx-dod-mfe-registry-handler-injection:p1
 // @cpt-dod:cpt-frontx-dod-mfe-registry-type-contracts:p1
 // @cpt-algo:cpt-frontx-algo-mfe-registry-handler-resolution:p1
+// @cpt-algo:cpt-frontx-algo-mfe-host-communication-mount-context:p2
+// @cpt-dod:cpt-frontx-dod-mfe-host-communication-mount-context:p1
 
 import type { MfeEntry } from '../types';
 import type { TypeSystemPlugin } from '../type-substrate';
@@ -18,12 +20,15 @@ import type { MfeBridgeFactory } from './MfeBridgeFactory';
 /**
  * Runtime values supplied by the host at mount time.
  *
- * The runtime attaches identity metadata (`extensionId`, `domainId`) so child
- * lifecycles can understand their host context without learning runtime internals.
+ * The runtime attaches identity metadata (`extensionId`, `domainId`) and an
+ * optional host-supplied base URL so child lifecycles can build host-relative
+ * resources and pass the base to nested registries.
  */
 export interface MfeMountContext {
   readonly extensionId?: string;
   readonly domainId?: string;
+  /** Host application base URL, passed through unchanged when configured. */
+  readonly hostBaseUrl?: string;
 }
 
 /**

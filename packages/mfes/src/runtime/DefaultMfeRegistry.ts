@@ -14,6 +14,8 @@
 // @cpt-dod:cpt-frontx-dod-mfe-registry-handler-injection:p1
 // @cpt-dod:cpt-frontx-dod-mfe-registry-registry-contract:p1
 // @cpt-dod:cpt-frontx-dod-mfe-registry-router-admission:p1
+// @cpt-algo:cpt-frontx-algo-mfe-host-communication-host-theme:p2
+// @cpt-dod:cpt-frontx-dod-mfe-registry-host-configuration:p1
 
 import type { TypeSystemPlugin } from '../type-substrate';
 import { MfeRegistry } from '../registry/MfeRegistry';
@@ -35,6 +37,7 @@ import { WeakMapRuntimeCoordinator } from './coordination/WeakMapRuntimeCoordina
 import { DefaultExtensionManager } from './DefaultExtensionManager';
 import { DefaultLifecycleManager } from './DefaultLifecycleManager';
 import { MountManager } from './MountManager';
+import type { ThemeAppearance } from './MountManager';
 import { DefaultMountManager } from './DefaultMountManager';
 import { OperationSerializer } from './OperationSerializer';
 import { RuntimeBridgeFactory } from './RuntimeBridgeFactory';
@@ -328,6 +331,18 @@ export class DefaultMfeRegistry extends MfeRegistry {
       );
     }
 
+    // @cpt-begin:cpt-frontx-algo-mfe-host-communication-host-theme:p1:inst-ht-config
+    // The name is written into a CSS attribute selector and passed to
+    // `setAttribute`, so only a plain name both accept unescaped is taken.
+    if (config.themeAppearanceAttribute !== undefined &&
+        !/^[A-Za-z][A-Za-z0-9_-]*$/.test(config.themeAppearanceAttribute)) {
+      throw new Error(
+        `Invalid themeAppearanceAttribute: '${config.themeAppearanceAttribute}'. ` +
+        'Expected a letter followed by letters, digits, "_" or "-".'
+      );
+    }
+    // @cpt-end:cpt-frontx-algo-mfe-host-communication-host-theme:p1:inst-ht-config
+
     this.typeSystem = config.typeSystem;
     // @cpt-begin:cpt-frontx-flow-mfe-registry-factory-build:p2:inst-flow-fb-standalone
     // `undefined` when the factory's config omitted `router`: every
@@ -418,6 +433,8 @@ export class DefaultMfeRegistry extends MfeRegistry {
       retractInboundBridgeLink: (childBridge) =>
         this.retractInboundBridgeLinkFor(childBridge),
       router: this.router,
+      themeAppearanceAttribute: config.themeAppearanceAttribute,
+      hostBaseUrl: config.hostBaseUrl,
     });
 
     // @cpt-begin:cpt-frontx-algo-mfe-host-communication-registration-propagation:p2:inst-adopt-ambient-bridge
@@ -1675,8 +1692,8 @@ export class DefaultMfeRegistry extends MfeRegistry {
     return extensions;
   }
 
-  setTheme(cssVars: Record<string, string>): void {
-    this.mountManager.setTheme(cssVars);
+  setTheme(cssVars: Record<string, string>, appearance?: ThemeAppearance): void {
+    this.mountManager.setTheme(cssVars, appearance);
   }
 
   // @cpt-begin:cpt-frontx-algo-mfe-host-communication-registration-propagation:p2:inst-retract-own-advertisements

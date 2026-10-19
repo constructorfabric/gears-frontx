@@ -260,6 +260,8 @@ Applications need to gain user-facing functionality from independently developed
 ##### Responsibility scope
 
 - Owns microfrontend registration and on-demand loading, exposed through an abstract registry facade (`MfeRegistry`, built via `createMfeRegistryFactory()`).
+- Applies host CSS variables and optional appearance to every extension shadow root when the theme changes and before each lifecycle mount. The application supplies the appearance attribute name (`cpt-frontx-mfes-principle-opaque-substrate-vocabulary`).
+- Passes `extensionId`, `domainId`, and an optional host-supplied `hostBaseUrl` in each mount context without interpreting the base URL.
 - Owns extension-domain governance, mount-strategy selection (concurrent / optional / exclusive), and the cardinality rules that admit or reject occupants.
 - Owns the actions-chains mediator that routes communication between microfrontends and the host, and the narrow parent–child capability bridge.
 - Owns the opaque type-substrate port: it reasons about type identifiers as opaque strings and delegates all schema, validation, and hierarchy operations to an injected type-system provider, reading only a schema's identifier.
@@ -301,7 +303,7 @@ Applications need to gain user-facing functionality from independently developed
 | `validateContract`, `formatContractErrors`, `validateDomainLifecycleHooks`, `validateExtensionLifecycleHooks`, `validateExtensionType` | The subset-rule contract-matching and lifecycle-hook validation functions used at admission. |
 | `MfManifest` and related manifest types, `LazyLoaderRegistry`, `LazyResolver` | The published-manifest shape the loading path reads, and the lazy-import ABI's host-side resolver registry. |
 | `MfeError`, `DomainValidationError`, `MfeLoadError`, `ExtensionTypeError`, `MfeTypeConformanceError`, `UnsupportedLifecycleStageError`, `EntryTypeNotHandledError`, `DomainUnregisteringError` | The error hierarchy surfaced by rejection and load-failure paths. |
-| `createShadowRoot`, `injectCssVariables`, `injectStylesheet` | Shadow-DOM mount utilities used by handlers to isolate rendered output. |
+| `createShadowRoot`, `injectCssVariables`, `injectStylesheet` | Shadow-DOM utilities used by the runtime to isolate rendered output and apply the host theme to extension shadow roots. |
 | `ExtensionManager`, `MountManager`, `LifecycleManager`, `RuntimeBridgeFactory`, `OperationSerializer`, `WeakMapRuntimeCoordinator`, `MfeStateContainer`, `LoadExtHandler` | The coordination contracts behind the facade — governance, mounting, lifecycle orchestration, bridge construction, and state, exported for handler and extension authors. Their `Default*` implementations stay internal (ADR-0003): the registry wires them itself and nothing outside the composition root may construct a rival set. `OperationSerializer`, `WeakMapRuntimeCoordinator`, and `LoadExtHandler` are concrete classes recorded as public-surface debt (see the debt register below the table). |
 | `extractGtsPackage` | A string-parsing utility over a GTS-shaped entity identifier. It imports no type-definition specification, but its segment rules encode the GTS identifier grammar — a known tension with the format-agnosticism MFES-1/MFES-4 intend, and a candidate for relocation to the type-system provider. |
 

@@ -11,6 +11,7 @@
 // @cpt-state:cpt-frontx-state-extension-domain-governance-admission:p1
 // @cpt-dod:cpt-frontx-dod-extension-domain-governance-contract-enforcement:p1
 // @cpt-dod:cpt-frontx-dod-extension-domain-governance-default-deny:p1
+// @cpt-algo:cpt-frontx-algo-mfe-host-communication-host-theme:p2
 
 import type {
   ExtensionDomain,
@@ -353,6 +354,17 @@ export class DefaultExtensionManager extends ExtensionManager {
   getExtensionState(extensionId: string): ExtensionState | undefined {
     return this.extensions.get(extensionId);
   }
+
+  /**
+   * Every registered extension's state, across all domains. The theme pass
+   * reads it to reach each live shadow root; a per-domain read would miss an
+   * extension whose domain the pass did not think to ask about.
+   */
+  // @cpt-begin:cpt-frontx-algo-mfe-host-communication-host-theme:p1:inst-ht-enumerate
+  getExtensionStates(): Iterable<ExtensionState> {
+    return this.extensions.values();
+  }
+  // @cpt-end:cpt-frontx-algo-mfe-host-communication-host-theme:p1:inst-ht-enumerate
 
   getExtensionStatesForDomain(domainId: string): ExtensionState[] {
     const domainState = this.domains.get(domainId);

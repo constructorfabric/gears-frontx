@@ -27,6 +27,7 @@ description: Specifies the abstract MfeRegistry facade built by a factory that o
 - [5. Definitions of Done](#5-definitions-of-done)
   - [Registry Facade Contract](#registry-facade-contract)
   - [Optional Router in the Factory Configuration](#optional-router-in-the-factory-configuration)
+  - [Host Theme and Base Configuration](#host-theme-and-base-configuration)
   - [Router Admission Before Durable Registration, Release at Cleanup](#router-admission-before-durable-registration-release-at-cleanup)
   - [Handler Resolution by Declared Base Type — Definition of Done](#handler-resolution-by-declared-base-type--definition-of-done)
   - [Register–Validate–Mount Sequence Ownership](#registervalidatemount-sequence-ownership)
@@ -139,18 +140,21 @@ User-facing interactions that start with an actor (human or external system) and
 **Success Scenarios**:
 - First call creates and caches a registry instance bound to the supplied `TypeSystemPlugin` and to the supplied router, or to no router when none is supplied.
 - Subsequent calls with the same plugin and the same router — or the same plugin and again no router — return the cached instance.
+- The optional `themeAppearanceAttribute` and `hostBaseUrl` match their first-build snapshots on repeated calls.
 
 **Error Scenarios**:
 - Subsequent call supplies a different `TypeSystemPlugin` — factory throws a configuration mismatch error.
 - Subsequent call supplies a different router, supplies a router after the first build supplied none, or omits the router after the first build supplied one — factory throws a configuration mismatch error.
+- Subsequent call changes the value or presence of `themeAppearanceAttribute` or `hostBaseUrl` - factory throws a configuration mismatch error naming the field.
+- Initial configuration supplies an invalid `themeAppearanceAttribute` - registry construction throws an error naming the refused value.
 
 **Steps**:
 1. [x] - `p1` - Developer creates the factory the composition root owns by calling `createMfeRegistryFactory()`, the package's sole creation path - `inst-flow-fb-create`
 2. [x] - `p1` - Developer calls `build` on that factory with an `MfeRegistryConfig` containing a `TypeSystemPlugin` in `typeSystem`; the configuration's optional `router` field carries a router conforming to the abstract router - `inst-flow-fb-01`
-3. [x] - `p1` - **IF** a cached instance already exists, validate that the supplied plugin is the one the cached instance was built with and that the supplied router is the one it was built with, absence included: the snapshot is compared by identity, and an absent router matches only an absent router - `inst-flow-fb-02`
-   1. [x] - `p1` - **IF** the plugin differs, or the router differs, or the router's presence differs, throw a configuration mismatch error naming which of the two differs and **RETURN** - `inst-flow-fb-02a`
-   2. [x] - `p1` - **IF** both match, **RETURN** cached instance - `inst-flow-fb-02b`
-4. [x] - `p1` - Create a new registry implementation bound to the supplied `TypeSystemPlugin` and to the supplied router or to no router, cache it alongside a snapshot of that plugin and that router taken from the configuration rather than the caller's configuration object itself, and **RETURN** the new instance - `inst-flow-fb-03`
+3. [x] - `p1` - **IF** a cached instance already exists, compare the supplied plugin and router by identity and the optional `themeAppearanceAttribute` and `hostBaseUrl` by value against snapshots from the first build; absence matches only absence - `inst-flow-fb-02`
+   1. [x] - `p1` - **IF** any field differs, throw a configuration mismatch error naming that field and **RETURN** without changing the cached instance - `inst-flow-fb-02a`
+   2. [x] - `p1` - **IF** all fields match, **RETURN** cached instance - `inst-flow-fb-02b`
+4. [x] - `p1` - Create a new registry implementation bound to the supplied configuration, cache it alongside snapshots of the plugin, router, `themeAppearanceAttribute`, and `hostBaseUrl` taken from the configuration rather than the caller's configuration object itself, and **RETURN** the new instance - `inst-flow-fb-03`
 5. [x] - `p1` - **IF** no router was supplied, the registry runs without a router for its whole life: it presents no registration, sends no release notification, assigns no occupant value, and issues no command to anyone - `inst-flow-fb-standalone`
 
 ## 3. Processes / Business Logic (CDSL)
@@ -279,9 +283,9 @@ Internal system functions and procedures that do not interact with actors direct
 **Initial State**: EMPTY
 
 **Transitions**:
-1. [x] - `p1` - **FROM** EMPTY **TO** CACHED **WHEN** `build` is called for the first time and a new registry instance is created and stored alongside the snapshot of its plugin and of its router, or of the router's absence - `inst-state-fc-01`
-2. [x] - `p1` - **FROM** CACHED **TO** CACHED **WHEN** `build` is called again with the same plugin and the same router, or the same plugin and again no router — returns the existing instance - `inst-state-fc-02`
-3. [x] - `p1` - **FROM** CACHED **TO** CACHED **WHEN** `build` is called again with a different plugin, a different router, or a change in the router's presence — the call throws a configuration mismatch error and the cached instance and its snapshot stay unchanged - `inst-state-fc-03`
+1. [x] - `p1` - **FROM** EMPTY **TO** CACHED **WHEN** `build` creates a registry and snapshots its plugin, router, `themeAppearanceAttribute`, and `hostBaseUrl`, including absence - `inst-state-fc-01`
+2. [x] - `p1` - **FROM** CACHED **TO** CACHED **WHEN** `build` receives the same plugin, router, `themeAppearanceAttribute`, and `hostBaseUrl` - returns the existing instance - `inst-state-fc-02`
+3. [x] - `p1` - **FROM** CACHED **TO** CACHED **WHEN** `build` receives a different plugin, router, `themeAppearanceAttribute`, or `hostBaseUrl`, including a presence change - throws a configuration mismatch error and leaves the cached instance and snapshots unchanged - `inst-state-fc-03`
 
 ## 5. Definitions of Done
 
@@ -319,6 +323,20 @@ The system **MUST** accept an optional `router` field in `MfeRegistryConfig`, be
 **Touches**:
 - Entities: Abstract router
 - Interface: `cpt-frontx-interface-mfe-runtime`, `cpt-frontx-mfes-interface-router-port`
+- Component: `cpt-frontx-component-mfe-runtime`
+
+### Host Theme and Base Configuration
+
+- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-registry-host-configuration`
+
+`MfeRegistryConfig` **MUST** accept optional `themeAppearanceAttribute` and `hostBaseUrl` fields. The application supplies the attribute name; registry construction **MUST** reject names that do not match `/^[A-Za-z][A-Za-z0-9_-]*$/`, naming the refused value. The host supplies `hostBaseUrl`, which the runtime **MUST NOT** parse or interpret. The factory **MUST** snapshot both fields on first build and reject later value or presence mismatches without changing the cached instance.
+
+**Implements**:
+- `cpt-frontx-flow-mfe-registry-factory-build`
+- `cpt-frontx-state-mfe-registry-factory-cache`
+
+**Touches**:
+- Interface: `cpt-frontx-interface-mfe-runtime`
 - Component: `cpt-frontx-component-mfe-runtime`
 
 ### Router Admission Before Durable Registration, Release at Cleanup
@@ -406,6 +424,7 @@ The system **MUST** define the `MfeHandler` abstract class with `handledBaseType
 - [ ] The developer-facing `MfeRegistry` has no `getMountedExtensions` or `getParentBridge` member, and `getExtension`, `getDomain`, `getExtensionsForDomain`, and `getExtensionsForPackage` return registrations without `route`, and the registry passes `route` to no party but the injected router apart from the type-system registration of the declaration; the Optional and Exclusive strategies read their domain's mount set without a public registry read.
 - [x] The factory-with-cache pattern returns the same instance on repeated calls with matching configuration, and throws on configuration mismatch.
 - [x] A second build with a different router, with a router after initially omitting one, or omitting a router after initially supplying one throws a configuration mismatch error; a second build with the same plugin and the same router, or the same plugin and again no router, returns the cached instance.
+- [x] Invalid `themeAppearanceAttribute` values are rejected at construction with the refused value named; both new optional fields are snapshotted by the factory, so value and presence mismatches throw while matching values return the cached registry.
 - [x] A registry built with no router registers, mounts, and unmounts extensions, nothing is presented, released, or assigned, and no command is issued to any router.
 - [x] An extension whose type validation fails is rejected without being placed into its extension domain.
 - [x] An extension with no matching handler is rejected with a handler-not-found error.

@@ -7,6 +7,7 @@
  * @packageDocumentation
  */
 // @cpt-dod:cpt-frontx-dod-mfe-registry-router-configuration:p1
+// @cpt-dod:cpt-frontx-dod-mfe-registry-host-configuration:p1
 
 import type { TypeSystemPlugin } from '../type-substrate';
 import type { MfeHandler } from '../handler/MfeHandler';
@@ -78,4 +79,18 @@ export interface MfeRegistryConfig {
    * (`cpt-frontx-dod-mfe-registry-router-configuration`).
    */
   router?: RouterPort;
+
+  /**
+   * Application-supplied attribute name stamped on each shadow host when an
+   * appearance is set. The runtime owns no theme vocabulary. When absent, no
+   * appearance attribute is written.
+   */
+  themeAppearanceAttribute?: string;
+
+  /**
+   * Base URL from which the host application is served. The runtime passes
+   * this value unchanged without parsing or interpreting it. A screen that
+   * builds a nested registry passes its own mount context value here.
+   */
+  hostBaseUrl?: string;
 }

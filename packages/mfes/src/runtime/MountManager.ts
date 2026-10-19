@@ -6,8 +6,11 @@
  * @packageDocumentation
  * @internal
  */
+// @cpt-algo:cpt-frontx-algo-mfe-host-communication-host-theme:p2
 
 import type { ParentMfeBridge } from '../handler/ParentMfeBridge';
+
+export type ThemeAppearance = 'light' | 'dark';
 
 /**
  * The registry's own `executeActionsChain`, returning nothing awaitable.
@@ -34,5 +37,6 @@ export abstract class MountManager {
    * which deactivates the bridge but keeps it (and its routing) in place.
    */
   abstract releaseExtension(extensionId: string): void;
-  abstract setTheme(cssVars: Record<string, string>): void;
+  /** Apply host variables and optional appearance to current and future shadow roots. */
+  abstract setTheme(cssVars: Record<string, string>, appearance?: ThemeAppearance): void;
 }
