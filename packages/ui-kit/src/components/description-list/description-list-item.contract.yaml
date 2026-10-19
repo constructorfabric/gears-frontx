@@ -1,0 +1,63 @@
+# Semantic overlay for DescriptionListItem - part of the DescriptionList family, see
+# description-list.contract.yaml's `family_membership` for how the four
+# contracts relate. `mounted_in` is filled from the accepting part's list.
+component: description-list-item
+
+intent: Group one term with its value inside a description list.
+
+typical_uses:
+  - One fact of a record, its name with its value
+
+dont_use_when:
+  - situation: A row the user acts on or navigates
+    instead:
+      target: Item
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.description_list_term.v1 # DescriptionListTerm
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.description_list_details.v1 # DescriptionListDetails
+
+invariants:
+  - id: div-grouping
+    text: >-
+      The item is the `div` grouping HTML allows inside `dl`; in a
+      horizontal list it sits on a subgrid of the list's two columns, so its
+      term lines up with every other term.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A term with its value
+      code: |
+        <DescriptionListItem>
+          <DescriptionListTerm>Owner</DescriptionListTerm>
+          <DescriptionListDetails>Platform team</DescriptionListDetails>
+        </DescriptionListItem>
+
+  bad:
+    - title: Two terms in one item
+      code: |
+        <DescriptionListItem>
+          <DescriptionListTerm>Owner</DescriptionListTerm>
+          <DescriptionListTerm>Team</DescriptionListTerm>
+          <DescriptionListDetails>Platform</DescriptionListDetails>
+        </DescriptionListItem>
+      why: >-
+        A horizontal list has one term column per item row; the second term
+        takes the value column. Give each pair its own item.
+
+family_membership:
+  name: description_list
+  role: part

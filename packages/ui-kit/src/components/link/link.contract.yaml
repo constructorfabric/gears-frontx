@@ -1,0 +1,110 @@
+# Semantic overlay for Link - the hand-written half of the contract.
+#
+# The variant axis, `external` and the host element are read by the
+# compiler from link.tsx. Link is an anchor rendered through
+# useRender/mergeProps, so it gains `render` for router links.
+component: link
+
+intent: Navigate from inside a sentence or a short line without changing the line it sits in.
+
+typical_uses:
+  - A link inside running text
+  - A router link of the application, through `render`
+  - A link to another site, with `external`
+
+dont_use_when:
+  - situation: An action that does something rather than go somewhere
+    instead:
+      target: Button
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+  - situation: A whole card that navigates
+    instead:
+      target: Card, with `render={<a />}`
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card.v1
+  - situation: A whole row of a list that navigates
+    instead:
+      target: Item, with `render`
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1
+  - situation: A trail of pages above a title
+    instead:
+      target: Breadcrumb
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.breadcrumb.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: inherits-the-line
+    text: >-
+      The anchor inherits font size, line height and weight and adds no
+      height or padding, so a link inside a 14/20 line leaves the line box
+      at 20.
+  - id: focus-on-ring
+    text: >-
+      Keyboard focus draws an outline on `--ring` at
+      `--border-width-focus`; forced colours use Highlight.
+  - id: external-adds-target-rel-and-hidden-icon
+    text: >-
+      `external` sets `target="_blank"` and `rel="noopener noreferrer"`
+      unless the caller passes either, and appends an arrow icon with
+      `aria-hidden`; the accessible wording stays with the caller.
+  - id: inherit-variant-always-underlined
+    text: >-
+      The inherit variant keeps the text's colour and always draws the
+      underline, which is then the only thing that marks it as a link.
+  - id: icon-follows-the-text
+    text: >-
+      An svg placed directly in the link, the external arrow or the
+      caller's own, is a 1em square on the text's baseline with a 0.25em
+      gap on the text side, so it scales with the line. The rules carry no
+      specificity, so a caller that sizes or spaces its icon keeps its own
+      values.
+
+anti_patterns:
+  - dont: "Use `buttonVariants({ variant: 'link' })` for a link inside text"
+    do_instead: Use Link; the button variant carries a control's height and padding into the line
+  - dont: Import the router into the kit to navigate
+    do_instead: Pass the application's router link through `render`
+
+deprecations: {}
+
+# link.test.tsx asserts the default anchor, the variant classes, the
+# external target, rel and hidden icon, and the router hand-off; nothing in
+# it runs an accessibility engine or renders under a right-to-left
+# direction.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the anchor with one the caller supplies
+    because: >-
+      useRender's render prop takes an element or a function that receives
+      the props to spread (Link passes no state of its own), so its type is
+      a union of a React element and a callback - the compiler emits one
+      JSON type per property. It is how the application's router link takes
+      the link's class and props.
+
+companions:
+  - export: linkVariants
+    typed_by: 'cva(...), returns (props: VariantProps<typeof linkVariants> & { className?: string }) => string'
+    description: >-
+      The variant class-name builder Link itself uses, for a router
+      component that cannot take `render`.
+
+examples:
+  good:
+    - title: Inside a sentence
+      code: <Text>Read the <Link href="/docs/setup">setup guide</Link> first.</Text>
+    - title: A router link
+      code: <Link render={<RouterLink to="/settings" />}>Settings</Link>
+    - title: Another site
+      code: <Link href="https://example.com" external>Example</Link>
+  bad:
+    - title: A link that performs an action
+      code: <Link onClick={save}>Save</Link>
+      why: An anchor without a destination is not a link; use Button.

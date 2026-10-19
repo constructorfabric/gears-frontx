@@ -148,6 +148,18 @@ export default function CardExample() {
           </CardContent>
         </Card>
       </Section>
+
+      <Section title="Link card">
+        <Card
+          style={{ maxWidth: 420 }}
+          render={<a href="#setup" onClick={(event) => event.preventDefault()} />}
+        >
+          <CardHeader>
+            <CardTitle render={<h3 />}>Setup guide</CardTitle>
+            <CardDescription>From install to the first screen.</CardDescription>
+          </CardHeader>
+        </Card>
+      </Section>
     </>
   );
 }

@@ -115,3 +115,15 @@
   top: var(--space-3);
   right: var(--space-3);
 }
+
+/*
+ * A title rendered as a heading (`render`): the UA margins and font size
+ * reset at zero specificity, so every rule of the title class still wins
+ * and the element looks as the `div` did.
+ */
+:where(.renderedTitle) {
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: inherit;
+}

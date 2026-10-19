@@ -1,0 +1,49 @@
+# Semantic overlay for DescriptionListTerm - part of the DescriptionList family, see
+# description-list.contract.yaml's `family_membership` for how the four
+# contracts relate. `mounted_in` is filled from the accepting part's list.
+component: description-list-term
+
+intent: Name one fact in a description list.
+
+typical_uses:
+  - The name of a fact, such as Owner or Path
+
+dont_use_when:
+  - situation: The label of a form control
+    instead:
+      target: FieldLabel
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.field_label.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: muted-label-term
+    text: The term is a `dt` on the label ramp role in --muted-foreground.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A short name
+      code: <DescriptionListTerm>Owner</DescriptionListTerm>
+
+  bad:
+    - title: The value written into the term
+      code: <DescriptionListTerm>Owner - Platform team</DescriptionListTerm>
+      why: >-
+        The value belongs in DescriptionListDetails, so assistive technology
+        reads the pair as a name and a value.
+
+family_membership:
+  name: description_list
+  role: part

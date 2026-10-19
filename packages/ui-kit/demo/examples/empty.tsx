@@ -147,6 +147,15 @@ export default function EmptyExample() {
           </EmptyContent>
         </Empty>
       </Section>
+
+      <Section title="Title as a heading">
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle render={<h3 />}>No messages</EmptyTitle>
+            <EmptyDescription>New messages appear here.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      </Section>
     </>
   );
 }

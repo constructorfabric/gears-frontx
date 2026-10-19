@@ -14,8 +14,9 @@
     {
       "situation": "Navigation between routes or pages",
       "instead": {
-        "target": "the consuming application's own link component (a plain anchor when it has none)",
-        "note": "This kit ships no Link component, and no kit component is a substitute for one: navigation belongs to the app's own router. An action that must read as a button while it navigates stays on Button, rendered over a real anchor - `render={<a href=\"...\" />}` with `nativeButton={false}`."
+        "target": "Link, with the application's router link through `render`",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.link.v1",
+        "note": "Navigation belongs to the app's own router; Link styles it and keeps the link role. An action that must read as a button while it navigates stays on Button, rendered over a real anchor - `render={<a href=\"...\" />}` with `nativeButton={false}`."
       }
     },
     {
@@ -54,6 +55,14 @@
     {
       "container": "Carousel",
       "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.carousel.v1"
+    },
+    {
+      "container": "CodeBlockActions",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_actions.v1"
+    },
+    {
+      "container": "CodeBlockFooter",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_footer.v1"
     },
     {
       "container": "EmptyActions",

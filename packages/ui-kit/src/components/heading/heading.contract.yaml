@@ -1,0 +1,98 @@
+# Semantic overlay for Heading - the hand-written half of the contract.
+#
+# Machine-extractable facts (the typography axis, its values and default,
+# the host element) belong to the compiler, which reads heading.tsx. No
+# primitive backs Heading: it is an h2 rendered through useRender/mergeProps,
+# so the only API prop it gains is `render`.
+component: heading
+
+intent: Put a heading on one of the kit's type ramp roles, with the outline level chosen apart from the look.
+
+typical_uses:
+  - The title of a screen or a page section between kit components
+  - A section heading whose outline level differs from its look (an h3 drawn on the heading-1 role)
+
+dont_use_when:
+  - situation: The title of a Card
+    instead:
+      target: CardTitle, with `render` for the heading element
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_title.v1
+  - situation: The title of an empty state
+    instead:
+      target: EmptyTitle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.empty_title.v1
+  - situation: The title of an Alert
+    instead:
+      target: AlertTitle
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.alert_title.v1
+  - situation: Running text, a caption or a meta line
+    instead:
+      target: Text
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.text.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: role-tokens-only
+    text: >-
+      Each typography value sets font size, line height, weight and
+      tracking from the matching `--text-<role>-*` ramp tokens and the
+      family from `--font-heading`; no literal value.
+  - id: no-margin
+    text: >-
+      The heading has zero margin on whatever element `render` substitutes;
+      spacing belongs to the layout that places it.
+  - id: level-apart-from-look
+    text: >-
+      `typography` never changes the element and `render` never changes the
+      class: the outline level and the ramp role are set independently. An
+      explicit `typography={null}` resolves to heading-1.
+
+anti_patterns:
+  - dont: Pick the element to get a bigger heading
+    do_instead: Pick `typography` for the look and `render` for the outline level
+  - dont: Add a margin to the heading through className
+    do_instead: Space it with the gap of the layout that holds it
+
+deprecations: {}
+
+# heading.test.tsx asserts the default h2, the role classes, the null
+# fallback and the element swap; nothing in it runs an accessibility engine
+# or renders under a right-to-left direction.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      useRender's render prop takes an element or a function that receives
+      the props to spread (Heading passes no state of its own), so its type
+      is a union of a React element and a callback - the compiler emits one
+      JSON type per property. It is how a caller picks the outline level,
+      such as `render={<h1 />}`.
+
+companions:
+  - export: headingVariants
+    typed_by: 'cva(...), returns (props: VariantProps<typeof headingVariants> & { className?: string }) => string'
+    description: >-
+      The role class-name builder Heading itself uses, exported beside the
+      component.
+
+examples:
+  good:
+    - title: A page title on the display role
+      code: <Heading typography="display" render={<h1 />}>Settings</Heading>
+    - title: A section heading
+      code: <Heading typography="heading-2">Members</Heading>
+  bad:
+    - title: A heading inside a Card
+      code: <Card><CardHeader><Heading>Setup</Heading></CardHeader></Card>
+      why: >-
+        The Card's own title part carries the card's title sizing and
+        spacing; use CardTitle with `render={<h3 />}`.

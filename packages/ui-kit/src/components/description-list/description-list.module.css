@@ -1,0 +1,81 @@
+/*
+ * DescriptionList styles. Vertical puts each term above its value;
+ * horizontal is a two-column grid whose term column takes the widest term,
+ * with each item on a subgrid so every term lines up in one column. The term
+ * uses the label role on --muted-foreground, the value the body role.
+ * Consumes only theme.css variables.
+ */
+
+.descriptionList {
+  margin: 0;
+}
+
+.orientationVertical {
+  display: flex;
+  flex-direction: column;
+}
+
+.orientationVertical .descriptionItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.orientationHorizontal {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: var(--space-4);
+}
+
+.orientationHorizontal .descriptionItem {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: baseline;
+}
+
+.sizeDefault {
+  row-gap: var(--space-3);
+}
+
+.sizeSm {
+  row-gap: var(--space-2);
+}
+
+.descriptionItem {
+  min-width: 0;
+}
+
+.descriptionTerm {
+  color: var(--muted-foreground);
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-line-height);
+  font-weight: var(--text-label-weight);
+  letter-spacing: var(--text-label-tracking);
+}
+
+.descriptionDetails {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--foreground);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  font-weight: var(--text-body-weight);
+  letter-spacing: var(--text-body-tracking);
+}
+
+.sizeSm .descriptionDetails {
+  font-size: var(--text-meta-size);
+  line-height: var(--text-meta-line-height);
+  font-weight: var(--text-meta-weight);
+  letter-spacing: var(--text-meta-tracking);
+}
+
+.typographyBody {
+  font-family: inherit;
+}
+
+.typographyMono {
+  font-family: var(--font-mono);
+}

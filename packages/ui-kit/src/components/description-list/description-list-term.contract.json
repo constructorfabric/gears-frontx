@@ -1,0 +1,79 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.description_list_term.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "description-list-term",
+  "forwards_to": "gts.frontx.uikit.element.dom_dt.v1~",
+  "intent": "Name one fact in a description list.",
+  "typical_uses": [
+    "The name of a fact, such as Owner or Path"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "The label of a form control",
+      "instead": {
+        "target": "FieldLabel",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field_label.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "DescriptionListItem",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.description_list_item.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "muted-label-term",
+      "text": "The term is a `dt` on the label ramp role in --muted-foreground."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A short name",
+        "code": "<DescriptionListTerm>Owner</DescriptionListTerm>"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The value written into the term",
+        "code": "<DescriptionListTerm>Owner - Platform team</DescriptionListTerm>",
+        "why": "The value belongs in DescriptionListDetails, so assistive technology reads the pair as a name and a value."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "description_list",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit DescriptionListTerm",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

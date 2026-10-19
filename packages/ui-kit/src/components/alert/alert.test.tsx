@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { declaredIn } from '../../__test-utils__/css-rules';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from './alert';
 import styles from './alert.module.css';
 
@@ -74,5 +75,30 @@ describe('Alert', () => {
     );
     fireEvent.click(screen.getByText('dismiss'));
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('AlertTitle render', () => {
+  it('renders the same div with the same class and no extra attributes without render', () => {
+    render(<AlertTitle data-testid="title">Title</AlertTitle>);
+    const title = screen.getByTestId('title');
+    expect(title.tagName).toBe('DIV');
+    expect(title.className).toBe(styles.alertTitle);
+    expect(title.getAttributeNames().sort()).toEqual(['class', 'data-testid']);
+  });
+
+  it('renders a heading that keeps the title class', () => {
+    render(
+      <AlertTitle render={<h3 />}>Title</AlertTitle>
+    );
+    const heading = screen.getByRole('heading', { level: 3, name: 'Title' });
+    expect(heading.className).toContain(styles.alertTitle);
+    expect(heading.className).toContain(styles.renderedTitle);
+  });
+
+  it('resets a rendered title to the look of the div at zero specificity', () => {
+    const declaredRule = declaredIn(import.meta.url, 'alert.module.css');
+    expect(declaredRule(':where(.renderedTitle)', 'margin')).toBe('0');
+    expect(declaredRule(':where(.renderedTitle)', 'font-size')).toBe('inherit');
   });
 });

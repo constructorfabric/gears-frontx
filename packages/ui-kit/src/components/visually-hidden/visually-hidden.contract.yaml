@@ -1,0 +1,80 @@
+# Semantic overlay for VisuallyHidden - the hand-written half of the
+# contract. The host element is read by the compiler from
+# visually-hidden.tsx; the part is a span rendered through
+# useRender/mergeProps.
+component: visually-hidden
+
+intent: Give assistive technology text the screen does not show.
+
+typical_uses:
+  - The name of an icon-only link or of a custom control that has no label prop
+  - A table caption that the surrounding heading already shows visually
+  - A live-region announcement
+
+dont_use_when:
+  - situation: Text that should be hidden from everyone
+    instead:
+      target: Conditional rendering, or the `hidden` attribute
+  - situation: Markup that is not React
+    instead:
+      target: The `sr-only` class of the kit's utilities.css
+  - situation: The name of an icon-only Button
+    instead:
+      target: Button, with `icon` and `aria-label`
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1
+  - situation: The name of a status dot shown without a label
+    instead:
+      target: StatusDot, with `aria-label`
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.status_dot.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: one-pixel-clipped-box
+    text: >-
+      The box is absolutely positioned, one pixel square, clipped with
+      `clip-path: inset(50%)`, without padding or border, and does not wrap,
+      the same declarations as the kit's internal `.srOnly` copies and the
+      `sr-only` utility.
+  - id: text-stays-in-the-tree
+    text: The text stays in the accessibility tree and names its container.
+
+anti_patterns:
+  - dont: 'Hide text with `display: none` to keep it for screen readers'
+    do_instead: 'Use VisuallyHidden; `display: none` removes it from the tree too'
+
+deprecations: {}
+
+# visually-hidden.test.tsx names an icon-only link and a table through it
+# and reads each name back by role; nothing in it runs an accessibility
+# engine or renders under a right-to-left direction.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the span with one the caller supplies
+    because: >-
+      useRender's render prop takes an element or a function that receives
+      the props to spread (VisuallyHidden passes no state of its own), so
+      its type is a union of a React element and a callback - the compiler
+      emits one JSON type per property. It is for the element, such as
+      `render={<caption />}`.
+
+examples:
+  good:
+    - title: An icon-only link
+      code: <a href="/docs"><ExternalLink aria-hidden="true" /><VisuallyHidden>Open the docs</VisuallyHidden></a>
+    - title: A table caption
+      code: <VisuallyHidden render={<caption />}>Members</VisuallyHidden>
+  bad:
+    - title: A visible label hidden for no reason
+      code: <VisuallyHidden>Email</VisuallyHidden><Input />
+      why: >-
+        Sighted users need the label too, and the hidden text does not name
+        the input; use Label with `htmlFor`.

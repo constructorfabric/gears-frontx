@@ -1,0 +1,80 @@
+/*
+ * Link styles. The anchor inherits the font of its line (size, line height,
+ * weight), so a link inside a 14/20 body line leaves the line box at 20.
+ * Underline on hover, a focus outline on --ring at --border-width-focus as
+ * the kit's other focusable parts draw it. Consumes only theme.css
+ * variables.
+ */
+
+.link {
+  font: inherit;
+  text-decoration-line: none;
+  text-underline-offset: 0.2em;
+  border-radius: var(--radius-xs);
+  transition: color var(--duration-micro) var(--ease-standard);
+}
+
+.link:hover {
+  text-decoration-line: underline;
+}
+
+.link:focus-visible {
+  outline: var(--border-width-focus) solid var(--ring);
+  outline-offset: var(--border-width-focus);
+}
+
+@media (forced-colors: active) {
+  .link:focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+.variantDefault {
+  color: var(--link-foreground);
+}
+
+.variantMuted {
+  color: var(--muted-foreground);
+}
+
+.variantMuted:hover {
+  color: var(--link-foreground);
+}
+
+/*
+ * Inside coloured text (an Alert, a destructive message) the link keeps the
+ * text's colour, so the underline is what marks it, always drawn.
+ */
+.variantInherit {
+  color: inherit;
+  text-decoration-line: underline;
+}
+
+/*
+ * An icon placed directly in the link scales with the line and sits on its
+ * baseline, a dimension rather than a step of the space scale. The gap is on
+ * the text side: before a trailing icon, after a leading icon that is
+ * followed by an element (the text in a span). The rules carry no
+ * specificity, so a caller that sizes or spaces its icons itself keeps its
+ * own values.
+ */
+:where(.link > svg) {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+}
+
+:where(.link > svg:last-child) {
+  margin-inline-start: 0.25em;
+}
+
+:where(.link > svg:first-child:not(:last-child)) {
+  margin-inline-end: 0.25em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link {
+    transition: none;
+  }
+}

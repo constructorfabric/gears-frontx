@@ -1,0 +1,127 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.description_list.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "description-list",
+  "forwards_to": "gts.frontx.uikit.element.dom_dl.v1~",
+  "intent": "Show name and value pairs as a real description list, so assistive technology keeps each term with its value.",
+  "typical_uses": [
+    "The facts of a record in a detail panel",
+    "A short \"before you start\" aside of requirements and values"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A form row with an input",
+      "instead": {
+        "target": "Field",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.field.v1"
+      }
+    },
+    {
+      "situation": "Rows the user acts on or navigates",
+      "instead": {
+        "target": "Item",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1"
+      }
+    },
+    {
+      "situation": "Data compared across many records",
+      "instead": {
+        "target": "Table",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.table.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.description_list_item.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "real-elements",
+      "text": "The list renders `dl`, each item a `div`, each term a `dt` and each value a `dd`; no part takes `render`."
+    },
+    {
+      "id": "horizontal-terms-in-one-column",
+      "text": "Horizontal is a two-column grid sized to the widest term, with each item on a subgrid, so every term lines up in one column at any width."
+    },
+    {
+      "id": "tokens-only",
+      "text": "The term uses the label role on `--muted-foreground`, the value the body role (meta at `sm`); `typography=\"mono\"` sets `--font-mono`."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Build the pairs from divs and spans",
+      "do_instead": "Use DescriptionList; divs lose the term-to-value relation"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Two facts side by side",
+        "code": "<DescriptionList orientation=\"horizontal\">\n  <DescriptionListItem>\n    <DescriptionListTerm>Owner</DescriptionListTerm>\n    <DescriptionListDetails>Platform team</DescriptionListDetails>\n  </DescriptionListItem>\n</DescriptionList>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A term without its item",
+        "code": "<DescriptionList><DescriptionListTerm>Owner</DescriptionListTerm></DescriptionList>",
+        "why": "Each pair sits in a DescriptionListItem, which the horizontal grid aligns."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "description_list",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.description_list_details.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.description_list_item.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.description_list_term.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof descriptionListVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit DescriptionList",
+    "type": "object",
+    "properties": {
+      "orientation": {
+        "type": "string",
+        "enum": [
+          "vertical",
+          "horizontal"
+        ],
+        "default": "vertical"
+      },
+      "size": {
+        "type": "string",
+        "enum": [
+          "default",
+          "sm"
+        ],
+        "default": "default"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

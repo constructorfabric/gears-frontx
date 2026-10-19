@@ -40,6 +40,13 @@ export default function AlertExample() {
           </AlertAction>
         </Alert>
       </Section>
+
+      <Section title="Title as a heading">
+        <Alert>
+          <AlertTitle render={<h3 />}>Sync paused</AlertTitle>
+          <AlertDescription>Changes are saved locally until the connection returns.</AlertDescription>
+        </Alert>
+      </Section>
     </>
   );
 }

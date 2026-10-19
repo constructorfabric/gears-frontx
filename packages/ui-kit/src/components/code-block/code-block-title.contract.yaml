@@ -1,0 +1,55 @@
+# Semantic overlay for CodeBlockTitle - part of the CodeBlock family, see
+# code-block.contract.yaml's `family_membership` for how the eight
+# contracts relate. `mounted_in` is filled from CodeBlockHeader's accepted
+# components.
+component: code-block-title
+
+intent: Name what a code block holds, such as the terminal or the file, in one line.
+
+typical_uses:
+  - The terminal, shell or file name above the code
+
+dont_use_when:
+  - situation: The heading of the page section that holds the block
+    instead:
+      target: Heading
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.heading.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: one-line-with-a-glyph
+    text: >-
+      The title is one line in the sans family at the label weight, cut
+      with an ellipsis; an svg in it is 16px (14px at sm), vertically
+      centred, with a gap after it, unless the caller sizes it.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A file name linked to the file
+      code: |
+        <a href="/files/route.ts">
+          <CodeBlockTitle>app/api/chat/route.ts</CodeBlockTitle>
+        </a>
+  bad:
+    - title: The command repeated as the title
+      code: <CodeBlockTitle>npm install</CodeBlockTitle>
+      why: >-
+        The command is already the code below; the title names where it
+        runs or which file it comes from.
+
+family_membership:
+  name: code_block
+  role: part

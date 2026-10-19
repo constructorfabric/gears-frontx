@@ -1,0 +1,134 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "code-block",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Show code, terminal output, a log or a diff in a bordered frame, with an optional title, actions and footer.",
+  "typical_uses": [
+    "An install or start command with a copy button",
+    "A file excerpt in a guide, with its file name as the title",
+    "Terminal output, a log, or a diff with added and removed lines"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A keyboard key or shortcut",
+      "instead": {
+        "target": "Kbd",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.kbd.v1"
+      }
+    },
+    {
+      "situation": "Code inside rendered Markdown or HTML",
+      "instead": {
+        "target": "The kit's typeset.css"
+      }
+    },
+    {
+      "situation": "A single path or name inside a line of text",
+      "instead": {
+        "target": "Text, with `typography=\"mono\"`",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.text.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_header.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_actions.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_footer.v1"
+    ]
+  },
+  "invariants": [
+    {
+      "id": "focus-marks-the-block",
+      "text": "Keyboard focus on the CodeBlockContent scroll region recolours the block's border to --ring with the inset ring (a Highlight outline under forced colours); the block itself is not focusable."
+    },
+    {
+      "id": "size-tightens-every-part",
+      "text": "`size=\"sm\"` sets the meta size instead of the body size and steps the header, content, footer and line insets from var(--space-4) to var(--space-3)."
+    },
+    {
+      "id": "destructive-paints-the-frame-and-header",
+      "text": "`variant=\"destructive\"` draws the border from --destructive at 30% and the text, header and title in --destructive."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Wrap the whole block in a link or a button",
+      "do_instead": "Keep the block a div; it holds a focusable scroll region and its own actions"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A command with a title and a copy button",
+        "code": "<CodeBlock>\n  <CodeBlockHeader>\n    <CodeBlockTitle>Terminal</CodeBlockTitle>\n    <CodeBlockActions>\n      <CodeBlockCopyButton value=\"npm install\" />\n    </CodeBlockActions>\n  </CodeBlockHeader>\n  <CodeBlockContent>npm install</CodeBlockContent>\n</CodeBlock>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The code passed straight to the frame",
+        "code": "<CodeBlock>npm install</CodeBlock>",
+        "why": "The frame has no scroll region of its own; the code belongs in CodeBlockContent, which scrolls, takes focus and keeps the mono face."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "code_block",
+    "role": "root",
+    "members": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_actions.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_content.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_copy_button.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_footer.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_header.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_line.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_title.v1"
+    ]
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof codeBlockVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit CodeBlock",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "destructive"
+        ],
+        "default": "default"
+      },
+      "size": {
+        "type": "string",
+        "enum": [
+          "default",
+          "sm"
+        ],
+        "default": "default"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

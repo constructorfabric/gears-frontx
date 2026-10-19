@@ -825,16 +825,13 @@ describe('button as a component instance', () => {
     expect(liftPropsSchema(contract).$id).toBe(propsSchemaId('button', 1));
   });
 
-  it("recommends something outside the kit for the navigation rule, and names no component for it", () => {
-    // The kit ships no Link component. While `instead` could only be a
-    // component reference, this rule pointed at NavigationMenu as a stand-in,
-    // and agents reading the contract opened NavigationMenu for a single link
-    // - a resolver had no way to tell a real recommendation from a
-    // placeholder. The absence of `component` is now that statement.
+  it('recommends Link for the navigation rule, with the app router through render', () => {
+    // Navigation is not Button's job. The kit now ships Link, so the rule
+    // names it as a component reference instead of pointing outside the kit.
     const navigation = contract.dont_use_when.find((entry) => entry.situation === 'Navigation between routes or pages');
     if (navigation === undefined) throw new Error("Button's navigation rule is gone");
-    expect(navigation.instead.target).toMatch(/link component/);
-    expect(navigation.instead.component).toBeUndefined();
+    expect(navigation.instead.target).toMatch(/^Link\b/);
+    expect(navigation.instead.component).toBe(componentRef('link', 1));
   });
 
   it('every good example is syntactically valid TSX', () => {

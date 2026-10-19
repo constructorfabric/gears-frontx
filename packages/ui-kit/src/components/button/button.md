@@ -15,9 +15,10 @@ polymorphism, correct disabled/focus behavior, `type="button"` by default
 
 ## When not to use
 
-- Plain in-text navigation — use the consumer app's link component, not
-  `variant="link"`; that variant exists for actions that visually read as
-  links.
+- Plain in-text navigation: use `Link` (it takes the app's router link
+  through `render`), not `variant="link"`; that variant exists for actions
+  that visually read as links, and it carries a control's height and
+  padding into the line.
 - Navigation that looks like a button (a "Get started" link, a call to
   action): use the consumer app's link component with
   `buttonVariants({ variant, size })` as its class, so the element keeps

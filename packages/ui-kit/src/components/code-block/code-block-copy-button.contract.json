@@ -1,0 +1,149 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_copy_button.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "code-block-copy-button",
+  "forwards_to": "gts.frontx.uikit.element.dom_button.v1~",
+  "intent": "Copy a code block's text to the clipboard and confirm it.",
+  "typical_uses": [
+    "The copy action of a command or a file excerpt"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Copying text that is not shown in a code block",
+      "instead": {
+        "target": "Button, with the application's own clipboard call",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "nothing"
+  },
+  "mounted_in": [
+    {
+      "container": "CodeBlockActions",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_actions.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "copies-value-and-confirms",
+      "text": "A click writes `value` to `navigator.clipboard`, then switches the glyph to a check and the accessible name to `copiedLabel` for two seconds and puts `copiedLabel` once in a polite live region; a refused write changes nothing."
+    },
+    {
+      "id": "icon-only-ghost-button",
+      "text": "It is a kit Button, ghost and small by default, icon-only, named by `copyLabel` or `copiedLabel`."
+    }
+  ],
+  "anti_patterns": [
+    {
+      "dont": "Pass a glyph or a label as children",
+      "do_instead": "Leave the glyph to the component and set `copyLabel` and `copiedLabel` for the words"
+    }
+  ],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "prop_statements": {
+    "style": {
+      "states": "style accepts a function of the button's state as well as a plain style object",
+      "because": "It is Button's `style`, which Base UI widens to `CSSProperties | ((state) => CSSProperties)`; the compiler emits one JSON type per property, so nothing is asserted."
+    }
+  },
+  "unexposed_parts": [
+    {
+      "part": "the live region",
+      "reason": "code-block.tsx renders it beside the button for the copy announcement; its text is `copiedLabel`, and it is not exported as a component of its own."
+    }
+  ],
+  "examples": {
+    "good": [
+      {
+        "title": "Translated labels",
+        "code": "<CodeBlockCopyButton value={command} copyLabel=\"Kopieren\" copiedLabel=\"Kopiert\" />"
+      }
+    ],
+    "bad": [
+      {
+        "title": "The value left out",
+        "code": "<CodeBlockCopyButton />",
+        "why": "The button copies `value`, not the text it sits next to; without it tsc refuses the call."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "code_block",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit CodeBlockCopyButton",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "destructive",
+          "outline",
+          "secondary",
+          "ghost",
+          "link",
+          "navigation",
+          "avatar",
+          "utility"
+        ],
+        "default": "ghost"
+      },
+      "size": {
+        "type": "string",
+        "enum": [
+          "default",
+          "sm",
+          "lg"
+        ],
+        "default": "sm"
+      },
+      "className": {
+        "type": "string"
+      },
+      "copiedLabel": {
+        "type": "string",
+        "default": "Copied"
+      },
+      "copyLabel": {
+        "type": "string",
+        "default": "Copy"
+      },
+      "focusableWhenDisabled": {
+        "type": "boolean"
+      },
+      "loading": {
+        "type": "boolean"
+      },
+      "value": {
+        "type": "string"
+      },
+      "style": {
+        "description": "TS: CSSProperties | ((state: ButtonState) => CSSProperties | undefined) | undefined. The compiler emits one JSON type per property; this type is left to tsc. style accepts a function of the button's state as well as a plain style object. It is Button's `style`, which Base UI widens to `CSSProperties | ((state) => CSSProperties)`; the compiler emits one JSON type per property, so nothing is asserted."
+      }
+    },
+    "required": [
+      "value"
+    ],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

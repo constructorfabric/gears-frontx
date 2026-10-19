@@ -1,3 +1,7 @@
+'use client';
+
+import { mergeProps } from '@base-ui/react/merge-props';
+import { useRender } from '@base-ui/react/use-render';
 import { cva, cx, type VariantProps } from 'class-variance-authority';
 import type { ComponentProps } from 'react';
 
@@ -7,6 +11,11 @@ import styles from './card.module.css';
  * Card has no Base UI primitive (registry/base-vega ships plain `div`s with
  * data-slot markers) — this is a pure styling translation over native
  * elements, same shape as Dialog's Header/Footer/Title/Description.
+ *
+ * Card and CardTitle take `render` through Base UI's `useRender`/`mergeProps`
+ * (as Item does), so a whole card can be a link and a title a real heading.
+ * Without `render` the markup is the same `div` with the same classes. The
+ * hook is why this module ships `'use client'`.
  */
 
 const cardVariants = cva(styles.card, {
@@ -21,10 +30,22 @@ const cardVariants = cva(styles.card, {
   },
 });
 
-export type CardProps = ComponentProps<'div'> & VariantProps<typeof cardVariants>;
+export type CardProps = useRender.ComponentProps<'div'> & VariantProps<typeof cardVariants>;
 
-export function Card({ className, size, ...props }: CardProps) {
-  return <div className={cardVariants({ size, className })} {...props} />;
+/*
+ * A Card rendered as a link or a button (`render={<a href />}`) also takes
+ * `.interactive`: the UA link and button styling reset, and the hover and
+ * focus states Item draws. A plain card never gains a hover.
+ */
+export function Card({ className, size, render, ...props }: CardProps) {
+  return useRender({
+    defaultTagName: 'div',
+    render,
+    props: mergeProps<'div'>(
+      { className: cardVariants({ size, className: cx(render && styles.interactive, className) }) },
+      props,
+    ),
+  });
 }
 
 export type CardHeaderProps = ComponentProps<'div'>;
@@ -64,10 +85,28 @@ const cardDescriptionVariants = cva(styles.cardDescription, {
   },
 });
 
-export type CardTitleProps = ComponentProps<'div'> & VariantProps<typeof cardTitleVariants>;
+export type CardTitleProps = useRender.ComponentProps<'div'> &
+  VariantProps<typeof cardTitleVariants>;
 
-export function CardTitle({ className, typography, ...props }: CardTitleProps) {
-  return <div className={cardTitleVariants({ typography, className })} {...props} />;
+/*
+ * With `render` (a heading, typically) the element also takes
+ * `.renderedTitle`, which resets the UA heading margins and font at zero
+ * specificity, so the title class still decides how it looks.
+ */
+export function CardTitle({ className, typography, render, ...props }: CardTitleProps) {
+  return useRender({
+    defaultTagName: 'div',
+    render,
+    props: mergeProps<'div'>(
+      {
+        className: cardTitleVariants({
+          typography,
+          className: cx(render && styles.renderedTitle, className),
+        }),
+      },
+      props,
+    ),
+  });
 }
 
 export type CardDescriptionProps = ComponentProps<'div'> &

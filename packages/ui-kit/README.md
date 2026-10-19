@@ -17,7 +17,7 @@ kits into their own templates.
 import '@gears-frontx/ui-kit/theme.css'; // design tokens (CSS variables)
 
 // two optional global stylesheets, each imported only if you need it:
-import '@gears-frontx/ui-kit/utilities.css'; // shimmer, scroll-fade-x, no-scrollbar
+import '@gears-frontx/ui-kit/utilities.css'; // shimmer, scroll-fade-x, no-scrollbar, sr-only
 import '@gears-frontx/ui-kit/typeset.css'; // prose styling for rendered markdown/HTML
 ```
 
@@ -65,10 +65,11 @@ like Select or Dialog still ships Base UI's own client bundle; only the kit
 wrapper around it needs no directive of its own). The rest call a hook directly
 in their own render body and ship a banner on their own chunk instead.
 
-The kit components that carry a `'use client'` banner of their own: Attachment,
-Badge, Breadcrumb, Bubble, ButtonGroup, Carousel, Chart, Combobox, ContextMenu,
-DataGrid, DataTable, Drawer, DropdownMenu, Marker, PageHeader, Sidebar,
-StatusDot, Table, Toast.
+The kit components that carry a `'use client'` banner of their own: Alert,
+Attachment, Badge, Breadcrumb, Bubble, ButtonGroup, Card, Carousel, Chart,
+CodeBlock, Combobox, ContextMenu, DataGrid, DataTable, Drawer, DropdownMenu,
+Empty, Heading, Link, Marker, PageHeader, Sidebar, StatusDot, Table, Text,
+Toast, VisuallyHidden.
 
 Everything else — including interactive primitives like Button, Checkbox,
 Dialog, Select, Switch, RadioGroup, and Tabs — stays server-renderable; each

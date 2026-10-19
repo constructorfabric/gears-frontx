@@ -1,3 +1,7 @@
+'use client';
+
+import { mergeProps } from '@base-ui/react/merge-props';
+import { useRender } from '@base-ui/react/use-render';
 import { cva, cx, type VariantProps } from 'class-variance-authority';
 import type { ComponentProps } from 'react';
 
@@ -44,10 +48,24 @@ export function EmptyMedia({ className, variant, ...props }: EmptyMediaProps) {
   return <div className={emptyMediaVariants({ variant, className })} {...props} />;
 }
 
-export type EmptyTitleProps = ComponentProps<'div'>;
+export type EmptyTitleProps = useRender.ComponentProps<'div'>;
 
-export function EmptyTitle({ className, ...props }: EmptyTitleProps) {
-  return <div className={cx(styles.emptyTitle, className)} {...props} />;
+/*
+ * `render` swaps the element (a heading, typically) through Base UI's
+ * `useRender`/`mergeProps`, which is why this module ships `'use client'`.
+ * With `render` the element also takes `.renderedTitle`, which resets the
+ * UA heading margins and font at zero specificity. Without it the markup is
+ * the same `div` with the same class.
+ */
+export function EmptyTitle({ className, render, ...props }: EmptyTitleProps) {
+  return useRender({
+    defaultTagName: 'div',
+    render,
+    props: mergeProps<'div'>(
+      { className: cx(styles.emptyTitle, render && styles.renderedTitle, className) },
+      props,
+    ),
+  });
 }
 
 /*

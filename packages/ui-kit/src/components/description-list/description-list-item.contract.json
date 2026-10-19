@@ -1,0 +1,82 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.description_list_item.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "description-list-item",
+  "forwards_to": "gts.frontx.uikit.element.dom_div.v1~",
+  "intent": "Group one term with its value inside a description list.",
+  "typical_uses": [
+    "One fact of a record, its name with its value"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "A row the user acts on or navigates",
+      "instead": {
+        "target": "Item",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.item.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.description_list_term.v1",
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.description_list_details.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "DescriptionList",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.description_list.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "div-grouping",
+      "text": "The item is the `div` grouping HTML allows inside `dl`; in a horizontal list it sits on a subgrid of the list's two columns, so its term lines up with every other term."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A term with its value",
+        "code": "<DescriptionListItem>\n  <DescriptionListTerm>Owner</DescriptionListTerm>\n  <DescriptionListDetails>Platform team</DescriptionListDetails>\n</DescriptionListItem>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Two terms in one item",
+        "code": "<DescriptionListItem>\n  <DescriptionListTerm>Owner</DescriptionListTerm>\n  <DescriptionListTerm>Team</DescriptionListTerm>\n  <DescriptionListDetails>Platform</DescriptionListDetails>\n</DescriptionListItem>\n",
+        "why": "A horizontal list has one term column per item row; the second term takes the value column. Give each pair its own item."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "description_list",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit DescriptionListItem",
+    "type": "object",
+    "properties": {},
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

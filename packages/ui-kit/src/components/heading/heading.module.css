@@ -1,0 +1,32 @@
+/*
+ * Heading styles: the three heading roles of the kit's type ramp
+ * (theme.css `--text-<role>-*`) on the heading family. Consumes only
+ * theme.css variables. A consumer that needs a larger display step brands
+ * it by overriding the ramp tokens; the kit grows no role above `display`.
+ */
+
+.heading {
+  margin: 0;
+  font-family: var(--font-heading);
+}
+
+.typographyDisplay {
+  font-size: var(--text-display-size);
+  line-height: var(--text-display-line-height);
+  font-weight: var(--text-display-weight);
+  letter-spacing: var(--text-display-tracking);
+}
+
+.typographyHeading1 {
+  font-size: var(--text-heading-1-size);
+  line-height: var(--text-heading-1-line-height);
+  font-weight: var(--text-heading-1-weight);
+  letter-spacing: var(--text-heading-1-tracking);
+}
+
+.typographyHeading2 {
+  font-size: var(--text-heading-2-size);
+  line-height: var(--text-heading-2-line-height);
+  font-weight: var(--text-heading-2-weight);
+  letter-spacing: var(--text-heading-2-tracking);
+}

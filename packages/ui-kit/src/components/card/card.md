@@ -54,12 +54,28 @@ padding when the image is the first child, and the image's own corners
 are rounded to match the card (first child rounds the top corners, last
 child the bottom ones) — useful for a media card with a full-bleed image.
 
-`CardTitle` renders a plain `div`, not a heading element — like every
-other part, it has no `render` prop to swap it (Card has no Base UI
-primitive to supply one). When a card is a real page landmark rather
-than a decorative grouping, supply your own heading (e.g. wrap the text
-in an `h2`/`h3`) so the page keeps a document outline; `CardTitle` alone
-contributes nothing to it.
+`CardTitle` renders a plain `div` by default. When a card is a real page
+section rather than a decorative grouping, give the title its heading
+element with `render={<h3 />}` (any level): the element changes, the
+title keeps its look, and the page keeps a document outline. Where the
+element cannot change, `role="heading"` with `aria-level` is the
+fallback.
+
+`Card` takes `render` too. `render={<a href="..." />}` (or a router link,
+or a `button`) makes the whole card one control: no underline, the
+page's font, a `--ring` border on hover and the kit's focus ring on
+keyboard focus. Such a card must hold no other link or button, since HTML
+allows no interactive content inside a link; for a row with its own
+actions use `Item`, or keep the card a `div` and make its title the link.
+
+```tsx
+<Card render={<a href="/guides/setup" />}>
+  <CardHeader>
+    <CardTitle render={<h3 />}>Setup guide</CardTitle>
+    <CardDescription>From install to the first screen.</CardDescription>
+  </CardHeader>
+</Card>
+```
 
 `CardFooter` is a plain flex row and contributes **no gap of its own** —
 two buttons dropped straight into it render flush against each other.

@@ -16,7 +16,8 @@ Rules for generated code:
   entry only when needed — neither is pulled in by any component's own CSS
   chunk, so a missing import fails silently:
   `import '@gears-frontx/ui-kit/utilities.css';` supplies the `shimmer`,
-  `scroll-fade-x` and `no-scrollbar` classes. Attachment DEPENDS on it
+  `scroll-fade-x`, `no-scrollbar` and `sr-only` (visually hidden text for
+  markup that is not React; React code uses VisuallyHidden) classes. Attachment DEPENDS on it
   (`AttachmentTitle` shimmers while uploading, `AttachmentGroup` scrolls
   its row with the other two) and Marker pairs with `shimmer` for
   streaming text — without it those components render, minus the effect.
@@ -42,11 +43,12 @@ Rules for generated code:
   and render directly from a Server Component — no wrapping
   client-boundary module needed — unless it appears in the next line. The
   kit components that carry a `'use client'` banner of their own:
-  Attachment, Badge, Breadcrumb, Bubble, ButtonGroup, Carousel, Chart,
-  Combobox, ContextMenu, DataGrid, DataTable, Drawer, DropdownMenu, Marker,
-  PageHeader, Sidebar, StatusDot, Table, Toast. Each calls a hook directly in
-  its own render body, so it always renders on the client, wherever it is
-  imported from.
+  Alert, Attachment, Badge, Breadcrumb, Bubble, ButtonGroup, Card,
+  Carousel, Chart, CodeBlock, Combobox, ContextMenu, DataGrid, DataTable,
+  Drawer, DropdownMenu, Empty, Heading, Link, Marker, PageHeader, Sidebar,
+  StatusDot, Table, Text, Toast, VisuallyHidden. Each calls a hook directly
+  in its own render body, so it always renders on the client, wherever it
+  is imported from.
 - The kit paints the page itself from its tokens and sets `color-scheme`: with
   no `data-theme` attribute anywhere, `prefers-color-scheme: dark` alone
   yields a correct, legible dark page (background, text, and UA-owned
@@ -93,7 +95,8 @@ Rules for generated code:
   (Alert/AlertTitle/AlertDescription/AlertAction); variant
   default|destructive; no Base UI primitive, `role="alert"`; a leading
   `<svg>` child switches to a two-column icon layout, detected
-  structurally.
+  structurally; `AlertTitle` takes `render` for a real heading
+  (`render={<h3 />}`).
 - [AlertDialog](dist/docs/alert-dialog.md): modal confirmation the user
   must explicitly acknowledge (AlertDialog/AlertDialogTrigger/
   AlertDialogContent/AlertDialogHeader/AlertDialogFooter/
@@ -171,7 +174,10 @@ Rules for generated code:
 - [Card](dist/docs/card.md): bounded content surface (Card/CardHeader/
   CardTitle/CardDescription/CardAction/CardContent/CardFooter); header
   becomes a two-column/two-row grid automatically when it contains a
-  CardAction/CardDescription; sizes default|sm.
+  CardAction/CardDescription; sizes default|sm. `Card` takes `render`
+  (`render={<a href />}` makes the whole card a link, with a hover border
+  and focus ring; it must then hold no other link or button), `CardTitle`
+  takes `render` for a real heading.
 - [Carousel](dist/docs/carousel.md): embla-carousel-react scroll-snapping
   slide track (Carousel/CarouselContent/CarouselItem/CarouselPrevious/
   CarouselNext); orientation horizontal|vertical; `useCarousel()` exported
@@ -185,6 +191,12 @@ Rules for generated code:
 - [Checkbox](dist/docs/checkbox.md): on/off tick box for independent
   options; `checked`/`onCheckedChange`; nest inside Label for one click
   target.
+- [CodeBlock](dist/docs/code-block.md): a command or file excerpt the
+  app places on a screen (CodeBlock/CodeBlockHeader/CodeBlockTitle/
+  CodeBlockCopyButton); `code` is shown verbatim and copied, `label` names
+  the keyboard-scrollable region, `wrap` soft-wraps instead, size
+  default|sm; no syntax highlighting (`language` is reflected as
+  `data-language`).
 - [Collapsible](dist/docs/collapsible.md): single expandable/collapsible
   section (Collapsible/CollapsibleTrigger/CollapsibleContent); no
   variants; unmounts while closed unless `keepMounted`; height-animates
@@ -224,6 +236,11 @@ Rules for generated code:
   a `Popover` to pick a day or range; productizes upstream's
   Popover+Calendar *recipe* into one component; mode single|range,
   variant button|input (single mode only).
+- [DescriptionList](dist/docs/description-list.md): name and value pairs
+  on real `dl`/`dt`/`dd` (DescriptionList/DescriptionListItem/
+  DescriptionListTerm/DescriptionListDetails); orientation
+  vertical|horizontal (terms aligned in one column), size default|sm,
+  details typography body|mono.
 - [Dialog](dist/docs/dialog.md): modal overlay for a focused task or
   confirmation (Dialog/DialogTrigger/DialogContent/DialogHeader/
   DialogFooter/DialogTitle/DialogDescription/DialogClose); traps focus,
@@ -249,7 +266,7 @@ Rules for generated code:
   EmptyDescription/EmptyDetail/EmptyContent/EmptyActions); no Base UI
   primitive; `EmptyMedia` variant default|icon; `EmptyDetail` goes last
   inside the header, `EmptyActions` is the button row and needs no top
-  margin of its own.
+  margin of its own; `EmptyTitle` takes `render` for a real heading.
 - [Field](dist/docs/field.md): primitive-free form-layout system
   (Field/FieldLabel/FieldDescription/FieldError/FieldGroup/FieldSet/
   FieldLegend/FieldSeparator/FieldContent/FieldTitle); Field's `orientation`
@@ -259,6 +276,11 @@ Rules for generated code:
   htmlFor/aria-describedby wiring — wire `FieldLabel`'s `htmlFor` to the
   control's `id` yourself, same as upstream shadcn; `data-invalid`/
   `data-disabled` are plain attributes you set, not derived state.
+- [Heading](dist/docs/heading.md): a heading on the type ramp;
+  typography display|heading-1|heading-2 picks the role, `render` picks
+  the element (default `h2`), so the outline level and the look stay
+  independent; no margin. Use the kit part's own title inside a kit
+  component.
 - [HoverCard](dist/docs/hover-card.md): portalled preview panel opened on
   hover/focus (HoverCard/HoverCardTrigger/HoverCardContent), wrapping Base
   UI's PreviewCard primitives under the shadcn `hover-card` name; `delay`
@@ -300,6 +322,12 @@ Rules for generated code:
   decoration only.
 - [Label](dist/docs/label.md): caption for a form control; native
   `<label>` props; associate via `htmlFor` or by nesting the control.
+- [Link](dist/docs/link.md): an inline anchor that keeps the line box of
+  its text (unlike Button's `link` variant); variant default|muted|inherit,
+  `render` hands it to the app's router link, `external` opens a new tab
+  with a hidden arrow; an svg inside it scales with the text and sits on
+  its baseline. `linkVariants` styles a router link that takes no
+  `render`.
 - [Marker](dist/docs/marker.md): inline conversation marker for status
   updates, system notes, and labeled separators (Marker/MarkerContent/
   MarkerIcon); variants incl. border|separator; pairs with the `shimmer`
@@ -437,6 +465,9 @@ Rules for generated code:
   inactive panels unmount unless `keepMounted`; the active panel replays a
   short fade-up on every switch, `animate={false}` per panel to opt out;
   no portal.
+- [Text](dist/docs/text.md): text on the type ramp; typography
+  body|label|meta|mono|micro, tone default|muted, `render` picks the
+  element (default `p`); no margin.
 - [Textarea](dist/docs/textarea.md): multi-line text field; a plain styled
   native `<textarea>` — no primitive, no Field auto-wiring; native
   `<textarea>` props; grows with content; `aria-invalid` for the error
@@ -461,6 +492,10 @@ Rules for generated code:
 
 ## Stylesheets
 
+- [VisuallyHidden](dist/docs/visually-hidden.md): text a screen reader
+  reads and the screen does not show (a `span`, `render` swaps it); the
+  `sr-only` class in utilities.css is the same rule for markup that is
+  not React.
 - [Typeset](dist/docs/typeset.md): prose styling for rendered markdown/HTML
   (`typeset.css`); wrapper class `typeset` plus rhythm presets
   `typeset-chat|docs|reading|compact|large`, `not-typeset` to opt a subtree

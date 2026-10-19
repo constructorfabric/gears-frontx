@@ -30,7 +30,7 @@
   "invariants": [
     {
       "id": "renders-a-div-not-a-heading",
-      "text": "EmptyTitle renders a div with no heading role or level, so it does not appear in the page's heading outline."
+      "text": "Without `render` EmptyTitle renders a div with no heading role or level, so it does not appear in the page's heading outline; `render={<h2 />}` (any heading level) puts it there, keeping the title class and resetting the UA heading margins and font at zero specificity."
     }
   ],
   "anti_patterns": [
@@ -48,11 +48,21 @@
       "outcome": "unknown"
     }
   },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered div with an element the caller supplies",
+      "because": "useRender's render prop takes an element or a function that receives the props to spread (EmptyTitle passes no state of its own), so its type is a union of a React element and a callback - the compiler emits one JSON type per property. It is for the heading element, such as `render={<h2 />}`."
+    }
+  },
   "examples": {
     "good": [
       {
         "title": "A short headline",
         "code": "<EmptyTitle>No results</EmptyTitle>\n"
+      },
+      {
+        "title": "A headline in the page outline",
+        "code": "<EmptyTitle render={<h2 />}>No messages</EmptyTitle>\n"
       }
     ],
     "bad": [
@@ -75,7 +85,11 @@
   "props": {
     "title": "UiKit EmptyTitle",
     "type": "object",
-    "properties": {},
+    "properties": {
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, {}> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered div with an element the caller supplies. useRender's render prop takes an element or a function that receives the props to spread (EmptyTitle passes no state of its own), so its type is a union of a React element and a callback - the compiler emits one JSON type per property. It is for the heading element, such as `render={<h2 />}`."
+      }
+    },
     "required": [],
     "unevaluatedProperties": {
       "x-uikit-classification": "unchecked"

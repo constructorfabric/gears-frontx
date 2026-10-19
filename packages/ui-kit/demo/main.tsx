@@ -183,9 +183,22 @@ function baseSlug(slug: string): string {
  *  `page-header` are the kit's own grid and page header, neither a shadcn
  *  part); `contracts-demo` and `eval-overview` are demo-only routes
  *  that ride the same examples/*.tsx glob without porting a shadcn part.
+ *  `description-list`, `heading`, `link`, `text` and `visually-hidden` are
+ *  the kit's own typography and list parts, with no shadcn page either.
  *  Every other slug here, including ones that looked unlikely, resolved
  *  ("direction", "date-picker"/"data-table" all have real pages). */
-const NO_SHADCN_PAGE = new Set(['status-dot', 'data-grid', 'page-header', 'contracts-demo', 'eval-overview']);
+const NO_SHADCN_PAGE = new Set([
+  'status-dot',
+  'data-grid',
+  'page-header',
+  'contracts-demo',
+  'eval-overview',
+  'description-list',
+  'heading',
+  'link',
+  'text',
+  'visually-hidden',
+]);
 
 function shadcnDocsUrl(slug: string): string {
   return `https://ui.shadcn.com/docs/components/base/${baseSlug(slug)}`;

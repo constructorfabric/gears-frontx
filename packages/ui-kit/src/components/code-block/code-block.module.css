@@ -1,0 +1,313 @@
+/*
+ * CodeBlock styles, translated from shadcn/ui's base CodeBlock (MIT) to CSS
+ * Modules. Upstream's Tailwind maps onto the kit's tokens: text-sm/text-xs
+ * are the body and meta sizes, px-4/px-3/pt-2 the space scale, border-input
+ * the --input token, rounded-lg --radius-lg. Upstream's `group-data-*` and
+ * `has-[...]` hooks become descendant and `:has()` selectors on the parts'
+ * classes. The edge fade is the global `scroll-fade-x`/`scroll-fade-y`
+ * utility from utilities.css, set by CodeBlockContent.
+ */
+
+.codeBlock {
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+}
+
+.variantDefault {
+  border: var(--border-width) solid var(--input);
+  color: var(--foreground);
+}
+
+.variantDestructive {
+  border: var(--border-width) solid color-mix(in oklab, var(--destructive) 30%, transparent);
+  color: var(--destructive);
+}
+
+.sizeSm {
+  font-size: var(--text-meta-size);
+  line-height: var(--text-meta-line-height);
+}
+
+/*
+ * Keyboard focus on the scroll region marks the whole block, with the
+ * kit's border recolour plus inset ring (see item.module.css) in place of
+ * upstream's ring-3 halo.
+ */
+.codeBlock:has(> .content:focus-visible) {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 var(--ring-inset) var(--ring);
+}
+
+@media (forced-colors: active) {
+  .codeBlock:has(> .content:focus-visible) {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
+.header {
+  display: flex;
+  min-width: 0;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4) 0;
+  color: var(--muted-foreground);
+}
+
+.sizeSm .header {
+  padding: var(--space-3) var(--space-3) 0;
+}
+
+.variantDestructive .header {
+  color: var(--destructive);
+}
+
+/* A wrapper around the title (a link to the file) can shrink too. */
+.header > :has(> .title) {
+  min-width: 0;
+}
+
+.title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  font-weight: var(--text-label-weight);
+}
+
+.sizeSm .title {
+  font-size: var(--text-meta-size);
+}
+
+.variantDestructive .title {
+  color: var(--destructive);
+}
+
+/* Zero specificity, so a caller that sizes its own glyph keeps its size. */
+:where(.title svg) {
+  display: inline-block;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  margin-inline-end: calc(var(--space-1) * 1.5);
+  vertical-align: middle;
+  pointer-events: none;
+}
+
+/* Upstream's size-3.5 glyph at sm: 14px, between --icon-size-xs and -sm. */
+:where(.sizeSm .title svg) {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-1);
+  margin-block: calc(var(--space-1) * -1);
+  margin-inline-start: auto;
+  margin-inline-end: calc(var(--space-1) * -1.5);
+}
+
+/*
+ * With no header, the actions float over the top end of the block and show
+ * while it is hovered or holds focus, and always on a touch screen. Their
+ * buttons take a background so the code underneath does not show through.
+ */
+.codeBlock > .actions {
+  position: absolute;
+  z-index: 1;
+  top: var(--space-3);
+  inset-inline-end: var(--space-3);
+  margin: 0;
+  opacity: 0;
+  transition: opacity var(--duration-micro) var(--ease-standard);
+}
+
+.sizeSm > .actions {
+  top: var(--space-2);
+  inset-inline-end: var(--space-2);
+}
+
+.codeBlock:hover > .actions,
+.codeBlock:focus-within > .actions {
+  opacity: 1;
+}
+
+@media (pointer: coarse) {
+  .codeBlock > .actions {
+    opacity: 1;
+  }
+}
+
+.codeBlock > .actions > button {
+  background-color: var(--background);
+  box-shadow: 0 0 0 var(--border-width) color-mix(in oklab, var(--foreground) 10%, transparent);
+}
+
+.copyButton {
+  flex-shrink: 0;
+}
+
+.content {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: var(--space-4);
+  overflow: auto;
+  outline: none;
+  font-family: var(--font-mono);
+  line-height: 1.625;
+  text-align: start;
+  scrollbar-width: thin;
+}
+
+.sizeSm > .content {
+  padding: var(--space-3);
+}
+
+.codeBlock:has(> .header) > .content {
+  padding-block-start: var(--space-2);
+}
+
+.sizeSm:has(> .header) > .content {
+  padding-block-start: calc(var(--space-1) * 1.5);
+}
+
+.codeBlock:has(> .footer) > .content {
+  padding-block-end: var(--space-2);
+}
+
+.wrap {
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.code {
+  display: grid;
+  min-width: max-content;
+  min-height: 1lh;
+  align-content: start;
+  font: inherit;
+}
+
+.numbered .code {
+  grid-template-columns: auto 1fr;
+}
+
+.wrap .code {
+  min-width: 0;
+}
+
+.line {
+  position: relative;
+  display: block;
+  min-height: 1lh;
+  margin-inline: calc(var(--space-4) * -1);
+  padding-inline: var(--space-4);
+}
+
+.sizeSm .line {
+  margin-inline: calc(var(--space-3) * -1);
+  padding-inline: var(--space-3);
+}
+
+.line::before {
+  min-width: var(--space-6);
+  color: var(--muted-foreground);
+  text-align: end;
+}
+
+.line::after {
+  position: absolute;
+  top: 0;
+  inset-inline-start: var(--space-1);
+  color: var(--muted-foreground);
+  user-select: none;
+}
+
+.numbered .line {
+  display: grid;
+  grid-column: span 2;
+  grid-template-columns: subgrid;
+  column-gap: var(--space-3);
+  counter-increment: line;
+}
+
+.numbered .line::before {
+  content: counter(line);
+  user-select: none;
+}
+
+/* The number is decoration: an empty alternative text keeps it unread. */
+@supports (content: counter(line) / '') {
+  .numbered .line::before {
+    content: counter(line) / '';
+  }
+}
+
+.lineContent {
+  min-width: 0;
+}
+
+.lineDefault {
+  background-color: transparent;
+}
+
+.lineAdded,
+.lineHighlighted {
+  background-color: var(--muted);
+}
+
+.lineAdded::after {
+  content: '+';
+}
+
+.lineRemoved {
+  background-color: color-mix(in oklab, var(--destructive) 10%, transparent);
+}
+
+.lineRemoved::after {
+  color: var(--destructive);
+  content: '\2212';
+}
+
+.footer {
+  display: flex;
+  min-width: 0;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-4);
+  color: var(--muted-foreground);
+}
+
+.sizeSm .footer {
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+/* The kit's visually hidden rule, for the copy announcement; see
+ * visually-hidden.module.css for why each module carries its own copy. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

@@ -1,0 +1,66 @@
+# Semantic overlay for CodeBlockHeader - part of the CodeBlock family, see
+# code-block.contract.yaml's `family_membership` for how the eight
+# contracts relate. `mounted_in` is filled from CodeBlock's accepted
+# components.
+component: code-block-header
+
+intent: Hold a code block's title and its actions in the row above the code.
+
+typical_uses:
+  - The row with the terminal or file name and a copy button
+
+dont_use_when:
+  - situation: The header block of a Card
+    instead:
+      target: CardHeader
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_header.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_title.v1 # CodeBlockTitle
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_actions.v1 # CodeBlockActions
+
+invariants:
+  - id: muted-row-above-the-code
+    text: >-
+      The header is a flex row in --muted-foreground, inset var(--space-4)
+      at the top and sides (var(--space-3) at sm); with a header the
+      content's own top inset drops to var(--space-2).
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A title and its actions
+      code: |
+        <CodeBlockHeader>
+          <CodeBlockTitle>Terminal</CodeBlockTitle>
+          <CodeBlockActions>
+            <CodeBlockCopyButton value="npm install" />
+          </CodeBlockActions>
+        </CodeBlockHeader>
+  bad:
+    - title: The header after the content
+      code: |
+        <CodeBlock>
+          <CodeBlockContent>npm install</CodeBlockContent>
+          <CodeBlockHeader>
+            <CodeBlockTitle>Terminal</CodeBlockTitle>
+          </CodeBlockHeader>
+        </CodeBlock>
+      why: >-
+        The header is the row above the code; below it, the content keeps a
+        header-side top inset and the title reads after the code.
+
+family_membership:
+  name: code_block
+  role: part

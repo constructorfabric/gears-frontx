@@ -31,9 +31,15 @@ Composition: `Empty` (root) → `EmptyHeader` (→ `EmptyMedia`, `EmptyTitle`,
 | `variant` | `'default' \| 'icon'` — `icon` draws a muted rounded square behind the icon; `default` stays transparent | `'default'` |
 | `className` | `string` — merged after the variant class | — |
 
-`Empty`, `EmptyHeader`, `EmptyTitle`, `EmptyDescription`, `EmptyDetail`,
-`EmptyActions` and `EmptyContent` take no kit-specific props - every prop is
-the underlying native element's props (`EmptyDescription` renders a `<div>`,
+`EmptyTitle`:
+
+| Prop | Type | Default |
+|------|------|---------|
+| `render` | `ReactElement` or callback - the element, such as `<h2 />` to put the headline in the page outline; the title keeps its look | `div` |
+
+`Empty`, `EmptyHeader`, `EmptyDescription`, `EmptyDetail`, `EmptyActions`
+and `EmptyContent` take no kit-specific props - every prop is the
+underlying native element's props (`EmptyDescription` renders a `<div>`,
 matching upstream, despite its own props type naming `<p>` - see
 `empty.tsx`), forwarded as-is.
 

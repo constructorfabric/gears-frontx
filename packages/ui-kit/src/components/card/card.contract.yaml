@@ -87,8 +87,21 @@ invariants:
     text: >-
       The root sets overflow hidden, so anything a child draws past the
       card's rounded border box is clipped.
+  - id: interactive-only-as-a-link-or-button
+    text: >-
+      With `render={<a href />}` or `render={<button />}` the whole card is
+      the control: the UA underline and button font are reset, the border
+      turns --ring on hover, and keyboard focus draws the --ring border
+      with the inset ring (a Highlight outline under forced colours). A
+      card without `render`, or rendered as another element, gains no
+      hover and no focus ring.
 
 anti_patterns:
+  - dont: Render the Card as a link while it holds other links or buttons
+    do_instead: >-
+      Keep the Card a div and make its title the link, or use Item for a
+      row with its own actions; HTML allows no interactive content inside
+      a link or a button
   - dont: Nest a Card inside another Card's content to group items within one surface
     do_instead: >-
       Lay the items out with a grid or flex wrapper inside CardContent; a
@@ -101,6 +114,15 @@ attestations:
     outcome: unknown
   rtl:
     outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered div with an element the caller supplies
+    because: >-
+      useRender's render prop takes an element or a function that receives
+      the props to spread (Card passes no state of its own), so its type
+      is a union of a React element and a callback - the compiler emits one
+      JSON type per property. It is for the root element, such as `render={<a href="/guides/setup" />}` for a card that navigates as a whole.
 
 examples:
   good:
@@ -121,6 +143,14 @@ examples:
             <Button variant="outline">Cancel</Button>
             <Button>Upgrade</Button>
           </CardFooter>
+        </Card>
+    - title: A whole card as a link, with its title as a heading
+      code: |
+        <Card render={<a href="/guides/setup" />}>
+          <CardHeader>
+            <CardTitle render={<h3 />}>Setup guide</CardTitle>
+            <CardDescription>From install to the first screen.</CardDescription>
+          </CardHeader>
         </Card>
     - title: A compact card sized down as a unit
       code: |

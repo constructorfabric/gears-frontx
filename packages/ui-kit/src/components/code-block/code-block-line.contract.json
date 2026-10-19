@@ -1,0 +1,93 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_line.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "code-block-line",
+  "forwards_to": "gts.frontx.uikit.element.dom_span.v1~",
+  "intent": "Hold one line of code, plain or marked as added, removed or highlighted.",
+  "typical_uses": [
+    "The lines of a diff",
+    "A line called out in an excerpt"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Plain code with no marked or numbered line",
+      "instead": {
+        "target": "CodeBlockContent, with the code as a string",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_content.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true
+  },
+  "mounted_in": [
+    {
+      "container": "CodeBlockContent",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_content.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "marks-and-fills",
+      "text": "`added` fills the line with --muted and marks it +, `removed` fills it with --destructive at 10% and marks it − in --destructive, `highlighted` fills it with --muted; the marker sits in the line's start inset and is not selectable. An empty line holds a newline."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "A changed line in a diff",
+        "code": "<CodeBlockContent lineNumbers>\n  <CodeBlockLine variant=\"removed\">return a</CodeBlockLine>\n  <CodeBlockLine variant=\"added\">return b</CodeBlockLine>\n</CodeBlockContent>\n"
+      }
+    ],
+    "bad": [
+      {
+        "title": "A line outside its content",
+        "code": "<CodeBlock><CodeBlockLine>return a</CodeBlockLine></CodeBlock>",
+        "why": "The line's insets, numbering and mono face come from CodeBlockContent; put the lines inside it."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "code_block",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [
+      "VariantProps<typeof codeBlockLineVariants>"
+    ],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit CodeBlockLine",
+    "type": "object",
+    "properties": {
+      "variant": {
+        "type": "string",
+        "enum": [
+          "default",
+          "added",
+          "removed",
+          "highlighted"
+        ],
+        "default": "default"
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

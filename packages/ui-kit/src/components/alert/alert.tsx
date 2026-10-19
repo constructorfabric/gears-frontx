@@ -1,3 +1,7 @@
+'use client';
+
+import { mergeProps } from '@base-ui/react/merge-props';
+import { useRender } from '@base-ui/react/use-render';
 import { cva, cx, type VariantProps } from 'class-variance-authority';
 import type { ComponentProps } from 'react';
 
@@ -31,10 +35,24 @@ export function Alert({ className, variant, ...props }: AlertProps) {
   return <div role="alert" className={alertVariants({ variant, className })} {...props} />;
 }
 
-export type AlertTitleProps = ComponentProps<'div'>;
+export type AlertTitleProps = useRender.ComponentProps<'div'>;
 
-export function AlertTitle({ className, ...props }: AlertTitleProps) {
-  return <div className={cx(styles.alertTitle, className)} {...props} />;
+/*
+ * `render` swaps the element (a heading, typically) through Base UI's
+ * `useRender`/`mergeProps`, which is why this module ships `'use client'`.
+ * With `render` the element also takes `.renderedTitle`, which resets the
+ * UA heading margins and font at zero specificity. Without it the markup is
+ * the same `div` with the same class.
+ */
+export function AlertTitle({ className, render, ...props }: AlertTitleProps) {
+  return useRender({
+    defaultTagName: 'div',
+    render,
+    props: mergeProps<'div'>(
+      { className: cx(styles.alertTitle, render && styles.renderedTitle, className) },
+      props,
+    ),
+  });
 }
 
 export type AlertDescriptionProps = ComponentProps<'div'>;

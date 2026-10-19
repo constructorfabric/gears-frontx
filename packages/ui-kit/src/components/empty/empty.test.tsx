@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
+import { declarationMap, declaredIn, extractRules } from '../../__test-utils__/css-rules';
 import {
   Empty,
   EmptyActions,
@@ -174,5 +174,30 @@ describe('Empty drawn geometry', () => {
   it('keeps the description at the drawn 14/20, the kit\'s own Body role', () => {
     expect(declared('.emptyDescription', 'font-size')).toBe('var(--text-body-size)');
     expect(declared('.emptyDescription', 'line-height')).toBe('var(--text-body-line-height)');
+  });
+});
+
+describe('EmptyTitle render', () => {
+  it('renders the same div with the same class and no extra attributes without render', () => {
+    render(<EmptyTitle data-testid="title">Title</EmptyTitle>);
+    const title = screen.getByTestId('title');
+    expect(title.tagName).toBe('DIV');
+    expect(title.className).toBe(styles.emptyTitle);
+    expect(title.getAttributeNames().sort()).toEqual(['class', 'data-testid']);
+  });
+
+  it('renders a heading that keeps the title class', () => {
+    render(
+      <EmptyTitle render={<h2 />}>Title</EmptyTitle>
+    );
+    const heading = screen.getByRole('heading', { level: 2, name: 'Title' });
+    expect(heading.className).toContain(styles.emptyTitle);
+    expect(heading.className).toContain(styles.renderedTitle);
+  });
+
+  it('resets a rendered title to the look of the div at zero specificity', () => {
+    const declaredRule = declaredIn(import.meta.url, 'empty.module.css');
+    expect(declaredRule(':where(.renderedTitle)', 'margin')).toBe('0');
+    expect(declaredRule(':where(.renderedTitle)', 'font-size')).toBe('inherit');
   });
 });

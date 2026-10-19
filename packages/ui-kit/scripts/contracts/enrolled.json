@@ -63,5 +63,11 @@
   "toast",
   "toggle",
   "toggle-group",
-  "tooltip"
+  "tooltip",
+  "code-block",
+  "description-list",
+  "heading",
+  "link",
+  "text",
+  "visually-hidden"
 ]

@@ -1,0 +1,66 @@
+# Semantic overlay for CodeBlockActions - part of the CodeBlock family, see
+# code-block.contract.yaml's `family_membership` for how the eight
+# contracts relate. `mounted_in` is filled from CodeBlock and CodeBlockHeader's accepted
+# components.
+component: code-block-actions
+
+intent: Group a code block's buttons, at the end of its header or floating over the code.
+
+typical_uses:
+  - A copy button, or a wrap toggle beside it
+
+dont_use_when:
+  - situation: The actions of a Card's header
+    instead:
+      target: CardAction
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_action.v1
+
+accepts:
+  content: specified
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_copy_button.v1 # CodeBlockCopyButton
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1 # Button
+
+invariants:
+  - id: floats-without-a-header
+    text: >-
+      Inside CodeBlockHeader the actions sit at the end of the row. As a
+      direct child of CodeBlock they float at the top end, hidden until the
+      block is hovered or holds focus and always shown on a coarse pointer,
+      and their buttons take the --background fill.
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: Floating actions on a block without a header
+      code: |
+        <CodeBlock>
+          <CodeBlockActions>
+            <CodeBlockCopyButton value="npm install" />
+          </CodeBlockActions>
+          <CodeBlockContent>npm install</CodeBlockContent>
+        </CodeBlock>
+  bad:
+    - title: A copy button straight in the header
+      code: |
+        <CodeBlockHeader>
+          <CodeBlockTitle>Terminal</CodeBlockTitle>
+          <CodeBlockCopyButton value="npm install" />
+        </CodeBlockHeader>
+      why: >-
+        The actions group is what pushes the buttons to the end of the row
+        and tightens them to its edge; without it the button sits right
+        after the title.
+
+family_membership:
+  name: code_block
+  role: part

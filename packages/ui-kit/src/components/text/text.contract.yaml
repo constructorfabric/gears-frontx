@@ -1,0 +1,94 @@
+# Semantic overlay for Text - the hand-written half of the contract.
+#
+# The typography and tone axes, their values and defaults and the host element
+# are read by the compiler from text.tsx. Text is a p rendered through
+# useRender/mergeProps, so the only API prop it gains is `render`.
+component: text
+
+intent: Put running text, a label, a meta line or a mono path on one of the kit's type ramp roles, in the default or the muted tone.
+
+typical_uses:
+  - A paragraph between kit components
+  - A muted meta line such as an update time
+  - A file path or a command name in the mono role
+
+dont_use_when:
+  - situation: A heading
+    instead:
+      target: Heading
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.heading.v1
+  - situation: A block of code with a copy action
+    instead:
+      target: CodeBlock
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.code_block.v1
+  - situation: A keyboard key or shortcut
+    instead:
+      target: Kbd
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.kbd.v1
+  - situation: The description line of a Card
+    instead:
+      target: CardDescription
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_description.v1
+
+accepts:
+  content: specified
+  text: true
+
+invariants:
+  - id: role-tokens-only
+    text: >-
+      Each typography value sets font size, line height, weight and tracking from the
+      matching `--text-<role>-*` ramp tokens; `mono` also sets
+      `--font-mono`. The tone sets only `color`, from `--foreground` or
+      `--muted-foreground`.
+  - id: no-margin
+    text: The text has zero margin on whatever element `render` substitutes.
+  - id: null-resolves-to-default
+    text: An explicit `typography={null}` or `tone={null}` resolves to body and default.
+
+anti_patterns:
+  - dont: Set a font size or a colour on Text from outside
+    do_instead: Pick the ramp role with `typography` and the colour with `tone`
+  - dont: Use the micro or meta role for a paragraph of running text
+    do_instead: Keep running text on the body role; meta and micro are for short lines
+
+deprecations: {}
+
+# text.test.tsx asserts the default p, the role and tone classes, the null
+# fallback and the element swap; nothing in it runs an accessibility engine
+# or renders under a right-to-left direction.
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered element with one the caller supplies
+    because: >-
+      useRender's render prop takes an element or a function that receives
+      the props to spread (Text passes no state of its own), so its type is
+      a union of a React element and a callback - the compiler emits one
+      JSON type per property. It is for the element, such as
+      `render={<span />}` inside a row or `render={<code />}` for a path.
+
+companions:
+  - export: textVariants
+    typed_by: 'cva(...), returns (props: VariantProps<typeof textVariants> & { className?: string }) => string'
+    description: The typography and tone class-name builder Text itself uses, exported beside the component.
+
+examples:
+  good:
+    - title: A paragraph
+      code: <Text>Invite people by email.</Text>
+    - title: A muted meta line
+      code: <Text typography="meta" tone="muted" render={<span />}>Updated 2 hours ago</Text>
+    - title: A path
+      code: <Text typography="mono" render={<code />}>src/app/main.tsx</Text>
+  bad:
+    - title: A tone guessed from StatusDot
+      code: <Text tone="danger">Failed</Text>
+      why: >-
+        Text has two tones, default and muted; a state colour belongs to
+        StatusDot or Badge.

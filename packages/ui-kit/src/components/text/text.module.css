@@ -1,0 +1,53 @@
+/*
+ * Text styles: the body, label, meta, mono and micro roles of the kit's
+ * type ramp (theme.css `--text-<role>-*`) and two tones. Consumes only
+ * theme.css variables.
+ */
+
+.text {
+  margin: 0;
+}
+
+.typographyBody {
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line-height);
+  font-weight: var(--text-body-weight);
+  letter-spacing: var(--text-body-tracking);
+}
+
+.typographyLabel {
+  font-size: var(--text-label-size);
+  line-height: var(--text-label-line-height);
+  font-weight: var(--text-label-weight);
+  letter-spacing: var(--text-label-tracking);
+}
+
+.typographyMeta {
+  font-size: var(--text-meta-size);
+  line-height: var(--text-meta-line-height);
+  font-weight: var(--text-meta-weight);
+  letter-spacing: var(--text-meta-tracking);
+}
+
+.typographyMono {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono-size);
+  line-height: var(--text-mono-line-height);
+  font-weight: var(--text-mono-weight);
+  letter-spacing: var(--text-mono-tracking);
+}
+
+.typographyMicro {
+  font-size: var(--text-micro-size);
+  line-height: var(--text-micro-line-height);
+  font-weight: var(--text-micro-weight);
+  letter-spacing: var(--text-micro-tracking);
+}
+
+.toneDefault {
+  color: var(--foreground);
+}
+
+.toneMuted {
+  color: var(--muted-foreground);
+}

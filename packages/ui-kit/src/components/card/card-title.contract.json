@@ -52,12 +52,16 @@
     {
       "id": "panel-typography-wins-over-card-size",
       "text": "Its default size follows the nearest Card's `size` (heading-2 at default, body at sm); `typography=\"panel\"` sets the body size at the heading-2 weight with normal letter spacing whatever the Card's `size`."
+    },
+    {
+      "id": "render-swaps-the-element-keeps-the-look",
+      "text": "Without `render` CardTitle is a div. With `render={<h3 />}` (any heading level) the element changes and the title class stays, with the UA heading margins and font reset at zero specificity, so the heading measures and paints as the div did."
     }
   ],
   "anti_patterns": [
     {
       "dont": "Rely on CardTitle alone to give a card a place in the page's heading outline",
-      "do_instead": "Pass `role=\"heading\"` and an `aria-level` on CardTitle, which keeps the part's own styling while exposing it as a heading"
+      "do_instead": "Render it as a heading element with `render={<h3 />}`, which keeps the part's own styling; `role=\"heading\"` with `aria-level` is the fallback where the element cannot change"
     }
   ],
   "deprecations": {},
@@ -69,6 +73,12 @@
       "outcome": "unknown"
     }
   },
+  "prop_statements": {
+    "render": {
+      "states": "render replaces the rendered div with an element the caller supplies",
+      "because": "useRender's render prop takes an element or a function that receives the props to spread (CardTitle passes no state of its own), so its type is a union of a React element and a callback - the compiler emits one JSON type per property. It is for the heading element, such as `render={<h3 />}`."
+    }
+  },
   "examples": {
     "good": [
       {
@@ -76,8 +86,8 @@
         "code": "<CardTitle>Team plan</CardTitle>\n"
       },
       {
-        "title": "A headline exposed as a level-3 heading",
-        "code": "<CardTitle role=\"heading\" aria-level={3}>Team plan</CardTitle>\n"
+        "title": "A headline rendered as a level-3 heading",
+        "code": "<CardTitle render={<h3 />}>Team plan</CardTitle>\n"
       }
     ],
     "bad": [
@@ -110,6 +120,9 @@
           "panel"
         ],
         "default": "default"
+      },
+      "render": {
+        "description": "TS: ReactElement<unknown, string | JSXElementConstructor<any>> | ComponentRenderFn<HTMLProps, {}> | undefined. The compiler emits one JSON type per property; this type is left to tsc. render replaces the rendered div with an element the caller supplies. useRender's render prop takes an element or a function that receives the props to spread (CardTitle passes no state of its own), so its type is a union of a React element and a callback - the compiler emits one JSON type per property. It is for the heading element, such as `render={<h3 />}`."
       }
     },
     "required": [],

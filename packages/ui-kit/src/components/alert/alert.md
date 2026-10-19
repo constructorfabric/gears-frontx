@@ -36,8 +36,14 @@ structurally, no prop to set.
 | `variant` | `'default' \| 'destructive'` | `'default'` |
 | `className` | `string` — merged after the variant class | — |
 
-`AlertTitle`, `AlertDescription`, and `AlertAction` take no kit-specific
-props — every prop is the underlying `<div>`'s props, forwarded as-is.
+`AlertTitle`:
+
+| Prop | Type | Default |
+|------|------|---------|
+| `render` | `ReactElement` or callback - the element, such as `<h3 />` for a real heading; the title keeps its look | `div` |
+
+`AlertDescription` and `AlertAction` take no kit-specific props - every
+prop is the underlying `<div>`'s props, forwarded as they are.
 
 ## Examples
 

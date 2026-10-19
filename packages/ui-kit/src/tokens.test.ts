@@ -102,14 +102,15 @@ const moduleFiles = readdirSync(componentsDir, { recursive: true, encoding: 'utf
  * when its fallback does: the hook's own `var(--name,` opener is dropped and
  * the fallback is checked like any other value, so a literal fallback
  * (`var(--sheet-inset, 24px)`) is still caught. An empty fallback keeps its
- * opener, so it is reported as well.
+ * opener, so it is reported as well. `inherit` passes like `auto`: it takes
+ * the parent's value, which the guard checks where it is set.
  */
 function metricLeftover(value: string): string {
   return value
     .replace(/var\(--[a-z0-9_-]+\s*,(?!\s*\))/g, ' ')
     .replace(/var\(--[a-z0-9_-]+\)/g, ' ')
     .replace(/calc\(|\)|[+*]|-1\b/g, ' ')
-    .replace(/\b(?:0|auto|normal)\b/g, ' ')
+    .replace(/\b(?:0|auto|normal|inherit)\b/g, ' ')
     .trim();
 }
 
@@ -533,6 +534,25 @@ describe('theme tokens', () => {
       // empty.test.tsx pins the pair.
       'empty.module.css|font-size|1.125rem',
       'empty.module.css|line-height|1.5rem',
+      // An icon inside a Link is sized in em so it follows whatever line the
+      // link sits in (a 14px body line or a 26px display heading), and its
+      // gap to the text is a quarter of that same em. A step of the space
+      // scale is a fixed rem and would not scale with the text, which is
+      // the drawn rule for icons in links. link.test.tsx pins both.
+      'link.module.css|margin-inline-start|0.25em',
+      'link.module.css|margin-inline-end|0.25em',
+      // CodeBlock is a port of shadcn/ui's, which sets three 6px steps
+      // (its *-1.5 classes: the gap after a title glyph, the header-side
+      // top inset of a small block, and the actions' pull to the edge) and
+      // a relaxed 1.625 code line (leading-relaxed). The spacing scale has
+      // no step between --space-1 (4) and --space-2 (8) and the type ramp
+      // no relaxed line, so the values are written from the scale where
+      // they can be and kept as upstream draws them. code-block.test.tsx
+      // pins them.
+      'code-block.module.css|margin-inline-end|calc(var(--space-1) * 1.5)',
+      'code-block.module.css|margin-inline-end|calc(var(--space-1) * -1.5)',
+      'code-block.module.css|padding-block-start|calc(var(--space-1) * 1.5)',
+      'code-block.module.css|line-height|1.625',
     ]);
     for (const file of moduleFiles) {
       const base = file.slice(file.lastIndexOf('/') + 1);
@@ -577,6 +597,7 @@ describe('theme tokens', () => {
     expect(metricLeftover('var(--sheet-inset , var(--space-6))')).toBe('');
     expect(metricLeftover('var(--sheet-inset, 24px)')).toBe('24px');
     expect(metricLeftover('var(--sheet-inset,)')).toBe('var(--sheet-inset,');
+    expect(metricLeftover('inherit')).toBe('');
     expect(metricLeftover('var(--sheet-inset, var(--fallback, 4px))')).toBe('4px');
   });
 

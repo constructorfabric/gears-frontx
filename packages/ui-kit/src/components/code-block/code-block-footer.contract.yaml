@@ -1,0 +1,61 @@
+# Semantic overlay for CodeBlockFooter - part of the CodeBlock family, see
+# code-block.contract.yaml's `family_membership` for how the eight
+# contracts relate. `mounted_in` is filled from CodeBlock's accepted
+# components.
+component: code-block-footer
+
+intent: Hold a row below a code block's content, such as a show more button.
+
+typical_uses:
+  - A show more button under a capped block
+
+dont_use_when:
+  - situation: The footer of a Card
+    instead:
+      target: CardFooter
+      component: gts.frontx.uikit._.component.v1~frontx.uikit._.card_footer.v1
+
+accepts:
+  content: specified
+  text: true
+  components:
+    - gts.frontx.uikit._.component.v1~frontx.uikit._.button.v1 # Button
+
+invariants:
+  - id: muted-row-below-the-code
+    text: >-
+      The footer is a flex row in --muted-foreground, inset var(--space-4)
+      at the bottom and sides (var(--space-3) at sm); with a footer the
+      content's own bottom inset drops to var(--space-2).
+
+anti_patterns: []
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A show more button
+      code: |
+        <CodeBlockFooter>
+          <Button variant="ghost" size="sm">Show more</Button>
+        </CodeBlockFooter>
+  bad:
+    - title: The footer before the content
+      code: |
+        <CodeBlock>
+          <CodeBlockFooter>Show more</CodeBlockFooter>
+          <CodeBlockContent>npm install</CodeBlockContent>
+        </CodeBlock>
+      why: >-
+        The footer is the row below the code; above it, it reads before the
+        code and the content keeps its full bottom inset.
+
+family_membership:
+  name: code_block
+  role: part

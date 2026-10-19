@@ -1,0 +1,100 @@
+{
+  "$id": "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_content.v1",
+  "gts_type": "gts.frontx.uikit._.component.v1~",
+  "metamodel": "2.0.0",
+  "component": "code-block-content",
+  "forwards_to": "gts.frontx.uikit.element.dom_pre.v1~",
+  "intent": "Show the code itself in a focusable, scrolling or wrapping region.",
+  "typical_uses": [
+    "A command, a file excerpt, terminal output or a log",
+    "Numbered lines, or lines marked as added, removed or highlighted"
+  ],
+  "dont_use_when": [
+    {
+      "situation": "Code inside a sentence",
+      "instead": {
+        "target": "Text, with `typography=\"mono\"` and `render={<code />}`",
+        "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.text.v1"
+      }
+    }
+  ],
+  "accepts": {
+    "content": "specified",
+    "text": true,
+    "components": [
+      "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block_line.v1"
+    ]
+  },
+  "mounted_in": [
+    {
+      "container": "CodeBlock",
+      "component": "gts.frontx.uikit._.component.v1~frontx.uikit._.code_block.v1"
+    }
+  ],
+  "invariants": [
+    {
+      "id": "focusable-ltr-region",
+      "text": "The content is a `pre` with `tabIndex={0}` and `dir=\"ltr\"`, in the mono family on a 1.625 line, scrolling both ways with the edge fade of the `scroll-fade-x` utility; `wrap` wraps long lines instead and fades the top and bottom edges."
+    },
+    {
+      "id": "numbers-from-a-counter",
+      "text": "`lineNumbers` numbers each CodeBlockLine from a CSS counter the `pre` resets to `startLine - 1`, kept out of a copied selection; a string child is split into one CodeBlockLine per line first."
+    }
+  ],
+  "anti_patterns": [],
+  "deprecations": {},
+  "attestations": {
+    "a11y": {
+      "outcome": "unknown"
+    },
+    "rtl": {
+      "outcome": "unknown"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "title": "Numbered lines from a string",
+        "code": "<CodeBlockContent lineNumbers startLine={12}>{source}</CodeBlockContent>"
+      }
+    ],
+    "bad": [
+      {
+        "title": "Highlighted HTML as a string",
+        "code": "<CodeBlockContent dangerouslySetInnerHTML={{ __html: highlighted }} />\n",
+        "why": "The highlighted string replaces the inner `code` element and the line parts; render the tokens as elements inside CodeBlockLine."
+      }
+    ]
+  },
+  "family_membership": {
+    "name": "code_block",
+    "role": "part"
+  },
+  "x-uikit": {
+    "partially_typed_props": {},
+    "variant_sources": [],
+    "cannot_extract": []
+  },
+  "props": {
+    "title": "UiKit CodeBlockContent",
+    "type": "object",
+    "properties": {
+      "lineNumbers": {
+        "type": "boolean",
+        "default": false
+      },
+      "startLine": {
+        "type": "number",
+        "default": 1
+      },
+      "wrap": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "required": [],
+    "unevaluatedProperties": {
+      "x-uikit-classification": "unchecked"
+    }
+  }
+}

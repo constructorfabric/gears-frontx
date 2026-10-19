@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
+import { declarationMap, declaredIn, extractRules } from '../../__test-utils__/css-rules';
 
 import {
   Card,
@@ -175,5 +175,64 @@ describe('Card panel typography', () => {
     expect(declared('.cardDescription.typographyPanel', 'font-weight')).toBe(
       'var(--text-meta-weight)',
     );
+  });
+});
+
+describe('Card render', () => {
+  it('renders the same div with the same classes and no extra attributes without render', () => {
+    render(
+      <Card data-testid="card">
+        <CardTitle data-testid="title">Team plan</CardTitle>
+      </Card>,
+    );
+    const card = screen.getByTestId('card');
+    expect(card.tagName).toBe('DIV');
+    expect(card.className).not.toContain(styles.interactive);
+    expect(card.getAttributeNames().sort()).toEqual(['class', 'data-testid']);
+    const title = screen.getByTestId('title');
+    expect(title.tagName).toBe('DIV');
+    expect(title.className).not.toContain(styles.renderedTitle);
+    expect(title.getAttributeNames().sort()).toEqual(['class', 'data-testid']);
+  });
+
+  it('makes the whole card a link with the interactive class', () => {
+    render(
+      <Card render={<a href="/guides/setup" />}>
+        <CardHeader>
+          <CardTitle render={<h3 />}>Setup guide</CardTitle>
+        </CardHeader>
+      </Card>,
+    );
+    const link = screen.getByRole('link', { name: 'Setup guide' });
+    expect(link.getAttribute('href')).toBe('/guides/setup');
+    expect(link.className).toContain(styles.card);
+    expect(link.className).toContain(styles.interactive);
+    const heading = screen.getByRole('heading', { level: 3, name: 'Setup guide' });
+    expect(heading.className).toContain(styles.cardTitle);
+    expect(heading.className).toContain(styles.renderedTitle);
+  });
+});
+
+// jsdom does no layout, so the states a link card draws are read from the module source.
+describe('Card render drawn rules', () => {
+  const declaredRule = declaredIn(import.meta.url, 'card.module.css');
+
+  it('resets the UA link and button styling at zero specificity', () => {
+    expect(declaredRule(':where(.interactive)', 'text-decoration')).toBe('none');
+    expect(declaredRule(':where(.interactive)', 'font')).toBe('inherit');
+  });
+
+  it('draws the hover border and the focus ring only on a link or button root', () => {
+    expect(declaredRule('.interactive:where(a[href], button):hover', 'border-color')).toBe(
+      'var(--ring)',
+    );
+    expect(declaredRule('.interactive:where(a[href], button):focus-visible', 'box-shadow')).toBe(
+      'inset 0 0 0 var(--ring-inset) var(--ring)',
+    );
+  });
+
+  it('resets a rendered title to the look of the div', () => {
+    expect(declaredRule(':where(.renderedTitle)', 'margin')).toBe('0');
+    expect(declaredRule(':where(.renderedTitle)', 'font-size')).toBe('inherit');
   });
 });
