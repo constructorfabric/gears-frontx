@@ -34,6 +34,25 @@ layout, spacing, text roles) or supplied per-instance by the consumer's own
 `content` prop for themed rendering, or omit `content` for Recharts'
 own default.
 
+## Sizing
+
+`ChartContainer` keeps a 16:9 aspect ratio by default, so a standalone
+chart takes its height from its width. In a slot that gives the chart its
+height (a dashboard card, a grid row, a split pane), set
+`--chart-aspect-ratio: auto` on the container or any ancestor, together
+with a height or a stretching parent:
+
+```tsx
+<ChartContainer config={chartConfig} style={{ '--chart-aspect-ratio': 'auto', height: '100%' } as React.CSSProperties}>
+  …
+</ChartContainer>
+```
+
+Set the custom property rather than overriding `aspect-ratio` from a
+class: a class has the same weight as the kit's rule, so it wins only when
+its stylesheet happens to load after the kit's. Any other ratio works the
+same way (`--chart-aspect-ratio: 4 / 3`).
+
 ## Series colors: `ChartConfig`, with the `--chart-*` palette behind it
 
 ```ts

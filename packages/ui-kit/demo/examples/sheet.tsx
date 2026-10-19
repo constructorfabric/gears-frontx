@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import {
   Button,
   Sheet,
@@ -92,6 +93,31 @@ export default function SheetExample() {
               <SheetClose render={<Button variant="outline" />}>Cancel</SheetClose>
               <Button>Save changes</Button>
             </SheetFooter>
+          </SheetContent>
+        </Sheet>
+      </Section>
+
+      <Section title="Edge-to-edge region">
+        <Sheet>
+          <SheetTrigger render={<Button variant="outline" />}>Open</SheetTrigger>
+          <SheetContent side="right">
+            <SheetHeader>
+              <SheetTitle>Files</SheetTitle>
+              <SheetDescription>The list runs to the panel edges.</SheetDescription>
+            </SheetHeader>
+            <div style={{ '--sheet-inset': 0 } as CSSProperties}>
+              {['Q3 report.pdf', 'Notes.txt', 'Roadmap.md'].map((name) => (
+                <div
+                  key={name}
+                  style={{
+                    borderBlockEnd: 'var(--border-width) solid var(--border)',
+                    padding: 'var(--space-3) var(--space-6)',
+                  }}
+                >
+                  {name}
+                </div>
+              ))}
+            </div>
           </SheetContent>
         </Sheet>
       </Section>

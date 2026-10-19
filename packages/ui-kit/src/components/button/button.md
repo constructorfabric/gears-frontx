@@ -18,6 +18,11 @@ polymorphism, correct disabled/focus behavior, `type="button"` by default
 - Plain in-text navigation — use the consumer app's link component, not
   `variant="link"`; that variant exists for actions that visually read as
   links.
+- Navigation that looks like a button (a "Get started" link, a call to
+  action) — use the consumer app's link component with
+  `buttonVariants({ variant, size })` as its class, so the element keeps
+  the link role. `render={<a />}` on `Button` keeps the button role, so a
+  screen reader announces the link as a button.
 - Toggling on/off state — use `switch` or `checkbox` instead.
 
 ## Props (kit level)
@@ -99,7 +104,7 @@ through `onClick`, not a manual listener, if you need it to respect
 ## Examples
 
 ```tsx
-import { Button } from '@gears-frontx/ui-kit';
+import { Button, buttonVariants } from '@gears-frontx/ui-kit';
 
 // Primary action
 <Button onClick={save}>Save</Button>
@@ -127,6 +132,12 @@ import { Button } from '@gears-frontx/ui-kit';
 <Button render={<a href="/reports" />} nativeButton={false} variant="outline">
   Open reports
 </Button>
+
+// Navigation drawn as a button: the app's link component (here a plain
+// anchor) wears the button classes and keeps the link role
+<a href="/docs" className={buttonVariants({ size: 'lg' })}>
+  Get started
+</a>
 
 // Form submit (explicit type)
 <Button type="submit">Create account</Button>

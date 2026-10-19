@@ -1,6 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -148,5 +153,24 @@ describe('MessageScroller', () => {
     expect(viewport.className).toContain(styles.viewport);
     expect(viewport.className).toContain('consumer-viewport');
     expect(viewport.parentElement?.className).toContain('consumer-root');
+  });
+});
+
+function declaredIn(file: string) {
+  const rules = extractRules(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), file), 'utf8'),
+  );
+  return (selector: string, prop: string) => {
+    const rule = rules.find((candidate) => candidate.selector === selector);
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  };
+}
+
+// jsdom does no layout, so the box model is read from the module source.
+describe('MessageScroller box model', () => {
+  it('keeps a consumer padding inside the frame and the viewport', () => {
+    const declared = declaredIn('message-scroller.module.css');
+    expect(declared('.root', 'box-sizing')).toBe('border-box');
+    expect(declared('.viewport', 'box-sizing')).toBe('border-box');
   });
 });

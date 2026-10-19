@@ -157,7 +157,9 @@ Rules for generated code:
   `loading` spins,
   disables, and keeps the width and accessible name; render prop for
   button-semantic actions over a real anchor (not a link substitute);
-  `buttonVariants` is exported for styling other elements to match.
+  `buttonVariants` is exported for styling other elements to match, such
+  as the app's link component for navigation drawn as a button (it keeps
+  the link role).
 - [ButtonGroup](dist/docs/button-group.md): visually joins a row/column of
   controls into one strip (ButtonGroup/ButtonGroupText/
   ButtonGroupSeparator); orientation horizontal|vertical; works on any
@@ -178,7 +180,8 @@ Rules for generated code:
   (ChartContainer/ChartTooltip+ChartTooltipContent/ChartLegend+
   ChartLegendContent); draws no chart type itself — series colors come
   from a per-instance `ChartConfig`, not `--chart-*` tokens; no
-  variant/size axis.
+  variant/size axis; 16:9 by default, `--chart-aspect-ratio: auto` lets a
+  height or a stretching parent size it.
 - [Checkbox](dist/docs/checkbox.md): on/off tick box for independent
   options; `checked`/`onCheckedChange`; nest inside Label for one click
   target.
@@ -286,7 +289,9 @@ Rules for generated code:
 - [Item](dist/docs/item.md): a single row in a list of similar things
   (ItemGroup/Item/ItemMedia/ItemContent/ItemTitle/ItemDescription/
   ItemActions/ItemHeader/ItemFooter); `Item`'s `render` prop makes the
-  whole row a link; variant default|outline|muted, size default|sm|xs.
+  whole row a link (it keeps the text colour, no underline);
+  variant default|outline|muted, size default|sm|xs. `ItemTitle` is one
+  line and ends with an ellipsis at its column's width.
   `ItemDescription` clamps to two lines by default; `lineClamp={n}` sets
   another count and `lineClamp="none"` shows the full text (use the prop,
   not a className that resets the clamp); long tokens always wrap.
@@ -382,7 +387,9 @@ Rules for generated code:
 - [Sheet](dist/docs/sheet.md): edge-anchored panel for a focused task/form
   without leaving the page (Sheet/SheetTrigger/SheetContent/SheetHeader/
   SheetFooter/SheetTitle/SheetDescription); wraps the same Base UI Dialog
-  primitives as `Dialog`; `side` top|right|bottom|left; modal by default.
+  primitives as `Dialog`; `side` top|right|bottom|left; modal by default;
+  `--sheet-inset` sets the 24px inset of the panel's regions (`0` on one
+  region runs it edge to edge).
 - [Sidebar](dist/docs/sidebar.md): composable app-shell sidebar with an
   expand/collapse state machine (SidebarProvider+useSidebar plus ~20
   layout parts); persists desktop open state in a cookie, toggles on

@@ -37,6 +37,15 @@ Composition: `ItemGroup` (→ `Item`+, separated by optional
 | `render` | `ReactElement \| ((props, state) => ReactElement)` — replaces the root element; `state` is `{ variant, size }` | — |
 | `className` | `string` — merged after variant/size classes | — |
 
+Rendered as a link (`render={<a href="..." />}`), the row keeps the
+surrounding text colour and no underline, so it looks like the plain rows
+beside it, and gets the same `--muted` hover fill as a link nested in a row.
+
+`ItemTitle` stays on one line. A short title is as wide as its text; a long
+one stops at the width of its column and ends with an ellipsis. Its text is
+wrapped in a span that draws the ellipsis; an icon or badge passed beside
+the text renders as it is.
+
 `ItemMedia`:
 
 | Prop | Type | Default |

@@ -523,8 +523,13 @@ describe('theme tokens', () => {
           if (!GUARDED_PROP.test(prop) || EXCEPTIONS.has(`${base}|${prop}|${value}`)) {
             continue;
           }
+          // A consumer hook read with a fallback (`var(--sheet-inset,
+          // var(--space-6))`) passes when its fallback does: the hook's own
+          // `var(--name,` opener is dropped and the fallback is checked
+          // like any other value, so a literal fallback is still caught.
           const leftover = value
             .replace(/var\(--[a-z0-9_-]+\)/g, ' ')
+            .replace(/var\(--[a-z0-9_-]+,/g, ' ')
             .replace(/calc\(|\)|[+*]|-1\b/g, ' ')
             .replace(/\b(?:0|auto|normal)\b/g, ' ')
             .trim();

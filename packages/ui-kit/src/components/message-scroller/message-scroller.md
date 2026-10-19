@@ -66,6 +66,11 @@ exists past each edge; `useMessageScrollerVisibility()` —
 
 ## Behavior notes
 
+- **Padding stays inside the box.** `MessageScroller` and
+  `MessageScrollerViewport` fill their parent (`width` and `height` 100%)
+  with `box-sizing: border-box`, so a padding or border added through
+  `className` (an inner gutter around the transcript) stays inside the
+  parent instead of overflowing it.
 - **Short transcripts bottom-anchor.** `MessageScrollerContent` renders
   `justify-content: flex-end` whenever it directly contains at least one
   `MessageScrollerItem` (detected via the `data-scroll-anchor` attribute

@@ -176,6 +176,17 @@ export default function ItemExample() {
         </Item>
       </Section>
 
+      <Section title="Long title">
+        <div style={{ maxWidth: '15rem' }}>
+          <Item variant="outline">
+            <ItemContent>
+              <ItemTitle>A very long item title that ends with an ellipsis at its column</ItemTitle>
+              <ItemDescription>Short description</ItemDescription>
+            </ItemContent>
+          </Item>
+        </div>
+      </Section>
+
       <Section title="Dropdown">
         <Item variant="outline">
           <ItemContent>

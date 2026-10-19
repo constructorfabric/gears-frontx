@@ -1,8 +1,13 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import type { ComponentProps } from 'react';
 import { cleanup, render, screen } from '@testing-library/react';
 import { Bar, BarChart } from 'recharts';
 import { afterAll, afterEach, beforeAll, describe, expect, expectTypeOf, it, vi } from 'vitest';
 
+import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
 import {
   type ChartConfig,
   ChartContainer,
@@ -401,5 +406,23 @@ describe('content renderer props (types)', () => {
     expectTypeOf<ChartTooltipContentProps>().not.toHaveProperty('onClick');
     expectTypeOf<ChartLegendContentProps>().not.toHaveProperty('onClick');
     expectTypeOf<ChartLegendContentProps>().not.toHaveProperty('content');
+  });
+});
+
+function declaredIn(file: string) {
+  const rules = extractRules(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), file), 'utf8'),
+  );
+  return (selector: string, prop: string) => {
+    const rule = rules.find((candidate) => candidate.selector === selector);
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  };
+}
+
+// jsdom does no layout, so the sizing hook is read from the module source.
+describe('ChartContainer sizing', () => {
+  it('reads its aspect ratio from --chart-aspect-ratio, 16 / 9 by default', () => {
+    const declared = declaredIn('chart.module.css');
+    expect(declared('.container', 'aspect-ratio')).toBe('var(--chart-aspect-ratio, 16 / 9)');
   });
 });

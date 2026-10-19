@@ -1,7 +1,7 @@
 import { mergeProps } from '@base-ui/react/merge-props';
 import { useRender } from '@base-ui/react/use-render';
 import { cva, cx, type VariantProps } from 'class-variance-authority';
-import type { ComponentProps, CSSProperties } from 'react';
+import { Children, type ComponentProps, type CSSProperties, type ReactNode } from 'react';
 
 import { Separator, type SeparatorProps } from '../separator/separator';
 import styles from './item.module.css';
@@ -100,8 +100,43 @@ export function ItemContent({ className, ...props }: ItemContentProps) {
 
 export type ItemTitleProps = ComponentProps<'div'>;
 
-export function ItemTitle({ className, ...props }: ItemTitleProps) {
-  return <div className={cx(styles.itemTitle, className)} {...props} />;
+/*
+ * Each run of adjacent text children goes into one `.itemTitleText` span,
+ * the box that draws the ellipsis (see item.module.css). Element children,
+ * such as an icon or a badge beside the text, render as they are, so the
+ * flex gap between an icon and the text keeps working.
+ */
+function wrapTextRuns(children: ReactNode): ReactNode[] {
+  const out: ReactNode[] = [];
+  let run: string[] = [];
+  const flush = () => {
+    if (run.length > 0) {
+      out.push(
+        <span key={`text-${out.length}`} className={styles.itemTitleText}>
+          {run.join('')}
+        </span>,
+      );
+      run = [];
+    }
+  };
+  for (const child of Children.toArray(children)) {
+    if (typeof child === 'string' || typeof child === 'number') {
+      run.push(String(child));
+    } else {
+      flush();
+      out.push(child);
+    }
+  }
+  flush();
+  return out;
+}
+
+export function ItemTitle({ className, children, ...props }: ItemTitleProps) {
+  return (
+    <div className={cx(styles.itemTitle, className)} {...props}>
+      {wrapTextRuns(children)}
+    </div>
+  );
 }
 
 /*

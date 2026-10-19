@@ -26,8 +26,10 @@ invariants:
   - id: one-line-clipped
     text: >-
       ItemTitle renders a div in the label weight that never wraps: it is
-      as wide as its text up to the space available, and text past that
-      width is clipped. It has no heading role.
+      as wide as its text up to the width of its column, and text past
+      that width ends with an ellipsis. Each run of text is wrapped in a
+      span that draws the ellipsis; element children render as they are.
+      It has no heading role.
 
 anti_patterns: []
 
@@ -54,7 +56,7 @@ examples:
           <ItemTitle>Jane Doe, owner of the workspace since March</ItemTitle>
         </ItemContent>
       why: >-
-        ItemTitle stays on one line and clips what does not fit, so the end
+        ItemTitle stays on one line and cuts what does not fit, so the end
         of the sentence is lost in a narrow row; the supporting text belongs
         in ItemDescription, which wraps to two lines.
 

@@ -19,6 +19,13 @@
       }
     },
     {
+      "situation": "Navigation that should look like a button, such as a call to action",
+      "instead": {
+        "target": "the consuming application's own link component with `buttonVariants({ variant, size })` as its class",
+        "note": "The element stays a link and is announced as one. Button rendered over an anchor keeps `role=\"button\"`, so a screen reader announces the navigation as a button."
+      }
+    },
+    {
       "situation": "Toggling a persistent on/off state",
       "instead": {
         "target": "Switch",

@@ -94,6 +94,12 @@ invariants:
       on its own element under :focus-visible; the default div is not
       focusable, so the ring appears only once the Item itself takes focus,
       for example when `render` makes it a link or a button.
+  - id: link-root-looks-like-a-row
+    text: >-
+      Item sets `color: inherit` and `text-decoration: none` on its own
+      element, so rendered as a link it keeps the surrounding text colour
+      and no underline, like a div row; a link root hovered under the
+      pointer takes the --muted fill.
 
 anti_patterns:
   - dont: Render the Item as a link or a button while its ItemActions holds buttons of its own

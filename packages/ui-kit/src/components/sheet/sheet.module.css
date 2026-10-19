@@ -167,26 +167,31 @@
 /*
  * The panel's inset, re-expressed on the regions that scroll inside it:
  * same structure and reasoning as dialog.module.css's `.popup > *` rules.
+ * `--sheet-inset` is the consumer hook: set on one region (for example
+ * `0` for an edge-to-edge list) it changes that region only, set on
+ * SheetContent it changes the whole panel. A hook rather than a padding
+ * override, because an override at this rule's specificity wins only by
+ * stylesheet order.
  */
 .popup > :where(*:not(.closeButton)) {
   /* Same missing-preflight guard as `.popup` itself. See
    * dialog.module.css for why the inset needs border-box here. */
   box-sizing: border-box;
-  padding-inline: var(--space-6);
+  padding-inline: var(--sheet-inset, var(--space-6));
 }
 
 .popup > :where(*:not(.closeButton):first-child) {
-  padding-block-start: var(--space-6);
+  padding-block-start: var(--sheet-inset, var(--space-6));
 }
 
 .popup > :where(*:not(.closeButton):last-child) {
-  padding-block-end: var(--space-6);
+  padding-block-end: var(--sheet-inset, var(--space-6));
 }
 
 /* `showCloseButton` renders the X last, which shifts the last flow region
  * to the one right before it. See dialog.module.css for the full note. */
 .popup > :where(*:has(+ .closeButton)) {
-  padding-block-end: var(--space-6);
+  padding-block-end: var(--sheet-inset, var(--space-6));
 }
 
 .closeButton {

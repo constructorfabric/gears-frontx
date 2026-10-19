@@ -48,6 +48,10 @@ invariants:
       edges past which more content lies (`start`, `end` or `start end`,
       absent when neither), and `data-autoscrolling` for a moment after a
       scroll to the end starts.
+  - id: padding-stays-inside-the-frame
+    text: >-
+      The frame and the viewport are `box-sizing: border-box`, so a padding
+      or border added through `className` stays inside the parent's box.
 
 anti_patterns: []
 

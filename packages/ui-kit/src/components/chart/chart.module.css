@@ -23,7 +23,11 @@
 
 .container {
   display: flex;
-  aspect-ratio: 16 / 9;
+  /* 16:9 by default. `--chart-aspect-ratio: auto` (with a height or a
+   * stretching parent) lets the chart fill a card, grid row or pane; a
+   * consumer sets the hook rather than overriding aspect-ratio, so the
+   * result does not depend on stylesheet order. */
+  aspect-ratio: var(--chart-aspect-ratio, 16 / 9);
   justify-content: center;
   font-size: var(--text-meta-size);
   line-height: var(--text-meta-line-height);

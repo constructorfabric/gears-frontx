@@ -48,6 +48,10 @@
     {
       "id": "config-reaches-tooltip-and-legend-content",
       "text": "ChartTooltipContent and ChartLegendContent read the same ChartConfig through context to resolve each series' label and icon."
+    },
+    {
+      "id": "aspect-ratio-read-from-chart-aspect-ratio",
+      "text": "The container keeps a 16:9 aspect ratio unless `--chart-aspect-ratio` is set on it or an ancestor; `auto` lets a height or a stretching parent size the chart."
     }
   ],
   "anti_patterns": [

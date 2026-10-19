@@ -151,9 +151,22 @@ inset on the first, bottom inset on the last), so header and footer span
 the panel's full width and reach its top and bottom edges. Padding on the
 scroll container would have left strips that no sticky region can cover -
 see `dialog.md`'s "Scrolling content" for the mechanism. Consequence when
-styling children: a `className` that sets `padding` on a region overrides
-the inset (same single-class weight) rather than adding to it, and a
-full-width child reaches the panel edges by zeroing its `padding-inline`.
+styling children: the inset rules read the `--sheet-inset` custom property
+(default `var(--space-6)`, 24px). A region that should run edge to edge (a
+navigation column, a full-width list with dividers, a media header) sets
+`--sheet-inset: 0` on itself; setting it on `SheetContent` changes the
+inset of every region. Use the property rather than a `padding` override:
+a class that sets `padding` on a region has the same weight as the kit
+rule, so it wins only when its stylesheet loads after the kit's.
+
+```tsx
+<SheetContent>
+  <SheetHeader>
+    <SheetTitle>Navigation</SheetTitle>
+  </SheetHeader>
+  <nav style={{ '--sheet-inset': 0 } as React.CSSProperties}>{/* full-width rows */}</nav>
+</SheetContent>
+```
 
 ## Anti-patterns
 

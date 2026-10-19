@@ -1,6 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
 import {
   Item,
   ItemActions,
@@ -58,7 +63,7 @@ describe('Item', () => {
 
   it('renders every part with its kit class', () => {
     renderItem();
-    expect(screen.getByText('Invoice #1024').className).toContain(styles.itemTitle);
+    expect(screen.getByText('Invoice #1024').parentElement?.className).toContain(styles.itemTitle);
     expect(screen.getByText('Paid on Jan 4').className).toContain(styles.itemDescription);
     expect(screen.getByRole('button', { name: 'Download' }).parentElement?.className).toContain(
       styles.itemActions,
@@ -92,6 +97,59 @@ describe('Item', () => {
     render(<Item onClick={onClick}>content</Item>);
     fireEvent.click(screen.getByText('content'));
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ItemTitle truncation', () => {
+  it('puts a run of adjacent text children into one ellipsis span', () => {
+    const name = 'report';
+    render(<ItemTitle data-testid="title">Q3 {name}.pdf</ItemTitle>);
+    const title = screen.getByTestId('title');
+    expect(title.children).toHaveLength(1);
+    const text = title.children[0] as HTMLElement;
+    expect(text.tagName).toBe('SPAN');
+    expect(text.className).toBe(styles.itemTitleText);
+    expect(text.textContent).toBe('Q3 report.pdf');
+  });
+
+  it('renders element children as they are, beside the text span', () => {
+    render(
+      <ItemTitle data-testid="title">
+        <svg data-testid="icon" />
+        Q3 report.pdf
+      </ItemTitle>,
+    );
+    const title = screen.getByTestId('title');
+    expect(title.children[0]).toBe(screen.getByTestId('icon'));
+    expect((title.children[1] as HTMLElement).className).toBe(styles.itemTitleText);
+  });
+});
+
+/*
+ * jsdom does no layout, so the declarations the truncation and the link
+ * form depend on are read from the module source.
+ */
+describe('Item drawn rules', () => {
+  const rules = extractRules(
+    readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'item.module.css'), 'utf8'),
+  );
+  function declared(selector: string, prop: string) {
+    const rule = rules.find((candidate) => candidate.selector === selector);
+    return rule ? declarationMap(rule.body).get(prop) : undefined;
+  }
+
+  it('caps the title at its column and lets the text span draw the ellipsis', () => {
+    expect(declared('.itemTitle', 'max-width')).toBe('100%');
+    expect(declared('.itemTitle', 'min-width')).toBe('0');
+    expect(declared('.itemTitleText', 'min-width')).toBe('0');
+    expect(declared('.itemTitleText', 'overflow')).toBe('hidden');
+    expect(declared('.itemTitleText', 'text-overflow')).toBe('ellipsis');
+  });
+
+  it('keeps an anchor root in the text colour, without an underline, with the hover fill', () => {
+    expect(declared('.item', 'color')).toBe('inherit');
+    expect(declared('.item', 'text-decoration')).toBe('none');
+    expect(declared('.item:is(a[href]):hover', 'background-color')).toBe('var(--muted)');
   });
 });
 

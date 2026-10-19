@@ -76,12 +76,12 @@ invariants:
       The panel has no padding of its own: every direct child other than
       SheetHeader, SheetFooter (which carry their own var(--space-4)
       padding) and the built-in close button gets a horizontal padding of
-      var(--space-6), the
-      first a top padding and the last one (right before the close button
-      when it is shown) a bottom padding of var(--space-6), and direct
-      children are spaced var(--space-6) apart. These rules carry
-      single-class specificity, so a child's own `className` padding can
-      override them, and then replaces the inset rather than adding to it.
+      `--sheet-inset` (default var(--space-6)), the first a top padding and
+      the last one (right before the close button when it is shown) a
+      bottom padding of the same value, and direct children are spaced
+      var(--space-6) apart. `--sheet-inset` set on one child changes that
+      child's inset only (0 runs it edge to edge), set on SheetContent it
+      changes every child's, in any stylesheet order.
   - id: reduced-motion-keeps-the-fade
     text: >-
       The panel fades and slides 2.5rem along its own axis on open and

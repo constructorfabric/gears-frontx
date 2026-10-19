@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { type CSSProperties, useId } from 'react';
 import {
   Area,
   AreaChart,
@@ -311,6 +311,33 @@ export default function ChartExample() {
             <ChartLegend content={<ChartLegendContent />} />
           </BarChart>
         </ChartContainer>
+      </Section>
+      <Section title="Fill a grid row">
+        <div
+          style={{
+            display: 'grid',
+            gap: 'var(--space-4)',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(12rem, 1fr))',
+            gridAutoRows: '12rem',
+            maxWidth: 480,
+          }}
+        >
+          <ChartContainer
+            config={chartConfig}
+            style={{ '--chart-aspect-ratio': 'auto' } as CSSProperties}
+          >
+            <BarChart data={data}>
+              <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} />
+              <Bar dataKey="desktop" fill="var(--color-desktop)" radius={4} />
+            </BarChart>
+          </ChartContainer>
+          <div
+            style={{
+              border: 'var(--border-width) solid var(--border)',
+              borderRadius: 'var(--radius-lg)',
+            }}
+          />
+        </div>
       </Section>
       <Section title="Donut">
         <DonutChartExample />

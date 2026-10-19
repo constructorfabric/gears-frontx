@@ -33,6 +33,13 @@
    * buttonface background in dark theme unless overridden here. Idle
    * rows must be transparent; .variantMuted sets its own fill below. */
   background-color: transparent;
+  /* Item can also render as an anchor (render={<a href/>}, the documented
+   * form for a row that is itself a link). The kit ships no global anchor
+   * rule, so without these the row takes the UA link colour and underline
+   * and stops looking like the plain row beside it. A div root already
+   * inherits, so nothing changes there. */
+  color: inherit;
+  text-decoration: none;
   font-size: var(--text-body-size);
   line-height: var(--text-body-line-height);
   font-weight: var(--text-body-weight);
@@ -53,6 +60,12 @@
 }
 
 .item a:hover {
+  background-color: var(--muted);
+}
+
+/* The row that is itself the link gets the same hover fill as a link
+ * nested inside a row. */
+.item:is(a[href]):hover {
   background-color: var(--muted);
 }
 
@@ -183,9 +196,18 @@
   gap: 0;
 }
 
+/*
+ * A short title hugs its text (fit-content); a long one is capped at its
+ * column (max-width + min-width: 0), since fit-content alone never resolves
+ * below the min-content width of a nowrap line. The ellipsis is drawn by
+ * .itemTitleText: text-overflow does not apply to the anonymous flex item a
+ * bare text node becomes, so ItemTitle wraps its text runs in that span.
+ */
 .itemTitle {
   display: flex;
   width: fit-content;
+  max-width: 100%;
+  min-width: 0;
   align-items: center;
   gap: var(--space-2);
   overflow: hidden;
@@ -193,6 +215,12 @@
   white-space: nowrap; /* line-clamp-1 at a single line */
   font-weight: var(--text-label-weight); /* upstream's font-medium (500) */
   text-underline-offset: 4px;
+}
+
+.itemTitleText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .itemDescription {
