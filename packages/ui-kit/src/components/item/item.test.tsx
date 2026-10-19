@@ -137,10 +137,22 @@ describe('Item inside ItemGroup', () => {
         <Item role="presentation" render={<button type="button" />}>
           Own role on the Item
         </Item>
-        <Item render={<button type="button" role="menuitem" />}>Own role on the element</Item>
+        <Item render={<li />}>An li row</Item>
       </ItemGroup>,
     );
-    expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+    const listitems = screen.queryAllByRole('listitem');
+    expect(listitems).toHaveLength(1);
+    expect(listitems[0]?.tagName).toBe('LI');
+    expect(listitems[0]?.parentElement?.getAttribute('role')).toBe('list');
+  });
+
+  it('still wraps a row whose element has another role', () => {
+    render(
+      <ItemGroup>
+        <Item render={<button type="button" role="menuitem" />}>Menu row</Item>
+      </ItemGroup>,
+    );
+    expect(screen.getByRole('menuitem').parentElement?.getAttribute('role')).toBe('listitem');
   });
 
   it('wraps a button row in a list item, and nothing outside a group', () => {

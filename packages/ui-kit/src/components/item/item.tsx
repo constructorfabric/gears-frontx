@@ -100,11 +100,16 @@ export function Item({ className, variant, size, render, ...props }: ItemProps) 
       props,
     ),
   });
-  // No wrapper when the row already carries list semantics of its own: a
-  // `role` on the Item or on the rendered element, or an `li`.
+  // No wrapper when the rendered element is already a list item (an `li`
+  // or role="listitem") or opts out of semantics (none, presentation); any
+  // other role on it (a link styled as a button, a menuitem) still sits in
+  // the list item.
   const renderOwnsRole =
     isValidElement<{ role?: string }>(render) &&
-    (render.props.role !== undefined || render.type === 'li');
+    (render.type === 'li' ||
+      render.props.role === 'listitem' ||
+      render.props.role === 'none' ||
+      render.props.role === 'presentation');
   const wrapped =
     inGroup && render !== undefined && props.role === undefined && !renderOwnsRole ? (
       <div role="listitem" className={styles.itemListItem}>

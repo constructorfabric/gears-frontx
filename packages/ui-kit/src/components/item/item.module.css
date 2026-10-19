@@ -115,7 +115,8 @@
 }
 
 @media (forced-colors: active) {
-  .item:is([aria-pressed='true'], [aria-selected='true'], [aria-current]:not([aria-current='false'])) {
+  /* :where() keeps this under the focus ring below. */
+  .item:where([aria-pressed='true'], [aria-selected='true'], [aria-current]:not([aria-current='false'])) {
     outline: 2px solid Highlight;
     outline-offset: -2px;
   }

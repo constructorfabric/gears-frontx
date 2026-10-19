@@ -442,17 +442,35 @@ describe('SidebarProvider contained', () => {
     const onOpenChange = vi.fn();
     render(
       <SidebarProvider contained defaultOpen onOpenChange={onOpenChange}>
+        <SidebarTrigger />
         <Sidebar collapsible="none">Files</Sidebar>
       </SidebarProvider>,
     );
     fireEvent.keyDown(window, { key: 'b', ctrlKey: true });
     expect(onOpenChange).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /toggle sidebar/i }));
+    expect(onOpenChange).toHaveBeenCalledTimes(1);
     expect(document.cookie).not.toContain('sidebar_state');
   });
 
-  it('caps the stacked list on a narrow screen', () => {
+  it('ignores a persisted state from the shared cookie', () => {
+    document.cookie = 'sidebar_state=false; path=/';
+    const { container } = render(
+      <SidebarProvider contained>
+        <Sidebar collapsible="offcanvas">Files</Sidebar>
+      </SidebarProvider>,
+    );
+    expect(container.querySelector('[data-state]')?.getAttribute('data-state')).toBe('expanded');
+    document.cookie = 'sidebar_state=; path=/; max-age=0';
+  });
+
+  it('caps the stacked list on a narrow screen and lets the content scroll', () => {
     const declared = declaredIn(import.meta.url, 'sidebar.module.css');
     expect(declared('.contained > .none .content', 'max-height')).toBe('190px');
+  });
+
+  it('lets the content beside the sidebar scroll inside the container', () => {
+    const declared = declaredIn(import.meta.url, 'sidebar.module.css');
     expect(declared('.contained > .inset', 'overflow')).toBe('auto');
   });
 

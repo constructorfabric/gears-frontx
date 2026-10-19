@@ -227,6 +227,9 @@ describe('Card panel variant', () => {
     expect(declaredRule('.card.variantPanel', 'box-shadow')).toBe('var(--panel-shadow)');
     expect(declaredRule('.card.variantPanel', 'padding')).toBe('0');
     expect(declaredRule('.card.variantPanel', 'gap')).toBe('0');
+    expect(
+      declaredRule('.card.variantPanel.interactive:where(a[href], button):focus-visible', 'box-shadow'),
+    ).toContain('var(--panel-shadow)');
   });
 });
 

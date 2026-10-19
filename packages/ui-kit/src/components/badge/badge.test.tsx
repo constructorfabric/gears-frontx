@@ -268,6 +268,7 @@ describe('Badge status tone labels', () => {
 describe('Badge destructive label', () => {
   it('writes the label in the danger text token and keeps the dot in --destructive', () => {
     const declared = declaredIn(import.meta.url, 'badge.module.css');
+    expect(declared('.variantDestructive', 'color')).toBe('var(--danger-foreground)');
     expect(declared('.variantDestructive .dot', 'background-color')).toBe('var(--destructive)');
   });
 });
