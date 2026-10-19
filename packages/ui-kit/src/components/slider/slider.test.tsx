@@ -140,5 +140,8 @@ describe('Slider dark track', () => {
     const declared = declaredIn(import.meta.url, 'slider.module.css');
     expect(declared('.track', 'background-color')).toBe('var(--secondary)');
     expect(declared("[data-theme='dark'] .track", 'background-color')).toBe('var(--muted)');
+    expect(declared(":root:not([data-theme='light']) .track", 'background-color')).toBe(
+      'var(--muted)',
+    );
   });
 });

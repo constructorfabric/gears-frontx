@@ -961,10 +961,17 @@ describe('theme tokens', () => {
             contrastRatio(token(tokens, '--secondary-foreground'), token(tokens, '--secondary')),
             themeName,
           ).toBeGreaterThanOrEqual(4.5);
-          expect(
-            contrastRatio(token(tokens, '--secondary'), token(tokens, '--background')),
-            `${themeName} --secondary against the page`,
-          ).toBeGreaterThan(1.02);
+          // Dark only: the light fill sits a hair off the light page by
+          // design (1.03:1) and separates by the component's hairline. In
+          // dark the fill was the page value itself; slate-800 on the
+          // slate-900 page is 1.22:1, and 1.15 keeps a slide back toward the
+          // page from passing.
+          if (themeName === 'dark') {
+            expect(
+              contrastRatio(token(tokens, '--secondary'), token(tokens, '--background')),
+              'dark --secondary against the page',
+            ).toBeGreaterThanOrEqual(1.15);
+          }
           // The round icon chip's glyph on its --secondary tile (1.4.11).
           expect(
             contrastRatio(token(tokens, '--link-foreground'), token(tokens, '--secondary')),
