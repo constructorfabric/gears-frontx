@@ -95,9 +95,6 @@ const moduleFiles = readdirSync(componentsDir, { recursive: true, encoding: 'utf
   .filter((file) => file.endsWith('.module.css'))
   .map((file) => join(componentsDir, file));
 
-// The properties the metric-scale guard below polices. Module scope, because
-// the guard and its synthetic fixture must test the SAME pattern — two
-// copies would let an edit to one keep passing against the other.
 /*
  * What is left of a metric value once every token reference and the
  * arithmetic around it are removed; anything left is a literal. A consumer
@@ -116,6 +113,9 @@ function metricLeftover(value: string): string {
     .trim();
 }
 
+// The properties the metric-scale guard below polices. Module scope, because
+// the guard and its synthetic fixture must test the SAME pattern — two
+// copies would let an edit to one keep passing against the other.
 const GUARDED_PROP =
   /^(?:padding|margin|scroll-margin)(?:-[a-z]+)*$|^(?:gap|row-gap|column-gap|font-size|line-height|letter-spacing|font-weight|border-spacing)$/;
 
@@ -576,7 +576,8 @@ describe('theme tokens', () => {
     expect(metricLeftover('var(--sheet-inset, var(--space-6))')).toBe('');
     expect(metricLeftover('var(--sheet-inset , var(--space-6))')).toBe('');
     expect(metricLeftover('var(--sheet-inset, 24px)')).toBe('24px');
-    expect(metricLeftover('var(--sheet-inset,)')).not.toBe('');
+    expect(metricLeftover('var(--sheet-inset,)')).toBe('var(--sheet-inset,');
+    expect(metricLeftover('var(--sheet-inset, var(--fallback, 4px))')).toBe('4px');
   });
 
   // Function notations plus the named colors someone might actually reach
