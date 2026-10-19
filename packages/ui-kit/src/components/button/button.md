@@ -19,7 +19,7 @@ polymorphism, correct disabled/focus behavior, `type="button"` by default
   `variant="link"`; that variant exists for actions that visually read as
   links.
 - Navigation that looks like a button (a "Get started" link, a call to
-  action) — use the consumer app's link component with
+  action): use the consumer app's link component with
   `buttonVariants({ variant, size })` as its class, so the element keeps
   the link role. `render={<a />}` on `Button` keeps the button role, so a
   screen reader announces the link as a button.
