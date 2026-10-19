@@ -35,6 +35,7 @@ Every part except `Card` itself is a passthrough over
 
 | Prop | Type | Default |
 |------|------|---------|
+| `variant` | `'default' \| 'panel'` - `panel` is the lifted frame a workbench sits in: a 16px corner (`--radius-2xl`), the `--panel-shadow`, and no padding or gap of its own, so its panes lay themselves out edge to edge | `'default'` |
 | `size` | `'default' \| 'sm'` — scales the card's internal padding and gap, and `CardTitle`'s font size | `'default'` |
 | `className` | `string` — merged after the kit class | — |
 
@@ -60,6 +61,18 @@ element with `render={<h3 />}` (any level): the element changes, the
 title keeps its look, and the page keeps a document outline. Where the
 element cannot change, `role="heading"` with `aria-level` is the
 fallback.
+
+A panel frames a workbench, such as a contained `Sidebar` beside a
+document pane:
+
+```tsx
+<Card variant="panel">
+  <SidebarProvider contained>
+    <Sidebar collapsible="none">{/* file list */}</Sidebar>
+    <SidebarInset render={<div />}>{/* the file */}</SidebarInset>
+  </SidebarProvider>
+</Card>
+```
 
 `Card` takes `render` too. `render={<a href="..." />}` (or a router link)
 makes the whole card one link: no underline, the page's font, a `--ring`

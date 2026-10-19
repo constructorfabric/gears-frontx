@@ -214,6 +214,23 @@ describe('Card render', () => {
 });
 
 // jsdom does no layout, so the states a link card draws are read from the module source.
+describe('Card panel variant', () => {
+  it('applies the panel class and keeps the default class otherwise', () => {
+    const { rerender } = render(<Card data-testid="card" />);
+    expect(screen.getByTestId('card').className).toContain(styles.variantDefault);
+    rerender(<Card data-testid="card" variant="panel" />);
+    expect(screen.getByTestId('card').className).toContain(styles.variantPanel);
+  });
+
+  it('draws the lifted frame with no inset of its own', () => {
+    const declaredRule = declaredIn(import.meta.url, 'card.module.css');
+    expect(declaredRule('.card.variantPanel', 'border-radius')).toBe('var(--radius-2xl)');
+    expect(declaredRule('.card.variantPanel', 'box-shadow')).toBe('var(--panel-shadow)');
+    expect(declaredRule('.card.variantPanel', 'padding')).toBe('0');
+    expect(declaredRule('.card.variantPanel', 'gap')).toBe('0');
+  });
+});
+
 describe('Card render drawn rules', () => {
   const declaredRule = declaredIn(import.meta.url, 'card.module.css');
 

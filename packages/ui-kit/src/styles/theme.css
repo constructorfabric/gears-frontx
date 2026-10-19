@@ -106,6 +106,10 @@
    */
   --popover-border: color-mix(in oklab, var(--foreground) 12%, transparent);
   --popover-shadow: 0 8px 24px 0 var(--popover-border);
+  /* The lifted panel a workbench or a file explorer sits in (Card's panel
+   * variant): a soft drop shadow pulled 16px under the edge, mixed from
+   * --foreground like the popover chrome, so it flips per theme by itself. */
+  --panel-shadow: 0 5px 22px -16px color-mix(in oklab, var(--foreground) 22%, transparent);
 
   /*
    * Radius scale. The drawn scale is 4 / 6 / 8 / 10 / 12 / 16 on a 10px
@@ -303,6 +307,19 @@
   --text-micro-line-height: 0.875rem;
   --text-micro-weight: 500;
   --text-micro-tracking: 0px;
+  /* KPI: a key figure on a dashboard card, 32/32 at 550 with -1px
+   * tracking, and its large step 48/48 at 600 with -0.04em tracking. Set
+   * solid (line-height 1) so a figure takes no more height than its
+   * digits. The large step is the drawn one; the regular step takes the
+   * same leading. Text sets tabular figures on both. */
+  --text-kpi-size: 2rem;
+  --text-kpi-line-height: 2rem;
+  --text-kpi-weight: 550;
+  --text-kpi-tracking: -1px;
+  --text-kpi-lg-size: 3rem;
+  --text-kpi-lg-line-height: 3rem;
+  --text-kpi-lg-weight: 600;
+  --text-kpi-lg-tracking: -0.04em;
 }
 
 :root,

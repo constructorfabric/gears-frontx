@@ -79,6 +79,23 @@
    is a real DOM-visible class (like `sizeSm`) and cva has a
    defaultVariants target; the values it would set already live on `.card`
    itself above, so there is nothing left to override here. */
+/* Declared, though empty, so the default variant class exists. */
+.variantDefault {
+}
+
+/*
+ * The lifted workbench frame: the 16px corner (--radius-2xl), the panel
+ * shadow, and no inset or gap, since its panes (a sidebar, a document)
+ * carry their own. Two classes, so it wins over `.card`'s own spacing in
+ * any order.
+ */
+.card.variantPanel {
+  gap: 0;
+  padding: 0;
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--panel-shadow);
+}
+
 .sizeDefault {
 }
 

@@ -273,5 +273,7 @@ describe('Avatar soft status tones', () => {
       const Tone = tone.charAt(0).toUpperCase() + tone.slice(1);
       expect(declared(`.variantSoft.tone${Tone}`, 'color')).toBe(`var(--${tone}-foreground)`);
     }
+    expect(declared('.variantSolid.toneWarning', 'background-color')).toBe('var(--warning-soft)');
+    expect(declared('.variantSolid.toneWarning', 'color')).toBe('var(--warning-foreground)');
   });
 });

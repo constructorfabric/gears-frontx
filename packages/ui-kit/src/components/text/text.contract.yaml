@@ -9,7 +9,7 @@ intent: Put running text, a label, a meta line or a mono path on one of the kit'
 
 typical_uses:
   - A paragraph between kit components
-  - A muted meta line such as an update time
+  - A muted meta line such as an update time, or a key figure in the kpi role
   - A file path or a command name in the mono role
 
 dont_use_when:
@@ -39,7 +39,7 @@ invariants:
     text: >-
       Each typography value sets font size, line height, weight and tracking from the
       matching `--text-<role>-*` ramp tokens; `mono` also sets
-      `--font-mono`. The tone sets only `color`, from `--foreground` or
+      `--font-mono`, and `kpi` and `kpi-lg` set tabular figures. The tone sets only `color`, from `--foreground` or
       `--muted-foreground`.
   - id: no-margin
     text: The text has zero margin on whatever element `render` substitutes.

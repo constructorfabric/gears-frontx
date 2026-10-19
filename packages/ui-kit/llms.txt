@@ -175,7 +175,9 @@ Rules for generated code:
 - [Card](dist/docs/card.md): bounded content surface (Card/CardHeader/
   CardTitle/CardDescription/CardAction/CardContent/CardFooter); header
   becomes a two-column/two-row grid automatically when it contains a
-  CardAction/CardDescription; sizes default|sm. `Card` takes `render`
+  CardAction/CardDescription; sizes default|sm; `variant="panel"` is the
+  lifted workbench frame (16px corner, --panel-shadow, no inset). `Card`
+  takes `render`
   (`render={<a href />}` makes the whole card a link, with a hover border
   and focus ring; it must then hold no other link or button), `CardTitle`
   takes `render` for a real heading.
@@ -314,7 +316,11 @@ Rules for generated code:
   ItemActions/ItemHeader/ItemFooter); `Item`'s `render` prop makes the
   whole row a link (it keeps the text colour, no underline);
   variant default|outline|muted, size default|sm|xs. `ItemTitle` is one
-  line and ends with an ellipsis at its column's width.
+  line and ends with an ellipsis at its column's width. In `ItemGroup`
+  rows are list items (a link or button row is wrapped in one); a chosen
+  row is marked with aria-pressed/aria-selected/aria-current="true"
+  (--secondary pair) or aria-current="page" (--accent pair).
+  `ItemMedia` variant chip|chip-round is an icon tile.
   `ItemDescription` clamps to two lines by default; `lineClamp={n}` sets
   another count and `lineClamp="none"` shows the full text (use the prop,
   not a className that resets the clamp); long tokens always wrap.
@@ -422,7 +428,9 @@ Rules for generated code:
 - [Sidebar](dist/docs/sidebar.md): composable app-shell sidebar with an
   expand/collapse state machine (SidebarProvider+useSidebar plus ~20
   layout parts); persists desktop open state in a cookie, toggles on
-  Cmd/Ctrl+B, switches to a slide-in `Sheet` on mobile; built entirely
+  Cmd/Ctrl+B, switches to a slide-in `Sheet` on mobile; `contained` on
+  SidebarProvider with `collapsible="none"` lays it out inside a panel
+  instead of the viewport; built entirely
   from other kit parts.
 - [Skeleton](dist/docs/skeleton.md): pulsing placeholder shape shown while
   content loads; no Base UI primitive, no variants — size it yourself via
@@ -467,7 +475,8 @@ Rules for generated code:
   short fade-up on every switch, `animate={false}` per panel to opt out;
   no portal.
 - [Text](dist/docs/text.md): text on the type ramp; typography
-  body|label|meta|mono|micro, tone default|muted, `render` picks the
+  body|label|meta|mono|micro|kpi|kpi-lg (kpi = dashboard figures with
+  tabular digits), tone default|muted, `render` picks the
   element (default `p`); no margin.
 - [Textarea](dist/docs/textarea.md): multi-line text field; a plain styled
   native `<textarea>` — no primitive, no Field auto-wiring; native

@@ -23,6 +23,8 @@ describe('Text', () => {
     ['meta', styles.typographyMeta],
     ['mono', styles.typographyMono],
     ['micro', styles.typographyMicro],
+    ['kpi', styles.typographyKpi],
+    ['kpi-lg', styles.typographyKpiLg],
   ] as const)('applies the %s role class', (typography, roleClass) => {
     render(
       <Text data-testid="text" typography={typography}>
@@ -72,10 +74,17 @@ describe('Text', () => {
 describe('Text drawn rules', () => {
   const declared = declaredIn(import.meta.url, 'text.module.css');
 
-  it.each(['body', 'label', 'meta', 'mono', 'micro'] as const)(
+  it.each([
+    ['body', '.typographyBody'],
+    ['label', '.typographyLabel'],
+    ['meta', '.typographyMeta'],
+    ['mono', '.typographyMono'],
+    ['micro', '.typographyMicro'],
+    ['kpi', '.typographyKpi'],
+    ['kpi-lg', '.typographyKpiLg'],
+  ] as const)(
     'sets the %s role from its four ramp tokens',
-    (role) => {
-      const selector = `.typography${role.charAt(0).toUpperCase()}${role.slice(1)}`;
+    (role, selector) => {
       expect(declared(selector, 'font-size')).toBe(`var(--text-${role}-size)`);
       expect(declared(selector, 'line-height')).toBe(`var(--text-${role}-line-height)`);
       expect(declared(selector, 'font-weight')).toBe(`var(--text-${role}-weight)`);
@@ -85,6 +94,8 @@ describe('Text drawn rules', () => {
 
   it('sets the mono family, no margin, and paints the two tones from colour tokens', () => {
     expect(declared('.typographyMono', 'font-family')).toBe('var(--font-mono)');
+    expect(declared('.typographyKpi', 'font-variant-numeric')).toBe('tabular-nums');
+    expect(declared('.typographyKpiLg', 'font-variant-numeric')).toBe('tabular-nums');
     expect(declared('.text', 'margin')).toBe('0');
     expect(declared('.toneDefault', 'color')).toBe('var(--foreground)');
     expect(declared('.toneMuted', 'color')).toBe('var(--muted-foreground)');

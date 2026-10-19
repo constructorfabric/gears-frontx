@@ -93,7 +93,11 @@
     },
     {
       "id": "list-item-inside-a-group",
-      "text": "Inside an ItemGroup (`role=\"list\"`) an Item without `render` takes `role=\"listitem\"`; an Item with `render` keeps the rendered element's role, and a `role` the caller passes wins. Outside a group, inside a group given another role, or nested inside another Item, an Item has no role."
+      "text": "Inside an ItemGroup (`role=\"list\"`) an Item without `render` takes `role=\"listitem\"`; an Item with `render` keeps the rendered element's role (a link or a button row) and is wrapped in a `div` with `role=\"listitem\"`, so the list stays well formed. A `role` the caller passes wins and gets no wrapper. Outside a group, inside a group given another role, or nested inside another Item, an Item has no role and no wrapper."
+    },
+    {
+      "id": "chosen-row-paint",
+      "text": "A row with `aria-pressed=\"true\"`, `aria-selected=\"true\"` or `aria-current=\"true\"` (selection inside a list) paints the --secondary / --secondary-foreground pair; a row with `aria-current` set to page, step, location, date or time (the current place in a navigation) paints the --accent / --accent-foreground pair, and its description follows the row's text colour. Both hold under the pointer."
     },
     {
       "id": "link-root-looks-like-a-row",

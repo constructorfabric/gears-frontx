@@ -176,6 +176,55 @@ export default function ItemExample() {
         </Item>
       </Section>
 
+      <Section title="Selection">
+        <ItemGroup>
+          <Item variant="outline" size="sm" render={<button type="button" aria-pressed="true" />}>
+            <ItemContent>
+              <ItemTitle>Pressed row (aria-pressed)</ItemTitle>
+              <ItemDescription>Selection inside a list: the secondary pair</ItemDescription>
+            </ItemContent>
+          </Item>
+          <Item
+            variant="outline"
+            size="sm"
+            render={
+              <a href="#" aria-current="page" onClick={(event) => event.preventDefault()} />
+            }
+          >
+            <ItemContent>
+              <ItemTitle>Current page (aria-current="page")</ItemTitle>
+              <ItemDescription>The current place in a navigation: the accent pair</ItemDescription>
+            </ItemContent>
+          </Item>
+          <Item variant="outline" size="sm" render={<button type="button" aria-pressed="false" />}>
+            <ItemContent>
+              <ItemTitle>Unselected row</ItemTitle>
+            </ItemContent>
+          </Item>
+        </ItemGroup>
+      </Section>
+
+      <Section title="Icon chip">
+        <ItemGroup>
+          <Item variant="outline">
+            <ItemMedia variant="chip">
+              <DemoIcon />
+            </ItemMedia>
+            <ItemContent>
+              <ItemTitle>Square chip</ItemTitle>
+            </ItemContent>
+          </Item>
+          <Item variant="outline">
+            <ItemMedia variant="chip-round">
+              <DemoIcon />
+            </ItemMedia>
+            <ItemContent>
+              <ItemTitle>Round chip</ItemTitle>
+            </ItemContent>
+          </Item>
+        </ItemGroup>
+      </Section>
+
       <Section title="Long title">
         <div style={{ maxWidth: '15rem' }}>
           <Item variant="outline">

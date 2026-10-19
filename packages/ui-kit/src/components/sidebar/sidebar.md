@@ -119,6 +119,7 @@ needed for the normal case, where the shell IS the page.
 | `defaultOpen` | `boolean` — starting state AND an opt-out of the cookie | persisted cookie, else `true` |
 | `open` | `boolean` — controlled desktop open state | — |
 | `onOpenChange` | `(open: boolean) => void` | — |
+| `contained` | `boolean` - lay the sidebar out inside a bounded container instead of against the viewport (see "Inside a container") | `false` |
 
 Omit `defaultOpen` and the provider restores whatever was last persisted
 (`sidebar_state`, 7 days). Pass it and it wins outright, cookie ignored.
@@ -218,6 +219,29 @@ inherited down to `Sidebar`/`SidebarInset` the same way `Card` shares
 
 ```tsx
 <SidebarProvider style={{ '--sidebar-width': '20rem' }}>
+```
+
+## Inside a container
+
+A sidebar that belongs to a panel or a page section (a file list beside a
+viewer, a settings section) rather than to the app shell: pass
+`contained` to `SidebarProvider`, use `collapsible="none"` on `Sidebar`,
+and render `SidebarInset` as a `div` so the page keeps its own main. The
+wrapper then fills its parent instead of the screen height, the sidebar
+sticks to the top of the container with a `--sidebar-border` line toward
+the content, and on a narrow screen it stacks above the content with its
+list capped at 190px and scrolling. Set the width through
+`--sidebar-width` as above (the drawn explorer uses `14rem`).
+
+```tsx
+<Card variant="panel">
+  <SidebarProvider contained style={{ '--sidebar-width': '14rem' } as CSSProperties}>
+    <Sidebar collapsible="none">
+      <SidebarContent>{/* file list */}</SidebarContent>
+    </Sidebar>
+    <SidebarInset render={<div />}>{/* the file */}</SidebarInset>
+  </SidebarProvider>
+</Card>
 ```
 
 ## Not reproduced from upstream

@@ -139,11 +139,9 @@
  * inverse of the `soft` fill below (whose success, warning and danger
  * labels use the darker -foreground text token instead of the tone), which
  * puts dark ink on light fills and light ink on dark fills by construction
- * in both themes. Where
- * the drawn tone is itself a pale amber no ink clears 4.5:1 on it (light
- * warning measures 2.00:1, the tightest pair here; dark warning is the
- * loosest at 10.03:1) - that is a finding for the designer, since the tone
- * values are drawn and ship as drawn. `neutral` inverts its borrowed pair
+ * in both themes. Solid warning is the exception: the drawn amber takes no
+ * ink at 4.5:1 (the -soft ink is 2.00:1 in light), so it is painted from
+ * the theme's warning text pair instead (see the rule below). `neutral` inverts its borrowed pair
  * the same way (--muted on --muted-foreground, 9.45:1 light / 6.96:1
  * dark). `accent` alone keeps the mockup's binding: --primary-foreground
  * on --primary measures 5.29:1 in both modes.
@@ -183,8 +181,11 @@
 }
 
 .variantSolid.toneWarning {
-  background-color: var(--warning);
-  color: var(--warning-soft);
+  /* The drawn amber takes no ink at 4.5:1 in light (the -soft ink is
+   * 2.00:1), so solid warning uses the theme's own text pair, the soft
+   * fill with the warning text token: 6.59:1 light, 10.03:1 dark. */
+  background-color: var(--warning-soft);
+  color: var(--warning-foreground);
 }
 
 .variantSolid.toneDanger {

@@ -1,4 +1,10 @@
 import {
+  Card,
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemTitle,
   Separator,
   Sidebar,
   SidebarContent,
@@ -41,7 +47,7 @@ import {
   UsersIcon,
 } from 'lucide-react';
 
-import type { CSSProperties, ReactNode } from 'react';
+import { type CSSProperties, type ReactNode, useState } from 'react';
 
 import { Section } from '../shared';
 
@@ -500,6 +506,52 @@ function RowAnatomy() {
   );
 }
 
+const PANEL_FILES = [
+  { path: 'src/app/main.tsx', note: 'Entry point' },
+  { path: 'src/app/routes.ts', note: 'Route table' },
+  { path: 'src/screens/inbox.tsx', note: 'Inbox screen' },
+  { path: 'package.json', note: 'Scripts and dependencies' },
+];
+
+/* A file explorer: a contained, non-collapsible sidebar inside a panel
+ * Card, with the shown file marked aria-current="true". */
+function PanelExplorer() {
+  const [shown, setShown] = useState(PANEL_FILES[0]?.path ?? '');
+  return (
+    <Card variant="panel" style={{ height: '22rem' }}>
+      <SidebarProvider contained style={{ '--sidebar-width': '14rem' } as CSSProperties}>
+        <Sidebar collapsible="none">
+          <SidebarContent style={{ padding: 'var(--space-3)' }}>
+            <ItemGroup>
+              {PANEL_FILES.map((file) => (
+                <Item
+                  key={file.path}
+                  size="sm"
+                  render={
+                    <button
+                      type="button"
+                      aria-current={file.path === shown ? 'true' : undefined}
+                      onClick={() => setShown(file.path)}
+                    />
+                  }
+                >
+                  <ItemContent>
+                    <ItemTitle>{file.path}</ItemTitle>
+                    <ItemDescription>{file.note}</ItemDescription>
+                  </ItemContent>
+                </Item>
+              ))}
+            </ItemGroup>
+          </SidebarContent>
+        </Sidebar>
+        <SidebarInset render={<div />}>
+          <div style={{ padding: 'var(--space-6)' }}>{shown}</div>
+        </SidebarInset>
+      </SidebarProvider>
+    </Card>
+  );
+}
+
 export default function SidebarExample() {
   return (
     <>
@@ -541,6 +593,10 @@ export default function SidebarExample() {
 
       <Section title="Menu row anatomy">
         <RowAnatomy />
+      </Section>
+
+      <Section title="Inside a container">
+        <PanelExplorer />
       </Section>
     </>
   );

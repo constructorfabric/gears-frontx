@@ -1,5 +1,5 @@
 /*
- * Text styles: the body, label, meta, mono and micro roles of the kit's
+ * Text styles: the body, label, meta, mono, micro, kpi and kpi-lg roles of the kit's
  * type ramp (theme.css `--text-<role>-*`) and two tones. Consumes only
  * theme.css variables.
  */
@@ -42,6 +42,22 @@
   line-height: var(--text-micro-line-height);
   font-weight: var(--text-micro-weight);
   letter-spacing: var(--text-micro-tracking);
+}
+
+.typographyKpi {
+  font-size: var(--text-kpi-size);
+  line-height: var(--text-kpi-line-height);
+  font-weight: var(--text-kpi-weight);
+  letter-spacing: var(--text-kpi-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+.typographyKpiLg {
+  font-size: var(--text-kpi-lg-size);
+  line-height: var(--text-kpi-lg-line-height);
+  font-weight: var(--text-kpi-lg-weight);
+  letter-spacing: var(--text-kpi-lg-tracking);
+  font-variant-numeric: tabular-nums;
 }
 
 .toneDefault {

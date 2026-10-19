@@ -223,7 +223,7 @@ describe('item directory: what the schema cannot assert', () => {
     expect(root.size).toMatchObject({ type: 'string', enum: ['default', 'sm', 'xs'], default: 'default' });
     expect(units['item-media'].contract.props.properties.variant).toMatchObject({
       type: 'string',
-      enum: ['default', 'icon', 'image'],
+      enum: ['default', 'icon', 'image', 'chip', 'chip-round'],
       default: 'default',
     });
   });

@@ -735,6 +735,7 @@ describe('theme tokens', () => {
       // per theme without a separate light/dark declaration.
       '--popover-border',
       '--popover-shadow',
+      '--panel-shadow',
       // Radius scale derived from --radius. Corner shape isn't a light/dark
       // concern — consumers rebrand it by overriding --radius alone, in
       // either theme.
@@ -829,6 +830,14 @@ describe('theme tokens', () => {
       '--text-micro-line-height',
       '--text-micro-weight',
       '--text-micro-tracking',
+      '--text-kpi-size',
+      '--text-kpi-line-height',
+      '--text-kpi-weight',
+      '--text-kpi-tracking',
+      '--text-kpi-lg-size',
+      '--text-kpi-lg-line-height',
+      '--text-kpi-lg-weight',
+      '--text-kpi-lg-tracking',
     ]);
 
     it('defines the two dark blocks identically', () => {

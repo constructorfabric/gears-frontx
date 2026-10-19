@@ -18,14 +18,26 @@ import styles from './card.module.css';
  * hook is why this module ships `'use client'`.
  */
 
+/*
+ * `variant="panel"` is the lifted frame a workbench sits in (a file list
+ * beside a viewer, a sidebar beside a pane): the larger corner, the panel
+ * shadow and no inset or gap of its own, so its children lay themselves
+ * out edge to edge. The name is the one CardTitle's `typography` axis
+ * already uses for the denser header such a panel carries.
+ */
 const cardVariants = cva(styles.card, {
   variants: {
+    variant: {
+      default: styles.variantDefault,
+      panel: styles.variantPanel,
+    },
     size: {
       default: styles.sizeDefault,
       sm: styles.sizeSm,
     },
   },
   defaultVariants: {
+    variant: 'default',
     size: 'default',
   },
 });
@@ -37,12 +49,18 @@ export type CardProps = useRender.ComponentProps<'div'> & VariantProps<typeof ca
  * `.interactive`: the UA link and button styling reset, and the hover and
  * focus states Item draws. A plain card never gains a hover.
  */
-export function Card({ className, size, render, ...props }: CardProps) {
+export function Card({ className, variant, size, render, ...props }: CardProps) {
   return useRender({
     defaultTagName: 'div',
     render,
     props: mergeProps<'div'>(
-      { className: cardVariants({ size, className: cx(render && styles.interactive, className) }) },
+      {
+        className: cardVariants({
+          variant,
+          size,
+          className: cx(render && styles.interactive, className),
+        }),
+      },
       props,
     ),
   });

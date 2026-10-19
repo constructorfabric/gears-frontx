@@ -11,8 +11,9 @@ import styles from './text.module.css';
  * height, weight and tracking come together, so they are one axis) and
  * `tone` the colour. The axis is named `typography` as on Heading and
  * CardTitle. The default element is `p`; `render` swaps it (a `span` inside
- * a row, a `code` for a path). No lead, overline or uppercase roles: they
- * are not ramp roles.
+ * a row, a `code` for a path). `kpi` and `kpi-lg` set a key figure on a
+ * dashboard card, with tabular figures so digits line up. No lead,
+ * overline or uppercase roles: they are not ramp roles.
  */
 const textVariants = cva(styles.text, {
   variants: {
@@ -22,6 +23,8 @@ const textVariants = cva(styles.text, {
       meta: styles.typographyMeta,
       mono: styles.typographyMono,
       micro: styles.typographyMicro,
+      kpi: styles.typographyKpi,
+      'kpi-lg': styles.typographyKpiLg,
     },
     tone: {
       default: styles.toneDefault,

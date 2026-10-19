@@ -87,6 +87,12 @@ invariants:
     text: >-
       The root sets overflow hidden, so anything a child draws past the
       card's rounded border box is clipped.
+  - id: panel-variant-is-a-bare-lifted-frame
+    text: >-
+      `variant="panel"` rounds the card at --radius-2xl, adds the
+      --panel-shadow and drops the root's own padding and gap, so the
+      children (a sidebar pane and a document pane) run edge to edge inside
+      the border; the border and the clipped overflow stay.
   - id: interactive-only-as-a-link-or-button
     text: >-
       With `render={<a href />}` the whole card is the link: the UA

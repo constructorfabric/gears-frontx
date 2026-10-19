@@ -1,7 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { declaredIn } from '../../__test-utils__/css-rules';
+import { declaredIn, extractRules } from '../../__test-utils__/css-rules';
 import {
   Item,
   ItemActions,
@@ -120,8 +124,27 @@ describe('Item inside ItemGroup', () => {
         </Item>
       </ItemGroup>,
     );
-    expect(screen.getByRole('link', { name: 'Linked' })).toBeDefined();
+    const link = screen.getByRole('link', { name: 'Linked' });
+    expect(link.parentElement?.getAttribute('role')).toBe('listitem');
+    expect(link.parentElement?.className).toBe(styles.itemListItem);
     expect(screen.getByTestId('own').getAttribute('role')).toBe('presentation');
+    expect(screen.getByTestId('own').parentElement?.getAttribute('role')).toBe('list');
+  });
+
+  it('wraps a button row in a list item, and nothing outside a group', () => {
+    render(
+      <>
+        <ItemGroup>
+          <Item render={<button type="button" aria-pressed="true" />}>Pressed row</Item>
+        </ItemGroup>
+        <Item render={<button type="button" />}>Alone</Item>
+      </>,
+    );
+    const pressed = screen.getByRole('button', { name: 'Pressed row' });
+    expect(pressed.parentElement?.getAttribute('role')).toBe('listitem');
+    expect(screen.getByRole('button', { name: 'Alone' }).parentElement?.hasAttribute('role')).toBe(
+      false,
+    );
   });
 
   it('gives no role to an Item nested in a row, or in a group with another role', () => {
@@ -206,6 +229,23 @@ describe('ItemTitle truncation', () => {
  */
 describe('Item drawn rules', () => {
   const declared = declaredIn(import.meta.url, 'item.module.css');
+  // The rule bodies of every selector that mentions `needle`, for the
+  // multi-line selector lists a single-selector lookup cannot name.
+  const rules = (needle: string) =>
+    extractRules(
+      readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'item.module.css'), 'utf8'),
+    )
+      .filter((rule) => rule.selector.includes(needle))
+      .map((rule) => rule.body);
+
+  it('draws the icon chips on their token pairs', () => {
+    expect(declared('.itemMediaVariantChip', 'background-color')).toBe('var(--accent)');
+    expect(declared('.itemMediaVariantChip', 'color')).toBe('var(--accent-foreground)');
+    expect(declared('.itemMediaVariantChip', 'border-radius')).toBe('var(--radius-md)');
+    expect(declared('.itemMediaVariantChipRound', 'background-color')).toBe('var(--surface)');
+    expect(declared('.itemMediaVariantChipRound', 'color')).toBe('var(--primary)');
+    expect(declared('.itemMediaVariantChipRound', 'border-radius')).toBe('var(--radius-full)');
+  });
 
   it('caps the title at its column and lets the text span draw the ellipsis', () => {
     expect(declared('.itemTitle', 'max-width')).toBe('100%');
@@ -213,6 +253,15 @@ describe('Item drawn rules', () => {
     expect(declared('.itemTitleText', 'min-width')).toBe('0');
     expect(declared('.itemTitleText', 'overflow')).toBe('hidden');
     expect(declared('.itemTitleText', 'text-overflow')).toBe('ellipsis');
+  });
+
+  it('paints list selection with the secondary pair and the current page with the accent pair', () => {
+    const selection = rules("[aria-pressed='true']");
+    expect(selection.some((rule) => rule.includes('background-color: var(--secondary)'))).toBe(true);
+    expect(selection.some((rule) => rule.includes('color: var(--secondary-foreground)'))).toBe(true);
+    const current = rules('aria-current=\'page\'');
+    expect(current.some((rule) => rule.includes('var(--accent)'))).toBe(true);
+    expect(current.some((rule) => rule.includes('var(--accent-foreground)'))).toBe(true);
   });
 
   it('keeps an anchor root in the text colour, without an underline, with the hover fill', () => {

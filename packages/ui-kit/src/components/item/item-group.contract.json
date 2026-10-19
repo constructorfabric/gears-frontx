@@ -34,7 +34,7 @@
   "invariants": [
     {
       "id": "role-list-without-list-items",
-      "text": "ItemGroup renders a div with role=\"list\", which a consumer's own `role` replaces. Each Item inside it without `render` takes role=\"listitem\" and ItemSeparator is aria-hidden, so a group of plain rows is a well-formed list; a row with `render` keeps the rendered element's role and is not a list item. With another `role` on the group, no row takes listitem."
+      "text": "ItemGroup renders a div with role=\"list\", which a consumer's own `role` replaces. Each Item inside it without `render` takes role=\"listitem\", an Item with `render` (a link or a button row) sits in a `div role=\"listitem\"`, and ItemSeparator is aria-hidden, so the group is a well-formed list either way. With another `role` on the group, no row takes listitem."
     },
     {
       "id": "gap-follows-the-smallest-item-size",
@@ -50,8 +50,7 @@
   "deprecations": {},
   "attestations": {
     "a11y": {
-      "outcome": "failed",
-      "by": "item.test.tsx asserts the group's role=\"list\" and role=\"listitem\" on a plain Item inside it, and ItemSeparator is aria-hidden, but an Item rendered as a link or a button keeps its own role, so a group of link rows (item.md's navigation example) still exposes a list whose children are not list items"
+      "outcome": "unknown"
     },
     "rtl": {
       "outcome": "unknown"

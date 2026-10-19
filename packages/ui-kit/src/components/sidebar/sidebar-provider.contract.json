@@ -34,6 +34,10 @@
   },
   "invariants": [
     {
+      "id": "contained-fills-its-parent",
+      "text": "With `contained` the wrapper fills its parent (height 100%, no viewport minimum) instead of the screen height; a `collapsible=\"none\"` Sidebar inside it sticks to the top of the container with a --sidebar-border line toward the content, and below 768px the wrapper stacks the sidebar above the content, full width with the line below it, and caps the SidebarContent at 190px."
+    },
+    {
       "id": "open-wins-over-default-open",
       "text": "`open` and `defaultOpen` are both accepted; `defaultOpen` seeds the initial state and is ignored afterwards, and when `open` is given it wins and the component follows it on every render."
     },
@@ -155,6 +159,10 @@
     "properties": {
       "className": {
         "type": "string"
+      },
+      "contained": {
+        "type": "boolean",
+        "default": false
       },
       "defaultOpen": {
         "type": "boolean"

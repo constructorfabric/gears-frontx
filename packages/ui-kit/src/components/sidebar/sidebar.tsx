@@ -132,10 +132,21 @@ export interface SidebarProviderProps extends Omit<ComponentProps<'div'>, 'class
    * for free by simply passing this through.
    */
   onOpenChange?: (open: boolean) => void;
+  /**
+   * Lay the sidebar out inside a bounded container (a panel, a card, a
+   * page section) instead of against the viewport: the wrapper fills its
+   * parent rather than the screen height, and a `collapsible="none"`
+   * Sidebar sticks to the top of it with a border toward the content. On a
+   * narrow screen the sidebar stacks above the content and its list caps
+   * its height and scrolls.
+   * @default false
+   */
+  contained?: boolean;
 }
 
 export function SidebarProvider({
   defaultOpen,
+  contained = false,
   open: openProp,
   onOpenChange,
   className,
@@ -229,7 +240,7 @@ export function SidebarProvider({
               ...style,
             } as CSSProperties
           }
-          className={cx(styles.wrapper, className)}
+          className={cx(styles.wrapper, contained && styles.contained, className)}
           {...props}
         >
           {children}

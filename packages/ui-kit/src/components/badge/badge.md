@@ -16,18 +16,19 @@ The `variant` axis carries two groups on one axis:
 - **Upstream paint** — `default`, `secondary`, `destructive`, `outline`,
   `ghost`, `link`: the same six names and the same meaning as
   [Button](button.md)'s. `destructive` is a tint of `--destructive` under
-  a `--destructive` label, the identical recipe Button carries.
+  a label in the danger text token (`--danger-foreground`), so it reads at
+  4.5:1 where Button's `--destructive` label would not.
 - **Category** - `category`: a 1px ring and label in `--primary` over a
   tint of the same blue, the drawn chip for a category tag.
 - **Tone** — `success`, `warning`, `danger`, `info`, `accent`: a soft
-  tinted fill with the tone's own color as the label, matching the Studio
+  tinted fill with the tone's color as the label, matching the Studio
   design's Badge row. Its sixth specimen, Neutral, is `secondary` — that
   variant already paints the drawn pair exactly, so there is no separate
   `neutral` name.
 
 Note that `destructive` and `danger` are both present on purpose: a tint
-of `--destructive` under a `--destructive` label, and a `--danger-soft`
-fill under a `--danger` label. Two names for one red, one per role.
+of `--destructive` and a `--danger-soft` fill, both labelled in the danger
+text token. Two names for one red, one per role.
 
 A tone is still paint, not state: it colors a label, it does not track
 one. Badge's five tones (`success`, `warning`, `danger`, `info`, `accent`)
@@ -38,11 +39,11 @@ substitute for a state machine.
 > **Accessibility of tones.** At Badge's label size WCAG 1.4.3 asks
 > 4.5:1. The `success`, `warning` and `danger` labels are written in the
 > tone's text token (`--success-foreground` and so on), not the fill
-> tone, and clear it in both themes (`tokens.test.ts` checks them). The
-> `destructive` label is still `--destructive` on its tint, 3.66:1 in
-> light: the theme has no destructive text token, so that one is with the
-> designer. Color is not a substitute for text either way: keep the label
-> itself explicit.
+> tone, and clear it in both themes (`tokens.test.ts` checks them); the
+> `destructive` label uses the danger text token too. The `category` chip
+> in the dark theme is still under the floor, with no drawn alternative.
+> Color is not a substitute for text either way: keep the label itself
+> explicit.
 
 ## When to use
 

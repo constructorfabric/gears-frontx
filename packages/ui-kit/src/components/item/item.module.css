@@ -70,6 +70,57 @@
 }
 
 /*
+ * A chosen row. Selection inside a list (a pressed toggle row, a selected
+ * option, the file a viewer shows: aria-pressed, aria-selected,
+ * aria-current="true") takes the --secondary pair; the current place in a
+ * navigation (aria-current="page" and the other location values) takes the
+ * --accent pair, as navigation does across the kit. Both hold under the
+ * pointer, and a description on the accent fill follows the row's text.
+ */
+.item:is([aria-pressed='true'], [aria-selected='true'], [aria-current='true']),
+.item:is([aria-pressed='true'], [aria-selected='true'], [aria-current='true']):hover {
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+}
+
+.item:is(
+    [aria-current='page'],
+    [aria-current='step'],
+    [aria-current='location'],
+    [aria-current='date'],
+    [aria-current='time']
+  ),
+.item:is(
+    [aria-current='page'],
+    [aria-current='step'],
+    [aria-current='location'],
+    [aria-current='date'],
+    [aria-current='time']
+  ):hover {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.item:is(
+    [aria-current='page'],
+    [aria-current='step'],
+    [aria-current='location'],
+    [aria-current='date'],
+    [aria-current='time']
+  )
+  .itemDescription {
+  color: inherit;
+}
+
+/* The list item a link or button row sits in inside ItemGroup (see
+ * item.tsx); it lays the row out as the group would. */
+.itemListItem {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+/*
  * Border recolor + inset ring — the same focus-ring idiom Input/Textarea/
  * Select/Tabs/Toast/Table/Badge already share (see theme.css's
  * --ring-inset comment), not a literal translation of upstream's
@@ -146,6 +197,38 @@
 .itemMediaVariantIcon svg {
   width: var(--icon-size-sm);
   height: var(--icon-size-sm);
+}
+
+/*
+ * An icon chip: a glyph on a small filled tile, as a dashboard row or an
+ * activity feed leads with. `chip` is a 29px rounded square on the
+ * --accent pair with a 16px glyph; `chip-round` is a 30px circle on
+ * --surface with the glyph in --primary at 15px. Dimensions, not spacing.
+ */
+.itemMediaVariantChip {
+  width: 1.8125rem;
+  height: 1.8125rem;
+  border-radius: var(--radius-md);
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.itemMediaVariantChip svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.itemMediaVariantChipRound {
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: var(--radius-full);
+  background-color: var(--surface);
+  color: var(--primary);
+}
+
+.itemMediaVariantChipRound svg {
+  width: 0.9375rem;
+  height: 0.9375rem;
 }
 
 .itemMediaVariantImage {

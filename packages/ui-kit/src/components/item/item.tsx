@@ -67,11 +67,13 @@ const ItemGroupContext = createContext(false);
 /*
  * Inside an ItemGroup a plain Item is the list's `listitem` (axe
  * `aria-required-children` on the group otherwise). An Item with `render`
- * keeps the rendered element's role, which a listitem role would replace
- * on a link or a button; a `role` the caller passes always wins. Each Item
- * resets the context for its own children, so an Item nested in a row (or
- * in a popup opened from one) is not taken for a row of the list. The
- * context and the hook are why this module ships `'use client'`.
+ * (a link or a button row) keeps the rendered element's role, which a
+ * listitem role would replace, and is wrapped in a `div role="listitem"`
+ * instead, so the row stays a link or a button and the list stays well
+ * formed. A `role` the caller passes always wins and gets no wrapper. Each
+ * Item resets the context for its own children, so an Item nested in a
+ * row (or in a popup opened from one) is not taken for a row of the list.
+ * The context and the hook are why this module ships `'use client'`.
  */
 export function Item({ className, variant, size, render, ...props }: ItemProps) {
   const inGroup = useContext(ItemGroupContext);
@@ -98,7 +100,15 @@ export function Item({ className, variant, size, render, ...props }: ItemProps) 
       props,
     ),
   });
-  return <ItemGroupContext.Provider value={false}>{element}</ItemGroupContext.Provider>;
+  const wrapped =
+    inGroup && render !== undefined && props.role === undefined ? (
+      <div role="listitem" className={styles.itemListItem}>
+        {element}
+      </div>
+    ) : (
+      element
+    );
+  return <ItemGroupContext.Provider value={false}>{wrapped}</ItemGroupContext.Provider>;
 }
 
 const itemMediaVariants = cva(styles.itemMedia, {
@@ -107,6 +117,8 @@ const itemMediaVariants = cva(styles.itemMedia, {
       default: styles.itemMediaVariantDefault,
       icon: styles.itemMediaVariantIcon,
       image: styles.itemMediaVariantImage,
+      chip: styles.itemMediaVariantChip,
+      'chip-round': styles.itemMediaVariantChipRound,
     },
   },
   defaultVariants: {

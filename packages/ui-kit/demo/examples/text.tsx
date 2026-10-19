@@ -17,6 +17,17 @@ export default function TextExample() {
         </div>
       </Section>
 
+      <Section title="Key figures">
+        <div style={{ display: 'flex', gap: 'var(--space-8)', alignItems: 'baseline' }}>
+          <Text typography="kpi" render={<strong />}>
+            41,302
+          </Text>
+          <Text typography="kpi-lg" render={<strong />}>
+            1,459
+          </Text>
+        </div>
+      </Section>
+
       <Section title="Tone">
         <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
           <Text>Default tone on --foreground.</Text>

@@ -201,7 +201,14 @@ a.variantSecondary:hover {
   --tint: 10%;
   --tint-hover: 20%;
   background-color: color-mix(in oklab, var(--destructive) var(--tint), transparent);
-  color: var(--destructive);
+  /* The label is written like danger's, in the drawn text token: the fill
+   * red is 3.66:1 on its light tint, the text token clears 4.5:1 in both
+   * themes. --destructive and --danger carry the same drawn red. */
+  color: var(--danger-foreground);
+}
+
+.variantDestructive .dot {
+  background-color: var(--destructive);
 }
 
 [data-theme='dark'] .variantDestructive {

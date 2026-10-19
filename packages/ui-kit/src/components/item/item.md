@@ -43,12 +43,36 @@ beside it, and gets the same `--muted` hover fill as a link nested in a row.
 
 Inside `ItemGroup` (a `role="list"`) each `Item` is a list item
 (`role="listitem"`) and `ItemSeparator` is hidden from assistive
-technology, so a group of plain rows reads as a list. An `Item` with
-`render` keeps the rendered element's role instead, so a link or button
-row inside `ItemGroup` leaves the list with a child that is not a list
-item (axe `aria-required-children`); for a list of link rows, give the
-group `role="none"` or wrap each row in its own list item. A `role` passed
-to an `Item` always wins.
+technology, so a group of rows reads as a list. An `Item` with `render`
+(a link or a button row) keeps its own role and sits in a `div` with
+`role="listitem"` the group adds around it. A `role` passed to an `Item`
+always wins and gets no wrapper.
+
+A chosen row is marked with ARIA, and the row paints it:
+
+- selection inside a list (`aria-pressed="true"` on a toggle row,
+  `aria-selected="true"`, `aria-current="true"` on the file a viewer
+  shows) takes `--secondary` / `--secondary-foreground`;
+- the current place in a navigation (`aria-current="page"`, or step,
+  location, date, time) takes `--accent` / `--accent-foreground`, and its
+  description follows the row's text colour.
+
+```tsx
+<ItemGroup>
+  {files.map((file) => (
+    <Item
+      key={file.path}
+      size="sm"
+      render={<button type="button" aria-current={file.path === shown ? 'true' : undefined} />}
+      onClick={() => show(file.path)}
+    >
+      <ItemContent>
+        <ItemTitle>{file.name}</ItemTitle>
+      </ItemContent>
+    </Item>
+  ))}
+</ItemGroup>
+```
 
 `ItemTitle` stays on one line. A short title is as wide as its text; a long
 one stops at the width of its column and ends with an ellipsis. Its text is
@@ -63,7 +87,7 @@ ellipsis`.
 
 | Prop | Type | Default |
 |------|------|---------|
-| `variant` | `'default' \| 'icon' \| 'image'` — `image` also shrinks to match the ancestor `Item`'s `size` | `'default'` |
+| `variant` | `'default' \| 'icon' \| 'image' \| 'chip' \| 'chip-round'` — `image` also shrinks to match the ancestor `Item`'s `size`; `chip` is a 29px rounded square on the `--accent` pair with a 16px glyph, `chip-round` a 30px circle on `--surface` with the glyph in `--primary`, the icon tile a dashboard row or an activity feed leads with | `'default'` |
 
 `ItemDescription`:
 

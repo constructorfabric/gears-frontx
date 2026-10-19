@@ -117,7 +117,7 @@ describe('Badge', () => {
     expect(declared('.variantDestructive', 'background-color')).toBe(
       'color-mix(in oklab, var(--destructive) var(--tint), transparent)',
     );
-    expect(declared('.variantDestructive', 'color')).toBe('var(--destructive)');
+    expect(declared('.variantDestructive', 'color')).toBe('var(--danger-foreground)');
     expect(declared('.variantDestructive', '--tint')).toBe('10%');
     expect(declared("[data-theme='dark'] .variantDestructive", '--tint')).toBe('20%');
     expect(declared('.variantCategory', 'box-shadow')).toBe(
@@ -256,6 +256,8 @@ describe('Badge status tone labels', () => {
   const declared = declaredIn(import.meta.url, 'badge.module.css');
 
   it('writes the success, warning and danger labels in the tone text token on the soft fill', () => {
+    expect(declared('.variantDestructive', 'color')).toBe('var(--danger-foreground)');
+    expect(declared('.variantDestructive .dot', 'background-color')).toBe('var(--destructive)');
     for (const tone of ['success', 'warning', 'danger']) {
       const Tone = tone.charAt(0).toUpperCase() + tone.slice(1);
       expect(declared(`.variant${Tone}`, 'background-color')).toBe(`var(--${tone}-soft)`);

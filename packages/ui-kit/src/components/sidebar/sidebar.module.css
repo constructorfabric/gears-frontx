@@ -1110,3 +1110,41 @@
 .root[data-collapsible='icon'] .menuSkeletonText {
   display: none;
 }
+
+/*
+ * A sidebar inside a bounded container (SidebarProvider `contained`): the
+ * wrapper fills its parent instead of the viewport, and a
+ * `collapsible="none"` Sidebar sticks to the top of it with a border
+ * toward the content. Below the mobile breakpoint the sidebar stacks above
+ * the content, takes the full width with the border below it, and its list
+ * caps at 190px and scrolls (the drawn explorer's narrow layout).
+ */
+.wrapper.contained {
+  min-height: 0;
+  height: 100%;
+}
+
+.contained > .none {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  max-height: 100%;
+  border-inline-end: var(--border-width) solid var(--sidebar-border);
+}
+
+@media (max-width: 767px) {
+  .wrapper.contained {
+    flex-direction: column;
+  }
+
+  .contained > .none {
+    position: static;
+    width: 100%;
+    border-inline-end: 0;
+    border-block-end: var(--border-width) solid var(--sidebar-border);
+  }
+
+  .contained > .none .content {
+    max-height: 190px;
+  }
+}

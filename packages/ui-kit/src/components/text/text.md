@@ -21,7 +21,7 @@ primitive; `render` comes from `useRender`/`mergeProps`.
 
 | Prop | Type | Default |
 |------|------|---------|
-| `typography` | `'body' \| 'label' \| 'meta' \| 'mono' \| 'micro'` - the ramp role; `mono` also sets `--font-mono` | `'body'` |
+| `typography` | `'body' \| 'label' \| 'meta' \| 'mono' \| 'micro' \| 'kpi' \| 'kpi-lg'` - the ramp role; `mono` also sets `--font-mono`; `kpi` (32/32) and `kpi-lg` (48/48) are key figures on a dashboard card, with tabular figures | `'body'` |
 | `tone` | `'default' \| 'muted'` - `--foreground` or `--muted-foreground` | `'default'` |
 | `render` | `ReactElement` or callback - the element | `p` |
 | `className` | `string` - merged after the role and tone classes | - |
@@ -42,6 +42,7 @@ import { Text } from '@gears-frontx/ui-kit';
 <Text>Invite people by email.</Text>
 <Text typography="meta" tone="muted" render={<span />}>Updated 2 hours ago</Text>
 <Text typography="mono" render={<code />}>src/app/main.tsx</Text>
+<Text typography="kpi" render={<strong />}>41,302</Text>
 ```
 
 ## Anti-patterns

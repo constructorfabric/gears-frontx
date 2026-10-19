@@ -7,7 +7,7 @@ import { hydrateRoot } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
+import { declarationMap, declaredIn, extractRules } from '../../__test-utils__/css-rules';
 
 import {
   Sidebar,
@@ -421,5 +421,29 @@ describe('sidebar.module.css horizontal geometry', () => {
     );
     expect(insetRule?.selector).toBe(qualifier);
     expect(declarationMap(insetRule?.body ?? '').get('width')).toBe('auto');
+  });
+});
+
+describe('SidebarProvider contained', () => {
+  it('marks the wrapper and keeps an in-flow sidebar', () => {
+    const { container } = render(
+      <SidebarProvider contained defaultOpen>
+        <Sidebar collapsible="none" data-testid="sidebar">
+          Files
+        </Sidebar>
+      </SidebarProvider>,
+    );
+    expect(container.firstElementChild?.className).toContain(styles.contained);
+    expect(screen.getByTestId('sidebar').className).toContain(styles.none);
+  });
+
+  it('fills its parent and sticks the sidebar to the top of it', () => {
+    const declared = declaredIn(import.meta.url, 'sidebar.module.css');
+    expect(declared('.wrapper.contained', 'height')).toBe('100%');
+    expect(declared('.wrapper.contained', 'min-height')).toBe('0');
+    expect(declared('.contained > .none', 'position')).toBe('sticky');
+    expect(declared('.contained > .none', 'border-inline-end')).toBe(
+      'var(--border-width) solid var(--sidebar-border)',
+    );
   });
 });
