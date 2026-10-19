@@ -82,3 +82,38 @@ describe('InputOtp', () => {
     }
   });
 });
+
+describe('InputOtp slot names', () => {
+  it('names every slot from the aria-label on the root', () => {
+    renderOtp();
+    const slots = screen.getAllByRole('textbox', { name: 'Verification code' });
+    expect(slots).toHaveLength(4);
+  });
+
+  it("keeps a slot's own aria-labelledby", () => {
+    render(
+      <>
+        <span id="own">Own name</span>
+        <InputOtp length={2} aria-label="Verification code">
+          <InputOtpSlot aria-labelledby="own" />
+          <InputOtpSlot />
+        </InputOtp>
+      </>,
+    );
+    expect(screen.getAllByRole('textbox', { name: 'Own name' })).toHaveLength(1);
+    expect(screen.getAllByRole('textbox', { name: 'Verification code' })).toHaveLength(1);
+  });
+
+  it('adds nothing when the root is named another way', () => {
+    render(
+      <>
+        <label htmlFor="otp">Code</label>
+        <InputOtp id="otp" length={2}>
+          <InputOtpSlot />
+          <InputOtpSlot />
+        </InputOtp>
+      </>,
+    );
+    expect(document.querySelector('span[hidden]')).toBeNull();
+  });
+});

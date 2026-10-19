@@ -13,6 +13,7 @@ import {
   Sidebar,
   SidebarContent,
   SidebarGroupLabel,
+  SidebarInset,
   SidebarMenuButton,
   SidebarMenuSkeleton,
   SidebarMenuSubButton,
@@ -248,8 +249,45 @@ describe('Sidebar', () => {
         <SidebarMenuButton tooltip="Homepage link">Home</SidebarMenuButton>
       </SidebarProvider>,
     );
-    fireEvent.focus(screen.getByRole('button', { name: 'Home' }));
+    fireEvent.focus(screen.getByRole('button', { name: 'Homepage link' }));
     await waitFor(() => expect(screen.getByText('Homepage link')).toBeTruthy(), { timeout: 1000 });
+  });
+
+  it('is named by its string tooltip while collapsed, and by an aria-label the caller passes', () => {
+    render(
+      <SidebarProvider defaultOpen={false}>
+        <SidebarMenuButton tooltip="Home">
+          <span>Home</span>
+        </SidebarMenuButton>
+        <SidebarMenuButton tooltip="Inbox" aria-label="Inbox, 3 unread">
+          <span>Inbox</span>
+        </SidebarMenuButton>
+      </SidebarProvider>,
+    );
+    expect(screen.getByRole('button', { name: 'Home' }).getAttribute('aria-label')).toBe('Home');
+    expect(screen.getByRole('button', { name: 'Inbox, 3 unread' })).toBeDefined();
+  });
+
+  it('adds no aria-label while expanded', () => {
+    render(
+      <SidebarProvider defaultOpen>
+        <SidebarMenuButton tooltip="Homepage link">Home</SidebarMenuButton>
+      </SidebarProvider>,
+    );
+    expect(screen.getByRole('button', { name: 'Home' }).hasAttribute('aria-label')).toBe(false);
+  });
+
+  it('renders SidebarInset as main, or as the element render gives it', () => {
+    const { rerender } = render(<SidebarInset data-testid="inset">Body</SidebarInset>);
+    expect(screen.getByTestId('inset').tagName).toBe('MAIN');
+    rerender(
+      <SidebarInset data-testid="inset" render={<div />}>
+        Body
+      </SidebarInset>,
+    );
+    const inset = screen.getByTestId('inset');
+    expect(inset.tagName).toBe('DIV');
+    expect(inset.className).toContain(styles.inset);
   });
 
   it('renders SidebarMenuButton as a link via render, keeping isActive reflected', () => {

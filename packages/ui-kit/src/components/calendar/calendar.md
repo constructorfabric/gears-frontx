@@ -28,6 +28,12 @@ The kit only fixes defaults and re-authors the styling surface:
 | `className` | `string` — merged onto the root | — |
 | `classNames` | `Partial<ClassNames>` — merged over the kit's own per-slot classes, keyed by react-day-picker's own slot names (`root`, `months`, `day`, `range_start`, ...) | — |
 
+Name each calendar's month navigation when a page shows more than one:
+react-day-picker names it "Navigation bar" for every instance, so two
+calendars give two identical navigation landmarks (axe `landmark-unique`).
+Pass its `labels` prop, for example
+`labels={{ labelNav: () => 'Start date, month navigation' }}`.
+
 `captionLayout`'s four values split into two visually distinct renders,
 both covered by calendar.module.css:
 

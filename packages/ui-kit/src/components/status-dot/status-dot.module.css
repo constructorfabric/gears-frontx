@@ -5,9 +5,12 @@
  * variables - no raw colors.
  *
  * The tone classes set `color` and nothing else. The dot fills from
- * `currentColor` and the label inherits, so one declaration per tone paints
- * both, in light and dark alike (every token below is redefined per theme
- * in theme.css). Same mechanism badge.module.css's own dot uses.
+ * `currentColor` and the label inherits, in light and dark alike (every
+ * token below is redefined per theme in theme.css). Same mechanism
+ * badge.module.css's own dot uses. Success, warning and danger are fill
+ * colours that miss 4.5:1 as 12px text in light, so their label takes the
+ * tone's drawn text token (`--x-foreground`) instead; the dot keeps the
+ * tone. In dark the text token equals the tone.
  */
 
 .statusDot {
@@ -64,6 +67,18 @@
 
 .toneInfo {
   color: var(--info);
+}
+
+.toneSuccess .label {
+  color: var(--success-foreground);
+}
+
+.toneWarning .label {
+  color: var(--warning-foreground);
+}
+
+.toneDanger .label {
+  color: var(--danger-foreground);
 }
 
 /*

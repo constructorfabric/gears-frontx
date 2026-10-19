@@ -95,10 +95,11 @@ attestations:
     outcome: failed
     by: >-
       theme.css token contrast measured with src/__test-utils__/contrast.ts:
-      the tone label on its soft fill is 3.43:1 for light `success`, 2.00:1
-      for light `warning` and 4.28:1 for light `danger`, and the
-      `destructive` label over its 10% tint on the light --background is
-      3.66:1, all under the 4.5:1 WCAG 1.4.3 asks of Badge's 12px label.
+      the success, warning and danger labels are written in their text
+      tokens and clear 4.5:1 on their soft fills in both themes
+      (tokens.test.ts), but the `destructive` label over its 10% tint on
+      the light --background is 3.66:1, under the 4.5:1 WCAG 1.4.3 asks of
+      Badge's 12px label; the theme has no destructive text token.
       badge.test.tsx itself asserts
       the dot's aria-hidden="true" and a link role with its accessible name
       when rendered over an anchor.

@@ -37,7 +37,10 @@ invariants:
   - id: tooltip-only-while-collapsed
     text: >-
       `tooltip` is mounted only while the sidebar is collapsed on desktop;
-      expanded or on mobile no tooltip is rendered.
+      expanded or on mobile no tooltip is rendered. While it is mounted, a
+      string tooltip is also the button's `aria-label`, since the visible
+      label is hidden on the icon rail; an `aria-label` the caller passes
+      wins.
   - id: is-active-is-visual-only
     text: >-
       `isActive` sets a bare `data-active` attribute and the active fill;

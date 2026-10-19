@@ -56,7 +56,7 @@
     },
     {
       "id": "tone-paints-dot-and-label-together",
-      "text": "The tone class sets only `color` on the root; the dot fills from `currentColor` and the label inherits, so the two always share one tone. The resolved tone is reflected as `data-tone` on the root, and an explicit `tone={null}` resolves to neutral in both class and attribute."
+      "text": "The tone class sets `color` on the root and the dot fills from `currentColor`; the label inherits it, except for success, warning and danger, whose label is written in the tone's text token (--success-foreground, --warning-foreground, --danger-foreground) so it clears 4.5:1 in light, and equals the tone in dark. The resolved tone is reflected as `data-tone` on the root, and an explicit `tone={null}` resolves to neutral in both class and attribute."
     },
     {
       "id": "live-pulses-only-the-dot-and-stops-under-reduced-motion",
@@ -81,7 +81,7 @@
   "attestations": {
     "a11y": {
       "outcome": "failed",
-      "by": "theme.css token contrast measured with src/__test-utils__/contrast.ts: the tone colour the label is painted in reaches 3.44:1 for light `success`, 1.96:1 for light `warning` and 4.29:1 for light `danger` against the light --background (success 3.77:1 and warning 2.15:1 on the white --card; light `danger` is 4.29:1 on --background but 4.70:1 on --card), under the 4.5:1 WCAG 1.4.3 asks of the 12px label. A bare dot named with role=\"img\" is a graphic under WCAG 1.4.11 and light `warning` misses its 3:1 as well. The accessible-name branches themselves hold: status-dot.test.tsx asserts aria-hidden=\"true\" on a bare dot, role=\"img\" with the caller's aria-label or aria-labelledby, and no role or aria-hidden once a label is shown, also under `render`."
+      "by": "theme.css token contrast measured with src/__test-utils__/contrast.ts: every label clears 4.5:1 (tokens.test.ts checks the success, warning and danger text tokens on --background and --card in both themes), but a bare dot named with role=\"img\" is a graphic under WCAG 1.4.11, and the light `warning` fill misses its 3:1 (1.96:1 on --background). The accessible-name branches hold: status-dot.test.tsx asserts aria-hidden=\"true\" on a bare dot, role=\"img\" with the caller's aria-label or aria-labelledby, and no role or aria-hidden once a label is shown, also under `render`."
     },
     "rtl": {
       "outcome": "unknown"

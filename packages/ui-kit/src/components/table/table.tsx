@@ -171,10 +171,25 @@ function TableColumnResizer({ minWidth }: TableColumnResizerProps) {
   const dragRef = useRef<DragState | null>(null);
   const [columnName, setColumnName] = useState('');
   const [width, setWidth] = useState<number | null>(null);
+  // The column's width and its bounds as the handle reports them: a
+  // focusable separator is a widget, and assistive technology reads its
+  // value from aria-valuenow (axe `aria-required-attr` without it). Read
+  // once at mount; `width` above takes over once the user resizes.
+  const [bounds, setBounds] = useState<{ now: number; min: number; max: number } | null>(null);
 
   useEffect(() => {
-    setColumnName(handleRef.current?.closest('th')?.textContent?.trim() ?? '');
-  }, []);
+    const cell = handleRef.current?.closest('th');
+    setColumnName(cell?.textContent?.trim() ?? '');
+    if (cell instanceof HTMLTableCellElement) {
+      setBounds({
+        now: Math.round(cell.getBoundingClientRect().width),
+        min: Math.round(minWidthOf(cell, minWidth)),
+        max: Math.round(cell.closest('table')?.getBoundingClientRect().width ?? 0),
+      });
+    }
+  }, [minWidth]);
+
+  const valueNow = width ?? bounds?.now ?? 0;
 
   /*
    * The cursor and the text selection are locked for the DURATION of the
@@ -303,6 +318,9 @@ function TableColumnResizer({ minWidth }: TableColumnResizerProps) {
       role="separator"
       aria-orientation="vertical"
       aria-label={`${columnName || 'Column'} width${width === null ? '' : `, ${width} pixels`}`}
+      aria-valuenow={valueNow}
+      aria-valuemin={bounds?.min ?? 0}
+      aria-valuemax={Math.max(bounds?.max ?? 0, valueNow)}
       tabIndex={0}
       className={styles.columnResizer}
       style={{ width: HANDLE_WIDTH, insetInlineEnd: -HANDLE_WIDTH / 2 }}

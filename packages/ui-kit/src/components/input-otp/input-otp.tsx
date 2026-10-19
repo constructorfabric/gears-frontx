@@ -1,6 +1,8 @@
+'use client';
+
 import { OTPField as OTPFieldPrimitive } from '@base-ui/react/otp-field';
 import { cx } from 'class-variance-authority';
-import type { ComponentProps } from 'react';
+import { type ComponentProps, createContext, useContext, useId } from 'react';
 
 import styles from './input-otp.module.css';
 
@@ -24,8 +26,36 @@ export interface InputOtpProps extends Omit<OTPFieldPrimitive.Root.Props, 'class
   className?: string;
 }
 
-export function InputOtp({ className, ...props }: InputOtpProps) {
-  return <OTPFieldPrimitive.Root className={cx(styles.root, className)} {...props} />;
+// The id of the hidden text that names every slot, when the root was given
+// an `aria-label` (see InputOtp).
+const InputOtpLabelContext = createContext<string | undefined>(undefined);
+
+/*
+ * Base UI's OTPField names its inputs from a `<label>` or Field.Label only:
+ * an `aria-label` on the root stays on the root, and the first input
+ * ignores one of its own, so `<InputOtp aria-label="Verification code">`
+ * left every slot unnamed (axe `label`). With an `aria-label` and no
+ * `aria-labelledby`, the root renders that text in a hidden span and every
+ * slot points at it through `aria-labelledby`. A slot's own
+ * `aria-labelledby` still wins, and a `<label htmlFor>` or FieldLabel keeps
+ * working as before, since then no `aria-label` is passed.
+ */
+export function InputOtp({ className, children, ...props }: InputOtpProps) {
+  const labelId = useId();
+  const ariaLabel = props['aria-label'];
+  const labelled = ariaLabel != null && props['aria-labelledby'] == null;
+  return (
+    <InputOtpLabelContext.Provider value={labelled ? labelId : undefined}>
+      <OTPFieldPrimitive.Root className={cx(styles.root, className)} {...props}>
+        {children}
+        {labelled ? (
+          <span id={labelId} hidden>
+            {ariaLabel}
+          </span>
+        ) : null}
+      </OTPFieldPrimitive.Root>
+    </InputOtpLabelContext.Provider>
+  );
 }
 
 // No Base UI primitive backs this part (upstream's own `InputOTPGroup` is
@@ -43,7 +73,14 @@ export interface InputOtpSlotProps extends Omit<OTPFieldPrimitive.Input.Props, '
 }
 
 export function InputOtpSlot({ className, ...props }: InputOtpSlotProps) {
-  return <OTPFieldPrimitive.Input className={cx(styles.slot, className)} {...props} />;
+  const labelId = useContext(InputOtpLabelContext);
+  return (
+    <OTPFieldPrimitive.Input
+      className={cx(styles.slot, className)}
+      aria-labelledby={labelId}
+      {...props}
+    />
+  );
 }
 
 export interface InputOtpSeparatorProps

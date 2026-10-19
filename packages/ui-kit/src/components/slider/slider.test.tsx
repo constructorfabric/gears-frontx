@@ -47,11 +47,9 @@ afterAll(() => {
 
 /*
  * Base UI puts the accessible name on the Thumb's nested <input> (see
- * SliderThumb.js's `aria-label`/`getAriaLabel`), not on Root — passing
- * `aria-label` to this convenience wrapper (as these tests do) lands on
- * Root's `role="group"` wrapper instead, same as upstream's own
- * translation. These tests query by role only (no `{ name }` filter) for
- * that reason, and cover the group-level label separately.
+ * SliderThumb.js's `aria-label`/`getAriaLabel`), not on Root. The wrapper
+ * passes `aria-label`/`aria-labelledby` to both: Root's `role="group"` and
+ * every thumb, covered at the end of this suite.
  */
 describe('Slider', () => {
   it('renders a single thumb for a scalar value', async () => {
@@ -115,5 +113,23 @@ describe('Slider', () => {
     const thumb = document.querySelector('input[type="range"]') as HTMLInputElement;
     expect(thumb).not.toBeNull();
     expect(thumb.disabled).toBe(true);
+  });
+});
+
+describe('Slider names', () => {
+  it('names every thumb input from the aria-label', async () => {
+    render(<Slider defaultValue={[20, 80]} aria-label="Price" />);
+    expect(await screen.findAllByRole('slider', { name: 'Price' })).toHaveLength(2);
+    expect(screen.getByRole('group', { name: 'Price' })).toBeDefined();
+  });
+
+  it('names a thumb from aria-labelledby', async () => {
+    render(
+      <>
+        <span id="volume-label">Volume</span>
+        <Slider defaultValue={50} aria-labelledby="volume-label" />
+      </>,
+    );
+    expect(await screen.findAllByRole('slider', { name: 'Volume' })).toHaveLength(1);
   });
 });

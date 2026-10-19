@@ -30,14 +30,13 @@
     {
       "id": "block-margin-on-top-of-the-gap",
       "text": "ItemSeparator adds a var(--space-2) margin above and below on top of the group's gap."
-    }
-  ],
-  "anti_patterns": [
+    },
     {
-      "dont": "Leave a separator exposed to assistive technology inside the group's list",
-      "do_instead": "Pass aria-hidden=\"true\" on ItemSeparator; the primitive's role separator is not a list item, and the rows' own boundaries already carry the structure"
+      "id": "hidden-from-assistive-technology",
+      "text": "ItemSeparator is aria-hidden by default: inside the group's list the primitive's role separator is not a list item, and the rows already carry the structure. An `aria-hidden` the caller passes wins."
     }
   ],
+  "anti_patterns": [],
   "deprecations": {},
   "attestations": {
     "a11y": {
@@ -61,7 +60,7 @@
     "good": [
       {
         "title": "A decorative divider between two rows",
-        "code": "<ItemGroup>\n  <Item role=\"listitem\">Q3 report.pdf</Item>\n  <ItemSeparator aria-hidden=\"true\" />\n  <Item role=\"listitem\">Notes.txt</Item>\n</ItemGroup>\n"
+        "code": "<ItemGroup>\n  <Item>Q3 report.pdf</Item>\n  <ItemSeparator />\n  <Item>Notes.txt</Item>\n</ItemGroup>\n"
       }
     ],
     "bad": [

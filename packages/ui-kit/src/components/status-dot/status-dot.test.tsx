@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
+import { declarationMap, declaredIn, extractRules } from '../../__test-utils__/css-rules';
 import { StatusDot } from './status-dot';
 import styles from './status-dot.module.css';
 
@@ -193,5 +193,17 @@ describe('StatusDot drawn geometry', () => {
       'status-dot-pulse 2s var(--ease-standard) infinite',
     );
     expect(lastRuleFor('.statusDot[data-live] .dot').get('animation')).toBe('none');
+  });
+});
+
+describe('StatusDot label tone', () => {
+  const declared = declaredIn(import.meta.url, 'status-dot.module.css');
+
+  it('writes the success, warning and danger labels in the tone text token, the dot in the tone', () => {
+    for (const tone of ['success', 'warning', 'danger']) {
+      const Tone = tone.charAt(0).toUpperCase() + tone.slice(1);
+      expect(declared(`.tone${Tone}`, 'color')).toBe(`var(--${tone})`);
+      expect(declared(`.tone${Tone} .label`, 'color')).toBe(`var(--${tone}-foreground)`);
+    }
   });
 });

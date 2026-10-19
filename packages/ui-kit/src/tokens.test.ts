@@ -923,6 +923,23 @@ describe('theme tokens', () => {
         }
       });
 
+      // The status text tokens are what Badge, StatusDot and the soft
+      // Avatar tones write a status label in: on the tone's own -soft fill
+      // (Badge, Avatar) and on the page and card surfaces (StatusDot).
+      it('status text tokens clear 4.5:1 on their soft fill, the page and a card', () => {
+        for (const [themeName, tokens] of themes) {
+          for (const tone of ['success', 'warning', 'danger']) {
+            const text = token(tokens, `--${tone}-foreground`);
+            for (const backdrop of [`--${tone}-soft`, '--background', '--card']) {
+              expect(
+                contrastRatio(text, token(tokens, backdrop)),
+                `${themeName} --${tone}-foreground on ${backdrop}`,
+              ).toBeGreaterThanOrEqual(4.5);
+            }
+          }
+        }
+      });
+
       // The table header label against the header bar's own fill
       // (--surface, not --background — see table.module.css).
       it('table header text clears 4.5:1 against the header bar fill', () => {

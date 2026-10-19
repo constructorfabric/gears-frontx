@@ -19,8 +19,10 @@ accepts:
 invariants:
   - id: renders-the-main-landmark
     text: >-
-      SidebarInset renders a `main` element, so it is the page's main
-      landmark; a shell renders one.
+      SidebarInset renders a `main` element by default, so it is the page's
+      main landmark; a shell renders one. A sidebar layout embedded in a
+      page that already has its main passes `render={<div />}`, so no
+      second, nested main appears.
   - id: inset-card-follows-an-inset-sidebar
     text: >-
       From a 768px viewport, when an earlier sibling carries
@@ -39,6 +41,16 @@ attestations:
     outcome: unknown
   rtl:
     outcome: unknown
+
+prop_statements:
+  render:
+    states: render replaces the rendered main with an element the caller supplies
+    because: >-
+      useRender's render prop takes an element or a function that receives
+      the props to spread (SidebarInset passes no state of its own), so its
+      type is a union of a React element and a callback - the compiler
+      emits one JSON type per property. It is for an embedded layout,
+      `render={<div />}`.
 
 examples:
   good:

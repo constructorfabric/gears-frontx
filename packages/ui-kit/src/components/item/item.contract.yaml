@@ -94,6 +94,12 @@ invariants:
       on its own element under :focus-visible; the default div is not
       focusable, so the ring appears only once the Item itself takes focus,
       for example when `render` makes it a link or a button.
+  - id: list-item-inside-a-group
+    text: >-
+      Inside an ItemGroup (`role="list"`) an Item without `render` takes
+      `role="listitem"`; an Item rendered as a link or a button keeps that
+      element's role, and a `role` the caller passes wins. Outside a group
+      an Item has no role.
   - id: link-root-looks-like-a-row
     text: >-
       Item sets `color: inherit` and `text-decoration: none` on its own

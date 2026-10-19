@@ -125,7 +125,9 @@
  * soft; tone: neutral | accent | info | success | warning | danger".
  *
  * `solid` paints the tone at full strength; `soft` inverts the pair — the
- * tone's own -soft surface carries the tone itself as the label color.
+ * tone's own -soft surface carries the tone as the label color, written in
+ * the tone's drawn text token (`--x-foreground`) where theme.css has one
+ * (success, warning, danger), since the fill tone misses 4.5:1 as text.
  *
  * The solid label DEVIATES from the mockup, which binds --primary-foreground
  * for all six solid tones: in dark mode the status tones are light tints,
@@ -205,17 +207,17 @@
 
 .variantSoft.toneSuccess {
   background-color: var(--success-soft);
-  color: var(--success);
+  color: var(--success-foreground);
 }
 
 .variantSoft.toneWarning {
   background-color: var(--warning-soft);
-  color: var(--warning);
+  color: var(--warning-foreground);
 }
 
 .variantSoft.toneDanger {
   background-color: var(--danger-soft);
-  color: var(--danger);
+  color: var(--danger-foreground);
 }
 
 .badge {

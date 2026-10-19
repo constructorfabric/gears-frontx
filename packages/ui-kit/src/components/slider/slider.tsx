@@ -39,12 +39,21 @@ export interface SliderProps<Value extends number | readonly number[] = number |
  * what an unspecified slider ought to look like. A range slider says so
  * with an array `defaultValue`.
  */
+/*
+ * `aria-label` and `aria-labelledby` name the root's group and also each
+ * thumb: the thumb's range input is what a screen reader focuses, and Base
+ * UI leaves a name given to the root on the root only (axe `label` on every
+ * input). A range slider's thumbs share the name; a FieldLabel still names
+ * a single thumb through Base UI's own label wiring.
+ */
 export function Slider<Value extends number | readonly number[] = number | readonly number[]>({
   className,
   defaultValue,
   value,
   min = 0,
   max = 100,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
   ...props
 }: SliderProps<Value>) {
   const resolved = value ?? defaultValue;
@@ -57,6 +66,8 @@ export function Slider<Value extends number | readonly number[] = number | reado
       min={min}
       max={max}
       thumbAlignment="edge"
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
       {...props}
     >
       <SliderPrimitive.Control className={styles.control}>
@@ -64,7 +75,13 @@ export function Slider<Value extends number | readonly number[] = number | reado
           <SliderPrimitive.Indicator className={styles.range} />
         </SliderPrimitive.Track>
         {Array.from({ length: thumbCount }, (_, index) => (
-          <SliderPrimitive.Thumb key={index} index={index} className={styles.thumb} />
+          <SliderPrimitive.Thumb
+            key={index}
+            index={index}
+            className={styles.thumb}
+            aria-label={ariaLabel}
+            aria-labelledby={ariaLabelledBy}
+          />
         ))}
       </SliderPrimitive.Control>
     </SliderPrimitive.Root>

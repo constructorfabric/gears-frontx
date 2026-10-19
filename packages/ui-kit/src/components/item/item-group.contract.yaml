@@ -33,9 +33,10 @@ invariants:
   - id: role-list-without-list-items
     text: >-
       ItemGroup renders a div with role="list", which a consumer's own
-      `role` replaces; Item sets no role of its own and ItemSeparator
-      carries the primitive's role="separator", so the list's rows are
-      exposed as list items only when each Item is given role="listitem".
+      `role` replaces. Each Item inside it without `render` takes
+      role="listitem" and ItemSeparator is aria-hidden, so a group of plain
+      rows is a well-formed list; a row rendered as a link or a button
+      keeps that role and is not a list item.
   - id: gap-follows-the-smallest-item-size
     text: >-
       The group is a full-width flex column spaced var(--space-4) apart;
@@ -50,31 +51,31 @@ anti_patterns:
 
 deprecations: {}
 
-# item.test.tsx asserts role="list" on the group; the WAI-ARIA list role
-# owns list items, and nothing in the family supplies one.
+# item.test.tsx asserts role="list" on the group and role="listitem" on
+# its plain rows; a row rendered as a link or a button is not a list item.
 attestations:
   a11y:
     outcome: failed
     by: >-
-      item.test.tsx asserts the group's role="list", while item.tsx gives
-      Item no role and ItemSeparator keeps the primitive's
-      role="separator", so a group built as item.md shows exposes a list
-      whose children are not list items, the role WAI-ARIA requires a list
-      to own
+      item.test.tsx asserts the group's role="list" and role="listitem" on
+      a plain Item inside it, and ItemSeparator is aria-hidden, but an Item
+      rendered as a link or a button keeps its own role, so a group of link
+      rows (item.md's navigation example) still exposes a list whose
+      children are not list items
   rtl:
     outcome: unknown
 
 examples:
   good:
-    - title: A run of rows exposed as list items
+    - title: A run of rows, each a list item of the group
       code: |
         <ItemGroup>
-          <Item role="listitem">
+          <Item>
             <ItemContent>
               <ItemTitle>Q3 report.pdf</ItemTitle>
             </ItemContent>
           </Item>
-          <Item role="listitem">
+          <Item>
             <ItemContent>
               <ItemTitle>Notes.txt</ItemTitle>
             </ItemContent>

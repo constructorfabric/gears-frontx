@@ -1,7 +1,7 @@
 # StatusDot
 
 An inline status indicator: a 6px round dot plus an optional 12/16 label,
-both painted in the tone's own colour. No Base UI primitive and no
+both painted in the tone. No Base UI primitive and no
 interactive behaviour - a pure styling translation over native spans, like
 `Skeleton` and `Spinner`.
 
@@ -28,7 +28,7 @@ interactive behaviour - a pure styling translation over native spans, like
 
 | Prop | Type | Default |
 |------|------|---------|
-| `tone` | `'neutral' \| 'success' \| 'warning' \| 'danger' \| 'info'` - paints the dot and the label alike (`--muted-foreground` for neutral, `--success` / `--warning` / `--danger` / `--info` for the rest); the root also carries `data-tone` | `'neutral'` |
+| `tone` | `'neutral' \| 'success' \| 'warning' \| 'danger' \| 'info'` - paints the dot in the tone (`--muted-foreground` for neutral, `--success` / `--warning` / `--danger` / `--info` for the rest) and the label in the same tone, written in the tone's text token (`--success-foreground` / `--warning-foreground` / `--danger-foreground`) where the fill tone is too light for 12px text; the root also carries `data-tone` | `'neutral'` |
 | `label` | `ReactNode` - the text beside the dot; omitted renders the dot on its own | - |
 | `live` | `boolean` - the dot breathes on a 2s opacity cycle and the root carries `data-live`; off under `prefers-reduced-motion` | `false` |
 | `render` | `ReactElement` - replaces the root `span`, e.g. with an `<li>` inside a status list | - |

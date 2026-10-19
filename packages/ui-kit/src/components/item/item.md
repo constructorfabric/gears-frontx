@@ -41,6 +41,12 @@ Rendered as a link (`render={<a href="..." />}`), the row keeps the
 surrounding text colour and no underline, so it looks like the plain rows
 beside it, and gets the same `--muted` hover fill as a link nested in a row.
 
+Inside `ItemGroup` (a `role="list"`) each `Item` is a list item
+(`role="listitem"`) and `ItemSeparator` is hidden from assistive
+technology, so a group of rows reads as a list. An `Item` rendered as a
+link or a button keeps that element's role instead, and a `role` passed to
+an `Item` always wins.
+
 `ItemTitle` stays on one line. A short title is as wide as its text; a long
 one stops at the width of its column and ends with an ellipsis. Its text is
 wrapped in a span that draws the ellipsis (text inside a fragment counts);

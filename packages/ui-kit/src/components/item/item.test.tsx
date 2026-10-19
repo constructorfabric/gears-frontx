@@ -96,6 +96,47 @@ describe('Item', () => {
   });
 });
 
+describe('Item inside ItemGroup', () => {
+  it('is a list item of the group, and has no role outside one', () => {
+    render(
+      <>
+        <ItemGroup>
+          <Item data-testid="grouped">Grouped</Item>
+        </ItemGroup>
+        <Item data-testid="alone">Alone</Item>
+      </>,
+    );
+    expect(screen.getByRole('list').children[0]).toBe(screen.getByRole('listitem'));
+    expect(screen.getByTestId('grouped').getAttribute('role')).toBe('listitem');
+    expect(screen.getByTestId('alone').hasAttribute('role')).toBe(false);
+  });
+
+  it('keeps the role of a link row and a role the caller passes', () => {
+    render(
+      <ItemGroup>
+        <Item render={<a href="/files/1" />}>Linked</Item>
+        <Item role="presentation" data-testid="own">
+          Own
+        </Item>
+      </ItemGroup>,
+    );
+    expect(screen.getByRole('link', { name: 'Linked' })).toBeDefined();
+    expect(screen.getByTestId('own').getAttribute('role')).toBe('presentation');
+  });
+
+  it('keeps the separator out of the accessibility tree', () => {
+    render(
+      <ItemGroup>
+        <Item>One</Item>
+        <ItemSeparator />
+        <Item>Two</Item>
+      </ItemGroup>,
+    );
+    expect(screen.queryByRole('separator')).toBeNull();
+    expect(screen.getAllByRole('listitem')).toHaveLength(2);
+  });
+});
+
 describe('ItemTitle truncation', () => {
   it('puts a run of adjacent text children into one ellipsis span', () => {
     const name = 'report';

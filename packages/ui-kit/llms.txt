@@ -44,9 +44,9 @@ Rules for generated code:
   client-boundary module needed — unless it appears in the next line. The
   kit components that carry a `'use client'` banner of their own:
   Alert, Attachment, Badge, Breadcrumb, Bubble, ButtonGroup, Card,
-  Carousel, Chart, CodeBlock, Combobox, ContextMenu, DataGrid, DataTable,
-  Drawer, DropdownMenu, Empty, Heading, Link, Marker, PageHeader, Sidebar,
-  StatusDot, Table, Text, Toast, VisuallyHidden. Each calls a hook directly
+  Carousel, Chart, CodeBlock, Combobox, Command, ContextMenu, DataGrid,
+  DataTable, Drawer, DropdownMenu, Empty, Heading, InputOtp, Link, Marker,
+  PageHeader, Sidebar, StatusDot, Table, Text, Toast, VisuallyHidden. Each calls a hook directly
   in its own render body, so it always renders on the client, wherever it
   is imported from.
 - The kit paints the page itself from its tokens and sets `color-scheme`: with

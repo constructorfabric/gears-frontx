@@ -5,10 +5,12 @@ import {
   Children,
   cloneElement,
   type ComponentProps,
+  createContext,
   type CSSProperties,
   Fragment,
   isValidElement,
   type ReactNode,
+  useContext,
 } from 'react';
 
 import { Separator, type SeparatorProps } from '../separator/separator';
@@ -57,7 +59,17 @@ type ItemSize = NonNullable<VariantProps<typeof itemVariants>['size']>;
 export type ItemProps = useRender.ComponentProps<'div', { variant: ItemVariant; size: ItemSize }> &
   VariantProps<typeof itemVariants>;
 
+// Set by ItemGroup, whose `role="list"` needs list items as its children.
+const ItemGroupContext = createContext(false);
+
+/*
+ * Inside an ItemGroup a plain Item is the list's `listitem` (axe
+ * `aria-required-children` on the group otherwise). An Item rendered as a
+ * link or a button through `render` keeps that element's own role, which a
+ * listitem role would replace; a `role` the caller passes always wins.
+ */
 export function Item({ className, variant, size, render, ...props }: ItemProps) {
+  const inGroup = useContext(ItemGroupContext);
   // cva's own VariantProps types these `| null` (a consumer can pass
   // `variant={null}` to explicitly reset to the default), which a default
   // parameter value alone doesn't absorb — only `undefined` does. Resolved
@@ -73,7 +85,13 @@ export function Item({ className, variant, size, render, ...props }: ItemProps) 
       variant: () => null,
       size: () => null,
     },
-    props: mergeProps<'div'>({ className: itemVariants({ variant, size, className }) }, props),
+    props: mergeProps<'div'>(
+      {
+        className: itemVariants({ variant, size, className }),
+        role: inGroup && render === undefined ? 'listitem' : undefined,
+      },
+      props,
+    ),
   });
 }
 
@@ -226,13 +244,29 @@ export type ItemGroupProps = ComponentProps<'div'>;
  * (the gap shrinks to match the smallest `size` of Item it contains — see
  * item.module.css). */
 export function ItemGroup({ className, ...props }: ItemGroupProps) {
-  return <div role="list" className={cx(styles.itemGroup, className)} {...props} />;
+  return (
+    <ItemGroupContext.Provider value={true}>
+      <div role="list" className={cx(styles.itemGroup, className)} {...props} />
+    </ItemGroupContext.Provider>
+  );
 }
 
 /** A divider between `Item`s, built on the kit's own `Separator` — same
  * composition idiom as `field.tsx`'s `FieldSeparator`. */
 export type ItemSeparatorProps = SeparatorProps;
 
+/*
+ * Decorative by default (`aria-hidden`, the kit's documented decorative
+ * form, see separator.md): inside ItemGroup's list a separator role is a
+ * child the list role does not allow, and the rows already read as items.
+ */
 export function ItemSeparator({ className, ...props }: ItemSeparatorProps) {
-  return <Separator orientation="horizontal" className={cx(styles.itemSeparator, className)} {...props} />;
+  return (
+    <Separator
+      orientation="horizontal"
+      aria-hidden
+      className={cx(styles.itemSeparator, className)}
+      {...props}
+    />
+  );
 }

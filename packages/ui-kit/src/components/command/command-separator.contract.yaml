@@ -1,6 +1,6 @@
 # Semantic overlay for CommandSeparator - a part of the Command family, see
-# command.contract.yaml's `family_membership`. The forwarded surface is the
-# library's separator div.
+# command.contract.yaml's `family_membership`. It renders a div of its own
+# rather than the library's separator, to set `role="none"`.
 component: command-separator
 
 intent: A horizontal rule between groups or items of a CommandList, shown while the search is empty.
@@ -21,7 +21,10 @@ invariants:
   - id: rendered-only-while-search-is-empty
     text: >-
       The separator renders only while the search text is empty, unless
-      `alwaysRender` is true; it carries `role="separator"`.
+      `alwaysRender` is true. It carries `role="none"`: inside the list's
+      `role="listbox"` a separator role is a child the listbox does not
+      allow, and the groups already separate the options for assistive
+      technology.
   - id: spans-the-list-width
     text: >-
       command.module.css draws it as a one-border-width rule whose negative

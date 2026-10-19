@@ -36,13 +36,13 @@ status, but keep the label text itself explicit; color alone is not a
 substitute for a state machine.
 
 > **Accessibility of tones.** At Badge's label size WCAG 1.4.3 asks
-> 4.5:1, and on the drawn status values three pairs do not reach it: light
-> `success` (3.43:1), light `warning` (2.00:1) and dark `danger` (3.63:1),
-> with light `danger` at 4.28:1. The kit ships the drawn values; the
-> finding belongs with the designer, and `tokens.test.ts` pins the hexes so
-> a correction has to happen in the design first. Where that matters,
-> `secondary`, `info` and `accent` clear the floor in both themes. Color is
-> not a substitute for text either way: keep the label itself explicit.
+> 4.5:1. The `success`, `warning` and `danger` labels are written in the
+> tone's text token (`--success-foreground` and so on), not the fill
+> tone, and clear it in both themes (`tokens.test.ts` checks them). The
+> `destructive` label is still `--destructive` on its tint, 3.66:1 in
+> light: the theme has no destructive text token, so that one is with the
+> designer. Color is not a substitute for text either way: keep the label
+> itself explicit.
 
 ## When to use
 

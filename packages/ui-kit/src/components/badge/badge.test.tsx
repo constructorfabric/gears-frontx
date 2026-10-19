@@ -6,7 +6,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { contrastRatio } from '../../__test-utils__/contrast';
-import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
+import { declarationMap, declaredIn, extractRules } from '../../__test-utils__/css-rules';
 import { readThemeTokens } from '../../__test-utils__/theme-tokens';
 import { Badge } from './badge';
 import styles from './badge.module.css';
@@ -248,6 +248,18 @@ describe('Badge focus ring', () => {
         contrastRatio(ring as string, background as string),
         themeName,
       ).toBeGreaterThanOrEqual(3);
+    }
+  });
+});
+
+describe('Badge status tone labels', () => {
+  const declared = declaredIn(import.meta.url, 'badge.module.css');
+
+  it('writes the success, warning and danger labels in the tone text token on the soft fill', () => {
+    for (const tone of ['success', 'warning', 'danger']) {
+      const Tone = tone.charAt(0).toUpperCase() + tone.slice(1);
+      expect(declared(`.variant${Tone}`, 'background-color')).toBe(`var(--${tone}-soft)`);
+      expect(declared(`.variant${Tone}`, 'color')).toBe(`var(--${tone}-foreground)`);
     }
   });
 });

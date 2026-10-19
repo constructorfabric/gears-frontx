@@ -51,7 +51,9 @@ then.
 
 `tone` × `variant` is the fill matrix: `solid` paints the tone at full
 strength with an on-primary label, `soft` puts the tone's own label color
-on its soft surface. The `neutral`/`soft` default is the plain
+on its soft surface (for `success`, `warning` and `danger` the tone's text
+token, `--success-foreground` and so on, which clears 4.5:1 where the fill
+tone does not). The `neutral`/`soft` default is the plain
 muted-on-muted fill, so a fallback given neither prop looks exactly as it
 did before these axes existed.
 

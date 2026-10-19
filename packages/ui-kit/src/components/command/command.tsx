@@ -1,4 +1,6 @@
-import { Command as CommandPrimitive } from 'cmdk';
+'use client';
+
+import { Command as CommandPrimitive, useCommandState } from 'cmdk';
 import { cx } from 'class-variance-authority';
 import { SearchIcon } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
@@ -119,6 +121,19 @@ export function CommandShortcut({ className, ...props }: CommandShortcutProps) {
 
 export type CommandSeparatorProps = ComponentProps<typeof CommandPrimitive.Separator>;
 
-export function CommandSeparator({ className, ...props }: CommandSeparatorProps) {
-  return <CommandPrimitive.Separator className={cx(styles.separator, className)} {...props} />;
+/*
+ * cmdk's own Separator always sets `role="separator"` (after the caller's
+ * props, so it cannot be overridden), and inside CommandList's
+ * `role="listbox"` that is a child the listbox role does not allow (axe
+ * `aria-required-children`). This part keeps cmdk's behaviour, hidden while
+ * a search is typed unless `alwaysRender`, and renders a presentational
+ * line instead: the groups already separate the options for assistive
+ * technology.
+ */
+export function CommandSeparator({ className, alwaysRender, ...props }: CommandSeparatorProps) {
+  const searching = useCommandState((state) => state.search !== '');
+  if (searching && !alwaysRender) {
+    return null;
+  }
+  return <div role="none" className={cx(styles.separator, className)} {...props} />;
 }

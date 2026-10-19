@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { declarationMap, extractRules } from '../../__test-utils__/css-rules';
+import { declarationMap, declaredIn, extractRules } from '../../__test-utils__/css-rules';
 
 import {
   Avatar,
@@ -262,5 +262,16 @@ describe('Avatar drawn geometry', () => {
     expect(declared('.groupCount svg', 'width')).toBe('1rem');
     expect(declared('.group:has(> .sizeSm) .groupCount svg', 'width')).toBeUndefined();
     expect(declared('.group:has(> .sizeLg) .groupCount svg', 'width')).toBe('1.25rem');
+  });
+});
+
+describe('Avatar soft status tones', () => {
+  const declared = declaredIn(import.meta.url, 'avatar.module.css');
+
+  it('writes the soft success, warning and danger labels in the tone text token', () => {
+    for (const tone of ['success', 'warning', 'danger']) {
+      const Tone = tone.charAt(0).toUpperCase() + tone.slice(1);
+      expect(declared(`.variantSoft.tone${Tone}`, 'color')).toBe(`var(--${tone}-foreground)`);
+    }
   });
 });

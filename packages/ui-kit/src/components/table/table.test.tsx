@@ -341,6 +341,18 @@ describe('TableHead column resize', () => {
     expect(nameCell?.style.width).toBe('240px');
   });
 
+  it('reports its width as the separator value, before and during a resize', () => {
+    renderResizable();
+    const handle = screen.getByRole('separator');
+    expect(handle.getAttribute('aria-valuenow')).toBe('0');
+    expect(handle.getAttribute('aria-valuemin')).toBe('72');
+    stubWidths([200, 200]);
+    fireEvent(handle, pointerEvent('pointerdown', { clientX: 0 }));
+    fireEvent(handle, pointerEvent('pointermove', { clientX: 40 }));
+    expect(handle.getAttribute('aria-valuenow')).toBe('240');
+    expect(Number(handle.getAttribute('aria-valuemax'))).toBeGreaterThanOrEqual(240);
+  });
+
   it('trades width with the trailing neighbour and leaves the total stable', () => {
     renderResizable();
     const cells = stubWidths([200, 200]);

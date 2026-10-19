@@ -51,7 +51,11 @@ invariants:
       handle announces is the one on screen. The
       handle is named "<heading text> width" ("Column width" when the
       heading has no text), with the current width in pixels appended once
-      a drag starts or an arrow key moves it.
+      a drag starts or an arrow key moves it. As a focusable separator it
+      also carries the value assistive technology reads: aria-valuenow is
+      the column's width in pixels (measured at mount, then the resized
+      width), aria-valuemin its floor and aria-valuemax the table's
+      width.
   - id: sized-width-includes-padding
     text: >-
       TableHead is box-sizing border-box, so a width set through style or

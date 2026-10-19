@@ -29,7 +29,7 @@
   "invariants": [
     {
       "id": "rendered-only-while-search-is-empty",
-      "text": "The separator renders only while the search text is empty, unless `alwaysRender` is true; it carries `role=\"separator\"`."
+      "text": "The separator renders only while the search text is empty, unless `alwaysRender` is true. It carries `role=\"none\"`: inside the list's `role=\"listbox\"` a separator role is a child the listbox does not allow, and the groups already separate the options for assistive technology."
     },
     {
       "id": "spans-the-list-width",

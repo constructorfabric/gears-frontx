@@ -378,10 +378,20 @@ export function SidebarRail({ className, onClick, ...props }: SidebarRailProps) 
   );
 }
 
-export type SidebarInsetProps = ComponentProps<'main'>;
+export type SidebarInsetProps = useRender.ComponentProps<'main'>;
 
-export function SidebarInset({ className, ...props }: SidebarInsetProps) {
-  return <main className={cx(styles.inset, className)} {...props} />;
+/*
+ * The page's main landmark by default. `render` swaps the element for a
+ * sidebar layout embedded in a page that already has its main (a demo, a
+ * panel, a nested app), where a second, nested `main` is an axe landmark
+ * error.
+ */
+export function SidebarInset({ className, render, ...props }: SidebarInsetProps) {
+  return useRender({
+    defaultTagName: 'main',
+    render,
+    props: mergeProps<'main'>({ className: cx(styles.inset, className) }, props),
+  });
 }
 
 export type SidebarInputProps = InputProps;
@@ -527,8 +537,14 @@ export function SidebarMenuButton({
     // the CVA class already), `data-active` is the actual mechanism
     // sidebar.module.css's `.menuButton[data-active]` selector reads.
     state: { active: isActive },
+    // While the rail is collapsed the label is hidden and a string tooltip
+    // is the only text left, so it names the button (axe `button-name`);
+    // an `aria-label` the caller passes wins.
     props: mergeProps<'button'>(
-      { className: sidebarMenuButtonVariants({ variant, size, className }) },
+      {
+        className: sidebarMenuButtonVariants({ variant, size, className }),
+        'aria-label': showTooltip && typeof tooltip === 'string' ? tooltip : undefined,
+      },
       props,
     ),
   });

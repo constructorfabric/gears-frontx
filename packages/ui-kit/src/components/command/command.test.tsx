@@ -71,7 +71,17 @@ describe('Command', () => {
     renderMenu();
     expect(screen.getByText('Suggestions')).toBeTruthy();
     expect(screen.getByText('Settings')).toBeTruthy();
-    expect(document.querySelector('[cmdk-separator]')).toBeTruthy();
+    const separator = document.querySelector(`.${styles.separator}`);
+    expect(separator?.getAttribute('role')).toBe('none');
+    expect(screen.getByRole('listbox').querySelector('[role="separator"]')).toBeNull();
+  });
+
+  it('hides the separator while a search is typed', () => {
+    renderMenu();
+    fireEvent.change(screen.getByPlaceholderText('Type a command or search...'), {
+      target: { value: 'cal' },
+    });
+    expect(document.querySelector(`.${styles.separator}`)).toBeNull();
   });
 });
 

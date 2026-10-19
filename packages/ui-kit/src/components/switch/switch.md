@@ -32,9 +32,11 @@ Other props follow Base UI Switch.Root (`disabled`, `readOnly`, ...).
 ```tsx
 import { Label, Switch } from '@gears-frontx/ui-kit';
 
-// Labelled toggle — nesting gives one click target
+// Labelled toggle: nesting gives one click target, and aria-labelledby
+// names the switch (a wrapping label does not name its role="switch" span)
 <Label>
-  <Switch checked={notify} onCheckedChange={setNotify} /> Email notifications
+  <Switch checked={notify} onCheckedChange={setNotify} aria-labelledby="notify-label" />
+  <span id="notify-label">Email notifications</span>
 </Label>
 
 // Compact rows
@@ -49,3 +51,7 @@ import { Label, Switch } from '@gears-frontx/ui-kit';
 - Do not use a switch when the change needs a confirm/submit step — that is
   `checkbox` semantics.
 - Do not render one without a visible label or `aria-label`.
+- Do not rely on a wrapping `Label` alone for the name: the switch is a
+  `span` with `role="switch"`, which a wrapping label does not name (axe
+  `aria-toggle-field-name`). Point `aria-labelledby` at the label text, or
+  use `FieldLabel htmlFor` with the switch's `id`.

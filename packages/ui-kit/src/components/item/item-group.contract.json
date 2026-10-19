@@ -34,7 +34,7 @@
   "invariants": [
     {
       "id": "role-list-without-list-items",
-      "text": "ItemGroup renders a div with role=\"list\", which a consumer's own `role` replaces; Item sets no role of its own and ItemSeparator carries the primitive's role=\"separator\", so the list's rows are exposed as list items only when each Item is given role=\"listitem\"."
+      "text": "ItemGroup renders a div with role=\"list\", which a consumer's own `role` replaces. Each Item inside it without `render` takes role=\"listitem\" and ItemSeparator is aria-hidden, so a group of plain rows is a well-formed list; a row rendered as a link or a button keeps that role and is not a list item."
     },
     {
       "id": "gap-follows-the-smallest-item-size",
@@ -51,7 +51,7 @@
   "attestations": {
     "a11y": {
       "outcome": "failed",
-      "by": "item.test.tsx asserts the group's role=\"list\", while item.tsx gives Item no role and ItemSeparator keeps the primitive's role=\"separator\", so a group built as item.md shows exposes a list whose children are not list items, the role WAI-ARIA requires a list to own"
+      "by": "item.test.tsx asserts the group's role=\"list\" and role=\"listitem\" on a plain Item inside it, and ItemSeparator is aria-hidden, but an Item rendered as a link or a button keeps its own role, so a group of link rows (item.md's navigation example) still exposes a list whose children are not list items"
     },
     "rtl": {
       "outcome": "unknown"
@@ -60,8 +60,8 @@
   "examples": {
     "good": [
       {
-        "title": "A run of rows exposed as list items",
-        "code": "<ItemGroup>\n  <Item role=\"listitem\">\n    <ItemContent>\n      <ItemTitle>Q3 report.pdf</ItemTitle>\n    </ItemContent>\n  </Item>\n  <Item role=\"listitem\">\n    <ItemContent>\n      <ItemTitle>Notes.txt</ItemTitle>\n    </ItemContent>\n  </Item>\n</ItemGroup>\n"
+        "title": "A run of rows, each a list item of the group",
+        "code": "<ItemGroup>\n  <Item>\n    <ItemContent>\n      <ItemTitle>Q3 report.pdf</ItemTitle>\n    </ItemContent>\n  </Item>\n  <Item>\n    <ItemContent>\n      <ItemTitle>Notes.txt</ItemTitle>\n    </ItemContent>\n  </Item>\n</ItemGroup>\n"
       }
     ],
     "bad": [

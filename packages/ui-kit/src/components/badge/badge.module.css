@@ -294,15 +294,14 @@ a.variantLink:hover {
  * them". This is that surface. Accent is the same shape over the
  * --accent/--accent-foreground pair, matching the mockup's Accent badge.
  *
- * Contrast: at this label size WCAG 1.4.3 asks 4.5:1, and on the drawn
- * values three of these pairs do not reach it - light success 3.43:1,
- * light warning 2.00:1, light danger 4.28:1 and dark danger 3.63:1, against
- * light info 4.59:1, light accent 4.68:1, dark success 8.05:1, dark warning
- * 10.03:1, dark info 6.62:1 and dark accent 13.77:1. The kit used to ship a
- * corrected hex for each; under the value rule (see theme.css's header) the
- * drawn value ships and the finding goes to the designer. Nothing here
- * paints a local literal to work around it, which is the point: the pair is
- * fixed where it is defined, or not at all.
+ * Contrast: at this label size WCAG 1.4.3 asks 4.5:1. The tone itself
+ * misses it as label text on its soft fill in light (success 3.43:1,
+ * warning 2.00:1, danger 4.28:1), so success, warning and danger write the
+ * label in the tone's drawn TEXT token, `--x-foreground` (theme.css: "what
+ * its label is written in"), which clears it in both themes; in dark the
+ * text token equals the tone. Info has no drawn text tone and keeps
+ * `--info`, which clears the floor already. tokens.test.ts checks every
+ * pair. No local literal: the pairs are the theme's own.
  *
  * Hover does not recolor the fill. The idiom `a.variantDestructive` above
  * once used mixes toward --foreground, which flips direction with the
@@ -313,7 +312,7 @@ a.variantLink:hover {
  */
 .variantSuccess {
   background-color: var(--success-soft);
-  color: var(--success);
+  color: var(--success-foreground);
 }
 
 a.variantSuccess:hover {
@@ -322,7 +321,7 @@ a.variantSuccess:hover {
 
 .variantWarning {
   background-color: var(--warning-soft);
-  color: var(--warning);
+  color: var(--warning-foreground);
 }
 
 a.variantWarning:hover {
@@ -331,7 +330,7 @@ a.variantWarning:hover {
 
 .variantDanger {
   background-color: var(--danger-soft);
-  color: var(--danger);
+  color: var(--danger-foreground);
 }
 
 a.variantDanger:hover {

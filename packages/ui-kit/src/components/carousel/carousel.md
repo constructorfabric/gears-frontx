@@ -91,8 +91,10 @@ import {
   CarouselPrevious,
 } from '@gears-frontx/ui-kit';
 
-// Horizontal (default), with nav buttons
-<Carousel>
+// Horizontal (default), with nav buttons. The root is a region landmark:
+// give each carousel its own aria-label, so two on one page can be told
+// apart (axe landmark-unique)
+<Carousel aria-label="Featured templates">
   <CarouselContent>
     <CarouselItem>Slide 1</CarouselItem>
     <CarouselItem>Slide 2</CarouselItem>
