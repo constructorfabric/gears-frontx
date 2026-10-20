@@ -1,6 +1,6 @@
 {
   "name": "@gears-frontx/cyber-pilot-kit-frontx",
-  "version": "0.3.1",
+  "version": "0.3.2-alpha.0",
   "description": "FrontX AI Tooling Kit — ecosystem-level AI capabilities for AI agents working in FrontX projects",
   "type": "module",
   "main": "./dist/index.cjs",
