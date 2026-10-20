@@ -161,8 +161,8 @@ describe('Pagination', () => {
     // A natively disabled button is one browsers refuse focus to. jsdom cannot
     // show the refusal itself: it focuses anything carrying a tabindex, and
     // Base UI's Button always sets one, so `focus()` would land here whatever
-    // the code does. `:disabled` is the state the refusal follows from, and
-    // the browser check of the demo covers the rest.
+    // the code does. `:disabled` is the state the refusal follows from; the
+    // refusal itself is a browser behavior only a real browser shows.
     it('is natively disabled, so a browser will not focus it, and fires nothing', () => {
       const onClick = vi.fn();
       render(element({ disabled: true, onClick }));

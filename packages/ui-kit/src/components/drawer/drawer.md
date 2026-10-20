@@ -92,7 +92,7 @@ exemption list, which is what keeps them out of that file's
 The enter/exit slide itself is a plain CSS transition between the
 `[data-starting-style]`/`[data-ending-style]` transform (`--closed-transform`,
 the panel parked one full panel-length past its own edge) and the resting
-transform on `.popup`. Measured on the demo at a 900x513 viewport, a bottom
+transform on `.popup`. Measured in a browser at a 900x513 viewport, a bottom
 drawer travels `y: 515 → 308` on open and `308 → 515` on close, a right one
 `x: 902 → 516` and back — monotonic, with the backdrop's opacity crossing
 `0 → 1` on the same curve. Nominal duration is upstream's own

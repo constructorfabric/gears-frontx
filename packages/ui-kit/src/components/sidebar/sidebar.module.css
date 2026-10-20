@@ -156,8 +156,8 @@
  * frame, a split view): `fixed` resolves against the viewport, not against
  * SidebarProvider, so the panel escapes its box unless an ancestor
  * establishes a containing block for fixed descendants (`contain: layout`,
- * a `transform`, a `filter`). demo/examples/sidebar.tsx does exactly that
- * — see the ShellFrame comment there.
+ * a `transform`, a `filter`); a preview frame that hosts a sidebar sets
+ * one of these on its own box to keep the panel inside it.
  *
  * Height comes from `inset-block: 0` alone, NOT upstream's additional
  * `h-svh`. Both resolve identically when the containing block IS the

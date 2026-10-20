@@ -99,7 +99,7 @@ Shortcuts and arrow navigation pause while typing in a text field.
 `QuestionnaireProgress`: renders `Question {current} of {total}` as text in
 a `role="progressbar"` — it is **not** a bar by default. Pass `children` to
 replace the copy, or `render={(props, state) => ...}` to draw a real bar
-from `state.current`/`state.total` (see the demo's segmented example).
+from `state.current`/`state.total`, for example one segment per question.
 
 `QuestionnaireItem`: `name` (matches an `items` entry), `required`,
 `multiple` (renders every child `QuestionnaireChoice` as a checkbox

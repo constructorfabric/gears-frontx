@@ -37,9 +37,6 @@
     "test:unit": "vitest --run --passWithNoTests=false",
     "test:unit:watch": "vitest --watch",
     "test:consumer": "bash scripts/verify-consumer.sh",
-    "type-check:demo": "tsc -p demo/tsconfig.json",
-    "predemo": "npm run build",
-    "demo": "vite demo",
     "contracts:compile": "tsx scripts/contracts/compile.ts",
     "contracts:check": "tsx scripts/contracts/check.ts",
     "contracts:enrollment": "tsx scripts/contracts/check.ts enrollment"

@@ -146,7 +146,7 @@
    * (this kit's ambient default) piles this class's own border on top of
    * `width: var(--anchor-width)`, rendering the popup 2px wider than the
    * trigger it's anchored to — found by auditing every module for this
-   * collision, not by the demo page. Popup is a plain <div> (verified
+   * collision. Popup is a plain <div> (verified
    * against the Base UI source), so there's no UA default to fall back
    * on the way Button/Select.Trigger has. Same acute case as
    * tabs.module.css/badge.module.css, scoped the same way (this class
@@ -274,8 +274,8 @@
    * popup's content box — clipped by .popup's own `overflow: hidden`
    * above, which cuts off .itemIndicator (the checkmark, positioned
    * `right: var(--space-2)` from this box's now-invisible true right
-   * edge) entirely. Found by auditing every module for this collision, not by
-   * the demo page. Same acute case as tabs.module.css/badge.module.css,
+   * edge) entirely. Found by auditing every module for this collision.
+   * Same acute case as tabs.module.css/badge.module.css,
    * scoped the same way (this class only).
    */
   box-sizing: border-box;

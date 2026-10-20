@@ -214,17 +214,11 @@ ruling does (the 2026-08-31 Studio blue rebrand is the precedent, see step
 - Unit tests are written along with components: render + interaction smoke per
   component (vitest + jsdom + testing-library, versions pinned by the root
   test-dependency gate).
-- Kitchen-sink demo app: started as `demo/` inside the package (`npm run
-  demo`) — the same in-package pattern the telemetry demo actually uses,
-  superseding the separate `packages/ui-kit-example-web` package an earlier
-  revision of this plan named. Two hash-routed pages sharing an
-  auto/light/dark switch (`#/tokens`: the full token set — color swatches,
-  radius/spacing/control scales, and the Studio type ramp; `#/components`:
-  all 19 components in every variant/size/state) — split from the original
-  single page once both grew large enough to want their own scroll; see
-  `demo/README.md`. Consumes the package by name, so it exercises the built
-  artifact, not src. Grow it to every component in every state as the set
-  lands; it doubles as the agent playground.
+- Browser catalogue: the kit's components and theme tokens are browsed on
+  the FrontX site, outside this repository. It consumes the package by
+  name, so it exercises the built artifact, not src, and it grows to every
+  component in every state as the set lands. This package holds no
+  in-package demo app.
 - Acceptance: (1) `scripts/verify-consumer.sh` packs the package, installs the
   tarball into a clean Vite project, builds a page that imports a single
   component (`Button`) and asserts tokens, that component's styles and class
@@ -240,7 +234,8 @@ ruling does (the 2026-08-31 Studio blue rebrand is the precedent, see step
 2. Fork is the only deep-customization path — accepted; the standard optimizes
    for consistency across templates.
 3. Authored styles replace curated styles — the largest share of MVP effort and
-   where visual bugs will live; the kitchen-sink demo exists to catch them.
+   where visual bugs will live; the browser catalogue on the FrontX site is
+   where they surface.
 
 ## Delivery plan
 
@@ -593,8 +588,8 @@ Architecture's build bullet).
    `toggle`, `toggle-group`, `sheet`, `preview-card`, `collapsible`,
    `spinner` close the `insight-front` list. Before the stable release, not
    after: they are part of the MVP set the stable gate names, and the
-   kitchen-sink app and composition recipes should cover the whole set once
+   browser catalogue and composition recipes should cover the whole set once
    rather than be extended right after the stable release.
-6. Composition recipes (incl. the mockup building blocks) + kitchen-sink to
-   full coverage; satisfy the #495 gates, then cut the first stable
+6. Composition recipes (incl. the mockup building blocks) + browser
+   catalogue to full coverage; satisfy the #495 gates, then cut the first stable
    (`latest`) version.

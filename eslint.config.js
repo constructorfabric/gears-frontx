@@ -467,40 +467,6 @@ export default [
     },
   },
 
-  // ui-kit's demo consumes the package by name (the workspace-linked dist), same as the
-  // telemetry demo — that one is exempt because the telemetry block is scoped to src/;
-  // ui-kit's block above spans the whole package, so the demo needs its own override.
-  // Only the intra-ecosystem ban is lifted (importing @gears-frontx/ui-kit IS the demo's
-  // job); the src-internals and alias bans stay, so the demo keeps validating the public
-  // surface instead of quietly reaching into src/.
-  {
-    files: ['packages/ui-kit/demo/**/*.ts', 'packages/ui-kit/demo/**/*.tsx'],
-    rules: {
-      '@typescript-eslint/no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['@gears-frontx/*/src/**'],
-              message:
-                'MONOREPO VIOLATION: Import from package root, not internal paths.',
-            },
-            {
-              group: ['@/*'],
-              message:
-                'PACKAGE VIOLATION: Use relative imports within packages.',
-            },
-            {
-              group: ['@tanstack/*', '!@tanstack/react-table'],
-              message:
-                'ECOSYSTEM VIOLATION (cpt-frontx-constraint-routing-tanstack-sole-engine-import): only @gears-frontx/routing-tanstack may import a concrete router engine.',
-            },
-          ],
-        },
-      ],
-    },
-  },
-
   // The hook signature is variadic so a handler of any shape stays assignable, and the record
   // carries consumer-supplied user data.
   // TODO: type both against a generic payload and drop this block; follow-up PR.

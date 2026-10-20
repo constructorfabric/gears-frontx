@@ -101,7 +101,7 @@ describe('ScrollArea drawn track', () => {
   }
 
   it('keeps the drawn 10px track from growing by its own inset and border', () => {
-    // Measured in the demo: without border-box the declared 10 is the
+    // Measured in a browser: without border-box the declared 10 is the
     // content width and the 1px padding on each side plus the 1px leading
     // border make the rendered track 13.
     expect(declared('.scrollbar', 'box-sizing')).toBe('border-box');

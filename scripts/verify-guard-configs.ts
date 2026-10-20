@@ -1053,7 +1053,7 @@ function matchingMemberDebtIgnore(
  * human to notice it passed, and the thing that makes these entries rot is
  * precisely that nobody looks. Only the literal prefix is checked, so the
  * *structural* ignores — the leading-wildcard patterns for dist, node_modules,
- * test files, build configs and demos — are correctly left alone: they are
+ * test files and build configs — are correctly left alone: they are
  * permanent by nature and name no single location. That split is the one
  * decided for the registry, and it falls out of each pattern's own shape rather
  * than needing a second list to maintain.

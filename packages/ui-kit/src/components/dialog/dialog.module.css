@@ -82,10 +82,10 @@
    * paints straight through the padding strips, and a sticky region cannot
    * cover them either, because sticky offsets resolve against the
    * scrollport already inset by that padding (`top: 0` pinned the header
-   * 24px *below* the popup's top edge). Measured on the "Sticky footer"
-   * demo at 50% scroll while this was `var(--space-6)`: paragraph text
-   * repainted in the 24px band above the pinned header (diff bbox from
-   * y=20 with the popup's inner top at y=17) and `elementFromPoint` in the
+   * 24px *below* the popup's top edge). Measured on a long-body dialog
+   * with a sticky footer at 50% scroll with `var(--space-6)` here:
+   * paragraph text repainted in the 24px band above the pinned header
+   * (diff bbox from y=20 with the popup's inner top at y=17) and `elementFromPoint` in the
    * band below the pinned footer returned the scrolled <p>, at every
    * column. With the inset on the regions, header and footer span the full
    * width and reach the top and bottom edges, so every masked pixel is
@@ -208,8 +208,8 @@
 /*
  * Sticky + opaque + full-bleed, not just flow siblings: .popup is itself
  * the scroll container (see its own comment above) - a consumer who doesn't
- * wrap tall content in their own overflow-y div (the "Sticky footer" demo
- * shape) gets that fallback, and header/footer must survive it. Three
+ * wrap tall content in their own overflow-y div (a long body with a
+ * sticky footer) gets that fallback, and header/footer must survive it. Three
  * things are load-bearing together:
  *  - `position: sticky`, or the region scrolls away with the content;
  *  - an explicit background, or the region is a transparent box that wins
@@ -252,12 +252,11 @@
 /*
  * `.popup`'s `gap` (see above) only reaches its own direct children. A
  * consumer wrapping the whole body in `<form>` - the standard pattern for
- * Enter-to-submit, used by every form dialog in the demo app - puts
+ * Enter-to-submit - puts
  * `.header`, the fields and `.footer` one level deeper, as siblings inside
  * that form instead of grid items of `.popup`: the grid gap no longer
  * applies between them at all, so header-to-field and field-to-footer both
- * collapsed to 0px (measured on the "New channel" and "New message"
- * dialogs). These margins reinstate the same `--space-6` rhythm the grid
+ * collapsed to 0px (measured on two form-wrapped dialogs). These margins reinstate the same `--space-6` rhythm the grid
  * gap already gives non-form dialogs, scoped to exactly that wrapped case
  * (`form >`) so an unwrapped dialog's existing gap is untouched instead of
  * doubling up.

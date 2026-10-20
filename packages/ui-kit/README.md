@@ -102,7 +102,6 @@ To re-brand, override the CSS variables from `theme.css` in your own styles.
 npm run build --workspace=@gears-frontx/ui-kit   # vite: dist/index.js + dist/<component>.{js,d.ts} + theme.css, ESM only
 npm run test:unit --workspace=@gears-frontx/ui-kit
 ./packages/ui-kit/scripts/verify-consumer.sh     # pack-install + tree-shaking acceptance check
-npm run demo:ui-kit                              # browser sandbox: tokens + components pages (demo/)
 ```
 
 See [design-notes.md](design-notes.md) for the design and its history. The package

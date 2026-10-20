@@ -14,14 +14,10 @@
     },
     "packages/ui-kit": {
       "entry": [
-        "src/index.ts",
-        "demo/main.tsx",
-        "demo/examples/*.tsx",
-        "demo/vite-env.d.ts"
+        "src/index.ts"
       ],
       "project": [
         "src/**/*.{ts,tsx}",
-        "demo/**/*.{ts,tsx}",
         "scripts/**/*.ts"
       ],
       "ignoreDependencies": ["esbuild"]

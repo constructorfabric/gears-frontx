@@ -13,8 +13,8 @@ reason = "Build/bundler configuration files have no CDSL backing. packages/ui-ki
 patterns = ["*/tsup.config.*", "*/vite.config.*", "*/vitest.config.*", "*/postcss.config.*", "*/tailwind.config.*", "packages/ui-kit/scripts/buildPlugin.ts"]
 
 [[ignore]]
-reason = "In-package demos exercise a package's public surface rather than implementing a requirement, so no instruction exists for a marker to point at. Structural and permanent — this is not a placeholder for missing artifacts and must never be given an expiry."
-patterns = ["*/demo/*"]
+reason = "The telemetry demo exercises the package's public surface rather than implementing a requirement, so no instruction exists for a marker to point at. The entry names that one directory, so the registry freshness check in scripts/verify-guard-configs.ts flags it once the directory is gone; a demo added to another package needs its own entry."
+patterns = ["packages/telemetry/demo/*"]
 
 [[ignore]]
 reason = "Extractor fixtures are inputs to a test, not implementable source: each one is a deliberately shaped component written so the extractor's own suite can assert what it reads out of it, so no instruction exists for a marker to point at. They are .tsx and reach the scan through the packages/ + .tsx catch-all rather than through ui-kit's own scripts entry, which is .ts only. Structural and permanent - this is not a placeholder for missing artifacts and must never be given an expiry."
