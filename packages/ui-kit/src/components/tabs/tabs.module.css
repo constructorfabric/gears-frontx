@@ -327,6 +327,15 @@
 
 .variantLine .trigger[data-active] {
   background-color: transparent;
+}
+
+/*
+ * The line variant drops the active hairline, but never the focus ring:
+ * a bare `.variantLine .trigger[data-active]` ties the specificity of
+ * `.trigger[data-active]:focus-visible` and comes after it, so clearing
+ * the shadow there would erase the ring on a focused selected tab.
+ */
+.variantLine .trigger[data-active]:not(:focus-visible) {
   box-shadow: none;
 }
 

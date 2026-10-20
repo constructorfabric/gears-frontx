@@ -345,6 +345,19 @@ describe('Tabs drawn geometry', () => {
     );
   });
 
+  // The line variant's active rule ties the focus rule's specificity and
+  // follows it, so a shadow declared there would win over the ring.
+  it('keeps the focus ring on a focused selected tab in the line variant', () => {
+    expect(declared('.variantLine .trigger[data-active]', 'background-color')).toBe('transparent');
+    expect(declared('.variantLine .trigger[data-active]', 'box-shadow')).toBeUndefined();
+    expect(declared('.variantLine .trigger[data-active]:not(:focus-visible)', 'box-shadow')).toBe(
+      'none',
+    );
+    expect(declared('.trigger[data-active]:focus-visible', 'box-shadow')).toBe(
+      'inset 0 0 0 var(--border-width-focus) var(--ring)',
+    );
+  });
+
   it('paints the idle label at the drawn transparency and the icon at one box', () => {
     expect(declared('.trigger', 'color')).toBe(
       'color-mix(in oklab, var(--foreground) 60%, transparent)',
