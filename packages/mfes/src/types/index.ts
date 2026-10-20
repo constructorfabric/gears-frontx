@@ -98,11 +98,11 @@ export interface ExtensionDomain {
   /** The GTS type ID for this domain */
   id: string;
   /** SharedProperty type IDs provided to MFEs in this domain */
-  sharedProperties: string[];
+  sharedProperties: readonly string[];
   /** Action type IDs this extension domain is capable of receiving and executing */
-  actions: string[];
+  actions: readonly string[];
   /** Action type IDs an extension's entry must support to be injectable into this domain */
-  extensionsActions: string[];
+  extensionsActions: readonly string[];
   /**
    * Optional reference to a derived Extension type ID.
    * If specified, extensions must use types that derive from this type.
@@ -111,9 +111,9 @@ export interface ExtensionDomain {
   /** Default timeout for actions targeting this domain (milliseconds, REQUIRED) */
   defaultActionTimeout: number;
   /** Lifecycle stage type IDs supported for the domain itself */
-  lifecycleStages: string[];
+  lifecycleStages: readonly string[];
   /** Lifecycle stage type IDs supported for extensions in this domain */
-  extensionsLifecycleStages: string[];
+  extensionsLifecycleStages: readonly string[];
   /** Optional lifecycle hooks - explicitly declared actions for each stage */
   lifecycle?: LifecycleHook[];
   /**
@@ -195,13 +195,13 @@ export interface MfeEntry {
   /** The GTS type ID for this entry */
   id: string;
   /** SharedProperty type IDs that MUST be provided by domain */
-  requiredProperties: string[];
+  requiredProperties: readonly string[];
   /** SharedProperty type IDs that MAY be provided by domain (optional field) */
-  optionalProperties?: string[];
+  optionalProperties?: readonly string[];
   /** Action type IDs this entry is capable of receiving and executing */
-  actions: string[];
+  actions: readonly string[];
   /** Action type IDs the parent extension domain must support for this entry to be injectable */
-  domainActions: string[];
+  domainActions: readonly string[];
 }
 
 // ---------------------------------------------------------------------------
