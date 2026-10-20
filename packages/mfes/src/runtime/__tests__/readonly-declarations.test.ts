@@ -55,6 +55,24 @@ describe('id lists declared as const', () => {
     expectTypeOf(declaredEntry).toExtend<MfeEntry>();
   });
 
+  it('are readonly properties holding readonly arrays', () => {
+    expectTypeOf<
+      Pick<ExtensionDomain, 'sharedProperties' | 'actions' | 'extensionsActions' | 'lifecycleStages' | 'extensionsLifecycleStages'>
+    >().toEqualTypeOf<{
+      readonly sharedProperties: readonly string[];
+      readonly actions: readonly string[];
+      readonly extensionsActions: readonly string[];
+      readonly lifecycleStages: readonly string[];
+      readonly extensionsLifecycleStages: readonly string[];
+    }>();
+    expectTypeOf<Pick<MfeEntry, 'requiredProperties' | 'optionalProperties' | 'actions' | 'domainActions'>>().toEqualTypeOf<{
+      readonly requiredProperties: readonly string[];
+      readonly optionalProperties?: readonly string[];
+      readonly actions: readonly string[];
+      readonly domainActions: readonly string[];
+    }>();
+  });
+
   it('register, mount and unregister while frozen', async () => {
     const plugin = createPlugin();
     plugin.registerSchema(declaredEntry);
