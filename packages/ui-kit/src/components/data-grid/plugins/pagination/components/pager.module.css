@@ -2,8 +2,14 @@
  * The kit's `.pagination` is a centred row; the limit selector and the page text push themselves
  * to either end with auto margins, which win over `justify-content`, so nothing here has to
  * out-specify it.
+ *
+ * The row wraps because the three parts together are wider than a phone-width container, and an
+ * unwrapped centred row that overflows spills past both edges, where the page-size selector on
+ * the leading edge can no longer be reached. Wrapped, the page buttons drop to a centred line of
+ * their own under the selector and the page text; a row that fits stays one line.
  */
 .pager {
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-6);
 }
