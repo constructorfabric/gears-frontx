@@ -215,10 +215,18 @@ ruling does (the 2026-08-31 Studio blue rebrand is the precedent, see step
   component (vitest + jsdom + testing-library, versions pinned by the root
   test-dependency gate).
 - Browser catalogue: the kit's components and theme tokens are browsed on
-  the FrontX site, outside this repository. It consumes the package by
-  name, so it exercises the built artifact, not src, and it grows to every
+  the FrontX site
+  ([constructorfabric/frontx-showcase](https://github.com/constructorfabric/frontx-showcase)),
+  outside this repository. It consumes the published package by name, so
+  it exercises the built artifact, not src, and it grows to every
   component in every state as the set lands. This package holds no
   in-package demo app.
+- Checking an unreleased change in a browser: the site shows only what is
+  published, so build the package, `npm pack` it and install the tarball
+  into a scratch Vite page (or a local checkout of the site), the way
+  `scripts/verify-consumer.sh` installs it into a clean Vite project.
+  Measure the change there in both themes: rendered sizes with
+  `getBoundingClientRect`, contrast with axe-core's color-contrast rule.
 - Acceptance: (1) `scripts/verify-consumer.sh` packs the package, installs the
   tarball into a clean Vite project, builds a page that imports a single
   component (`Button`) and asserts tokens, that component's styles and class

@@ -104,6 +104,10 @@ npm run test:unit --workspace=@gears-frontx/ui-kit
 ./packages/ui-kit/scripts/verify-consumer.sh     # pack-install + tree-shaking acceptance check
 ```
 
+To check an unreleased change in a browser, install the packed tarball into a
+scratch page as described under "Testing and acceptance" in
+[design-notes.md](design-notes.md).
+
 See [design-notes.md](design-notes.md) for the design and its history. The package
 publishes on the `alpha` channel through the standard version-gated workflow while
 it matures: the 19-component set is live, the remaining MVP components land under

@@ -101,13 +101,13 @@ attestations:
       tokens and clear 4.5:1 on their soft fills in both themes
       (tokens.test.ts); the `destructive` label, written in the danger text
       token, measured 4.90:1 light and 4.92:1 dark on its tint over the
-      page in a browser render (axe color-contrast clean); the `category`
-      chip in the dark theme stays under the 4.5:1 WCAG 1.4.3 asks of
-      Badge's 12px label (axe in a browser render), with no drawn
-      alternative.
-      badge.test.tsx itself asserts
-      the dot's aria-hidden="true" and a link role with its accessible name
-      when rendered over an anchor.
+      page (axe-core color-contrast clean); the `category` chip in the dark
+      theme stays under the 4.5:1 WCAG 1.4.3 asks of Badge's 12px label,
+      with no drawn alternative. Both were measured with axe-core's
+      color-contrast rule on a page rendering the built package in a
+      browser (the recipe is in design-notes.md, Testing and acceptance).
+      badge.test.tsx itself asserts the dot's aria-hidden="true" and a link
+      role with its accessible name when rendered over an anchor.
   rtl:
     outcome: unknown
 

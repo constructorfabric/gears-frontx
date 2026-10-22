@@ -25,13 +25,12 @@
    * Substitutes for the preflight the kit lacks: without it, content-box
    * (this kit's ambient default) piles this class's own padding and
    * border on top of `width: var(--anchor-width)`, rendering the popup
-   * wider than the trigger it's anchored to — found by auditing every
-   * module for this collision. Popup is a plain
-   * <div> (verified against the Base UI source), so there's no UA
-   * default to fall back on. Same acute case as tabs.module.css/
-   * badge.module.css, scoped the same way (this class only — also
-   * covers .subPopup below, combined onto this same class for a
-   * submenu's popup, see dropdown-menu.tsx).
+   * wider than the trigger it's anchored to - found by auditing every
+   * module for this collision. Popup is a plain <div> (verified against
+   * the Base UI source), so there's no UA default to fall back on. Same
+   * acute case as tabs.module.css/badge.module.css, scoped the same way
+   * (this class only - also covers .subPopup below, combined onto this
+   * same class for a submenu's popup, see dropdown-menu.tsx).
    */
   box-sizing: border-box;
   position: relative;
