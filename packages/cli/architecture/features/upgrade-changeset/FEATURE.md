@@ -146,8 +146,11 @@ Internal system functions and procedures that do not interact with actors direct
       1. [x] - `p1` - Apply the entry to the project root within the template's ownership boundary: for an exclusive subtree, write or remove the whole file; for a `region-union` shared file, rewrite only the template's own marker-delimited region(s) in place, leaving every co-owning template's region byte-for-byte untouched - `inst-app-apply-entry`
    2. [x] - `p1` - Update `target` the selected applied template's provenance record to the newer version, as part of the same atomic application as the project-file writes above — not after it - `inst-app-update-prov`
 3. [x] - `p1` - **CATCH** application error, including a failure writing the updated provenance record: - `inst-app-catch`
-   1. [x] - `p1` - Restore `target` all affected files, including the provenance file, from the pre-upgrade snapshot, leaving the project byte-for-byte unchanged - `inst-app-restore-on-error`
-   2. [x] - `p1` - Report the error and **RETURN** failure without leaving a partially-upgraded repository - `inst-app-return-failure`
+   1. [x] - `p1` - Restore `target` all affected files, including the provenance file, from the pre-upgrade snapshot, leaving the project byte-for-byte unchanged; attempt every file even when restoring an earlier one fails - `inst-app-restore-on-error`
+      1. [x] - `p1` - **IF** restoring a file fails: record that file and the failure, and continue with the next file - `inst-app-record-restore-failure`
+   2. [x] - `p1` - **IF** any file could not be restored: - `inst-app-if-restore-incomplete`
+      1. [x] - `p1` - Report the application error first, then that the repository may be left partially upgraded, naming each file that could not be restored and why, and **RETURN** failure carrying those files, never reporting the project as restored - `inst-app-return-restore-incomplete`
+   3. [x] - `p1` - Report the error and **RETURN** failure without leaving a partially-upgraded repository - `inst-app-return-failure`
 4. [x] - `p1` - Retain `target` the pre-upgrade snapshot for rollback until the developer explicitly releases it or a new upgrade cycle begins - `inst-app-retain-snapshot`
 5. [x] - `p1` - **RETURN** success: applied entries, updated provenance, rollback available - `inst-app-return-success`
 
@@ -212,6 +215,8 @@ The system **MUST** apply the approved change set non-destructively by writing o
 
 The provenance write **MUST** be treated as part of the same atomic application as the project-file writes, not as a step that follows it: if writing the updated provenance fails, the system **MUST** restore every snapshotted project file and the prior provenance bytes to their pre-upgrade state and **RETURN** a typed failure, rather than throwing after project files have already been changed.
 
+Restoring the snapshot can itself fail. The system **MUST** then still attempt every other snapshotted file, and **MUST** return a typed failure that keeps the application error as its primary message and names each file it could not restore. It **MUST NOT** report the project as restored.
+
 **Implements**:
 - `cpt-frontx-flow-upgrade-changeset-review-approval`
 - `cpt-frontx-algo-upgrade-changeset-apply`
@@ -260,3 +265,4 @@ The system **MUST** provide exactly one change-set engine in `cpt-frontx-compone
 - [x] The change set computed for such a record covers that template's exclusive subtrees only: every `region-union` shared file is excluded from it, contributing neither a clean entry nor a conflict whichever identity its markers carry.
 - [x] A provenance record whose identity is neither the identity the resolved versions declare nor the repository its own source-spec addresses causes the engine to refuse rather than assume a match.
 - [x] A provenance-write failure occurring after at least one project file has already been applied restores every changed project file and the prior provenance bytes byte-for-byte, and the engine returns a typed failure rather than throwing.
+- [x] When restoring a file fails after an application error, the engine still restores every other snapshotted file, and its typed failure keeps the application error first and names each file it could not restore instead of reporting the project as restored.
