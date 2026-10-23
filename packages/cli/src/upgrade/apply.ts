@@ -15,7 +15,10 @@ import type {
 
 export type ApplyResult =
   | { ok: true; snapshot: ProjectSnapshot }
-  | { ok: false; message: string };
+  // `unrestoredPaths` is set only when the apply failed AND restoring the
+  // pre-upgrade snapshot then failed for these files: the repository may be
+  // left partially upgraded, and `message` says so instead of "was restored".
+  | { ok: false; message: string; unrestoredPaths?: readonly string[] };
 
 // Parses and validates the provenance SET shape (ADR-0019: one record per
 // applied template, never a single whole-repository record) against the raw
@@ -203,6 +206,10 @@ export async function applyChangeSet(
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-try
     // @cpt-begin:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-catch
     // @cpt-begin:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-restore-on-error
+    // Every snapshotted file is attempted even after one fails, so one bad
+    // path never leaves the others unrestored.
+    const unrestoredPaths: string[] = [];
+    const restoreFailures: string[] = [];
     for (const [filePath, originalContent] of snapshot.files) {
       try {
         if (originalContent === null) {
@@ -210,12 +217,30 @@ export async function applyChangeSet(
         } else {
           await deps.writeProjectFile(filePath, originalContent);
         }
-      } catch {
-        // Best-effort restore — do not mask the original error
+      } catch (restoreErr) {
+        // @cpt-begin:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-record-restore-failure
+        unrestoredPaths.push(filePath);
+        restoreFailures.push(`${filePath} (${restoreErr instanceof Error ? restoreErr.message : String(restoreErr)})`);
+        // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-record-restore-failure
       }
     }
     const message = err instanceof Error ? err.message : String(err);
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-restore-on-error
+    // @cpt-begin:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-if-restore-incomplete
+    if (unrestoredPaths.length > 0) {
+      // @cpt-begin:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-return-restore-incomplete
+      // The apply error stays first: it is what went wrong. The restore
+      // failures follow, because they decide what state the repository is in.
+      return {
+        ok: false,
+        message:
+          `Apply failed: ${message}; the pre-upgrade state could not be fully restored, so the ` +
+          `repository may be left partially upgraded. Not restored: ${restoreFailures.join(', ')}`,
+        unrestoredPaths,
+      };
+      // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-return-restore-incomplete
+    }
+    // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-if-restore-incomplete
     // @cpt-begin:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-return-failure
     return { ok: false, message: `Apply failed and was restored: ${message}` };
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-apply:p1:inst-app-return-failure

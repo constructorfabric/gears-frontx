@@ -607,12 +607,106 @@ describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
 
     expect(applyResult.ok).toBe(false);
     if (applyResult.ok) return;
-    expect(applyResult.message).toMatch(/disk full/);
+    expect(applyResult.message).toBe('Apply failed and was restored: disk full');
+    expect(applyResult.unrestoredPaths).toBeUndefined();
     // The project-file mutation that happened before the provenance write
     // failed is rolled back — not left half-applied.
     expect(files.get(appPath)).toBe(originalAppContent);
     // The provenance file is restored to its exact pre-upgrade bytes, not
     // left at whatever partial/failed write state `writeProvenance` threw at.
     expect(files.get(provPath)).toBe(originalProvContent);
+  });
+
+  // #610: each restore used to sit in a `try/catch` that discarded its
+  // error, and the result always said "Apply failed and was restored". A
+  // restore that fails must now be named in the result, the remaining
+  // snapshotted files must still be restored, and the apply error must stay
+  // first in the message.
+  const twoEntryChangeSet: ChangeSet = {
+    templateIdentity: 'my-template',
+    baselineVersion: '1.0.0',
+    targetVersion: '2.0.0',
+    clean: [
+      { kind: 'modify', path: 'src/App.tsx', content: 'v2 content' },
+      { kind: 'add', path: 'src/new.ts', content: 'new file' },
+    ],
+    conflicts: [],
+  };
+
+  it('(p) a restore write that fails is named in the failure, and the files after it are still restored', async () => {
+    const provPath = `${PROJ_ROOT}/.frontx/provenance.json`;
+    const appPath = `${PROJ_ROOT}/src/App.tsx`;
+    const newPath = `${PROJ_ROOT}/src/new.ts`;
+    const originalProvContent = JSON.stringify([BASE_PROVENANCE], null, 2);
+    const files = new Map<string, string>([
+      [provPath, originalProvContent],
+      [appPath, 'v1 content'],
+    ]);
+    let restoring = false;
+
+    const applyResult = await applyChangeSet(twoEntryChangeSet, PROJ_ROOT, BASE_PROVENANCE, {
+      readProjectFile: async (p) => files.get(p) ?? null,
+      writeProjectFile: async (p, c) => {
+        if (restoring && p === appPath) throw new Error('EACCES: permission denied');
+        files.set(p, c);
+      },
+      removeProjectFile: async (p) => { files.delete(p); },
+      writeProvenance: async () => {
+        restoring = true;
+        throw new Error('disk full');
+      },
+    });
+
+    expect(applyResult.ok).toBe(false);
+    if (applyResult.ok) return;
+    expect(applyResult.unrestoredPaths).toEqual([appPath]);
+    expect(applyResult.message).toMatch(/^Apply failed: disk full; /);
+    expect(applyResult.message).toContain(`Not restored: ${appPath} (EACCES: permission denied)`);
+    expect(applyResult.message).not.toMatch(/was restored/);
+    // src/App.tsx still holds the upgraded content: that is what the
+    // failure reports.
+    expect(files.get(appPath)).toBe('v2 content');
+    // The file snapshotted after it is still restored: src/new.ts did not
+    // exist before the upgrade and is removed again.
+    expect(files.has(newPath)).toBe(false);
+    expect(files.get(provPath)).toBe(originalProvContent);
+  });
+
+  it('(q) a restore removal that fails is named in the failure, alongside every other unrestored file', async () => {
+    const provPath = `${PROJ_ROOT}/.frontx/provenance.json`;
+    const appPath = `${PROJ_ROOT}/src/App.tsx`;
+    const newPath = `${PROJ_ROOT}/src/new.ts`;
+    const originalProvContent = JSON.stringify([BASE_PROVENANCE], null, 2);
+    const files = new Map<string, string>([
+      [provPath, originalProvContent],
+      [appPath, 'v1 content'],
+    ]);
+    let restoring = false;
+
+    const applyResult = await applyChangeSet(twoEntryChangeSet, PROJ_ROOT, BASE_PROVENANCE, {
+      readProjectFile: async (p) => files.get(p) ?? null,
+      writeProjectFile: async (p, c) => {
+        if (restoring && p === provPath) throw new Error('EROFS: read-only file system');
+        files.set(p, c);
+      },
+      removeProjectFile: async (p) => {
+        if (restoring) throw new Error('EBUSY: resource busy');
+        files.delete(p);
+      },
+      writeProvenance: async () => {
+        restoring = true;
+        throw new Error('disk full');
+      },
+    });
+
+    expect(applyResult.ok).toBe(false);
+    if (applyResult.ok) return;
+    expect(applyResult.unrestoredPaths).toEqual([provPath, newPath]);
+    expect(applyResult.message).toContain(
+      `Not restored: ${provPath} (EROFS: read-only file system), ${newPath} (EBUSY: resource busy)`,
+    );
+    // src/App.tsx sits between the two failures and is still restored.
+    expect(files.get(appPath)).toBe('v1 content');
+    expect(files.get(newPath)).toBe('new file');
   });
 });

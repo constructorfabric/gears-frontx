@@ -130,4 +130,37 @@ describe('upgradeCommand (F14 command/invocation surface)', () => {
     expect(result.changeSetJson).toBeUndefined();
     expect(result.message).toBeDefined();
   });
+
+  it('reports the files a failed apply could not restore via the command surface', async () => {
+    const provPath = `${PROJ_ROOT}/.frontx/provenance.json`;
+    const appPath = `${PROJ_ROOT}/src/App.tsx`;
+    const files = new Map<string, string>([
+      [provPath, JSON.stringify([BASE_PROVENANCE], null, 2)],
+      [appPath, 'v1 content'],
+    ]);
+    let restoring = false;
+
+    const result = await upgradeCommand(PROJ_ROOT, '2.0.0', {
+      readProvenance: async () => BASE_PROVENANCE,
+      fetchFn,
+      readProjectFile: async (p) => files.get(p) ?? null,
+      readContentItems,
+      writeProjectFile: async (p, c) => {
+        if (restoring && p === appPath) throw new Error('EACCES: permission denied');
+        files.set(p, c);
+      },
+      removeProjectFile: async (p) => { files.delete(p); },
+      writeProvenance: async () => {
+        restoring = true;
+        throw new Error('disk full');
+      },
+      presentAndGetApproval: async () => 'approved',
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe('apply-failed');
+    expect(result.unrestoredPaths).toEqual([appPath]);
+    expect(result.message).toMatch(/^Apply failed: disk full; /);
+    expect(result.changeSetJson).toBeDefined();
+  });
 });

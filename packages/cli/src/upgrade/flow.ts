@@ -23,7 +23,14 @@ export type UpgradeFlowResult =
   | { status: 'applied'; targetVersion: string; snapshot: ProjectSnapshot; lifecycleHistory: readonly ChangeSetLifecycleState[] }
   | { status: 'declined'; lifecycleHistory: readonly ChangeSetLifecycleState[] }
   | { status: 'resolution-failed'; message: string }
-  | { status: 'apply-failed'; message: string; lifecycleHistory: readonly ChangeSetLifecycleState[] };
+  // `unrestoredPaths`: see `ApplyResult` — the files a failed apply could not
+  // restore, present only when the repository may be left partially upgraded.
+  | {
+      status: 'apply-failed';
+      message: string;
+      unrestoredPaths?: readonly string[];
+      lifecycleHistory: readonly ChangeSetLifecycleState[];
+    };
 
 // All dependencies are injected — CLI and F17 AI orchestration use the same engine.
 // CLI-1 (cpt-frontx-constraint-cli-template-independence): no hardcoded template names;
@@ -102,7 +109,12 @@ export async function upgradeChangeSetReviewApproval(
     // @cpt-end:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-apply-changeset
 
     if (!applyResult.ok) {
-      return { status: 'apply-failed', message: applyResult.message, lifecycleHistory };
+      return {
+        status: 'apply-failed',
+        message: applyResult.message,
+        ...(applyResult.unrestoredPaths ? { unrestoredPaths: applyResult.unrestoredPaths } : {}),
+        lifecycleHistory,
+      };
     }
 
     // @cpt-begin:cpt-frontx-state-upgrade-changeset-lifecycle:p1:inst-st-approved-to-applied
