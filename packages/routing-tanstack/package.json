@@ -1,6 +1,6 @@
 {
   "name": "@gears-frontx/routing-tanstack",
-  "version": "0.4.0",
+  "version": "0.4.1-alpha.0",
   "description": "FrontX's default routing-engine provider - binds the navigation substrate's shared history to TanStack Router, projecting each occupant's own entry into a virtual location that engine can navigate",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -8,9 +8,14 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
   },
   "files": [
@@ -28,7 +33,7 @@
     "test:unit:watch": "vitest --watch"
   },
   "dependencies": {
-    "@gears-frontx/routing": "0.4.0",
+    "@gears-frontx/routing": "0.4.1-alpha.0",
     "@tanstack/react-router": "^1.170.34"
   },
   "peerDependencies": {
