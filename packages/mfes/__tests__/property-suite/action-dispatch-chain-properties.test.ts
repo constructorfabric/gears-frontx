@@ -384,14 +384,16 @@ describe('P2 — Immediate execution of the first action', () => {
       const gate = createDeferred();
       let invoked = false;
       let settled = false;
-      const domain = makeDomain('d-p2-lifecycle', ['mock.action.v1~probe.v1~']);
+      const domain: ExtensionDomain = {
+        ...makeDomain('d-p2-lifecycle', ['mock.action.v1~probe.v1~']),
+        lifecycleStages: ['mock.stage.v1~init.v1'],
+      };
       domain.lifecycle = [
         {
           stage: 'mock.stage.v1~init.v1',
           actions_chain: actionChain('mock.action.v1~probe.v1~', 'd-p2-lifecycle'),
         },
       ];
-      domain.lifecycleStages = ['mock.stage.v1~init.v1'];
 
       class GatedFactory extends ExtensionDomainImplementationFactory {
         build(ctx: DomainContext) {
@@ -504,8 +506,10 @@ describe('P7 — Lifecycle non-blocking', () => {
         typeSystem: createMockPlugin(entries),
         mfeHandlers: [new InjectableMountHandler(ENTRY, () => {})],
       });
-      const domain = makeDomain(D, [PROBE]);
-      domain.extensionsLifecycleStages = ['mock.stage.v1~activated.v1'];
+      const domain: ExtensionDomain = {
+        ...makeDomain(D, [PROBE]),
+        extensionsLifecycleStages: ['mock.stage.v1~activated.v1'],
+      };
       registry.registerDomain(
         domain,
         new GenericDomainFactory([
