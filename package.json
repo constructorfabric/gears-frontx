@@ -15,7 +15,7 @@
   ],
   "scripts": {
     "build": "npm run build:packages",
-    "build:packages": "npm run build:packages:config && npm run build:packages:mfes && npm run build:packages:gts-plugin && npm run build:packages:sdk && npm run build:packages:telemetry && npm run build:packages:routing && npm run build:packages:routing-tanstack && npm run build:packages:ui-kit && npm run build:packages:cli",
+    "build:packages": "npm run build:packages:config && npm run build:packages:mfes && npm run build:packages:gts-plugin && npm run build:packages:sdk && npm run build:packages:telemetry && npm run build:packages:routing && npm run build:packages:routing-tanstack && npm run build:packages:ui-kit && npm run build:packages:cli && npm run build:packages:cyber-pilot-kit-frontx",
     "build:packages:config": "npm run build --workspace=@gears-frontx/eslint-config",
     "build:packages:mfes": "npm run build --workspace=@gears-frontx/mfes",
     "build:packages:gts-plugin": "npm run build --workspace=@gears-frontx/gts-plugin",
@@ -26,6 +26,7 @@
     "build:packages:ui-kit": "npm run build --workspace=@gears-frontx/ui-kit",
     "demo:telemetry": "npm run demo --workspace=@gears-frontx/telemetry",
     "build:packages:cli": "npm run build --workspace=@gears-frontx/cli",
+    "build:packages:cyber-pilot-kit-frontx": "npm run build --workspace=@gears-frontx/cyber-pilot-kit-frontx",
     "lint:deps": "node scripts/check-test-dependency-versions.mjs",
     "lint": "npm run lint:deps && eslint . --max-warnings 0",
     "policy:version-check": "node scripts/ecosystem-version-policy.mjs",
