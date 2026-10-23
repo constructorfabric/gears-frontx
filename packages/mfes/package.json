@@ -1,6 +1,6 @@
 {
   "name": "@gears-frontx/mfes",
-  "version": "0.4.0",
+  "version": "0.4.1-alpha.0",
   "description": "MFE runtime substrate for FrontX — registration, loading, extension-domain governance, mediation, and isolation",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -17,7 +17,7 @@
     "dist"
   ],
   "peerDependencies": {
-    "@gears-frontx/gts-plugin": "^0.4.0"
+    "@gears-frontx/gts-plugin": "^0.4.1-alpha.0"
   },
   "peerDependenciesMeta": {
     "@gears-frontx/gts-plugin": {
