@@ -21,20 +21,33 @@ import { foldForIdentity } from './volume-case';
 // normalizing keeps one spelling per addressed location and keeps the value
 // unable to climb out of the root it is resolved against.
 export function isSafeRelativePath(value: string): boolean {
-  if (value.trim() !== value) return false;
-  if (value.startsWith('/') || value.includes('\\')) return false;
-  if (hasUnsafePathChar(value)) return false;
-  return value.split('/').every((segment) => segment !== '' && segment !== '.' && segment !== '..');
+  return unsafeRelativePathReason(value) === undefined;
 }
 
-// Characters that must never reach a filesystem adapter in a path-like value.
-// A control character (NUL among them) makes the platform API throw, which
-// escapes the result union every caller here returns instead. A colon carries a
-// Windows drive designator, so `C:/outside` would be an absolute path on one
-// platform and an ordinary relative segment on the other — neither a template
-// identity nor a subtree segment has a legitimate use for either.
-function hasUnsafePathChar(value: string): boolean {
-  if (value.includes(':')) return true;
+// Why `value` is not a safe relative path, as a clause that completes "it ...",
+// or `undefined` when it is one. This is the ONE place the rule is written —
+// `isSafeRelativePath` is its yes/no answer — so a refusal can name the check
+// that actually fired without a second copy of the checks to drift from it.
+export function unsafeRelativePathReason(value: string): string | undefined {
+  if (value.trim() !== value) return 'has leading or trailing whitespace';
+  if (value.startsWith('/')) return 'is absolute';
+  if (value.includes('\\')) return 'contains a backslash';
+  // A colon carries a Windows drive designator, so `C:/outside` would be an
+  // absolute path on one platform and an ordinary relative segment on the other
+  // — neither a template identity nor a subtree segment has a legitimate use for
+  // it.
+  if (value.includes(':')) return 'contains a colon (a drive designator on Windows)';
+  if (hasControlChar(value)) return 'contains a control character';
+  if (value.split('/').some((segment) => segment === '' || segment === '.' || segment === '..')) {
+    return 'has an empty, "." or ".." segment';
+  }
+  return undefined;
+}
+
+// A control character (NUL among them) must never reach a filesystem adapter in
+// a path-like value: it makes the platform API throw, which escapes the result
+// union every caller here returns instead.
+function hasControlChar(value: string): boolean {
   for (const character of value) {
     const code = character.codePointAt(0) ?? 0;
     if (code < 0x20 || code === 0x7f) return true;

@@ -5,7 +5,14 @@
 // normalizations it deliberately does NOT perform — a caller reading only the
 // consumers cannot tell an unhandled spelling from a handled one.
 import { describe, it, expect } from 'vitest';
-import { pathWithinSubtree, pathsNest, pathWithinTarget, targetsNest } from '../paths/relative-path';
+import {
+  isSafeRelativePath,
+  pathWithinSubtree,
+  pathsNest,
+  pathWithinTarget,
+  targetsNest,
+  unsafeRelativePathReason,
+} from '../paths/relative-path';
 
 describe('pathWithinSubtree — containment by whole path segments', () => {
   it.each([
@@ -142,5 +149,42 @@ describe('pathWithinTarget / targetsNest — the root-aware counterparts for con
 
   it('"." nests with itself', () => {
     expect(targetsNest('.', '.')).toBe(true);
+  });
+});
+
+describe('isSafeRelativePath / unsafeRelativePathReason — the one rule for a path-like value from outside', () => {
+  it.each([
+    'frontx-template.json',
+    'src/App.tsx',
+    '.gitignore',
+    '.frontx/ai/my-tpl/note.md',
+    '@scope/name',
+    'a..b/c',
+    'docs/a b.md',
+  ])('accepts %j', (value) => {
+    expect(isSafeRelativePath(value)).toBe(true);
+    expect(unsafeRelativePathReason(value)).toBeUndefined();
+  });
+
+  it.each([
+    { value: '', reason: 'empty' },
+    { value: '.', reason: 'empty, "." or ".."' },
+    { value: '..', reason: 'empty, "." or ".."' },
+    { value: 'src/', reason: 'empty, "." or ".."' },
+    { value: 'src//x', reason: 'empty, "." or ".."' },
+    { value: 'a/./b', reason: 'empty, "." or ".."' },
+    { value: 'src/../x', reason: 'empty, "." or ".."' },
+    { value: '/etc/passwd', reason: 'absolute' },
+    { value: 'a\\b', reason: 'backslash' },
+    { value: 'C:/x', reason: 'colon' },
+    { value: 'docs/a:b.md', reason: 'colon' },
+    { value: ' src/x', reason: 'whitespace' },
+    { value: 'src/x ', reason: 'whitespace' },
+    { value: 'a\u0001b', reason: 'control character' },
+    { value: 'a\u007fb', reason: 'control character' },
+    { value: 'a\0b', reason: 'control character' },
+  ])('refuses $value, saying why ($reason)', ({ value, reason }) => {
+    expect(isSafeRelativePath(value)).toBe(false);
+    expect(unsafeRelativePathReason(value)).toContain(reason);
   });
 });

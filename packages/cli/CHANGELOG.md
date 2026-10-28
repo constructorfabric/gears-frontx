@@ -89,6 +89,30 @@ refactoring is not.
 
 ### Fixed
 
+- `register`, `install`, `update-local` and `upgrade` now refuse a remote
+  template whose file list cannot be written as it stands, before anything is
+  written. A path is refused when it is absolute, climbs out of the template
+  with `..`, has an empty or `.` segment, uses a backslash, contains a colon
+  (any colon, not only a drive such as `C:`), has leading or trailing
+  whitespace, or contains a control character. A list is refused when one path
+  is a directory of another (`src` together with `src/index.ts`), or when two
+  paths name the same location once Unicode normalisation and, on a volume that
+  folds case, letter case are folded (`README.md` together with `readme.md`).
+  The first three commands exit 1 with `INVALID_PATH` naming the path and the
+  rule it breaks; `upgrade` and `validate --project` exit 1 with
+  `ORIGIN_UNAVAILABLE` carrying the same message. Such a template used to be
+  written through: a path like `../../index.json` replaced the inventory index,
+  leaving every later `list` and `register` failing with `CONTENT_CONFLICT`,
+  one like `../../@other/lib/src/lib.ts` overwrote another installed template,
+  an upgrade could add or replace a project file beside the upgraded target, or
+  inside `.frontx/`, a file next to a directory of the same name crashed with a
+  raw filesystem error and left a half-written template in the inventory, and
+  two names for one file silently kept only the later one (even for
+  `frontx-template.json`, so the stored manifest was not the one the template's
+  identity was read from). `validate <templateDir>` now applies the same check
+  to the files it lists, so a template that passes it is not one every remote
+  install refuses.
+
 - `apply` no longer writes a payload read from outside the local inventory
   store when the installed content path is a symlink leading out of it.
 

@@ -161,6 +161,162 @@ describe('resolveToInventory', () => {
   });
 });
 
+// inst-resolve-bundle-keys, inst-resolve-bundle-keys-fail: a key of the
+// acquired file map that is not a safe template-relative path is refused by
+// the resolver itself, for every consumer at once. The whole-CLI coverage
+// (`bundle-key-validity-real-fs.test.ts`) proves nothing is written; this
+// proves WHICH layer refuses and exactly which keys count.
+describe('resolveToInventory — bundle keys', () => {
+  const envelope = (files: Record<string, unknown>): string => JSON.stringify({ [BUNDLE_MARKER]: files });
+  const fetching = (files: Record<string, unknown>): FetchFn => vi.fn().mockResolvedValue(envelope(files));
+
+  for (const key of [
+    '../outside.txt',
+    'src/../../outside.txt',
+    '/etc/passwd',
+    'src\\evil.txt',
+    'C:/x.txt',
+    'docs/a:b.md',
+    'src//x.txt',
+    'a/./b',
+    '.',
+    'src/',
+    ' src/x.ts',
+    'src/x.ts ',
+    'src/a\u0001b.ts',
+  ]) {
+    it(`refuses INVALID_PATH for the key ${JSON.stringify(key)}, naming it`, async () => {
+      const result = await resolveToInventory(
+        { kind: 'remote', ref: validRef },
+        { fetchFn: fetching({ [MANIFEST_FILENAME]: manifestContent('widget-kit'), [key]: 'x' }) },
+      );
+
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe('INVALID_PATH');
+      expect(result.error.message).toContain(JSON.stringify(key));
+    });
+  }
+
+  // The set, not only each key: neither of these keys is unsafe on its own.
+  for (const files of [
+    { 'src/index.ts': 'x', src: 'FILE' },
+    { src: 'FILE', 'src/index.ts': 'x' },
+  ]) {
+    it(`refuses INVALID_PATH for a file that is also a directory of another, listed as ${Object.keys(files).join(' then ')}`, async () => {
+      const result = await resolveToInventory(
+        { kind: 'remote', ref: validRef },
+        { fetchFn: fetching({ [MANIFEST_FILENAME]: manifestContent('widget-kit'), ...files }) },
+      );
+
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.error.code).toBe('INVALID_PATH');
+      expect(result.error.message).toContain('"src"');
+      expect(result.error.message).toContain('"src/index.ts"');
+      expect(result.error.message).toContain('directory');
+    });
+  }
+
+  it('refuses INVALID_PATH for two keys that differ only in Unicode normalisation', async () => {
+    const result = await resolveToInventory(
+      { kind: 'remote', ref: validRef },
+      { fetchFn: fetching({ [MANIFEST_FILENAME]: manifestContent('widget-kit'), 'caf\u00e9.ts': 'a', 'cafe\u0301.ts': 'b' }) },
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('INVALID_PATH');
+    expect(result.error.message).toContain(JSON.stringify('cafe\u0301.ts'));
+    expect(result.error.message).toContain('normalisation');
+  });
+
+  it('says why a key is refused, and does not claim that nothing was installed', async () => {
+    const result = await resolveToInventory(
+      { kind: 'remote', ref: validRef },
+      { fetchFn: fetching({ [MANIFEST_FILENAME]: manifestContent('widget-kit'), 'docs/a:b.md': 'x' }) },
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.message).toContain('colon');
+    expect(result.error.message).not.toContain('drive designator, a control');
+    expect(result.error.message).not.toContain('nothing was installed');
+  });
+
+  it('judges a key whatever its value is, since a consumer that skips the value has not made the key safe', async () => {
+    const result = await resolveToInventory(
+      { kind: 'remote', ref: validRef },
+      { fetchFn: fetching({ [MANIFEST_FILENAME]: manifestContent('widget-kit'), '../outside.txt': 42 }) },
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('INVALID_PATH');
+  });
+
+  it('accepts the keys a template legitimately carries, including its manifest and its AI bundle', async () => {
+    const result = await resolveToInventory(
+      { kind: 'remote', ref: validRef },
+      {
+        fetchFn: fetching({
+          [MANIFEST_FILENAME]: manifestContent('widget-kit'),
+          'src/App.tsx': 'x',
+          '.frontx/ai/widget-kit/note.md': 'x',
+          '.gitignore': 'x',
+        }),
+      },
+    );
+
+    expect(result.ok).toBe(true);
+  });
+
+  // The subtree filter drops every key outside the subtree, so a key that was
+  // never going to be kept must not sink the template that was addressed.
+  it('does not judge a key outside the addressed subtree, which narrowing drops', async () => {
+    const result = await resolveToInventory(
+      { kind: 'remote', ref: { ...validRef, subtree: 'tpl' } },
+      {
+        fetchFn: fetching({
+          'tpl/frontx-template.json': manifestContent('widget-kit'),
+          'tpl/src/App.tsx': 'x',
+          'other/odd:name.txt': 'x',
+        }),
+      },
+    );
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('judges a key of the addressed subtree once it is re-rooted', async () => {
+    const result = await resolveToInventory(
+      { kind: 'remote', ref: { ...validRef, subtree: 'tpl' } },
+      {
+        fetchFn: fetching({
+          'tpl/frontx-template.json': manifestContent('widget-kit'),
+          'tpl/odd:name.txt': 'x',
+        }),
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('INVALID_PATH');
+    expect(result.error.message).toContain('"odd:name.txt"');
+  });
+
+  // A bare manifest string is not a bundle: there are no keys to judge, and it
+  // keeps resolving exactly as before.
+  it('does not judge a bare manifest string, which carries no keys', async () => {
+    const result = await resolveToInventory(
+      { kind: 'remote', ref: validRef },
+      { fetchFn: vi.fn().mockResolvedValue(manifestContent('widget-kit')) },
+    );
+
+    expect(result.ok).toBe(true);
+  });
+});
+
 // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-origin-kind-check
 // Fixture coverage for the local `path:<relative-path>` origin branch —
 // `inst-resolve-origin-kind-check`, `inst-resolve-local-path-check`,
@@ -222,6 +378,20 @@ describe('resolveToInventory — local "path:" origin', () => {
     const bundle = JSON.parse(result.value.content) as Record<string, Record<string, string>>;
     expect(bundle[BUNDLE_MARKER][MANIFEST_FILENAME]).toBe(files[MANIFEST_FILENAME]);
     expect(bundle[BUNDLE_MARKER]['README.md']).toBe('# widget-kit');
+  });
+
+  // The bundle-key rule is NOT applied here (see `inst-resolve-bundle-keys` in
+  // `resolve.ts`): a local origin's keys are names a directory listing found on
+  // disk, which cannot climb or be absolute, and a file legitimately named with
+  // a colon is the developer's own content.
+  it('does not judge the names of files found on disk in the template folder', async () => {
+    const files = { [MANIFEST_FILENAME]: manifestContent('widget-kit'), 'docs/odd:name.md': 'x' };
+    const result = await resolveToInventory(
+      { kind: 'local', origin: 'path:templates/widget-kit' },
+      { fetchFn: noopFetch, local: localDeps(files) },
+    );
+
+    expect(result.ok).toBe(true);
   });
 
   // inst-resolve-local-path-fail-check / -fail: an escaping path.

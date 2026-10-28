@@ -1,11 +1,12 @@
 // @cpt-algo:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1
 // @cpt-dod:cpt-frontx-dod-template-resolution-staged-mode:p1
 // @cpt-dod:cpt-frontx-dod-template-resolution-manifest-identity:p1
+// @cpt-dod:cpt-frontx-dod-template-resolution-bundle-key-validity:p1
 import path from 'node:path';
 import { readManifestFromContent } from '../manifest/validate-contract';
 import { isSafeRelativePath } from '../paths/relative-path';
 import { MANIFEST_FILENAME } from '../manifest/types';
-import { BUNDLE_MARKER } from '../bundle/envelope';
+import { BUNDLE_MARKER, findInvalidBundleKey, readBundleFiles } from '../bundle/envelope';
 import type { StructuredRef } from '../spec-parser/types';
 import { formatTemplateAddress } from '../spec-parser/parse';
 import { narrowBundleToSubtree } from './narrow-subtree';
@@ -270,7 +271,7 @@ async function resolveRemoteOrigin(ref: StructuredRef, fetchFn: FetchFn): Promis
 
   // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-pin
   // Settle the pin BEFORE identity resolution, per this step's own place in
-  // the algorithm (step 7, ahead of step 8's manifest read) — every message
+  // the algorithm (step 7, ahead of step 9's manifest read) — every message
   // built from `source` from this point on (the legacy-manifest and
   // identity-missing refusals below, and the final returned record) already
   // carries the immutable form rather than the typed one.
@@ -295,6 +296,43 @@ async function resolveRemoteOrigin(ref: StructuredRef, fetchFn: FetchFn): Promis
     source = buildSourceSpec({ ...ref, ref: pinnedRef });
   }
   // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-pin
+
+  // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-bundle-keys
+  // The acquired bundle is final here — narrowed to its subtree and re-rooted,
+  // so a key outside the subtree that was never going to be kept is not judged
+  // — and nothing has been written or parsed past the envelope. Every consumer
+  // of this record joins each key under a root of its own, so a key that is not
+  // a safe template-relative path, and a key set that cannot be written as it
+  // stands (one key a directory of another, two keys naming one location), are
+  // refused for ALL of them at once, here, rather than by each one's own
+  // containment check (which a key that climbs and lands elsewhere inside the
+  // same root passes). A local origin is not
+  // judged: its keys are the relative names of entries a directory listing
+  // found on disk, which cannot be absolute or climb, and refusing a folder
+  // that holds a file legitimately named with a colon would reject content the
+  // developer owns for a risk the listing does not carry.
+  // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-bundle-keys-fail
+  const bundleFiles = readBundleFiles(content);
+  const invalidKey = bundleFiles === undefined ? undefined : findInvalidBundleKey(Object.keys(bundleFiles));
+  if (invalidKey !== undefined) {
+    // @cpt-begin:cpt-frontx-state-template-resolution-inventory-lifecycle:p1:inst-state-reject-loop
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_PATH',
+        // The message is also what an upgrade, a restore and `validate
+        // --project` carry (folded to ORIGIN_UNAVAILABLE by their callers), so
+        // it says the template was refused rather than that nothing was
+        // installed, which is only true of the commands that install.
+        message:
+          `Template resolved from "${source}" carries the file ${JSON.stringify(invalidKey.key)}, ` +
+          `which ${invalidKey.reason}; the template was refused.`,
+      },
+    };
+    // @cpt-end:cpt-frontx-state-template-resolution-inventory-lifecycle:p1:inst-state-reject-loop
+  }
+  // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-bundle-keys-fail
+  // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-bundle-keys
 
   // Identity is what the template's own manifest declares, not the
   // repository the reference named (`cpt-frontx-adr-template-manifest-
@@ -347,7 +385,7 @@ async function resolveRemoteOrigin(ref: StructuredRef, fetchFn: FetchFn): Promis
 
 type IdentityResolution = { ok: true; name: string } | { ok: false; result: ResolveResult };
 
-// Steps 8-10 of the algorithm (`inst-resolve-name` / `inst-resolve-if-
+// Steps 9-11 of the algorithm (`inst-resolve-name` / `inst-resolve-if-
 // legacy-manifest` / `inst-resolve-identity-missing`), shared verbatim by
 // both origin kinds — a remote resolution has always run this; a local
 // origin now runs the identical check rather than a bypass's own

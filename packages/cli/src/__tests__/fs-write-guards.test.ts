@@ -224,7 +224,8 @@ const WRITE_ALLOW_LIST: Record<string, FileAllowList> = {
       },
       {
         guard: 'assertWithinRoot',
-        note: '`writeBundle` bundle-loop branch: `assertWithinRoot` on `filePath` runs immediately above.',
+        note:
+          '`writeBundle` bundle-loop branch: `assertWithinRoot` on `filePath` runs immediately above, but it only refuses an escape from the store root — `../../index.json` stays inside it. The effective guard is the key check the CALLER\'s resolver ran on every key before this content could reach the store (`findInvalidBundleKey`, `resolver/resolve.ts`, `inst-resolve-bundle-keys`): a safe relative path, no key a directory of another, no two keys naming one location.',
       },
     ],
     'fs.rmSync': [
@@ -236,7 +237,11 @@ const WRITE_ALLOW_LIST: Record<string, FileAllowList> = {
     ],
     'fs.writeFileSync': [
       { guard: 'assertWithinRoot', note: '`writeBundle` fallback branch: containment checked immediately above.' },
-      { guard: 'assertWithinRoot', note: '`writeBundle` bundle-loop branch: containment checked immediately above.' },
+      {
+        guard: 'assertWithinRoot',
+        note:
+          '`writeBundle` bundle-loop branch: `assertWithinRoot` only refuses an escape from the store root; the key shape and the key set are proven by the CALLER\'s resolver (`findInvalidBundleKey`, `resolver/resolve.ts`, `inst-resolve-bundle-keys`), as on the `fs.mkdirSync` entry above.',
+      },
     ],
   },
   'adapters/fs-inventory-index.ts': {

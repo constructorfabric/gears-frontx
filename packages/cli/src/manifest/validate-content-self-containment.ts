@@ -56,6 +56,7 @@ import type {
 import { MANIFEST_FILENAME } from './types';
 import { parseJsonc } from './parse-jsonc';
 import { isReservedTempName, RESERVED_TEMP_SUFFIX } from '../paths/reserved-temp-name';
+import { findInvalidBundleKey } from '../bundle/envelope';
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -489,6 +490,23 @@ export async function validateContentSelfContainment(
     (fileRelPath) => fileRelPath !== MANIFEST_FILENAME && !isWithinExcludedGround(fileRelPath, excludedSubtrees, bundlePrefix),
   );
   // @cpt-end:cpt-frontx-algo-template-manifest-validate-content-self-containment:p2:inst-csc-enumerate-files
+
+  // @cpt-begin:cpt-frontx-algo-template-manifest-validate-content-self-containment:p2:inst-csc-bundle-keys
+  // Judged over EVERY enumerated file, not the payload alone: an install
+  // refuses the whole bundle on one unusable key, whichever ground that file
+  // sits on (`cpt-frontx-dod-template-resolution-bundle-key-validity`), so a
+  // template that passes here must not be one every remote install refuses. The
+  // same function the resolver calls, so the two gates cannot disagree.
+  const invalidKey = findInvalidBundleKey(enumeratedFiles);
+  // @cpt-begin:cpt-frontx-algo-template-manifest-validate-content-self-containment:p2:inst-csc-add-bundle-key-violation
+  if (invalidKey !== undefined) {
+    violations.push({
+      field: invalidKey.key,
+      message: `${invalidKey.reason}; an install of this template from a remote origin refuses it`,
+    });
+  }
+  // @cpt-end:cpt-frontx-algo-template-manifest-validate-content-self-containment:p2:inst-csc-add-bundle-key-violation
+  // @cpt-end:cpt-frontx-algo-template-manifest-validate-content-self-containment:p2:inst-csc-bundle-keys
 
   // @cpt-begin:cpt-frontx-algo-template-manifest-validate-content-self-containment:p2:inst-csc-foreach-enumerated
   for (const fileRelPath of payloadFiles) {

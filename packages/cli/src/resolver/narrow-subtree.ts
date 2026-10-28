@@ -72,6 +72,13 @@ export function narrowBundleToSubtree(content: string, subtree: string): NarrowS
 // above its own root. Any `..` segment is refused rather than resolved, so a
 // path that climbs and comes back (`a/../b`) is refused too: it has no
 // legitimate use in a bundle.
+//
+// This is deliberately only the escape that RE-ROOTING creates — the verdict
+// this step reports as its own (`inst-resolve-subtree-empty-fail`) — and a strict
+// subset of `isSafeRelativePath`, not a second shape rule: every re-rooted key
+// it lets through is judged by the full rule, in the same resolution, by
+// `findInvalidBundleKey` (`inst-resolve-bundle-keys`), which also reports the
+// rule that applies (a colon, surrounding whitespace) rather than an escape.
 function escapesSubtree(reRooted: string): boolean {
   if (reRooted.startsWith('/') || reRooted.includes('\\')) return true;
   return reRooted.split('/').some((segment) => segment === '..');

@@ -752,3 +752,72 @@ describe('validateContentSelfContainment - reserved temporary-file naming conven
     expect(result.violations.some((v) => v.field === 'src/app.ts.FRONTX-UPGRADE-TMP')).toBe(true);
   });
 });
+
+// inst-csc-bundle-keys, inst-csc-add-bundle-key-violation: the same bundle-key
+// rule a remote install applies (`inst-resolve-bundle-keys`), so a template that
+// passes pre-publish validation is not one every install refuses.
+describe('validateContentSelfContainment - bundle keys', () => {
+  it('a listed file whose name carries a colon is a violation naming the file and the rule', async () => {
+    const { listPayloadFiles, resolveDeclaredExclusion, readFile } = fakeTemplate({ 'src/App.tsx': 'x', 'docs/a:b.md': 'x' });
+
+    const result = await validateContentSelfContainment('template', manifest(), listPayloadFiles, resolveDeclaredExclusion, readFile);
+
+    expect(result.status).toBe('REJECTED');
+    if (result.status !== 'REJECTED') return;
+    expect(result.violations).toHaveLength(1);
+    expect(result.violations[0]?.field).toBe('docs/a:b.md');
+    expect(result.violations[0]?.message).toContain('colon');
+    expect(result.violations[0]?.message).toContain('install');
+  });
+
+  it.each([' src/x.ts', 'src/x.ts ', 'src\\x.ts', 'src/a\u0001b.ts'])('a listed file named %j is a violation', async (name) => {
+    const { listPayloadFiles, resolveDeclaredExclusion, readFile } = fakeTemplate({ [name]: 'x' });
+
+    const result = await validateContentSelfContainment('template', manifest(), listPayloadFiles, resolveDeclaredExclusion, readFile);
+
+    expect(result.status).toBe('REJECTED');
+    if (result.status !== 'REJECTED') return;
+    expect(result.violations[0]?.field).toBe(name);
+  });
+
+  it('two listed files naming one location once Unicode normalisation is folded are a violation', async () => {
+    const { listPayloadFiles, resolveDeclaredExclusion, readFile } = fakeTemplate({ 'caf\u00e9.ts': 'a', 'cafe\u0301.ts': 'b' });
+
+    const result = await validateContentSelfContainment('template', manifest(), listPayloadFiles, resolveDeclaredExclusion, readFile);
+
+    expect(result.status).toBe('REJECTED');
+    if (result.status !== 'REJECTED') return;
+    expect(result.violations[0]?.field).toBe('cafe\u0301.ts');
+  });
+
+  // An install judges every file of the bundle, not only the payload, so the
+  // manifest file and the excluded ground are judged too.
+  it('judges a file in excluded ground and the AI bundle folder as well as the payload', async () => {
+    const { listPayloadFiles, resolveDeclaredExclusion, readFile } = fakeTemplate({
+      'packages/nested/odd:name.txt': 'x',
+    });
+
+    const result = await validateContentSelfContainment(
+      'template',
+      manifest(['packages/']),
+      listPayloadFiles,
+      resolveDeclaredExclusion,
+      readFile,
+    );
+
+    expect(result.status).toBe('REJECTED');
+  });
+
+  it('a template whose files are a sound set of keys still validates', async () => {
+    const { listPayloadFiles, resolveDeclaredExclusion, readFile } = fakeTemplate({
+      'frontx-template.json': manifest(),
+      'src/App.tsx': 'x',
+      '.gitignore': 'x',
+      '.frontx/ai/my-tpl/note.md': 'x',
+    });
+
+    const result = await validateContentSelfContainment('template', manifest(), listPayloadFiles, resolveDeclaredExclusion, readFile);
+
+    expect(result.status).toBe('VALIDATED');
+  });
+});
