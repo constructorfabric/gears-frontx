@@ -38,7 +38,7 @@ describe('createFsReadDiskEntryFn — a real special file (FIFO)', () => {
     const fifoPath = path.join(root, 'pipe');
     makeFifo(fifoPath);
 
-    const readDiskEntry = createFsReadDiskEntryFn();
+    const readDiskEntry = createFsReadDiskEntryFn(root);
     // If this call ever opened the FIFO for reading, it would hang forever
     // (no writer exists) and this test would time out rather than fail
     // cleanly — the strongest proof this seam has that it never does.
@@ -52,7 +52,7 @@ describe('createFsReadDiskEntryFn — a real special file (FIFO)', () => {
     const fifoPath = path.join(root, 'pipe');
     makeFifo(fifoPath);
 
-    const readDiskEntry = createFsReadDiskEntryFn();
+    const readDiskEntry = createFsReadDiskEntryFn(root);
     const entry = await readDiskEntry(fifoPath);
 
     // The defect this pins: an earlier version of this function returned
@@ -68,7 +68,7 @@ describe('createFsReadDiskEntryFn — a real special file (FIFO)', () => {
     await mkdir(path.join(root, 'dir'));
     await writeFile(path.join(root, 'file.txt'), 'content', 'utf-8');
 
-    const readDiskEntry = createFsReadDiskEntryFn();
+    const readDiskEntry = createFsReadDiskEntryFn(root);
     expect(await readDiskEntry(path.join(root, 'dir'))).toEqual({ kind: 'directory' });
     expect(await readDiskEntry(path.join(root, 'file.txt'))).toEqual({ kind: 'file', content: 'content' });
     expect(await readDiskEntry(path.join(root, 'does-not-exist.txt'))).toEqual({ kind: 'absent' });

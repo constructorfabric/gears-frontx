@@ -64,7 +64,7 @@ function realDeps(repoRoot: string): UpgradeEngineDeps {
     }),
     // Only one registered template in this fixture — never actually called.
     resolveRegisteredExclusions: async () => [],
-    readDiskEntry: createFsReadDiskEntryFn(),
+    readDiskEntry: createFsReadDiskEntryFn(repoRoot),
     writeDiskFile: createFsWriteDiskFileFn(repoRoot),
     renameDiskFile: createFsRenameDiskFileFn(repoRoot),
     unlinkDiskFile: createFsUnlinkDiskFileFn(repoRoot),

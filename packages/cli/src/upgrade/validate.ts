@@ -473,6 +473,9 @@ export async function validateUpgrade(input: ValidateInput): Promise<ValidateOut
   // to find it.
   const uncomparableCauses: { target: string; path: string; component: string; kind: string }[] = [];
   const targetConflicts: { target: string; contestingTarget: string; contestingTemplateName: string }[] = [];
+  // Locations classification refused to judge because they are not spelled as
+  // the one location they name — see `ClassifyResult.unaddressablePaths`.
+  const unaddressableLocations: { target: string; path: string; reason: string }[] = [];
 
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-foreach-target
   for (const target of entry.targets) {
@@ -506,9 +509,31 @@ export async function validateUpgrade(input: ValidateInput): Promise<ValidateOut
     for (const nested of result.nestedConflicts) {
       targetConflicts.push({ target, contestingTarget: nested.target, contestingTemplateName: nested.templateName });
     }
+    for (const unaddressable of result.unaddressablePaths) {
+      unaddressableLocations.push({ target, path: unaddressable.path, reason: unaddressable.reason });
+    }
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-check-target
   }
   // @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-foreach-target
+
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-if-unaddressable
+  // Refused first of all: a path that is not spelled as the location it names
+  // was never read, compared or planned, so every check below would be judging
+  // a plan with that path silently missing from it.
+  if (unaddressableLocations.length > 0) {
+    // @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-return-unaddressable
+    return {
+      ok: false,
+      code: 'INVALID_PATH',
+      message:
+        `"${name}"'s upgrade was refused: ${unaddressableLocations.length} location(s) cannot be judged as the project location they name: ` +
+        unaddressableLocations.map((location) => `${location.target}:${JSON.stringify(location.path)} (${location.reason})`).join(', ') +
+        '. Nothing was written.',
+      details: { paths: unaddressableLocations },
+    };
+    // @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-return-unaddressable
+  }
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-if-unaddressable
 
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-if-escaping-ancestor
   // Containment is checked, and refused, before content: whether a path is

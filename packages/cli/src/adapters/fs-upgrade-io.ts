@@ -33,7 +33,7 @@ import type {
   UnlinkDiskFileFn,
   WriteDiskFileFn,
 } from '../upgrade/types';
-import { assertPathWithinProjectRoot, resolveWriteParentDir } from './fs-project-io';
+import { PathContainmentError, assertPathWithinProjectRoot, isInside, resolveWriteParentDir } from './fs-project-io';
 import { isReservedTempName } from '../paths/reserved-temp-name';
 
 // Install-time output, never committed template content
@@ -80,8 +80,20 @@ function toPosixPath(value: string): string {
  * this fail-closed instead of attempted is the only way this seam can name
  * the fact without risking exactly that hang.
  */
-export function createFsReadDiskEntryFn(): ReadDiskEntryFn {
+export function createFsReadDiskEntryFn(repoRoot: string): ReadDiskEntryFn {
   return async function readDiskEntry(absolutePath: string): Promise<DiskEntry> {
+    // A read is a side channel too: the kind of a path (file, directory,
+    // symlink, absent) and, for a file, its content are facts about a location
+    // this engine has no business touching when that location is outside the
+    // project. Refused before the first `lstat`, on the path as `path.resolve`
+    // spells it — `app/../../x` is outside however it is written — and
+    // reported as the typed containment refusal the writers below throw, which
+    // the command boundary maps to `INVALID_PATH`. Lexical on purpose: where a
+    // symlink INSIDE the project leads is the classification's ancestor probe's
+    // question, answered from the entries this function reports.
+    if (!isInside(path.resolve(repoRoot), path.resolve(absolutePath))) {
+      throw new PathContainmentError(absolutePath, repoRoot, undefined, 'read');
+    }
     let stat: fs.Stats;
     try {
       stat = fs.lstatSync(absolutePath);

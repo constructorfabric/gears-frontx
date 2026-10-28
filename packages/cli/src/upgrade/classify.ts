@@ -29,7 +29,7 @@ import { computeExclusionRoots, isWithinEffectiveOwnership } from '../scaffold/e
 import { checkTargetConflicts } from '../scaffold/conflict-check';
 import type { TargetClaim } from '../scaffold/conflict-check';
 import { isReservedTempName } from '../paths/reserved-temp-name';
-import { joinUnderTarget } from '../paths/relative-path';
+import { joinUnderTarget, nonCanonicalProjectPathReason } from '../paths/relative-path';
 import type {
   DiskEntry,
   ReadDiskEntryFn,
@@ -285,6 +285,13 @@ export interface ClassifyResult {
   // Nested-target conflicts for this target — the caller refuses with
   // `TARGET_CONFLICT` when this is non-empty.
   nestedConflicts: { target: string; templateName: string }[];
+  // Project-relative locations this classification refused to judge at all
+  // (`inst-cls-judge-spelling`): the target itself, or a payload path joined
+  // under it, that is not spelled as the one location it names — absolute,
+  // climbing out of the project root, or carrying a `.`, `..` or empty segment.
+  // None of them was ever read from disk, compared, or planned; the caller
+  // refuses the whole upgrade with `INVALID_PATH` when this is non-empty.
+  unaddressablePaths: { path: string; reason: string }[];
 }
 
 function makeOperation(
@@ -307,6 +314,39 @@ function makeOperation(
 export async function classifyTarget(input: ClassifyInput): Promise<ClassifyResult> {
   const { target, repoRoot, baseline, candidate, projectOwnedRoots, localOriginFolder, otherTemplateTargets, additionalExclusionRoots, readDiskEntry, canonicalizeFn } =
     input;
+
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-judge-spelling
+  // Every ownership predicate below compares SEGMENTS OF THE STRING it is handed,
+  // so a path that climbs and comes back down (`app/../other/x.txt`) reads as
+  // ground inside `app` while the filesystem puts it in `other` — and `target`
+  // is recorded state a developer, or a pull request, can edit, not a value
+  // this engine canonicalized. Both are therefore judged on their NORMALISED
+  // spelling before anything else happens: one that is not already its own
+  // normalised spelling is not judged at all — not compared, not read from disk,
+  // not planned — and is reported for the caller to refuse. A refusal rather than
+  // a silent re-rooting, because a payload that names a location other than the
+  // one its text shows is not one this engine can claim to have reviewed.
+  //
+  // This does not rest on the resolver's bundle-key check (`inst-resolve-bundle-
+  // keys`): that one judges a REMOTE bundle's keys as they are acquired, while a
+  // `path:` origin's keys and the recorded target reach here by other roads, and
+  // the engine's own containment must hold with that guard removed.
+  const unaddressablePaths: { path: string; reason: string }[] = [];
+  const targetReason = nonCanonicalProjectPathReason(target);
+  if (targetReason !== undefined) {
+    return {
+      exclusionRoots: [],
+      operations: [],
+      skipped: [],
+      conflictPaths: [],
+      uncomparablePaths: [],
+      escapingPaths: [],
+      uncomparableCauses: [],
+      nestedConflicts: [],
+      unaddressablePaths: [{ path: target, reason: `the target ${targetReason}` }],
+    };
+  }
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-judge-spelling
 
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-compute-candidate-boundary
   // Computed ONCE, from the CANDIDATE manifest's own declared
@@ -353,8 +393,17 @@ export async function classifyTarget(input: ClassifyInput): Promise<ClassifyResu
   // identical set rather than recomputing it twice and risking the two
   // copies drifting apart.
   const payloadPaths = new Set<string>();
-  for (const relativePath of baseline.files.keys()) payloadPaths.add(joinUnderTarget(target, relativePath));
-  for (const relativePath of candidate.files.keys()) payloadPaths.add(joinUnderTarget(target, relativePath));
+  const unaddressableSeen = new Set<string>();
+  for (const relativePath of [...baseline.files.keys(), ...candidate.files.keys()]) {
+    const projectPath = joinUnderTarget(target, relativePath);
+    const reason = nonCanonicalProjectPathReason(projectPath);
+    if (reason === undefined) {
+      payloadPaths.add(projectPath);
+    } else if (!unaddressableSeen.has(projectPath)) {
+      unaddressableSeen.add(projectPath);
+      unaddressablePaths.push({ path: projectPath, reason: `the payload path ${reason}` });
+    }
+  }
 
   for (const payloadPath of payloadPaths) {
     if (!isWithinEffectiveOwnership(payloadPath, target, candidateExclusionRoots)) {
@@ -697,7 +746,7 @@ export async function classifyTarget(input: ClassifyInput): Promise<ClassifyResu
   // operations together with its `SKIPPED` paths.
   return {
     exclusionRoots: candidateExclusionRoots,
-    operations, skipped, conflictPaths, uncomparablePaths, escapingPaths, uncomparableCauses, nestedConflicts };
+    operations, skipped, conflictPaths, uncomparablePaths, escapingPaths, uncomparableCauses, nestedConflicts, unaddressablePaths };
   // @cpt-end:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-return-ops
   // @cpt-end:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-return-conflict
   // @cpt-end:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-if-any-conflict

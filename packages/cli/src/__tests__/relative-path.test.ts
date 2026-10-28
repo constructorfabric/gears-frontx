@@ -7,6 +7,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   isSafeRelativePath,
+  nonCanonicalProjectPathReason,
+  normalizeProjectRelativePath,
   pathWithinSubtree,
   pathsNest,
   pathWithinTarget,
@@ -186,5 +188,44 @@ describe('isSafeRelativePath / unsafeRelativePathReason — the one rule for a p
   ])('refuses $value, saying why ($reason)', ({ value, reason }) => {
     expect(isSafeRelativePath(value)).toBe(false);
     expect(unsafeRelativePathReason(value)).toContain(reason);
+  });
+});
+
+describe('normalizeProjectRelativePath — the one spelling of a project-relative location', () => {
+  it.each([
+    { value: 'app/src/x.ts', normalized: 'app/src/x.ts' },
+    { value: 'app/../other/x.txt', normalized: 'other/x.txt' },
+    { value: 'src/../.frontx/injected.json', normalized: '.frontx/injected.json' },
+    { value: './app//src/./x.ts', normalized: 'app/src/x.ts' },
+    { value: 'app/..', normalized: '.' },
+    { value: '.', normalized: '.' },
+    { value: '', normalized: '.' },
+    // Not a platform path: a backslash is an ordinary character here, exactly as
+    // it is on the POSIX volumes this predicate is stated for.
+    { value: 'a\\b/c', normalized: 'a\\b/c' },
+    { value: 'a:b/c', normalized: 'a:b/c' },
+  ])('spells $value as $normalized', ({ value, normalized }) => {
+    expect(normalizeProjectRelativePath(value)).toBe(normalized);
+  });
+
+  it.each(['..', '../x', 'app/../../x', 'a/b/../../../x', '/etc/passwd', '/'])('refuses %s — it is absolute or climbs out of the root', (value) => {
+    expect(normalizeProjectRelativePath(value)).toBeNull();
+  });
+});
+
+describe('nonCanonicalProjectPathReason — a path the engine may judge is already its own normalised spelling', () => {
+  it.each(['app', 'app/src/x.ts', '.', 'other/x.txt', 'a\\b', 'a:b'])('accepts %s', (value) => {
+    expect(nonCanonicalProjectPathReason(value)).toBeUndefined();
+  });
+
+  it.each([
+    { value: 'app/../other/x.txt', reason: 'is not in canonical form (it names "other/x.txt")' },
+    { value: 'app//x.ts', reason: 'is not in canonical form (it names "app/x.ts")' },
+    { value: './app/x.ts', reason: 'is not in canonical form (it names "app/x.ts")' },
+    { value: 'app/', reason: 'is not in canonical form (it names "app")' },
+    { value: '../x', reason: 'is absolute or climbs out of the project root' },
+    { value: '/etc/x', reason: 'is absolute or climbs out of the project root' },
+  ])('refuses $value', ({ value, reason }) => {
+    expect(nonCanonicalProjectPathReason(value)).toBe(reason);
   });
 });

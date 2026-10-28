@@ -64,7 +64,7 @@ function baseInput(overrides: Partial<ClassifyInput>): ClassifyInput {
     projectOwnedRoots: [],
     otherTemplateTargets: [],
     additionalExclusionRoots: [],
-    readDiskEntry: createFsReadDiskEntryFn(),
+    readDiskEntry: createFsReadDiskEntryFn(repoRoot!),
     canonicalizeFn: identityCanonicalize,
     ...overrides,
   };

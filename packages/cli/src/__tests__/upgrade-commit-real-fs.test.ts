@@ -76,7 +76,7 @@ function makeRealDeps(root: string): CommitDeps {
   };
   return {
     repoRoot: root,
-    readDiskEntry: createFsReadDiskEntryFn(),
+    readDiskEntry: createFsReadDiskEntryFn(root),
     writeDiskFile: createFsWriteDiskFileFn(root),
     renameDiskFile: createFsRenameDiskFileFn(root),
     unlinkDiskFile: createFsUnlinkDiskFileFn(root),

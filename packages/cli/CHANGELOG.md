@@ -113,6 +113,22 @@ refactoring is not.
   to the files it lists, so a template that passes it is not one every remote
   install refuses.
 
+- `upgrade` now judges a template's target and every file path of its payload
+  on the one location each names, and refuses with `INVALID_PATH`, writing
+  nothing and presenting no plan, when either is not already spelled as that
+  location: absolute, climbing out of the project, or carrying a `.`, `..` or
+  empty segment or a trailing separator. This holds for the inputs the
+  remote-template check above never sees, in particular a `targets` entry
+  edited by hand into `.frontx/project.json`. Such a target used to be
+  compared as written: `app/../.frontx` was not recognised as the CLI's own
+  `.frontx` ground and had its files replaced, `app/../other` was judged as
+  `app/..`-prefixed ground while landing in `other`, and `../outside` had a
+  file outside the project read and reported on before the write that finally
+  refused it. The file reader the upgrade classification uses now also refuses
+  any path outside the project root without touching it, so what exists
+  elsewhere on the machine can no longer be inferred from the refusal that
+  follows.
+
 - `apply` no longer writes a payload read from outside the local inventory
   store when the installed content path is a symlink leading out of it.
 

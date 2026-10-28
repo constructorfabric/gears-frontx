@@ -2002,7 +2002,7 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         writeProjectStateFn: deps.writeProjectStateFn,
         resolvePayload,
         resolveRegisteredExclusions,
-        readDiskEntry: createFsReadDiskEntryFn(),
+        readDiskEntry: createFsReadDiskEntryFn(repoRoot),
         writeDiskFile: createFsWriteDiskFileFn(repoRoot),
         renameDiskFile: createFsRenameDiskFileFn(repoRoot),
         unlinkDiskFile: createFsUnlinkDiskFileFn(repoRoot),

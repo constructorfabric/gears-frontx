@@ -167,3 +167,42 @@ export function targetsNest(a: string, b: string): boolean {
 export function joinUnderTarget(target: string, relativePath: string): string {
   return target === '.' ? relativePath : `${target}/${relativePath}`;
 }
+
+// The one spelling of a project-relative location: `.`, empty and `..` segments
+// folded away, so `app/../other/x.txt` and `other/x.txt` are the same location
+// and are judged as it. `null` when the value cannot be read as a location inside
+// the root it is relative to — absolute, or climbing above that root.
+//
+// Lexical only, never a filesystem question: where a symlink along the way
+// actually leads is what the adapters' containment guards and the upgrade
+// classification's ancestor probe decide, on real disk state. What this answers
+// is which location the STRING names, and it answers it before ownership is
+// judged, because every ownership predicate in this package compares segments
+// of the string it is handed: handed `app/../other/x.txt` it reports ground
+// inside `app` for a file that lands in `other`.
+export function normalizeProjectRelativePath(value: string): string | null {
+  if (value.startsWith('/')) return null;
+  const resolved: string[] = [];
+  for (const segment of value.split('/')) {
+    if (segment === '' || segment === '.') continue;
+    if (segment === '..') {
+      if (resolved.length === 0) return null;
+      resolved.pop();
+      continue;
+    }
+    resolved.push(segment);
+  }
+  return resolved.length === 0 ? '.' : resolved.join('/');
+}
+
+// Why a project-relative path is not spelled as the one location it names, as a
+// clause completing "it ...", or `undefined` when it is. A path the engine is to
+// compare, read or write must already BE its normalised spelling: one that is
+// not either climbs out of the root or names a location other than the one its
+// text shows, and which of those it is changes nothing about what to do with it.
+export function nonCanonicalProjectPathReason(value: string): string | undefined {
+  const normalized = normalizeProjectRelativePath(value);
+  if (normalized === null) return 'is absolute or climbs out of the project root';
+  if (normalized !== value) return `is not in canonical form (it names "${normalized}")`;
+  return undefined;
+}

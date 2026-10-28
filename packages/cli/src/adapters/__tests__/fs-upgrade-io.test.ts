@@ -5,10 +5,11 @@
 // own real-temp-directory convention — a fake seam cannot honestly exercise
 // `lstat`-vs-`stat` or an actual symlink cycle, so these run against a real
 // filesystem.
+import fs from 'node:fs';
 import path from 'node:path';
 import { mkdtemp, mkdir, rm, symlink, writeFile, readFile, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createFsReadDiskEntryFn,
   createFsListDiskFilesFn,
@@ -16,6 +17,7 @@ import {
   createFsRenameDiskFileFn,
   createFsUnlinkDiskFileFn,
 } from '../fs-upgrade-io';
+import { PathContainmentError } from '../fs-project-io';
 
 describe('fs-upgrade-io', () => {
   let root: string;
@@ -36,7 +38,7 @@ describe('fs-upgrade-io', () => {
       const dir = await makeRoot();
       const filePath = path.join(dir, 'a.txt');
       await writeFile(filePath, 'hello world', 'utf-8');
-      const readDiskEntry = createFsReadDiskEntryFn();
+      const readDiskEntry = createFsReadDiskEntryFn(dir);
 
       const result = await readDiskEntry(filePath);
 
@@ -45,7 +47,7 @@ describe('fs-upgrade-io', () => {
 
     it('reports a missing path as {kind: "absent"}, never a throw', async () => {
       const dir = await makeRoot();
-      const readDiskEntry = createFsReadDiskEntryFn();
+      const readDiskEntry = createFsReadDiskEntryFn(dir);
 
       const result = await readDiskEntry(path.join(dir, 'does-not-exist.txt'));
 
@@ -56,7 +58,7 @@ describe('fs-upgrade-io', () => {
       const dir = await makeRoot();
       const subdir = path.join(dir, 'a-directory');
       await mkdir(subdir);
-      const readDiskEntry = createFsReadDiskEntryFn();
+      const readDiskEntry = createFsReadDiskEntryFn(dir);
 
       const result = await readDiskEntry(subdir);
 
@@ -75,7 +77,7 @@ describe('fs-upgrade-io', () => {
       await writeFile(targetPath, 'real content', 'utf-8');
       const linkPath = path.join(dir, 'link-to-file.txt');
       await symlink(targetPath, linkPath);
-      const readDiskEntry = createFsReadDiskEntryFn();
+      const readDiskEntry = createFsReadDiskEntryFn(dir);
 
       const result = await readDiskEntry(linkPath);
 
@@ -88,7 +90,7 @@ describe('fs-upgrade-io', () => {
       await mkdir(targetDir);
       const linkPath = path.join(dir, 'link-to-dir');
       await symlink(targetDir, linkPath);
-      const readDiskEntry = createFsReadDiskEntryFn();
+      const readDiskEntry = createFsReadDiskEntryFn(dir);
 
       const result = await readDiskEntry(linkPath);
 
@@ -102,11 +104,69 @@ describe('fs-upgrade-io', () => {
       const dir = await makeRoot();
       const linkPath = path.join(dir, 'broken-link');
       await symlink(path.join(dir, 'never-created.txt'), linkPath);
-      const readDiskEntry = createFsReadDiskEntryFn();
+      const readDiskEntry = createFsReadDiskEntryFn(dir);
 
       const result = await readDiskEntry(linkPath);
 
       expect(result).toEqual({ kind: 'symlink' });
+    });
+
+    // A read reports facts — the kind of an entry and, for a file, its content —
+    // about a location this engine has no business touching once it lies outside
+    // the project. The probe found `readDiskEntry` answering for such a path
+    // (file / directory / absent), a side channel on what exists elsewhere on
+    // the machine. It is refused before the first `lstat`, so the assertions are
+    // on the call, not only on the result.
+    describe('a path outside the project root', () => {
+      async function makeProjectBesideAnOutsideTree(): Promise<{ project: string; outside: string }> {
+        const parent = await makeRoot();
+        const project = path.join(parent, 'project');
+        const outside = path.join(parent, 'outside');
+        await mkdir(project);
+        await mkdir(outside);
+        await writeFile(path.join(outside, 'secret.txt'), 'SECRET', 'utf-8');
+        return { project, outside };
+      }
+
+      it.each([
+        { label: 'a sibling directory', locate: (_project: string, outside: string) => path.join(outside, 'secret.txt') },
+        { label: 'a sibling directory that merely extends the root name', locate: (project: string) => `${project}-evil/secret.txt` },
+        { label: 'the root\'s parent', locate: (project: string) => path.dirname(project) },
+        { label: 'a lexical climb out of the root', locate: (project: string) => `${project}/app/../../outside/secret.txt` },
+        { label: 'an entry the climb makes absent', locate: (project: string) => `${project}/../outside/never-created.txt` },
+      ])('refuses $label with a containment error, without ever calling lstat', async ({ locate }) => {
+        const { project, outside } = await makeProjectBesideAnOutsideTree();
+        const readDiskEntry = createFsReadDiskEntryFn(project);
+        const lstat = vi.spyOn(fs, 'lstatSync');
+        const readFile = vi.spyOn(fs, 'readFileSync');
+        try {
+          await expect(readDiskEntry(locate(project, outside))).rejects.toBeInstanceOf(PathContainmentError);
+          expect(lstat).not.toHaveBeenCalled();
+          expect(readFile).not.toHaveBeenCalled();
+        } finally {
+          lstat.mockRestore();
+          readFile.mockRestore();
+        }
+      });
+
+      it('names the path and the root it was refused against', async () => {
+        const { project, outside } = await makeProjectBesideAnOutsideTree();
+        const readDiskEntry = createFsReadDiskEntryFn(project);
+
+        await expect(readDiskEntry(path.join(outside, 'secret.txt'))).rejects.toThrow(
+          `Refusing to read outside the project root: "${path.join(outside, 'secret.txt')}" is not within "${project}".`,
+        );
+      });
+
+      it('still reads the root itself and a path whose climb stays inside it', async () => {
+        const { project } = await makeProjectBesideAnOutsideTree();
+        await mkdir(path.join(project, 'app'));
+        await writeFile(path.join(project, 'other.txt'), 'inside', 'utf-8');
+        const readDiskEntry = createFsReadDiskEntryFn(project);
+
+        expect(await readDiskEntry(project)).toEqual({ kind: 'directory' });
+        expect(await readDiskEntry(`${project}/app/../other.txt`)).toEqual({ kind: 'file', content: 'inside' });
+      });
     });
   });
 
