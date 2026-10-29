@@ -161,8 +161,8 @@ ships no application, host, or UI of its own.
 
 The AI Tooling Framework is delivered as a **Constructor Studio kit**
 (`cyber-pilot-kit-frontx`) — the kit *is* the framework's public surface. It is
-published to npm as `@gears-frontx/cyber-pilot-kit-frontx` and installed and
-updated through the **Constructor Studio CLI** (`cfs`), not npm. On install, its `frontx_`-prefixed resources register in
+installed and updated from this repository through the **Constructor Studio
+CLI** (`cfs`); it is not published to npm. On install, its `frontx_`-prefixed resources register in
 the project's `.cf-studio/config/core.toml` and become available to agents at
 session start — no training step.
 

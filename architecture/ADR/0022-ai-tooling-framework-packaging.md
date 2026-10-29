@@ -40,13 +40,13 @@ The AI Tooling Framework (`cpt-frontx-component-ai-tooling-kit`, packaged as `cy
 
 ## Considered Options
 
-* **Constructor Studio kit** — the framework ships as a Constructor Studio kit with a declarative `.cf-studio-kit.toml`; every resource identifier is `frontx_`-prefixed (constraint KIT-1); the package is published as a versioned npm artifact and installed through the AI Tooling CLI by source reference. The kit is the framework's delivered public surface.
+* **Constructor Studio kit** — the framework ships as a Constructor Studio kit with a declarative `.cf-studio-kit.toml`; every resource identifier is `frontx_`-prefixed (constraint KIT-1); the kit is versioned in this repository and installed through the AI Tooling CLI by source reference. The kit is the framework's delivered public surface.
 * **Bespoke library package with a custom installer** — the framework ships as a standalone package with its own install-and-load logic and its own resource layout, independent of the kit-manifest mechanism.
 * **In-repo scaffolding** — the framework's capabilities are copied into each consuming project at scaffold time, with no separately versioned package to install or update.
 
 ## Decision Outcome
 
-Chosen option: **Constructor Studio kit**, because it is the only option that installs through the CLI integration the contract defines, presents one declaratively-described public surface, and reuses the existing declarative install substrate instead of duplicating it. The framework ships as a kit whose `.cf-studio-kit.toml` enumerates exactly the resources to install and their destinations; every resource identifier carries the `frontx_` prefix (KIT-1) so the framework's resources cannot collide with another kit installed in the same project. The package is published as a versioned npm artifact and installed and updated through the AI Tooling CLI by source reference, and the kit as a whole IS the framework's delivered public surface (`cpt-frontx-interface-ai-tooling-framework`).
+Chosen option: **Constructor Studio kit**, because it is the only option that installs through the CLI integration the contract defines, presents one declaratively-described public surface, and reuses the existing declarative install substrate instead of duplicating it. The framework ships as a kit whose `.cf-studio-kit.toml` enumerates exactly the resources to install and their destinations; every resource identifier carries the `frontx_` prefix (KIT-1) so the framework's resources cannot collide with another kit installed in the same project. The kit is installed and updated through the AI Tooling CLI by source reference — a Git reference to its directory in this repository, at a tag, branch, or commit — and is not published to npm; the kit as a whole IS the framework's delivered public surface (`cpt-frontx-interface-ai-tooling-framework`).
 
 The kit's public surface is a library boundary whose stability is governed by the matched-version artifact-distribution policy decided in `cpt-frontx-adr-artifact-versioning-and-distribution`: an incompatible change to the surface requires a major version bump, while minor and patch versions preserve backward compatibility. The scope of this decision is the framework's packaging form, its resource-identity rule, its agent-facing resource-kind model — public agent entry points are declared as resources of kind `skill` or `rule`, with each entry point's applicability metadata carried in the resource document itself rather than in manifest fields, and supporting knowledge content declared as non-public resources (KIT-4) — and its distribution and install path; it does not decide the shape of any template-carried AI extension (that is `cpt-frontx-adr-template-ai-extension-contract`) nor how installed extensions are discovered (that is `cpt-frontx-adr-extension-discovery-activation`). The bespoke-package option fragments the install path away from the CLI integration and reimplements a declarative install mechanism that already exists; the in-repo-scaffolding option gives no separately versioned surface and no clean update path, so the framework's capabilities could not evolve and be re-delivered independently of each project.
 
@@ -78,7 +78,7 @@ ui-kit's kit does not exist yet — `@gears-frontx/ui-kit` ships no `.cf-studio-
 
 ### Constructor Studio kit
 
-The framework ships as a Constructor Studio kit with a declarative `.cf-studio-kit.toml`, `frontx_`-prefixed resource ids, versioned npm distribution, and CLI install by source reference; the kit is the public surface.
+The framework ships as a Constructor Studio kit with a declarative `.cf-studio-kit.toml`, `frontx_`-prefixed resource ids, and versioned CLI install by source reference; the kit is the public surface.
 
 * Good, because it installs through the CLI integration the installation contract defines.
 * Good, because the manifest declares install targets deterministically and supports repeatable updates.
@@ -107,13 +107,11 @@ The framework's capabilities are copied into each project at scaffold time, with
 ## More Information
 
 The kit ships inside the `constructorfabric/gears-frontx` monorepo — no
-standalone kit repository exists — and is published to npm as
-`@gears-frontx/cyber-pilot-kit-frontx`. The AI-tooling CLI's kit installer does
-not consume npm artifacts; it resolves the kit by generic-Git subdirectory
-reference or by local path. The npm artifact serves the package-registry
-distribution policy (`cpt-frontx-adr-artifact-versioning-and-distribution`),
-while the source-reference install path is what delivers the kit into a
-consuming project.
+standalone kit repository exists. The AI-tooling CLI's kit installer does not
+consume npm artifacts; it resolves the kit by generic-Git subdirectory
+reference or by local path, so the source-reference install path is the kit's
+only distribution channel. The kit's package,
+`@gears-frontx/cyber-pilot-kit-frontx`, is private and is not published to npm.
 
 The kit-installation substrate this decision rides on is the declarative kit manifest defined by the Constructor Studio kit specification (`.cf-studio/.core/architecture/specs/kit/kit.md`) (only declared resources install, each at its declared `install_path` or a user-overridden path) and the `[kits.*]` registration in `.cf-studio/config/core.toml` (each kit records its `path`, `version`, and install mode or resolved source); the `.cf-studio/config/kits/sdlc/` kit is a working exemplar of this packaging. These are neutral substrate citations and are not part of this decision's durable identity. KIT-1's `frontx_` prefix maps to the `resource.id` field of the kit-manifest schema, layered above that field's general identifier pattern. The matched-version policy that governs the kit's public-surface compatibility is decided in `cpt-frontx-adr-artifact-versioning-and-distribution` — a non-binding pointer to a related decision.
 
@@ -121,7 +119,9 @@ Unlike `cyber-pilot-kit-frontx`, whose entire package IS the kit, `@gears-frontx
 
 Integration treatment (INT): the kit installation is the integration contract (`cpt-frontx-contract-kit-installation`), required from the consuming side and serviced through the CLI integration. **Interface stability and versioning (INT-ADR-001)** — the kit's public surface is `cpt-frontx-interface-ai-tooling-framework`; an incompatible change to it requires a major version bump, while minor and patch versions preserve backward compatibility, governed by the matched-version policy. **Contract changes (INT-ADR-002)** — the installation contract remains backward-compatible across minor and patch versions; an incompatible change to it is a public-interface change subject to the same compatibility policy, and consumers are notified through the version bump. There is no wire protocol to version here.
 
-Applicability of the remaining checklist categories: **PERF** — Not applicable, because no latency or throughput budget is bound to the packaging form. **SEC** — Not applicable, because no secret material and no authentication surface are introduced by the packaging decision. **REL** — Not applicable, because there is no service-availability target; install and update run locally and on demand. **DATA** — Not applicable, because no persistent database or schema is defined here. **OPS** — Not applicable, because there are no runbooks or operational procedures for a local kit install. **COMPL** — Not applicable, because no regulatory obligation bears on the packaging form. **ARCH-ADR-008 (supersession)** — Not applicable, because this ADR supersedes no live ADR. **Review cadence**: revisit if the kit-manifest resource model cannot express a required framework capability, or if a distribution channel beyond the present npm-artifact and source-reference install paths becomes a requirement.
+Applicability of the remaining checklist categories: **PERF** — Not applicable, because no latency or throughput budget is bound to the packaging form. **SEC** — Not applicable, because no secret material and no authentication surface are introduced by the packaging decision. **REL** — Not applicable, because there is no service-availability target; install and update run locally and on demand. **DATA** — Not applicable, because no persistent database or schema is defined here. **OPS** — Not applicable, because there are no runbooks or operational procedures for a local kit install. **COMPL** — Not applicable, because no regulatory obligation bears on the packaging form. **ARCH-ADR-008 (supersession)** — Not applicable, because this ADR supersedes no live ADR. **Review cadence**: revisit if the kit-manifest resource model cannot express a required framework capability, or if a distribution channel beyond the present source-reference install path becomes a requirement.
+
+Amended 2026-10-29 (#694): the kit is distributed by source reference only. Its package is private and no longer published to npm, since the kit installer consumes no npm artifact.
 
 ## Traceability
 
