@@ -826,7 +826,7 @@ need nothing installed either.
 
 | Option | Type | Default |
 |--------|------|---------|
-| `filename` | `string \| () => string` | `Report`; the extension is added when it is missing |
+| `filename` | `string \| () => string` | `Report`; a string gets the extension when it is missing, a function's result is used as is |
 | `includeHeaders` | `boolean` | `true` |
 | `delimiter` | `string` | `,` (CSV) |
 | `sheetName` | `string` | `Sheet` (Excel) |
