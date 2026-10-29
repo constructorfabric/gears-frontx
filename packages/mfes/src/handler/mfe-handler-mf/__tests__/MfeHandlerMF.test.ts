@@ -4,6 +4,9 @@
  * Covers, in file order:
  *  - the unresolved `publicPath` placeholder guard (`assertResolvedPublicPath`);
  *  - a relative `publicPath` resolving to an absolute base at load time;
+ *  - a minted chunk keeping its own URL: in `import.meta.url`, in a final
+ *    `sourceURL` line, with the lazy-loader import after its last line, and
+ *    in the URL it hands to `Worker`;
  *  - chunk-source fetch concurrency: sibling fan-out, cross-caller dedup,
  *    the build-wide fetch width, cross-branch dependency cycles, the
  *    per-attempt timeout, and declaration-order failure reporting;
@@ -55,6 +58,7 @@ vi.mock('../mf-dynamic-module-ops', async (importOriginal) => {
 });
 
 import { MfeHandlerMF } from '../MfeHandlerMF';
+import { importBlobModule } from '../mf-dynamic-module-ops';
 import { LruCache } from '../LruCache';
 import { MfeLoadError } from '../../../errors';
 import type { MfeEntryMF } from '../../../types/mfe-entry-mf';
@@ -678,14 +682,15 @@ describe('MfeHandlerMF - relative publicPath resolves to an absolute base', () =
     );
   });
 
-  it('rewrites import.meta.url to an absolute chunk directory that new URL() accepts when publicPath is "/"', async () => {
+  it('rewrites import.meta.url to the absolute chunk URL that new URL() accepts when publicPath is "/"', async () => {
     const { sources } = await loadWith('/', 'ext-root-relative-meta-url');
 
     const entrySource = sources.find((source) => source.includes('./x.svg'));
     const literal = entrySource?.match(/new URL\('\.\/x\.svg', ("[^"]*")\)/)?.[1];
     expect(literal).toBeDefined();
-    const chunkBase = JSON.parse(literal as string) as string;
-    expect(new URL('./x.svg', chunkBase).href).toBe(
+    const chunkUrl = JSON.parse(literal as string) as string;
+    expect(chunkUrl).toBe(`${window.location.origin}/assets/lifecycle.js`);
+    expect(new URL('./x.svg', chunkUrl).href).toBe(
       `${window.location.origin}/assets/x.svg`
     );
   });
@@ -704,6 +709,213 @@ describe('MfeHandlerMF - relative publicPath resolves to an absolute base', () =
     expect(
       Array.from(shadowRoot.querySelectorAll('link'), (link) => link.href)
     ).toEqual([`${loadTimeBase}assets/style.css`]);
+  });
+});
+
+/**
+ * A minted chunk keeps its own URL (#657). Evaluated from a blob, a chunk's
+ * `import.meta.url` and the name DevTools and stack traces give it would both
+ * be its `blob:` URL. The handler writes the chunk's HTTP URL into both, and
+ * adds lines only after the chunk's last line, so every line of the chunk
+ * keeps its line number.
+ */
+describe('MfeHandlerMF — a minted chunk keeps its own URL', () => {
+  const SOURCE_URL_LINE = /\n\/\/# sourceURL=(\S+)$/;
+
+  /**
+   * Load once and return the source text of every module the load minted,
+   * keyed by the URL its final `//# sourceURL=` line names ('' for a module
+   * without one).
+   */
+  async function mintedByUrl(
+    extensionId: string,
+    routes: Record<string, { body: string }>,
+    options: { publicPath?: string; shared?: MfManifestShared[]; exposeChunk?: string } = {}
+  ): Promise<Map<string, string>> {
+    const { fetchImpl } = createFetchRouter(routes);
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(fetchImpl as typeof fetch);
+    const minted = captureMintedSources();
+    blobModuleStub.current = {
+      default: { mount: (): void => {}, unmount: (): void => {} },
+    };
+    try {
+      const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+      const manifest = buildManifest(options.publicPath ?? PUBLIC_PATH, options.shared);
+      await handler.load(buildEntry(manifest, options.exposeChunk), extensionId);
+      const byUrl = new Map<string, string>();
+      for (const source of await minted.sources()) {
+        byUrl.set(SOURCE_URL_LINE.exec(source)?.[1] ?? '', source);
+      }
+      return byUrl;
+    } finally {
+      blobModuleStub.current = undefined;
+      minted.restore();
+      fetchSpy.mockRestore();
+    }
+  }
+
+  /** The string literal the chunk assigns to `own`, parsed. */
+  function ownUrlOf(source: string | undefined): string {
+    const literal = source?.match(/own = ("[^"]*")/)?.[1];
+    expect(literal, `no string literal for own in: ${source}`).toBeDefined();
+    return JSON.parse(literal as string) as string;
+  }
+
+  it('rewrites import.meta.url to the URL of the chunk that reads it', async () => {
+    const minted = await mintedByUrl('ext-own-url-meta', {
+      'lifecycle.js': {
+        body: "import './sub/b.js';\nexport const own = import.meta.url;\nexport default {};",
+      },
+      'b.js': {
+        body:
+          'export const own = import.meta.url;\n' +
+          "export const up = new URL('../x.svg', import.meta.url).href;",
+      },
+    });
+
+    const entryUrl = `${PUBLIC_PATH}assets/lifecycle.js`;
+    const nestedUrl = `${PUBLIC_PATH}assets/sub/b.js`;
+    expect(ownUrlOf(minted.get(entryUrl))).toBe(entryUrl);
+    expect(ownUrlOf(minted.get(nestedUrl))).toBe(nestedUrl);
+    // A relative URL resolves against the chunk URL as against its directory.
+    expect(new URL('../x.svg', ownUrlOf(minted.get(nestedUrl))).href).toBe(
+      `${PUBLIC_PATH}assets/x.svg`
+    );
+  });
+
+  it('leaves a longer identifier that contains import.meta.url alone', async () => {
+    const minted = await mintedByUrl('ext-own-url-identifiers', {
+      'lifecycle.js': {
+        body:
+          'const a = import.meta.url.length;\n' +
+          'const b = ximport.meta.url;\n' +
+          'const c = import.meta.urls;\n' +
+          'const d = import.meta.env.MODE;\n' +
+          'export default { a, b, c, d };',
+      },
+    });
+
+    const lines = minted.get(`${PUBLIC_PATH}assets/lifecycle.js`)?.split('\n');
+    expect(lines?.slice(0, 4)).toEqual([
+      `const a = "${PUBLIC_PATH}assets/lifecycle.js".length;`,
+      'const b = ximport.meta.url;',
+      'const c = import.meta.urls;',
+      'const d = import.meta.env.MODE;',
+    ]);
+  });
+
+  // String.prototype.replace reads '$&' and "$'" in a replacement string as
+  // the match and the text after it; both are valid in a URL path.
+  it("writes a chunk URL containing $& or $' into import.meta.url as it is", async () => {
+    const publicPath = "https://cdn.test/$&$'/";
+    const minted = await mintedByUrl(
+      'ext-own-url-dollar',
+      { 'lifecycle.js': { body: 'export const own = import.meta.url;\nexport default {};' } },
+      { publicPath }
+    );
+
+    const entryUrl = `${publicPath}assets/lifecycle.js`;
+    expect(ownUrlOf(minted.get(entryUrl))).toBe(entryUrl);
+  });
+
+  it('ends every minted chunk with a sourceURL line naming its URL and moves no line', async () => {
+    const routes = {
+      'lifecycle.js': {
+        body: "import './a.js';\nimport { react } from \"react\";\nexport default { react };\n",
+      },
+      'a.js': { body: 'export const a = 1;\n// a final line comment' },
+      'react.js': { body: 'export const react = 1;' },
+    };
+    const minted = await mintedByUrl('ext-own-url-source-url', routes, {
+      shared: [sharedDep('react', 'shared/react.js')],
+    });
+
+    expect([...minted.keys()].sort()).toEqual([
+      `${PUBLIC_PATH}assets/a.js`,
+      `${PUBLIC_PATH}assets/lifecycle.js`,
+      `${PUBLIC_PATH}shared/react.js`,
+    ]);
+    for (const [url, source] of minted) {
+      const route = routes[url.slice(url.lastIndexOf('/') + 1) as keyof typeof routes];
+      const body = source.slice(0, source.lastIndexOf('\n'));
+      expect(body.split('\n'), `lines of ${url}`).toHaveLength(route.body.split('\n').length);
+    }
+    // A chunk with nothing to rewrite is minted as fetched, plus that line.
+    expect(minted.get(`${PUBLIC_PATH}assets/a.js`)).toBe(
+      `${routes['a.js'].body}\n//# sourceURL=${PUBLIC_PATH}assets/a.js`
+    );
+  });
+
+  it('imports the lazy loader stub after the last line of the chunk', async () => {
+    const body =
+      "export const load = () => __frontx_lazy('./lazy.js');\n" +
+      'export default {}; // a final line comment';
+    const minted = await mintedByUrl('ext-own-url-lazy-stub', { 'lifecycle.js': { body } });
+
+    const lines = minted.get(`${PUBLIC_PATH}assets/lifecycle.js`)?.split('\n') ?? [];
+    expect(lines.slice(0, 2)).toEqual(body.split('\n'));
+    expect(lines[2]).toMatch(/^import\{__frontx_lazy\}from"blob:[^"]+";$/);
+    expect(lines.slice(3)).toEqual([`//# sourceURL=${PUBLIC_PATH}assets/lifecycle.js`]);
+  });
+
+  it('writes the chunk URL percent-encoded, in the sourceURL line and in import.meta.url', async () => {
+    const minted = await mintedByUrl(
+      'ext-own-url-encoded',
+      { 'cycle\u2028.js': { body: 'export const own = import.meta.url;\nexport default {};' } },
+      { exposeChunk: 'assets/life cycle\u2028.js' }
+    );
+
+    const encodedUrl = `${PUBLIC_PATH}assets/life%20cycle%E2%80%A8.js`;
+    expect([...minted.keys()]).toEqual([encodedUrl]);
+    expect(ownUrlOf(minted.get(encodedUrl))).toBe(encodedUrl);
+  });
+
+  // A worker the chunk starts from its own URL is fetched over HTTP(S) from
+  // where the chunk is served, not from a blob. Browsers only start a
+  // worker script from the page's own origin: from any other origin,
+  // Chromium's Worker constructor throws a SecurityError and Firefox fires
+  // an error event on the worker instead. An MFE served from another origin
+  // can start one from a same-origin blob that imports the worker script.
+  it.each([
+    ['another origin', 'https://cdn.test/mfe/', 'https://cdn.test/mfe/assets/worker.js', false],
+    ['the page origin', '/', `${window.location.origin}/assets/worker.js`, true],
+  ])('hands Worker the worker URL on %s, not a blob: URL', async (_, publicPath, workerUrl, sameOrigin) => {
+    const minted = await mintedByUrl(
+      `ext-own-url-worker-${publicPath}`,
+      {
+        'lifecycle.js': {
+          body:
+            'export const startWorker = () =>\n' +
+            "  new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });\n" +
+            'export default {};',
+        },
+      },
+      { publicPath }
+    );
+    const source = [...minted.values()][0];
+    const started: Array<[string, unknown]> = [];
+    vi.stubGlobal(
+      'Worker',
+      class {
+        constructor(url: string | URL, options?: unknown) {
+          started.push([String(url), options]);
+        }
+      }
+    );
+    try {
+      // The minted text, evaluated as a module: jsdom cannot import() the blob.
+      const chunk = (await importBlobModule(
+        `data:text/javascript,${encodeURIComponent(source)}`
+      )) as { startWorker: () => unknown };
+      chunk.startWorker();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    expect(started).toEqual([[workerUrl, { type: 'module' }]]);
+    expect(new URL(workerUrl).origin === window.location.origin).toBe(sameOrigin);
   });
 });
 
