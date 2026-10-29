@@ -1,10 +1,12 @@
 // @cpt-algo:cpt-frontx-algo-upgrade-changeset-compute:p1
 // @cpt-dod:cpt-frontx-dod-upgrade-changeset-computation:p1
 import { readManifestFromContent } from '../manifest/validate-contract';
+import { isSafeRelativePath } from '../paths/relative-path';
+import { isWithinDeclaredBoundaries } from '../scaffold/assembler';
 import { extractOwnedRegion } from '../scaffold/compose-shared-files';
 import { resolveTemplateAtVersion } from './resolve-template';
 import { verifyTemplateIdentity } from './verify-identity';
-import type { ReadContentItemsFn } from '../scaffold/types';
+import type { ContentItem, ReadContentItemsFn } from '../scaffold/types';
 import type { OwnershipBoundary } from '../manifest/types';
 import type {
   ChangeSet,
@@ -137,9 +139,12 @@ export async function computeChangeSet(
 
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-diff-files
   // Manifests are still read to confirm each is well-formed and to obtain the
-  // declared ownership boundary before diffing; they carry no content —
-  // content items are read directly from each entry's resolved on-disk
-  // installed content path (never from the manifest).
+  // declared ownership boundary before diffing; they carry no content.
+  // Content items come from `readContentItems`, which must read each entry's
+  // OWN resolved content (upgrade/resolved-content-items.ts). Both entries
+  // carry the same name, so a reader keyed by name alone, such as the local
+  // inventory's installed content path, returns one set of files for both
+  // versions and the diff comes out empty (#700).
   const baselineResult = readManifestFromContent(baselineEntry.content);
   const targetResult = readManifestFromContent(targetEntry.content);
 
@@ -147,16 +152,49 @@ export async function computeChangeSet(
     return { ok: false, reason: 'manifest-error', message: 'Failed to parse template manifest.' };
   }
 
-  const baselineItems = await deps.readContentItems(baselineEntry);
-  const targetItems = await deps.readContentItems(targetEntry);
-
-  const baselineFiles = new Map<string, string>(baselineItems.map((f) => [f.path, f.content]));
-  const targetFiles = new Map<string, string>(targetItems.map((f) => [f.path, f.content]));
-
   // Ownership boundary the diff is scoped to — the target manifest's declared
   // boundary (the version the project is moving TO governs what this template
   // owns going forward).
   const ownershipBoundary = targetResult.manifest.ownershipBoundaries;
+
+  const baselineItems = await deps.readContentItems(baselineEntry);
+  const targetItems = await deps.readContentItems(targetEntry);
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-diff-files
+
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-scope-to-boundaries
+  // A template's content also carries files it does not own in a project:
+  // its own manifest, a README, anything else outside the declared
+  // boundaries, `.git/` included, which no manifest may declare. Seeding never
+  // writes those (scaffold/assembler.ts), so the diff leaves them out of both
+  // versions. A file the target version no longer declares is therefore left
+  // where it is for the developer, never removed.
+  //
+  // The baseline stands for what seeding wrote, within the baseline's own
+  // boundaries, so it keeps a file only when both versions declare it. A file
+  // the baseline's content carried but only the target declares never reached
+  // the project: the target adds it, and a target that drops it removes
+  // nothing.
+  //
+  // A path that is not a safe relative path (absolute, a backslash, or an
+  // empty, "." or ".." segment) is inside no boundary. `pathWithinSubtree`
+  // compares by prefix, so `src/../../outside.txt` would pass a claim on `src`
+  // and become a write outside the project. The disk reader seeding uses lists
+  // real files and never yields one, but a fetched bundle's keys are whatever
+  // the source served.
+  const withinBoundary = (item: ContentItem, boundary: OwnershipBoundary) =>
+    isSafeRelativePath(item.path) && isWithinDeclaredBoundaries(item, boundary);
+  const baselineBoundary = baselineResult.manifest.ownershipBoundaries;
+  const baselineFiles = new Map<string, string>(
+    baselineItems
+      .filter((item) => withinBoundary(item, baselineBoundary) && withinBoundary(item, ownershipBoundary))
+      .map((f) => [f.path, f.content]),
+  );
+  const targetFiles = new Map<string, string>(
+    targetItems.filter((item) => withinBoundary(item, ownershipBoundary)).map((f) => [f.path, f.content]),
+  );
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-scope-to-boundaries
+
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-diff-files
   const allPaths = new Set<string>([...baselineFiles.keys(), ...targetFiles.keys()]);
   // @cpt-end:cpt-frontx-algo-upgrade-changeset-compute:p1:inst-cmp-diff-files
 

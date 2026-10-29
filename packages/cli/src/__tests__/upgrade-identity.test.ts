@@ -168,6 +168,7 @@ describe('computeChangeSet identity verification (inst-cmp-verify-identity)', ()
 
   it('computes a change set for a pre-manifest-identity record whose identity is its repository name', async () => {
     const items: ContentItem[] = [{ path: 'src/App.tsx', content: 'v2 content' }];
+    const boundaries: OwnershipBoundary = { exclusiveSubtrees: ['src'], sharedFiles: [] };
 
     const result = await computeChangeSet(PROJ_ROOT, '2.0.0', {
       readProvenance: async () => ({
@@ -179,8 +180,8 @@ describe('computeChangeSet identity verification (inst-cmp-verify-identity)', ()
       }),
       fetchFn: fetchServing(
         new Map([
-          ['1.0.0', manifest('@acme/web-template', '1.0.0')],
-          ['2.0.0', manifest('@acme/web-template', '2.0.0')],
+          ['1.0.0', manifest('@acme/web-template', '1.0.0', boundaries)],
+          ['2.0.0', manifest('@acme/web-template', '2.0.0', boundaries)],
         ]),
       ),
       readProjectFile: async () => null,
