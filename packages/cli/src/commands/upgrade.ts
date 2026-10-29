@@ -23,6 +23,9 @@ export interface UpgradeCommandResult {
   // engine successfully computed a change set (i.e. resolution did not fail).
   changeSetJson?: string;
   message?: string;
+  // Present only on 'apply-failed' when restoring the pre-upgrade snapshot
+  // failed for these files, so the repository may be left partially upgraded.
+  unrestoredPaths?: readonly string[];
 }
 
 // @cpt-begin:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-invoke-upgrade
@@ -59,6 +62,12 @@ export async function upgradeCommand(
     case 'resolution-failed':
       return { ok: false, status: 'resolution-failed', message: result.message };
     case 'apply-failed':
-      return { ok: false, status: 'apply-failed', message: result.message, changeSetJson };
+      return {
+        ok: false,
+        status: 'apply-failed',
+        message: result.message,
+        ...(result.unrestoredPaths ? { unrestoredPaths: result.unrestoredPaths } : {}),
+        changeSetJson,
+      };
   }
 }
