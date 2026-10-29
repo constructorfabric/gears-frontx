@@ -343,4 +343,29 @@ describe('getAllData', () => {
     expect(names(data)).toEqual(['Electronics', 'Phones', 'Laptops', 'Books', 'Clothing']);
     expect(new Set(data.map((node) => node.id)).size).toBe(data.length);
   });
+
+  it('stops reading the pages of a tree whose load ignores the page', async () => {
+    // Every root on every page, so each page is full and nothing new.
+    const load = vi.fn((context: DataGridLoadContext) =>
+      context.tree?.parentId != null
+        ? loadLevel(context)
+        : Promise.resolve({ results: roots, total: roots.length }),
+    );
+    const context = await renderForExport(
+      'export_all_tree_pages_ignored',
+      load,
+      <>
+        <DataGridTableTreePlugin<Node> expandable={hasChildren} />
+        <DataGridPaginationPlugin defaultLimit={2} limits={[2]} />
+      </>,
+      'Electronics',
+    );
+    load.mockClear();
+
+    const data = await createExportService<Node>().getAllData(context);
+
+    expect(names(data)).toEqual(['Electronics', 'Phones', 'Laptops', 'Books', 'Clothing']);
+    const pagesAsked = load.mock.calls.filter(([call]) => call.tree?.parentId == null);
+    expect(pagesAsked.map(([call]) => call.pagination?.page)).toEqual([1, 2]);
+  });
 });
