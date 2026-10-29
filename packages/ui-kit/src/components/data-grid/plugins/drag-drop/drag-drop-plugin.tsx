@@ -108,7 +108,17 @@ export function executeHandleDrop<TItem extends DataGridItem>({
   clearDropLoading: (id: DataGridItemId) => void;
 }) {
   const target = targetRecord?.item ?? null;
-  const drop = onDrop(sourceRecord.item, target);
+  let drop: void | Promise<void>;
+  try {
+    drop = onDrop(sourceRecord.item, target);
+  } catch (error) {
+    // Thrown out of the library's drop handler, it would leave the library mid-drag, so no
+    // later drag starts; it is reported on its own instead.
+    queueMicrotask(() => {
+      throw error;
+    });
+    return;
+  }
 
   if (drop instanceof Promise) {
     setDropLoading(sourceRecord.id, true);
