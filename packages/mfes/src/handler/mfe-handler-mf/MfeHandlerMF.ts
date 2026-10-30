@@ -313,16 +313,22 @@ function isWellFormedContentHash(hash: string): boolean {
   return /^[0-9a-f]{64}$/.test(hash);
 }
 
+/** A shared dep's source text and the URL this load resolved for it. */
+interface FetchedSharedDep {
+  readonly text: string;
+  readonly url: string;
+}
+
 /**
  * Name the shared dependencies left unresolved by a stalled dependency-order
  * pass, together with the imports among them that close the cycle.
  */
-function describeSharedDepCycle(pending: ReadonlyMap<string, string>): string {
+function describeSharedDepCycle(pending: ReadonlyMap<string, FetchedSharedDep>): string {
   const names = [...pending.keys()];
-  return names
-    .map((name) => {
+  return [...pending]
+    .map(([name, { text }]) => {
       const importsOthers = names.filter(
-        (other) => other !== name && sourceImports(pending.get(name) ?? '', other)
+        (other) => other !== name && sourceImports(text, other)
       );
       return importsOthers.length > 0
         ? `'${name}' (imports ${importsOthers.map((o) => `'${o}'`).join(', ')})`
@@ -1296,11 +1302,10 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // already documents ({@link resolveManifest}) that it trusts. Failing
     // fast on a same-name collision is the smaller, targeted fix.
     this.assertUniqueSharedDepNames(manifest, entryId);
-    const { sources, urls } = await this.fetchSharedDepSources(manifest, baseUrl, entryId, ledger);
+    const sources = await this.fetchSharedDepSources(manifest, baseUrl, entryId, ledger);
     const sharedNames = new Set(manifest.shared.map((d) => d.name));
     return this.createBlobUrlsInDependencyOrder(
       sources,
-      urls,
       sharedNames,
       entryId,
       extensionId
@@ -1343,8 +1348,8 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-assert-unique-names
 
   /**
-   * Fetch standalone ESM source text for each shared dep. Returns the texts
-   * and the URL this load resolved for each dep, both keyed by package name.
+   * Fetch standalone ESM source text for each shared dep. Returns each dep's
+   * text and the URL this load resolved for it, keyed by package name.
    * sharedDepTextCache dedups on a two-tier key: when a `contentHash` is
    * declared, the key is `name@version@contentHash` and reuse spans ALL
    * MFEs — the first MFE to load react@19.2.4 at a given build hash fetches
@@ -1370,7 +1375,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     baseUrl: string,
     entryId: string,
     ledger?: AttemptSourceTextLedger
-  ): Promise<{ sources: Map<string, string>; urls: Map<string, string> }> {
+  ): Promise<Map<string, FetchedSharedDep>> {
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-for-each-shared
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-for-each-dep
     // Every URL is derived before the first fetch, so a chunkPath that is
@@ -1500,15 +1505,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       throw failure.reason;
     }
 
-    const sources = new Map<string, string>();
-    const urls = new Map<string, string>();
+    const sources = new Map<string, FetchedSharedDep>();
     for (const result of settled) {
       if (result.status === 'fulfilled') {
-        sources.set(result.value.name, result.value.text);
-        urls.set(result.value.name, result.value.url);
+        sources.set(result.value.name, { text: result.value.text, url: result.value.url });
       }
     }
-    return { sources, urls };
+    return sources;
   }
 
   /**
@@ -1523,8 +1526,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    */
   // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-resolve-order
   private createBlobUrlsInDependencyOrder(
-    sources: Map<string, string>,
-    sourceUrls: ReadonlyMap<string, string>,
+    sources: Map<string, FetchedSharedDep>,
     sharedNames: Set<string>,
     entryId: string,
     extensionId: string
@@ -1535,13 +1537,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     while (pending.size > 0) {
       const before = pending.size;
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-for-each-resolved
-      for (const [name, source] of pending) {
-        if (this.isDepReadyToResolve(name, source, sharedNames, blobUrls)) {
+      for (const [name, { text, url }] of pending) {
+        if (this.isDepReadyToResolve(name, text, sharedNames, blobUrls)) {
           blobUrls.set(
             name,
             this.createRewrittenBlobUrl(
-              source,
-              sourceUrls.get(name) ?? '',
+              text,
+              url,
               blobUrls,
               sharedNames,
               name,
