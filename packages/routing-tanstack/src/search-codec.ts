@@ -48,12 +48,24 @@ export function decodeComponentOrRaw(value: string): string {
   }
 }
 
+/** Decodes one search name or value as form data: a `+` reads as a space,
+ * then {@link decodeComponentOrRaw} decodes the percent-escapes. TanStack's
+ * own search serializer builds the string with `URLSearchParams`, which
+ * writes a space as `+`; `decodeURIComponent` alone leaves that `+` in
+ * place. A literal plus arrives as `%2B` from both writers, TanStack's and
+ * {@link buildSearchString}, so it still reads back as `+`. A malformed
+ * text keeps its percent-escapes raw, its `+` still read as a space, as
+ * `URLSearchParams` itself reads it. */
+function decodeSearchComponent(text: string): string {
+  return decodeComponentOrRaw(text.replace(/\+/g, ' '));
+}
+
 /** Splits a `?a=b&c=d`-shaped (or bare `a=b&c=d`) search string into
- * name/value pairs, decoding each with {@link decodeComponentOrRaw} so a
- * malformed pair falls back to its raw text instead of throwing. Every
- * caller in this package that needs a search string parsed into pairs goes
- * through this one function rather than splitting and decoding on its
- * own. */
+ * name/value pairs, decoding each with {@link decodeSearchComponent} so a
+ * `+` reads as a space and a malformed pair falls back to its raw text
+ * instead of throwing. Every caller in this package that needs a search
+ * string parsed into pairs goes through this one function rather than
+ * splitting and decoding on its own. */
 export function parseSearchString(search: string): readonly Param[] {
   const trimmed = search.startsWith('?') ? search.slice(1) : search;
   if (trimmed === '') {
@@ -62,9 +74,9 @@ export function parseSearchString(search: string): readonly Param[] {
   return trimmed.split('&').map((pair) => {
     const eq = pair.indexOf('=');
     if (eq === -1) {
-      return { name: decodeComponentOrRaw(pair), value: '' };
+      return { name: decodeSearchComponent(pair), value: '' };
     }
-    return { name: decodeComponentOrRaw(pair.slice(0, eq)), value: decodeComponentOrRaw(pair.slice(eq + 1)) };
+    return { name: decodeSearchComponent(pair.slice(0, eq)), value: decodeSearchComponent(pair.slice(eq + 1)) };
   });
 }
 
