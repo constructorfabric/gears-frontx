@@ -188,7 +188,10 @@ function baseUrlOf(handler: Handler, manifest: MfManifest, entryId: string): str
 /** The entry id `fetchShared` loads under. */
 const FETCH_ENTRY_ID = 'gts.x.test.mfe.entry.v1~x.test.cross_copy.v1';
 
-/** Invoke a handler's private `fetchSharedDepSources` via reflection. */
+/**
+ * Invoke a handler's private `fetchSharedDepSources` via reflection and
+ * resolve to the fetched texts, keyed by package name.
+ */
 function fetchShared(
   handler: Handler,
   manifest: MfManifest
@@ -199,13 +202,15 @@ function fetchShared(
         m: MfManifest,
         b: string,
         e: string
-      ) => Promise<Map<string, string>>;
+      ) => Promise<Map<string, { text: string }>>;
     }
-  ).fetchSharedDepSources(
-    manifest,
-    baseUrlOf(handler, manifest, FETCH_ENTRY_ID),
-    FETCH_ENTRY_ID
-  );
+  )
+    .fetchSharedDepSources(
+      manifest,
+      baseUrlOf(handler, manifest, FETCH_ENTRY_ID),
+      FETCH_ENTRY_ID
+    )
+    .then((sources) => new Map([...sources].map(([name, { text }]) => [name, text])));
 }
 
 /** Invoke a handler's private `buildSharedDepBlobUrls` via reflection. */

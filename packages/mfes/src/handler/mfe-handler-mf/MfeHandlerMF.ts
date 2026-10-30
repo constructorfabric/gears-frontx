@@ -313,16 +313,22 @@ function isWellFormedContentHash(hash: string): boolean {
   return /^[0-9a-f]{64}$/.test(hash);
 }
 
+/** A shared dep's source text and the URL this load resolved for it. */
+interface FetchedSharedDep {
+  readonly text: string;
+  readonly url: string;
+}
+
 /**
  * Name the shared dependencies left unresolved by a stalled dependency-order
  * pass, together with the imports among them that close the cycle.
  */
-function describeSharedDepCycle(pending: ReadonlyMap<string, string>): string {
+function describeSharedDepCycle(pending: ReadonlyMap<string, FetchedSharedDep>): string {
   const names = [...pending.keys()];
-  return names
-    .map((name) => {
+  return [...pending]
+    .map(([name, { text }]) => {
       const importsOthers = names.filter(
-        (other) => other !== name && sourceImports(pending.get(name) ?? '', other)
+        (other) => other !== name && sourceImports(text, other)
       );
       return importsOthers.length > 0
         ? `'${name}' (imports ${importsOthers.map((o) => `'${o}'`).join(', ')})`
@@ -1342,7 +1348,8 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-assert-unique-names
 
   /**
-   * Fetch standalone ESM source text for each shared dep.
+   * Fetch standalone ESM source text for each shared dep. Returns each dep's
+   * text and the URL this load resolved for it, keyed by package name.
    * sharedDepTextCache dedups on a two-tier key: when a `contentHash` is
    * declared, the key is `name@version@contentHash` and reuse spans ALL
    * MFEs — the first MFE to load react@19.2.4 at a given build hash fetches
@@ -1368,7 +1375,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     baseUrl: string,
     entryId: string,
     ledger?: AttemptSourceTextLedger
-  ): Promise<Map<string, string>> {
+  ): Promise<Map<string, FetchedSharedDep>> {
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-for-each-shared
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-for-each-dep
     // Every URL is derived before the first fetch, so a chunkPath that is
@@ -1483,7 +1490,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       const text = await textPromise;
       // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-retrieve-cached
       // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-cache-hit
-      return { name: dep.name, text };
+      return { name: dep.name, text, url: absoluteUrl };
     });
     // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-for-each-dep
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-for-each-shared
@@ -1498,10 +1505,10 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       throw failure.reason;
     }
 
-    const sources = new Map<string, string>();
+    const sources = new Map<string, FetchedSharedDep>();
     for (const result of settled) {
       if (result.status === 'fulfilled') {
-        sources.set(result.value.name, result.value.text);
+        sources.set(result.value.name, { text: result.value.text, url: result.value.url });
       }
     }
     return sources;
@@ -1519,7 +1526,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    */
   // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-resolve-order
   private createBlobUrlsInDependencyOrder(
-    sources: Map<string, string>,
+    sources: Map<string, FetchedSharedDep>,
     sharedNames: Set<string>,
     entryId: string,
     extensionId: string
@@ -1530,12 +1537,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     while (pending.size > 0) {
       const before = pending.size;
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-for-each-resolved
-      for (const [name, source] of pending) {
-        if (this.isDepReadyToResolve(name, source, sharedNames, blobUrls)) {
+      for (const [name, { text, url }] of pending) {
+        if (this.isDepReadyToResolve(name, text, sharedNames, blobUrls)) {
           blobUrls.set(
             name,
             this.createRewrittenBlobUrl(
-              source,
+              text,
+              url,
               blobUrls,
               sharedNames,
               name,
@@ -1587,6 +1595,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 
   private createRewrittenBlobUrl(
     source: string,
+    sourceUrl: string,
     blobUrls: Map<string, string>,
     sharedNames: Set<string>,
     depName: string,
@@ -1638,7 +1647,9 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-undeclared-specifier
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-shared-blob
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-create-dep-blob
-    const blob = new Blob([rewritten], { type: 'text/javascript' });
+    const blob = new Blob([MfeHandlerMF.withSourceUrl(rewritten, sourceUrl)], {
+      type: 'text/javascript',
+    });
     return URL.createObjectURL(blob);
     // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-create-dep-blob
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-shared-blob
@@ -2084,11 +2095,11 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-static
 
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-meta-url
-    // Phase 19: Replace import.meta.url with the real chunk base URL string.
     // When a chunk is blob-URL'd, import.meta.url becomes a blob: URL, which
     // breaks new URL("../path", import.meta.url) — blob: URLs have no directory
-    // component. Replacing with the HTTP base URL (directory of the chunk)
-    // restores correct relative URL resolution (e.g. in preload-helper.js).
+    // component. Replacing it with the chunk's own HTTP URL restores relative
+    // URL resolution (e.g. in preload-helper.js) and gives code that reads
+    // import.meta.url as its file URL the URL it expects.
     // We target 'import.meta.url' specifically to leave import.meta.env intact.
     rewritten = this.rewriteImportMetaUrl(rewritten, chunkUrl);
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-meta-url
@@ -2101,22 +2112,27 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-if-lazy-ref
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-inject-lazy-stub
-    // Inject the per-load `__frontx_lazy` loader stub at the top of the chunk
+    // Inject the per-load `__frontx_lazy` loader stub at the end of the chunk
     // when the chunk references it. The stub is the runtime half of ADR-0022:
     // a build-time AST transform rewrote every dynamic `import('./X')` to
     // `__frontx_lazy('./X')`; the loader stub closes over this load's resolver
     // and routes those calls through the parent load's blob URL chain so
     // lazy chunks inherit the same `sharedDepBlobUrls` as the entry chunk.
+    // An import declaration binds wherever it appears in the module, so the
+    // end serves as well as the top, and every line of the chunk keeps its
+    // line number. The leading line break closes a final line comment.
     if (rewritten.includes('__frontx_lazy(')) {
       const loaderUrl = this.ensureLazyLoaderUrl(loadState);
-      rewritten = `import{__frontx_lazy}from${JSON.stringify(loaderUrl)};\n${rewritten}`;
+      rewritten = `${rewritten}\nimport{__frontx_lazy}from${JSON.stringify(loaderUrl)};`;
     }
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-inject-lazy-stub
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-if-lazy-ref
 
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-create-blob
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-return-complete
-    const blob = new Blob([rewritten], { type: 'text/javascript' });
+    const blob = new Blob([MfeHandlerMF.withSourceUrl(rewritten, chunkUrl)], {
+      type: 'text/javascript',
+    });
     const blobUrl = URL.createObjectURL(blob);
     loadState.blobUrlMap.set(filename, blobUrl);
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-return-complete
@@ -2131,7 +2147,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * The stub is a tiny ESM module that re-exports a `__frontx_lazy` function
    * closed over this load's resolver id. Vendor MFE chunks transformed by
    * the build plugin reference `__frontx_lazy` as an imported binding from
-   * this stub URL — that import is injected at the top of every chunk that
+   * this stub URL — that import is injected at the end of every chunk that
    * uses the identifier (see {@link createBlobUrlChainInternal}).
    *
    * Stub URL is per-load (sibling loads get distinct stubs) and never
@@ -2242,24 +2258,42 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   }
 
   /**
-   * Replace all `import.meta.url` references with the chunk's real base URL.
+   * Replace all `import.meta.url` references with the chunk's real URL.
    *
-   * The base URL is the directory containing the chunk (trailing slash included),
-   * derived by stripping the filename from the full chunk URL. This is the URL
-   * that relative `new URL("../x", import.meta.url)` calls should resolve against.
+   * That is the URL the chunk would have as `import.meta.url` if the browser
+   * had loaded it from its origin, written as its parsed href: relative
+   * `new URL("../x", import.meta.url)` calls resolve against it exactly as
+   * against the chunk's directory, and code that compares or passes on
+   * `import.meta.url` as its own file URL gets that file's URL.
    */
   private rewriteImportMetaUrl(source: string, chunkAbsoluteUrl: string): string {
-    // Derive the directory containing this chunk by stripping the filename.
-    // e.g. "http://localhost:3001/assets/preload-helper.js" → "http://localhost:3001/assets/"
-    const lastSlash = chunkAbsoluteUrl.lastIndexOf('/');
-    const chunkBaseUrl = lastSlash >= 0
-      ? chunkAbsoluteUrl.slice(0, lastSlash + 1)
-      : chunkAbsoluteUrl;
+    // The match is on the text, anchored only so that the token is not part
+    // of a longer identifier: 'ximport.meta.url' and 'import.meta.urls' are
+    // left alone, while 'import.meta.url.length' is rewritten. It still
+    // matches the token inside strings, template literals and comments
+    // (#657). JSON.stringify ensures the URL is properly quoted and special
+    // chars escaped, and the replacement is a function so that a '$' in the
+    // URL is not read as a replacement pattern.
+    const literal = JSON.stringify(
+      MfeHandlerMF.parseUrl(chunkAbsoluteUrl)?.href ?? chunkAbsoluteUrl
+    );
+    return source.replace(/(?<![\w$])import\.meta\.url(?![\w$])/g, () => literal);
+  }
 
-    // Use a regex replacement targeting the exact token 'import.meta.url'
-    // (word-boundary anchored to avoid matching 'import.meta.url.something').
-    // JSON.stringify ensures the URL is properly quoted and special chars escaped.
-    return source.replace(/import\.meta\.url/g, JSON.stringify(chunkBaseUrl));
+  /**
+   * `source` with a final `//# sourceURL=` comment naming the chunk's HTTP
+   * URL, so DevTools and stack traces name the blob-evaluated chunk by that
+   * URL rather than by its `blob:` URL. The comment adds a line at the end,
+   * so every line of the chunk keeps its line number. Columns still move on
+   * a line where a specifier or `import.meta.url` was rewritten (#657).
+   *
+   * The URL is written as its parsed href, which holds no whitespace or line
+   * terminator (URL parsing drops or percent-encodes them), so the URL
+   * cannot end the comment early; a URL that does not parse gets no comment.
+   */
+  private static withSourceUrl(source: string, chunkAbsoluteUrl: string): string {
+    const href = MfeHandlerMF.parseUrl(chunkAbsoluteUrl)?.href;
+    return href === undefined ? source : `${source}\n//# sourceURL=${href}`;
   }
 
   // ---- Source text fetching and parsing ----
