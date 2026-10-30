@@ -69,6 +69,7 @@
     "test": "npm run test:unit",
     "test:unit": "node scripts/run-monorepo-unit-tests.mjs --run",
     "test:unit:watch": "node scripts/run-monorepo-unit-tests.mjs --watch",
+    "test:consumer:dual-format": "node scripts/verify-dual-format-consumers.mjs",
     "_test:unit:host": "vitest --run --config vitest.scripts.config.mjs",
     "_test:unit:host:watch": "vitest --watch --config vitest.scripts.config.mjs"
   },

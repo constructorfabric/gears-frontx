@@ -1,6 +1,6 @@
 {
   "name": "@gears-frontx/gts-plugin",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "GTS default type-system provider plugin for the FrontX MFE runtime",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -8,9 +8,14 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     }
   },
   "files": [
@@ -25,7 +30,7 @@
     "test:unit:watch": "vitest --watch"
   },
   "dependencies": {
-    "@gears-frontx/mfes": "0.4.0",
+    "@gears-frontx/mfes": "0.4.1",
     "@globaltypesystem/gts-ts": "0.3.0"
   },
   "devDependencies": {
