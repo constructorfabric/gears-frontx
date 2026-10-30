@@ -202,7 +202,7 @@ function fetchShared(
         m: MfManifest,
         b: string,
         e: string
-      ) => Promise<{ sources: Map<string, string> }>;
+      ) => Promise<Map<string, { text: string }>>;
     }
   )
     .fetchSharedDepSources(
@@ -210,7 +210,7 @@ function fetchShared(
       baseUrlOf(handler, manifest, FETCH_ENTRY_ID),
       FETCH_ENTRY_ID
     )
-    .then(({ sources }) => sources);
+    .then((sources) => new Map([...sources].map(([name, { text }]) => [name, text])));
 }
 
 /** Invoke a handler's private `buildSharedDepBlobUrls` via reflection. */

@@ -873,17 +873,10 @@ describe('MfeHandlerMF — a minted chunk keeps its own URL', () => {
   });
 
   // A worker the chunk starts from its own URL is fetched over HTTP(S) from
-  // where the chunk is served, not from a blob. Browsers only start a
-  // worker script from the page's own origin: from any other origin,
-  // Chromium's Worker constructor throws a SecurityError and Firefox fires
-  // an error event on the worker instead. An MFE served from another origin
-  // can start one from a same-origin blob that imports the worker script.
-  it.each([
-    ['another origin', 'https://cdn.test/mfe/', 'https://cdn.test/mfe/assets/worker.js', false],
-    ['the page origin', '/', `${window.location.origin}/assets/worker.js`, true],
-  ])('hands Worker the worker URL on %s, not a blob: URL', async (_, publicPath, workerUrl, sameOrigin) => {
+  // where the chunk is served, not from a blob.
+  it('hands Worker the worker URL on the page origin, not a blob: URL', async () => {
     const minted = await mintedByUrl(
-      `ext-own-url-worker-${publicPath}`,
+      'ext-own-url-worker',
       {
         'lifecycle.js': {
           body:
@@ -892,7 +885,7 @@ describe('MfeHandlerMF — a minted chunk keeps its own URL', () => {
             'export default {};',
         },
       },
-      { publicPath }
+      { publicPath: '/' }
     );
     const source = [...minted.values()][0];
     const started: Array<[string, unknown]> = [];
@@ -914,9 +907,16 @@ describe('MfeHandlerMF — a minted chunk keeps its own URL', () => {
       vi.unstubAllGlobals();
     }
 
-    expect(started).toEqual([[workerUrl, { type: 'module' }]]);
-    expect(new URL(workerUrl).origin === window.location.origin).toBe(sameOrigin);
+    expect(started).toEqual([[`${window.location.origin}/assets/worker.js`, { type: 'module' }]]);
   });
+
+  // Browsers only start a worker script from the page's own origin: from
+  // any other origin, Chromium's Worker constructor throws a SecurityError
+  // and Firefox fires an error event on the worker instead. An MFE served
+  // from another origin can start one from a same-origin blob that imports
+  // the worker script. Which of these the loader does waits on question 3
+  // of #657.
+  it.todo('starts a worker for a chunk served from another origin');
 });
 
 /**
