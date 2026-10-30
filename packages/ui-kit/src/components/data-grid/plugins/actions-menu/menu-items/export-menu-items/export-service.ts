@@ -137,6 +137,7 @@ export function createExportService<
     const visitedIds = new Set<DataGridItemId>();
     let currentPage = 1;
     let hasMorePages = true;
+    let previousPageIds = '';
 
     while (hasMorePages) {
       const loadInstance = gridContext.triggerLoad({
@@ -164,6 +165,11 @@ export function createExportService<
             section: rootSection<Item>(),
           }));
 
+          // A load that ignores the page returns the same rows again; stop there, not never.
+          const pageIds = pageRecords.map((record) => String(record.id)).join('\n');
+          const repeatsPreviousPage = pageIds === previousPageIds;
+          previousPageIds = pageIds;
+
           await collectTreeDataFromRecords(
             gridContext,
             pageRecords,
@@ -174,7 +180,7 @@ export function createExportService<
 
           currentPage++;
 
-          if (pageData.length < originalState.limit) {
+          if (repeatsPreviousPage || pageData.length < originalState.limit) {
             hasMorePages = false;
           }
         }

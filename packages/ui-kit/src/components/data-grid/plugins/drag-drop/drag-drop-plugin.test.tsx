@@ -262,6 +262,43 @@ describe('createDataGridDragDropPlugin', () => {
       }
     });
 
+    it('clears every mark, and still drags the next time, when onDrop throws', async () => {
+      // The error is rethrown in a microtask; catch it there rather than let it fail the run.
+      const thrown: unknown[] = [];
+      const queue = globalThis.queueMicrotask.bind(globalThis);
+      const spy = vi.spyOn(globalThis, 'queueMicrotask').mockImplementation((callback) =>
+        queue(() => {
+          try {
+            callback();
+          } catch (error) {
+            thrown.push(error);
+          }
+        }),
+      );
+      const onDrop = vi.fn(() => {
+        throw new Error('The app failed');
+      });
+      const DragDrop = createDataGridDragDropPlugin<Item>({ onDrop });
+      renderGrid('drag_drop_throws', <DragDrop />);
+      const rows = await bodyRows();
+
+      try {
+        await session.start(rows[0]);
+        await session.over(rows[1]);
+        await session.drop();
+        await session.start(rows[0]);
+        await session.over(rows[2], 2 * rowHeight + 5);
+        await session.drop();
+      } finally {
+        spy.mockRestore();
+      }
+
+      expect(onDrop).toHaveBeenCalledTimes(2);
+      expect(thrown).toEqual([new Error('The app failed'), new Error('The app failed')]);
+      expect(rows[0]).not.toHaveClass(styles.dragRowDragging);
+      expect(rows[0].closest(`.${styles.content}`)).not.toHaveClass(styles.contentDragging);
+    });
+
     it('calls onDrop with the dragged item and the item of the row it was dropped on', async () => {
       const onDrop = vi.fn();
       const DragDrop = createDataGridDragDropPlugin<Item>({ onDrop });
