@@ -59,6 +59,30 @@ describe('router.navigate() writes back through the adapter', () => {
     expect(adapter.lastWrite).toBe('/en?screen=dashboard;route=settings/profile');
     expect(router.state.location.pathname).toBe('/settings/profile');
   });
+
+  // TanStack's own search serializer writes a space as `+`
+  // (`URLSearchParams`), so the value has to survive this adapter's own
+  // parse, the write, and a fresh projection of the written URL.
+  it('a search value with a space and a plus reads back unchanged, also after a reload', async () => {
+    const adapter = resetRealm(COMPOSED_URL);
+    const history = adaptProviderHistory(resolveNavigationHistory(), DASHBOARD_ENTRY_ADDRESS);
+    attachAdaptedHistory(history);
+    const router = createProviderRouter(buildRouteTreeWithTwoRoutes(), history);
+    await router.load();
+
+    await router.navigate({ to: '/settings/profile', search: { q: 'a b+c' } as never });
+
+    expect(router.state.location.search).toEqual({ q: 'a b+c' });
+
+    resetRealm(adapter.lastWrite ?? '');
+    const reloaded = createProviderRouter(
+      buildRouteTreeWithTwoRoutes(),
+      adaptProviderHistory(resolveNavigationHistory(), DASHBOARD_ENTRY_ADDRESS),
+    );
+    await reloaded.load();
+
+    expect(reloaded.state.location.search).toEqual({ q: 'a b+c' });
+  });
 });
 
 describe('an undeclared route= path resolves to the engine own notFound', () => {
