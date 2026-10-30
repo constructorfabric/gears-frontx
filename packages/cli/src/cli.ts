@@ -30,6 +30,7 @@ import { validateCommand } from './commands/validate';
 import { seedRepository } from './commands/seed-repository';
 import { addTemplate } from './commands/add-template';
 import { upgradeCommand } from './commands/upgrade';
+import { readResolvedContentItems } from './upgrade/resolved-content-items';
 
 import { TemplateInventory } from './inventory/TemplateInventory';
 import type { InventoryEntry } from './inventory/types';
@@ -479,7 +480,10 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         readProvenance: deps.readSingleProvenanceFn,
         fetchFn: deps.fetchFn,
         readProjectFile: deps.readProjectFile,
-        readContentItems: deps.readContentFn,
+        // Not `deps.readContentFn`: that reads the local inventory, which
+        // holds one version per template, while the engine diffs the two
+        // versions it re-resolves through `deps.fetchFn` (#700).
+        readContentItems: readResolvedContentItems,
         writeProjectFile: deps.writeProjectFile,
         removeProjectFile: deps.removeProjectFile,
         writeProvenance: deps.provenanceWriteFn,

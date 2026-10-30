@@ -40,9 +40,9 @@ import { FsInventoryIndex } from '../adapters/fs-inventory-index';
 import { FsContentStore } from '../adapters/fs-content-store';
 import { createFsReadContentItemsFn } from '../adapters/fs-read-content-items';
 import { upgradeChangeSetReviewApproval } from '../upgrade/flow';
+import { readResolvedContentItems } from '../upgrade/resolved-content-items';
 import { MANIFEST_FILENAME } from '../manifest/types';
 import type { TemplateManifest } from '../manifest/types';
-import type { ContentItem, ReadContentItemsFn } from '../scaffold/types';
 import type { ReadProvenanceRecordsFn } from '../scaffold/materialize';
 import {
   FIXTURE_SHELL_DIR,
@@ -254,13 +254,10 @@ describe('Fixture 9 (B1-fix, issue #488) — frontx upgrade preserves multi-reco
   // `RESOLVED` entries — unlike `TemplateInventory.install`, they are never
   // written to an installed-content-path on disk, so the disk-backed
   // `createFsReadContentItemsFn` adapter (keyed by that path) cannot serve
-  // them. This decodes the SAME `$frontxTemplateFiles` bundle envelope
-  // `createLocalFetchFn` returns directly from the entry's in-memory
-  // `.content` — the upgrade-engine equivalent of that disk-backed adapter.
-  const decodeBundleContentItems: ReadContentItemsFn = async (entry) => {
-    const parsed = JSON.parse(entry.content) as { $frontxTemplateFiles: Record<string, string> };
-    return Object.entries(parsed.$frontxTemplateFiles).map(([itemPath, content]): ContentItem => ({ path: itemPath, content }));
-  };
+  // them. `readResolvedContentItems` is the reader the `frontx upgrade`
+  // command wires for them (#700): it decodes the SAME `$frontxTemplateFiles`
+  // bundle envelope `createLocalFetchFn` returns, from the entry's in-memory
+  // `.content`.
 
   /** Seeds shell, adds mfe (2 provenance records), then runs one auto-approved
    * `frontx upgrade` cycle against the shell record — the exact repro sequence
@@ -313,7 +310,7 @@ describe('Fixture 9 (B1-fix, issue #488) — frontx upgrade preserves multi-reco
       readProvenance: createFsReadSingleProvenanceFn(),
       fetchFn: createLocalFetchFn(FIXTURE_SHELL_DIR, { excludedDirs: EXCLUDED_DIRS }),
       readProjectFile: createFsReadProjectFileFn(),
-      readContentItems: decodeBundleContentItems,
+      readContentItems: readResolvedContentItems,
       writeProjectFile: createFsWriteProjectFileFn(),
       removeProjectFile: createFsRemoveProjectFileFn(),
       writeProvenance: createFsProvenanceWriteFn(),
