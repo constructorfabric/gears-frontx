@@ -84,17 +84,16 @@ describe('entry contract', () => {
     const entry = publishedPair();
     expect(entry).toBeDefined();
     expect(Object.keys(entry!).sort()).toEqual(
-      ['builtinHash', 'copies', 'createStore', 'format', 'libraryLine', 'reported', 'scratch', 'store', 'writers'].sort()
+      ['builtinHash', 'copies', 'format', 'libraryLine', 'reported', 'scratch', 'store', 'writers'].sort()
     );
-    expect(STORE_FORMAT).toBe(1);
+    expect(STORE_FORMAT).toBe(2);
     expect(typeof entry!.format).toBe('number');
     expect(typeof entry!.libraryLine).toBe('string');
     expect(typeof entry!.builtinHash).toBe('string');
-    expect(typeof entry!.createStore).toBe('function');
     expect(entry!.writers).toBeInstanceOf(Map);
     expect(entry!.reported).toBeInstanceOf(Set);
     expect(typeof entry!.copies).toBe('number');
-    for (const op of ['register', 'get', 'getAll', 'validateInstance'] as const) {
+    for (const op of ['register', 'unregister', 'get', 'getAll', 'validateInstance', 'validateTransientInstance'] as const) {
       expect(typeof entry!.store[op]).toBe('function');
       expect(typeof entry!.scratch[op]).toBe('function');
     }

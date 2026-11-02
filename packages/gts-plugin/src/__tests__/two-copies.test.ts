@@ -30,16 +30,15 @@ async function evaluateCopy(): Promise<Copy> {
 function foreignize(pair: NonNullable<ReturnType<typeof publishedPair>>): void {
   const forward = (real: GtsStore) => ({
     register: (entity: JsonEntity) => real.register(entity),
+    unregister: (id: string) => real.unregister(id),
     get: (id: string) => real.get(id),
     getAll: () => real.getAll(),
     validateInstance: (id: string) => real.validateInstance(id),
     validateTransientInstance: (content: unknown, typeId: string, resultId: string | null) =>
       real.validateTransientInstance(content, typeId, resultId),
   });
-  const factory = () => forward(new GtsStore({ allowEntityUpdates: true }));
   Reflect.set(pair, 'store', forward(pair.store as GtsStore));
   Reflect.set(pair, 'scratch', forward(pair.scratch as GtsStore));
-  Reflect.set(pair, 'createStore', factory);
 }
 
 let warn: ReturnType<typeof vi.spyOn>;
@@ -77,9 +76,10 @@ describe('two copies', () => {
     expect(() => mfePlugin.register({ id: inst('b'), peer: inst('a') })).not.toThrow();
     expect(hostPlugin.validateInstance(inst('b')).valid).toBe(true);
 
-    // A rebuild by the adopting copy still builds stores of the pair's own class.
+    // A candidate the adopting copy rejects is removed through the pair's own scratch store.
+    const scratch = pair.scratch;
     expect(() => mfePlugin.register({ id: inst('c'), peer: 'nonsense' })).toThrow();
-    expect(pair.scratch).not.toBeInstanceOf(GtsStore);
+    expect(pair.scratch).toBe(scratch);
     expect(ids(pair.scratch.getAll())).toEqual(ids(pair.store.getAll()));
   });
 

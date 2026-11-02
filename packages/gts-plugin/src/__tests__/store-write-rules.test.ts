@@ -154,34 +154,37 @@ describe('instances: the last valid write stands', () => {
     plugin.register({ id: inst('a') });
     const pair = publishedPair()!;
 
-    // Under a held identifier: the scratch entry is restored, not rebuilt.
+    // Under a held identifier: the scratch entry is restored.
     const held = { id: inst('a'), peer: 'gts.test.realm.core.node.v1~test.missing.core.nothing.v1' };
     expect(() => plugin.register(held)).toThrow(/GTS validation failed/);
     expect(plugin.getSchema(inst('a'))).toEqual({ id: inst('a') });
     expect(pair.scratch.get(inst('a'))).toEqual(pair.store.get(inst('a')));
 
-    // Under a new identifier: the scratch store is rebuilt by the pair's factory.
-    const oldScratch = pair.scratch;
+    // Under a new identifier: the candidate is removed from the same scratch store.
+    const scratch = pair.scratch;
     expect(() => plugin.register({ id: inst('fresh'), peer: 'nonsense' })).toThrow();
     expect(other.getSchema(inst('fresh'))).toBeUndefined();
-    expect(pair.scratch).not.toBe(oldScratch);
+    expect(pair.scratch).toBe(scratch);
+    expect(pair.scratch.get(inst('fresh'))).toBeUndefined();
     expect(ids(pair.scratch.getAll())).toEqual(ids(pair.store.getAll()));
-    // Seen from every instance on the pair: the next call validates against the rebuilt mirror.
+    // Seen from every instance on the pair: the next call validates against the restored mirror.
     expect(() => other.register({ id: inst('after'), peer: inst('a') })).not.toThrow();
     expect(ids(pair.scratch.getAll())).toEqual(ids(pair.store.getAll()));
   });
 
-  it('rebuilds with the pair\'s own factory, not the calling copy\'s library', () => {
+  it('removes a rejected candidate under a new identifier from the scratch store, and creates no store', () => {
     resetRealm();
     const factory = vi.fn(() => new GtsStore({ allowEntityUpdates: true }));
     Reflect.set(globalThis, slotKey(thisCopyInputs()), createPair(thisCopyInputs(), factory));
     const plugin = new GtsPlugin();
     plugin.registerSchema(nodeSchema(TYPE));
+    const remove = vi.spyOn(publishedPair()!.scratch, 'unregister');
     factory.mockClear();
 
     expect(() => plugin.register({ id: inst('x'), peer: 'nonsense' })).toThrow();
 
-    expect(factory).toHaveBeenCalledTimes(1);
+    expect(remove).toHaveBeenCalledWith(inst('x'));
+    expect(factory).not.toHaveBeenCalled();
   });
 
   const HINT = /may be registered later, or by a runtime on a different store/;
@@ -436,7 +439,7 @@ describe('anonymous instances', () => {
 
     expect(ids(pair.store.getAll())).toEqual(before);
     expect(ids(pair.scratch.getAll())).toEqual(before);
-    // A rejected payload touched nothing, so the mirror is not rebuilt.
+    // A rejected payload touched nothing, so nothing was removed from the mirror.
     expect(pair.scratch).toBe(scratch);
   });
 });

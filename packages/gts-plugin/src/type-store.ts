@@ -169,19 +169,14 @@ export function restoreMirror(pair: StorePair, candidateId: string): void {
     return;
   }
   // @cpt-end:cpt-frontx-algo-gts-type-provider-mirror-restore:p1:inst-mr-restore-held
-  // @cpt-begin:cpt-frontx-algo-gts-type-provider-mirror-restore:p1:inst-mr-rebuild
-  // A store has no removal call, so a candidate under a new identifier can
-  // only be dropped by rebuilding. The pair's factory keeps every store of
-  // the pair on one copy of the GTS library and of its validator.
-  const fresh = pair.createStore();
-  for (const entity of pair.store.getAll()) {
-    fresh.register(entity);
-  }
-  pair.scratch = fresh;
-  // @cpt-end:cpt-frontx-algo-gts-type-provider-mirror-restore:p1:inst-mr-rebuild
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-mirror-restore:p1:inst-mr-remove
+  // The store holds nothing under a new identifier, so removing the candidate
+  // from the scratch store leaves it mirroring the store again.
+  pair.scratch.unregister(candidateId);
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-mirror-restore:p1:inst-mr-remove
   // @cpt-begin:cpt-frontx-algo-gts-type-provider-mirror-restore:p1:inst-mr-budget
-  // Only a rejected candidate under an unheld identifier gets here; the success
-  // path never rebuilds. mirror-rebuild-budget.test.ts holds this to 50 ms.
+  // Restoring touches one entry, whatever the store holds.
+  // rejected-candidate-budget.test.ts holds the whole rejected call to 50 ms.
   // @cpt-end:cpt-frontx-algo-gts-type-provider-mirror-restore:p1:inst-mr-budget
   // @cpt-begin:cpt-frontx-algo-gts-type-provider-mirror-restore:p1:inst-mr-return
   // The mirror is restored before the caller raises its error.
