@@ -94,11 +94,7 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
   readonly name = 'gts';
   readonly version = '1.0.0';
 
-  /**
-   * Held for the instance's lifetime, but its stores are never kept: another
-   * instance on the same pair may replace the scratch store between calls, so
-   * every call reads `pair.store` and `pair.scratch` afresh.
-   */
+  /** Held for the instance's lifetime; every call reaches both stores through it. */
   // @cpt-begin:cpt-frontx-algo-gts-type-provider-realm-store-rendezvous:p1:inst-rs-hold-pair
   private readonly pair: StorePair;
   private readonly token: WriterToken;

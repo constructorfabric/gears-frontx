@@ -119,7 +119,7 @@ export function deepCopyJson<T>(content: T): T {
 }
 
 /**
- * 53-bit cyrb53 hash as lowercase hex. Part of store format 1: changing it
+ * 53-bit cyrb53 hash as lowercase hex. Part of the store format: changing it
  * changes every key, so it needs a format bump.
  */
 export function cyrb53(text: string): string {

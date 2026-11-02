@@ -23,7 +23,7 @@ import { canonicalText, cyrb53 } from './canonical';
  * Bump in the same change that alters the shape of the slot entry or the
  * meaning of the data the stores hold. Copies of different formats never share.
  */
-export const STORE_FORMAT = 1;
+export const STORE_FORMAT = 2;
 
 const KEY_PREFIX = '@gears-frontx/gts-plugin:gts-store';
 const KEY_INDEX = Symbol.for('@gears-frontx/gts-plugin:gts-store-keys');
@@ -31,6 +31,7 @@ const KEY_INDEX = Symbol.for('@gears-frontx/gts-plugin:gts-store-keys');
 /** The operations this package calls on a store; a store is recognized by these, never by class. */
 export interface StoreLike {
   register(entity: JsonEntity): void;
+  unregister(id: string): void;
   get(id: string): JsonEntity | undefined;
   getAll(): JsonEntity[];
   validateInstance(id: string): GtsValidationResult;
@@ -54,14 +55,12 @@ export interface KeyInputs {
 
 /**
  * The slot entry. Changing a field name or kind needs a store format bump.
- * `store` and `scratch` are mutable only through `scratch` replacement by a
- * mirror rebuild; every call reads them afresh from the pair.
+ * Both stores are created with the pair, by the library copy that created it,
+ * and are never replaced.
  */
 export interface StorePair extends KeyInputs {
   readonly store: StoreLike;
-  scratch: StoreLike;
-  /** Creates a store with the library copy that created the pair, so one validator serves the whole pair. */
-  readonly createStore: () => StoreLike;
+  readonly scratch: StoreLike;
   /** Identifier to the token of the copy that wrote what the store holds under it. */
   readonly writers: Map<string, WriterToken>;
   /** Warnings already given, so a runtime that registers on every load does not repeat them. */
@@ -109,7 +108,7 @@ function hasFunctions(value: unknown, names: readonly string[]): boolean {
 }
 
 function isStoreLike(value: unknown): value is StoreLike {
-  return hasFunctions(value, ['register', 'get', 'getAll', 'validateInstance', 'validateTransientInstance']);
+  return hasFunctions(value, ['register', 'unregister', 'get', 'getAll', 'validateInstance', 'validateTransientInstance']);
 }
 
 function isWriterMap(value: unknown): value is Map<string, WriterToken> {
@@ -131,7 +130,6 @@ function isRecognizedPair(entry: unknown, inputs: KeyInputs): entry is StorePair
   if (typeof entry !== 'object' || entry === null) return false;
   const store: unknown = Reflect.get(entry, 'store');
   const scratch: unknown = Reflect.get(entry, 'scratch');
-  const createStore: unknown = Reflect.get(entry, 'createStore');
   const writers: unknown = Reflect.get(entry, 'writers');
   const reported: unknown = Reflect.get(entry, 'reported');
   const copies: unknown = Reflect.get(entry, 'copies');
@@ -141,14 +139,13 @@ function isRecognizedPair(entry: unknown, inputs: KeyInputs): entry is StorePair
     Reflect.get(entry, 'builtinHash') !== inputs.builtinHash ||
     !isStoreLike(store) ||
     !isStoreLike(scratch) ||
-    typeof createStore !== 'function' ||
     !isWriterMap(writers) ||
     !isReportedSet(reported) ||
     typeof copies !== 'number'
   ) {
     return false;
   }
-  // The entry itself is the pair: copies and scratch are updated in place so
+  // The entry itself is the pair: its copy count is updated in place so
   // every provider instance on it sees the change.
   return true;
 }
@@ -162,7 +159,6 @@ export function createPair(inputs: KeyInputs, createStore: () => StoreLike): Sto
     builtinHash: inputs.builtinHash,
     store: createStore(),
     scratch: createStore(),
-    createStore,
     writers: new Map(),
     reported: new Set(),
     copies: 0,

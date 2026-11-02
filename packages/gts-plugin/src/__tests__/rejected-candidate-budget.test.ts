@@ -1,8 +1,8 @@
 /**
- * Mirror rebuild budget: a rejected candidate under a new identifier rebuilds
- * the scratch store from every entity on the store, and that must stay within
- * the runtime's 50 ms p95 registration budget (`cpt-frontx-nfr-runtime-performance`)
- * at 500 type definitions and 500 instances.
+ * Rejected-candidate budget: refusing a candidate under a new identifier
+ * validates it, restores the mirror and builds the error. With the store
+ * holding 500 type definitions and 500 instances, the whole call must stay
+ * within the runtime's 50 ms p95 registration budget (`cpt-frontx-nfr-runtime-performance`).
  */
 import { describe, expect, it } from 'vitest';
 import { GtsPlugin } from '../plugin';
@@ -19,8 +19,8 @@ const ROUNDS = 3;
 // contention. Only the p95 assertion below decides the budget.
 const TEST_TIMEOUT_MS = 120_000;
 
-describe('scratch rebuild', () => {
-  it('completes within 50 ms p95 over 500 type definitions and 500 instances', () => {
+describe('rejected candidate', () => {
+  it('is refused within 50 ms p95 among 500 type definitions and 500 instances', () => {
     const plugin = new GtsPlugin({ isolated: true });
     for (let i = 0; i < 500; i++) {
       const type = `gts.bench.perf.core.type${i}.v1~`;
