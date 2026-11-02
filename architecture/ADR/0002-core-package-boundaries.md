@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-06-04
 decision-makers: German Bartenev
 description: "Decides to partition the core framework into separately bounded concerns governed by enforceable boundary constraints, keeping the runtime substrate type-format agnostic."

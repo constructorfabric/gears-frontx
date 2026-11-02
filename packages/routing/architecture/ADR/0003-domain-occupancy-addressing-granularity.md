@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-01
 decision-makers: German Bartenev, G S
 description: Architecture decision that every domain, at any depth and occupant count, is addressed by one uniform URL entry grammar in the query string.
