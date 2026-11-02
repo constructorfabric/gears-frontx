@@ -27,9 +27,9 @@ description: "Decides that packages keep shipping both ESM and CommonJS builds, 
 
 ## Context and Problem Statement
 
-Seven published packages — `@gears-frontx/api`, `cli`, `gts-plugin`, `mfes`, `routing`, `routing-tanstack` and `telemetry` — build an ESM and a CommonJS output, with a declaration file for each (`.d.ts` and `.d.cts`), and their manifests offer both through `import` and `require` export conditions. Each `exports` entry, however, placed one `types` key ahead of both conditions. TypeScript matches conditions in order, so under `moduleResolution` Node16 or NodeNext that key matched first for a CommonJS consumer as well, handing it the ESM declarations of a `"type": "module"` package, and every import failed with TS1479 although the runtime `require()` worked and the `.d.cts` file was published beside it.
+Seven published packages — `@gears-frontx/api`, `cli`, `gts-plugin`, `mfes`, `routing`, `routing-tanstack` and `telemetry` — build an ESM and a CommonJS output, with a declaration file for each (`.d.ts` and `.d.cts`), and their manifests offer both through `import` and `require` export conditions. TypeScript matches conditions in order, so under `moduleResolution` Node16 or NodeNext a `types` key placed ahead of both conditions matches first for a CommonJS consumer as well. It hands that consumer the ESM declarations of a `"type": "module"` package, and every import fails with TS1479, although the runtime `require()` works and the `.d.cts` file is published beside it.
 
-The documents that once disagreed about the module format — a root DESIGN constraint calling the ecosystem ESM-only and a publishing-pipeline FEATURE requiring a CommonJS build — no longer exist, and nothing in the current architecture states which formats a package ships. `@gears-frontx/ui-kit` settles it for itself: its PRD makes it ESM-only, and its manifest offers no `require` condition. Which contract do the other packages publish, and how is it kept true?
+The module formats a package ships are a contract with every consumer's toolchain. `@gears-frontx/ui-kit` settles it for itself: its PRD makes it ESM-only, and its manifest offers no `require` condition. Which contract do the other packages publish, and how is it kept true?
 
 ## Decision Drivers
 
@@ -47,21 +47,21 @@ The documents that once disagreed about the module format — a root DESIGN cons
 
 ## Decision Outcome
 
-Chosen option: **keep both formats and nest each format's declarations under its own condition**, because it repairs the CommonJS contract every dual-format package already advertises without removing anything a consumer may rely on, and the build already emits the files it points to.
+Chosen option: **keep both formats and nest each format's declarations under its own condition**, because it makes the CommonJS entry every dual-format package advertises usable without removing anything a consumer may rely on, and the build emits the files it points to.
 
 A published package that offers a CommonJS entry offers it for every entry point, and each `exports` entry nests `types` first inside each condition: the ESM declarations and module under `import`, the CommonJS declarations and module under `require`. No `types` key stands beside the conditions. The top-level `main`, `module` and `types` fields stay for resolvers that read no `exports`. A member whose own PRD declares it ESM-only offers no `require` condition and is outside this rule; whether a member is dual-format is read from its manifest, not from a list. The concrete check belongs to `cpt-frontx-feature-ecosystem-distribution` under ADR 0027's ownership rule (`cpt-frontx-adr-contract-schema-ownership`).
 
 ### Consequences
 
-* Good, because a CommonJS TypeScript consumer resolves the `.d.cts` of every entry point and type-checks, and ESM and bundler consumers keep resolving the `.d.ts` they resolved before.
-* Good, because no package loses a format or an entry point, so the fix ships as a patch release of each package.
+* Good, because a CommonJS TypeScript consumer resolves the `.d.cts` of every entry point and type-checks, and an ESM or bundler consumer resolves the `.d.ts`.
+* Good, because no package loses a format or an entry point, so the decision breaks no consumer.
 * Good, because the check packs each package the way publication does, so a manifest that names a file the tarball lacks fails CI instead of reaching the registry.
 * Bad, because every dual-format package keeps two builds and two declaration sets, and the `exports` entries are longer.
 * Neutral, because the choice can be revisited: going ESM-only later is a breaking change on each package's own version line, and the check would then find no dual-format package and fail until it is retired with that decision.
 
 ### Confirmation
 
-`scripts/verify-dual-format-consumers.mjs` (`cpt-frontx-algo-ecosystem-distribution-dual-format-consumer-check`) runs in CI after the packages are built. It rejects any entry with a `require` condition whose shape differs from the decision, packs every dual-format package, fails when a packed tarball lacks a file its `exports` name, and type-checks a `.cts` and an `.mts` consumer importing every entry point under Node16 and NodeNext. Against the manifests this decision replaces, the CommonJS consumer fails with TS1479 for every entry point.
+`scripts/verify-dual-format-consumers.mjs` (`cpt-frontx-algo-ecosystem-distribution-dual-format-consumer-check`) runs in CI after the packages are built. It rejects any entry with a `require` condition whose shape differs from the decision, packs every dual-format package, fails when a packed tarball lacks a file its `exports` name, and type-checks a `.cts` and an `.mts` consumer importing every entry point under Node16 and NodeNext. With a `types` key beside the conditions, the CommonJS consumer fails with TS1479 for every entry point.
 
 ## Pros and Cons of the Options
 
@@ -73,8 +73,8 @@ A published package that offers a CommonJS entry offers it for every entry point
 
 ### Publish ESM only
 
-* Good, because one build and one declaration set per package is simpler, and Node can now `require()` an ESM module in many cases.
-* Bad, because it removes the `require` entry every dual-format package has published so far, a breaking change for CommonJS consumers on seven version lines at once.
+* Good, because one build and one declaration set per package is simpler, and Node can `require()` an ESM module in many cases.
+* Bad, because it removes the `require` entry every dual-format package publishes, a breaking change for CommonJS consumers on seven version lines at once.
 * Bad, because `require()` of an ESM module still fails when the module graph uses top-level `await`, and older Node lines and some test runners do not support it at all.
 
 ### Keep the shared top-level declarations
@@ -84,7 +84,7 @@ A published package that offers a CommonJS entry offers it for every entry point
 
 ## More Information
 
-Raised in #503 while reviewing #499. #462 asked the same format question about documents that have since been removed, and was closed in favour of #503.
+Discussed in #503.
 
 **Review trigger.** Revisit if the ecosystem decides to stop shipping CommonJS, or if a package needs export conditions beyond `import` and `require` (for example a `browser` or `worker` build), which this decision's shape does not cover.
 
