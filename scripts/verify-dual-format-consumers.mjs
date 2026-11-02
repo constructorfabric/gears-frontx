@@ -1,6 +1,6 @@
 /**
  * Packed-consumer check for every package that ships a CommonJS entry
- * alongside its ESM one (#503, `cpt-frontx-adr-dual-format-package-declarations`).
+ * alongside its ESM one (#503, `cpt-frontx-adr-package-module-formats`).
  *
  * TypeScript picks a consumer's declaration file by the same `exports`
  * conditions Node uses to pick its runtime file. An entry that put one

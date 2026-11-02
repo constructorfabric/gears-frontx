@@ -1,10 +1,10 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-20
 description: "Decides that packages keep shipping both ESM and CommonJS builds, with each module format's declarations nested under its own exports condition."
 ---
 
-# Keep Dual ESM/CommonJS Packages and Give Each Format Its Own Declarations
+# Module Formats and Type Declarations of Published Packages
 
 <!-- toc -->
 
@@ -23,7 +23,7 @@ description: "Decides that packages keep shipping both ESM and CommonJS builds, 
 
 <!-- /toc -->
 
-**ID**: `cpt-frontx-adr-dual-format-package-declarations`
+**ID**: `cpt-frontx-adr-package-module-formats`
 
 ## Context and Problem Statement
 
