@@ -18,6 +18,7 @@ description: "Specifies the cross-cutting policy under which each FrontX artifac
 - [3. Processes / Business Logic (CDSL)](#3-processes--business-logic-cdsl)
   - [Coupled-Edge Compatibility Check](#coupled-edge-compatibility-check)
   - [Registry-Side Deprecation Cycle](#registry-side-deprecation-cycle)
+  - [Dual-Format Consumer Check](#dual-format-consumer-check)
 - [4. States (CDSL)](#4-states-cdsl)
   - [Registry Version Availability State Machine](#registry-version-availability-state-machine)
 - [5. Definitions of Done](#5-definitions-of-done)
@@ -25,6 +26,7 @@ description: "Specifies the cross-cutting policy under which each FrontX artifac
   - [Coupled-Edge Compatibility Is Range-Based, Not Pinned](#coupled-edge-compatibility-is-range-based-not-pinned)
   - [Deprecation Cycle Is Enforced Registry-Side Before Removal](#deprecation-cycle-is-enforced-registry-side-before-removal)
   - [Consumer Upgrade Does Not Require Lockstep Updates](#consumer-upgrade-does-not-require-lockstep-updates)
+  - [Each Module Format Resolves Its Own Declarations](#each-module-format-resolves-its-own-declarations)
 - [6. Acceptance Criteria](#6-acceptance-criteria)
 
 <!-- /toc -->
@@ -37,6 +39,8 @@ description: "Specifies the cross-cutting policy under which each FrontX artifac
 ### 1.1 Overview
 
 This is a cross-cutting versioning and distribution policy with no single component. It establishes per-concern **independent** versioning: each FrontX artifact is published and versioned on its own semver line and cadence, a breaking change increments only that artifact's own major version, and the single compile-time coupling edge (`@gears-frontx/mfes → @gears-frontx/gts-plugin`) is bounded by a satisfiable semver range rather than a matched version number. Deprecation and removal are registry-side operations (npm deprecate plus a minimum window) — there is no in-package lifecycle-state field.
+
+A published package that offers a CommonJS entry alongside its ESM entry gives each module format its own declarations: every `exports` entry nests `types` inside each condition, the ESM `.d.ts` under `import` and the CommonJS `.d.cts` under `require`, so a TypeScript consumer resolves the declarations of the format it actually loads (`cpt-frontx-adr-dual-format-package-declarations`). A package whose own PRD declares it ESM-only, such as `@gears-frontx/ui-kit`, offers no `require` condition and is outside that rule.
 
 ### 1.2 Purpose
 
@@ -61,6 +65,7 @@ Not applicable — there is no actor-facing usecase for this cross-cutting polic
 - **Component**: `cpt-frontx-component-ecosystem-version-policy` — this feature is that component's concrete spec: the version-policy check (`scripts/ecosystem-version-policy.mjs`) and the release conventions it asserts
 - **Dependencies**: None
 - **Contract**: `cpt-frontx-contract-package-registry-distribution`
+- **ADR**: `cpt-frontx-adr-dual-format-package-declarations`
 
 ## 2. Actor Flows (CDSL)
 
@@ -154,6 +159,28 @@ Traces to DESIGN `cpt-frontx-nfr-evolvability` verification and the principle: "
    1. [x] - `p2` - **RETURN** FAIL — the minimum deprecation window has not elapsed - `inst-dep-return-window`
 5. [x] - `p2` - **RETURN** PASS — registry-side deprecation cycle satisfied; the version may be removed - `inst-dep-return-pass`
 
+### Dual-Format Consumer Check
+
+- [x] `p1` - **ID**: `cpt-frontx-algo-ecosystem-distribution-dual-format-consumer-check`
+
+Traces to `cpt-frontx-adr-dual-format-package-declarations` and to the package-registry distribution interface (`cpt-frontx-interface-package-registry-distribution`): a package that offers a CommonJS entry must type-check for a CommonJS consumer as well as an ESM one. Realized by `scripts/verify-dual-format-consumers.mjs`, run in CI after the packages are built.
+
+**Input**: The manifests of the published packages under `packages/`, and their built output.
+
+**Output**: PASS if every entry point of every package that offers a CommonJS entry type-checks in a CommonJS consumer and an ESM consumer; FAIL naming the entry, the missing file or the compiler output otherwise.
+
+**Steps**:
+1. [x] - `p1` - Collect every published package whose `exports` carry a `require` condition - `inst-df-collect`
+2. [x] - `p1` - Check that each such entry nests its own `types` and `default` under both conditions: a `.d.ts` and a `.js` under `import`, a `.d.cts` and a `.cjs` under `require`, `types` first, and no `types` key beside the conditions - `inst-df-shape`
+   1. [x] - `p1` - **IF** any entry fails the shape check, **RETURN** FAIL naming each entry and what is wrong with it - `inst-df-return-shape`
+3. [x] - `p1` - Pack each package as publication packs it, and unpack it into a scratch consumer's `node_modules` - `inst-df-pack`
+4. [x] - `p1` - **IF** a packed package lacks a file its `exports` name: - `inst-df-if-missing`
+   1. [x] - `p1` - **RETURN** FAIL naming the package and the missing file - `inst-df-return-missing`
+5. [x] - `p1` - Type-check a CommonJS (`.cts`) consumer and an ESM (`.mts`) consumer that import every entry point, under Node16 and under NodeNext module resolution - `inst-df-typecheck`
+6. [x] - `p1` - **IF** any consumer reports an error: - `inst-df-if-errors`
+   1. [x] - `p1` - **RETURN** FAIL with each failing consumer's compiler output - `inst-df-return-errors`
+7. [x] - `p1` - **RETURN** PASS — each module format resolves its own declarations for every entry point - `inst-df-return-pass`
+
 ## 4. States (CDSL)
 
 ### Registry Version Availability State Machine
@@ -237,6 +264,22 @@ The system **MUST** allow a consuming project to adopt a new version of exactly 
 - Package registry distribution channels (npm + GitHub source)
 - `cpt-frontx-nfr-evolvability`, `cpt-frontx-nfr-scalability-ceiling`
 
+### Each Module Format Resolves Its Own Declarations
+
+- [x] `p1` - **ID**: `cpt-frontx-dod-ecosystem-distribution-dual-format-declarations`
+
+The system **MUST** publish every package that offers a CommonJS entry so that, for each entry point, a CommonJS TypeScript consumer resolves the package's CommonJS declarations (`.d.cts`) and an ESM consumer resolves its ESM declarations (`.d.ts`) under Node16 and NodeNext module resolution, and the published tarball contains every file the package's `exports` name.
+
+**Implements**:
+- `cpt-frontx-algo-ecosystem-distribution-dual-format-consumer-check`
+
+**Constraints**: None applicable.
+
+**Touches**:
+- Package manifests — `exports` conditions of every package that offers a CommonJS entry
+- Package registry — the published tarball's contents
+- `cpt-frontx-interface-package-registry-distribution`
+
 ## 6. Acceptance Criteria
 
 - [x] Publishing a breaking change to one artifact increments only that artifact's own major version and requires no version change to any sibling artifact.
@@ -244,3 +287,4 @@ The system **MUST** allow a consuming project to adopt a new version of exactly 
 - [x] A consuming project can adopt a new patch, minor, or major version of one FrontX artifact without changing any other FrontX artifact, provided the `mfes → gts-plugin` peer range resolves.
 - [x] A version cannot be removed from the registry until an `npm deprecate` notice has been published and the minimum deprecation window has elapsed.
 - [x] No architectural ceiling is imposed: adding or retiring an artifact requires no version amendment to any other artifact.
+- [x] Every entry point of every package that offers a CommonJS entry type-checks in a CommonJS (`.cts`) consumer and in an ESM (`.mts`) consumer under Node16 and NodeNext module resolution, each resolving its own format's declarations, and the packed tarball contains every file the package's `exports` name.
