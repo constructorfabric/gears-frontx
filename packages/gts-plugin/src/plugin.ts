@@ -14,8 +14,9 @@
  *   type system is the authority on correctness.
  * - For the anonymous instance pattern (no `id` field, schema resolved via
  *   `type` field — used by action payloads), gts-ts assigns `id = ''` and
- *   validation happens against the schema referenced by `type`.
- * - gts-ts uses Ajv INTERNALLY — we do NOT need Ajv as a direct dependency.
+ *   validation happens against the schema referenced by `type`. An anonymous
+ *   instance is validated only, never stored.
+ * - gts-ts carries its own JSON Schema engine — this package needs none of its own.
  *
  * Realm sharing: every non-isolated instance in a JavaScript realm reads and
  * writes one store pair per compatible copy of this package, so runtimes can
@@ -62,7 +63,12 @@ export interface GtsPluginOptions {
   isolated?: boolean;
 }
 
-const createLibraryStore = (): GtsStore => new GtsStore();
+// The library refuses to replace an entity with different content by default.
+// Instances keep the last valid write, and the scratch store is put back by
+// writing the held entity over a rejected candidate, so both need
+// replacement. Types never reach it: `writeSchema` keeps the first
+// definition before the store is called.
+const createLibraryStore = (): GtsStore => new GtsStore({ allowEntityUpdates: true });
 
 /**
  * Concrete GTS plugin class implementing TypeSystemPlugin.

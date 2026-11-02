@@ -27,7 +27,7 @@ export interface Action {
    * Optional action payload.
    * Lifecycle actions (load_ext, mount_ext, unmount_ext) require a `subject` field
    * identifying the extension ID to act upon. This is enforced at runtime via GTS schema
-   * validation (payload.subject with x-gts-ref to extension type).
+   * validation (payload.subject with x-gts-instance-ref to an extension instance).
    */
   payload?: { subject?: string } & Record<string, unknown>;
   /** Optional timeout override in milliseconds (overrides domain's defaultActionTimeout) */

@@ -34,6 +34,7 @@ export interface StoreLike {
   get(id: string): JsonEntity | undefined;
   getAll(): JsonEntity[];
   validateInstance(id: string): GtsValidationResult;
+  validateTransientInstance(content: unknown, typeId: string, resultId: string | null): GtsValidationResult;
 }
 
 /** Identifies one evaluated copy; its ordinal names the copy in warnings. */
@@ -108,7 +109,7 @@ function hasFunctions(value: unknown, names: readonly string[]): boolean {
 }
 
 function isStoreLike(value: unknown): value is StoreLike {
-  return hasFunctions(value, ['register', 'get', 'getAll', 'validateInstance']);
+  return hasFunctions(value, ['register', 'get', 'getAll', 'validateInstance', 'validateTransientInstance']);
 }
 
 function isWriterMap(value: unknown): value is Map<string, WriterToken> {

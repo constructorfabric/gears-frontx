@@ -4,15 +4,15 @@
   "type": "object",
   "properties": {
     "type": {
-      "x-gts-ref": "/$id",
+      "x-gts-type-ref": "/$id",
       "$comment": "Self-reference to this action's type ID"
     },
     "target": {
-      "oneOf": [
-        { "x-gts-ref": "gts.frontx.mfes.ext.domain.v1~*" },
-        { "x-gts-ref": "gts.frontx.mfes.ext.extension.v1~*" }
+      "anyOf": [
+        { "x-gts-instance-ref": "gts.frontx.mfes.ext.domain.v1~*" },
+        { "x-gts-instance-ref": "gts.frontx.mfes.ext.extension.v1~*" }
       ],
-      "$comment": "Type ID of the target ExtensionDomain or Extension"
+      "$comment": "Instance ID of the target ExtensionDomain or Extension. anyOf, not oneOf: the two sets cannot overlap, and the GTS library compares only an anyOf when it checks that a derived action narrows this field"
     },
     "payload": {
       "type": "object",

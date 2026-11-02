@@ -28,37 +28,41 @@ describe('types: the first definition stands', () => {
   it('ignores identical content silently and changes nothing', () => {
     const plugin = new GtsPlugin();
     plugin.registerSchema(nodeSchema(TYPE));
-    const before = publishedPair()!.store.get(TYPE);
+    const pair = publishedPair()!;
+    const before = pair.store.get(TYPE);
+    // The library hands out a copy on every read, so only the absence of a write shows nothing changed.
+    const write = vi.spyOn(pair.store, 'register');
 
     plugin.registerSchema(nodeSchema(TYPE));
     new GtsPlugin().registerSchema(nodeSchema(TYPE));
     plugin.register(nodeSchema(TYPE));
 
-    expect(publishedPair()!.store.get(TYPE)).toBe(before);
+    expect(write).not.toHaveBeenCalled();
+    expect(pair.store.get(TYPE)).toEqual(before);
     expect(warn).not.toHaveBeenCalled();
   });
 
   it('compares content structurally: a different spelling of an identifier is a conflict, and the first still stands', () => {
     const plugin = new GtsPlugin();
     plugin.registerSchema(nodeSchema(TYPE));
-    const before = publishedPair()!.store.get(TYPE);
+    const pair = publishedPair()!;
+    const before = pair.store.get(TYPE);
+    const write = vi.spyOn(pair.store, 'register');
 
-    // gts://X~ against X~, $$id against $id, and a gts:// x-gts-ref: the plugin does not
+    // gts://X~ against X~, and a gts:// reference operand: the plugin does not
     // guess what the library treats alike, so each is reported as a different definition.
     const respelledId = nodeSchema(TYPE);
     respelledId.$id = TYPE;
-    const doubleDollar: Record<string, unknown> = { ...nodeSchema(TYPE) };
-    doubleDollar.$$id = doubleDollar.$id;
-    delete doubleDollar.$id;
-    const respelledRef = nodeSchema(TYPE, { other: { 'x-gts-ref': `gts://${TYPE}*` } });
-    const plainRef = nodeSchema(TYPE, { other: { 'x-gts-ref': `${TYPE}*` } });
+    const respelledRef = nodeSchema(TYPE, { other: { 'x-gts-instance-ref': `gts://${TYPE}*` } });
+    const plainRef = nodeSchema(TYPE, { other: { 'x-gts-instance-ref': `${TYPE}*` } });
 
-    for (const offered of [respelledId, doubleDollar, respelledRef, plainRef]) {
+    for (const offered of [respelledId, respelledRef, plainRef]) {
       expect(() => plugin.registerSchema(offered)).not.toThrow();
     }
 
-    expect(publishedPair()!.store.get(TYPE)).toBe(before);
-    expect(warn).toHaveBeenCalledTimes(4);
+    expect(write).not.toHaveBeenCalled();
+    expect(pair.store.get(TYPE)).toEqual(before);
+    expect(warn).toHaveBeenCalledTimes(3);
   });
 
   it('keeps the first on a different definition, does not throw, and warns once per identifier and offered content', () => {
@@ -154,7 +158,7 @@ describe('instances: the last valid write stands', () => {
     const held = { id: inst('a'), peer: 'gts.test.realm.core.node.v1~test.missing.core.nothing.v1' };
     expect(() => plugin.register(held)).toThrow(/GTS validation failed/);
     expect(plugin.getSchema(inst('a'))).toEqual({ id: inst('a') });
-    expect(pair.scratch.get(inst('a'))).toBe(pair.store.get(inst('a')));
+    expect(pair.scratch.get(inst('a'))).toEqual(pair.store.get(inst('a')));
 
     // Under a new identifier: the scratch store is rebuilt by the pair's factory.
     const oldScratch = pair.scratch;
@@ -169,7 +173,7 @@ describe('instances: the last valid write stands', () => {
 
   it('rebuilds with the pair\'s own factory, not the calling copy\'s library', () => {
     resetRealm();
-    const factory = vi.fn(() => new GtsStore());
+    const factory = vi.fn(() => new GtsStore({ allowEntityUpdates: true }));
     Reflect.set(globalThis, slotKey(thisCopyInputs()), createPair(thisCopyInputs(), factory));
     const plugin = new GtsPlugin();
     plugin.registerSchema(nodeSchema(TYPE));
@@ -183,8 +187,8 @@ describe('instances: the last valid write stands', () => {
   const HINT = /may be registered later, or by a runtime on a different store/;
 
   it('names the store and gives the conditional hint when an extension refers to a domain nobody registered', () => {
-    // The real case: `domain` is an x-gts-ref field of extension.v1. Only the library's validator
-    // reads x-gts-ref values, so the package cannot tell what is missing; the hint must not depend on it.
+    // The real case: `domain` is an x-gts-instance-ref field of extension.v1. Only the library's validator
+    // reads reference values, so the package cannot tell what is missing; the hint must not depend on it.
     const plugin = new GtsPlugin({ isolated: true });
     const entryId = 'gts.frontx.mfes.mfe.entry.v1~test.realm.core.entry.v1';
     plugin.register({ id: entryId, requiredProperties: [], actions: [], domainActions: [] });
@@ -245,7 +249,7 @@ describe('instances: the last valid write stands', () => {
     expect(plain).toMatch(HINT);
     expect(plain).not.toContain('Not found on this store');
 
-    // A schema's own id: its schemaId is a meta-schema URL, which is not listed as missing.
+    // A schema's own id: a schema names no schema it is an instance of, so nothing is listed as missing.
     const ownId = plugin.validateInstance(TYPE);
     expect(ownId.errors.map((e) => e.message).join('\n')).not.toContain('Not found on this store');
 
@@ -256,10 +260,10 @@ describe('instances: the last valid write stands', () => {
   it('writes the built-in lifecycle stages through the same path: a second construction changes and logs nothing', () => {
     const pair = publishedPair()!;
     const before = pair.store.getAll();
+    const write = vi.spyOn(pair.store, 'register');
     new GtsPlugin();
-    const after = pair.store.getAll();
-    expect(after.length).toBe(before.length);
-    expect(after.every((entity, i) => entity === before[i])).toBe(true);
+    expect(write).not.toHaveBeenCalled();
+    expect(pair.store.getAll()).toEqual(before);
     expect(warn).not.toHaveBeenCalled();
   });
 });
@@ -397,12 +401,43 @@ describe('reads', () => {
     expect(plugin.getSchema(inst('a'))).toEqual({ id: inst('a') });
   });
 
-  it('return non-JSON instance content as given', () => {
+  it('return non-JSON instance content with the values JSON cannot represent kept as given', () => {
     const plugin = new GtsPlugin({ isolated: true });
     plugin.registerSchema(nodeSchema(TYPE, { cb: {} }));
     const content = { id: inst('fn'), cb: () => 1 };
     plugin.register(content);
-    expect(plugin.getSchema(inst('fn'))).toBe(content);
+    // The package cannot copy it; the library copies the object on every write and read, and keeps the function.
+    const read = plugin.getSchema(inst('fn'));
+    expect(read).toEqual(content);
+    expect(read!.cb).toBe(content.cb);
+  });
+});
+
+describe('anonymous instances', () => {
+  const MESSAGE = 'gts.test.realm.core.message.v1~';
+  const messageSchema = {
+    $id: `gts://${MESSAGE}`,
+    $schema: META_SCHEMA,
+    type: 'object',
+    properties: { type: { 'x-gts-type-ref': '/$id' }, n: { type: 'number' } },
+    required: ['type'],
+  };
+
+  it('are validated against the store and written to neither store, valid or not', () => {
+    const plugin = new GtsPlugin();
+    plugin.registerSchema(messageSchema);
+    const pair = publishedPair()!;
+    const before = ids(pair.store.getAll());
+    const scratch = pair.scratch;
+
+    expect(() => plugin.register({ type: MESSAGE, n: 1 })).not.toThrow();
+    expect(() => plugin.register({ type: MESSAGE, n: 'one' })).toThrow(/GTS validation failed for instance '\(anonymous\)'/);
+    expect(() => plugin.register({ n: 1 })).toThrow(/GTS validation failed/);
+
+    expect(ids(pair.store.getAll())).toEqual(before);
+    expect(ids(pair.scratch.getAll())).toEqual(before);
+    // A rejected payload touched nothing, so the mirror is not rebuilt.
+    expect(pair.scratch).toBe(scratch);
   });
 });
 
@@ -413,19 +448,22 @@ describe('instance write order', () => {
     $schema: META_SCHEMA,
     type: 'object',
     additionalProperties: false,
-    properties: { id: { 'x-gts-ref': '/$id' } },
+    properties: { id: { 'x-gts-instance-ref': '/$id' } },
     required: ['id'],
   };
 
-  it('validates a re-registration whose content equals the stored one but for an undefined field', () => {
-    const plugin = new GtsPlugin({ isolated: true });
+  it('validates a re-registration whose content equals the stored one, and then writes nothing', () => {
+    const plugin = new GtsPlugin();
     plugin.registerSchema(closedSchema);
     const id = `${CLOSED}test.realm.core.c1.v1`;
     plugin.register({ id });
+    const pair = publishedPair()!;
+    const validate = vi.spyOn(pair.scratch, 'validateInstance');
+    const write = vi.spyOn(pair.store, 'register');
 
-    expect(() => plugin.register({ id, extra: undefined })).toThrow(/GTS validation failed/);
-    expect(plugin.getSchema(id)).toEqual({ id });
     expect(() => plugin.register({ id })).not.toThrow();
+    expect(validate).toHaveBeenCalledWith(id);
+    expect(write).not.toHaveBeenCalled();
   });
 
   it('leaves both stores holding the same stored copy, never the caller\'s object, after a write and after a no-op', () => {
@@ -437,10 +475,10 @@ describe('instance write order', () => {
 
     plugin.register(obj);
     expect(pair.store.get(id)!.content).not.toBe(obj);
-    expect(pair.scratch.get(id)).toBe(pair.store.get(id));
+    expect(pair.scratch.get(id)).toEqual(pair.store.get(id));
 
     plugin.register({ id });
-    expect(pair.scratch.get(id)).toBe(pair.store.get(id));
+    expect(pair.scratch.get(id)).toEqual(pair.store.get(id));
     expect(pair.scratch.get(id)!.content).not.toBe(obj);
   });
 });

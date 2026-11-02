@@ -4,25 +4,25 @@
   "type": "object",
   "properties": {
     "id": {
-      "x-gts-ref": "/$id"
+      "x-gts-instance-ref": "/$id"
     },
     "requiredProperties": {
       "type": "array",
-      "items": { "x-gts-ref": "gts.frontx.mfes.comm.shared_property.v1~*" },
+      "items": { "x-gts-type-ref": "gts.frontx.mfes.comm.shared_property.v1~*" },
       "$comment": "SharedProperty type IDs REQUIRED by the MFE"
     },
     "optionalProperties": {
       "type": "array",
-      "items": { "x-gts-ref": "gts.frontx.mfes.comm.shared_property.v1~*" }
+      "items": { "x-gts-type-ref": "gts.frontx.mfes.comm.shared_property.v1~*" }
     },
     "actions": {
       "type": "array",
-      "items": { "x-gts-ref": "gts.frontx.mfes.comm.action.v1~*" },
+      "items": { "x-gts-type-ref": "gts.frontx.mfes.comm.action.v1~*" },
       "$comment": "Actions MFE can send to its domain"
     },
     "domainActions": {
       "type": "array",
-      "items": { "x-gts-ref": "gts.frontx.mfes.comm.action.v1~*" },
+      "items": { "x-gts-type-ref": "gts.frontx.mfes.comm.action.v1~*" },
       "$comment": "Actions MFE can receive"
     }
   },

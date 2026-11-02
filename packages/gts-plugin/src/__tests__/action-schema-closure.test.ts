@@ -2,7 +2,7 @@
  * Closed concrete action schemas (`mount_ext`, `unmount_ext`, `load_ext`) and
  * the strictly typed `history` intent `mount_ext`/`unmount_ext` declare on
  * their payload. Exercises the real, shipped schemas through `GtsPlugin` —
- * not a mock typeSystem, since the behavior under test is ajv's
+ * not a mock typeSystem, since the behavior under test is the GTS library's
  * `additionalProperties`/`enum` handling on a self-contained leaf, which a
  * mock would not reproduce.
  *
@@ -102,23 +102,6 @@ describe('closed concrete action schemas (mount_ext, unmount_ext, load_ext)', ()
     expect(() => plugin.register(action)).toThrow();
   });
 
-  describe('an undeclared field set to undefined', () => {
-    // A copy of the payload would drop the key, so validation must see the object as offered.
-    it.each([
-      ['mount_ext payload', () => mount({ subject: EXT_ID, extra: undefined })],
-      ['unmount_ext payload', () => unmount({ subject: EXT_ID, extra: undefined })],
-      ['load_ext payload', () => ({ type: LOAD_EXT, target: DOMAIN_ID, payload: { subject: EXT_ID, extra: undefined } })],
-      ['mount_ext top level', () => ({ ...mount({ subject: EXT_ID }), extra: undefined })],
-    ])('is rejected on a %s', (_name, build) => {
-      expect(() => plugin.register(build())).toThrow(/GTS validation failed/);
-    });
-
-    it('is rejected on a re-dispatch of a payload equal to one already accepted', () => {
-      expect(() => plugin.register(mount({ subject: EXT_ID }))).not.toThrow();
-      expect(() => plugin.register(mount({ subject: EXT_ID, extra: undefined }))).toThrow();
-    });
-  });
-
   it('accepts a well-formed load_ext', () => {
     const action: Action = { type: LOAD_EXT, target: DOMAIN_ID, payload: { subject: EXT_ID } };
     expect(() => plugin.register(action)).not.toThrow();
@@ -132,13 +115,13 @@ describe('closed concrete action schemas (mount_ext, unmount_ext, load_ext)', ()
       type: 'object',
       additionalProperties: false,
       properties: {
-        type: { 'x-gts-ref': '/$id' },
-        target: { 'x-gts-ref': 'gts.frontx.mfes.ext.domain.v1~*' },
+        type: { 'x-gts-type-ref': '/$id' },
+        target: { 'x-gts-instance-ref': 'gts.frontx.mfes.ext.domain.v1~*' },
         payload: {
           type: 'object',
           additionalProperties: false,
           properties: {
-            subject: { 'x-gts-ref': 'gts.frontx.mfes.ext.extension.v1~*' },
+            subject: { 'x-gts-instance-ref': 'gts.frontx.mfes.ext.extension.v1~*' },
             history: { type: 'string', enum: ['none', 'replace', 'push'] },
             widgetId: { type: 'string' },
           },

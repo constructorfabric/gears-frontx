@@ -4,7 +4,7 @@
   "type": "object",
   "properties": {
     "stage": {
-      "x-gts-ref": "gts.frontx.mfes.lifecycle.stage.v1~*",
+      "x-gts-instance-ref": "gts.frontx.mfes.lifecycle.stage.v1~*",
       "$comment": "The lifecycle stage that triggers this hook"
     },
     "actions_chain": {

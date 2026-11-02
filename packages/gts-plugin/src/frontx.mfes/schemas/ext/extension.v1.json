@@ -4,16 +4,16 @@
   "type": "object",
   "properties": {
     "id": {
-      "x-gts-ref": "/$id",
-      "$comment": "The GTS type ID for this instance"
+      "x-gts-instance-ref": "/$id",
+      "$comment": "This instance's GTS instance ID"
     },
     "domain": {
-      "x-gts-ref": "gts.frontx.mfes.ext.domain.v1~*",
-      "$comment": "ExtensionDomain type ID to mount into"
+      "x-gts-instance-ref": "gts.frontx.mfes.ext.domain.v1~*",
+      "$comment": "Instance ID of the ExtensionDomain to mount into"
     },
     "entry": {
-      "x-gts-ref": "gts.frontx.mfes.mfe.entry.v1~*",
-      "$comment": "MfeEntry type ID to mount"
+      "x-gts-instance-ref": "gts.frontx.mfes.mfe.entry.v1~*",
+      "$comment": "Instance ID of the MfeEntry to mount"
     },
     "lifecycle": {
       "type": "array",
