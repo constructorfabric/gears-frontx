@@ -28,7 +28,7 @@ describe('scratch rebuild', () => {
         $id: `gts://${type}`,
         $schema: META_SCHEMA,
         type: 'object',
-        properties: { id: { 'x-gts-ref': '/$id' }, n: { type: 'number' } },
+        properties: { id: { 'x-gts-instance-ref': '/$id' }, n: { type: 'number' } },
         required: ['id'],
       });
       plugin.register({ id: `${type}bench.perf.core.inst${i}.v1`, n: i });

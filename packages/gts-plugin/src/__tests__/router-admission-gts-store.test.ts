@@ -308,7 +308,7 @@ describe('router admission is released when the router admits but type-system re
     // A syntactically valid but never-registered stage id: governance's own
     // lifecycle-hook check never inspects `lifecycleStages` unless a `lifecycle`
     // hook is actually declared (this domain declares none), so only the
-    // GTS schema's own `x-gts-ref` existence check on this field rejects it.
+    // GTS schema's own `x-gts-instance-ref` existence check on this field rejects it.
     const phantomStageId = 'gts.frontx.mfes.lifecycle.stage.v1~test.routeradmission.fixture.phantom.v1';
     const invalidDomain = makeDomain(plugin, { lifecycleStages: [phantomStageId] });
 

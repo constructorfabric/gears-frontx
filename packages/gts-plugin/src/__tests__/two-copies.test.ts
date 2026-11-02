@@ -33,8 +33,10 @@ function foreignize(pair: NonNullable<ReturnType<typeof publishedPair>>): void {
     get: (id: string) => real.get(id),
     getAll: () => real.getAll(),
     validateInstance: (id: string) => real.validateInstance(id),
+    validateTransientInstance: (content: unknown, typeId: string, resultId: string | null) =>
+      real.validateTransientInstance(content, typeId, resultId),
   });
-  const factory = () => forward(new GtsStore());
+  const factory = () => forward(new GtsStore({ allowEntityUpdates: true }));
   Reflect.set(pair, 'store', forward(pair.store as GtsStore));
   Reflect.set(pair, 'scratch', forward(pair.scratch as GtsStore));
   Reflect.set(pair, 'createStore', factory);

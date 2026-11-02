@@ -44,7 +44,7 @@ function missingIds(pair: StorePair, id: string, entity: JsonEntity | undefined)
   const wanted = entity.schemaId ? [entity.schemaId, ...entity.references] : [...entity.references];
   const missing = new Set<string>();
   for (const candidate of wanted) {
-    // Only what the library reads as a GTS identifier: a schema's own `schemaId` is a meta-schema URL.
+    // Only what the library reads as a concrete GTS identifier, never a wildcard pattern.
     const verdict = Gts.validateGtsID(candidate);
     if (verdict.valid && !verdict.is_wildcard && !store.get(candidate)) missing.add(candidate);
   }
@@ -55,7 +55,7 @@ function missingIds(pair: StorePair, id: string, entity: JsonEntity | undefined)
  * A failure reason that always names the store searched and says the failure
  * may be down to registration order or to a different store. The package
  * cannot tell which references a schema checks (only the library's validator
- * reads `x-gts-ref` values), so the hint is conditional and never depends on
+ * reads the reference keywords), so the hint is conditional and never depends on
  * finding something missing. When the structural checks do find something
  * missing, it is named too.
  *
@@ -188,9 +188,32 @@ export function restoreMirror(pair: StorePair, candidateId: string): void {
   // @cpt-end:cpt-frontx-algo-gts-type-provider-mirror-restore:p1:inst-mr-return
 }
 
+/** The reason a validation failed, or undefined when it passed; a throw is a failure too. */
+function failureOf(validate: () => string | undefined): string | undefined {
+  try {
+    return validate();
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+}
+
+// @cpt-begin:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-raise
+function raiseInvalid(pair: StorePair, entity: JsonEntity, failure: string): never {
+  const id = entity.id;
+  const schema = entity.schemaId ? pair.store.get(entity.schemaId) : undefined;
+  throw new Error(
+    `GTS validation failed for instance '${id || '(anonymous)'}'\n` +
+      `Reason: ${describeFailure(failure, pair, { id, entity })}\n` +
+      `Instance: ${safeStringify(entity.content)}\n` +
+      `Schema: ${schema ? safeStringify(schema.content) : '(schema not resolved)'}`
+  );
+}
+// @cpt-end:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-raise
+
 /**
  * Validate an instance against the pair's current state, then write it,
- * replacing what the store held under its identifier.
+ * replacing what the store held under its identifier. An anonymous instance
+ * is only validated.
  *
  * @throws Error when validation fails; the store is then exactly as it was
  */
@@ -214,22 +237,29 @@ export function writeInstance(pair: StorePair, token: WriterToken, entity: JsonE
   }
   // @cpt-end:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-refuse-type
 
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-anonymous
+  if (id === '') {
+    // The library stores no instance without an identifier. An anonymous
+    // payload is validated against the store and never written; nothing reads
+    // one back. A transient result carries no `valid` flag, so `ok` is the verdict.
+    const failure = failureOf(() => {
+      const result = store.validateTransientInstance(entity.content, entity.schemaId ?? '', null);
+      return result.ok ? undefined : (result.error || 'unknown validation error');
+    });
+    if (failure !== undefined) raiseInvalid(pair, entity, failure);
+    return;
+  }
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-anonymous
+
   // @cpt-begin:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-validate
-  // Validate the object as offered, not a copy: the JSON copy drops a key whose
-  // value is undefined, and the closed action schemas must still reject an
-  // undeclared field that is set to undefined. Validation also runs when the
-  // content equals what is held, because the canonical form treats undefined
-  // as absent and would otherwise let such a field through.
-  let failure: string | undefined;
-  try {
+  // Validation runs even when the content equals what is held: the verdict
+  // always comes from the library, never from an earlier call.
+  const failure = failureOf(() => {
     scratch.register(entity);
     const result = scratch.validateInstance(id);
-    if (!result.ok || !result.valid) {
-      failure = result.ok ? 'schema validation returned invalid' : (result.error ?? 'unknown validation error');
-    }
-  } catch (error) {
-    failure = error instanceof Error ? error.message : String(error);
-  }
+    if (result.ok && result.valid) return undefined;
+    return result.ok ? 'schema validation returned invalid' : (result.error || 'unknown validation error');
+  });
   // @cpt-end:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-validate
 
   // @cpt-begin:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-if-invalid
@@ -237,15 +267,7 @@ export function writeInstance(pair: StorePair, token: WriterToken, entity: JsonE
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-restore
     restoreMirror(pair, id);
     // @cpt-end:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-restore
-    // @cpt-begin:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-raise
-    const schema = entity.schemaId ? pair.store.get(entity.schemaId) : undefined;
-    throw new Error(
-      `GTS validation failed for instance '${id || '(anonymous)'}'\n` +
-        `Reason: ${describeFailure(failure, pair, { id, entity })}\n` +
-        `Instance: ${safeStringify(entity.content)}\n` +
-        `Schema: ${schema ? safeStringify(schema.content) : '(schema not resolved)'}`
-    );
-    // @cpt-end:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-raise
+    raiseInvalid(pair, entity, failure);
   }
   // @cpt-end:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-if-invalid
 
@@ -259,7 +281,7 @@ export function writeInstance(pair: StorePair, token: WriterToken, entity: JsonE
 
   // @cpt-begin:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-warn-replace
   const writer = pair.writers.get(id);
-  if (held && id !== '' && !Gts.matchIDPattern(id, FRONTX_SHARED_PROPERTY_PATTERN).match && writer && writer !== token) {
+  if (held && !Gts.matchIDPattern(id, FRONTX_SHARED_PROPERTY_PATTERN).match && writer && writer !== token) {
     const reported = reportKey('instance', id, entity.content);
     if (!pair.reported.has(reported)) {
       pair.reported.add(reported);
@@ -279,7 +301,7 @@ export function writeInstance(pair: StorePair, token: WriterToken, entity: JsonE
   const candidate = copy === entity.content ? entity : createJsonEntity(copy);
   store.register(candidate);
   scratch.register(candidate);
-  if (id !== '') pair.writers.set(id, token);
+  pair.writers.set(id, token);
   // @cpt-end:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-commit
   // @cpt-begin:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-return
   // Both stores hold the same entities again.

@@ -4,7 +4,7 @@
   "type": "object",
   "properties": {
     "id": {
-      "x-gts-ref": "/$id"
+      "x-gts-instance-ref": "/$id"
     },
     "description": {
       "type": "string"

@@ -6,11 +6,11 @@
   "additionalProperties": false,
   "properties": {
     "type": {
-      "x-gts-ref": "/$id",
+      "x-gts-type-ref": "/$id",
       "$comment": "Self-reference to this action's schema type ID"
     },
     "target": {
-      "x-gts-ref": "gts.frontx.mfes.ext.domain.v1~*",
+      "x-gts-instance-ref": "gts.frontx.mfes.ext.domain.v1~*",
       "$comment": "Lifecycle actions target domains only — the extension is identified via payload.subject"
     },
     "payload": {
@@ -18,7 +18,7 @@
       "additionalProperties": false,
       "properties": {
         "subject": {
-          "x-gts-ref": "gts.frontx.mfes.ext.extension.v1~*",
+          "x-gts-instance-ref": "gts.frontx.mfes.ext.extension.v1~*",
           "$comment": "Extension ID that this action targets"
         },
         "history": {

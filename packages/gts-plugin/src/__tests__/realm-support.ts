@@ -35,8 +35,8 @@ export function nodeSchema(typeId: string, extra: Record<string, unknown> = {}) 
     $schema: META_SCHEMA,
     type: 'object',
     properties: {
-      id: { 'x-gts-ref': '/$id' },
-      peer: { type: 'string', 'x-gts-ref': `${typeId}*` },
+      id: { 'x-gts-instance-ref': '/$id' },
+      peer: { type: 'string', 'x-gts-instance-ref': `${typeId}*` },
       ...extra,
     },
     required: ['id'],
