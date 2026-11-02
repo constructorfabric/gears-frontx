@@ -40,7 +40,7 @@ description: "Specifies the cross-cutting policy under which each FrontX artifac
 
 This is a cross-cutting versioning and distribution policy with no single component. It establishes per-concern **independent** versioning: each FrontX artifact is published and versioned on its own semver line and cadence, a breaking change increments only that artifact's own major version, and the single compile-time coupling edge (`@gears-frontx/mfes → @gears-frontx/gts-plugin`) is bounded by a satisfiable semver range rather than a matched version number. Deprecation and removal are registry-side operations (npm deprecate plus a minimum window) — there is no in-package lifecycle-state field.
 
-A published package that offers a CommonJS entry alongside its ESM entry gives each module format its own declarations: every `exports` entry nests `types` inside each condition, the ESM `.d.ts` under `import` and the CommonJS `.d.cts` under `require`, so a TypeScript consumer resolves the declarations of the format it actually loads (`cpt-frontx-adr-dual-format-package-declarations`). A package whose own PRD declares it ESM-only, such as `@gears-frontx/ui-kit`, offers no `require` condition and is outside that rule.
+A published package that offers a CommonJS entry alongside its ESM entry gives each module format its own declarations: every `exports` entry nests `types` inside each condition, the ESM `.d.ts` under `import` and the CommonJS `.d.cts` under `require`, so a TypeScript consumer resolves the declarations of the format it actually loads (`cpt-frontx-adr-package-module-formats`). A package whose own PRD declares it ESM-only, such as `@gears-frontx/ui-kit`, offers no `require` condition and is outside that rule.
 
 ### 1.2 Purpose
 
@@ -65,7 +65,7 @@ Not applicable — there is no actor-facing usecase for this cross-cutting polic
 - **Component**: `cpt-frontx-component-ecosystem-version-policy` — this feature is that component's concrete spec: the version-policy check (`scripts/ecosystem-version-policy.mjs`) and the release conventions it asserts
 - **Dependencies**: None
 - **Contract**: `cpt-frontx-contract-package-registry-distribution`
-- **ADR**: `cpt-frontx-adr-dual-format-package-declarations`
+- **ADR**: `cpt-frontx-adr-package-module-formats`
 
 ## 2. Actor Flows (CDSL)
 
@@ -163,7 +163,7 @@ Traces to DESIGN `cpt-frontx-nfr-evolvability` verification and the principle: "
 
 - [x] `p1` - **ID**: `cpt-frontx-algo-ecosystem-distribution-dual-format-consumer-check`
 
-Traces to `cpt-frontx-adr-dual-format-package-declarations` and to the package-registry distribution interface (`cpt-frontx-interface-package-registry-distribution`): a package that offers a CommonJS entry must type-check for a CommonJS consumer as well as an ESM one. Realized by `scripts/verify-dual-format-consumers.mjs`, run in CI after the packages are built.
+Traces to `cpt-frontx-adr-package-module-formats` and to the package-registry distribution interface (`cpt-frontx-interface-package-registry-distribution`): a package that offers a CommonJS entry must type-check for a CommonJS consumer as well as an ESM one. Realized by `scripts/verify-dual-format-consumers.mjs`, run in CI after the packages are built.
 
 **Input**: The manifests of the published packages under `packages/`, and their built output.
 
