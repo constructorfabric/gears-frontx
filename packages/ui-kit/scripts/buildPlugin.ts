@@ -159,6 +159,8 @@ export function buildPlugin(): PluginOption[] {
         fs.copyFileSync('src/styles/theme.css', 'dist/theme.css');
         fs.copyFileSync('src/styles/utilities.css', 'dist/utilities.css');
         fs.copyFileSync('src/styles/typeset.css', 'dist/typeset.css');
+        fs.copyFileSync('scripts/grid-css.mjs', 'dist/frontx-ui-grid-css.mjs');
+        fs.chmodSync('dist/frontx-ui-grid-css.mjs', 0o755);
         fs.mkdirSync('dist/docs', { recursive: true });
         // src/styles/*.md alongside the per-component ones: typeset.md
         // documents a shipped stylesheet the same way a component doc

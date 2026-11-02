@@ -1,0 +1,50 @@
+/*
+ * The static part of Grid. The step rules (spans per container step, the
+ * gap, the fixed row track) are generated from the config into
+ * grid-steps.css by frontx-ui-grid-css and scoped by `data-fx-grid`, so
+ * they never depend on this module's hashed class names.
+ */
+
+/* The size container the step rules query; a container cannot query itself, hence the wrapper. */
+.root {
+  container: fx-grid / inline-size;
+  min-inline-size: 0;
+}
+
+/*
+ * Row tracks have the config's fixed size (generated `grid-auto-rows`), so
+ * a high item, two tracks and the row gap, is exactly as tall as two
+ * stacked lows with their gap. Not set here: a class would outrank the
+ * generated `:where()` rules.
+ */
+.grid {
+  display: grid;
+  min-inline-size: 0;
+}
+
+/*
+ * An item is stretched to its tracks by the grid; a one-column grid inside
+ * lets a single child (a Card) fill that height, and several children
+ * share it. Content taller than the tracks scrolls inside the item instead
+ * of growing the row over its neighbours.
+ */
+.item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-inline-size: 0;
+  min-block-size: 0;
+  overflow: auto;
+}
+
+/* Print in normal block flow: grid pagination of a tall item is poorly defined. */
+@media print {
+  .grid {
+    display: block;
+  }
+
+  .item {
+    display: block;
+    overflow: visible;
+    margin-block-end: var(--space-4);
+  }
+}
