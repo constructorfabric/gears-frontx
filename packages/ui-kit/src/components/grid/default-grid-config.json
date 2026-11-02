@@ -1,0 +1,17 @@
+{
+  "name": "default",
+  "columns": 12,
+  "rowHeight": "10rem",
+  "steps": [
+    { "name": "base", "minWidth": 0, "gap": "--space-4" },
+    { "name": "sm", "minWidth": 480, "gap": "--space-4" },
+    { "name": "md", "minWidth": 768, "gap": "--space-6" },
+    { "name": "lg", "minWidth": 1200, "gap": "--space-6" }
+  ],
+  "sizes": {
+    "small": { "base": { "min": 6, "preferred": 6, "max": 6 }, "sm": { "min": 4, "preferred": 6, "max": 6 }, "md": { "min": 3, "preferred": 3, "max": 4 }, "lg": { "min": 2, "preferred": 3, "max": 4 } },
+    "medium": { "base": { "min": 12, "preferred": 12, "max": 12 }, "sm": { "min": 6, "preferred": 6, "max": 12 }, "md": { "min": 4, "preferred": 6, "max": 8 }, "lg": { "min": 4, "preferred": 6, "max": 8 } },
+    "large": { "base": { "min": 12, "preferred": 12, "max": 12 }, "sm": { "min": 12, "preferred": 12, "max": 12 }, "md": { "min": 8, "preferred": 12, "max": 12 }, "lg": { "min": 7, "preferred": 12, "max": 12 } }
+  },
+  "heights": { "low": 1, "high": 2 }
+}

@@ -284,6 +284,14 @@ Rules for generated code:
   htmlFor/aria-describedby wiring — wire `FieldLabel`'s `htmlFor` to the
   control's `id` yourself, same as upstream shadcn; `data-invalid`/
   `data-disabled` are plain attributes you set, not derived state.
+- [Grid](dist/docs/grid.md): ordered block layout on 12 columns that
+  reacts to its own container width (Grid/GridItem); items declare a size
+  class small|medium|large (by default every span is 3, 6 or 12
+  columns) and a height low|high (one or two fixed row tracks), never a
+  span, plus a `layoutId` unique within the Grid. `flexible` on a Grid
+  lets spans move inside their ranges to fill rows. Direct GridItem
+  children only. A custom config needs its CSS from the
+  `frontx-ui-grid-css` command, imported once.
 - [Heading](dist/docs/heading.md): a heading on the type ramp;
   typography display|heading-1|heading-2 picks the role, `render` picks
   the element (default `h2`), so the outline level and the look stay

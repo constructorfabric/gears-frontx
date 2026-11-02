@@ -1,0 +1,43 @@
+component: grid-item
+
+intent: Provide one block with a stable placement identity, size class, and height class within a Grid.
+
+typical_uses:
+  - A panel within a responsive Grid group
+
+dont_use_when:
+  - situation: The block is outside a Grid
+    instead:
+      target: Native div
+
+accepts:
+  content: unconstrained
+
+invariants:
+  - id: distinct-identities
+    text: layoutId identifies placement within the Grid; HTML id remains a separate attribute.
+
+anti_patterns:
+  - dont: Reuse a layoutId in the same Grid
+    do_instead: Give every item a distinct stable layoutId.
+
+deprecations: {}
+
+attestations:
+  a11y:
+    outcome: unknown
+  rtl:
+    outcome: unknown
+
+examples:
+  good:
+    - title: A low block
+      code: <GridItem layoutId="alerts" size="small">Alerts</GridItem>
+  bad:
+    - title: Missing placement identity
+      code: <GridItem size="small">Alerts</GridItem>
+      why: Each item needs a layoutId for placement.
+
+family_membership:
+  name: grid
+  role: part

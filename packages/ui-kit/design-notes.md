@@ -46,7 +46,9 @@ generate screens consistently.
   with consumers/templates; the kit's contribution is composition recipes
   (see AI layer). The page header's frame is the exception: it ships as
   `PageHeader` - layout and slots only, no kit component inside - and what
-  fills it stays the consumer's.
+  fills it stays the consumer's. `Grid` is layout of the same kind: it
+  places blocks by size class on a container-width solve and holds no kit
+  component; what fills its items stays the consumer's.
 
 `data-table`, `date-picker`, `calendar`, `chart` and `sidebar` ship and are
 exported from `src/index.ts`. `data-table` brings `@tanstack/react-table` as

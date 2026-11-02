@@ -370,6 +370,7 @@ Nearly every property a consumer depends on is decided at build time and invisib
 - Re-applies the client-boundary directive to the emitted chunk of every source module that declared one, deriving the set from the source rather than from a maintained list.
 - Emits declarations and the re-export shims that make the per-component and per-plugin subpaths resolve under both module-resolution modes.
 - Copies the global stylesheets and the per-component usage documents into the published artifact.
+- Copies the grid stylesheet generator into the published artifact as the package's command, so a consumer generates the container-step rules for its own grid configuration with the same code that produced the kit's default ones.
 - Rewrites the emitted import of an external dependency that publishes subpaths as directories without an export map to the files those subpaths resolve to, read from each subpath's own manifest at build time, so a consumer that resolves the package's strict ES modules as fully specified can resolve them.
 
 ##### Responsibility boundaries — Package Build
@@ -491,6 +492,7 @@ The properties a consumer depends on most - that styles survive, that unimported
 | Per-plugin subpath | One opt-in plugin of a component that splits its extensions out (`<component>/<plugin>`), for a consumer that renders the component without paying for plugins it does not use. The package barrel re-exports these too. |
 | Global stylesheets | The token vocabulary, the utility layer and the type ramp, imported once by an application. |
 | Documentation index and per-component documents | The agent-facing description, read from the install. |
+| Package command `frontx-ui-grid-css` | Writes the container-step stylesheet for a grid configuration, for a consumer that brings its own columns, steps or span ranges. Container conditions cannot read custom properties, so the step widths must be literal in the stylesheet; the kit's default grid stylesheet is this command's output for the default configuration. |
 | Persisted view state | What the data-grid component stores in the browser's storage or the URL, under `dataGrid:<name>:<key>`. The keys and the shape of what is stored under them are kept from the grid's source (`cpt-frontx-ui-kit-adr-data-grid-port`), so a user's saved choices survive; renaming a key or changing a stored shape is a breaking change. |
 
 Two path shapes are deliberately not public: the internal component module layout, which is blocked in the export map so it stays free to change, and the contract artifacts, which are not in the published artifact at all (UIKIT-4).

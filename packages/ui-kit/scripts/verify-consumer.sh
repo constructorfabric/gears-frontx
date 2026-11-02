@@ -228,7 +228,7 @@ assert_exceljs_not_installed() {
 # Textarea/Separator as plain JSX (no hook of their own), same as card/
 # table/tabs above.
 CLIENT_COMPONENTS=(alert attachment badge breadcrumb bubble button-group card carousel chart code-block combobox command context-menu data-grid data-table drawer dropdown-menu empty heading input-otp item link marker page-header sidebar status-dot table text toast visually-hidden)
-SERVER_COMPONENTS=(accordion alert-dialog aspect-ratio avatar button calendar checkbox collapsible date-picker description-list dialog direction field hover-card input input-group kbd label menubar message message-scroller native-select navigation-menu pagination popover progress questionnaire radio-group resizable scroll-area select separator sheet skeleton slider spinner switch tabs textarea toggle toggle-group tooltip)
+SERVER_COMPONENTS=(accordion alert-dialog aspect-ratio avatar button calendar checkbox collapsible date-picker description-list dialog direction field grid hover-card input input-group kbd label menubar message message-scroller native-select navigation-menu pagination popover progress questionnaire radio-group resizable scroll-area select separator sheet skeleton slider spinner switch tabs textarea toggle toggle-group tooltip)
 
 in_list() {
   # $1: needle, $2+: haystack
@@ -523,6 +523,14 @@ echo "==> Asserting the AI docs layer ships with the installed package"
 KIT="$CONSUMER/node_modules/@gears-frontx/ui-kit"
 [ -f "$KIT/llms.txt" ] || { echo 'FAIL: llms.txt missing from the package'; exit 1; }
 [ -f "$KIT/dist/docs/button.md" ] || { echo 'FAIL: per-component docs missing from dist/docs'; exit 1; }
+
+# The Grid CSS command must work as installed: through the symlink npm puts
+# in node_modules/.bin, writing the same rules the kit ships for its default.
+echo "==> Asserting the installed frontx-ui-grid-css command writes the kit's default Grid CSS"
+[ -x "$CONSUMER/node_modules/.bin/frontx-ui-grid-css" ] || { echo 'FAIL: frontx-ui-grid-css bin not installed'; exit 1; }
+"$CONSUMER/node_modules/.bin/frontx-ui-grid-css" "$UIKIT_DIR/src/components/grid/default-grid-config.json" "$WORKDIR/grid-steps.css"
+cmp -s "$WORKDIR/grid-steps.css" "$UIKIT_DIR/src/components/grid/grid-steps.css" \
+  || { echo 'FAIL: installed frontx-ui-grid-css output differs from grid-steps.css'; exit 1; }
 
 echo
 echo "==> [esbuild-barrel] Scaffolding a raw-esbuild consumer (barrel import) in $WORKDIR/esbuild-barrel"

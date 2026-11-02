@@ -1,9 +1,10 @@
 {
   "name": "@gears-frontx/ui-kit",
-  "version": "0.4.10",
+  "version": "0.5.0",
   "description": "Standard React component base for FrontX templates - Base UI behavior, CSS Modules styling on semantic tokens, CVA variants",
   "type": "module",
   "types": "./dist/index.d.ts",
+  "bin": { "frontx-ui-grid-css": "./dist/frontx-ui-grid-css.mjs" },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
