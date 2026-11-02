@@ -121,8 +121,6 @@ Integration treatment (INT): the kit installation is the integration contract (`
 
 Applicability of the remaining checklist categories: **PERF** — Not applicable, because no latency or throughput budget is bound to the packaging form. **SEC** — Not applicable, because no secret material and no authentication surface are introduced by the packaging decision. **REL** — Not applicable, because there is no service-availability target; install and update run locally and on demand. **DATA** — Not applicable, because no persistent database or schema is defined here. **OPS** — Not applicable, because there are no runbooks or operational procedures for a local kit install. **COMPL** — Not applicable, because no regulatory obligation bears on the packaging form. **ARCH-ADR-008 (supersession)** — Not applicable, because this ADR supersedes no live ADR. **Review cadence**: revisit if the kit-manifest resource model cannot express a required framework capability, or if a distribution channel beyond the present source-reference install path becomes a requirement.
 
-Amended 2026-10-29 (#694): the kit is distributed by source reference only. Its package is private and no longer published to npm, since the kit installer consumes no npm artifact.
-
 ## Traceability
 
 - **PRD**: [PRD.md](../PRD.md)
