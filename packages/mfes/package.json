@@ -8,19 +8,34 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./unit-format": {
-      "types": "./dist/unit-format.d.ts",
-      "import": "./dist/unit-format.js",
-      "require": "./dist/unit-format.cjs"
+      "import": {
+        "types": "./dist/unit-format.d.ts",
+        "default": "./dist/unit-format.js"
+      },
+      "require": {
+        "types": "./dist/unit-format.d.cts",
+        "default": "./dist/unit-format.cjs"
+      }
     },
     "./unit-loader": {
-      "types": "./dist/unit-loader.d.ts",
-      "import": "./dist/unit-loader.js",
-      "require": "./dist/unit-loader.cjs"
+      "import": {
+        "types": "./dist/unit-loader.d.ts",
+        "default": "./dist/unit-loader.js"
+      },
+      "require": {
+        "types": "./dist/unit-loader.d.cts",
+        "default": "./dist/unit-loader.cjs"
+      }
     }
   },
   "files": [

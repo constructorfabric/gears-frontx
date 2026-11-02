@@ -83,6 +83,7 @@ Foundational:
 * `cpt-frontx-adr-artifact-versioning-and-distribution` — Distributes the ecosystem as independently published, per-concern, independently versioned artifacts.
 * `cpt-frontx-adr-core-package-boundaries` — Partitions the published libraries into boundary-governed concerns (runtime, type-system provider, protocol surface), and binds the routing capability's delivery as an engine-agnostic navigation substrate that also holds the FrontX router, plus a separate engine-provider package.
 * `cpt-frontx-adr-contract-schema-ownership` — Ends the circular DESIGN↔ADR schema deferral by assigning each owned contract's role to DESIGN, its decision rationale to the ADR, and its concrete field-level schema to the owning FEATURE.
+* `cpt-frontx-adr-dual-format-package-declarations` — Keeps the dual-format packages shipping ESM and CommonJS builds, and nests each format's declarations under its own `exports` condition so CommonJS consumers resolve the `.d.cts` files.
 * `cpt-frontx-adr-template-territory-traceability` — Fixes this artifact tree's subject as the ecosystem's own artifacts, leaves template payload unspecified by it, and declares a `@cpt-` marker found in template territory non-authoritative residue that binds nothing, wherever that territory lives.
 
 Published libraries:
@@ -352,6 +353,8 @@ Owns checks that classify workspace packages and account for member artifact cha
 - [ ] `p2` - **ID**: `cpt-frontx-interface-package-registry-distribution`
 
 FrontX packages are published to and installed from an npm-compatible package registry. Compatibility follows the root versioned-evolution requirement and member release policy.
+
+A package that offers a CommonJS entry alongside its ESM entry gives each module format its own declarations: every `exports` entry nests `types` inside its `import` condition (`.d.ts`) and inside its `require` condition (`.d.cts`), so a TypeScript consumer resolves the declarations of the file it loads. A member whose own PRD declares it ESM-only offers no `require` condition (`cpt-frontx-adr-dual-format-package-declarations`).
 
 Member public APIs are not repeated here. They are owned by each member's PRD and DESIGN.
 
