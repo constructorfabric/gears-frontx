@@ -171,10 +171,13 @@ session start — no training step.
 ```bash
 # Install the FrontX AI Tooling kit into a project (via Constructor Studio, not the frontx CLI).
 # The kit lives inside this monorepo, so install it from the repository subdirectory:
-cfs kit install git/https://github.com/constructorfabric/gears-frontx//packages/cyber-pilot-kit-frontx
+cfs kit install git/https://github.com/constructorfabric/gears-frontx.git//packages/cyber-pilot-kit-frontx
 
 # ...or from a local checkout of this repository:
 cfs kit install path/packages/cyber-pilot-kit-frontx
+
+# Write the agent integrations for the kit's skills
+cfs generate-agents
 
 # Update it later to a newer version
 cfs kit update cyber-pilot-kit-frontx

@@ -30,11 +30,16 @@ resources cannot collide with another kit installed in the same project.
 
 `cfs kit install` resolves a kit from GitHub, a generic Git URL, or a local
 directory. The kit lives in this monorepo, so it installs from the repository
-subdirectory:
+subdirectory. `cfs generate-agents` then writes the agent integrations for the
+kit's skills:
 
 ```sh
-cfs kit install git/https://github.com/constructorfabric/gears-frontx//packages/cyber-pilot-kit-frontx
+cfs kit install git/https://github.com/constructorfabric/gears-frontx.git//packages/cyber-pilot-kit-frontx
+cfs generate-agents
 ```
+
+The `.git` before `//` is required: in an `https://` source, Studio separates
+the subdirectory from the repository URL only at `.git//`.
 
 `--version` picks the Git reference to install: a tag, a branch, or a full
 commit SHA. See `cfs kit install --help`.
