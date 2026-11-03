@@ -313,7 +313,7 @@ describe('theme tokens', () => {
   // nothing else would notice it going missing from that list.
   it('scans the grid generated global stylesheet', () => {
     expect(
-      moduleFiles.some((file) => file.endsWith(GRID_STEPS_CSS)),
+      moduleFiles.some((file) => file.split(sep).join('/').endsWith(GRID_STEPS_CSS)),
       `${GRID_STEPS_CSS} missing from the token-seam scan`,
     ).toBe(true);
   });
