@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 // @cpt-flow:cpt-frontx-flow-cli-invocation-run-command:p1
 // @cpt-flow:cpt-frontx-flow-cli-invocation-help:p1
+// @cpt-flow:cpt-frontx-flow-cli-invocation-version:p1
 // @cpt-algo:cpt-frontx-algo-cli-invocation-parse-dispatch:p1
 // @cpt-state:cpt-frontx-state-cli-invocation-run:p1
 // @cpt-dod:cpt-frontx-dod-cli-invocation-executable-entrypoint:p1
 // @cpt-dod:cpt-frontx-dod-cli-invocation-usage-help:p1
+// @cpt-dod:cpt-frontx-dod-cli-invocation-version:p1
 // @cpt-dod:cpt-frontx-dod-cli-invocation-exit-codes:p1
 //
 // The `frontx` executable entrypoint (F18, `cpt-frontx-feature-cli-invocation`).
@@ -19,7 +21,7 @@
 import readline from 'node:readline/promises';
 import path from 'node:path';
 import process from 'node:process';
-import { realpathSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { installCommand } from './commands/install';
@@ -91,11 +93,13 @@ const KNOWN_COMMANDS = ['install', 'list', 'update-local', 'validate', 'seed', '
 export type KnownCommand = (typeof KNOWN_COMMANDS)[number];
 
 const HELP_TOKENS = new Set(['help', '-h', '--help']);
+const VERSION_TOKENS = new Set(['version', '-v', '--version']);
 
 export interface ParsedInvocation {
   command: string | undefined;
   args: string[];
   helpRequested: boolean;
+  versionRequested: boolean;
   unrecognized: boolean;
 }
 
@@ -116,11 +120,15 @@ export function parseInvocation(argv: string[]): ParsedInvocation {
   const helpRequested = command === undefined || HELP_TOKENS.has(command);
   // @cpt-end:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-if-help
 
+  // @cpt-begin:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-if-version
+  const versionRequested = command !== undefined && VERSION_TOKENS.has(command);
+  // @cpt-end:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-if-version
+
   // @cpt-begin:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-if-unknown
-  const unrecognized = !helpRequested && !KNOWN_COMMANDS.includes(command as KnownCommand);
+  const unrecognized = !helpRequested && !versionRequested && !KNOWN_COMMANDS.includes(command as KnownCommand);
   // @cpt-end:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-if-unknown
 
-  return { command, args, helpRequested, unrecognized };
+  return { command, args, helpRequested, versionRequested, unrecognized };
 }
 
 // --- usage/help (cpt-frontx-flow-cli-invocation-help) ---
@@ -138,6 +146,7 @@ export function usageText(): string {
     '  add <templateRef> <targetDir>           Add a template into an existing repository',
     '  upgrade <projectRoot> <targetVersion> [--yes] [--json]  Upgrade an applied template',
     '  help                                    Show this usage summary',
+    '  version                                 Print the installed CLI version',
     '',
     'A source-spec is host:owner/repo[//subtree]@ref — the optional //subtree',
     'addresses a template that occupies a subdirectory of a repository.',
@@ -562,10 +571,37 @@ export function helpOutcome(parsed: ParsedInvocation): CommandOutcome {
 }
 
 /**
+ * cpt-frontx-flow-cli-invocation-version — prints the version of the installed
+ * package, read from its own manifest: `../package.json` resolves to the
+ * package root from both `src/` and the published `dist/`.
+ */
+export function versionOutcome(): CommandOutcome {
+  // @cpt-begin:cpt-frontx-flow-cli-invocation-version:p1:inst-version-invoke
+  // entry: run() deferred here for an explicit version request (parsed by
+  // parseInvocation above).
+  // @cpt-end:cpt-frontx-flow-cli-invocation-version:p1:inst-version-invoke
+
+  // @cpt-begin:cpt-frontx-flow-cli-invocation-version:p1:inst-version-read
+  const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+    version: string;
+  };
+  // @cpt-end:cpt-frontx-flow-cli-invocation-version:p1:inst-version-read
+
+  // @cpt-begin:cpt-frontx-flow-cli-invocation-version:p1:inst-version-return
+  // @cpt-begin:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-return-version
+  // @cpt-begin:cpt-frontx-state-cli-invocation-run:p1:inst-st-req-version-success
+  return { exitCode: EXIT_SUCCESS, stdout: manifest.version };
+  // @cpt-end:cpt-frontx-state-cli-invocation-run:p1:inst-st-req-version-success
+  // @cpt-end:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-return-version
+  // @cpt-end:cpt-frontx-flow-cli-invocation-version:p1:inst-version-return
+}
+
+/**
  * cpt-frontx-flow-cli-invocation-run-command — top-level run: parses the
  * invocation, defers to help on no-command/help/unrecognized-command
- * (cpt-frontx-flow-cli-invocation-help), otherwise dispatches to the single
- * command surface, and always returns a mapped exit code
+ * (cpt-frontx-flow-cli-invocation-help) and to the version on a version
+ * request (cpt-frontx-flow-cli-invocation-version), otherwise dispatches to
+ * the single command surface, and always returns a mapped exit code
  * (cpt-frontx-state-cli-invocation-run).
  */
 export async function run(argv: string[], deps: CliDeps): Promise<CommandOutcome> {
@@ -581,9 +617,17 @@ export async function run(argv: string[], deps: CliDeps): Promise<CommandOutcome
   // @cpt-end:cpt-frontx-flow-cli-invocation-run-command:p1:inst-run-defer-help
   // @cpt-end:cpt-frontx-flow-cli-invocation-run-command:p1:inst-run-if-no-command
 
+  // @cpt-begin:cpt-frontx-flow-cli-invocation-run-command:p1:inst-run-if-version
+  // @cpt-begin:cpt-frontx-flow-cli-invocation-run-command:p1:inst-run-defer-version
+  if (parsed.versionRequested) {
+    return versionOutcome();
+  }
+  // @cpt-end:cpt-frontx-flow-cli-invocation-run-command:p1:inst-run-defer-version
+  // @cpt-end:cpt-frontx-flow-cli-invocation-run-command:p1:inst-run-if-version
+
   // The invocation parsed to a recognized command token and its arguments
-  // (neither help-requested nor unrecognized, having fallen through the
-  // deferral above) -> REQUESTED to PARSED.
+  // (neither help-requested, version-requested nor unrecognized, having fallen
+  // through the deferrals above) -> REQUESTED to PARSED.
   // @cpt-begin:cpt-frontx-state-cli-invocation-run:p1:inst-st-req-parsed
   const recognizedCommand = parsed.command as KnownCommand;
   // @cpt-end:cpt-frontx-state-cli-invocation-run:p1:inst-st-req-parsed
