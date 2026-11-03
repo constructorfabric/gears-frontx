@@ -144,6 +144,16 @@ describe('Grid CSS generator', () => {
     expect(existsSync(join(directory, '-steps.css'))).toBe(true);
   });
 
+  it('refuses an output path that is the config file and leaves the config intact', () => {
+    const input = join(tempDirectory(), 'config.json');
+    const source = JSON.stringify({ ...structuredClone(defaultGridConfig), name: 'same' });
+    writeFileSync(input, source);
+    const run = spawnSync(process.execPath, [COMMAND, input, input], { encoding: 'utf8' });
+    expect(run.status).toBe(1);
+    expect(run.stderr).toMatch(/is the config file/);
+    expect(readFileSync(input, 'utf8')).toBe(source);
+  });
+
   it('answers a third positional with the usage message', () => {
     const input = join(tempDirectory(), 'config.json');
     writeFileSync(input, JSON.stringify(defaultGridConfig));

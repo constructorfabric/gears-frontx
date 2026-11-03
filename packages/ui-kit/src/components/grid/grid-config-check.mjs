@@ -10,6 +10,8 @@
  */
 
 export const SIZE_CLASSES = ['small', 'medium', 'large'];
+// Bounds the solver's width loops, which run per column.
+const MAX_COLUMNS = 48;
 const NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
 const TOKEN_PATTERN = /^--[a-z][a-z0-9-]*$/;
 const LENGTH_PATTERN = /^(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem|em)$/;
@@ -17,9 +19,9 @@ const LENGTH_PATTERN = /^(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem|em)$/;
 function validRange(range, columns) {
   return (
     !!range &&
-    Number.isInteger(range.min) &&
-    Number.isInteger(range.preferred) &&
-    Number.isInteger(range.max) &&
+    Number.isSafeInteger(range.min) &&
+    Number.isSafeInteger(range.preferred) &&
+    Number.isSafeInteger(range.max) &&
     range.min >= 1 &&
     range.min <= range.preferred &&
     range.preferred <= range.max &&
@@ -41,7 +43,9 @@ export function validateGridConfig(config, { allowDefaultName = false } = {}) {
   if (!allowDefaultName && config.name === 'default') {
     throw new Error('Grid config name "default" belongs to defaultGridConfig; give a custom config its own name');
   }
-  if (!Number.isInteger(config.columns) || config.columns < 1) throw new Error('Grid columns must be an integer >= 1');
+  if (!Number.isSafeInteger(config.columns) || config.columns < 1 || config.columns > MAX_COLUMNS) {
+    throw new Error(`Grid columns must be an integer from 1 to ${MAX_COLUMNS}`);
+  }
   if (typeof config.rowHeight !== 'string' || !LENGTH_PATTERN.test(config.rowHeight) || parseFloat(config.rowHeight) <= 0) {
     throw new Error('Grid rowHeight must be a positive CSS length in px, rem or em');
   }
