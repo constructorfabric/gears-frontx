@@ -51,7 +51,7 @@ import {
   type StorePair,
   type WriterToken,
 } from './store-pair';
-import { describeFailure, writeInstance, writeSchema } from './type-store';
+import { REFERENCE_CHECK, describeFailure, writeInstance, writeSchema } from './type-store';
 
 /** Options for constructing a provider instance. */
 export interface GtsPluginOptions {
@@ -214,11 +214,13 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
    * (e.g., action payloads with no `id`), gts-ts uses the `type` field to
    * resolve the schema.
    *
-   * Validate-before-persist: `GtsStore` exposes no validate-only call and no
-   * call to remove an entity once registered, so a candidate is validated in
-   * a scratch store that mirrors the real one and is written to the real
-   * store only once it validates clean. A failed call leaves the real store
-   * exactly as it was.
+   * Validate-before-persist: a named candidate is validated in a scratch store
+   * that mirrors the real one, so validation sees the store as it would be after
+   * the write, and the candidate is written to the real store only once it
+   * validates clean. A rejected candidate is removed from the scratch store, or
+   * the held entity is written back over it. An anonymous instance is validated
+   * without being written (`GtsStore.validateTransientInstance`). A failed call
+   * leaves the real store exactly as it was.
    *
    * Instances keep the last write: a valid instance replaces what the store
    * held under its identifier.
@@ -251,7 +253,7 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-validate
     // @cpt-begin:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-05
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-schema-validation:p1:inst-sv-01
-    const result = this.pair.store.validateInstance(instanceId);
+    const result = this.pair.store.validateInstance(instanceId, REFERENCE_CHECK);
     const subject = { id: instanceId, entity: this.pair.store.get(instanceId) };
     // @cpt-end:cpt-frontx-algo-gts-type-provider-schema-validation:p1:inst-sv-01
     // @cpt-end:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-05

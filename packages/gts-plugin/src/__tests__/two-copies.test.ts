@@ -2,7 +2,7 @@
  * Two independently evaluated copies of the package in one realm: the host and
  * a microfrontend each load their own module graph, with their own GTS library.
  */
-import { GtsStore, type JsonEntity } from '@globaltypesystem/gts-ts';
+import { GtsStore, type GtsRefValidationMode, type JsonEntity } from '@globaltypesystem/gts-ts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ids, nodeSchema, publishedPair, resetRealm } from './realm-support';
 
@@ -33,9 +33,13 @@ function foreignize(pair: NonNullable<ReturnType<typeof publishedPair>>): void {
     unregister: (id: string) => real.unregister(id),
     get: (id: string) => real.get(id),
     getAll: () => real.getAll(),
-    validateInstance: (id: string) => real.validateInstance(id),
-    validateTransientInstance: (content: unknown, typeId: string, resultId: string | null) =>
-      real.validateTransientInstance(content, typeId, resultId),
+    validateInstance: (id: string, refValidation?: GtsRefValidationMode) => real.validateInstance(id, refValidation),
+    validateTransientInstance: (
+      content: unknown,
+      typeId: string,
+      resultId: string | null,
+      refValidation?: GtsRefValidationMode
+    ) => real.validateTransientInstance(content, typeId, resultId, refValidation),
   });
   Reflect.set(pair, 'store', forward(pair.store as GtsStore));
   Reflect.set(pair, 'scratch', forward(pair.scratch as GtsStore));

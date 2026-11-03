@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Gts, GtsStore } from '@globaltypesystem/gts-ts';
 import { GtsPlugin } from '../plugin';
+import { REFERENCE_CHECK } from '../type-store';
 import { createPair, keyName, slotKey } from '../store-pair';
 import { META_SCHEMA, ids, nodeSchema, publishedPair, resetRealm, thisCopyInputs } from './realm-support';
 
@@ -435,12 +436,64 @@ describe('anonymous instances', () => {
 
     expect(() => plugin.register({ type: MESSAGE, n: 1 })).not.toThrow();
     expect(() => plugin.register({ type: MESSAGE, n: 'one' })).toThrow(/GTS validation failed for instance '\(anonymous\)'/);
-    expect(() => plugin.register({ n: 1 })).toThrow(/GTS validation failed/);
+    expect(() => plugin.register({ n: 1 })).toThrow(/GTS validation failed[\s\S]*found no type identifier/);
 
     expect(ids(pair.store.getAll())).toEqual(before);
     expect(ids(pair.scratch.getAll())).toEqual(before);
     // A rejected payload touched nothing, so nothing was removed from the mirror.
     expect(pair.scratch).toBe(scratch);
+  });
+});
+
+describe('reference checks', () => {
+  const BROKEN = `${TYPE}test.realm.core.broken.v1~`;
+  const LISTER = 'gts.test.realm.core.lister.v1~';
+  const LISTING = 'gts.test.realm.core.listing.v1~';
+  const kinds = { type: 'array', items: { 'x-gts-type-ref': `${TYPE}*` } };
+  const setup = () => {
+    const plugin = new GtsPlugin({ isolated: true });
+    plugin.registerSchema(nodeSchema(TYPE));
+    // The library does not validate a type at registration, so it takes this one.
+    plugin.registerSchema({
+      $id: `gts://${BROKEN}`,
+      $schema: META_SCHEMA,
+      allOf: [{ $ref: `gts://${TYPE}` }],
+      properties: { legacy: { 'x-gts-ref': `${TYPE}*` } },
+    });
+    plugin.registerSchema({
+      $id: `gts://${LISTER}`,
+      $schema: META_SCHEMA,
+      type: 'object',
+      properties: { id: { 'x-gts-instance-ref': '/$id' }, kinds },
+      required: ['id'],
+    });
+    plugin.registerSchema({
+      $id: `gts://${LISTING}`,
+      $schema: META_SCHEMA,
+      type: 'object',
+      properties: { type: { 'x-gts-type-ref': '/$id' }, kinds },
+      required: ['type'],
+    });
+    return plugin;
+  };
+
+  // Pins the library mode (`any-present`): under `any-valid` the broken type fails every entity that lists it.
+  it('a referenced entity only has to be on the store, not valid', () => {
+    const plugin = setup();
+    const id = `${LISTER}test.realm.core.l1.v1`;
+
+    expect(() => plugin.register({ id, kinds: [BROKEN] })).not.toThrow();
+    expect(plugin.validateInstance(id).valid).toBe(true);
+    expect(() => plugin.register({ type: LISTING, kinds: [BROKEN] })).not.toThrow();
+  });
+
+  it('still rejects a reference to an entity not on the store and an instance of a type the library rejects', () => {
+    const plugin = setup();
+    const missing = `${TYPE}test.realm.core.missing.v1~`;
+
+    expect(() => plugin.register({ id: `${LISTER}test.realm.core.l2.v1`, kinds: [missing] })).toThrow(/GTS validation failed/);
+    expect(() => plugin.register({ type: LISTING, kinds: [missing] })).toThrow(/GTS validation failed/);
+    expect(() => plugin.register({ id: `${BROKEN}test.realm.core.b1.v1` })).toThrow(/GTS validation failed/);
   });
 });
 
@@ -465,7 +518,7 @@ describe('instance write order', () => {
     const write = vi.spyOn(pair.store, 'register');
 
     expect(() => plugin.register({ id })).not.toThrow();
-    expect(validate).toHaveBeenCalledWith(id);
+    expect(validate).toHaveBeenCalledWith(id, REFERENCE_CHECK);
     expect(write).not.toHaveBeenCalled();
   });
 
