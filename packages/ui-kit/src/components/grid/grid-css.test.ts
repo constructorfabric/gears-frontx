@@ -19,6 +19,7 @@ const USAGE = /^Usage: frontx-ui-grid-css \[--kit-default\] <config\.json\|confi
 interface GeneratorRun {
   status: number;
   stderr: string;
+  stdout: string;
   css?: string;
 }
 
@@ -40,6 +41,7 @@ function runCommand(input: string, { kitDefault = false, extra = [], args }: { k
   return {
     status: run.status ?? 1,
     stderr: run.stderr,
+    stdout: run.stdout,
     css: existsSync(output) ? readFileSync(output, 'utf8') : undefined,
   };
 }
@@ -117,9 +119,16 @@ describe('Grid CSS generator', () => {
   // Exactly one option and two positionals are readable; anything else gets
   // the usage line rather than a failed file read further in. The flag shapes
   // carry no input file: a flag read as a filename must never get that far.
+  it.each([['--help'], ['-h']])('answers %s with the usage text and success', (flag) => {
+    const run = runCommand('', { args: [flag] });
+    expect(run.status).toBe(0);
+    expect(run.stdout).toMatch(USAGE);
+    expect(run.css).toBeUndefined();
+  });
+
   it.each([
-    [['--help']],
     [['--out', '--kit-wide']],
+    [['-x', 'config.json']],
   ] as const)('answers %j with the usage message', (args) => {
     const run = runCommand('', { args: [...args] });
     expect(run.status).toBe(1);

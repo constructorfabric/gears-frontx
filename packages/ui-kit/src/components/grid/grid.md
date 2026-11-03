@@ -83,7 +83,7 @@ The example is valid JSON and passes the config validator unchanged:
 - `columns` is an integer >= 1.
 - `rowHeight` is a positive length in px, rem or em.
 - `steps[]` carries `name`, `minWidth` in px with the first step at 0 and the widths strictly increasing, and `gap`, a spacing token name such as `--space-4`.
-- `sizes.<small|medium|large>.<step>` carries the span range with `min <= preferred <= max <= columns`.
+- `sizes.<small|medium|large>.<step>` carries the span range with `1 <= min <= preferred <= max <= columns`.
 
 Generate the step CSS and import it once beside the kit's own:
 

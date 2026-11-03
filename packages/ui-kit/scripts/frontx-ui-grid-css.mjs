@@ -39,11 +39,15 @@ async function main() {
   const args = process.argv.slice(2);
   const kitDefault = args.includes('--kit-default');
   const positionals = args.filter(argument => argument !== '--kit-default');
-  // One option and two positionals: any other --word is a mistyped invocation
-  // (--help included, the usage text is its answer), and any other arity has
-  // no reading, so both stop here instead of surfacing later as a missing or
-  // misread file.
-  if (args.some(argument => argument.startsWith('--') && argument !== '--kit-default') || positionals.length !== 2) {
+  // An explicit help request succeeds: the usage text on stdout, exit 0.
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log(USAGE);
+    return;
+  }
+  // One option and two positionals: any other -word is a mistyped invocation,
+  // and any other arity has no reading, so both stop here instead of surfacing
+  // later as a missing or misread file.
+  if (args.some(argument => argument.startsWith('-') && argument !== '--kit-default') || positionals.length !== 2) {
     throw new Error(USAGE);
   }
   const [input, output] = positionals;
