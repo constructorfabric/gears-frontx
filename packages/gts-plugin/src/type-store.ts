@@ -13,7 +13,7 @@
  * @packageDocumentation
  */
 
-import { Gts, createJsonEntity, type JsonEntity } from '@globaltypesystem/gts-ts';
+import { Gts, GtsRefValidationMode, createJsonEntity, type JsonEntity } from '@globaltypesystem/gts-ts';
 import { canonicalText, copyContent, cyrb53, deepCopyJson, sameContent } from './canonical';
 import { FRONTX_SHARED_PROPERTY_PATTERN } from './constants';
 import { keyName, type StorePair, type WriterToken } from './store-pair';
@@ -22,6 +22,15 @@ import { keyName, type StorePair, type WriterToken } from './store-pair';
 // @cpt-algo:cpt-frontx-algo-gts-type-provider-instance-write:p1
 // @cpt-algo:cpt-frontx-algo-gts-type-provider-mirror-restore:p1
 
+
+/**
+ * The reference check every validation asks of the library: a referenced entity
+ * only has to be on the store, not valid. Every stored instance was validated
+ * when it was written, but a type is not validated when it is registered. A
+ * validity check would let one type the library rejects fail every entity that
+ * lists it, and would validate a dispatch target's references again on every action.
+ */
+export const REFERENCE_CHECK = GtsRefValidationMode.AnyPresent;
 
 export function safeStringify(value: unknown): string {
   try {
@@ -237,8 +246,17 @@ export function writeInstance(pair: StorePair, token: WriterToken, entity: JsonE
     // The library stores no instance without an identifier. An anonymous
     // payload is validated against the store and never written; nothing reads
     // one back. A transient result carries no `valid` flag, so `ok` is the verdict.
+    const typeId = entity.schemaId;
+    if (!typeId) {
+      // Without a type identifier the library's answer would carry an empty reason.
+      raiseInvalid(
+        pair,
+        entity,
+        'the GTS library found no type identifier in this anonymous instance; an action payload names its type in its `type` field'
+      );
+    }
     const failure = failureOf(() => {
-      const result = store.validateTransientInstance(entity.content, entity.schemaId ?? '', null);
+      const result = store.validateTransientInstance(entity.content, typeId, null, REFERENCE_CHECK);
       return result.ok ? undefined : (result.error || 'unknown validation error');
     });
     if (failure !== undefined) raiseInvalid(pair, entity, failure);
@@ -251,7 +269,7 @@ export function writeInstance(pair: StorePair, token: WriterToken, entity: JsonE
   // always comes from the library, never from an earlier call.
   const failure = failureOf(() => {
     scratch.register(entity);
-    const result = scratch.validateInstance(id);
+    const result = scratch.validateInstance(id, REFERENCE_CHECK);
     if (result.ok && result.valid) return undefined;
     return result.ok ? 'schema validation returned invalid' : (result.error || 'unknown validation error');
   });

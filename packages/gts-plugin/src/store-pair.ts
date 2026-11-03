@@ -14,7 +14,7 @@
  * @packageDocumentation
  */
 
-import type { JsonEntity, ValidationResult as GtsValidationResult } from '@globaltypesystem/gts-ts';
+import type { GtsRefValidationMode, JsonEntity, ValidationResult as GtsValidationResult } from '@globaltypesystem/gts-ts';
 import { canonicalText, cyrb53 } from './canonical';
 
 // @cpt-algo:cpt-frontx-algo-gts-type-provider-realm-store-rendezvous:p1
@@ -34,8 +34,13 @@ export interface StoreLike {
   unregister(id: string): void;
   get(id: string): JsonEntity | undefined;
   getAll(): JsonEntity[];
-  validateInstance(id: string): GtsValidationResult;
-  validateTransientInstance(content: unknown, typeId: string, resultId: string | null): GtsValidationResult;
+  validateInstance(id: string, refValidation?: GtsRefValidationMode): GtsValidationResult;
+  validateTransientInstance(
+    content: unknown,
+    typeId: string,
+    resultId: string | null,
+    refValidation?: GtsRefValidationMode
+  ): GtsValidationResult;
 }
 
 /** Identifies one evaluated copy; its ordinal names the copy in warnings. */
