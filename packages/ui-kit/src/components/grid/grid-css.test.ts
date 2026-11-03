@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -149,6 +149,19 @@ describe('Grid CSS generator', () => {
     const source = JSON.stringify({ ...structuredClone(defaultGridConfig), name: 'same' });
     writeFileSync(input, source);
     const run = spawnSync(process.execPath, [COMMAND, input, input], { encoding: 'utf8' });
+    expect(run.status).toBe(1);
+    expect(run.stderr).toMatch(/is the config file/);
+    expect(readFileSync(input, 'utf8')).toBe(source);
+  });
+
+  it('refuses an output that is a symlink to the config and leaves the config intact', () => {
+    const directory = tempDirectory();
+    const input = join(directory, 'config.json');
+    const source = JSON.stringify({ ...structuredClone(defaultGridConfig), name: 'linked' });
+    writeFileSync(input, source);
+    const alias = join(directory, 'alias.css');
+    symlinkSync(input, alias);
+    const run = spawnSync(process.execPath, [COMMAND, input, alias], { encoding: 'utf8' });
     expect(run.status).toBe(1);
     expect(run.stderr).toMatch(/is the config file/);
     expect(readFileSync(input, 'utf8')).toBe(source);

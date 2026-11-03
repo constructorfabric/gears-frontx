@@ -16,7 +16,7 @@ describe('Grid config', () => {
     ['name', (c: GridConfig) => { c.name = 'bad name'; }, /name/],
     ['columns', (c: GridConfig) => { c.columns = 0; }, /columns/],
     ['columns above the bound', (c: GridConfig) => { c.columns = 49; }, /1 to 48/],
-    ['columns beyond safe integers', (c: GridConfig) => { c.columns = 2 ** 53; }, /1 to 48/],
+    ['very large columns', (c: GridConfig) => { c.columns = 2 ** 53; }, /1 to 48/],
     ['fractional range min', (c: GridConfig) => { c.sizes.small.base.min = 1.5; }, /small.*base/],
     ['missing row height', (c: GridConfig) => { delete (c as Partial<GridConfig>).rowHeight; }, /rowHeight/],
     ['unitless row height', (c: GridConfig) => { c.rowHeight = '160'; }, /rowHeight/],
