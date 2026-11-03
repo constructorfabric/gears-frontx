@@ -37,7 +37,10 @@ export function validateGridLayout(
       const p = result.placements[item.layoutId];
       if (!p || typeof p !== 'object') throw new Error(`Grid layout placement for ${item.layoutId} is missing at ${step.name}`);
       // Read straight off the config, not through the solver's own range lookup.
-      const range = config.sizes[item.size][step.name];
+      const range = config.sizes[item.size]?.[step.name];
+      if (!range) {
+        throw new Error(`Grid config has no ${step.name} range for size ${item.size}, needed to check ${item.layoutId}`);
+      }
       const min = flexible ? range.min : range.preferred;
       const max = flexible ? range.max : range.preferred;
       const integers = [p.colStart, p.colSpan, p.rowStart, p.rowSpan].every(Number.isInteger);
@@ -64,7 +67,9 @@ export function validateGridLayout(
     let holes = 0;
     for (const cells of matrix) {
       const last = cells.lastIndexOf(true);
-      if (last < 0 || cells.slice(0, last + 1).includes(false)) {
+      // A row no item reaches is not a hole inside a row: it gets its own message.
+      if (last < 0) throw new Error(`Grid layout has an empty row at ${step.name}`);
+      if (cells.slice(0, last + 1).includes(false)) {
         throw new Error(`Grid layout has an internal hole at ${step.name}`);
       }
       holes += config.columns - last - 1;

@@ -12,6 +12,10 @@ const DIRECTORY = dirname(fileURLToPath(import.meta.url));
 const COMMAND = join(DIRECTORY, '../../../scripts/frontx-ui-grid-css.mjs');
 const COMMITTED = join(DIRECTORY, 'grid-steps.css');
 
+// The usage line the command answers every malformed invocation with; pinned
+// here because the DESIGN.md frontx-ui-grid-css row names the same arguments.
+const USAGE = /^Usage: frontx-ui-grid-css \[--kit-default\] <config\.json\|config\.mjs\|config\.js> <output\.css>\n$/;
+
 interface GeneratorRun {
   status: number;
   stderr: string;
@@ -27,11 +31,12 @@ function tempDirectory(): string {
 }
 
 // One helper owns the temp directory and the spawn: every case runs the command
-// the way a consumer does, over a file on disk.
-function runCommand(input: string, { kitDefault = false } = {}): GeneratorRun {
+// the way a consumer does, over a file on disk. `args` replaces the standard
+// input/output pair for invocations that never reach a file.
+function runCommand(input: string, { kitDefault = false, extra = [], args }: { kitDefault?: boolean; extra?: string[]; args?: string[] } = {}): GeneratorRun {
   const output = join(tempDirectory(), 'grid-steps.css');
-  const args = kitDefault ? ['--kit-default', input, output] : [input, output];
-  const run = spawnSync(process.execPath, [COMMAND, ...args], { encoding: 'utf8' });
+  const argv = args ?? [...(kitDefault ? ['--kit-default'] : []), input, output, ...extra];
+  const run = spawnSync(process.execPath, [COMMAND, ...argv], { encoding: 'utf8' });
   return {
     status: run.status ?? 1,
     stderr: run.stderr,
@@ -54,6 +59,17 @@ describe('Grid CSS generator', () => {
     const run = runGenerator(defaultGridConfig, { kitDefault: true });
     expect(run.status).toBe(0);
     expect(run.css, 'stale grid-steps.css: run npm run grid:css -w @gears-frontx/ui-kit').toBe(readFileSync(COMMITTED, 'utf8'));
+  });
+
+  // grid.md's config example is documentation a consumer copies verbatim, so
+  // it must be JSON the command accepts as written.
+  it('generates from the json config example in grid.md', () => {
+    const doc = readFileSync(join(DIRECTORY, 'grid.md'), 'utf8');
+    const block = /```json\n([\s\S]*?)\n```/.exec(doc)?.[1];
+    expect(block, 'grid.md carries no ```json config example').toBeDefined();
+    const run = runGenerator(JSON.parse(block!) as GridConfig);
+    expect(run.status).toBe(0);
+    expect(run.stderr).toBe('');
   });
 
   it('scopes a custom config by its name and its own fallbacks', () => {
@@ -96,6 +112,28 @@ describe('Grid CSS generator', () => {
     const admitted = runGenerator(structuredClone(defaultGridConfig), { kitDefault: true });
     expect(admitted.status).toBe(0);
     expect(admitted.css).toBe(readFileSync(COMMITTED, 'utf8'));
+  });
+
+  // Exactly one option and two positionals are readable; anything else gets
+  // the usage line rather than a failed file read further in. The flag shapes
+  // carry no input file: a flag read as a filename must never get that far.
+  it.each([
+    [['--help']],
+    [['--out', '--kit-wide']],
+  ] as const)('answers %j with the usage message', (args) => {
+    const run = runCommand('', { args: [...args] });
+    expect(run.status).toBe(1);
+    expect(run.stderr).toMatch(USAGE);
+    expect(run.css).toBeUndefined();
+  });
+
+  it('answers a third positional with the usage message', () => {
+    const input = join(tempDirectory(), 'config.json');
+    writeFileSync(input, JSON.stringify(defaultGridConfig));
+    const run = runCommand(input, { extra: [join(tempDirectory(), 'extra.css')] });
+    expect(run.status).toBe(1);
+    expect(run.stderr).toMatch(USAGE);
+    expect(run.css).toBeUndefined();
   });
 
   it('generates in process what the command writes for a custom config', () => {

@@ -2,7 +2,7 @@
 /*
  * frontx-ui-grid-css: writes the Grid step rules for a config.
  *
- *   frontx-ui-grid-css [--kit-default] <config.json | config.mjs> <output.css>
+ *   frontx-ui-grid-css [--kit-default] <config.json|config.mjs|config.js> <output.css>
  *
  * `@container` conditions cannot read `var()`, so every container step width
  * has to be a literal in CSS; this command turns a GridConfig into those
@@ -13,15 +13,19 @@
  * default.
  *
  * `default` is the kit's own scope: the command refuses a config under that
- * name unless --kit-default is given, and only the kit's own `grid:css`
- * script passes it, so a custom stylesheet cannot shadow the shipped one.
+ * name unless --kit-default is given. The flag is public on the installed bin
+ * and is meant for regenerating the kit's own stylesheet, which the kit's
+ * `grid:css` script and the consumer acceptance do; it guards against a
+ * custom config accidentally shadowing the shipped rules, not against doing
+ * so on purpose.
  *
  * The generator and the config checks it runs live in the component
- * directory, and the specifier below is package-relative on purpose: the
- * build copies both into dist under that same path, so one specifier resolves
- * from scripts/ in the repository and from the bin's dist copy after a build.
- * The command stays in scripts/ because it alone needs the Node builtins the
- * component source may not import.
+ * directory. The build copies grid-css.mjs and grid-config-check.mjs flat
+ * into dist/ beside the bin and rewrites the one import specifier below to
+ * './grid-css.mjs', a rewrite buildPlugin.ts guards by refusing to copy when
+ * this specifier text moves, so the specifier stays as written unless the
+ * copy step changes with it. The command stays in scripts/ because it alone
+ * needs the Node builtins the component source may not import.
  */
 import { readFile, writeFile } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
@@ -29,11 +33,20 @@ import { pathToFileURL } from 'node:url';
 
 import { generateGridCss } from '../src/components/grid/grid-css.mjs';
 
+const USAGE = 'Usage: frontx-ui-grid-css [--kit-default] <config.json|config.mjs|config.js> <output.css>';
+
 async function main() {
   const args = process.argv.slice(2);
   const kitDefault = args.includes('--kit-default');
-  const [input, output] = args.filter(argument => argument !== '--kit-default');
-  if (!input || !output) throw new Error('Usage: frontx-ui-grid-css [--kit-default] <config.json|config.mjs> <output.css>');
+  const positionals = args.filter(argument => argument !== '--kit-default');
+  // One option and two positionals: any other --word is a mistyped invocation
+  // (--help included, the usage text is its answer), and any other arity has
+  // no reading, so both stop here instead of surfacing later as a missing or
+  // misread file.
+  if (args.some(argument => argument.startsWith('--') && argument !== '--kit-default') || positionals.length !== 2) {
+    throw new Error(USAGE);
+  }
+  const [input, output] = positionals;
   const path = resolve(input);
   const extension = extname(path);
   if (extension !== '.json' && extension !== '.mjs' && extension !== '.js') {
