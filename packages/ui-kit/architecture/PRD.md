@@ -119,6 +119,7 @@ Inside this repository the package additionally carries the contract tooling: a 
 ### 4.1 In Scope
 
 - The published component surface: components, their styles, their public entry points and the package's export map.
+- The package command `frontx-ui-grid-css` and the default grid configuration shipped with it.
 - The semantic token vocabulary and the theme mechanism every component's styling is expressed through.
 - The client-boundary classification of the published components.
 - The agent-facing documentation shipped inside the package: the index and one usage document per component.
@@ -381,7 +382,7 @@ The root PRD's §6.2 exclusions apply here for the same reasons stated there, wi
 
 **Stability**: unstable
 
-**Description**: The component surface, published as an ECMAScript-module package with a barrel entry, a per-component subpath entry, three global stylesheets, and TypeScript declarations resolvable under both module-resolution modes. Internal module paths are explicitly unreachable.
+**Description**: The component surface, published as an ECMAScript-module package with a barrel entry, a per-component subpath entry, three global stylesheets, and TypeScript declarations resolvable under both module-resolution modes. The package publishes the `frontx-ui-grid-css` command and the default grid configuration as data (`grid-default-config.json`), the pair the Grid's generated step stylesheet comes from. Internal module paths are explicitly unreachable.
 
 **Documentation Obligation**: Every exported component **MUST** have a usage document in the published artifact and an entry in the shipped index.
 

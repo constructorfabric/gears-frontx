@@ -37,6 +37,14 @@
     {
       "dont": "Put a fragment or wrapper between Grid and GridItem",
       "do_instead": "Pass direct GridItem elements or arrays of them."
+    },
+    {
+      "dont": "Reuse a layoutId within one Grid",
+      "do_instead": "Give every item its own layoutId; Grid keys items and placements by it."
+    },
+    {
+      "dont": "Render a custom config without the step CSS generated for it",
+      "do_instead": "Run frontx-ui-grid-css on the config and import the stylesheet once."
     }
   ],
   "deprecations": {},
@@ -54,7 +62,7 @@
       "because": "ReactNode includes wrappers, fragments, and text that Grid rejects at runtime."
     },
     "config": {
-      "states": "config is an immutable GridConfig shared with its generated step CSS, including the fixed row track",
+      "states": "config is a GridConfig shared with its generated step CSS, including the fixed row track",
       "because": "The schema cannot express the nested step-to-size-range relationship or CSS generation contract."
     }
   },
@@ -104,7 +112,7 @@
         "description": "Partially typed: ReactNode. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. children are direct GridItem elements, arrays, or empty conditional entries. ReactNode includes wrappers, fragments, and text that Grid rejects at runtime."
       },
       "config": {
-        "description": "Partially typed: GridConfig | undefined. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. config is an immutable GridConfig shared with its generated step CSS, including the fixed row track. The schema cannot express the nested step-to-size-range relationship or CSS generation contract."
+        "description": "Partially typed: GridConfig | undefined. The compiler emits one JSON type per property and none for this one; shape checked by tsc, see x-uikit.partially_typed_props. config is a GridConfig shared with its generated step CSS, including the fixed row track. The schema cannot express the nested step-to-size-range relationship or CSS generation contract."
       },
       "flexible": {
         "type": "boolean",

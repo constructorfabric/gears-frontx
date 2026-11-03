@@ -159,8 +159,28 @@ export function buildPlugin(): PluginOption[] {
         fs.copyFileSync('src/styles/theme.css', 'dist/theme.css');
         fs.copyFileSync('src/styles/utilities.css', 'dist/utilities.css');
         fs.copyFileSync('src/styles/typeset.css', 'dist/typeset.css');
-        fs.copyFileSync('scripts/grid-css.mjs', 'dist/frontx-ui-grid-css.mjs');
+        // The grid CSS command is a plain file, not a build entry, so it ships
+        // by copy. In the repository it runs the generator and the config
+        // checks from the component directory, where they live with the
+        // component; the dist copy reads them from beside itself, so the copy
+        // rewrites that one specifier and the two files are copied next to the
+        // command. The guard keeps the rewrite honest: a renamed specifier in
+        // the source fails the build here instead of shipping a broken bin.
+        // The default config ships as data for the ./grid-default-config.json
+        // export, so the kit's default stylesheet can be regenerated from the
+        // install.
+        const commandSource = fs.readFileSync('scripts/frontx-ui-grid-css.mjs', 'utf8');
+        const repositorySpecifier = "from '../src/components/grid/grid-css.mjs'";
+        if (!commandSource.includes(repositorySpecifier)) {
+          throw new Error(
+            'buildPlugin: frontx-ui-grid-css.mjs no longer imports the grid generator by the repository specifier this copy step rewrites',
+          );
+        }
+        fs.writeFileSync('dist/frontx-ui-grid-css.mjs', commandSource.replace(repositorySpecifier, "from './grid-css.mjs'"));
         fs.chmodSync('dist/frontx-ui-grid-css.mjs', 0o755);
+        fs.copyFileSync('src/components/grid/grid-css.mjs', 'dist/grid-css.mjs');
+        fs.copyFileSync('src/components/grid/grid-config-check.mjs', 'dist/grid-config-check.mjs');
+        fs.copyFileSync('src/components/grid/default-grid-config.json', 'dist/grid-default-config.json');
         fs.mkdirSync('dist/docs', { recursive: true });
         // src/styles/*.md alongside the per-component ones: typeset.md
         // documents a shipped stylesheet the same way a component doc

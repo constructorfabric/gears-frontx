@@ -525,10 +525,12 @@ KIT="$CONSUMER/node_modules/@gears-frontx/ui-kit"
 [ -f "$KIT/dist/docs/button.md" ] || { echo 'FAIL: per-component docs missing from dist/docs'; exit 1; }
 
 # The Grid CSS command must work as installed: through the symlink npm puts
-# in node_modules/.bin, writing the same rules the kit ships for its default.
+# in node_modules/.bin, writing the same rules the kit ships for its default,
+# from the default config the package ships as data.
 echo "==> Asserting the installed frontx-ui-grid-css command writes the kit's default Grid CSS"
 [ -x "$CONSUMER/node_modules/.bin/frontx-ui-grid-css" ] || { echo 'FAIL: frontx-ui-grid-css bin not installed'; exit 1; }
-"$CONSUMER/node_modules/.bin/frontx-ui-grid-css" "$UIKIT_DIR/src/components/grid/default-grid-config.json" "$WORKDIR/grid-steps.css"
+[ -f "$KIT/dist/grid-default-config.json" ] || { echo 'FAIL: grid-default-config.json missing from the package'; exit 1; }
+"$CONSUMER/node_modules/.bin/frontx-ui-grid-css" --kit-default "$KIT/dist/grid-default-config.json" "$WORKDIR/grid-steps.css"
 cmp -s "$WORKDIR/grid-steps.css" "$UIKIT_DIR/src/components/grid/grid-steps.css" \
   || { echo 'FAIL: installed frontx-ui-grid-css output differs from grid-steps.css'; exit 1; }
 

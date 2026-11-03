@@ -84,6 +84,7 @@ graph TD
     subgraph Published[Published artifact]
         Comp["Components (one build entry each, plus one per opt-in plugin)"]
         Tokens["Token system (theme, utilities, typeset)"]
+        GridCss["Grid CSS command and default grid config"]
         Docs["Agent documentation (index + per-component docs)"]
     end
     subgraph Repo[Repository only]
@@ -92,6 +93,7 @@ graph TD
         Artifacts["Committed contracts and shared schemas"]
     end
     Comp --> Tokens
+    Comp -- "grid step CSS" --> GridCss
     Comp -- "behaviour" --> Primitives["Headless primitives"]
     Harness -- "reads props, axes, heritage" --> Comp
     Overlay -- "meaning only" --> Harness
@@ -103,7 +105,7 @@ graph TD
 
 | Layer | Responsibility | Technology |
 |-------|---------------|------------|
-| Component surface | The exported components, their styles, their public entry points and the export map | React over TypeScript; headless primitives for behaviour; CSS Modules for styling; a variant-authoring library for the axes |
+| Component surface | The exported components, their styles, their public entry points and the export map | React over TypeScript; headless primitives for behaviour; CSS Modules for styling, with one generated global stylesheet for the Grid's container steps; a variant-authoring library for the axes |
 | Appearance vocabulary | The tokens every component's styling consumes, and the theme selection over them | Plain CSS custom properties in three global stylesheets |
 | Package build | One entry per component and per opt-in plugin, per-entry style emission, client-directive preservation, declaration emission and documentation copying | Library-mode bundler with a package-local build plugin |
 | Agent documentation | A usage document per component and the index that lists them, shipped inside the artifact | Markdown, copied into the artifact at build |
@@ -153,7 +155,7 @@ Three local forms are admitted beside the vocabulary, and nothing else:
 - **A consumer-override hook**, `--<component>-*`, named after the component's directory so that a component made of many stylesheets has one hook namespace. The kit never sets one; a consumer does. Hooks are API: documented in the component's usage document, renamed only as a breaking change.
 - **A private variable**, `--_<component>-*`: plumbing one stylesheet of the component (or its code, inline) sets and another reads. It is not API, may be renamed freely, and is never documented as a hook. The leading underscore is the kit's existing private form (the scroll-fade utility uses it).
 
-A hook and a private variable are both read with a fallback that is the kit default, so neither can resolve to nothing whether or not anyone sets it. A stylesheet may SET another component's documented hook - that is how a composition hands a value to a part it renders - but may not READ another component's variables; a composition that needs a value another component computes gets it through that component's own surface, not by reaching into its stylesheet.
+A hook and a private variable are both read with a fallback that is the kit default, so neither can resolve to nothing whether or not anyone sets it. A stylesheet may SET another component's documented hook - that is how a composition hands a value to a part it renders - but may not READ another component's variables; a composition that needs a value another component computes gets it through that component's own surface, not by reaching into its stylesheet. A component's generated global stylesheet, the grid's `grid-steps.css`, is held to the same rule as its module stylesheets.
 
 #### UIKIT-3 - A standalone published-libraries member that is not core
 
@@ -465,6 +467,7 @@ The properties a consumer depends on most - that styles survive, that unimported
 - Asserts both directions on each: the imported component's code and styles present, every other component's absent, using probes taken from the just-built artifact rather than hardcoded. For a component whose plugins are entries of their own, the same in miniature: its core entry alone carries none of its plugins, and a plugin imported by its subpath brings its own styles and no other plugin's.
 - Asserts that no emitted file imports an optional peer and that each consumer builds with it absent, and that a third-party library one plugin brings is absent from every build that does not import that plugin, using a literal from the library's code as the probe.
 - Asserts that the artifact carries the documentation index and the per-component documents.
+- Asserts that the installed package command runs from the consumer's bin link and writes the kit's default grid stylesheet from the shipped default config.
 - Asserts the client-boundary classification against the built artifact, including every plugin entry, and fails on a component the classification does not mention.
 
 ##### Responsibility boundaries — Consumer Acceptance
@@ -492,7 +495,7 @@ The properties a consumer depends on most - that styles survive, that unimported
 | Per-plugin subpath | One opt-in plugin of a component that splits its extensions out (`<component>/<plugin>`), for a consumer that renders the component without paying for plugins it does not use. The package barrel re-exports these too. |
 | Global stylesheets | The token vocabulary, the utility layer and the type ramp, imported once by an application. |
 | Documentation index and per-component documents | The agent-facing description, read from the install. |
-| Package command `frontx-ui-grid-css` | Writes the container-step stylesheet for a grid configuration, for a consumer that brings its own columns, steps or span ranges. Container conditions cannot read custom properties, so the step widths must be literal in the stylesheet; the kit's default grid stylesheet is this command's output for the default configuration. |
+| Package command `frontx-ui-grid-css` | Writes the container-step stylesheet for a grid configuration, for a consumer that brings its own columns, steps or span ranges; container conditions cannot read custom properties, so the step widths must be literal in the stylesheet, and the kit's default grid stylesheet is this command's output for the default configuration. The command's arguments, the config shape, and the names the generated CSS relies on are public: the `data-fx-grid*` attributes, the `fx-grid` container name, and the `--_grid-*` / `--grid-*` property names. The attributes and the container keep the `fx-` prefix because the step CSS is a global stylesheet matched by attribute and other libraries already put an unprefixed `data-grid` on their children (react-grid-layout), so the prefix keeps the global rules off foreign markup; the custom properties are set only on Grid's own elements and need no prefix. Changing any of these names or shapes is a breaking change and needs a regeneration note in the release notes; the `--_grid-*` names, private in a module stylesheet, are pinned here because a committed generated file reads them. |
 | Persisted view state | What the data-grid component stores in the browser's storage or the URL, under `dataGrid:<name>:<key>`. The keys and the shape of what is stored under them are kept from the grid's source (`cpt-frontx-ui-kit-adr-data-grid-port`), so a user's saved choices survive; renaming a key or changing a stored shape is a breaking change. |
 
 Two path shapes are deliberately not public: the internal component module layout, which is blocked in the export map so it stays free to change, and the contract artifacts, which are not in the published artifact at all (UIKIT-4).
