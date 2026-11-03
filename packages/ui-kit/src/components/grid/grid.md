@@ -80,7 +80,7 @@ A custom config starts from a copy of the shipped default config, `@gears-frontx
 The example is valid JSON and passes the config validator unchanged:
 
 - `name` is a lowercase CSS-safe name and not `default`, which is the kit's own scope and Grid refuses for any other config object.
-- `columns` is an integer >= 1.
+- `columns` is an integer from 1 to 48.
 - `rowHeight` is a positive length in px, rem or em.
 - `steps[]` carries `name`, `minWidth` in px with the first step at 0 and the widths strictly increasing, and `gap`, a spacing token name such as `--space-4`.
 - `sizes.<small|medium|large>.<step>` carries the span range with `1 <= min <= preferred <= max <= columns`.
@@ -90,6 +90,8 @@ Generate the step CSS and import it once beside the kit's own:
 ```sh
 frontx-ui-grid-css ./grid-config.json ./grid-steps.css
 ```
+
+The command also reads a `.mjs` or `.js` module with a default export. A `.js` config is loaded with `import()`, so it follows the module type of the nearest `package.json` (CommonJS unless `"type": "module"`); use `.mjs` or `.json` when unsure. The output path must differ from the config path.
 
 Pass that same config object to `Grid`. CSS selectors are scoped by config name, so two configs can coexist, and a custom stylesheet is needed for each custom config. The generated CSS and the passed config must use the same name and steps. The CSS has no viewport queries and resizing does not run JavaScript. For Shadow DOM, include the kit component CSS and generated CSS inside the shadow root.
 

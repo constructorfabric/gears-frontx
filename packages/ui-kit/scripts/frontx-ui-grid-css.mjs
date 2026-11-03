@@ -53,6 +53,9 @@ async function main() {
   }
   const [input, output] = positionals;
   const path = resolve(input);
+  // The output is written as CSS: the same file would replace the config.
+  // Checked by path before anything is read or written.
+  if (path === resolve(output)) throw new Error(`Output path ${output} is the config file; give the CSS its own path`);
   const extension = extname(path);
   if (extension !== '.json' && extension !== '.mjs' && extension !== '.js') {
     throw new Error('Grid config must be a .json file or an ES module (.mjs, .js) with a default export');
