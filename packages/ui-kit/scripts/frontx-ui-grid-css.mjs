@@ -46,7 +46,8 @@ async function main() {
   }
   // One option and two positionals: any other --word is a mistyped invocation,
   // and any other arity has no reading, so both stop here instead of surfacing
-  // later as a missing or misread file. A single dash stays a path character.
+  // later as a missing or misread file. Apart from -h, a single dash stays a
+  // path character; a path that starts with -- is passed as ./--name.
   if (args.some(argument => argument.startsWith('--') && argument !== '--kit-default') || positionals.length !== 2) {
     throw new Error(USAGE);
   }

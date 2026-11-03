@@ -127,13 +127,21 @@ describe('Grid CSS generator', () => {
   // Exactly one option and two positionals are readable; anything else gets
   // the usage line rather than a failed file read further in. The flag shapes
   // carry no input file: a flag read as a filename must never get that far.
-  it.each([
-    [['--out', '--kit-wide']],
-  ] as const)('answers %j with the usage message', (args) => {
-    const run = runCommand('', { args: [...args] });
+  it('answers stray double-dash flags with the usage message', () => {
+    const run = runCommand('', { args: ['--out', '--kit-wide'] });
     expect(run.status).toBe(1);
     expect(run.stderr).toMatch(USAGE);
     expect(run.css).toBeUndefined();
+  });
+
+  // A single leading dash is a path character, not an option.
+  it('writes to a dash-led output path', () => {
+    const directory = tempDirectory();
+    const input = join(directory, 'config.json');
+    writeFileSync(input, JSON.stringify({ ...structuredClone(defaultGridConfig), name: 'dashed' }));
+    const run = spawnSync(process.execPath, [COMMAND, input, '-steps.css'], { cwd: directory, encoding: 'utf8' });
+    expect(run.status).toBe(0);
+    expect(existsSync(join(directory, '-steps.css'))).toBe(true);
   });
 
   it('answers a third positional with the usage message', () => {
