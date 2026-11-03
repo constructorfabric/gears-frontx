@@ -345,11 +345,14 @@ describe('getAllData', () => {
   });
 
   it('stops reading the pages of a tree whose load ignores the page', async () => {
-    // Every root on every page, so each page is full and nothing new.
+    // Every root on every page, reordered on page 2, so each page is full and nothing new.
     const load = vi.fn((context: DataGridLoadContext) =>
       context.tree?.parentId != null
         ? loadLevel(context)
-        : Promise.resolve({ results: roots, total: roots.length }),
+        : Promise.resolve({
+            results: context.pagination?.page === 2 ? [...roots].reverse() : roots,
+            total: roots.length,
+          }),
     );
     const context = await renderForExport(
       'export_all_tree_pages_ignored',
