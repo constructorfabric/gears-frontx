@@ -186,10 +186,13 @@ installed/updated through the **Constructor Studio CLI** (`cfs`), not the
 so it installs from the repository subdirectory:
 
 ```bash
-cfs kit install git/https://github.com/constructorfabric/gears-frontx//packages/cyber-pilot-kit-frontx
+cfs kit install git/https://github.com/constructorfabric/gears-frontx.git//packages/cyber-pilot-kit-frontx
 
 # or, from a local checkout of this repository
 cfs kit install path/packages/cyber-pilot-kit-frontx
+
+# then write the agent integrations for the kit's skills
+cfs generate-agents
 ```
 
 On install, its `frontx_`-prefixed resources (KIT-1) register in the project's
