@@ -8,8 +8,8 @@ import {
   type ReactNode,
 } from 'react';
 
-import { defaultGridConfig, type GridConfig, type HeightClass, type SizeClass } from './grid-config.js';
-import { solveGridLayout, type GridItemSpec, type GridLayout } from './grid-solver.js';
+import { defaultGridConfig, type GridConfig, type GridHeightClass, type GridSizeClass } from './grid-config.js';
+import { solveGridLayout } from './grid-solver.js';
 import styles from './grid.module.css';
 import './grid-steps.css';
 
@@ -24,20 +24,26 @@ import './grid-steps.css';
  */
 
 export interface GridItemProps extends ComponentProps<'div'> {
-  // Placement identity, unique within one Grid. Separate from the HTML id.
+  /** Placement identity, unique within one Grid. Separate from the HTML id. */
   layoutId: string;
-  size: SizeClass;
-  height?: HeightClass;
+  /** The span range the item takes at every step: small, medium or large. */
+  size: GridSizeClass;
+  /** `low` is one row track, `high` is two tracks and the row gap between them. @default 'low' */
+  height?: GridHeightClass;
 }
 
-export function GridItem({ layoutId: _layoutId, size: _size, height: _height, className, ...props }: GridItemProps) {
+export function GridItem({ layoutId: _layoutId, size: _size, height: _height = 'low', className, ...props }: GridItemProps) {
   return <div {...props} data-fx-grid-item="" className={cx(styles.item, className)} />;
 }
 
 export interface GridProps extends ComponentProps<'div'> {
-  // Immutable; solved layouts are cached by its identity. Defaults to defaultGridConfig.
+  /**
+   * The config the step CSS is generated from; a custom config needs the
+   * stylesheet the `frontx-ui-grid-css` command writes for it.
+   * @default defaultGridConfig
+   */
   config?: GridConfig;
-  // Lets spans move inside each size class's range to fill rows. Off: preferred spans only.
+  /** Lets spans move inside each size class's range to fill rows. Off: preferred spans only. @default false */
   flexible?: boolean;
   children?: ReactNode;
 }
@@ -60,48 +66,24 @@ function directItems(children: ReactNode): ReactElement<GridItemProps>[] {
   return result;
 }
 
-/*
- * Solved layouts, per config object, by the mode and the ordered item
- * signature. Configs are immutable by contract, so the object is the key; a
- * re-render with new JSX for the same items reuses the layout. Bounded per
- * config.
- */
-const CACHE_LIMIT = 64;
-const layoutCache = new WeakMap<GridConfig, Map<string, GridLayout>>();
-
-function cachedLayout(items: GridItemSpec[], config: GridConfig, flexible: boolean): GridLayout {
-  const signature = JSON.stringify([flexible, items.map(item => [item.layoutId, item.size, item.height ?? 'low'])]);
-  let layouts = layoutCache.get(config);
-  if (!layouts) {
-    layouts = new Map();
-    layoutCache.set(config, layouts);
-  }
-  const hit = layouts.get(signature);
-  if (hit) return hit;
-  const layout = solveGridLayout(items, config, { flexible });
-  if (layouts.size >= CACHE_LIMIT) layouts.delete(layouts.keys().next().value as string);
-  layouts.set(signature, layout);
-  return layout;
-}
-
 export function Grid({ config = defaultGridConfig, flexible = false, children, className, ...props }: GridProps) {
   // The kit's CSS owns the `default` scope; a second config under that name would read missing step variables.
   if (config.name === defaultGridConfig.name && config !== defaultGridConfig) {
     throw new Error(`Grid config name "${defaultGridConfig.name}" belongs to defaultGridConfig; give a custom config its own name`);
   }
   const elements = directItems(children);
-  const layout = cachedLayout(
+  const layout = solveGridLayout(
     elements.map(({ props: item }) => ({ layoutId: item.layoutId, size: item.size, height: item.height })),
     config,
-    flexible,
+    { flexible },
   );
 
   const placed = elements.map(element => {
     const placement: Record<string, string> = {};
     for (const step of config.steps) {
       const item = layout.steps[step.name].placements[element.props.layoutId];
-      placement[`--fx-grid-col-${step.name}`] = `${item.colStart} / span ${item.colSpan}`;
-      placement[`--fx-grid-row-${step.name}`] = `${item.rowStart} / span ${item.rowSpan}`;
+      placement[`--_grid-col-${step.name}`] = `${item.colStart} / span ${item.colSpan}`;
+      placement[`--_grid-row-${step.name}`] = `${item.rowStart} / span ${item.rowSpan}`;
     }
     // Caller style stays; the placement properties win on a clash. layoutId,
     // unique within the Grid, is the key: the items are flattened into one
@@ -119,7 +101,7 @@ export function Grid({ config = defaultGridConfig, flexible = false, children, c
         className={styles.grid}
         data-fx-grid={config.name}
         data-fx-grid-flexible={flexible ? '' : undefined}
-        style={{ '--fx-grid-columns': config.columns } as CSSProperties}
+        style={{ '--_grid-columns': config.columns } as CSSProperties}
       >
         {placed}
       </div>

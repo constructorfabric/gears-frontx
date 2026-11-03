@@ -290,7 +290,8 @@ Rules for generated code:
   columns) and a height low|high (one or two fixed row tracks), never a
   span, plus a `layoutId` unique within the Grid. `flexible` on a Grid
   lets spans move inside their ranges to fill rows. Direct GridItem
-  children only. A custom config needs its CSS from the
+  children only. A custom config starts from the shipped
+  `grid-default-config.json` and needs its CSS from the
   `frontx-ui-grid-css` command, imported once.
 - [Heading](dist/docs/heading.md): a heading on the type ramp;
   typography display|heading-1|heading-2 picks the role, `render` picks

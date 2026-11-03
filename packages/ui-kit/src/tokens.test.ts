@@ -91,8 +91,10 @@ const invariantTokens = declarationMap(
 );
 
 const componentsDir = join(srcDir, 'components');
+// grid-steps.css is not a module stylesheet but the grid's generated global
+// stylesheet, so the token-seam guard holds it to the same rule (UIKIT-2).
 const moduleFiles = readdirSync(componentsDir, { recursive: true, encoding: 'utf8' })
-  .filter((file) => file.endsWith('.module.css'))
+  .filter((file) => file.endsWith('.module.css') || file.split(sep).join('/') === 'grid/grid-steps.css')
   .map((file) => join(componentsDir, file));
 
 /*

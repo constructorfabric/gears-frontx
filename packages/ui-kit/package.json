@@ -20,7 +20,8 @@
     },
     "./theme.css": "./dist/theme.css",
     "./utilities.css": "./dist/utilities.css",
-    "./typeset.css": "./dist/typeset.css"
+    "./typeset.css": "./dist/typeset.css",
+    "./grid-default-config.json": "./dist/grid-default-config.json"
   },
   "files": [
     "dist",
@@ -40,7 +41,8 @@
     "test:consumer": "bash scripts/verify-consumer.sh",
     "contracts:compile": "tsx scripts/contracts/compile.ts",
     "contracts:check": "tsx scripts/contracts/check.ts",
-    "contracts:enrollment": "tsx scripts/contracts/check.ts enrollment"
+    "contracts:enrollment": "tsx scripts/contracts/check.ts enrollment",
+    "grid:css": "node scripts/frontx-ui-grid-css.mjs --kit-default src/components/grid/default-grid-config.json src/components/grid/grid-steps.css"
   },
   "dependencies": {
     "@atlaskit/pragmatic-drag-and-drop": "1.7.7",

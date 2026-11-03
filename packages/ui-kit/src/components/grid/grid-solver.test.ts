@@ -1,33 +1,27 @@
-import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import {
   SIZE_CLASSES,
   defaultGridConfig,
-  validateGridConfig,
   type GridConfig,
-  type HeightClass,
-  type SizeClass,
-  type SpanRange,
+  type GridHeightClass,
+  type GridSizeClass,
+  type GridSpanRange,
 } from './grid-config';
-import { solveGridLayout, validateGridLayout, type GridItemSpec, type GridStepLayout } from './grid-solver';
+import { solveGridLayout, type GridItemSpec, type GridStepLayout } from './grid-solver';
+import { validateGridLayout } from '../../__test-utils__/grid-layout-validator';
 
-function configWithRanges(ranges: Partial<Record<SizeClass, SpanRange>>): GridConfig {
+function configWithRanges(ranges: Partial<Record<GridSizeClass, GridSpanRange>>): GridConfig {
   const config = structuredClone(defaultGridConfig);
   config.steps = [config.steps[0]];
-  for (const [size, range] of Object.entries(ranges)) config.sizes[size as SizeClass].base = range;
+  for (const [size, range] of Object.entries(ranges)) config.sizes[size as GridSizeClass].base = range;
   return config;
 }
 
-const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), '../../../scripts/grid-css.mjs');
 const FLEXIBLE = { flexible: true };
 
-const fixed = (width: number): SpanRange => ({ min: width, preferred: width, max: width });
-const item = (layoutId: string, size: SizeClass, height?: HeightClass): GridItemSpec => ({ layoutId, size, height });
+const fixed = (width: number): GridSpanRange => ({ min: width, preferred: width, max: width });
+const item = (layoutId: string, size: GridSizeClass, height?: GridHeightClass): GridItemSpec => ({ layoutId, size, height });
 const spans = (items: GridItemSpec[], step: GridStepLayout) => items.map(it => step.placements[it.layoutId].colSpan);
 
 function seededRandom(seed: number): () => number {
@@ -38,44 +32,6 @@ function randomItems(random: () => number, maxLength: number, highShare: number)
   return Array.from({ length: 1 + Math.floor(random() * maxLength) }, (_, i) =>
     item(`item-${i}`, SIZE_CLASSES[Math.floor(random() * SIZE_CLASSES.length)], random() < highShare ? 'high' : 'low'));
 }
-
-describe('Grid config', () => {
-  it.each([
-    ['name', (c: GridConfig) => { c.name = 'bad name'; }, /name/],
-    ['columns', (c: GridConfig) => { c.columns = 0; }, /columns/],
-    ['missing row height', (c: GridConfig) => { delete (c as Partial<GridConfig>).rowHeight; }, /rowHeight/],
-    ['unitless row height', (c: GridConfig) => { c.rowHeight = '160'; }, /rowHeight/],
-    ['zero row height', (c: GridConfig) => { c.rowHeight = '0rem'; }, /rowHeight/],
-    ['relative row height', (c: GridConfig) => { c.rowHeight = '20%'; }, /rowHeight/],
-    ['missing steps', (c: GridConfig) => { c.steps = []; }, /steps/],
-    ['first width', (c: GridConfig) => { c.steps[0].minWidth = 1; }, /first step/],
-    ['duplicate step', (c: GridConfig) => { c.steps[1].name = 'base'; }, /step names/],
-    ['descending widths', (c: GridConfig) => { c.steps[2].minWidth = 400; }, /widths/],
-    ['nonfinite width', (c: GridConfig) => { c.steps[1].minWidth = Infinity; }, /widths/],
-    ['bad gap', (c: GridConfig) => { c.steps[0].gap = '4px'; }, /gap/],
-    ['missing range', (c: GridConfig) => { delete c.sizes.small.base; }, /small.*base/],
-    ['out of range', (c: GridConfig) => { c.sizes.small.base.max = 13; }, /small.*base/],
-    ['height model', (c: GridConfig) => { c.heights.high = 3; }, /heights/],
-  ])('rejects %s, in the component and in the CSS command alike', (_name, change, message) => {
-    const config = structuredClone(defaultGridConfig);
-    change(config);
-    expect(() => validateGridConfig(config)).toThrow(message);
-    const directory = mkdtempSync(join(tmpdir(), 'grid-config-'));
-    try {
-      const input = join(directory, 'config.json');
-      writeFileSync(input, JSON.stringify(config));
-      const run = spawnSync(process.execPath, [SCRIPT, input, join(directory, 'out.css')], { encoding: 'utf8' });
-      expect(run.status).toBe(1);
-      expect(run.stderr).toMatch(message);
-    } finally {
-      rmSync(directory, { recursive: true, force: true });
-    }
-  });
-
-  it.each(['160px', '12.5rem', '.5em'])('accepts the row height %s', rowHeight => {
-    expect(() => validateGridConfig({ ...structuredClone(defaultGridConfig), rowHeight })).not.toThrow();
-  });
-});
 
 describe('Grid solver, preferred spans (default)', () => {
   it('places only the preferred spans 12, 6 and 3 with the default config', () => {
@@ -88,6 +44,12 @@ describe('Grid solver, preferred spans (default)', () => {
         for (const span of spans(items, step)) expect([12, 6, 3]).toContain(span);
       }
     }
+  });
+
+  it('places nothing for an empty item list, at every step', () => {
+    const layout = solveGridLayout([], defaultGridConfig);
+    expect(Object.keys(layout.steps)).toEqual(defaultGridConfig.steps.map(step => step.name));
+    for (const step of Object.values(layout.steps)) expect(step).toEqual({ placements: {}, rows: 0, holes: 0 });
   });
 
   it('keeps the hole at the inline end of a row that only ranges could fill', () => {
@@ -194,8 +156,8 @@ describe('Grid solver', () => {
 
   it('rejects duplicate identities and unknown classes', () => {
     expect(() => solveGridLayout([item('a', 'small'), item('a', 'small')])).toThrow(/Duplicate/);
-    expect(() => solveGridLayout([item('a', 'tiny' as SizeClass)])).toThrow(/Unknown Grid size/);
-    expect(() => solveGridLayout([item('a', 'small', 'short' as HeightClass)])).toThrow(/Unknown Grid height/);
+    expect(() => solveGridLayout([item('a', 'tiny' as GridSizeClass)])).toThrow(/Unknown Grid size/);
+    expect(() => solveGridLayout([item('a', 'small', 'short' as GridHeightClass)])).toThrow(/Unknown Grid height/);
   });
 
   it('validates a seeded flexible corpus at every step', () => {
