@@ -1,8 +1,10 @@
+import { readFileSync } from 'node:fs';
 import { describe, it, expect, vi } from 'vitest';
 import {
   parseInvocation,
   helpOutcome,
   usageText,
+  versionOutcome,
   run,
   EXIT_SUCCESS,
   EXIT_USER_ERROR,
@@ -127,6 +129,15 @@ describe('parseInvocation (cpt-frontx-algo-cli-invocation-parse-dispatch)', () =
     expect(parsed.unrecognized).toBe(true);
     expect(parsed.helpRequested).toBe(false);
   });
+
+  it('treats "version", "-v" and "--version" as a version request', () => {
+    for (const token of ['version', '-v', '--version']) {
+      const parsed = parseInvocation([token]);
+      expect(parsed.versionRequested).toBe(true);
+      expect(parsed.helpRequested).toBe(false);
+      expect(parsed.unrecognized).toBe(false);
+    }
+  });
 });
 
 describe('usage/help (cpt-frontx-flow-cli-invocation-help)', () => {
@@ -162,6 +173,31 @@ describe('usage/help (cpt-frontx-flow-cli-invocation-help)', () => {
     const outcome = await run(['bogus-command'], deps);
     expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
     expect(deps.fetchFn).not.toHaveBeenCalled();
+  });
+});
+
+describe('version (cpt-frontx-flow-cli-invocation-version)', () => {
+  const packageVersion = (
+    JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string }
+  ).version;
+
+  it('prints the version from the package manifest and exits success', () => {
+    const outcome = versionOutcome();
+    expect(outcome.exitCode).toBe(EXIT_SUCCESS);
+    expect(outcome.stdout).toBe(packageVersion);
+  });
+
+  it('run() defers to the version for every version token, dispatching nothing', async () => {
+    for (const token of ['version', '-v', '--version']) {
+      const { deps } = makeDeps();
+      const outcome = await run([token], deps);
+      expect(outcome).toEqual({ exitCode: EXIT_SUCCESS, stdout: packageVersion });
+      expect(deps.fetchFn).not.toHaveBeenCalled();
+    }
+  });
+
+  it('lists the version command in the usage summary', () => {
+    expect(usageText()).toMatch(/^ {2}version\s/m);
   });
 });
 

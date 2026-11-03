@@ -103,7 +103,7 @@ graph TD
 | Layer | Responsibility | Technology |
 |-------|---------------|------------|
 | Public surface | The library entry point and the `frontx` executable bin, dispatching every command to the internal component that owns its behavior | TypeScript, single entry point + declared `bin` |
-| Command surface | Argv parsing, command dispatch, usage/help output, exit-code mapping | TypeScript, one dispatch path over any template |
+| Command surface | Argv parsing, command dispatch, usage/help and version output, exit-code mapping | TypeScript, one dispatch path over any template |
 | Lifecycle components | Resolution, pre-publish validation, assembly, conflict checking, provenance, change-set & upgrade | TypeScript modules, each a single-responsibility internal component |
 | Local persistence | Tracked template inventory and in-repository provenance records | Filesystem — inventory store and `.frontx/provenance.json` |
 
