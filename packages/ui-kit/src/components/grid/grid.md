@@ -91,7 +91,7 @@ Generate the step CSS and import it once beside the kit's own:
 frontx-ui-grid-css ./grid-config.json ./grid-steps.css
 ```
 
-The command also reads a `.mjs` or `.js` module with a default export. A `.js` config is loaded with `import()`, so it follows the module type of the nearest `package.json` (CommonJS unless `"type": "module"`); use `.mjs` or `.json` when unsure. The output path must differ from the config path.
+The command also reads a `.mjs` or `.js` module with a default export. A `.js` config is loaded with `import()`, so Node decides its module type from the nearest `package.json` `"type"` field, or by syntax detection when there is none; a CommonJS `module.exports` object is accepted as the default export. Use `.mjs` or `.json` when unsure. The output path must not be the config file, under any name.
 
 Pass that same config object to `Grid`. CSS selectors are scoped by config name, so two configs can coexist, and a custom stylesheet is needed for each custom config. The generated CSS and the passed config must use the same name and steps. The CSS has no viewport queries and resizing does not run JavaScript. For Shadow DOM, include the kit component CSS and generated CSS inside the shadow root.
 

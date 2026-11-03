@@ -27,7 +27,7 @@
  * copy step changes with it. The command stays in scripts/ because it alone
  * needs the Node builtins the component source may not import.
  */
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, stat, writeFile } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -54,8 +54,13 @@ async function main() {
   const [input, output] = positionals;
   const path = resolve(input);
   // The output is written as CSS: the same file would replace the config.
-  // Checked by path before anything is read or written.
-  if (path === resolve(output)) throw new Error(`Output path ${output} is the config file; give the CSS its own path`);
+  // Checked before anything is read or written: by path, and for an existing
+  // output by filesystem identity (dev + ino), which catches a symlink, a hard
+  // link or a case alias. A missing output cannot be the config.
+  const sameFileError = new Error(`Output path ${output} is the config file; give the CSS its own path`);
+  if (path === resolve(output)) throw sameFileError;
+  const [configStat, outputStat] = await Promise.all([stat(path).catch(() => null), stat(resolve(output)).catch(() => null)]);
+  if (configStat && outputStat && configStat.dev === outputStat.dev && configStat.ino === outputStat.ino) throw sameFileError;
   const extension = extname(path);
   if (extension !== '.json' && extension !== '.mjs' && extension !== '.js') {
     throw new Error('Grid config must be a .json file or an ES module (.mjs, .js) with a default export');
