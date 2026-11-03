@@ -176,11 +176,18 @@ export function buildPlugin(): PluginOption[] {
             'buildPlugin: frontx-ui-grid-css.mjs no longer imports the grid generator by the repository specifier this copy step rewrites',
           );
         }
-        fs.writeFileSync('dist/frontx-ui-grid-css.mjs', commandSource.replace(repositorySpecifier, "from './grid-css.mjs'"));
+        // replace() rewrites one occurrence: a second repository specifier,
+        // or any other `../src/` read, would survive into dist and break the
+        // bin at run time, so the rewritten text is checked before it ships.
+        const commandText = commandSource.replace(repositorySpecifier, "from './grid-css.mjs'");
+        if (commandText.includes('../src/')) {
+          throw new Error('buildPlugin: frontx-ui-grid-css.mjs still reads ../src/ after the specifier rewrite');
+        }
+        fs.writeFileSync('dist/frontx-ui-grid-css.mjs', commandText);
         fs.chmodSync('dist/frontx-ui-grid-css.mjs', 0o755);
         fs.copyFileSync('src/components/grid/grid-css.mjs', 'dist/grid-css.mjs');
         fs.copyFileSync('src/components/grid/grid-config-check.mjs', 'dist/grid-config-check.mjs');
-        fs.copyFileSync('src/components/grid/default-grid-config.json', 'dist/grid-default-config.json');
+        fs.copyFileSync('src/components/grid/grid-default-config.json', 'dist/grid-default-config.json');
         fs.mkdirSync('dist/docs', { recursive: true });
         // src/styles/*.md alongside the per-component ones: typeset.md
         // documents a shipped stylesheet the same way a component doc

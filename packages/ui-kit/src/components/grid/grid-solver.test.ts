@@ -50,6 +50,7 @@ describe('Grid solver, preferred spans (default)', () => {
     const layout = solveGridLayout([], defaultGridConfig);
     expect(Object.keys(layout.steps)).toEqual(defaultGridConfig.steps.map(step => step.name));
     for (const step of Object.values(layout.steps)) expect(step).toEqual({ placements: {}, rows: 0, holes: 0 });
+    validateGridLayout(layout, []);
   });
 
   it('keeps the hole at the inline end of a row that only ranges could fill', () => {
@@ -322,5 +323,27 @@ describe('Grid layout validator', () => {
     const holed = structuredClone(layout);
     holed.steps.base.placements.b.colStart = 7;
     expect(() => validateGridLayout(holed, pair, wide)).toThrow(/internal hole/);
+  });
+
+  // Directly, not through the solver: validateGridConfig refuses a config
+  // missing a size's step range, so only a hand-built layout reaches the
+  // validator's own lookup of that range.
+  it('names the size, the step and the layoutId when the config has no range for a placement', () => {
+    const holey = configWithRanges({});
+    delete holey.sizes.small.base;
+    const layout = { steps: { base: { placements: { top: { colStart: 1, colSpan: 5, rowStart: 1, rowSpan: 1 } }, rows: 1, holes: 2 } } };
+    expect(() => validateGridLayout(layout, [item('top', 'small')], holey)).toThrow(
+      /no base range for size small, needed to check top/,
+    );
+  });
+
+  // The solver never emits a row no item reaches, so the empty row is reached
+  // by widening a solved layout's row count by hand.
+  it('names an empty row instead of an internal hole', () => {
+    const pair = [item('a', 'small'), item('b', 'small')];
+    const wide = configWithRanges({ small: fixed(5) });
+    const emptied = solveGridLayout(pair, wide);
+    emptied.steps.base.rows = 3;
+    expect(() => validateGridLayout(emptied, pair, wide)).toThrow(/empty row at base/);
   });
 });

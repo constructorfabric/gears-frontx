@@ -24,7 +24,7 @@ Use a plain CSS grid when callers already know exact spans or need manual placem
 
 ## Names
 
-The step CSS is a global stylesheet matched by attribute, so its selectors and the container keep the `fx-` prefix: `data-fx-grid`, `data-fx-grid-item`, `data-fx-grid-flexible`, and the `fx-grid` container name. An unprefixed `data-grid` is already in use by other libraries (react-grid-layout puts `data-grid` on its children), and a global rule that matched it would style foreign markup. The custom properties need no prefix: Grid sets `--_grid-columns` and the per-step `--_grid-col-<step>` / `--_grid-row-<step>` only on its own elements. A consumer overrides `--grid-gap` and `--grid-row-height`.
+The step CSS is a global stylesheet matched by attribute, so its selectors and the container keep the `fx-` prefix: `data-fx-grid`, `data-fx-grid-item`, `data-fx-grid-flexible`, and the `fx-grid` container name. An unprefixed `data-grid` is already in use by other libraries (react-grid-layout puts `data-grid` on its children), and a global rule that matched it would style foreign markup. The custom properties need no prefix: Grid sets `--_grid-columns` and the per-step `--_grid-col-<step>` / `--_grid-row-<step>` only on its own elements. `--grid-gap` and `--grid-row-height` are consumer hooks that Grid only reads, and they inherit like any custom property, so a value declared on any ancestor, `:root` included, applies to every Grid below it.
 
 ## Layout and styling
 
@@ -62,16 +62,14 @@ A custom config starts from a copy of the shipped default config, `@gears-frontx
 
 ```json
 {
-  "name": "report",                     // lowercase CSS-safe name, not "default"
-  "columns": 8,                         // an integer >= 1
-  "rowHeight": "120px",                 // a positive length in px, rem or em
+  "name": "report",
+  "columns": 8,
+  "rowHeight": "120px",
   "steps": [
-    // the first step starts at 0, widths strictly increase
     { "name": "base", "minWidth": 0, "gap": "--space-4" },
     { "name": "wide", "minWidth": 960, "gap": "--space-6" }
   ],
   "sizes": {
-    // one span range per step, min <= preferred <= max <= columns
     "small":  { "base": { "min": 2, "preferred": 2, "max": 4 }, "wide": { "min": 1, "preferred": 2, "max": 2 } },
     "medium": { "base": { "min": 4, "preferred": 4, "max": 8 }, "wide": { "min": 2, "preferred": 4, "max": 4 } },
     "large":  { "base": { "min": 8, "preferred": 8, "max": 8 }, "wide": { "min": 4, "preferred": 8, "max": 8 } }
@@ -79,7 +77,13 @@ A custom config starts from a copy of the shipped default config, `@gears-frontx
 }
 ```
 
-The rules: `name` is a lowercase CSS-safe name and not `default`, which is the kit's own scope and Grid refuses for any other config object. `columns` is an integer >= 1. `rowHeight` is a positive length in px, rem or em. `steps[]` carries `name`, `minWidth` in px with the first step at 0 and the widths strictly increasing, and `gap`, a spacing token name such as `--space-4`. `sizes.<small|medium|large>.<step>` carries the span range with `min <= preferred <= max <= columns`.
+The example is valid JSON and passes the config validator unchanged:
+
+- `name` is a lowercase CSS-safe name and not `default`, which is the kit's own scope and Grid refuses for any other config object.
+- `columns` is an integer >= 1.
+- `rowHeight` is a positive length in px, rem or em.
+- `steps[]` carries `name`, `minWidth` in px with the first step at 0 and the widths strictly increasing, and `gap`, a spacing token name such as `--space-4`.
+- `sizes.<small|medium|large>.<step>` carries the span range with `min <= preferred <= max <= columns`.
 
 Generate the step CSS and import it once beside the kit's own:
 
@@ -98,7 +102,7 @@ Grid adds no role or focus behavior. Put meaningful content inside each item. DO
 ## Anti-patterns
 
 - A fragment or wrapper between Grid and GridItem: Grid throws instead of dropping items.
-- A reused `layoutId` in one Grid: the placement and the item keys collide.
+- A reused `layoutId` in one Grid: Grid throws (`Duplicate Grid layoutId: <layoutId>`).
 - A custom config without its generated CSS loaded: nothing reads the placement variables, and the browser auto-places the items.
 
 ## Examples

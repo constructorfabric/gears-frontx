@@ -93,8 +93,12 @@ const invariantTokens = declarationMap(
 const componentsDir = join(srcDir, 'components');
 // grid-steps.css is not a module stylesheet but the grid's generated global
 // stylesheet, so the token-seam guard holds it to the same rule (UIKIT-2).
+// The scan matches it by path, so a rename or a move would drop it from the
+// guard silently; the constant is what the scan and the presence test below
+// both read, and the test fails when they stop meeting.
+const GRID_STEPS_CSS = 'grid/grid-steps.css';
 const moduleFiles = readdirSync(componentsDir, { recursive: true, encoding: 'utf8' })
-  .filter((file) => file.endsWith('.module.css') || file.split(sep).join('/') === 'grid/grid-steps.css')
+  .filter((file) => file.endsWith('.module.css') || file.split(sep).join('/') === GRID_STEPS_CSS)
   .map((file) => join(componentsDir, file));
 
 /*
@@ -304,6 +308,15 @@ describe('theme tokens', () => {
     }
     return undefinedTokens;
   }
+
+  // The generated global stylesheet joins the scan by path match above, and
+  // nothing else would notice it going missing from that list.
+  it('scans the grid generated global stylesheet', () => {
+    expect(
+      moduleFiles.some((file) => file.endsWith(GRID_STEPS_CSS)),
+      `${GRID_STEPS_CSS} missing from the token-seam scan`,
+    ).toBe(true);
+  });
 
   it.each(moduleFiles)('%s consumes only theme-defined or same-part local variables', (file) => {
     expect(undefinedVariables(file, readFileSync(file, 'utf8'))).toEqual([]);

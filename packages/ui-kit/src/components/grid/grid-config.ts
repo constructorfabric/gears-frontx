@@ -1,4 +1,4 @@
-import defaultConfig from './default-grid-config.json';
+import defaultConfig from './grid-default-config.json';
 import { validateGridConfig as checkConfig } from './grid-config-check.mjs';
 
 export type GridSizeClass = 'small' | 'medium' | 'large';
@@ -50,10 +50,15 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
-// Frozen: the kit's own step CSS is generated from these values.
+// Frozen: every Grid reads this one object, and Grid tells it apart from a
+// custom config by identity (the reserved `default` name belongs to this
+// object alone), so a mutation through a held reference cannot leak into
+// other Grids. The kit's own step CSS is generated from these values.
 export const defaultGridConfig: GridConfig = deepFreeze(structuredClone(defaultConfig));
 
-export const SIZE_CLASSES: readonly GridSizeClass[] = ['small', 'medium', 'large'];
+// One copy with the validator: grid-config-check.mjs defines the classes, and
+// the hand-written .d.mts beside it types them as GridSizeClass.
+export { SIZE_CLASSES } from './grid-config-check.mjs';
 
 /**
  * Throws with a plain message when a config cannot drive the solver or the

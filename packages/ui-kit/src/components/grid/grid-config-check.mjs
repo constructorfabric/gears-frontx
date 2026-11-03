@@ -1,11 +1,10 @@
 /*
- * The one Grid config validator: grid-config.ts re-uses it for the package and
- * frontx-ui-grid-css imports it by this relative path, which resolves both from
- * this directory in the repository and from dist/, where the build copies it
- * beside the command. Dependency-free ESM, so the command runs in plain Node
- * without loading any component code (the built entries import CSS); the size
- * classes and the patterns below mirror grid-config.ts, which cannot be loaded
- * from here.
+ * The one Grid config validator: grid-config.ts and the generator
+ * (grid-css.mjs, behind the frontx-ui-grid-css command) both import it, so a
+ * config object and the stylesheet generated from it cannot disagree. The
+ * build copies this module flat into dist/ next to the command. Plain
+ * dependency-free ESM, so the command runs in plain Node without loading any
+ * component code (the built entries import CSS).
  *
  * Types: grid-config-check.d.mts.
  */

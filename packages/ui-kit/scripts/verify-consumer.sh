@@ -526,11 +526,14 @@ KIT="$CONSUMER/node_modules/@gears-frontx/ui-kit"
 
 # The Grid CSS command must work as installed: through the symlink npm puts
 # in node_modules/.bin, writing the same rules the kit ships for its default,
-# from the default config the package ships as data.
+# from the default config the package ships as data. The config resolves
+# through the package export from inside the consumer, the way consumer
+# tooling finds it; reaching into dist/ here would not notice a broken export.
 echo "==> Asserting the installed frontx-ui-grid-css command writes the kit's default Grid CSS"
 [ -x "$CONSUMER/node_modules/.bin/frontx-ui-grid-css" ] || { echo 'FAIL: frontx-ui-grid-css bin not installed'; exit 1; }
-[ -f "$KIT/dist/grid-default-config.json" ] || { echo 'FAIL: grid-default-config.json missing from the package'; exit 1; }
-"$CONSUMER/node_modules/.bin/frontx-ui-grid-css" --kit-default "$KIT/dist/grid-default-config.json" "$WORKDIR/grid-steps.css"
+GRID_DEFAULT_CONFIG="$(cd "$CONSUMER" && node -p "require.resolve('@gears-frontx/ui-kit/grid-default-config.json')")" \
+  || { echo 'FAIL: @gears-frontx/ui-kit/grid-default-config.json export does not resolve'; exit 1; }
+"$CONSUMER/node_modules/.bin/frontx-ui-grid-css" --kit-default "$GRID_DEFAULT_CONFIG" "$WORKDIR/grid-steps.css"
 cmp -s "$WORKDIR/grid-steps.css" "$UIKIT_DIR/src/components/grid/grid-steps.css" \
   || { echo 'FAIL: installed frontx-ui-grid-css output differs from grid-steps.css'; exit 1; }
 

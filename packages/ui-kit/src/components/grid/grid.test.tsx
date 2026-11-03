@@ -99,7 +99,9 @@ describe('Grid components', () => {
   });
 
   it('rejects a custom config that takes the default name', () => {
-    const copy = structuredClone(defaultGridConfig);
+    // The spread copy is not the kit's own object: Grid refuses the reserved
+    // name for any config it does not identify as defaultGridConfig.
+    const copy = { ...structuredClone(defaultGridConfig), name: 'default' };
     expect(() => render(<Grid config={copy}><GridItem layoutId="a" size="small" /></Grid>)).toThrow(/give a custom config its own name/);
   });
 
@@ -141,8 +143,11 @@ describe('Grid cross-module agreement', () => {
         expect(element.style.getPropertyValue(`--_grid-col-${step.name}`)).toMatch(/^\d+ \/ span \d+$/);
         expect(element.style.getPropertyValue(`--_grid-row-${step.name}`)).toMatch(/^\d+ \/ span [12]$/);
       }
-      expect(css).toContain(`var(--_grid-col-${step.name}`);
-      expect(css).toContain(`var(--_grid-row-${step.name}`);
+      // The full read, fallback included: the generated rule must read exactly
+      // the property Grid writes, so a renamed read such as --_grid-row-<step>-wrong
+      // fails here instead of at a consumer.
+      expect(css).toContain(`var(--_grid-col-${step.name}, auto)`);
+      expect(css).toContain(`var(--_grid-row-${step.name}, auto)`);
       expect(css).toContain(`[data-fx-grid="${config.name}"]`);
     }
   });
