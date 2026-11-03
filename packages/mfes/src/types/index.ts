@@ -21,7 +21,7 @@
 export interface Action {
   /** Self-reference to this action's type ID */
   type: string;
-  /** Target type ID (ExtensionDomain or Extension) */
+  /** Target instance ID (ExtensionDomain or Extension) */
   target: string;
   /**
    * Optional action payload.
