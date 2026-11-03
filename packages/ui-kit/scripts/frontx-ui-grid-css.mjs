@@ -44,10 +44,10 @@ async function main() {
     console.log(USAGE);
     return;
   }
-  // One option and two positionals: any other -word is a mistyped invocation,
+  // One option and two positionals: any other --word is a mistyped invocation,
   // and any other arity has no reading, so both stop here instead of surfacing
-  // later as a missing or misread file.
-  if (args.some(argument => argument.startsWith('-') && argument !== '--kit-default') || positionals.length !== 2) {
+  // later as a missing or misread file. A single dash stays a path character.
+  if (args.some(argument => argument.startsWith('--') && argument !== '--kit-default') || positionals.length !== 2) {
     throw new Error(USAGE);
   }
   const [input, output] = positionals;

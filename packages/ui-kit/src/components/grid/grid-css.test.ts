@@ -116,9 +116,7 @@ describe('Grid CSS generator', () => {
     expect(admitted.css).toBe(readFileSync(COMMITTED, 'utf8'));
   });
 
-  // Exactly one option and two positionals are readable; anything else gets
-  // the usage line rather than a failed file read further in. The flag shapes
-  // carry no input file: a flag read as a filename must never get that far.
+  // A help request is the one success that writes nothing: usage on stdout.
   it.each([['--help'], ['-h']])('answers %s with the usage text and success', (flag) => {
     const run = runCommand('', { args: [flag] });
     expect(run.status).toBe(0);
@@ -126,9 +124,11 @@ describe('Grid CSS generator', () => {
     expect(run.css).toBeUndefined();
   });
 
+  // Exactly one option and two positionals are readable; anything else gets
+  // the usage line rather than a failed file read further in. The flag shapes
+  // carry no input file: a flag read as a filename must never get that far.
   it.each([
     [['--out', '--kit-wide']],
-    [['-x', 'config.json']],
   ] as const)('answers %j with the usage message', (args) => {
     const run = runCommand('', { args: [...args] });
     expect(run.status).toBe(1);
