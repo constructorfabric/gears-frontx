@@ -17,8 +17,10 @@ export type UniformApplyResult =
 // Subtree membership is `pathWithinSubtree`, which is what makes this filter
 // safe to run after arbitration: both seed and add materialize from it, and the
 // conflict check only ever saw the declarations, so anything this filter admits
-// beyond them reaches the repository as ground nothing arbitrated.
-function isWithinDeclaredBoundaries(item: ContentItem, boundaries: OwnershipBoundary): boolean {
+// beyond them reaches the repository as ground nothing arbitrated. The upgrade
+// diff scopes both versions' files with it too (upgrade/compute.ts), so an
+// upgrade never reaches a path seeding would not have written.
+export function isWithinDeclaredBoundaries(item: ContentItem, boundaries: OwnershipBoundary): boolean {
   const inExclusiveSubtree = boundaries.exclusiveSubtrees.some((subtree) => pathWithinSubtree(item.path, subtree));
   const inSharedFile = boundaries.sharedFiles.some((sharedFile) => sharedFile.path === item.path);
   return inExclusiveSubtree || inSharedFile;

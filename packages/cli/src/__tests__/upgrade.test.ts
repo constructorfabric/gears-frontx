@@ -60,16 +60,31 @@ const BASE_PROVENANCE = {
   sourceSpec: 'local:acme/my-template@1.0.0',
 };
 
-registerVersion('my-template', '1.0.0', [
-  { path: 'src/App.tsx', content: 'v1 content' },
-  { path: 'src/old.ts', content: 'old file' },
-]);
+// Both versions declare `src` as theirs: the diff is scoped to the target
+// version's declared boundaries (inst-cmp-scope-to-boundaries), so a file
+// outside every declaration never enters the change set.
+const SRC_SUBTREE: OwnershipBoundary = { exclusiveSubtrees: ['src'], sharedFiles: [] };
 
-registerVersion('my-template', '2.0.0', [
-  { path: 'src/App.tsx', content: 'v2 content' },
-  { path: 'src/new.ts', content: 'new file' },
-  // 'src/old.ts' intentionally removed in target version
-]);
+registerVersion(
+  'my-template',
+  '1.0.0',
+  [
+    { path: 'src/App.tsx', content: 'v1 content' },
+    { path: 'src/old.ts', content: 'old file' },
+  ],
+  SRC_SUBTREE,
+);
+
+registerVersion(
+  'my-template',
+  '2.0.0',
+  [
+    { path: 'src/App.tsx', content: 'v2 content' },
+    { path: 'src/new.ts', content: 'new file' },
+    // 'src/old.ts' intentionally removed in target version
+  ],
+  SRC_SUBTREE,
+);
 
 describe('upgradeChangeSetReviewApproval (F14 change-set engine flow)', () => {
   // (a) Produces reviewable change set, writes NO project files until developer approves

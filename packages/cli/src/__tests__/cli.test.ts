@@ -16,6 +16,8 @@ import type { ProvenanceRecord, ProvenanceWriteFn } from '../provenance/types';
 import type { ReadProvenanceRecordsFn } from '../scaffold/materialize';
 import type { TargetPathState } from '../commands/add-template';
 import type { ListContentOwnedFilesFn, ReadFileFn, TemplateManifest } from '../manifest/types';
+import { MANIFEST_FILENAME } from '../manifest/types';
+import { BUNDLE_MARKER } from '../bundle/envelope';
 
 // F18: cpt-frontx-flow-cli-invocation-run-command,
 // cpt-frontx-flow-cli-invocation-help,
@@ -29,6 +31,12 @@ function makeManifest(name: string, version: string, overrides: Partial<Template
     ownershipBoundaries: { exclusiveSubtrees: [`${name}/`], sharedFiles: [] },
     ...overrides,
   };
+}
+
+// The bundle envelope a fetch adapter returns for one template version: its
+// manifest plus every other file the version ships.
+function bundle(manifest: TemplateManifest, files: Record<string, string>): string {
+  return JSON.stringify({ [BUNDLE_MARKER]: { [MANIFEST_FILENAME]: JSON.stringify(manifest), ...files } });
 }
 
 export interface DepsFixture {
@@ -867,23 +875,21 @@ describe('dispatch: upgrade (cpt-frontx-flow-upgrade-changeset-review-approval)'
   });
 
   it('exits internal-error when applying the approved change set fails unexpectedly', async () => {
-    const fetchFn: FetchFn = vi.fn(async (url: string) => {
-      const match = /\/tarball\/(.+)$/.exec(url);
-      const version = match ? match[1] : url.slice(url.lastIndexOf('@') + 1);
-      return JSON.stringify(makeManifest('foo', version));
-    });
     // Content differs between the baseline (1.0.0) and target (2.0.0)
     // versions so the diff produces a non-empty clean change (a whole-file
     // 'modify'), which the apply step must actually write — the write is
-    // what is forced to throw below.
-    const readContentItems: ReadContentItemsFn = vi.fn(async (entry) => [
-      { path: 'foo/App.tsx', content: `content @ ${entry.ref}` },
-    ]);
+    // what is forced to throw below. The engine reads each version's files
+    // from what `fetchFn` serves for it, so that is where they are served.
+    const fetchFn: FetchFn = vi.fn(async (url: string) => {
+      const version = url.slice(url.lastIndexOf('/') + 1);
+      return bundle(makeManifest('foo', version), { 'foo/App.tsx': `content @ ${version}` });
+    });
     const { deps } = makeDeps({
       fetchFn,
-      readContentFn: readContentItems,
       readSingleProvenanceFn: vi.fn(async () => provenance),
-      readProjectFile: vi.fn(async () => 'content @ 1.0.0'),
+      readProjectFile: vi.fn(async (p: string) =>
+        p === '/proj/.frontx/provenance.json' ? JSON.stringify([provenance]) : 'content @ 1.0.0',
+      ),
       writeProjectFile: vi.fn(async () => {
         throw new Error('disk full');
       }),
@@ -891,6 +897,49 @@ describe('dispatch: upgrade (cpt-frontx-flow-upgrade-changeset-review-approval)'
 
     const outcome = await run(['upgrade', '/proj', '2.0.0', '--yes'], deps);
     expect(outcome.exitCode).toBe(EXIT_INTERNAL_ERROR);
+    expect(outcome.stderr).toContain('disk full');
+  });
+
+  // #700: the local inventory holds one version per template, so reading
+  // both versions' files from it (`deps.readContentFn`) diffed one directory
+  // against itself — an empty change set that still moved the provenance.
+  it('diffs the two versions fetchFn serves, never the local inventory, within the declared boundaries', async () => {
+    const filesByVersion: Record<string, Record<string, string>> = {
+      '1.0.0': { 'foo/App.tsx': 'v1 content', 'foo/old.ts': 'old file', 'README.md': 'v1 readme' },
+      '2.0.0': { 'foo/App.tsx': 'v2 content', 'foo/new.ts': 'new file', 'README.md': 'v2 readme' },
+    };
+    const fetchFn: FetchFn = vi.fn(async (url: string) => {
+      const version = url.slice(url.lastIndexOf('/') + 1);
+      return bundle(makeManifest('foo', version), filesByVersion[version] ?? {});
+    });
+    const projectFiles: Record<string, string> = {
+      '/proj/.frontx/provenance.json': JSON.stringify([provenance]),
+      '/proj/foo/App.tsx': 'v1 content',
+      '/proj/foo/old.ts': 'old file',
+    };
+    const { deps } = makeDeps({
+      fetchFn,
+      readSingleProvenanceFn: vi.fn(async () => provenance),
+      readProjectFile: vi.fn(async (p: string) => projectFiles[p] ?? null),
+    });
+
+    const outcome = await run(['upgrade', '/proj', '2.0.0', '--yes'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_SUCCESS);
+    // Neither the manifest nor README.md lies under the declared `foo/`
+    // subtree, so neither enters the change set, as seeding never wrote them.
+    expect(JSON.parse(outcome.stdout as string)).toMatchObject({
+      clean: [
+        { kind: 'modify', path: 'foo/App.tsx', content: 'v2 content' },
+        { kind: 'remove', path: 'foo/old.ts' },
+        { kind: 'add', path: 'foo/new.ts', content: 'new file' },
+      ],
+      conflicts: [],
+    });
+    expect(deps.readContentFn).not.toHaveBeenCalled();
+    expect(deps.writeProjectFile).toHaveBeenCalledWith('/proj/foo/App.tsx', 'v2 content');
+    expect(deps.writeProjectFile).toHaveBeenCalledWith('/proj/foo/new.ts', 'new file');
+    expect(deps.removeProjectFile).toHaveBeenCalledWith('/proj/foo/old.ts');
   });
 
   it('exits user-error when required arguments are missing', async () => {

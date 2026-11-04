@@ -9,6 +9,7 @@ import { upgradeCommand } from '../commands/upgrade';
 import { computeChangeSet } from '../upgrade/compute';
 import type { ContentItem, ReadContentItemsFn } from '../scaffold/types';
 import type { FetchFn } from '../resolver/types';
+import type { OwnershipBoundary } from '../manifest/types';
 
 // Content items live SEPARATELY from the manifest, in a registry keyed by
 // "name@version", and are read via the injected `readContentItems` seam
@@ -25,8 +26,9 @@ function registerVersion(
   name: string,
   version: string,
   files: Array<{ path: string; content: string }>,
+  ownershipBoundaries: OwnershipBoundary,
 ): void {
-  const manifest = { name, version, ownershipBoundaries: { exclusiveSubtrees: [], sharedFiles: [] } };
+  const manifest = { name, version, ownershipBoundaries };
   contentRegistry.set(`${name}@${version}`, files);
   manifestByVersion.set(`${name}@${version}`, JSON.stringify(manifest));
 }
@@ -50,15 +52,30 @@ const BASE_PROVENANCE = {
   sourceSpec: 'local:acme/my-template@1.0.0',
 };
 
-registerVersion('my-template', '1.0.0', [
-  { path: 'src/App.tsx', content: 'v1 content' },
-  { path: 'src/old.ts', content: 'old file' },
-]);
+// Both versions declare `src` as theirs: the diff is scoped to the target
+// version's declared boundaries, so a file outside every declaration never
+// enters the change set.
+const SRC_SUBTREE: OwnershipBoundary = { exclusiveSubtrees: ['src'], sharedFiles: [] };
 
-registerVersion('my-template', '2.0.0', [
-  { path: 'src/App.tsx', content: 'v2 content' },
-  { path: 'src/new.ts', content: 'new file' },
-]);
+registerVersion(
+  'my-template',
+  '1.0.0',
+  [
+    { path: 'src/App.tsx', content: 'v1 content' },
+    { path: 'src/old.ts', content: 'old file' },
+  ],
+  SRC_SUBTREE,
+);
+
+registerVersion(
+  'my-template',
+  '2.0.0',
+  [
+    { path: 'src/App.tsx', content: 'v2 content' },
+    { path: 'src/new.ts', content: 'new file' },
+  ],
+  SRC_SUBTREE,
+);
 
 describe('upgradeCommand (F14 command/invocation surface)', () => {
   it('emits the same change set as the library computeChangeSet path, as JSON', async () => {
