@@ -109,7 +109,7 @@ const DataGridTableTreePluginRaw = createDataGridPlugin<
   function getLevel(section: DataGridSection<DataGridItem>): number {
     const { parentId } = section;
 
-    if (!parentId) {
+    if (parentId === null) {
       return 0;
     }
 

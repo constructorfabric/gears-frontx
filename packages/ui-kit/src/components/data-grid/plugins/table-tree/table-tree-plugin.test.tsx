@@ -163,6 +163,31 @@ describe('DataGridTableTreePlugin', () => {
       );
     });
 
+    it('indents the children of a row whose id is 0', async () => {
+      const zeroRootData: TreeItem[] = [
+        { id: 0, name: 'Electronics', parent_id: null, has_children: true },
+        { id: 1, name: 'Phones', parent_id: 0, has_children: false },
+      ];
+      const { user } = render(
+        <DataGrid
+          name="test_tree_indent_zero"
+          persistent="memory"
+          load={() => Promise.resolve({ results: zeroRootData, total: zeroRootData.length })}
+          columns={columns}
+        >
+          <DataGridTableTreePlugin<TreeItem> parentKey="parent_id" />
+        </DataGrid>,
+      );
+      await screen.findByText('Electronics');
+
+      await user.click(within(rowOf('Electronics')).getByRole('button'));
+      await screen.findByText('Phones');
+
+      expect(
+        rowOf('Phones').querySelector<HTMLElement>(`.${styles.indentSpacer}`)?.style.inlineSize,
+      ).toBe('calc(var(--_data-grid-table-tree-indent) * 1)');
+    });
+
     it('holds the cell\'s content in a label of its own, beside the toggle and the indent', async () => {
       const { user } = render(
         <DataGrid name="test_tree_label" persistent="memory" load={loadDeepData} columns={columns}>

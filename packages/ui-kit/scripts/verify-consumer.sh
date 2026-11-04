@@ -879,6 +879,16 @@ assert_absent_from_glob "[webpack] drag library"    "$DATA_GRID_DRAG_LIBRARY_PRO
 echo "==> [webpack] Bundle report (Button-only barrel consumer, react/react-dom external)"
 wc -c dist/out.js dist/out.css
 
+# The Button-only bundle above catches a missing drag-library import rewrite only on some webpack
+# versions; a bundle of the drag-drop entry itself fails without it on every one.
+echo "==> [webpack] Bundling the drag-drop entry (its library imports must resolve fully specified)"
+cat > src/drag-drop.js <<'EOF'
+import { createDataGridDragDropPlugin } from '@gears-frontx/ui-kit/data-grid/drag-drop';
+console.log(createDataGridDragDropPlugin);
+EOF
+npx webpack --config webpack.config.cjs --entry-reset --entry ./src/drag-drop.js --output-path dist-drag-drop >/dev/null
+assert_present_in_glob "[webpack] drag library (drag-drop entry)" "$DATA_GRID_DRAG_LIBRARY_PROBE" 'dist-drag-drop/out.js'
+
 echo
 echo "==> [types] Type-checking the barrel and its subpaths (a data-grid core and five plugin entries among them) under both moduleResolution settings"
 TYPES_CHECK="$WORKDIR/types-check"

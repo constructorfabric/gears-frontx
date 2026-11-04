@@ -826,7 +826,7 @@ need nothing installed either.
 
 | Option | Type | Default |
 |--------|------|---------|
-| `filename` | `string \| () => string` | `Report`; the extension is added when it is missing |
+| `filename` | `string \| () => string` | `Report`; a string gets the extension when it is missing, a function's result is used as is |
 | `includeHeaders` | `boolean` | `true` |
 | `delimiter` | `string` | `,` (CSV) |
 | `sheetName` | `string` | `Sheet` (Excel) |
@@ -1107,7 +1107,8 @@ whole grid. A drop outside the grid does nothing.
 
 When `onDrop` returns a promise, the handle of the dragged row shows a spinner until it settles.
 A rejection is swallowed and the spinner stops: handle errors inside `onDrop`. A callback that
-returns anything else is done at once.
+returns anything else is done at once. One that throws has its error reported as uncaught, on
+its own, and the next drag works as usual.
 
 The handle, which fills its cell, is marked `data-grid-row-ignore-click`; the rest of the cell
 around it is not, since there is none. Only this entry loads the drag
