@@ -170,10 +170,10 @@ Internal system functions that implement the isolation mechanism.
 19. [x] - `p1` - Rewrite all relative static import specifiers to their resolved blob URLs from the per-load blob URL map - `inst-rewrite-static`
 20. [x] - `p1` - Raise an MFE load error for any static dependency that has no entry in the per-load blob URL map when its referrer is rewritten — unconditionally, there being no sanctioned reason for an absence now that a detected cycle fails the build where it is detected — naming the referring chunk and the dependency, rather than emitting an origin URL for a module that would then evaluate outside the isolated graph with its bare specifiers unrewritten - `inst-raise-unbuilt-dep`
 21. [x] - `p1` - Rewrite all bare shared-dependency specifiers to their pre-built shared-dep blob URLs - `inst-rewrite-shared`
-22. [x] - `p1` - Replace `import.meta.url` occurrences with the chunk's real HTTP base URL to preserve relative URL resolution under blob evaluation - `inst-rewrite-meta-url`
+22. [x] - `p1` - Replace `import.meta.url` occurrences with the chunk's own HTTP URL, so relative URL resolution under blob evaluation matches resolution from the chunk's origin and the chunk still reads its own file URL - `inst-rewrite-meta-url`
 23. [x] - `p1` - **IF** the rewritten source references the lazy-import ABI entry point - `inst-if-lazy-ref`
-    1. [x] - `p1` - Mint or reuse the per-load lazy-loader stub blob URL and inject its import at the top of the source - `inst-inject-lazy-stub`
-24. [x] - `p1` - Wrap the fully rewritten source in a blob, create a blob URL, and record it in the per-load blob URL map - `inst-create-blob`
+    1. [x] - `p1` - Mint or reuse the per-load lazy-loader stub blob URL and append its import to the end of the source, so every line of the chunk keeps its line number - `inst-inject-lazy-stub`
+24. [x] - `p1` - Append a `sourceURL` comment naming the chunk's HTTP URL, wrap the fully rewritten source in a blob, create a blob URL, and record it in the per-load blob URL map - `inst-create-blob`
 25. [x] - `p1` - **RETURN** with the blob URL present in the per-load map, which is the durable record of this construction - `inst-return-complete`
 26. [x] - `p1` - **WHEN** a construction settles — fulfilled or rejected — without a blob URL recorded for its filename (abandonment because another branch of the same build failed, or its own failure — including a detected cycle), remove its in-flight registry entry, so a later request re-attempts construction instead of joining a settled promise that produced nothing - `inst-settle-drop-inflight`
 
@@ -210,7 +210,7 @@ Internal system functions that implement the isolation mechanism.
       1. [x] - `p1` - **RETURN** error — fail the load with a diagnostic naming the chunk, the surviving specifier, and the microfrontend - `inst-raise-shared-dep-bare-specifier`
    4. [x] - `p1` - **IF** the rewritten source still carries, in those same two import forms, a specifier the manifest never declared which is well-formed as a package module specifier — an optionally scoped package name with an optional subpath, carrying no whitespace, quote, parenthesis, colon or line break - `inst-if-undeclared-specifier`
       1. [x] - `p1` - Emit a diagnostic naming the chunk, that specifier, and the microfrontend, and proceed with the load — because such a specifier cannot resolve inside an isolated module and the browser's own resolution failure names neither the chunk nor the microfrontend, while this detection reads the chunk's text without parsing it and therefore must never be able to fail a load that would otherwise succeed - `inst-warn-undeclared-specifier`
-   5. [x] - `p1` - Wrap the rewritten source in a blob, create a fresh blob URL, and add it to the shared-dep blob URL map - `inst-create-dep-blob`
+   5. [x] - `p1` - Append a `sourceURL` comment naming the URL this load resolved for the dependency, wrap the rewritten source in a blob, create a fresh blob URL, and add it to the shared-dep blob URL map - `inst-create-dep-blob`
 7. [x] - `p1` - **RETURN** the complete shared-dep blob URL map - `inst-return-map`
 
 **Notes** (deferred, not decided here):
