@@ -110,7 +110,8 @@ export class UnitFormatConformance {
   /**
    * Parse a graph file and run its checks: name-hash against content,
    * per-unit and per-pack declared hashes against bytes, `requires`
-   * closure over unit bare imports, and relative-import resolution.
+   * closure over unit bare imports, relative-import resolution, and
+   * resolution of every declared entry module path to a unit.
    */
   private checkGraph(dir: string, rel: string, violations: UnitFormatViolation[]): void {
     this.checkFileNameHash(dir, rel, violations);
@@ -138,6 +139,18 @@ export class UnitFormatConformance {
     for (const unit of graph.units) {
       this.checkUnit(dir, rel, graph, unit, allModulePaths, violations);
     }
+    for (const [subpath, modulePath] of Object.entries(graph.entryModulePaths ?? {})) {
+      if (!allModulePaths.has(modulePath)) {
+        violations.push(
+          this.violation(
+            dir,
+            rel,
+            'graph-format',
+            `entry "${subpath}" names module path "${modulePath}", owned by no unit of ${graph.name}@${graph.version}`,
+          ),
+        );
+      }
+    }
     if (graph.pack !== undefined) {
       this.checkDeclaredHash(dir, rel, graph.pack.location, graph.pack.contentHash, 'pack', violations);
     }
@@ -145,8 +158,9 @@ export class UnitFormatConformance {
 
   /**
    * Check one unit's declared content identity against its bytes, its bare
-   * imports against the graph's `requires`, and its relative imports
-   * against the package's module paths.
+   * imports against the graph's `requires`, its bare specifiers against its
+   * bare imports, and its relative imports against the package's module
+   * paths.
    */
   private checkUnit(
     dir: string,
@@ -165,6 +179,20 @@ export class UnitFormatConformance {
             graphRel,
             'requires-closure',
             `unit ${unit.location} keeps bare import "${bare}" external but the graph's requires does not declare it`,
+          ),
+        );
+      }
+    }
+    for (const specifier of unit.bareSpecifiers ?? []) {
+      const segments = specifier.split('/');
+      const packageName = segments.slice(0, specifier.startsWith('@') ? 2 : 1).join('/');
+      if (!unit.bareImports.includes(packageName)) {
+        violations.push(
+          this.violation(
+            dir,
+            graphRel,
+            'requires-closure',
+            `unit ${unit.location} imports bare specifier "${specifier}" but its bareImports does not list "${packageName}"`,
           ),
         );
       }

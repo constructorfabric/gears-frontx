@@ -46,6 +46,17 @@ export interface SharedDepGraphUnit {
    */
   bareImports: string[];
   /**
+   * Bare specifiers this unit imports, exactly as written — package names
+   * and subpaths alike (`'react'`, `'react/jsx-runtime'`,
+   * `'@scope/pkg/feature'`). Optional, for backward compatibility: when
+   * present, the runtime follows each specifier to the unit it names (an
+   * imported subpath reaches that subpath's entry unit, not only the
+   * package's main unit); when absent, it follows `bareImports` to each
+   * package's main unit. Every specifier's package name is listed in
+   * `bareImports`.
+   */
+  bareSpecifiers?: string[];
+  /**
    * Relative imports this unit carries — paths to other units of the same
    * package, resolved against the unit's member module paths.
    */
@@ -78,6 +89,12 @@ export interface SharedDepGraphPack {
    * bare specifier. Absent when the pack is fully self-contained.
    */
   bareImports?: string[];
+  /**
+   * Bare specifiers the pack imports, exactly as written, subpaths
+   * included — the same meaning as a unit's `bareSpecifiers`. Optional;
+   * when absent the runtime follows `bareImports`.
+   */
+  bareSpecifiers?: string[];
 }
 
 /**
@@ -134,7 +151,24 @@ export interface SharedDepGraphFile {
    */
   mainModulePath?: string;
   /**
-   * Optional whole-package pack, with its own content identity.
+   * The package's delivered entry points: each subpath a consumer may
+   * import, keyed as in the package's `exports` map (`'.'` for the
+   * package name, `'./client'`, `'./jsx-runtime'`), mapped to the module
+   * path of the entry module it resolves to (`'client.js'`,
+   * `'esm/button/index.js'`) — a member of exactly one unit's
+   * `modulePaths`. Optional, for backward compatibility: a subpath listed
+   * here resolves to the unit owning its entry module, and that unit's
+   * minted reference answers the subpath specifier; a subpath not listed
+   * falls back to the module paths `<subpath>`, `<subpath>.js`,
+   * `<subpath>/index.js`. The `'.'` entry, when present, takes precedence
+   * over `mainModulePath`.
+   */
+  entryModulePaths?: Record<string, string>;
+  /**
+   * Optional whole-package pack, with its own content identity. The pack
+   * is the package's main entry bundled whole and answers the package
+   * name only; a load delivering it also delivers every other entry unit
+   * it reaches.
    */
   pack?: SharedDepGraphPack;
   /**

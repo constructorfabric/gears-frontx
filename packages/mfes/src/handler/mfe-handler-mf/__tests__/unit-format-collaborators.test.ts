@@ -1,11 +1,12 @@
 /**
  * Unit tests for the phase-8 collaborator classes: ByteBudgetLruCache,
- * PackFallbackPolicy, SharedSpecifierRewriter, SharedUnitGraphLoader,
+ * PackFallbackPolicy, SharedSpecifierRewriter, SharedEntryResolver, SharedUnitGraphLoader,
  * UnitBlobMinter, LoadDiagnosticsAccumulator (issue #718).
  */
 import { describe, expect, it, vi } from 'vitest';
 import { ByteBudgetLruCache } from '../ByteBudgetLruCache';
 import { PackFallbackPolicy } from '../PackFallbackPolicy';
+import { SharedEntryResolver } from '../SharedEntryResolver';
 import { SharedSpecifierRewriter } from '../SharedSpecifierRewriter';
 import { SharedUnitGraphLoader } from '../SharedUnitGraphLoader';
 import { UnitBlobMinter } from '../UnitBlobMinter';
@@ -202,13 +203,62 @@ describe('SharedUnitGraphLoader', () => {
   });
 });
 
+describe('SharedEntryResolver', () => {
+  const unit = (modulePaths: string[]) => ({
+    contentHash: 'h',
+    modulePaths,
+    bareImports: [],
+    relativeImports: [],
+    location: `${modulePaths[0]}.js`,
+  });
+  const main = unit(['esm/index.js']);
+  const button = unit(['esm/button/index.js']);
+  const guess = unit(['button.js']);
+  const graph = {
+    name: '@scope/kit',
+    version: '1.0.0',
+    unitMode: 'units' as const,
+    units: [main, button, guess],
+    mainModulePath: 'esm/index.js',
+    entryModulePaths: { '.': 'esm/index.js', './button': 'esm/button/index.js' },
+  };
+
+  it('splits scoped and unscoped specifiers into name and subpath', () => {
+    expect(SharedEntryResolver.split('@scope/kit/a/b')).toEqual({ name: '@scope/kit', subpath: 'a/b' });
+    expect(SharedEntryResolver.split('react')).toEqual({ name: 'react', subpath: '' });
+  });
+
+  it('resolves a declared exports subpath to its entry module, not a guessed path', () => {
+    expect(SharedEntryResolver.entryUnit(graph, 'button')).toBe(button);
+    expect(SharedEntryResolver.entryUnit(graph, '')).toBe(main);
+  });
+
+  it('falls back to candidate module paths for an undeclared subpath', () => {
+    const { entryModulePaths: _ignored, ...legacy } = graph;
+    expect(SharedEntryResolver.entryUnit(legacy, 'button')).toBe(guess);
+  });
+
+  it('lists the entry specifiers a unit answers', () => {
+    expect(SharedEntryResolver.entrySpecifiersOf(graph, main)).toEqual(['@scope/kit']);
+    expect(SharedEntryResolver.entrySpecifiersOf(graph, button)).toEqual(['@scope/kit/button']);
+    expect(SharedEntryResolver.entrySpecifiersOf(graph, guess)).toEqual([]);
+  });
+
+  it('prefers recorded bare specifiers over bare import names', () => {
+    expect(SharedEntryResolver.importedSpecifiers({ bareImports: ['react'], bareSpecifiers: ['react/jsx-runtime'] })).toEqual(['react/jsx-runtime']);
+    expect(SharedEntryResolver.importedSpecifiers({ bareImports: ['react'] })).toEqual(['react']);
+  });
+});
+
 describe('UnitBlobMinter', () => {
   const record = (over: Partial<SharedDepSourceRecord>): SharedDepSourceRecord => ({
     key: 'k',
     packageName: 'pkg',
     modulePaths: ['index.js'],
     isPackageMain: true,
+    entrySpecifiers: [],
     bareImports: [],
+    bareSpecifiers: [],
     relativeImports: [],
     text: 'export const x = 1;',
     ...over,

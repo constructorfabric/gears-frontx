@@ -13,6 +13,7 @@ const sha256 = (text: string) => createHash('sha256').update(text).digest('hex')
 interface UnitSpec {
   modulePaths: string[];
   bareImports?: string[];
+  bareSpecifiers?: string[];
   relativeImports?: string[];
   source?: string;
 }
@@ -24,6 +25,7 @@ interface OutputSpec {
   requires?: string[];
   packSource?: string;
   producer?: { name: string; version: string };
+  entryModulePaths?: Record<string, string>;
 }
 
 /**
@@ -46,6 +48,7 @@ function emitConformingOutput(dir: string, spec: OutputSpec): SharedDepGraphFile
       contentHash: hash,
       modulePaths: u.modulePaths,
       bareImports: u.bareImports ?? [],
+      ...(u.bareSpecifiers !== undefined ? { bareSpecifiers: u.bareSpecifiers } : {}),
       relativeImports: u.relativeImports ?? [],
       location,
     };
@@ -66,6 +69,7 @@ function emitConformingOutput(dir: string, spec: OutputSpec): SharedDepGraphFile
     units,
     requires: spec.requires,
     mainModulePath: spec.units[0].modulePaths[0],
+    ...(spec.entryModulePaths !== undefined ? { entryModulePaths: spec.entryModulePaths } : {}),
     pack,
     producer: spec.producer ?? { name: 'test-producer', version: '1.0.0' },
   };
@@ -158,6 +162,52 @@ describe('UnitFormatConformance', () => {
     emitConformingOutput(a, spec);
     emitConformingOutput(b, spec);
     expect(rules(conformance.check(a, b))).toContain('requires-closure');
+  });
+
+  it('accepts subpath bare specifiers and entry module paths that resolve to units', () => {
+    const a = makeDir();
+    const b = makeDir();
+    const spec: OutputSpec = {
+      name: 'dom',
+      version: '1.0.0',
+      requires: ['dom', 'react'],
+      entryModulePaths: { '.': 'index.js', './client': 'client.js' },
+      units: [
+        { modulePaths: ['index.js'], bareImports: ['react'], bareSpecifiers: ['react/jsx-runtime'] },
+        { modulePaths: ['client.js'], bareImports: ['dom'], bareSpecifiers: ['dom'] },
+      ],
+    };
+    emitConformingOutput(a, spec);
+    emitConformingOutput(b, spec);
+    expect(conformance.check(a, b)).toEqual([]);
+  });
+
+  it('reports a requires-closure violation when a bare specifier names a package absent from the unit bare imports', () => {
+    const a = makeDir();
+    const b = makeDir();
+    const spec: OutputSpec = {
+      name: 'p',
+      version: '1.0.0',
+      requires: ['react'],
+      units: [{ modulePaths: ['i.js'], bareImports: ['react'], bareSpecifiers: ['@scope/other/sub'] }],
+    };
+    emitConformingOutput(a, spec);
+    emitConformingOutput(b, spec);
+    expect(rules(conformance.check(a, b))).toContain('requires-closure');
+  });
+
+  it('reports a graph-format violation when an entry module path is owned by no unit', () => {
+    const a = makeDir();
+    const b = makeDir();
+    const spec: OutputSpec = {
+      name: 'p',
+      version: '1.0.0',
+      entryModulePaths: { '.': 'i.js', './client': 'client.js' },
+      units: [{ modulePaths: ['i.js'] }],
+    };
+    emitConformingOutput(a, spec);
+    emitConformingOutput(b, spec);
+    expect(rules(conformance.check(a, b))).toContain('graph-format');
   });
 
   it('reports a relative-import violation when an intra-package import resolves to no unit', () => {

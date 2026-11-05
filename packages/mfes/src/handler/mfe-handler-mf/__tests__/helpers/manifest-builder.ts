@@ -47,6 +47,8 @@ export function unitIdentityKey(
 export interface UnitSpec {
   modulePaths: string[];
   bareImports?: string[];
+  /** Bare specifiers as written, subpaths included; omitted when undefined. */
+  bareSpecifiers?: string[];
   relativeImports?: string[];
   source: string;
 }
@@ -94,6 +96,9 @@ export function buildGraphFile(
       contentHash: unitHashes[i],
       modulePaths: unit.modulePaths,
       bareImports: unit.bareImports ?? [],
+      ...(unit.bareSpecifiers !== undefined
+        ? { bareSpecifiers: unit.bareSpecifiers }
+        : {}),
       relativeImports: unit.relativeImports ?? [],
       location: unitLocations[i],
     })),

@@ -9,9 +9,12 @@
  * (`runtime_rebuild_approach`).
  *
  * Ordering is derived from the records' own dependency edges — a unit's
- * `relativeImports` (resolved against every member module path, F-016)
- * plus the packages whose bare specifiers appear in its source — never
- * from `manifest.shared[]` enumeration order. A cycle admits no minting
+ * `relativeImports` (resolved against every member module path, F-016),
+ * the record answering each bare specifier it imports (a subpath such as
+ * `react/jsx-runtime`, or its own package's name from a CommonJS subpath
+ * entry delivered beside its pack), plus the packages whose bare
+ * specifiers appear in its source — never from `manifest.shared[]`
+ * enumeration order. A cycle admits no minting
  * order and fails the load deterministically. A pack that imports a
  * package no root reached is not a false circular: readiness only ever
  * waits on packages present in this build's record set (F-018).
@@ -31,12 +34,32 @@ export class UnitBlobMinter {
   protected constructor() {}
 
   /**
+   * The bare specifiers `record` answers once minted: its entry
+   * specifiers (`pkg` for the package's main record or pack,
+   * `pkg/<subpath>` for every `exports`-mapped subpath whose entry module
+   * it owns) and `pkg/<modulePath>` (with and without `.js`) for each
+   * member module path, so a `react/jsx-runtime` specifier resolves to
+   * the unit that owns `jsx-runtime.js` (F-017) and
+   * `@base-ui/react/button` to the unit owning `esm/button/index.js`.
+   */
+  static specifiersOf(record: SharedDepSourceRecord): string[] {
+    const specifiers = new Set(record.entrySpecifiers);
+    if (record.isPackageMain || record.modulePaths.includes('<pack>')) {
+      specifiers.add(record.packageName);
+    }
+    for (const m of record.modulePaths) {
+      if (m === '<pack>') continue;
+      specifiers.add(`${record.packageName}/${m}`);
+      specifiers.add(`${record.packageName}/${m.endsWith('.js') ? m.slice(0, -3) : m}`);
+    }
+    return [...specifiers];
+  }
+
+  /**
    * Mint one blob URL per record, leaves first, and return the
-   * specifier→blob-URL map covering every minted unit: `pkg` for the
-   * package's main record, `pkg/<modulePath>` (with and without `.js`)
-   * for each member module path, so a `react/jsx-runtime` specifier in
-   * an expose chunk or sibling unit resolves to the unit that owns
-   * `jsx-runtime.js` (F-017).
+   * specifier→blob-URL map covering every minted unit — the specifiers
+   * `specifiersOf` lists for each record — which the expose chain and
+   * sibling units rewrite against.
    */
   static mint(
     records: readonly SharedDepSourceRecord[],
@@ -57,6 +80,16 @@ export class UnitBlobMinter {
     const recordBlob = new Map<string, string>();
     const specifierToBlob = new Map<string, string>();
     const pending = new Map(recordByKey);
+    // specifier -> record answering it; the first record claiming a
+    // specifier keeps it, so one specifier never maps to two blobs.
+    const specifierToRecord = new Map<string, SharedDepSourceRecord>();
+    for (const record of records) {
+      for (const specifier of UnitBlobMinter.specifiersOf(record)) {
+        if (!specifierToRecord.has(specifier)) {
+          specifierToRecord.set(specifier, record);
+        }
+      }
+    }
 
     const depsOf = (record: SharedDepSourceRecord): Set<string> => {
       const deps = new Set<string>();
@@ -73,6 +106,15 @@ export class UnitBlobMinter {
             deps.add(target.key);
             break;
           }
+        }
+      }
+      // Specifier edges: the record answering each bare specifier the
+      // record imports — another package's subpath, or its own package's
+      // name from a subpath entry delivered beside the pack.
+      for (const specifier of record.bareSpecifiers) {
+        const target = specifierToRecord.get(specifier);
+        if (target !== undefined && target.key !== record.key) {
+          deps.add(target.key);
         }
       }
       // Bare-dependency edges: only packages present in this build's
@@ -94,14 +136,10 @@ export class UnitBlobMinter {
 
     const publish = (record: SharedDepSourceRecord, blob: string): void => {
       recordBlob.set(record.key, blob);
-      if (record.isPackageMain || record.modulePaths.includes('<pack>')) {
-        specifierToBlob.set(record.packageName, blob);
-      }
-      for (const m of record.modulePaths) {
-        if (m === '<pack>') continue;
-        const bare = m.endsWith('.js') ? m.slice(0, -3) : m;
-        specifierToBlob.set(`${record.packageName}/${m}`, blob);
-        specifierToBlob.set(`${record.packageName}/${bare}`, blob);
+      for (const specifier of UnitBlobMinter.specifiersOf(record)) {
+        if (specifierToRecord.get(specifier) === record) {
+          specifierToBlob.set(specifier, blob);
+        }
       }
     };
 
