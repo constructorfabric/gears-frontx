@@ -41,6 +41,7 @@ import {
   nearMissesIn,
   propsPassedTo,
   resolveRenameSource,
+  sharedPropsSchemas,
   synthesizeVersionedId,
   touchesAnyOverlay,
   touchesEnrollmentList,
@@ -565,20 +566,19 @@ function checkCompatForUnit(
   const elementSurfaceDiff: ElementSurfaceDiff | undefined = comparison.diff;
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compat-unit:p1:inst-cu-element-surface-both
 
-  // gts-ts's checkCompatibility (GtsCompatibility.checkCompatibility) diffs
-  // the two schemas' OWN properties/required fields and never follows a
-  // reference of any kind (see check-lib.ts's diffElementSurface comment
-  // for why the forwarded surface needs its own diff above). Old and new
-  // normally share the same real $id (same component, same major), so both are
-  // registered under synthetic minor-versioned ids to avoid one silently
-  // overwriting the other in the store.
+  // gts-ts's checkCompatibility compares the two props schemas by what they
+  // accept. The props schema does not contain the forwarded surface, so that
+  // needs its own diff above (see check-lib.ts's diffElementSurface comment).
+  // Old and new normally share the same real $id (same component, same
+  // major), so both are registered under synthetic minor-versioned ids to
+  // avoid one silently overwriting the other in the store.
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compat-unit:p1:inst-cu-register
   // The props TYPE of each revision, lifted out of the document it is carried
   // in: what a compatibility check compares is two revisions of a component's
   // props surface, and that surface is a schema only once its own identifier
-  // is stamped back on.
-  const oldProps = liftPropsSchema(oldContract);
-  const newProps = liftPropsSchema(newContract);
+  // is stamped back on. Each is trimmed to the props both revisions declare
+  // (see sharedPropsSchemas in check-lib.ts for why).
+  const [oldProps, newProps] = sharedPropsSchemas(liftPropsSchema(oldContract), liftPropsSchema(newContract));
   const oldSynthetic = { ...oldProps, $id: synthesizeVersionedId(String(oldProps.$id), 0) };
   const newSynthetic = { ...newProps, $id: synthesizeVersionedId(String(newProps.$id), 1) };
   gts.register(oldSynthetic);
@@ -586,12 +586,10 @@ function checkCompatForUnit(
   const result = gts.checkCompatibility(bareGtsId(String(oldSynthetic.$id)), bareGtsId(String(newSynthetic.$id)), 'backward');
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compat-unit:p1:inst-cu-register
 
-  // gts-ts's own backward check misses a newly required own prop, a vanished
-  // own prop that was never required (a rename looks exactly like one of
-  // these), and an enum appearing on a prop that already carried its type -
-  // see check-lib.ts's diffOwnPropsSchema comment for why
-  // `is_backward_compatible` alone understates a real breaking change here,
-  // measured against the real library rather than assumed from reading it.
+  // gts-ts's own backward check never sees an added or removed prop (the
+  // trimming above leaves them out) and names no prop when it refuses - see
+  // check-lib.ts's diffOwnPropsSchema comment. This diff judges added and
+  // removed props itself, and names the prop behind every finding it makes.
   // The current revision's forwarded surface is handed in so a prop that left
   // `properties` can be reconciled against what the host element still
   // accepts - a component dropping its own `className` declaration forwards

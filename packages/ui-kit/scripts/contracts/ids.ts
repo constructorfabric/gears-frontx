@@ -85,10 +85,9 @@ export function vocabularyTypeId(token: string): string {
 }
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-identifiers:p2:inst-id-vocabulary-type
 
-// The x-gts-ref target every component reference declares: any instance of
-// the component type. Written as a trailing-`*` prefix pattern, the one
-// wildcard shape gts-ts implements (XGtsRefValidator's validateGtsPattern
-// matches by prefix) and the same shape the ecosystem's own schemas use
+// The x-gts-instance-ref target every component reference declares: any
+// instance of the component type. Written as a trailing-`*` wildcard pattern,
+// the same shape the ecosystem's own schemas use
 // (packages/gts-plugin's `gts.frontx.mfes.ext.domain.v1~*`). A component IS
 // an instance of that type, so a reference to a component resolves to one.
 export const COMPONENT_REF_TARGET = `${COMPONENT_TYPE_ID_BARE}*`;
@@ -122,9 +121,9 @@ export function elementTypeId(elementToken: string): string {
 }
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-identifiers:p2:inst-id-element
 
-// The x-gts-ref target a host-element reference declares: any type in the
-// element namespace. Written as a trailing-`*` prefix pattern for the same
-// reason COMPONENT_REF_TARGET is - the one wildcard shape gts-ts implements.
+// The x-gts-type-ref target a host-element reference declares: any type in
+// the element namespace, written as a trailing-`*` wildcard pattern like
+// COMPONENT_REF_TARGET.
 export const ELEMENT_REF_TARGET = `gts.${VENDOR_PACKAGE}.element.*`;
 
 // GTS tokens are snake_case; kit directories are kebab-case
@@ -224,9 +223,9 @@ function componentSegmentPattern(captureName = false): string {
 // component, an accepted component, a family member, a mount point's
 // container, and a component document's own `$id`, which are all the same
 // thing (componentRef above) and therefore the same pattern. Carried next to
-// `x-gts-ref` rather than replaced by it: gts-ts strips x-gts-ref before
-// validating (GtsStore.normalizeSchema), so the pattern is what actually
-// rejects a malformed id.
+// the GTS reference keyword rather than replaced by it: plain Ajv treats that
+// keyword as an annotation, so for a reader without a GTS store the pattern
+// is what rejects a malformed id.
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-identifiers:p2:inst-id-patterns
 export function componentRefPattern(captureName = false): string {
   return `^${escapeRegExp(COMPONENT_TYPE_ID_BARE)}${componentSegmentPattern(captureName)}$`;

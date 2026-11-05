@@ -273,6 +273,7 @@ describe('data-table in a GTS store', () => {
     };
     const result = validateContractInstance(corrupted);
     expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/pattern/i);
+    expect(result.error).toContain('/dont_use_when/0/instead/component');
+    expect(result.error).toContain('not a valid GTS identifier');
   });
 });

@@ -83,8 +83,9 @@ export interface ElementSurfaceDiff {
   removedPatterns: string[];
   narrowed: { prop: string; reason: string }[];
   // An host element surface is a separate type the contract NAMES
-  // (see its own $comment) - gts-ts's flat property/required/enum comparison
-  // never sees it, because it follows no reference of any kind. This is the
+  // (see its own $comment) - gts-ts's comparison of the props schema never
+  // sees it, because the props schema does not contain it: only the
+  // contract's `forwards_to` holds its id. This is the
   // check that closes that gap: an added forwarded prop only widens what a
   // consumer may pass (backward compatible), while a removed prop or a
   // narrowed enum/type can reject something that used to validate.
@@ -206,38 +207,30 @@ export function diffElementSurface(oldSchema: ElementSurfaceSchemaLike, newSchem
 }
 // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compat-decision:p1:inst-cd-element-surface
 
-// gts-ts's own `checkCompatibility(..., 'backward')` diffs a component's OWN
-// properties/required the same shallow way `diffElementSurface` diffs the
-// forwarded surface - but it does not see everything a consumer would feel.
-// Measured against the real library rather than read off its source (see
-// check-lib.compat-e2e.test.ts, which pins each of these):
+// gts-ts's own `checkCompatibility(..., 'backward')` judges a component's OWN
+// props by what the schemas accept: does every props object the old schema
+// accepts still validate against the new one. It is given the two revisions
+// trimmed to the props both declare, with no other props allowed
+// (sharedPropsSchemas below), and on those it catches what a consumer would
+// feel - a changed type, a type appearing where none existed, a dropped enum
+// value, an enum appearing over an existing type, a prop becoming required, a
+// narrowed array element. Measured against the real library rather than read
+// off its source: check-lib.compat-e2e.test.ts pins each of these. What it
+// does not do is say WHICH prop: one verdict covers the whole schema. So this
+// diff applies the same rules itself and names each finding.
 //
-//  - a prop that gains `required` status, and a prop that simply vanishes
-//    without having been required, are both invisible to its BACKWARD
-//    direction; they only show up in the FORWARD direction's
-//    `forward_errors`, which this tool never reads. For a component's PROPS
-//    SCHEMA - the shape a consumer's call site must satisfy - "does an old
-//    caller's props object still validate" is exactly what
-//    `is_backward_compatible` claims to answer, so a newly required prop (or
-//    a rename, which looks exactly like a vanished one) is a real backward
-//    break the library misses.
-//  - an ENUM appearing on a prop that already carried its type is compatible
-//    to it. `{type: 'string'}` -> `{type: 'string', enum: [...]}` is the
-//    shape this compiler produces the day a plain `string` prop becomes a
-//    literal union, and it rejects every value outside the union. (The
-//    neighbouring case - a constraint appearing where the prop asserted
-//    nothing at all - IS caught, as "type changed from any to string", so
-//    the gap is narrower than "narrowing is unverified" and is closed here
-//    with the same rule the forwarded surface already used.)
+// Added and removed props are this diff's alone. A props body leaves every
+// undeclared name unchecked, so against the full schema the library reads a
+// prop added to it as a narrowing - the base accepted that name with any
+// value - and a prop dropped from it as unknown.
 //
 // A prop that leaves `properties` is not always gone, either: a component
 // whose own declaration of `className` is dropped still forwards `className`
 // through the surface its host element DECLARES, and a consumer passing it
 // notices nothing. `movedToForwardedSurface` is that reconciliation - a
 // removal the surface declares under the same name, with a compatible shape,
-// is not a removal. gts-ts's own decision is computed over the flat schema and cannot
-// make that distinction either, but it also does not flag an optional prop
-// vanishing, so the two answers do not fight.
+// is not a removal. The library never sees a removed prop, so the two answers
+// do not fight.
 export interface OwnPropsSchemaLike {
   properties?: Record<string, ElementSurfacePropertyLike>;
   required?: string[];
@@ -451,8 +444,39 @@ export interface CompatDecision {
   notes: string[];
 }
 
+// The two props schemas gts-ts's own backward comparison is given: each
+// revision's lifted props schema trimmed to the props both revisions declare,
+// with `unevaluatedProperties: false` in place of the unchecked tail. Added
+// and removed props, and the attribute families in `patternProperties`, are
+// diffOwnPropsSchema's to judge (see its comment). Left in, an added prop
+// would be judged twice and wrongly the second time: the open tail makes the
+// library read it as a narrowing.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compat-decision:p1:inst-cd-combine
+export function sharedPropsSchemas(
+  oldProps: Record<string, unknown>,
+  newProps: Record<string, unknown>,
+): [Record<string, unknown>, Record<string, unknown>] {
+  const propertiesOf = (schema: Record<string, unknown>): Record<string, unknown> =>
+    (schema.properties ?? {}) as Record<string, unknown>;
+  const newProperties = propertiesOf(newProps);
+  const shared = Object.keys(propertiesOf(oldProps)).filter((name) => Object.prototype.hasOwnProperty.call(newProperties, name));
+  const trim = (schema: Record<string, unknown>): Record<string, unknown> => {
+    const { properties, required, unevaluatedProperties: _tail, patternProperties: _families, ...rest } = schema;
+    const own = (properties ?? {}) as Record<string, unknown>;
+    return {
+      ...rest,
+      properties: Object.fromEntries(shared.map((name) => [name, own[name]])),
+      required: (Array.isArray(required) ? (required as string[]) : []).filter((name) => shared.includes(name)),
+      unevaluatedProperties: false,
+    };
+  };
+  return [trim(oldProps), trim(newProps)];
+}
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compat-decision:p1:inst-cd-combine
+
 // The decision rule T4 specifies: a contract that is backward-incompatible
-// (by any signal - gts-ts's own schema-body comparison, the element-surface
+// (by any signal - gts-ts's own comparison of the props both revisions
+// declare, the element-surface
 // structural diff above, or the own-props diff above) is only acceptable
 // when the contract major in its $id moved, because that is the one visible
 // acknowledgement that consumers built against the old major are expected to
