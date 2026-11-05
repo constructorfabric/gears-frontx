@@ -58,6 +58,7 @@ import {
 import {
   applyContractTestTimeout,
   assertContractFreshness,
+  elementSurfaceProblem,
   registeredKitStore,
   resolveComponentRef,
   unitStore,
@@ -960,8 +961,8 @@ describe('button in a GTS store', () => {
   it("checks forwards_to's grammar in the registry, and leaves resolving it to the conformance suite", () => {
     // The registry checks a reference's grammar only (testing.ts's KitStore):
     // a well-formed id naming no committed surface passes here, and the
-    // conformance suite's own check fails it against the committed files. A
-    // malformed one fails here, by name - the negative control.
+    // conformance suite's own check fails it against the committed files (the
+    // next test). A malformed one fails here, by name - the negative control.
     const gts = registeredKitStore();
     const orphaned = JSON.parse(JSON.stringify(contract)) as Record<string, unknown>;
     orphaned.forwards_to = elementTypeRef('dom_nope');
@@ -975,6 +976,18 @@ describe('button in a GTS store', () => {
     expect(result.ok).toBe(false);
     expect(result.error).toContain('/forwards_to');
     expect(result.error).toContain('not a valid GTS identifier');
+  });
+
+  it('fails a forwards_to that no committed file declares in the conformance check, which the registry passes', () => {
+    // The other half of the test above: since the registry passes a
+    // well-formed surface reference whatever it names, elementSurfaceProblem
+    // is the only check that fails one naming no committed file. Button's own
+    // reference is the positive case.
+    expect(elementSurfaceProblem(contract)).toBeUndefined();
+    const orphaned = { ...contract, forwards_to: elementTypeRef('dom_nope') };
+    expect(elementSurfaceProblem(orphaned)).toContain('which no committed file declares');
+    const malformed = { ...contract, forwards_to: 'not-a-gts-id' };
+    expect(elementSurfaceProblem(malformed)).toContain('is not a grammatical element-surface reference');
   });
 
   it('fails when a vocabulary type the component type references is not registered', () => {

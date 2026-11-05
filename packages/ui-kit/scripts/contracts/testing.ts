@@ -217,6 +217,28 @@ function composedSurfaceRefs(): Set<string> {
   return refs;
 }
 
+// What is wrong with the host-element surface a contract names, or undefined
+// when nothing is: the reference must obey the element-surface grammar and
+// name a committed file. This is the only check that fails a well-formed
+// reference naming no committed file, since the registry checks grammar only
+// (see KitStore above), so it is exported for a negative control to call.
+// Both spellings appear on purpose - a reference value is bare, a file's own
+// `$id` carries `gts://` - so the committed set is keyed by the bare form. A
+// contract that names no surface has nothing to resolve, which is the honest
+// answer for DataTable and not a skipped check.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-element-surface-refs
+export function elementSurfaceProblem(meaning: CompiledContract): string | undefined {
+  const ref = forwardsToRef(meaning);
+  if (ref === undefined) return undefined;
+  if (!new RegExp(elementTypeRefPattern()).test(ref)) {
+    return `forwards_to "${ref}" is not a grammatical element-surface reference`;
+  }
+  const committed = new Set(loadElementSurfaces().map((schema) => bareGtsId(String(schema.$id))));
+  if (!committed.has(ref)) return `forwards_to names "${ref}", which no committed file declares`;
+  return undefined;
+}
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-element-surface-refs
+
 // The registry a component instance is validated in beside the whole kit:
 // the component type it is an instance of, the vocabulary that type
 // references, every host element surface a component may name, every
@@ -455,23 +477,16 @@ export function assertContractFreshness(directory: string, exportStem: string = 
       // what has to hold is that the reference a contract HOLDS resolves to a
       // committed file, and that the file's own identifier obeys the
       // element-surface grammar rather than merely matching the string the
-      // contract happens to carry. Both spellings appear here on purpose - a
-      // reference value is bare, a file's own `$id` carries `gts://` - so the
-      // committed set is keyed by the bare form the reference is compared
-      // against. A contract that names no surface has nothing to resolve,
-      // which is the honest answer for DataTable and not a skipped check.
+      // contract happens to carry. The reference half is
+      // elementSurfaceProblem above, which button.contract.test.ts also hands
+      // a reference no committed file declares.
       const idPattern = new RegExp(elementTypeIdPattern());
-      const refPattern = new RegExp(elementTypeRefPattern());
-      const committed = new Set<string>();
       for (const schema of loadElementSurfaces()) {
         const id = String(schema.$id);
         expect(id, `${id} is not a grammatical element surface id`).toMatch(idPattern);
-        committed.add(bareGtsId(id));
       }
-      const ref = forwardsToRef(compileContract(directory, exportStem));
-      if (ref === undefined) return;
-      expect(ref, `${exportStem}: forwards_to "${ref}" is not a grammatical element-surface reference`).toMatch(refPattern);
-      expect(committed.has(ref), `${exportStem}: names "${ref}", which no committed file declares`).toBe(true);
+      const problem = elementSurfaceProblem(compileContract(directory, exportStem));
+      expect(problem, `${exportStem}: ${problem}`).toBeUndefined();
     });
 
     it('leaves no committed element surface that no contract names', () => {
