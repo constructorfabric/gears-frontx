@@ -8,7 +8,7 @@
  * `MfeHandlerMF`, per `cpt-frontx-adr-mfe-load-isolation` — converge on one
  * cache for the same shared-dependency source text instead of each
  * fetching and caching it separately, matching what their deduplication
- * keys (`cpt-frontx-adr-shared-dep-dedup-key`) already agree: the two loads
+ * keys (`cpt-frontx-adr-shared-dep-reuse`) already agree: the two loads
  * reuse the same emitted build.
  *
  * This module is the rendezvous that lets every COMPATIBLE, independently

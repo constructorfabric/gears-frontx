@@ -217,6 +217,20 @@ The system **MUST** meet measurable response-time and throughput targets for run
 
 **Rationale**: Running independently-developed microfrontends — potentially from different teams or vendors — within one host makes default-deny access and admission validation essential for the trust enterprises require.
 
+#### Resource efficiency
+
+- [ ] `p1` - **ID**: `cpt-frontx-nfr-resource-efficiency`
+
+The system **MUST** bound the transfer, evaluation, and retained memory of shared code to what the page's microfrontends actually use, and make those figures observable.
+
+**Thresholds**:
+- Shared-code transfer: a shared dependency at a given version, built identically, is transferred to the page at most once, however many microfrontends on that page use it.
+- Evaluation scope: each extension instance evaluates only the shared code its own functionality requires. The only exception is code that a published package does not offer separately, and every such case is reported under the visibility threshold.
+- Retained memory: memory the runtime retains grows only with the number of distinct extension instances registered. Unmounting and remounting the same extension instance any number of times does not increase it. Shared source text the runtime retains stays within an application-configurable byte budget.
+- Visibility: while running, the runtime reports the figures needed to check the three thresholds above without browser developer tools. This reporting is behaviour of the library, not operations monitoring of a deployed service. The figures include transferred and retained bytes, and evaluated versus available shared code per extension instance.
+
+**Rationale**: An application composed of many independently built microfrontends must not pay repeatedly, in download, evaluation, or memory, for code those microfrontends share or never use.
+
 ### 6.2 NFR Exclusions
 
 The ecosystem-wide NFRs — evolvability and scaling without an architectural ceiling — bind this package but are owned by the [root PRD §6.1](../../../architecture/PRD.md#61-nfr-inclusions) (`cpt-frontx-nfr-evolvability`, `cpt-frontx-nfr-scalability-ceiling`): they govern every published member equally, so no member owns them. The root PRD's §6.2 exclusions (safety, privacy, accessibility, internationalization, inclusivity, regulatory compliance) apply here for the same reasons stated there. The categories this PRD does not address in §6.1 are dispositioned as follows:

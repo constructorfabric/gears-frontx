@@ -1843,7 +1843,7 @@ describe('LruCache — capacity eviction and MRU re-insertion', () => {
 });
 
 /**
- * Regression coverage for issue #621 / `cpt-frontx-adr-shared-dep-dedup-key`.
+ * Regression coverage for issue #621 / `cpt-frontx-adr-shared-dep-reuse`.
  *
  * A shared-dep chunk is built per consuming microfrontend, so two manifests
  * can legitimately declare the same name and version while shipping

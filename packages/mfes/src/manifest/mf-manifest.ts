@@ -67,7 +67,7 @@ export interface MfManifestShared {
    * producing build. When present, the runtime's cross-MFE shared-dep
    * source-text cache keys reuse on this hash rather than on name@version
    * alone, so reuse only ever happens between loads that agree on the
-   * identity of the emitted build (see `cpt-frontx-adr-shared-dep-dedup-key`).
+   * identity of the emitted build (see `cpt-frontx-adr-shared-dep-reuse`).
    * Absent for producing builds that have not adopted it.
    */
   contentHash?: string;
