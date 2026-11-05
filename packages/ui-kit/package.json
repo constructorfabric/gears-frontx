@@ -72,7 +72,7 @@
   },
   "devDependencies": {
     "@gears-frontx/build-tools": "0.1.0-alpha.0",
-    "@globaltypesystem/gts-ts": "0.3.0",
+    "@globaltypesystem/gts-ts": "0.11.2",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.2",
     "@testing-library/user-event": "14.6.7",

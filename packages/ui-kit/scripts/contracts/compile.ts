@@ -581,13 +581,14 @@ export const CLASSIFICATION_KEY = 'x-uikit-classification';
 export type OpenUnevaluated = { readonly [CLASSIFICATION_KEY]: 'unchecked' };
 export const OPEN_UNEVALUATED: OpenUnevaluated = { [CLASSIFICATION_KEY]: 'unchecked' };
 
-// Every keyword the kit's own schemas carry that asserts nothing: GTS's
-// reference annotation, and the classification a props surface records for a
-// prop nothing evaluates. Declared on every Ajv instance rather than switched
+// Every keyword the kit's own schemas carry that plain Ajv does not know:
+// GTS's two reference keywords, which only a GTS store enforces, and the
+// classification a props surface records for a prop nothing evaluates. Each
+// asserts nothing to Ajv. Declared on every Ajv instance rather than switched
 // off with `strict: false`, which would also swallow a genuine typo like
 // `unevaluatedProperites` - exactly the class of mistake these schemas exist
 // to catch.
-export const ANNOTATION_KEYWORDS = ['x-gts-ref', CLASSIFICATION_KEY] as const;
+export const ANNOTATION_KEYWORDS = ['x-gts-type-ref', 'x-gts-instance-ref', CLASSIFICATION_KEY] as const;
 
 // The committed component type, read off disk rather than rebuilt, for the
 // same reason the vocabulary types are: whoever registers it in a GTS store
@@ -650,9 +651,7 @@ export function assertKnownAttestationClaims(component: string, overlay: Overlay
 // A vocabulary type resolves through TWO resolvers with different rules, so
 // both have to be given the types explicitly:
 //   - a GTS store resolves `$ref` by looking the id up among registered
-//     entities (GtsStore.resolveTraitSchemaRefs, and the store's own Ajv for
-//     a ref inside a oneOf branch), failing with "Unresolvable trait schema
-//     reference" when one is missing;
+//     entities, and fails the validation when one is missing;
 //   - a plain Ajv instance resolves the same `gts://...` string as an
 //     absolute URI, which it can only do once the target has been added.
 // These two helpers are the one place both loops are spelled out, so a new
@@ -661,9 +660,8 @@ export function addContractTypes(ajv: Ajv2020): void {
   // Every annotation the kit's own schemas carry (ANNOTATION_KEYWORDS above),
   // declared rather than switched off with `strict: false`, which would also
   // swallow a genuine typo like `unevaluatedProperites` - exactly the class of
-  // mistake these schemas exist to catch. None of them asserts anything: a
-  // reference's grammar is checked by the `pattern` beside it, and the
-  // reference itself is resolved by a GTS store.
+  // mistake these schemas exist to catch. None of them asserts anything to
+  // Ajv: here a reference's grammar is checked by the `pattern` beside it.
   for (const keyword of ANNOTATION_KEYWORDS) {
     if (!ajv.getKeyword(keyword)) ajv.addKeyword({ keyword });
   }
@@ -949,39 +947,31 @@ function expressedSchemaOf(prop: ExtractedProp): ContractProperty {
 // appears: a recommendation's component, an accepted component, a family
 // member, the instance's own props.
 //
-// THREE keywords, and all three are load-bearing:
-//   - `x-gts-ref` is the reference itself - it names what the value must
-//     resolve to in a type registry (any type derived from the abstract
-//     abstract component type), which is what makes this a reference rather
-//     than a string that happens to look like an id;
-//   - `type` and `pattern` stay beside it because gts-ts STRIPS x-gts-ref
-//     before any validator sees the schema (GtsStore.normalizeSchema), and
-//     then deletes any oneOf/anyOf branch that was left with nothing else
-//     in it. A branch written as x-gts-ref alone therefore disappears, and
-//     `instead` would silently stop accepting component ids at all. With
-//     the pattern kept, a malformed id still fails by name.
-// Enforcement of the reference itself (does this id resolve?) happens where
-// The full declaration a field holding another component's id carries: what
-// it must resolve to, the value kind, and the grammar. All three, because
-// gts-ts strips `x-gts-ref` before Ajv sees the schema, so the `pattern` is
-// what actually rejects a malformed id, and `x-gts-ref` is what resolves the
-// well-formed one against the registry.
+// THREE keywords, for two kinds of reader:
+//   - `x-gts-instance-ref` is the reference itself - it names what the value
+//     must resolve to: an instance of the component type, which is what a
+//     kit component IS. That makes this a reference rather than a string that
+//     happens to look like an id, and a GTS store checks it wherever the
+//     schema applies;
+//   - `type` and `pattern` stay beside it for a reader without a GTS store.
+//     Plain Ajv treats the GTS keyword as an annotation (ANNOTATION_KEYWORDS),
+//     so there the pattern is what rejects a malformed id.
+// Whether a well-formed id names a component the kit ships is the
+// conformance suite's question, not a store's: a component may be
+// referenced before it ships a contract.
 //
 // This is the shape vocabulary/component_reference.v1.json carries. Every
 // place a component reference appears in a document (a recommendation's
 // component, an accepted component, a family member, a filled mount point)
-// is nested inside a value object rather than sitting directly on a
-// document property, which is as deep as gts-ts's own reference walker goes,
-// so each of them is free to `$ref` that type instead of repeating the
-// triple; the conformance suite is what resolves them.
+// `$ref`s that type instead of repeating the triple.
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-id-value
 function componentRefSchema(): Record<string, unknown> {
   return {
     type: 'string',
     pattern: componentRefPattern(),
-    'x-gts-ref': COMPONENT_REF_TARGET,
+    'x-gts-instance-ref': COMPONENT_REF_TARGET,
     description:
-      'GTS id of another kit component: the well-known instance of the component type that component IS. `x-gts-ref` declares what it must resolve to; `type` and `pattern` are what enforce it, because gts-ts strips x-gts-ref before validating.',
+      'GTS id of another kit component: the well-known instance of the component type that component IS. `x-gts-instance-ref` declares what it must resolve to, and a GTS store checks it; `type` and `pattern` check the grammar for a reader without one.',
     $comment: 'GTS tokens are snake_case; kit directories are kebab-case (navigation_menu -> navigation-menu).',
   };
 }
@@ -1642,9 +1632,9 @@ export const buildMeaningFields = memoizeSchema((): { properties: Record<string,
       forwards_to: {
         type: 'string',
         pattern: elementTypeRefPattern(),
-        'x-gts-ref': ELEMENT_REF_TARGET,
+        'x-gts-type-ref': ELEMENT_REF_TARGET,
         description:
-          "GTS id of the hand-written surface for the host element this component forwards to. A component forwards to exactly one element surface, and it is REFERENCED by id rather than composed into the schema: a surface shared kit-wide by every component that renders the same element is something this component uses, not a second thing it IS. Whoever needs the surface resolves it through this reference and applies it beside the contract; nothing in the props schema merges it in. `x-gts-ref` declares what the value must resolve to; `type` and `pattern` are what enforce it, because gts-ts strips x-gts-ref before validating. Absent entirely for a component that forwards to no host element of its own - DataTable, which renders its Table internally and correctly declares none.",
+          "GTS id of the hand-written surface for the host element this component forwards to. A component forwards to exactly one element surface, and it is REFERENCED by id rather than composed into the schema: a surface shared kit-wide by every component that renders the same element is something this component uses, not a second thing it IS. Whoever needs the surface resolves it through this reference and applies it beside the contract; nothing in the props schema merges it in. `x-gts-type-ref` declares what the value must resolve to, and a GTS store checks it; `type` and `pattern` check the grammar for a reader without one. Absent entirely for a component that forwards to no host element of its own - DataTable, which renders its Table internally and correctly declares none.",
         $comment: "The element token, not the tag: `dom_button` for a <button>, normalized by domElementToken - the same token the committed file under scripts/contracts/elements/ is named by, so the reference and the file name are one identity. Named `forwards_to` rather than `host_element`: the value is the element surface the component FORWARDS TO, and a field named for the element read as a bug on a component (DataTable) that has one and declares none.",
       },
       // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-host
@@ -1697,20 +1687,20 @@ export const buildComponentType = memoizeSchema((): Record<string, unknown> => {
     // it outright so that a reader which does not parse the id grammar can
     // answer it too. `$schema` is not usable here - a document carrying one
     // is treated as a SCHEMA rather than an instance - so this is the
-    // snake_case member of that list. `x-gts-ref` is the pointer form: it
+    // snake_case member of that list. `x-gts-type-ref` is the pointer form: it
     // resolves against this type's own $id, so an instance claiming a
-    // different type fails.
+    // different type fails in a GTS store.
     // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-id-single
     gts_type: {
       type: 'string',
       // `const` rather than a pattern, because there is exactly one value
-      // this field may hold: the component type's own id. `x-gts-ref` says
-      // the same thing as a pointer and is what gts-ts resolves, but it is
-      // stripped before validating, so a validator that only reads the schema
-      // would otherwise accept any string here - the one id-valued field with
-      // nothing enforcing the id.
+      // this field may hold: the component type's own id. `x-gts-type-ref`
+      // says the same thing as a pointer, and a GTS store checks it, but plain
+      // Ajv treats it as an annotation, so a validator that only reads the
+      // schema would otherwise accept any string here - the one id-valued
+      // field with nothing enforcing the id.
       const: COMPONENT_TYPE_ID_BARE,
-      'x-gts-ref': '/$id',
+      'x-gts-type-ref': '/$id',
       description: 'GTS type id of the component type - what makes this document a typed value rather than a bare JSON record.',
     },
     // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-id-single
@@ -1728,12 +1718,9 @@ export const buildComponentType = memoizeSchema((): Record<string, unknown> => {
   };
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-fields
 
-  // The one reference gts-ts itself resolves against the registry: it sits
-  // directly on a document property, which is as deep as XGtsRefValidator's
-  // own walk goes, so GTS.validateInstance fails a component whose
-  // host-element surface is not a registered type. A reference nested inside
-  // a meaning field's value object is not reached by that walk and is
-  // resolved by the conformance suite instead.
+  // The one field an overlay may not write, the host element's surface, placed
+  // directly on the document. A GTS store checks its grammar like any other
+  // reference; the conformance suite checks that it names a committed surface.
   // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-host-place
   for (const field of COMPILER_WRITTEN_FIELDS) properties[field] = fields.properties[field];
   // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-host-place

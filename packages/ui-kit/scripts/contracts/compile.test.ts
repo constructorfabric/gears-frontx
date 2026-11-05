@@ -339,11 +339,11 @@ describe('the vocabulary the component type references', () => {
   });
 
   it('rejects a document claiming a type other than the component type, under plain Ajv', () => {
-    // `x-gts-ref` is the pointer form and gts-ts is what resolves it - but it
-    // strips the keyword before validating, so a reader holding nothing but
-    // this schema and an Ajv gets whatever the schema itself asserts. `const`
-    // is what carries the id for that reader: without it a component could
-    // name any type at all and still validate.
+    // `x-gts-type-ref` is the pointer form and a GTS store checks it - but
+    // plain Ajv treats the keyword as an annotation, so a reader holding
+    // nothing but this schema and an Ajv gets whatever the schema itself
+    // asserts. `const` is what carries the id for that reader: without it a
+    // component could name any type at all and still validate.
     const ajv = new Ajv2020();
     addContractTypes(ajv);
     const validate = ajv.compile(buildComponentType());
