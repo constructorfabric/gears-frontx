@@ -14,33 +14,87 @@
  * being stripped, so this script asserts its presence in the artifacts
  * (same reasoning as scripts/verify-guard-configs.ts at the repo root).
  *
- * Wired into `npm run build` after tsup; fails the build if either pragma
- * is missing from either format.
+ * The CJS build is one bundle (`index.cjs`). The ESM build preserves modules
+ * (`ecosystem_package_build_output`): the import lives in the emitted module
+ * of the trust kernel itself, `handler/mfe-handler-mf/mf-dynamic-module-ops.js`.
+ * For each format the script checks that the file exists, that both pragmas
+ * sit inside an `import(` call's leading comments (not merely somewhere in
+ * the file), and — for ESM — that the module is reached from `index.js`
+ * through relative imports, so the checked file is the one the entry ships.
+ *
+ * Wired into `npm run build` after tsup; fails the build on any miss.
  */
 
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, normalize, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const distDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const PRAGMAS = ['webpackIgnore: true', '@vite-ignore'];
-const FILES = ['index.js', 'index.cjs'];
+const ESM_ENTRY = 'index.js';
+const ESM_KERNEL = 'handler/mfe-handler-mf/mf-dynamic-module-ops.js';
+const CJS_FILES = ['index.cjs'];
+const FILES = [ESM_KERNEL, ...CJS_FILES];
+
+/** `import(` followed by its run of leading block comments. */
+const DYNAMIC_IMPORT_COMMENTS = /\bimport\(((?:\s*\/\*[\s\S]*?\*\/)+)/g;
+/** Relative specifiers of static imports and re-exports in emitted ESM. */
+const RELATIVE_STATIC_IMPORT = /(?:^|[\s;}])(?:import|export)\s[^'"]*?from\s*["'](\.{1,2}\/[^"']+)["']|(?:^|[\s;])import\s*["'](\.{1,2}\/[^"']+)["']/gm;
+
+function read(file) {
+  try {
+    return readFileSync(join(distDir, file), 'utf8');
+  } catch {
+    return undefined;
+  }
+}
+
+function checkPragmasOnImportCall(file, content, failures) {
+  const calls = [...content.matchAll(DYNAMIC_IMPORT_COMMENTS)].map((match) => match[1]);
+  const pragmaCall = calls.find((comments) => PRAGMAS.every((pragma) => comments.includes(pragma)));
+  if (pragmaCall !== undefined) {
+    return;
+  }
+  const missing = PRAGMAS.filter((pragma) => !calls.some((comments) => comments.includes(pragma)));
+  for (const pragma of missing) {
+    failures.push(`${file}: pragma "${pragma}" not found on an import() call`);
+  }
+  if (missing.length === 0) {
+    failures.push(`${file}: no single import() call carries both pragmas`);
+  }
+}
+
+function esmReaches(entry, target) {
+  const seen = new Set();
+  const pending = [entry];
+  while (pending.length > 0) {
+    const file = pending.pop();
+    if (seen.has(file)) continue;
+    seen.add(file);
+    if (file === target) return true;
+    const content = read(file);
+    if (content === undefined) continue;
+    for (const match of content.matchAll(RELATIVE_STATIC_IMPORT)) {
+      const specifier = match[1] ?? match[2];
+      pending.push(relative(distDir, normalize(join(distDir, dirname(file), specifier))).split('\\').join('/'));
+    }
+  }
+  return false;
+}
 
 const failures = [];
 for (const file of FILES) {
-  const path = join(distDir, file);
-  let content;
-  try {
-    content = readFileSync(path, 'utf8');
-  } catch {
+  const content = read(file);
+  if (content === undefined) {
     failures.push(`${file}: missing (build did not produce it)`);
     continue;
   }
-  for (const pragma of PRAGMAS) {
-    if (!content.includes(pragma)) {
-      failures.push(`${file}: pragma "${pragma}" not found`);
-    }
-  }
+  checkPragmasOnImportCall(file, content, failures);
+}
+if (read(ESM_ENTRY) === undefined) {
+  failures.push(`${ESM_ENTRY}: missing (build did not produce it)`);
+} else if (!esmReaches(ESM_ENTRY, ESM_KERNEL)) {
+  failures.push(`${ESM_ENTRY}: does not reach ${ESM_KERNEL} through relative imports`);
 }
 
 if (failures.length > 0) {
@@ -57,5 +111,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `verify-dist-import-pragmas: OK (${PRAGMAS.join(', ')} present in ${FILES.join(', ')})`,
+  `verify-dist-import-pragmas: OK (${PRAGMAS.join(', ')} on the import() call in ${FILES.join(', ')}; ${ESM_KERNEL} reached from ${ESM_ENTRY})`,
 );
