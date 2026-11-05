@@ -15,24 +15,25 @@ description: "Decomposes the root-owned FrontX ecosystem work into prioritized e
   - [2.5 Host–MFE Communication: Actions-Chains Mediator & Parent–Child Bridge - HIGH](#25-hostmfe-communication-actions-chains-mediator--parentchild-bridge---high)
   - [2.6 Extension-Domain Governance: Mount Strategies, Cardinality & Contract Matching - HIGH](#26-extension-domain-governance-mount-strategies-cardinality--contract-matching---high)
   - [2.7 MFE Runtime Isolation - HIGH](#27-mfe-runtime-isolation---high)
-  - [2.8 API Protocol Surface - MEDIUM](#28-api-protocol-surface---medium)
-  - [2.9 Ecosystem Distribution & Versioning Policy - MEDIUM](#29-ecosystem-distribution--versioning-policy---medium)
-  - [2.10 Template Externalization & Source-Spec Resolution - HIGH](#210-template-externalization--source-spec-resolution---high)
-  - [2.11 Template Manifest Contract & Pre-Publish Validation - HIGH](#211-template-manifest-contract--pre-publish-validation---high)
-  - [2.12 Kindless Template Assembly & Conflict-Checked Composition - HIGH](#212-kindless-template-assembly--conflict-checked-composition---high)
-  - [2.13 Preset Resolution & Per-Applied-Template Provenance - HIGH](#213-preset-resolution--per-applied-template-provenance---high)
-  - [2.14 Upgrade Change-Set Engine - HIGH](#214-upgrade-change-set-engine---high)
-  - [2.15 AI Tooling Kit Packaging & Base Content - HIGH](#215-ai-tooling-kit-packaging--base-content---high)
-  - [2.16 Template AI-Extension Contract & Discovery/Activation - HIGH](#216-template-ai-extension-contract--discoveryactivation---high)
-  - [2.17 AI-Driven Upgrade Orchestration - HIGH](#217-ai-driven-upgrade-orchestration---high)
-  - [2.18 CLI Executable Invocation Surface - HIGH](#218-cli-executable-invocation-surface---high)
-  - [2.19 Ecosystem Layer-Partition Governance - MEDIUM](#219-ecosystem-layer-partition-governance---medium)
-  - [2.20 Telemetry SDK Compatibility Anchor - MEDIUM](#220-telemetry-sdk-compatibility-anchor---medium)
-  - [2.21 AI-Driven Project Scaffolding from Intent - HIGH](#221-ai-driven-project-scaffolding-from-intent---high)
-  - [2.22 UI Kit Compatibility Anchor - MEDIUM](#222-ui-kit-compatibility-anchor---medium)
-  - [2.23 Routing Navigation Substrate - MEDIUM](#223-routing-navigation-substrate---medium)
-  - [2.24 Routing Route Ownership Signal And FrontX Router - MEDIUM](#224-routing-route-ownership-signal-and-frontx-router---medium)
-  - [2.25 Routing Engine Provider - MEDIUM](#225-routing-engine-provider---medium)
+  - [2.8 Shared-Dependency Unit Format Contract - MEDIUM](#28-shared-dependency-unit-format-contract---medium)
+  - [2.9 API Protocol Surface - MEDIUM](#29-api-protocol-surface---medium)
+  - [2.10 Ecosystem Distribution & Versioning Policy - MEDIUM](#210-ecosystem-distribution--versioning-policy---medium)
+  - [2.11 Template Externalization & Source-Spec Resolution - HIGH](#211-template-externalization--source-spec-resolution---high)
+  - [2.12 Template Manifest Contract & Pre-Publish Validation - HIGH](#212-template-manifest-contract--pre-publish-validation---high)
+  - [2.13 Kindless Template Assembly & Conflict-Checked Composition - HIGH](#213-kindless-template-assembly--conflict-checked-composition---high)
+  - [2.14 Preset Resolution & Per-Applied-Template Provenance - HIGH](#214-preset-resolution--per-applied-template-provenance---high)
+  - [2.15 Upgrade Change-Set Engine - HIGH](#215-upgrade-change-set-engine---high)
+  - [2.16 AI Tooling Kit Packaging & Base Content - HIGH](#216-ai-tooling-kit-packaging--base-content---high)
+  - [2.17 Template AI-Extension Contract & Discovery/Activation - HIGH](#217-template-ai-extension-contract--discoveryactivation---high)
+  - [2.18 AI-Driven Upgrade Orchestration - HIGH](#218-ai-driven-upgrade-orchestration---high)
+  - [2.19 CLI Executable Invocation Surface - HIGH](#219-cli-executable-invocation-surface---high)
+  - [2.20 Ecosystem Layer-Partition Governance - MEDIUM](#220-ecosystem-layer-partition-governance---medium)
+  - [2.21 Telemetry SDK Compatibility Anchor - MEDIUM](#221-telemetry-sdk-compatibility-anchor---medium)
+  - [2.22 AI-Driven Project Scaffolding from Intent - HIGH](#222-ai-driven-project-scaffolding-from-intent---high)
+  - [2.23 UI Kit Compatibility Anchor - MEDIUM](#223-ui-kit-compatibility-anchor---medium)
+  - [2.24 Routing Navigation Substrate - MEDIUM](#224-routing-navigation-substrate---medium)
+  - [2.25 Routing Route Ownership Signal And FrontX Router - MEDIUM](#225-routing-route-ownership-signal-and-frontx-router---medium)
+  - [2.26 Routing Engine Provider - MEDIUM](#226-routing-engine-provider---medium)
 - [3. Feature Dependencies](#3-feature-dependencies)
 - [4. Known Validator Debt](#4-known-validator-debt)
 
@@ -113,7 +114,18 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 **Installed-kit coverage references**:
 - `cpt-frontx-constraint-mfes-realm-shared-dep-cache`
 
-### 2.8 [API Protocol Surface](../packages/api/architecture/features/api-protocol-surface/) - MEDIUM
+### 2.8 [Shared-Dependency Unit Format Contract](../packages/mfes/architecture/features/unit-format-contract/) - MEDIUM
+
+- [ ] `p1` - **ID**: `cpt-frontx-feature-unit-format-contract`
+
+**Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/mfes/architecture/features/unit-format-contract/FEATURE.md).
+
+**Installed-kit coverage references**:
+- `cpt-frontx-constraint-mfes-realm-shared-dep-cache`
+
+`cpt-frontx-constraint-mfes-realm-shared-dep-cache` is shared with §2.7: the constraint binds both the unit-format contract the cache's entries are verified against and the isolation feature that owns the cache itself.
+
+### 2.9 [API Protocol Surface](../packages/api/architecture/features/api-protocol-surface/) - MEDIUM
 
 - [x] `p2` - **ID**: `cpt-frontx-feature-api-protocol-surface`
 
@@ -124,7 +136,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 - `cpt-frontx-constraint-api-no-solution-content`
 - `cpt-frontx-api-principle-solution-behavior-via-plugins`
 
-### 2.9 [Ecosystem Distribution & Versioning Policy](./features/ecosystem-distribution/) - MEDIUM
+### 2.10 [Ecosystem Distribution & Versioning Policy](./features/ecosystem-distribution/) - MEDIUM
 
 - [x] `p2` - **ID**: `cpt-frontx-feature-ecosystem-distribution`
 
@@ -159,7 +171,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 - `cpt-frontx-contract-package-registry-distribution`
 - `cpt-frontx-interface-package-registry-distribution`
 
-### 2.10 [Template Externalization & Source-Spec Resolution](../packages/cli/architecture/features/template-resolution/) - HIGH
+### 2.11 [Template Externalization & Source-Spec Resolution](../packages/cli/architecture/features/template-resolution/) - HIGH
 
 - [ ] `p1` - **ID**: `cpt-frontx-feature-template-resolution`
 
@@ -171,7 +183,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 - `cpt-frontx-constraint-cli-shared-resolver`
 - `cpt-frontx-principle-template-agnostic-tooling`
 
-### 2.11 [Template Manifest Contract & Pre-Publish Validation](../packages/cli/architecture/features/template-manifest/) - HIGH
+### 2.12 [Template Manifest Contract & Pre-Publish Validation](../packages/cli/architecture/features/template-manifest/) - HIGH
 
 - [x] `p1` - **ID**: `cpt-frontx-feature-template-manifest`
 
@@ -180,19 +192,19 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 **Installed-kit coverage references**:
 - `cpt-frontx-component-cli-prepublish-validator`
 
-### 2.12 [Kindless Template Assembly & Conflict-Checked Composition](../packages/cli/architecture/features/cli-scaffolding/) - HIGH
+### 2.13 [Kindless Template Assembly & Conflict-Checked Composition](../packages/cli/architecture/features/cli-scaffolding/) - HIGH
 
 - [ ] `p1` - **ID**: `cpt-frontx-feature-cli-scaffolding`
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/cli/architecture/features/cli-scaffolding/FEATURE.md).
 
-### 2.13 [Preset Resolution & Per-Applied-Template Provenance](../packages/cli/architecture/features/composed-provenance/) - HIGH
+### 2.14 [Preset Resolution & Per-Applied-Template Provenance](../packages/cli/architecture/features/composed-provenance/) - HIGH
 
 - [ ] `p1` - **ID**: `cpt-frontx-feature-composed-provenance`
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/cli/architecture/features/composed-provenance/FEATURE.md).
 
-### 2.14 [Upgrade Change-Set Engine](../packages/cli/architecture/features/upgrade-changeset/) - HIGH
+### 2.15 [Upgrade Change-Set Engine](../packages/cli/architecture/features/upgrade-changeset/) - HIGH
 
 - [ ] `p1` - **ID**: `cpt-frontx-feature-upgrade-changeset`
 
@@ -201,7 +213,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 **Installed-kit coverage references**:
 - `cpt-frontx-cli-principle-reviewed-reversible-mutation`
 
-### 2.15 [AI Tooling Kit Packaging & Base Content](../packages/cyber-pilot-kit-frontx/architecture/features/ai-kit-packaging/) - HIGH
+### 2.16 [AI Tooling Kit Packaging & Base Content](../packages/cyber-pilot-kit-frontx/architecture/features/ai-kit-packaging/) - HIGH
 
 - [x] `p1` - **ID**: `cpt-frontx-feature-ai-kit-packaging`
 
@@ -214,7 +226,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 - `cpt-frontx-constraint-kit-zero-solution-content`
 - `cpt-frontx-cyber-pilot-kit-frontx-principle-surface-only-integration`
 
-### 2.16 [Template AI-Extension Contract & Discovery/Activation](../packages/cyber-pilot-kit-frontx/architecture/features/template-ai-extensions/) - HIGH
+### 2.17 [Template AI-Extension Contract & Discovery/Activation](../packages/cyber-pilot-kit-frontx/architecture/features/template-ai-extensions/) - HIGH
 
 - [x] `p1` - **ID**: `cpt-frontx-feature-template-ai-extensions`
 
@@ -224,7 +236,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 - `cpt-frontx-component-ai-extension-host`
 - `cpt-frontx-constraint-kit-declared-skill-rule-resources`
 
-### 2.17 [AI-Driven Upgrade Orchestration](../packages/cyber-pilot-kit-frontx/architecture/features/ai-upgrade-orchestration/) - HIGH
+### 2.18 [AI-Driven Upgrade Orchestration](../packages/cyber-pilot-kit-frontx/architecture/features/ai-upgrade-orchestration/) - HIGH
 
 - [x] `p1` - **ID**: `cpt-frontx-feature-ai-upgrade-orchestration`
 
@@ -234,13 +246,13 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 - `cpt-frontx-component-ai-upgrade-orchestration`
 - `cpt-frontx-constraint-kit-orchestrates-not-reimplements`
 
-### 2.18 [CLI Executable Invocation Surface](../packages/cli/architecture/features/cli-invocation/) - HIGH
+### 2.19 [CLI Executable Invocation Surface](../packages/cli/architecture/features/cli-invocation/) - HIGH
 
 - [x] `p1` - **ID**: `cpt-frontx-feature-cli-invocation`
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/cli/architecture/features/cli-invocation/FEATURE.md).
 
-### 2.19 [Ecosystem Layer-Partition Governance](./features/ecosystem-governance/) - MEDIUM
+### 2.20 [Ecosystem Layer-Partition Governance](./features/ecosystem-governance/) - MEDIUM
 
 - [ ] `p1` - **ID**: `cpt-frontx-feature-ecosystem-governance`
 
@@ -273,7 +285,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 **Sequences**:
 - [ ] `p2` - `cpt-frontx-seq-member-admission-accounting`
 
-### 2.20 [Telemetry SDK Compatibility Anchor](../packages/telemetry/architecture/) - MEDIUM
+### 2.21 [Telemetry SDK Compatibility Anchor](../packages/telemetry/architecture/) - MEDIUM
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [DESIGN.md](../packages/telemetry/architecture/DESIGN.md) and member FEATURE files.
 
@@ -295,7 +307,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 - `cpt-frontx-telemetry-principle-sdk-owned-identity`
 - `cpt-frontx-telemetry-principle-additive-cross-version`
 
-### 2.21 [AI-Driven Project Scaffolding from Intent](../packages/cyber-pilot-kit-frontx/architecture/features/ai-project-scaffolding/) - HIGH
+### 2.22 [AI-Driven Project Scaffolding from Intent](../packages/cyber-pilot-kit-frontx/architecture/features/ai-project-scaffolding/) - HIGH
 
 <!-- The [x] below is the cfs coverage rollup - this entry's references resolve
      and its coverage holds - and NOT a claim that the feature is implemented.
@@ -307,7 +319,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/cyber-pilot-kit-frontx/architecture/features/ai-project-scaffolding/FEATURE.md).
 
-### 2.22 [UI Kit Compatibility Anchor](../packages/ui-kit/architecture/) - MEDIUM
+### 2.23 [UI Kit Compatibility Anchor](../packages/ui-kit/architecture/) - MEDIUM
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [DESIGN.md](../packages/ui-kit/architecture/DESIGN.md) and the member FEATURE file.
 
@@ -326,7 +338,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 - `cpt-frontx-ui-kit-principle-styling-through-tokens`
 - `cpt-frontx-ui-kit-principle-scoped-enforcement`
 
-### 2.23 [Routing Navigation Substrate](../packages/routing/architecture/features/navigation-substrate/) - MEDIUM
+### 2.24 [Routing Navigation Substrate](../packages/routing/architecture/features/navigation-substrate/) - MEDIUM
 
 - [x] `p2` - **ID**: `cpt-frontx-feature-routing-navigation-substrate`
 
@@ -339,7 +351,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 - `cpt-frontx-constraint-routing-no-intra-ecosystem-dependency`
 - `cpt-frontx-constraint-routing-no-engine-leak`
 
-### 2.24 [Routing Route Ownership Signal And FrontX Router](../packages/routing/architecture/features/route-ownership-signal/) - MEDIUM
+### 2.25 [Routing Route Ownership Signal And FrontX Router](../packages/routing/architecture/features/route-ownership-signal/) - MEDIUM
 
 - [ ] `p2` - **ID**: `cpt-frontx-feature-routing-route-ownership-signal`
 
@@ -354,7 +366,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 
 `cpt-frontx-routing-principle-control-boundary` and `cpt-frontx-constraint-routing-no-intra-ecosystem-dependency` are shared with §2.23: both features ship in the one standalone package (no intra-ecosystem dependency).
 
-### 2.25 [Routing Engine Provider](../packages/routing-tanstack/architecture/features/engine-provider/) - MEDIUM
+### 2.26 [Routing Engine Provider](../packages/routing-tanstack/architecture/features/engine-provider/) - MEDIUM
 
 - [ ] `p2` - **ID**: `cpt-frontx-feature-routing-engine-provider`
 
@@ -392,6 +404,7 @@ F20 ai-project-scaffolding       (← F10, F11, F12, F13, F15, F16)
 F21 routing-navigation-substrate (foundation, standalone)
    ├─→ F22 routing-route-ownership-signal ──┐
    └─→ F23 routing-engine-provider ←────────┘ (← F22; cross-package: routing-tanstack ← routing)
+F24 unit-format-contract         (foundation, standalone — defines the contract F5's load path and F8's cache consume)
 ```
 
 **Dependency Rationale**:

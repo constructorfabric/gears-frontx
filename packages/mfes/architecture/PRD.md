@@ -60,6 +60,7 @@ This PRD uses the root PRD's shared vocabulary ([root PRD §1.4](../../../archit
 | microfrontend | An independently developed frontend unit that a running application can register and load. |
 | extension | A contributed capability or UI element admitted into a host through a declared contract. |
 | extension domain | A named host-owned slot with rules for what extensions it admits and how admitted occupants are placed. |
+| extension instance | One extension registered with an application under its own identifier. Unmounting it and mounting it again does not create a new extension instance. |
 | platform | The combined runtime substrate and host contracts that let an application admit, place, and coordinate microfrontends. |
 
 ## 2. Actors
@@ -299,6 +300,7 @@ None owned here. The package is distributed under the root PRD's package-registr
 - [ ] Microfrontends can communicate with the host — verifiable via `cpt-frontx-fr-mfe-host-communication`.
 - [ ] Microfrontends can react to host-state changes — verifiable via `cpt-frontx-fr-mfe-host-communication`.
 - [ ] Load failures degrade gracefully with diagnostics and recovery or retry outcome — verifiable via `cpt-frontx-fr-mfe-load-failure-handling`.
+- [ ] Shared-code transfer, evaluation scope, retained memory, and their runtime reporting meet the thresholds stated in `cpt-frontx-nfr-resource-efficiency`.
 - [ ] No unit is placed without passing type validation and domain contract matching — verifiable via `cpt-frontx-fr-mfe-type-validation`, `cpt-frontx-fr-mfe-extension-domain-governance`, and the security NFR's admission measurement.
 - [ ] The supported-platform baseline requires current evergreen browser capabilities for dynamic module loading, standard DOM placement, and modern JavaScript execution.
 - [ ] The runtime's public surface names no UI framework and no concrete type-definition specification — verifiable by inspection of the package's exports and dependencies.
