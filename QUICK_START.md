@@ -163,8 +163,9 @@ The AI Tooling Framework is delivered as a **Constructor Studio kit**
 (`cyber-pilot-kit-frontx`) — the kit *is* the framework's public surface. It is
 installed and updated from this repository through the **Constructor Studio
 CLI** (`cfs`); it is not published to npm. On install, its `frontx_`-prefixed resources register in
-the project's `.cf-studio/config/core.toml` and become available to agents at
-session start — no training step.
+the project's `.cf-studio/config/core.toml`. Once `cfs generate-agents` has written
+the agent integrations, they are available to agents at session start — no
+training step.
 
 ### Install the kit
 

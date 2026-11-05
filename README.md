@@ -196,8 +196,9 @@ cfs generate-agents
 ```
 
 On install, its `frontx_`-prefixed resources (KIT-1) register in the project's
-`.cf-studio/config/core.toml` and become available to agents at session start —
-no training step. As shipped today the kit provides four capabilities:
+`.cf-studio/config/core.toml`. Once `cfs generate-agents` has written the agent
+integrations, they are available to agents at session start — no training step.
+As shipped today the kit provides four capabilities:
 
 - **Ecosystem fluency and request routing** — a top-level skill (`SKILL.md`), navigation rules (`AGENTS.md`), and boundary guidelines that let agents reason correctly about MFEs, extension domains, source-specs, and the ecosystem/template boundary. Its routing section states which capability serves each kind of FrontX request.
 - **Intent-driven project scaffolding** — the developer says what they want built rather than naming a template; the kit matches that intent against the descriptions installed templates declare, applies the chosen set by running `frontx seed`/`frontx add`, and then realizes each unit the intent names through the applied templates' own activated skills. The direct CLI path stays available unchanged for a developer who already holds a reference.
