@@ -1,4 +1,5 @@
 ---
+version: 2
 description: Specifies microfrontend asset discovery from a published manifest and lazy dynamic-import resolution through a per-load runtime ABI that inherits shared-dependency bindings.
 ---
 
@@ -24,6 +25,8 @@ description: Specifies microfrontend asset discovery from a published manifest a
   - [Manifest Fields Drive Discovery — No Remote-Entry Parsing](#manifest-fields-drive-discovery--no-remote-entry-parsing)
   - [Lazy-Import ABI Inherits Parent Load Bindings](#lazy-import-abi-inherits-parent-load-bindings)
   - [Per-Attempt Load Timeout Budget](#per-attempt-load-timeout-budget)
+  - [Realm Text-Cache Byte Budget Is Host-Configurable](#realm-text-cache-byte-budget-is-host-configurable)
+  - [No Runtime Prefetch Surface](#no-runtime-prefetch-surface)
 - [6. Acceptance Criteria](#6-acceptance-criteria)
 
 <!-- /toc -->
@@ -97,11 +100,11 @@ User-facing interactions that start with an actor (human or external system) and
 **Steps**:
 1. [x] - `p1` - Registry receives the microfrontend entry with its manifest reference (`MfeEntry` with manifest field) and, at load start, resolves and caches the declared manifest - `inst-register-entry`
 2. [x] - `p1` - Registry triggers on-demand load for the entry when the extension is first needed - `inst-trigger-load`
-3. [ ] - `p1` - System validates that the entry's manifest carries the required declared fields (`metaData.publicPath`, `exposeAssets`, `shared[]`) - `inst-validate-manifest-fields`
+3. [ ] - `p1` - System validates that the entry's manifest carries the required declared fields (`metaData.publicPath`, `exposeAssets`, `shared[]`), and reads the shared-dependency fields the manifest may declare on each `shared[]` entry — `graphFile`, `requires`, `entryRoots`, `lazyChunkRoots`, `sharedChunkRule`, `sharedBase` — so a manifest supplied inline bypasses none of the checks a referenced manifest receives - `inst-validate-manifest-fields`
 4. [x] - `p1` - **IF** required manifest fields are absent or malformed: the handler itself refuses a `metaData.publicPath` or a `shared[].chunkPath` (of a `metaData` or `shared[]` entry that is an object) outside the rules of `cpt-frontx-algo-mfe-loading-manifest-discovery` (`inst-md-read-public-path`, `inst-md-resolve-chunk-path`), whatever produced the manifest, while checking the other fields and the manifest's structure stays with the type system plugin's schema validation (step 3) - `inst-if-manifest-invalid`
    1. [x] - `p1` - **RETURN** load failure naming the refused field (and, for `chunkPath`, the dependency), before any fetch of the load; entry transitions to LOAD_FAILED. The refusal depends only on the manifest, so it is not retried (`cpt-frontx-algo-mfe-loading-attempt-timeout`, `inst-lto-if-deterministic-failure`) - `inst-manifest-invalid-fail`
 5. [x] - `p1` - System derives the absolute asset base URL from `manifest.metaData.publicPath` once per load, by the rule of `cpt-frontx-algo-mfe-loading-manifest-discovery` (`inst-md-read-public-path`), so every relative chunk, shared-dependency and stylesheet path of the load resolves against that one base and none of them depends on the document URL at fetch or mount time - `inst-derive-base-url`
-6. [x] - `p1` - System executes manifest-driven discovery (see §3 `cpt-frontx-algo-mfe-loading-manifest-discovery`) to build shared-dependency blob URLs and locate the expose chunk - `inst-run-manifest-discovery`
+6. [x] - `p1` - System executes manifest-driven discovery (see §3 `cpt-frontx-algo-mfe-loading-manifest-discovery`): checks the `requires` closure before any shared-dependency fetch, fetches every reachable unit in one parallel request each, and builds the shared-dependency unit map and locates the expose chunk - `inst-run-manifest-discovery`
 7. [ ] - `p1` - System mints a per-load lazy-import ABI resolver stub and registers it with the host-side registry (see §3 `cpt-frontx-algo-mfe-loading-lazy-import-abi`) - `inst-mint-lazy-stub`
 8. [ ] - `p1` - System fetches and rewrites the expose chunk's bare specifiers to the per-load blob URLs, producing an isolated module blob URL - `inst-rewrite-expose-chunk`
 9. [ ] - `p1` - System imports the expose chunk blob URL and extracts the lifecycle module factory - `inst-import-expose-chunk`
@@ -120,9 +123,9 @@ Internal system functions and procedures that do not interact with actors direct
 
 - [ ] `p1` - **ID**: `cpt-frontx-algo-mfe-loading-manifest-discovery`
 
-**Input**: `MfeEntry` with a resolved `MfManifest` (fields: `metaData.publicPath`, `shared[]` in the manifest's published enumeration order — a given entry may optionally declare a content hash of its emitted chunk — `exposeAssets` per entry)
+**Input**: `MfeEntry` with a resolved `MfManifest` (fields: `metaData.publicPath`, `shared[]` in the manifest's published enumeration order — a shared entry declares either the legacy `chunkPath` of its emitted chunk or the unit-format fields `graphFile`, `requires`, `entryRoots`, `lazyChunkRoots`, `sharedChunkRule`, `sharedBase` — `exposeAssets` per entry)
 
-**Output**: asset base URL, expose chunk filename, stylesheet paths, shared-dependency blob URLs
+**Output**: asset base URL, expose chunk filename, stylesheet paths, shared-dependency unit map (verified unit and pack text plus per-load blob URLs)
 
 **Steps**:
 1. [x] - `p1` - Resolve `manifest.metaData.publicPath` once per load to the asset base URL for all chunk references in this MFE: standard URL resolution against the host document's base URL (`document.baseURI`), so an absolute value resolves to itself without reading the document, while a relative one (`/`, a document-relative path, or the empty string, which names the document's own directory) needs a host document; the result is normalised to a directory (a missing trailing `/` is added, query and hash are dropped) and must be an http(s) URL. The unresolved Module Federation placeholder `auto` (or `auto/`), a value that is not a string, a value that does not parse, a relative value with no host document, and a value that resolves to any other scheme (such as `data:`, `blob:`, `javascript:` or `file:`) fail the load (`cpt-frontx-flow-mfe-loading-on-demand-load`, `inst-if-manifest-invalid`) - `inst-md-read-public-path`
@@ -133,7 +136,12 @@ Internal system functions and procedures that do not interact with actors direct
    2. [x] - `p1` - Fetch the standalone ESM source text for this shared dependency - `inst-md-fetch-shared-dep`
    3. [x] - `p1` - Rewrite bare specifiers in the fetched source to the already-resolved blob URLs of the shared dependencies it imports, in the leaves-first order the consumer derives from the fetched sources themselves (`cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls`, step `inst-resolve-order`) - `inst-md-rewrite-specifiers`
    4. [x] - `p1` - Mint a blob URL for this shared dependency and record it in the per-load shared-dep blob URL map - `inst-md-mint-shared-blob`
-5. [ ] - `p1` - **RETURN** asset base URL, expose chunk filename, stylesheet paths, and the completed shared-dep blob URL map - `inst-md-return`
+5. [ ] - `p1` - **FOR EACH** `shared[]` entry declaring `graphFile`: read the graph-file location and content identity, the package-level `requires`, the `entryRoots` and `lazyChunkRoots` reachable-unit sets, the `sharedChunkRule` and the `sharedBase` the entry carries; every boundary field **MUST** be checked where the runtime reads it — an absent or malformed root or `requires` list surfaces as an `MfeLoadError` naming the field and the manifest, never as a raw `TypeError` or `SyntaxError` — so a manifest supplied inline receives exactly the checks a referenced manifest receives - `inst-md-read-unit-fields`
+6. [ ] - `p1` - Check the `requires` closure before any shared-dependency fetch: the union of every entry's `requires` must name only packages the manifest's shared set provides; **IF** a required package is missing, fail the load naming the missing packages; **IF** a new-rule entry declares no `requires`, emit a heuristic diagnostic naming the entry — closure cannot be checked for it — and proceed, because `requires` is optional for backward compatibility - `inst-md-requires-closure`
+7. [ ] - `p1` - Compute the reachable unit set up front from the graph files and the manifest's declared roots, and issue exactly one parallel request per reachable unit — the set is known before fetching begins, so no unit is fetched speculatively and none is fetched twice - `inst-md-fetch-reachable-units`
+8. [ ] - `p1` - Choose the whole-package pack fallback per package and per attempt: **IF** the load-time fetch gate fails for a package, fetch the pack its graph file lists — produced at build time next to the units and the graph, carrying its own declared hash — deciding before unit text for that package has been fetched on this attempt, so a fallback never pays a failed unit round and the same unit text is never fetched twice; there is no deployment-wide union pack - `inst-md-pack-fallback`
+9. [ ] - `p1` - Admit text to the realm cache only under the rules of `cpt-frontx-algo-unit-format-contract-integrity-verification`: a legacy `chunkPath` entry carrying no well-formed declared hash is deduplicated by its resolved URL and **MUST NOT** enter the realm cache under a `contentHash` key, so unverified text can never occupy a slot keyed by a hash it did not verify against - `inst-md-legacy-admission`
+10. [ ] - `p1` - **RETURN** asset base URL, expose chunk filename, stylesheet paths, and the completed shared-dependency unit map - `inst-md-return`
 
 ### Lazy-Import ABI Resolution
 
@@ -156,6 +164,7 @@ Internal system functions and procedures that do not interact with actors direct
    5. [ ] - `p1` - Rewrite any nested `__frontx_lazy` references in the lazy chunk to the same per-load loader stub URL - `inst-lai-rewrite-nested-lazy`
    6. [ ] - `p1` - Mint a blob URL for the lazy chunk and record it in the per-load blob URL map - `inst-lai-mint-lazy-blob`
    7. [x] - `p1` - **RETURN** the lazy chunk's blob URL; the caller imports it, joining the parent load's isolated graph - `inst-lai-return-lazy-blob`
+   8. [ ] - `p1` - For unit-format shared dependencies, take the lazy chunk's reachable-unit set from the `lazyChunkRoots` recorded for it, and fetch and mint only units missing from the parent load's unit map — the map is extended, never rewritten — so lazily reached shared code joins the same isolated graph under the same memo (`cpt-frontx-adr-lazy-import-resolution`) - `inst-lai-lazy-roots`
 5. [x] - `p1` - **IF** a lazy call reaches a loader identifier no resolver is registered for - the unresolvable-path failure itself surfaces inside the lazy-blob resolution above - `inst-lai-if-unknown`
    1. [ ] - `p1` - **RETURN** load failure - `inst-lai-unknown-fail`
 
@@ -211,9 +220,11 @@ Internal system functions and procedures that do not interact with actors direct
 
 ### Manifest Fields Drive Discovery — No Remote-Entry Parsing
 
-- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-loading-manifest-field-discovery`
+- [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-loading-manifest-field-discovery`
 
-The system **MUST** derive every locating fact needed for a microfrontend load exclusively from the declared fields of the published manifest (`metaData.publicPath`, `exposeAssets.js.sync[0]`, `exposeAssets.css.sync`, `exposeAssets.css.async`, `shared[]`) without fetching or parsing a compiled remote-entry module. The `shared[]` array's published order **MUST** be treated as an enumeration order only; the system **MUST** derive the leaves-first construction order from the fetched sources themselves, so each shared dependency's blob URL is available before the dependents that reference it as a bare specifier are processed.
+The system **MUST** derive every locating fact needed for a microfrontend load exclusively from the declared fields of the published manifest (`metaData.publicPath`, `exposeAssets.js.sync[0]`, `exposeAssets.css.sync`, `exposeAssets.css.async`, `shared[]`) without fetching or parsing a compiled remote-entry module. On each `shared[]` entry the system **MUST** honour the unit-format fields `graphFile`, `requires`, `entryRoots`, `lazyChunkRoots`, `sharedChunkRule` and `sharedBase` alongside the legacy `chunkPath`; every boundary field the runtime reads **MUST** be validated where it is read — absent or malformed roots and `requires` surface as an `MfeLoadError` naming the field and the manifest, never as a raw `TypeError` or `SyntaxError`, and an inline manifest receives the same checks as a referenced one. The `shared[]` array's published order **MUST** be treated as an enumeration order only; the system **MUST** derive the leaves-first construction order from the fetched sources themselves, so each shared dependency's blob URL is available before the dependents that reference it as a bare specifier are processed.
+
+For unit-format entries the system **MUST** check the `requires` closure before any shared-dependency fetch — a missing required package fails the load naming the missing packages; a new-rule entry without `requires` earns a heuristic diagnostic and proceeds — compute the reachable unit set up front from the graph files and the declared roots, and issue one parallel request per reachable unit. The whole-package pack fallback **MUST** be chosen per package and per attempt, before unit text for that package has been fetched on that attempt, so a fallback never pays a failed unit round and no unit text is fetched twice; no deployment-wide union pack exists. A legacy `chunkPath` entry without a well-formed declared hash **MUST** keep the behaviour in force for such entries and **MUST NOT** enter the realm cache under a `contentHash` key.
 
 **Implements**:
 - `cpt-frontx-flow-mfe-loading-on-demand-load`
@@ -265,6 +276,43 @@ The system **MUST** race every individual load attempt against the timeout budge
 **Touches**:
 - Entities: `MfeEntry`
 
+### Realm Text-Cache Byte Budget Is Host-Configurable
+
+- [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-loading-realm-cache-byte-budget`
+
+The realm shared-dependency text cache **MUST** be bounded by an application-configurable byte budget, expressed on `MfeLoaderConfig` and read once per handler — not a fixed constant and not a count of mappings (`cpt-frontx-adr-shared-dep-cache-reach`). When the budget is absent the handler's default applies; eviction **MUST** be least-recently-used so the cache stays within the budget an application sets. The diagnostics hook **MUST** expose the configured budget, the retained bytes, the entry count and the eviction count so the bound is observable rather than asserted.
+
+**Implements**:
+- `cpt-frontx-algo-mfe-loading-manifest-discovery`
+
+**Addresses**:
+- `cpt-frontx-nfr-runtime-performance`
+- `cpt-frontx-nfr-resource-efficiency`
+- `cpt-frontx-adr-shared-dep-cache-reach`
+
+**Constraints**: `cpt-frontx-constraint-mfes-realm-shared-dep-cache`
+
+**Touches**:
+- Entities: `MfeEntry`
+
+### No Runtime Prefetch Surface
+
+- [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-loading-no-prefetch-api`
+
+The runtime **MUST NOT** grow a prefetch API: no exported prefetch method, no capability on any type in the DESIGN's API Contracts table, and no configuration field for ahead-of-time loading — the runtime has no ahead-of-time knowledge of extensions and the public surface does not grow for early loading (MFES-7). An extension that wants to be loaded early **MUST** declare a `load_ext` action targeting its own domain with itself as subject, dispatched at its `init` lifecycle stage, so early loading rides the existing action mechanism and needs nothing new from this feature.
+
+**Implements**:
+- `cpt-frontx-flow-mfe-loading-on-demand-load`
+
+**Addresses**:
+- `cpt-frontx-fr-mfe-runtime-registration`
+- `cpt-frontx-nfr-runtime-performance`
+
+**Constraints**: none owned
+
+**Touches**:
+- Entities: `MfeEntry`
+
 ## 6. Acceptance Criteria
 
 - [x] When the registry triggers an on-demand load, the system reads `manifest.metaData.publicPath`, `exposeAssets.js.sync[0]`, `exposeAssets.css.sync/async`, and `manifest.shared[]` to locate and load the expose chunk without fetching or parsing a compiled remote-entry module.
@@ -281,3 +329,9 @@ The system **MUST** race every individual load attempt against the timeout budge
 - [x] An attempt that exceeds its budget fails with a diagnostic naming the entry and the elapsed budget, while the abandoned attempt's in-flight work is left to run rather than cancelled.
 - [x] When an attempt whose source fetch never settles expires, the retry issues its own fetch for that source instead of resolving to the abandoned attempt's in-flight one, so a retry that can succeed does succeed; the release is identity-checked and therefore leaves untouched any entry a concurrent load registered under the same key after the abandoned attempt registered its own.
 - [x] The load lifecycle state machine transitions follow the sequence PENDING → MANIFEST_RESOLVED → LOADING → LOADED on the success path, and either PENDING → LOAD_FAILED or LOADING → LOAD_FAILED on error paths.
+- [ ] A load whose manifest declares `requires` that name packages outside its shared set fails before any shared-dependency fetch, with an error naming the missing packages; a new-rule entry without `requires` produces a heuristic diagnostic and the load proceeds.
+- [ ] The reachable unit set is computed up front from graph files and declared roots, and exactly one request is issued per reachable unit.
+- [ ] A package whose load-time fetch gate fails falls back to its whole-package pack for that attempt without a completed failed unit round and without fetching any unit text twice.
+- [ ] A legacy `chunkPath` entry without a well-formed declared hash is deduplicated by its resolved URL and never enters the realm cache under a `contentHash` key.
+- [ ] The realm text cache honours a byte budget configured on `MfeLoaderConfig`, evicts least-recently-used, and reports budget, retained bytes, entries and evictions through the diagnostics hook.
+- [ ] The runtime exposes no prefetch API; an extension that wants early loading declares a `load_ext` action targeting its own domain with itself as subject, dispatched at its `init` stage.

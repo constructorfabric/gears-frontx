@@ -1,4 +1,5 @@
 ---
+version: 2
 description: Specifies isolation of each loaded microfrontend in its own module graph behind an audited trust kernel that concentrates all dynamic-code primitives.
 ---
 
@@ -16,6 +17,7 @@ description: Specifies isolation of each loaded microfrontend in its own module 
 - [3. Processes / Business Logic (CDSL)](#3-processes--business-logic-cdsl)
   - [Blob URL Chain Construction](#blob-url-chain-construction)
   - [Shared-Dependency Blob URL Construction](#shared-dependency-blob-url-construction)
+  - [Per-Load Unit Memo and Minting](#per-load-unit-memo-and-minting)
   - [Realm Shared-Dependency Cache Rendezvous](#realm-shared-dependency-cache-rendezvous)
   - [Trust-Kernel Guarded Import](#trust-kernel-guarded-import)
 - [4. States (CDSL)](#4-states-cdsl)
@@ -26,6 +28,8 @@ description: Specifies isolation of each loaded microfrontend in its own module 
   - [Instance-Keyed Load Cache](#instance-keyed-load-cache)
   - [Realm-Shared Dependency Source-Text Cache](#realm-shared-dependency-source-text-cache)
   - [Manifest Reference Resolution](#manifest-reference-resolution)
+  - [Per-Load Unit Memo — Extendable, Never Rewritten](#per-load-unit-memo--extendable-never-rewritten)
+  - [Shared-Dependency Diagnostics](#shared-dependency-diagnostics)
 - [6. Acceptance Criteria](#6-acceptance-criteria)
 
 <!-- /toc -->
@@ -217,6 +221,23 @@ Internal system functions that implement the isolation mechanism.
 
 * Whether the undeclared-specifier diagnostic should also scan expose-chain chunks is open; demoting that half to diagnostic-only removes any safety dimension from the question — a warn-only scan cannot fail an expose-chain load — leaving only scan cost and console noise to weigh.
 
+### Per-Load Unit Memo and Minting
+
+- [ ] `p1` - **ID**: `cpt-frontx-algo-mfe-isolation-unit-memo-minting`
+
+**Input**: The load's verified reachable unit set — unit ids and their source text admitted to the realm cache under `cpt-frontx-algo-unit-format-contract-integrity-verification` — and the per-load `unitId → blobURL` memo
+
+**Output**: The per-load memo extended to one blob URL per unit the load reaches; raw unit text cached realm-wide by content hash, blob URLs minted once per unit per load
+
+**Steps**:
+1. [ ] - `p1` - Walk the load's reachable units leaves-first, processing each unit only after every unit it depends on has a blob URL in this load's memo, so a unit's specifiers are always rewritten to minted URLs - `inst-umm-leaves-first`
+2. [ ] - `p1` - **FOR EACH** unit, resolve every intra-package relative import against the member module that carries it — in a multi-module unit each member's relative specifier resolves against that member's own module path, never against the unit's first member alone — so a unit built from an import cycle still mints working specifier edges - `inst-umm-per-member-relative`
+3. [ ] - `p1` - Rewrite every bare specifier to this load's blob URL for the shared-dependency unit it names, including subpath specifiers: a specifier such as `react/jsx-runtime` resolves to the unit of the package's subpath module, not to the package root alone, so no bare specifier survives into a minted blob - `inst-umm-subpath-rewrite`
+4. [ ] - `p1` - Mint exactly one blob URL per unit for this load and record it in the memo — `unitId → blobURL`, memoized per load — so two dependents of one unit share its module record inside this load's graph while a different load mints its own - `inst-umm-one-blob-per-unit`
+5. [ ] - `p1` - Extend the memo, never rewrite it: a lazily reached unit set adds entries to the same memo (`cpt-frontx-algo-mfe-loading-lazy-import-abi`, `inst-lai-lazy-roots`) and no entry is replaced, so a specifier rewritten earlier always names a live blob URL - `inst-umm-memo-extendable`
+6. [ ] - `p1` - Keep raw unit text in the realm cache keyed by content hash, shared across loads, while the minted blob URLs stay per-load — text is inert and reusable; a module graph is not - `inst-umm-text-realm-blob-perload`
+7. [ ] - `p1` - **RETURN** the extended memo, the per-load record of minted units - `inst-umm-return`
+
 ### Realm Shared-Dependency Cache Rendezvous
 
 - [x] `p1` - **ID**: `cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous`
@@ -236,7 +257,7 @@ Internal system functions that implement the isolation mechanism.
    1. [x] - `p1` - Treat the slot as absent, emit a diagnostic naming the unrecognized entry, and neither read, mutate, replace nor delete it — a copy that cannot establish the entry's semantics must not act on them, and an incompatible future protocol occupies a slot of its own rather than contending for this one - `inst-rsdc-leave-unknown`
    2. [x] - `p1` - Fall back to a bounded cache local to this evaluated copy, so reuse degrades to copy scope rather than failing the load - `inst-rsdc-fallback-local`
 5. [x] - `p1` - Hold the resulting cache per handler as a reference obtained here rather than as a field static to this copy, so the reference is instance-held while the cache it names is realm-shared and the scope stays legible where it is read - `inst-rsdc-hold-reference`
-6. [x] - `p1` - **RETURN** that cache, which every shared-dependency key this copy resolves is looked up in and published into for the realm's lifetime; it bounds the number of resident mappings rather than the bytes they retain, a resident fulfilled value stays strongly reachable, and no handler discard, registry disposal, extension unmount or extension unregistration clears or releases it - `inst-rsdc-return-cache`
+6. [x] - `p1` - **RETURN** that cache, which every shared-dependency key this copy resolves is looked up in and published into for the realm's lifetime; it is bounded by an application-configurable byte budget with least-recently-used eviction over verified, content-identified text, a resident fulfilled value stays strongly reachable until evicted, and no handler discard, registry disposal, extension unmount or extension unregistration clears or releases it - `inst-rsdc-return-cache`
 
 ### Trust-Kernel Guarded Import
 
@@ -321,9 +342,9 @@ The load cache **MUST** remain class-static within one evaluated copy of the pac
 
 ### Realm-Shared Dependency Source-Text Cache
 
-- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-realm-shared-dep-text-cache`
+- [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-realm-shared-dep-text-cache`
 
-The system **MUST** hold shared-dependency source text in one bounded cache per JavaScript realm, of exactly 128 least-recently-used mappings for the whole realm rather than per handler, which every compatible independently loaded copy of the package in that realm converges on through the version-namespaced rendezvous `cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous` specifies. The capacity **MUST NOT** multiply by handler count or by compatible package-copy count, and the 129th distinct insertion **MUST** evict the least-recently-used mapping. The bound is on mappings, not on retained bytes: cache-attributable payload is at most the source text the 128 resident entries retain plus promise and least-recently-used bookkeeping, a single source response is not size-limited here, and no absolute byte ceiling is claimed or to be claimed on this cache's behalf. 128 is a fixed policy constant, not a demonstrated optimum for every production composition; sustained eviction churn is the trigger for revisiting it. Convergence **MUST** add no public surface: no exported symbol, no capability method on any type in the DESIGN's API Contracts table, and no constructor argument, so the cache is reached only through an internal accessor (`cpt-frontx-constraint-mfes-realm-shared-dep-cache`). The cache **MUST** retain both in-flight and fulfilled source-text promises, holding a resident fulfilled value strongly for the realm's lifetime so that a later compatible handler in that realm still receives the hit, and **MUST** share source text only: every load **MUST** still construct its own isolated module graph over the text it retrieves.
+The system **MUST** hold shared-dependency source text in one bounded cache per JavaScript realm — bounded by an application-configurable byte budget with least-recently-used eviction, for the whole realm rather than per handler — which every compatible independently loaded copy of the package in that realm converges on through the version-namespaced rendezvous `cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous` specifies. The capacity **MUST NOT** multiply by handler count or by compatible package-copy count, and an insertion that would exceed the budget **MUST** evict least-recently-used entries until it fits. The cache **MUST** admit only verified, content-identified text: every graph file, unit and pack is SHA-256-verified against its declared hash before admission (`cpt-frontx-algo-unit-format-contract-integrity-verification`), a mismatch is never cached, and a legacy entry without a well-formed declared hash is deduplicated by its resolved URL, never under a `contentHash` key. Convergence **MUST** add no public surface: no exported symbol, no capability method on any type in the DESIGN's API Contracts table, and no constructor argument, so the cache is reached only through an internal accessor (`cpt-frontx-constraint-mfes-realm-shared-dep-cache`). The cache **MUST** retain both in-flight and fulfilled source-text promises, holding a resident fulfilled value strongly until eviction so that a later compatible handler in that realm still receives the hit, and **MUST** share source text only: every load **MUST** still construct its own isolated module graph over the text it retrieves.
 
 Its lifetime **MUST** be the realm's. The system **MUST NOT** count retainers on it, and **MUST NOT** clear or release it when a handler is discarded, a registry is disposed, an extension is unmounted, or an extension is unregistered; no expiry window applies. Eviction **MUST** be capacity-driven or identity-checked only, so a caller already holding an evicted promise proceeds unaffected and a rejection can never remove a promise a later load published under the same key.
 
@@ -357,6 +378,41 @@ The system **MUST** accept an entry's manifest either as the document itself or 
 **Touches**:
 - Entities: `MfeEntry`
 
+### Per-Load Unit Memo — Extendable, Never Rewritten
+
+- [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-unit-memo`
+
+Each load **MUST** mint its units leaves-first — every unit after the units it depends on — rewriting each unit's bare and relative specifiers to this load's own blob URLs, one blob URL per unit, recorded in a per-load `unitId → blobURL` memo. Relative imports inside a multi-module unit **MUST** resolve against the member module that carries them, never against the unit's first member alone, and a subpath bare specifier (such as `react/jsx-runtime`) **MUST** resolve to the unit of the package's subpath module rather than the package root. The memo **MUST** be extendable — a lazily reached unit set adds entries — and **MUST NOT** be rewritten, so an earlier rewrite never names a dead blob URL. Raw unit text **MUST** be cached realm-wide by content hash while blob URLs stay per-load.
+
+**Implements**:
+- `cpt-frontx-algo-mfe-isolation-unit-memo-minting`
+- `cpt-frontx-flow-mfe-isolation-load`
+
+**Addresses (NFR)**: `cpt-frontx-nfr-runtime-performance`, `cpt-frontx-nfr-security`
+
+**Constraints**: none owned
+
+**Touches**:
+- Entities: `MfeEntry`
+
+### Shared-Dependency Diagnostics
+
+- [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-shared-dep-diagnostics`
+
+The diagnostics hook **MUST** expose, as numbers and named events only: realm cache retained bytes, entry count, configured byte budget and eviction count; per extension instance the units minted, the blob bytes minted, the reachable versus total shared bytes, and the packages served by fallback packs; and realm totals covering the graph files retained and the total blob bytes. A byte-agreement conflict between two manifests for the same `package@version` under the same `sharedChunkRule` **MUST** warn once per conflicting pair naming the producer versions involved and **MUST** emit a diagnostics event; mismatches between old-rule and new-rule entries **MUST** be summarized once per page. An integrity mismatch and an absent roots declaration **MUST** each be reported through the hook — never only through `console` — and fallback-pack use **MUST** appear in the diagnostics, not just as a log line.
+
+**Implements**:
+- `cpt-frontx-algo-mfe-isolation-unit-memo-minting`
+- `cpt-frontx-algo-unit-format-contract-byte-agreement`
+- `cpt-frontx-algo-unit-format-contract-integrity-verification`
+
+**Addresses (NFR)**: `cpt-frontx-nfr-runtime-performance`, `cpt-frontx-nfr-resource-efficiency`
+
+**Constraints**: none owned
+
+**Touches**:
+- Entities: `MfeEntry`
+
 ## 6. Acceptance Criteria
 
 - [x] Each loaded microfrontend evaluates as its own isolated module instance; two extensions sharing the same entry definition receive distinct instance-keyed cache entries and distinct module evaluations
@@ -365,7 +421,12 @@ The system **MUST** accept an entry's manifest either as the document itself or 
 - [x] All blob URLs in the instance-keyed load cache are retained for the page lifetime and are never revoked after the import resolves
 - [x] Shared-dependency source text is deduplicated across MFE loads using a cross-MFE LRU cache keyed by a producer-published content hash of the emitted chunk when the manifest declares one for that entry, and by the resolved absolute chunk URL — scoping reuse to loads of the same microfrontend — when it does not; cache entries for failed fetches are evicted to permit retry
 - [x] On load failure, the cache entry for the failed extension instance is evicted so a subsequent call can attempt a fresh load
-- [x] Compatible independently loaded copies of the package in one realm converge on a single 128-entry shared-dependency source-text cache through a version-namespaced rendezvous of its own, so a dependency whose key agrees across copies is fetched once for the realm; an unrecognized rendezvous entry is left untouched and the copy serves its loads from a bounded local cache; the cache survives handler discard and registry disposal; and every load still evaluates its own isolated module graph over the text it reuses
+- [x] Compatible independently loaded copies of the package in one realm converge on a single shared-dependency source-text cache — bounded by an application-configurable byte budget with least-recently-used eviction — through a version-namespaced rendezvous of its own, so a dependency whose key agrees across copies is fetched once for the realm; an unrecognized rendezvous entry is left untouched and the copy serves its loads from a bounded local cache; the cache survives handler discard and registry disposal; and every load still evaluates its own isolated module graph over the text it reuses
+- [ ] Each load mints its reachable units leaves-first into a per-load `unitId → blobURL` memo; a lazily reached unit set extends the same memo and no entry is ever rewritten.
+- [ ] A multi-module unit resolves each member's relative imports against that member's own module path, so a unit built from an import cycle mints working specifier edges.
+- [ ] A subpath bare specifier such as `react/jsx-runtime` is rewritten to the blob URL of the unit carrying the package's subpath module; no bare specifier survives into a minted blob.
+- [ ] The diagnostics hook reports realm cache bytes, entries, budget and evictions; per-instance units minted, blob bytes, reachable versus total shared bytes and fallback packages; and realm totals of retained graph files and blob bytes — an integrity mismatch and an absent roots declaration are reported through the hook, not only through `console`.
+- [ ] Two manifests declaring different content identities for the same `package@version` under the same `sharedChunkRule` produce one warning per conflicting pair naming the producer versions plus a diagnostics event; old-rule versus new-rule mismatches are summarized once per page.
 - [ ] No load ever emits, for any module and for any reason, a specifier that is not an inline-content URL minted by that load. There is no exception for dependency cycles.
 - [ ] A chunk whose static-dependency graph closes a cycle — including one that closes across two branches that fanned out independently — fails the load without a circular wait, with a diagnostic naming the chunk, the lineage that closes the cycle, and the microfrontend.
 - [ ] Shared dependencies that import one another circularly fail the load with a diagnostic naming them, rather than producing a module whose bare specifiers are left unrewritten.

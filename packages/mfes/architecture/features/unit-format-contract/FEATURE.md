@@ -1,0 +1,252 @@
+---
+version: 1
+description: Specifies the ecosystem-owned unit format contract for shared-dependency output — type-system-neutral JSON graph files typed by TypeScript interfaces exported from `./unit-format`, content-identified units and packs under fixed naming rules — the integrity verification every fetched file passes before cache admission, the byte-agreement measurement across builds, and the `UnitFormatConformance` suite every producing build must pass.
+---
+
+# Feature: Shared-Dependency Unit Format Contract
+
+<!-- toc -->
+
+- [1. Feature Context](#1-feature-context)
+  - [1.1 Overview](#11-overview)
+  - [1.2 Purpose](#12-purpose)
+  - [1.3 Actors](#13-actors)
+  - [1.4 References](#14-references)
+- [2. Actor Flows (CDSL)](#2-actor-flows-cdsl)
+  - [Producer Conformance Verification](#producer-conformance-verification)
+- [3. Processes / Business Logic (CDSL)](#3-processes--business-logic-cdsl)
+  - [Unit and Graph-File Contract](#unit-and-graph-file-contract)
+  - [Fetched-File Integrity Verification](#fetched-file-integrity-verification)
+  - [Byte-Agreement Measurement](#byte-agreement-measurement)
+- [4. States (CDSL)](#4-states-cdsl)
+  - [None](#none)
+- [5. Definitions of Done](#5-definitions-of-done)
+  - [One Content-Addressed Graph File Per Package Version](#one-content-addressed-graph-file-per-package-version)
+  - [Integrity Verification Before Cache Admission](#integrity-verification-before-cache-admission)
+  - [Byte-Agreement Measurement — Runtime and Cross-Build](#byte-agreement-measurement--runtime-and-cross-build)
+  - [Producer Conformance Suite Shipped With the Contract](#producer-conformance-suite-shipped-with-the-contract)
+- [6. Acceptance Criteria](#6-acceptance-criteria)
+
+<!-- /toc -->
+
+- [ ] `p1` - **ID**: `cpt-frontx-featstatus-unit-format-contract`
+
+## 1. Feature Context
+
+- [ ] `p2` - `cpt-frontx-feature-unit-format-contract`
+
+### 1.1 Overview
+
+Defines the format a producing build emits and the runtime reads for shared-dependency reuse: the unit of sharing (one unit per strongly connected component of an ESM package's own module graph, one unit per CommonJS package), the content-addressed graph file that describes each `package@version` — its units with their content identities, its package-level bare requirements, its unit mode, its producer and that producer's version, and an optional whole-package pack — and the naming and content-identity rules for units, packs and graph files. Graph files are type-system-neutral JSON build artifacts; the TypeScript interfaces exported from the package's `./unit-format` entry are their single typing source, and no graph schema exists in any type system. The ecosystem owns this contract and ships, beside those interfaces, a `UnitFormatConformance` suite that any producing build must pass; the producer implementation itself is template territory and no producer option may change unit bytes. The same contract carries the integrity verification every fetched graph file, unit and pack passes before it enters the realm cache and the byte-agreement measurement that makes a non-deterministic producer observable in the field and fails builds that disagree where they meet.
+
+### 1.2 Purpose
+
+Content-keyed reuse across independently built and deployed microfrontends works only when every consumer receives the same bytes for a package at a version and when the runtime can verify that it does (`cpt-frontx-adr-shared-dep-reuse`). That requires the emitted format — what a unit is, what a graph file states, how files are named and identified, what `requires` and roots mean — to be owned by the ecosystem that owns the reader, not left to whichever producing build emitted it, and verified mechanically so a producer that is not the ecosystem's own can still be trusted to emit conforming output. This feature fixes that contract and its conformance suite; which units a load reaches and how the runtime reads the manifest's locating fields belong to `cpt-frontx-feature-mfe-loading`, and how a load builds isolated module instances over the verified text belongs to `cpt-frontx-feature-mfe-isolation`.
+
+**Requirements**: `cpt-frontx-fr-mfe-runtime-registration`, `cpt-frontx-nfr-runtime-performance`, `cpt-frontx-nfr-resource-efficiency`
+
+**Principles**: none owned by this feature
+
+### 1.3 Actors
+
+| Actor | Role in Feature |
+|-------|-----------------|
+| `cpt-frontx-actor-project-developer` | Builds a microfrontend with consumer-side build tooling that produces conforming output, and runs the shipped `UnitFormatConformance` suite against a producer's output before relying on it |
+
+### 1.4 References
+
+- **PRD**: [PRD.md](../../PRD.md)
+- **Design**: [DESIGN.md](../../DESIGN.md)
+- **Decomposition**: `cpt-frontx-feature-unit-format-contract` (DECOMPOSITION §2.8)
+- **ADRs**: `cpt-frontx-adr-shared-dep-reuse`, `cpt-frontx-adr-mfe-asset-discovery`, `cpt-frontx-adr-shared-dep-cache-reach`
+- **Component**: `cpt-frontx-component-mfe-runtime` (shared with F4, F5, F6, F7, F8)
+- **Dependencies**: `cpt-frontx-feature-mfe-loading`, `cpt-frontx-feature-mfe-isolation`
+
+**Checklist applicability**:
+- PERF — Addressed in §5 (One Content-Addressed Graph File Per Package Version): reachability-graded units let a load fetch and evaluate only what its roots reach, and the optional whole-package pack bounds the fetch cost where per-unit fetching does not meet the load-time budget (`cpt-frontx-nfr-runtime-performance`).
+- SEC — Addressed in §3 (Fetched-File Integrity Verification) and §5 (Integrity Verification Before Cache Admission): every fetched graph file, unit and pack is verified against its declared content identity before it is used or admitted to the realm cache, and a mismatch is never cached, so no unverified text can be evaluated inside a microfrontend's isolated graph.
+- REL — Addressed in §3 (Unit and Graph-File Contract, fallback modes) and §5 (Byte-Agreement Measurement — Runtime and Cross-Build): a package that cannot be split degrades to a single unit or barrel evaluation rather than failing the build, and hash conflicts surface as one warning per conflicting pair plus a diagnostics event rather than silent reuse.
+- DATA — Not applicable because this feature stores nothing durable; the contract describes published files and in-memory verification.
+- INT — Addressed in §3 (Unit and Graph-File Contract) and §5 (Producer Conformance Suite Shipped With the Contract): the TypeScript interfaces in `./unit-format`, the naming and identity rules, and the requirements/roots semantics are the boundary between template-territory producers and the ecosystem runtime.
+- OPS — Addressed in §3 (Byte-Agreement Measurement): hash conflicts and fallback modes are reported through the runtime's diagnostics for the host to surface.
+- MAINT — Not applicable because this feature sets no maintainability target of its own; the contract is a published interface surface whose evolution is governed by the manifest contract's additive-compatibility rules.
+- TEST — Addressed in §5 (Producer Conformance Suite Shipped With the Contract) and §6: `UnitFormatConformance` is itself the mechanical check a producer passes, and the acceptance criteria are what an implementation of the reader side is tested against.
+- COMPL — Not applicable because this feature handles no regulated or personal data.
+- UX — Not applicable because this feature renders no user interface.
+- BIZ — Not applicable because this is an internal library feature; its requirements are cited by ID in §1.2.
+
+## 2. Actor Flows (CDSL)
+
+User-facing interactions that start with an actor and describe the end-to-end flow of a use case.
+
+**Use cases**: `cpt-frontx-usecase-add-microfrontend-to-project`
+
+### Producer Conformance Verification
+
+- [ ] `p1` - **ID**: `cpt-frontx-flow-unit-format-contract-producer-conformance`
+
+**Actor**: `cpt-frontx-actor-project-developer`
+
+**Success Scenarios**:
+- The consumer-side build tooling produces shared-dependency output that passes the shipped `UnitFormatConformance` suite: every shared package is described by one graph file, each unit's bytes depend only on `package@version`, and the runtime admits the output for content-keyed reuse.
+
+**Error Scenarios**:
+- The produced output violates the contract — a malformed graph file, a unit whose declared content identity does not match its bytes, a requirements declaration that does not close over the units' bare imports, an intra-package relative import that resolves to no unit — and the conformance suite reports typed violations naming the violated rule and the offending file.
+- Two producing builds emit different unit bytes for the same `package@version`; the conformance suite's byte-identity check across the two output directories fails, and at runtime each conflict is warned once per pair of content identities and reported through diagnostics.
+
+**Steps**:
+1. [ ] - `p1` - The consumer-side build tooling produces, for each shared package, the units, the optional whole-package pack and the graph file that describes them, following the contract of `cpt-frontx-algo-unit-format-contract-unit-graph-schema`; unit bytes depend only on `package@version` and no producer option may change them - `inst-produce-output`
+2. [ ] - `p1` - The build records each shared package in the microfrontend's manifest with its graph-file location, the graph file's content identity and the package-level requirements (`cpt-frontx-feature-mfe-loading`), forming the manifest → graph → units/packs content-identity chain - `inst-record-manifest-entries`
+3. [ ] - `p1` - The project developer — in the producer's CI — runs `UnitFormatConformance`, shipped from the package's `./unit-format` entry, against two independent output directories of the same producer and the same inputs - `inst-run-conformance`
+4. [ ] - `p1` - **IF** the suite returns any typed violation - `inst-if-contract-violated`
+   1. [ ] - `p1` - **RETURN** conformance failure naming the violated rule and the offending file; the output is not admitted for reuse - `inst-conformance-fail`
+5. [ ] - `p1` - **RETURN** conforming output admitted for content-keyed reuse; at load time every fetched graph file, unit and pack is verified against its declared content identity before entering the realm cache (`cpt-frontx-algo-unit-format-contract-integrity-verification`) - `inst-return-admitted`
+
+## 3. Processes / Business Logic (CDSL)
+
+Internal system functions and procedures that do not interact with actors directly. The first process below is the contract the producer satisfies and the runtime reads; the remaining two are runtime behaviour over that contract.
+
+### Unit and Graph-File Contract
+
+- [ ] `p1` - **ID**: `cpt-frontx-algo-unit-format-contract-unit-graph-schema`
+
+**Input**: A shared package's module graph as the producing build sees it, and the package's declared side-effect freedom
+
+**Output**: One graph file per `package@version`, its units, and an optional whole-package pack — all content-addressed — plus the manifest-side facts the build records (graph location, graph content identity, package-level requirements)
+
+**Steps**:
+1. [ ] - `p1` - Determine the package's units: for an ESM package, one unit per strongly connected component of the package's own module graph — a single module unless the module sits in an import cycle, in which case the whole cycle is one unit; for a CommonJS package or a package published as one pre-bundled file, one unit. A unit's identity is `package@version` plus the module path or paths it contains - `inst-determine-units`
+2. [ ] - `p1` - Keep every bare import in every unit external and inline nothing across a package boundary; within a package declaring side-effect freedom, resolve internal imports of the package's own barrel modules to the defining modules, and for a package that does not declare it, leave internal imports as written — both properties of the package, so unit bytes depend only on `package@version` and never on the consumer or on any producer option - `inst-externalize-imports`
+3. [ ] - `p1` - **IF** the package cannot be split into units, or a barrel cannot be bypassed - `inst-if-fallback`
+   1. [ ] - `p1` - Deliver the package as one unit, or evaluate through its barrel, and record the unit mode and the fallback reason in the graph file for runtime diagnostics — fallback is automatic and never a build failure - `inst-record-fallback`
+4. [ ] - `p1` - Emit the files content-addressed under the naming rules the contract fixes: units `<pkg>@<version>/<unit>.<hash>.js`, packs `<pkg>@<version>.pack.<hash>.js`, graph files `<pkg>@<version>.graph.<hash>.json`, so the content-identity chain runs manifest → graph file → units/packs - `inst-emit-content-addressed`
+5. [ ] - `p1` - Write the graph file for the `package@version` as type-system-neutral JSON shaped by the TypeScript interfaces exported from `./unit-format` — their single typing source, with no graph schema in any type system: the unit list with each unit's content identity and member module paths; each unit's bare imports and relative imports; the package-level requirements (`requires`) — the bare names every unit's external imports must be resolvable from in the consumer's shared set; whether the package is split into units or delivered as a single unit, and why; the producer and its version; and, where produced, the whole-package pack with its own content identity - `inst-write-graph-file`
+6. [ ] - `p1` - Read the graph file at the point of use only: the runtime performs no structural validation of graph files — trust rests on hash verification plus build-time conformance — and a required field that is absent where the runtime needs it fails the load with an `MfeLoadError` naming the file and the producer name and version the file itself records - `inst-read-point-of-use`
+7. [ ] - `p1` - **RETURN** the graph file, the units and the pack, and the manifest-side facts — graph location, graph content identity, package-level requirements — for the producing build to record; the manifest may also record which production rule (`sharedChunkRule`) built its entries, and entries produced under a different rule are compared only among same-rule entries - `inst-return-contract-output`
+
+### Fetched-File Integrity Verification
+
+- [ ] `p1` - **ID**: `cpt-frontx-algo-unit-format-contract-integrity-verification`
+
+**Input**: A fetched graph file, unit or pack and the content identity declared for it (a SHA-256 declared by the manifest for the graph file, and by the graph file for each unit and pack)
+
+**Output**: Admission of the verified text to the realm cache, or a load failure naming the file and both hashes
+
+**Steps**:
+1. [ ] - `p1` - Compute the fetched text's SHA-256 and compare it against the content identity declared for the file, regardless of the source the text was fetched from — every fetched graph file, unit and pack is checked before it is used or cached - `inst-compute-and-compare`
+2. [ ] - `p1` - **IF** the hashes match - `inst-if-hash-match`
+   1. [ ] - `p1` - **RETURN** admission of the text to the realm cache keyed by that content identity (`cpt-frontx-adr-shared-dep-cache-reach`) - `inst-admit-verified`
+3. [ ] - `p1` - **IF** the hashes differ - `inst-if-hash-mismatch`
+   1. [ ] - `p1` - **RETURN** load failure with an error naming the file and both hashes, reported through the runtime's diagnostics hook; the mismatching text is never cached - `inst-mismatch-fail`
+4. [ ] - `p1` - **IF** the entry is an old-rule chunk carrying no well-formed content identity - `inst-if-old-rule`
+   1. [ ] - `p1` - **RETURN** the behaviour in force for such entries: no verification against a declared hash, and never an admission to the realm cache under a `contentHash` key — an entry without a well-formed hash is deduplicated by its resolved URL so unverified text can never occupy a verified slot - `inst-old-rule-behaviour`
+
+### Byte-Agreement Measurement
+
+- [ ] `p1` - **ID**: `cpt-frontx-algo-unit-format-contract-byte-agreement`
+
+**Input**: Content identities declared for the same `package@version` by different manifests or builds, naming the producer versions involved
+
+**Output**: One runtime warning per conflicting pair plus a diagnostics event; a conformance-suite failure across two output directories of the same producer
+
+**Steps**:
+1. [ ] - `p1` - Compare the two output directories `UnitFormatConformance` receives byte for byte: one producer with one set of inputs must emit byte-identical files, and a disagreement is a typed violation that fails the producer's conformance run - `inst-cross-build-check`
+2. [ ] - `p1` - At runtime, when manifests declare differing content identities for the same `package@version` under the same `sharedChunkRule`, warn once per pair of conflicting identities — naming the producer versions involved — and emit a diagnostics event, so the conflict is observable without depending on build-time checks; mismatches between old-rule and new-rule entries are summarized once per page rather than warned per pair - `inst-runtime-warn-once`
+3. [ ] - `p1` - Treat the runtime measurement as the measurer of last resort: deterministic output stays the producing build's obligation, and the remedy for disagreement is determinism in that build, never a weaker reuse key - `inst-determinism-obligation`
+
+## 4. States (CDSL)
+
+### None
+
+This FEATURE defines no state machines. The unit format contract is a static contract and conformance suite; its behaviour is algorithmic (unitization, verification, measurement) without state transitions.
+
+## 5. Definitions of Done
+
+### One Content-Addressed Graph File Per Package Version
+
+- [ ] `p1` - **ID**: `cpt-frontx-dod-unit-format-contract-graph-file-schema`
+
+The ecosystem **MUST** own and publish the unit format contract: the unit of sharing (one unit per strongly connected component of an ESM package's own module graph, one unit per CommonJS or pre-bundled package; identity `package@version` + module path(s)); the externalization rule (every bare import external, no cross-package inlining, side-effect-free barrel resolution to defining modules, both properties of the package so no producer option may change unit bytes); the content-addressed naming rules for units, packs and graph files; the graph-file fields (unit list with per-unit content identities and member paths, per-unit bare and relative imports, package-level `requires`, unit mode with fallback reason, producer and producer version, optional pack with its identity); and the semantics of `requires` and roots. The TypeScript interfaces exported from `./unit-format` **MUST** be the single typing source for graph files, which are type-system-neutral JSON: no graph schema **MUST** exist in any type system and the `TypeSystemPlugin` surface **MUST** stay unchanged for them. The runtime **MUST NOT** perform structural validation of graph files; trust **MUST** rest on hash verification plus build-time conformance, and a required field absent at the point of use **MUST** fail the load with an `MfeLoadError` naming the file and the producer name and version the file records. The manifest **MUST** reference each shared package's graph file by location and content identity and state its package-level requirements. Fallback **MUST** be automatic — an unsplittable package becomes one unit and an unskippable barrel is evaluated through — with the unit mode and reason recorded in the graph file for runtime diagnostics. The producer implementation is template territory.
+
+**Implements**:
+- `cpt-frontx-flow-unit-format-contract-producer-conformance`
+- `cpt-frontx-algo-unit-format-contract-unit-graph-schema`
+
+**Addresses**:
+- `cpt-frontx-adr-shared-dep-reuse`
+- `cpt-frontx-adr-mfe-asset-discovery`
+- `cpt-frontx-nfr-resource-efficiency`
+
+**Constraints**: none owned
+
+**Touches**:
+- Entities: `MfManifest`
+
+### Integrity Verification Before Cache Admission
+
+- [ ] `p1` - **ID**: `cpt-frontx-dod-unit-format-contract-integrity-verification`
+
+The runtime **MUST** check every fetched graph file, unit and pack against its expected SHA-256 — declared by the manifest for the graph file and by the graph file for each unit and pack — before the text is used or admitted to the realm cache, regardless of the source it was fetched from. A mismatch **MUST** fail the load with an error naming the file and both hashes, **MUST** be reported through the runtime's diagnostics hook, and the mismatching text **MUST NOT** be cached. An old-rule chunk carrying no well-formed content identity **MUST** keep the behaviour in force for such entries and **MUST NOT** be admitted to the realm cache under a `contentHash` key, so unverified text can never occupy a slot keyed by a hash it did not verify against.
+
+**Implements**:
+- `cpt-frontx-algo-unit-format-contract-integrity-verification`
+- `cpt-frontx-flow-unit-format-contract-producer-conformance`
+
+**Addresses**:
+- `cpt-frontx-adr-shared-dep-cache-reach`
+- `cpt-frontx-adr-mfe-asset-discovery`
+- `cpt-frontx-fr-mfe-load-failure-handling`
+
+**Constraints**: none owned
+
+**Touches**:
+- Entities: `MfManifest`
+
+### Byte-Agreement Measurement — Runtime and Cross-Build
+
+- [ ] `p1` - **ID**: `cpt-frontx-dod-unit-format-contract-byte-agreement`
+
+The runtime **MUST** warn once per pair of conflicting content identities declared for the same `package@version` under the same `sharedChunkRule`, naming the producer versions involved, and **MUST** emit a diagnostics event for each conflict; mismatches between old-rule and new-rule entries **MUST** be summarized once per page. `UnitFormatConformance` **MUST** compare two independent output directories of the same producer and inputs byte for byte and report a violation on any disagreement. The runtime measurement is the measurer of last resort; deterministic output **MUST** remain the producing build's obligation, and a disagreement **MUST NOT** be remedied by weakening the reuse key.
+
+**Implements**:
+- `cpt-frontx-algo-unit-format-contract-byte-agreement`
+
+**Addresses**:
+- `cpt-frontx-adr-shared-dep-reuse`
+- `cpt-frontx-nfr-resource-efficiency`
+
+**Constraints**: none owned
+
+**Touches**:
+- Entities: `MfManifest`
+
+### Producer Conformance Suite Shipped With the Contract
+
+- [ ] `p1` - **ID**: `cpt-frontx-dod-unit-format-contract-conformance-suite`
+
+The package **MUST** ship `UnitFormatConformance` from its `./unit-format` entry: a class that takes two independent output directories of the same producer and the same inputs — and no type system — and returns typed violations with no test-runner dependency. Its checks **MUST** cover: the naming rules (`<pkg>@<version>/<unit>.<hash>.js`, `<pkg>@<version>.pack.<hash>.js`, `<pkg>@<version>.graph.<hash>.json`); the content-identity chain manifest → graph file → units/packs; closure of each graph file's `requires` over its units' bare imports; resolution of every intra-package relative import to a unit; and byte identity across the two builds. Every producing build's CI **MUST** run it before its output is admitted for reuse. The package **MUST** ship fixture packages — an ESM package with an import cycle, a CommonJS package, a package with a barrel, and a package imported through a subpath — and its own tests **MUST** check that the runtime loads conforming output. `UnitFormatConformance` ships in a `@gears-frontx/mfes` minor version compatible in both directions; producer implementations are template territory and are never copied into this package.
+
+**Implements**:
+- `cpt-frontx-flow-unit-format-contract-producer-conformance`
+- `cpt-frontx-algo-unit-format-contract-unit-graph-schema`
+
+**Addresses**:
+- `cpt-frontx-adr-shared-dep-reuse`
+- `cpt-frontx-fr-mfe-runtime-registration`
+
+**Constraints**: none owned
+
+**Touches**:
+- Entities: `MfManifest`
+
+## 6. Acceptance Criteria
+
+- [ ] For an ESM package, output contains one unit per strongly connected component of the package's own module graph (one unit per module except inside an import cycle); for a CommonJS or pre-bundled package, exactly one unit; each unit's identity is `package@version` + module path(s).
+- [ ] Every bare import in a unit is external and no package is inlined across a package boundary; internal barrel imports are resolved to defining modules only for packages declaring side-effect freedom; unit bytes are identical for every consumer and no producer option changes them.
+- [ ] Exactly one content-addressed graph file exists per `package@version`, naming each unit's content identity and member paths, each unit's bare and relative imports, the package-level `requires`, the unit mode with fallback reason, the producer and its version, and the optional pack with its identity; files are named `<pkg>@<version>/<unit>.<hash>.js`, `<pkg>@<version>.pack.<hash>.js`, `<pkg>@<version>.graph.<hash>.json`.
+- [ ] A package that cannot be split is delivered as one unit, and a barrel that cannot be skipped is evaluated through it, with the unit mode and reason recorded in the graph file — fallback never fails the producing build.
+- [ ] Graph files are read at the point of use with no structural validation; a required field absent where the runtime needs it fails the load with an `MfeLoadError` naming the file and the producer name and version the file records.
+- [ ] Every fetched graph file, unit and pack is verified against its declared SHA-256 before use or cache admission; a mismatch fails the load naming the file and both hashes, is reported through diagnostics, and is never cached; old-rule chunks without a well-formed identity keep their existing behaviour and are never cached under a `contentHash` key.
+- [ ] Two manifests declaring different content identities for the same `package@version` under the same `sharedChunkRule` produce exactly one warning per conflicting pair naming the producer versions, plus a diagnostics event; old-rule versus new-rule mismatches are summarized once per page.
+- [ ] `UnitFormatConformance` compares two independent output directories of the same producer and inputs, returning typed violations — naming, hash-chain, `requires`-closure, relative-import-resolution and byte-identity failures each named with the offending file — and a producer CI run fails on any violation.
+- [ ] The shipped fixture packages (ESM with an import cycle, CommonJS, barrel, subpath import) produce conforming output that the package's own tests show the runtime loading.
