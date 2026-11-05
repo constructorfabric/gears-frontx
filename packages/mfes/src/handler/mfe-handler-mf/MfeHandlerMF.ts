@@ -41,8 +41,8 @@ import { ChildMfeBridge } from '../ChildMfeBridge';
 import { MfeLoadError } from '../../errors';
 import { RetryHandler } from './RetryHandler';
 import { MfeBridgeFactoryDefault } from '../../bridge/MfeBridgeFactoryDefault';
-import { sourceImports, rewriteBareSpecifier, findSurvivingDeclaredSharedDepSpecifier, importBlobModule, buildLazyLoaderStubSource } from './mf-dynamic-module-ops';
-import { findUndeclaredWellFormedSpecifiers } from './mf-shared-dep-specifier-scan';
+import { DynamicModuleOps } from './mf-dynamic-module-ops';
+import { SharedDepSpecifierScan } from './mf-shared-dep-specifier-scan';
 import { LruCache } from './LruCache';
 import { RealmSharedDepTextCacheProvider, type SharedDepTextCache } from './RealmSharedDepTextCacheProvider';
 import { AttemptSourceTextLedger } from './AttemptSourceTextLedger';
@@ -322,7 +322,7 @@ function describeSharedDepCycle(pending: ReadonlyMap<string, string>): string {
   return names
     .map((name) => {
       const importsOthers = names.filter(
-        (other) => other !== name && sourceImports(pending.get(name) ?? '', other)
+        (other) => other !== name && DynamicModuleOps.sourceImports(pending.get(name) ?? '', other)
       );
       return importsOthers.length > 0
         ? `'${name}' (imports ${importsOthers.map((o) => `'${o}'`).join(', ')})`
@@ -855,7 +855,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     }
 
     // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-import-expose
-    const exposeModule = await importBlobModule(exposeBlobUrl);
+    const exposeModule = await DynamicModuleOps.importBlobModule(exposeBlobUrl);
     // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-import-expose
 
     // @cpt-begin:cpt-frontx-state-mfe-isolation-load-blob-state:p1:inst-blob-complete
@@ -1581,7 +1581,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       (other) =>
         other === name ||
         blobUrls.has(other) ||
-        !sourceImports(source, other)
+        !DynamicModuleOps.sourceImports(source, other)
     );
   }
 
@@ -1599,7 +1599,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-rewrite-specifiers
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-rewrite-specifiers
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-assert-shared-dep-no-bare-specifier
-    const survivor = findSurvivingDeclaredSharedDepSpecifier(rewritten, sharedNames);
+    const survivor = DynamicModuleOps.findSurvivingDeclaredSharedDepSpecifier(rewritten, sharedNames);
     // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-assert-shared-dep-no-bare-specifier
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-shared-dep-bare-specifier
     if (survivor !== undefined) {
@@ -1622,7 +1622,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     }
     // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-shared-dep-bare-specifier
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-undeclared-specifier
-    const undeclared = findUndeclaredWellFormedSpecifiers(rewritten, sharedNames);
+    const undeclared = SharedDepSpecifierScan.findUndeclaredWellFormedSpecifiers(rewritten, sharedNames);
     for (const specifier of undeclared) {
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-warn-undeclared-specifier
       console.warn(
@@ -1653,7 +1653,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   ): string {
     let rewritten = source;
     for (const [name, blobUrl] of sharedDepBlobUrls) {
-      rewritten = rewriteBareSpecifier(rewritten, name, blobUrl);
+      rewritten = DynamicModuleOps.rewriteBareSpecifier(rewritten, name, blobUrl);
     }
     return rewritten;
   }
@@ -2154,7 +2154,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // kernel (`buildLazyLoaderStubSource` in `mf-dynamic-module-ops.ts`)
     // rather than here, so it stays the sole site that writes dynamic-import
     // text — see that function's doc comment for why.
-    const stubSource = buildLazyLoaderStubSource(loaderId);
+    const stubSource = DynamicModuleOps.buildLazyLoaderStubSource(loaderId);
 
     const blob = new Blob([stubSource], { type: 'text/javascript' });
     const url = URL.createObjectURL(blob);

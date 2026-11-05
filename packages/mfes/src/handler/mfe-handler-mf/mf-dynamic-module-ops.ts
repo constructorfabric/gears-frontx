@@ -81,10 +81,13 @@
  * Two further invariants are held by convention and code review only — no
  * automated check reaches them at all:
  *
- *   3. No module-level state — only pure function declarations at the top level.
+ *   3. No module-level state — only pure static members on the single
+ *      exported class (the package's one-class-per-file style; the
+ *      pre-refactor free-function form carried the identical invariant:
+ *      no state, no instance data, pure operations only).
  *   4. No dangerous imports: `fs`, `child_process`, `process.env`, etc.
  *
- * **Scope creep control:** adding a function here should require a security
+ * **Scope creep control:** adding a method here should require a security
  * review. If you find yourself tempted to "just add one more helper," STOP.
  * Either prove the helper is safe and document it with `@why`, or put it in a
  * scanned file where Codacy can keep watching it.
@@ -95,6 +98,14 @@
 // @cpt-algo:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1
 
 /**
+ * The audited dynamic-module operations kernel. All members are static and
+ * pure — the class is a namespace for the kernel's operations, never
+ * instantiated (constructor is private).
+ */
+export class DynamicModuleOps {
+  protected constructor() {}
+
+  /**
  * Test whether a source text contains an import of a specific package name.
  * Matches both `from "pkg"` (static imports and re-exports) and `import "pkg"`
  * (side-effect imports). Exact package names only — `react-dom` is not matched
@@ -115,9 +126,9 @@
  * @inputs `packageName` ∈ the set of shared dep names declared on the resolved
  *         `MfManifest` contract — bounded, author-declared, not user input.
  */
-export function sourceImports(source: string, packageName: string): boolean {
-  return bareSpecifierPattern(packageName).test(source);
-}
+static sourceImports(source: string, packageName: string): boolean {
+    return DynamicModuleOps.bareSpecifierPattern(packageName).test(source);
+  }
 
 /**
  * Build the regex that matches the exactly two import forms this trust
@@ -153,7 +164,7 @@ export function sourceImports(source: string, packageName: string): boolean {
  * @inputs `packageName` is a shared dep name from the resolved `MfManifest`
  *         contract — bounded, author-declared, not user input.
  */
-function bareSpecifierPattern(packageName: string): RegExp {
+private static bareSpecifierPattern(packageName: string): RegExp {
   const specifierPart = packageName.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
   return new RegExp(
     String.raw`(from|import)(\s*["'])(${specifierPart})(["'])`,
@@ -175,14 +186,14 @@ function bareSpecifierPattern(packageName: string): RegExp {
  *         Neither is user input.
  */
 // @cpt-algo:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1
-export function rewriteBareSpecifier(
-  source: string,
-  packageName: string,
-  replacement: string,
-): string {
-  // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-shared
-  return source.replace(
-    bareSpecifierPattern(packageName),
+static rewriteBareSpecifier(
+    source: string,
+    packageName: string,
+    replacement: string,
+  ): string {
+    // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-shared
+    return source.replace(
+      DynamicModuleOps.bareSpecifierPattern(packageName),
     `$1$2${replacement}$4`,
   );
   // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-shared
@@ -219,12 +230,12 @@ export function rewriteBareSpecifier(
  *         contract — bounded, author-declared, not user input.
  */
 // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-assert-shared-dep-no-bare-specifier
-export function findSurvivingDeclaredSharedDepSpecifier(
-  source: string,
-  declaredNames: Iterable<string>,
-): string | undefined {
-  for (const name of declaredNames) {
-    if (sourceImports(source, name)) {
+static findSurvivingDeclaredSharedDepSpecifier(
+    source: string,
+    declaredNames: Iterable<string>,
+  ): string | undefined {
+    for (const name of declaredNames) {
+      if (DynamicModuleOps.sourceImports(source, name)) {
       return name;
     }
   }
@@ -250,7 +261,7 @@ export function findSurvivingDeclaredSharedDepSpecifier(
  *      guards share one source of truth instead of duplicating this list
  *      by hand.
  */
-export function inlineContentSchemes(): readonly string[] {
+static inlineContentSchemes(): readonly string[] {
   return ['blob:', 'data:'];
 }
 
@@ -290,13 +301,13 @@ export function inlineContentSchemes(): readonly string[] {
  * @inputs `blobUrl` — a `blob:` URL from `URL.createObjectURL(...)` or a
  *         `data:` URL from the same code path under test mocks.
  */
-export async function importBlobModule(blobUrl: string): Promise<unknown> {
+static async importBlobModule(blobUrl: string): Promise<unknown> {
   // @cpt-begin:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-inspect-scheme
   // @cpt-begin:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-if-invalid-scheme
-  if (!inlineContentSchemes().some((scheme) => blobUrl.startsWith(scheme))) {
-    // @cpt-begin:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-reject-scheme
-    throw new TypeError(
-      `importBlobModule accepts only ${inlineContentSchemes().join(' or ')} URLs, received: ${blobUrl}`,
+    if (!DynamicModuleOps.inlineContentSchemes().some((scheme) => blobUrl.startsWith(scheme))) {
+      // @cpt-begin:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-reject-scheme
+      throw new TypeError(
+        `importBlobModule accepts only ${DynamicModuleOps.inlineContentSchemes().join(' or ')} URLs, received: ${blobUrl}`,
     );
     // @cpt-end:cpt-frontx-algo-mfe-isolation-trust-kernel-import:p1:inst-reject-scheme
   }
@@ -353,9 +364,9 @@ export async function importBlobModule(blobUrl: string): Promise<unknown> {
  *         guards `blobUrl` against.
  */
 // @cpt-algo:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1
-export function buildLazyLoaderStubSource(loaderId: string): string {
-  // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-mint-stub
-  const schemeCheck = inlineContentSchemes()
+static buildLazyLoaderStubSource(loaderId: string): string {
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-mint-stub
+    const schemeCheck = DynamicModuleOps.inlineContentSchemes()
     .map((scheme) => `u.startsWith(${JSON.stringify(scheme)})`)
     .join('||');
   return (
@@ -367,4 +378,5 @@ export function buildLazyLoaderStubSource(loaderId: string): string {
     `};\n`
   );
   // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-mint-stub
+}
 }

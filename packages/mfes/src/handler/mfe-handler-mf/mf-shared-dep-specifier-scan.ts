@@ -20,12 +20,20 @@
  */
 
 /**
- * Matches the same two import forms the trust kernel's rewriter and
- * assertion handle — `from "x"` and `import "x"` — but with no package name
- * constraint, so it also matches specifiers the manifest never declared.
- * Fixed literal, no interpolation: safe to keep outside the trust kernel.
+ * The undeclared-specifier diagnostic scan. All members are static and
+ * pure — the class is a namespace for the scan, never instantiated.
  */
-const GENERIC_IMPORT_SPECIFIER_PATTERN = /(from|import)(\s*["'])([^"']+)(["'])/g;
+export class SharedDepSpecifierScan {
+  protected constructor() {}
+
+  /**
+   * Matches the same two import forms the trust kernel's rewriter and
+   * assertion handle — `from "x"` and `import "x"` — but with no package name
+   * constraint, so it also matches specifiers the manifest never declared.
+   * Fixed literal, no interpolation: safe to keep outside the trust kernel.
+   */
+  private static readonly GENERIC_IMPORT_SPECIFIER_PATTERN =
+    /(from|import)(\s*["'])([^"']+)(["'])/g;
 
 /**
  * A specifier text is well-formed as a package module specifier when it
@@ -40,7 +48,8 @@ const GENERIC_IMPORT_SPECIFIER_PATTERN = /(from|import)(\s*["'])([^"']+)(["'])/g
  * and whitespace/line breaks keeps ordinary code from being mistaken for
  * a specifier (see the file header and `inst-if-undeclared-specifier`).
  */
-const WELL_FORMED_MODULE_SPECIFIER_PATTERN = /^(@[a-zA-Z0-9][a-zA-Z0-9._~-]*\/)?[a-zA-Z0-9][a-zA-Z0-9._~-]*(?:\/[a-zA-Z0-9._~-]+)*$/;
+  private static readonly WELL_FORMED_MODULE_SPECIFIER_PATTERN =
+    /^(@[a-zA-Z0-9][a-zA-Z0-9._~-]*\/)?[a-zA-Z0-9][a-zA-Z0-9._~-]*(?:\/[a-zA-Z0-9._~-]+)*$/;
 
 /**
  * Find every specifier in `source`, in the two import forms above, that is
@@ -52,26 +61,33 @@ const WELL_FORMED_MODULE_SPECIFIER_PATTERN = /^(@[a-zA-Z0-9][a-zA-Z0-9._~-]*\/)?
  * only for diagnostics.
  */
 // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-undeclared-specifier
-export function findUndeclaredWellFormedSpecifiers(
-  source: string,
-  declaredNames: ReadonlySet<string>,
-): string[] {
-  const found: string[] = [];
-  const seen = new Set<string>();
-  for (const match of source.matchAll(GENERIC_IMPORT_SPECIFIER_PATTERN)) {
-    const specifier = match[3];
-    if (declaredNames.has(specifier)) {
-      continue;
+  static findUndeclaredWellFormedSpecifiers(
+    source: string,
+    declaredNames: ReadonlySet<string>,
+  ): string[] {
+    const found: string[] = [];
+    const seen = new Set<string>();
+    for (const match of source.matchAll(
+      SharedDepSpecifierScan.GENERIC_IMPORT_SPECIFIER_PATTERN,
+    )) {
+      const specifier = match[3];
+      if (declaredNames.has(specifier)) {
+        continue;
+      }
+      if (
+        !SharedDepSpecifierScan.WELL_FORMED_MODULE_SPECIFIER_PATTERN.test(
+          specifier,
+        )
+      ) {
+        continue;
+      }
+      if (seen.has(specifier)) {
+        continue;
+      }
+      seen.add(specifier);
+      found.push(specifier);
     }
-    if (!WELL_FORMED_MODULE_SPECIFIER_PATTERN.test(specifier)) {
-      continue;
-    }
-    if (seen.has(specifier)) {
-      continue;
-    }
-    seen.add(specifier);
-    found.push(specifier);
+    return found;
   }
-  return found;
 }
 // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-undeclared-specifier
