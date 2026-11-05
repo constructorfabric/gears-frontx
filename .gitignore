@@ -637,3 +637,6 @@ __pycache__/
 .windsurf/workflows/cf-write-skills.md
 .windsurf/workflows/cf.md
 # END Constructor Studio
+.devin/agents/
+.cf-studio/config/
+.change-impact/
