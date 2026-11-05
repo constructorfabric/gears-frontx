@@ -63,7 +63,7 @@ they only compose Base UI primitives as JSX, and Base UI's own dist already
 carries `'use client'` on the modules that call hooks (an interactive primitive
 like Select or Dialog still ships Base UI's own client bundle; only the kit
 wrapper around it needs no directive of its own). The rest call a hook directly
-in their own render body and ship a banner on their own chunk instead.
+in their own render body and ship a banner on their own module instead.
 
 The kit components that carry a `'use client'` banner of their own: Alert,
 Attachment, Badge, Breadcrumb, Bubble, ButtonGroup, Card, Carousel, Chart,

@@ -71,7 +71,13 @@ its own - it composes existing kit primitives (`sheet`, `button`, `input`,
   subpath import resolves to — see `scripts/buildPlugin.ts`) and its own CSS
   chunk (`vite-plugin-lib-inject-css`); `dist/index.js` only re-exports those
   already-separate files, so a consumer's bundler can drop the ones it never
-  imports rather than receiving one bundle with everything inlined.
+  imports rather than receiving one bundle with everything inlined. Modules
+  are preserved (`output.preserveModules`): every source module is its own
+  file under `dist/chunks/` at its path below `src/` (the `./chunks/*` null
+  export keeps them private), `dist/<name>.js` re-exports its component's
+  modules, and a component's CSS sits beside the module compiled from its CSS
+  module. A host sharing the kit at module granularity (the MFE shared-unit
+  producer) then reaches only the modules an import uses.
   `rollup-plugin-node-externals` externalizes `dependencies`/
   `peerDependencies` (`@base-ui/react`, CVA, `lucide-react`, react, react-dom
   and subpaths like `react/jsx-runtime`) in place of tsup's hand-maintained
@@ -79,7 +85,7 @@ its own - it composes existing kit primitives (`sheet`, `button`, `input`,
   loader override tsup needed (and the fragile convention its comment
   documented, that JS may only import `*.module.css`) is gone.
 - CSS pipeline: per-component `*.module.css`, each compiled to its own CSS
-  chunk and auto-imported by that component's JS chunk
+  chunk and auto-imported by the JS module compiled from it
   (`vite-plugin-lib-inject-css`) — no combined stylesheet, no `./styles.css`
   export; importing a component's JS is what pulls in its CSS. Design tokens
   remain a plain-CSS file (`./theme.css` export), hand-copied into `dist/` at

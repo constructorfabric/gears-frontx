@@ -98,7 +98,7 @@ export function buildPlugin(): PluginOption[] {
    * vite-plugin-dts mirrors source layout under dist/ (a component's types
    * land at dist/components/<name>/public.d.ts, next to where its .tsx
    * source lived). The `./*` wildcard export needs a flat dist/<name>.d.ts
-   * per component, matching the flat dist/<name>.js chunk emitted for that
+   * per component, matching the flat dist/<name>.js entry emitted for that
    * same entry — write that one-line re-export shim here, the same trick
    * react-kit's buildPlugin.ts uses for its own (deeper) entries/ layout.
    *
@@ -211,13 +211,12 @@ export function buildPlugin(): PluginOption[] {
    * a directive prologue verbatim — so the directive survives that step but not
    * Rollup's own bundling step, which strips it when inlining the module's code
    * into a shared chunk, so it never reaches dist/ without this plugin.
-   * `rollup-plugin-preserve-directives` (the community-standard fix) only
-   * re-adds directives under `output.preserveModules: true`, which emits one
-   * file per source module and would break the one-chunk-per-component shape
-   * this build already has (getBuildConfig's `lib.entry` + `treeshake`
-   * combination — see that comment) — so this does the same job at this build's
-   * actual chunk granularity: remember which source module declared the
-   * directive, then re-add it to whichever chunk that module's code lands in.
+   * Rollup strips it even under `output.preserveModules: true`, which this
+   * build uses (one file per source module — see getBuildConfig), so this
+   * plugin remembers which source module declared the directive and re-adds
+   * it to whichever chunk that module's code lands in: with preserved
+   * modules, the module's own file. An entry such as dist/<name>.js is a
+   * re-export facade and gets no banner of its own.
    *
    * A chunk earns the banner if ANY of its modules declared it — the
    * source directive is the only input, so this plugin never needs a list
@@ -370,25 +369,26 @@ export function buildPlugin(): PluginOption[] {
           formats: ['es'],
         },
         rollupOptions: {
-          // Only CSS is presumed to have side effects. This is NOT what
-          // splits components into their own chunks — that comes from
-          // having one lib.entry per component regardless of this option;
-          // measured directly (build with this option removed): Rollup
-          // still emits one physical chunk per component, just behind an
-          // extra 2-line re-export shim (dist/button.js becomes
-          // `export { B as Button } from "./chunks/button.js"` instead of
-          // containing Button's code itself), and the consumer-facing
-          // bundle is unchanged. What this option actually buys: it
-          // flattens that indirection away, so a component's code lands
-          // directly in dist/<name>.js — which is what the `./*` export and
-          // verify-consumer.sh's hashed-class probes (which grep
-          // dist/<name>.js directly, not a chunks/ subpath) depend on. See
+          // Only CSS is presumed to have side effects: Rollup drops an
+          // import of a module none of whose bindings are used unless that
+          // module is CSS, so a component's injected stylesheet import
+          // survives and nothing else rides along for its side effects. See
           // package.json's `sideEffects` for the shipped-side counterpart of
           // the same CSS-only-side-effects policy.
           treeshake: {
             moduleSideEffects: (id) => id.endsWith('.css'),
           },
           output: {
+            // One output file per source module, internal imports kept as
+            // relative module imports (ecosystem_package_build_output): a host
+            // or MFE build shares the kit at module granularity, so a module
+            // only reaches what it imports. The entries keep their names
+            // (dist/<name>.js, the `./*` export); every other module lands
+            // under chunks/, at its path below src/, which the `./chunks/*`
+            // null export keeps out of the public surface.
+            preserveModules: true,
+            preserveModulesRoot: 'src',
+            entryFileNames: (chunk) => (chunk.isEntry ? '[name].js' : 'chunks/[name].js'),
             chunkFileNames: 'chunks/[name].js',
             assetFileNames: 'chunks/[name].[hash][extname]',
             paths: resolveDragLibraryFilePaths(),

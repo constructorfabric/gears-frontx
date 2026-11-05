@@ -134,9 +134,34 @@ TARBALL="$(ls "$WORKDIR"/gears-frontx-ui-kit-*.tgz)"
 # runs, so its diagnostic message never prints. `|| true` neutralizes that,
 # so an empty extraction is caught (and named) by the check that follows,
 # not by an unexplained script death.
+#
+# The ESM build preserves modules (one dist file per source module; see
+# buildPlugin.ts's getBuildConfig): dist/<name>.js re-exports the component's
+# modules under dist/chunks/, and a component's class map sits in the module
+# compiled from its CSS module. So a probe is searched in every file the entry
+# reaches through relative imports, not in the entry file alone.
+entry_closure() {
+  # $1: dist entry file — prints it and every dist file it reaches through
+  # relative imports, one path per line (scripts/dist-entry-closure.mjs).
+  node "$UIKIT_DIR/scripts/dist-entry-closure.mjs" "$1"
+}
+
+grep_entry_closure() {
+  # $1: dist entry file, $2+: grep arguments placed before the file list.
+  # Reads the closure line by line (no word splitting, no bash-4 mapfile).
+  local entry="$1" line
+  shift
+  local files=()
+  while IFS= read -r line; do
+    [ -n "$line" ] && files+=("$line")
+  done < <(entry_closure "$entry" 2>/dev/null || true)
+  [ "${#files[@]}" -gt 0 ] || return 1
+  grep "$@" "${files[@]}"
+}
+
 extract_hashed_class() {
-  # $1: dist chunk file, $2: local class name to find a hashed literal for
-  grep -oE "_$2_[A-Za-z0-9]+_[0-9]+" "$1" 2>/dev/null | head -1 || true
+  # $1: dist entry file, $2: local class name to find a hashed literal for
+  grep_entry_closure "$1" -ohE "_$2_[A-Za-z0-9]+_[0-9]+" 2>/dev/null | head -1 || true
 }
 
 BUTTON_CLASS="$(extract_hashed_class "$UIKIT_DIR/dist/button.js" 'variantOutline')"
@@ -179,8 +204,8 @@ for probe_name in BUTTON_CLASS TABLE_CLASS DIALOG_CLASS DATA_GRID_CLASS DATA_GRI
     exit 1
   fi
 done
-if ! grep -qF "$DATA_GRID_ACTIONS_MENU_PROBE" "$UIKIT_DIR/dist/data-grid/actions-menu.js"; then
-  echo "FAIL: could not find the actions-menu probe ($DATA_GRID_ACTIONS_MENU_PROBE) in dist/data-grid/actions-menu.js — did the plugin's registered name change?"
+if ! grep_entry_closure "$UIKIT_DIR/dist/data-grid/actions-menu.js" -qF "$DATA_GRID_ACTIONS_MENU_PROBE"; then
+  echo "FAIL: could not find the actions-menu probe ($DATA_GRID_ACTIONS_MENU_PROBE) in the modules dist/data-grid/actions-menu.js reaches — did the plugin's registered name change?"
   exit 1
 fi
 echo "==> Probes: Button=$BUTTON_CLASS Table=$TABLE_CLASS Dialog=$DIALOG_CLASS"
@@ -217,7 +242,7 @@ assert_exceljs_not_installed() {
 
 # 'use client' regression guard (#568): asserted against the kit's OWN
 # dist/, not a consumer bundle — an RSC framework like Next.js reads the
-# directive straight off the installed package's chunks, before any of this
+# directive straight off the installed package's modules, before any of this
 # script's bundler legs run, so none of them would catch it drifting. Split
 # by hook usage, not by any other property: badge/breadcrumb/button-group/
 # dropdown-menu/toast call a hook directly in their own render body
@@ -350,23 +375,41 @@ for name in "${SERVER_COMPONENTS[@]}"; do
   fi
 done
 
-for name in "${CLIENT_COMPONENTS[@]}"; do
-  if [ ! -f "$UIKIT_DIR/dist/$name.js" ]; then
-    echo "FAIL: dist/$name.js does not exist — did the build fail for this component?"
-    exit 1
-  fi
-  if ! head -c 20 "$UIKIT_DIR/dist/$name.js" | grep -qF "use client"; then
-    echo "FAIL: dist/$name.js is missing its 'use client' banner"
-    exit 1
-  fi
-done
-for name in "${SERVER_COMPONENTS[@]}" index; do
+# The ESM build preserves modules, so the directive is on the module compiled
+# from the source file that declares it — dist/chunks/components/<name>/<name>.js
+# for src/components/<name>/<name>.tsx — and dist/<name>.js is a re-export
+# facade that never carries it (a Server Component importing the facade gets
+# the client reference from the module behind it).
+for name in "${CLIENT_COMPONENTS[@]}" "${SERVER_COMPONENTS[@]}" index; do
   if [ ! -f "$UIKIT_DIR/dist/$name.js" ]; then
     echo "FAIL: dist/$name.js does not exist — did the build fail for this component?"
     exit 1
   fi
   if head -c 20 "$UIKIT_DIR/dist/$name.js" | grep -qF "use client"; then
-    echo "FAIL: dist/$name.js carries a 'use client' banner it doesn't need — this removes it from server rendering for RSC consumers"
+    echo "FAIL: dist/$name.js carries a 'use client' banner — an entry re-exports its modules, and the banner belongs on the module whose source declares it"
+    exit 1
+  fi
+done
+component_module() {
+  # $1: component name — the dist file compiled from src/components/<name>/<name>.tsx,
+  # or the entry itself when Rollup folded a pure re-export module into it.
+  if [ -f "$UIKIT_DIR/dist/chunks/components/$1/$1.js" ]; then
+    echo "$UIKIT_DIR/dist/chunks/components/$1/$1.js"
+  else
+    echo "$UIKIT_DIR/dist/$1.js"
+  fi
+}
+for name in "${CLIENT_COMPONENTS[@]}"; do
+  built="$(component_module "$name")"
+  if ! head -c 20 "$built" | grep -qF "use client"; then
+    echo "FAIL: ${built#"$UIKIT_DIR/"} is missing its 'use client' banner"
+    exit 1
+  fi
+done
+for name in "${SERVER_COMPONENTS[@]}"; do
+  built="$(component_module "$name")"
+  if head -c 20 "$built" | grep -qF "use client"; then
+    echo "FAIL: ${built#"$UIKIT_DIR/"} carries a 'use client' banner it doesn't need — this removes it from server rendering for RSC consumers"
     exit 1
   fi
 done
@@ -389,8 +432,21 @@ for entry in "$UIKIT_DIR"/src/components/*/plugins/*/public.ts; do
     echo "FAIL: dist/$component/$plugin.js does not exist — did the build skip the $component/$plugin plugin entry?"
     exit 1
   fi
-  if ! head -c 20 "$built" | grep -qF "use client"; then
-    echo "FAIL: dist/$component/$plugin.js is missing its 'use client' banner — add the directive to the plugin's main source file"
+  # The entry re-exports the plugin's modules (preserved-module ESM); the
+  # banner sits on the plugin module whose source declares the directive.
+  plugin_dir="$UIKIT_DIR/dist/chunks/components/$component/plugins/$plugin/"
+  banner_found=0
+  while IFS= read -r module; do
+    case "$module" in
+      "$plugin_dir"*)
+        if head -c 20 "$module" | grep -qF "use client"; then
+          banner_found=1
+        fi
+        ;;
+    esac
+  done < <(entry_closure "$built")
+  if [ "$banner_found" -eq 0 ]; then
+    echo "FAIL: no module of the $component/$plugin plugin entry carries a 'use client' banner — add the directive to the plugin's main source file"
     exit 1
   fi
   PLUGIN_ENTRY_COUNT=$((PLUGIN_ENTRY_COUNT + 1))
