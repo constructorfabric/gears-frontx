@@ -1959,11 +1959,14 @@ describe('MfeHandlerMF — shared-dep cross-MFE cache key (issue #621)', () => {
     stubSuccessfulImport();
 
     const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    // The declared hash must match the served bytes: F-010 admission
+    // verifies text against a well-formed contentHash before caching it
+    // under the hash key.
     const manifestA = buildManifest(PUBLIC_PATH_A, [
-      sharedDep('dep-x', 'shared/dep-x.js', { contentHash: '0e6ffdcfeba0f920be9dfcd093ae95baba245d9b07dee5348111e3ecb25e3599' }),
+      sharedDep('dep-x', 'shared/dep-x.js', { contentHash: '6657467c596bb6a5668bce58bbd363b4345d1da83976e25c24774c5bf64ee316' }),
     ]);
     const manifestB = buildManifest(PUBLIC_PATH_B, [
-      sharedDep('dep-x', 'shared/dep-x.js', { contentHash: '0e6ffdcfeba0f920be9dfcd093ae95baba245d9b07dee5348111e3ecb25e3599' }),
+      sharedDep('dep-x', 'shared/dep-x.js', { contentHash: '6657467c596bb6a5668bce58bbd363b4345d1da83976e25c24774c5bf64ee316' }),
     ]);
 
     try {
@@ -1995,8 +1998,10 @@ describe('MfeHandlerMF — shared-dep cross-MFE cache key (issue #621)', () => {
       [`${PUBLIC_PATH_B}assets/lifecycle.js`]: {
         body: 'import "dep-x";\nexport default {};',
       },
+      // Distinct bytes on B so its declared hash legitimately differs —
+      // F-010 verifies text against the declared hash before admission.
       [`${PUBLIC_PATH_B}shared/dep-x.js`]: {
-        body: 'export const depx = 1;',
+        body: 'export const depx = 2;',
       },
     };
     const { fetchImpl, callCounts } = createFetchRouter(routes);
@@ -2007,10 +2012,10 @@ describe('MfeHandlerMF — shared-dep cross-MFE cache key (issue #621)', () => {
 
     const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
     const manifestA = buildManifest(PUBLIC_PATH_A, [
-      sharedDep('dep-x', 'shared/dep-x.js', { contentHash: 'a73f08acc63e6f8d9732679dae84b4942b3148be0a9ba8f670084b8fef530f6d' }),
+      sharedDep('dep-x', 'shared/dep-x.js', { contentHash: '6657467c596bb6a5668bce58bbd363b4345d1da83976e25c24774c5bf64ee316' }),
     ]);
     const manifestB = buildManifest(PUBLIC_PATH_B, [
-      sharedDep('dep-x', 'shared/dep-x.js', { contentHash: 'de4d39c675358c5beb85c910733bb377518691f115c5be822015449bb651133b' }),
+      sharedDep('dep-x', 'shared/dep-x.js', { contentHash: '2806468516113ff16c89bfd6c75504696ba33d8e3c822f2efb96a1bdf4ae3bb5' }),
     ]);
 
     try {
