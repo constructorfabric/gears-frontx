@@ -138,7 +138,12 @@ export { MfeHandlerMF } from './handler/mfe-handler-mf/MfeHandlerMF';
 export { LruCache } from './handler/mfe-handler-mf/LruCache';
 export { RetryHandler } from './handler/mfe-handler-mf/RetryHandler';
 export type { MfeEntryMF } from './types/mfe-entry-mf';
-export { DynamicModuleOps } from './handler/mfe-handler-mf/mf-dynamic-module-ops';
+export type {
+  MfManifestGraphFileRef,
+  MfManifestUnitId,
+  MfManifestRoot,
+} from './manifest/mf-manifest';
+export type { RealmSharedDepTextCacheDiagnostics } from './handler/mfe-handler-mf/ByteBudgetLruCache';
 
 // Only the creation function crosses the barrel: the concrete registry and
 // factory stay internal so no consumer can build a rival registry past the

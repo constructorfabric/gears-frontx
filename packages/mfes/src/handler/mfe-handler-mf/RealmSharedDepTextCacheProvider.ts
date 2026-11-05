@@ -35,7 +35,7 @@
  * @internal
  */
 
-import { LruCache } from './LruCache';
+import { ByteBudgetLruCache } from './ByteBudgetLruCache';
 
 /**
  * The protocol version this evaluated copy of the package speaks. Carried
@@ -67,16 +67,16 @@ const SHARED_DEP_TEXT_CACHE_KEY = Symbol.for(
 /**
  * Realm-wide bound, not per-handler and not per-copy: neither the number of
  * compatible copies coexisting in a realm, nor the number of handlers each
- * constructs, multiplies this cache's footprint. Bounds resident
- * MAPPINGS, not retained bytes — a single source response is not
- * size-limited here, and no byte ceiling is claimed on this cache's behalf.
- * 128 is a fixed policy constant, applied once per realm rather than once
- * per handler; it is not a demonstrated
- * optimum for every production composition, and sustained eviction churn
- * is the trigger for revisiting it
+ * constructs, multiplies this cache's footprint. Bounds retained BYTES of
+ * verified source text (ADR-0035, finding F-012) — see
+ * `ByteBudgetLruCache`. The budget is set by the `MfeLoaderConfig` of the
+ * FIRST handler to publish the realm entry (or by this default when none
+ * configures one); later handlers adopt the published cache unchanged —
+ * a configured budget can never multiply the realm's footprint, it can
+ * only be the value the realm converged on.
  * (`cpt-frontx-dod-mfe-isolation-realm-shared-dep-text-cache`).
  */
-const SHARED_DEP_TEXT_CACHE_CAPACITY = 128;
+export const DEFAULT_SHARED_DEP_TEXT_CACHE_MAX_BYTES = 4 * 1024 * 1024;
 
 /**
  * Internal STRUCTURAL interface a realm-shared cache must expose — `get`,
@@ -137,10 +137,10 @@ export class RealmSharedDepTextCacheProvider {
    */
   private static fallbackCache: SharedDepTextCache | undefined;
 
-  private static getFallbackCache(): SharedDepTextCache {
+  private static getFallbackCache(maxBytes?: number): SharedDepTextCache {
     if (RealmSharedDepTextCacheProvider.fallbackCache === undefined) {
-      RealmSharedDepTextCacheProvider.fallbackCache = new LruCache<string, Promise<string>>(
-        SHARED_DEP_TEXT_CACHE_CAPACITY
+      RealmSharedDepTextCacheProvider.fallbackCache = new ByteBudgetLruCache(
+        maxBytes ?? DEFAULT_SHARED_DEP_TEXT_CACHE_MAX_BYTES
       );
     }
     return RealmSharedDepTextCacheProvider.fallbackCache;
@@ -194,7 +194,7 @@ export class RealmSharedDepTextCacheProvider {
    * (`inst-rsdc-hold-reference`).
    */
   // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-read-slot
-  static getCache(): SharedDepTextCache {
+  static getCache(maxBytes?: number): SharedDepTextCache {
     const host = globalThis as unknown as RealmSharedDepTextCacheGlobal;
     const existing = host[SHARED_DEP_TEXT_CACHE_KEY];
     // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-read-slot
@@ -208,7 +208,9 @@ export class RealmSharedDepTextCacheProvider {
       // branch, publishing the entry, before any other copy's call can even
       // begin.
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-publish
-      const cache = new LruCache<string, Promise<string>>(SHARED_DEP_TEXT_CACHE_CAPACITY);
+      const cache = new ByteBudgetLruCache(
+        maxBytes ?? DEFAULT_SHARED_DEP_TEXT_CACHE_MAX_BYTES
+      );
       const entry: RealmSharedDepTextCacheEntry = {
         v: SHARED_DEP_TEXT_CACHE_PROTOCOL_VERSION,
         cache,
@@ -265,7 +267,7 @@ export class RealmSharedDepTextCacheProvider {
     // THIS copy constructs, across every fallback call, shares the same
     // bounded local cache.
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-return-cache
-    return RealmSharedDepTextCacheProvider.getFallbackCache();
+    return RealmSharedDepTextCacheProvider.getFallbackCache(maxBytes);
     // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-return-cache
     // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-fallback-local
     // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-else-version-unknown

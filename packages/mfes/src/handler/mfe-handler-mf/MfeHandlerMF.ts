@@ -44,10 +44,15 @@ import { MfeBridgeFactoryDefault } from '../../bridge/MfeBridgeFactoryDefault';
 import { DynamicModuleOps } from './mf-dynamic-module-ops';
 import { SharedDepSpecifierScan } from './mf-shared-dep-specifier-scan';
 import { LruCache } from './LruCache';
-import { RealmSharedDepTextCacheProvider, type SharedDepTextCache } from './RealmSharedDepTextCacheProvider';
+import { RealmSharedDepTextCacheProvider, DEFAULT_SHARED_DEP_TEXT_CACHE_MAX_BYTES, type SharedDepTextCache } from './RealmSharedDepTextCacheProvider';
 import { AttemptSourceTextLedger } from './AttemptSourceTextLedger';
 import { FetchBudget } from './FetchBudget';
 import { ManifestCache } from './ManifestCache';
+import { PackFallbackPolicy } from './PackFallbackPolicy';
+import { SharedUnitGraphLoader } from './SharedUnitGraphLoader';
+import { UnitBlobMinter } from './UnitBlobMinter';
+import { LoadDiagnosticsAccumulator } from './LoadDiagnosticsAccumulator';
+import type { RealmSharedDepTextCacheDiagnostics } from './ByteBudgetLruCache';
 
 const RUNTIME_STYLE_ID_PREFIX = '__frontx-mfe-runtime-style-';
 
@@ -380,6 +385,18 @@ const SHARED_DEP_ADOPTION_NOTICE_CACHE_CAPACITY = 64;
 interface MfeLoaderConfig {
   timeout?: number;
   retries?: number;
+  /**
+   * Byte budget for the realm shared-dep text cache (finding F-012,
+   * ADR-0035). The FIRST handler to publish the realm entry sets it;
+   * later handlers adopt the published cache unchanged.
+   */
+  sharedDepTextCacheMaxBytes?: number;
+  /**
+   * Per-package pack-fallback budget in ms (`inst-md-pack-fallback`).
+   * PROVISIONAL default 1500 ms — reconciled in phase 14
+   * (`load_time_gate` decision).
+   */
+  packFallbackBudgetMs?: number;
 }
 
 /**
@@ -468,7 +485,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    */
   // @cpt-dod:cpt-frontx-dod-mfe-isolation-realm-shared-dep-text-cache:p1
   // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-hold-reference
-  private readonly sharedDepTextCache: SharedDepTextCache = RealmSharedDepTextCacheProvider.getCache();
+  private readonly sharedDepTextCache: SharedDepTextCache;
   // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-hold-reference
 
   /**
@@ -488,6 +505,14 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     SHARED_DEP_ADOPTION_NOTICE_CACHE_CAPACITY,
   );
 
+  /**
+   * Per-handler diagnostics accumulator (F-011): byte-agreement and
+   * sharedChunkRule reports deduplicated once per page, per-load
+   * bytes/fallback/realm totals. Instance-held; assigned in the
+   * constructor.
+   */
+  private readonly loadDiagnostics: LoadDiagnosticsAccumulator;
+
   constructor(
     handledBaseTypeId: string,
     config: MfeLoaderConfig = {}
@@ -499,7 +524,19 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     this.config = {
       timeout: config.timeout ?? 30000,
       retries: config.retries ?? 2,
+      sharedDepTextCacheMaxBytes:
+        config.sharedDepTextCacheMaxBytes ??
+        DEFAULT_SHARED_DEP_TEXT_CACHE_MAX_BYTES,
+      packFallbackBudgetMs:
+        config.packFallbackBudgetMs ?? PackFallbackPolicy.DEFAULT_BUDGET_MS,
     };
+    // The realm byte budget comes from this handler's config only when
+    // this copy publishes the realm entry first; later handlers adopt the
+    // published cache unchanged (F-012, ADR-0035).
+    this.sharedDepTextCache = RealmSharedDepTextCacheProvider.getCache(
+      this.config.sharedDepTextCacheMaxBytes
+    );
+    this.loadDiagnostics = new LoadDiagnosticsAccumulator();
   }
 
   /**
@@ -802,6 +839,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       baseUrl,
       entryId,
       extensionId,
+      exposedModule,
       ledger
     );
     // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-run-manifest-discovery
@@ -1283,6 +1321,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     baseUrl: string,
     entryId: string,
     extensionId: string,
+    exposedModule: string,
     ledger?: AttemptSourceTextLedger
   ): Promise<Map<string, string>> {
     // `sources`/`sharedDepBlobUrls` are keyed by bare `dep.name`, while
@@ -1296,6 +1335,15 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // already documents ({@link resolveManifest}) that it trusts. Failing
     // fast on a same-name collision is the smaller, targeted fix.
     this.assertUniqueSharedDepNames(manifest, entryId);
+    if (manifest.shared.some((d) => d.graphFile !== undefined)) {
+      return this.buildUnitSharedDepBlobUrls(
+        manifest,
+        baseUrl,
+        entryId,
+        exposedModule,
+        ledger
+      );
+    }
     const sources = await this.fetchSharedDepSources(manifest, baseUrl, entryId, ledger);
     const sharedNames = new Set(manifest.shared.map((d) => d.name));
     return this.createBlobUrlsInDependencyOrder(
@@ -1304,6 +1352,138 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       entryId,
       extensionId
     );
+  }
+
+  /**
+   * The `./unit-format` graph path: graph files are fetched and verified,
+   * the `requires` closure is checked on every path (F-027), reachability
+   * roots select the unit set (F-016/F-017/F-027), pack fallback is
+   * decided per package before its unit text is fetched (F-018), and the
+   * minter mints leaves-first. Diagnostics per F-011.
+   */
+  private async buildUnitSharedDepBlobUrls(
+    manifest: MfManifest,
+    baseUrl: string,
+    entryId: string,
+    exposedModule: string,
+    ledger?: AttemptSourceTextLedger
+  ): Promise<Map<string, string>> {
+    const started = Date.now();
+    const sharedBase = manifest.metaData.sharedBase;
+    const assetBase =
+      sharedBase !== undefined
+        ? MfeHandlerMF.asDirectoryBase(
+            MfeHandlerMF.parseUrl(sharedBase, baseUrl) ??
+              MfeHandlerMF.parseUrl(baseUrl) ??
+              new URL(baseUrl)
+          )
+        : baseUrl;
+    const resolveAssetUrl = (location: string): string => {
+      if (/^https?:\/\//i.test(location)) return location;
+      const url = MfeHandlerMF.parseUrl(location, assetBase);
+      return url !== undefined ? url.href : `${assetBase}${location}`;
+    };
+    const fetchText = (url: string): Promise<string> =>
+      this.fetchSourceText(url, ledger);
+    const graphs = await Promise.all(
+      manifest.shared
+        .filter((d) => d.graphFile !== undefined)
+        .map((dep) =>
+          SharedUnitGraphLoader.loadGraph(
+            dep,
+            resolveAssetUrl((dep.graphFile as { location: string }).location),
+            fetchText,
+            entryId
+          )
+        )
+    );
+    for (const { dep, graph } of graphs) {
+      this.loadDiagnostics.recordByteAgreement(dep, graph, manifest.id);
+    }
+    this.loadDiagnostics.compareSharedChunkRules(graphs, manifest.id);
+    // inst-md-requires-closure: the requires closure check runs on every
+    // path, including the fetch-all path when no roots are declared.
+    const { anyRequiresDeclared } = SharedUnitGraphLoader.checkRequiresClosure(
+      graphs,
+      new Set(manifest.shared.map((d) => d.name)),
+      entryId
+    );
+    if (!anyRequiresDeclared) {
+      this.loadDiagnostics.reportRequiresUncheckable(manifest.id);
+    }
+    const roots = SharedUnitGraphLoader.rootsForExposedModule(
+      manifest,
+      exposedModule,
+      entryId
+    );
+    if (roots === undefined) {
+      this.loadDiagnostics.reportAbsentRoots(manifest.id, exposedModule);
+    }
+    const cache = this.sharedDepTextCache;
+    const fetchVerified = (
+      url: string,
+      contentHash: string,
+      cacheKey: string
+    ): Promise<string> => {
+      let textPromise = cache.get(cacheKey);
+      if (textPromise === undefined) {
+        textPromise = this.fetchSourceText(url, ledger).then(async (text) => {
+          const actual = await SharedUnitGraphLoader.sha256Hex(text);
+          if (actual !== contentHash) {
+            throw new MfeLoadError(
+              `shared-dep source '${url}' failed content-identity ` +
+                `verification: expected ${contentHash}, got ${actual}.`,
+              entryId
+            );
+          }
+          return text;
+        });
+        const rejectedPromise = textPromise;
+        rejectedPromise.catch(() => {
+          if (cache.get(cacheKey) === rejectedPromise) {
+            cache.delete(cacheKey);
+          }
+        });
+        cache.set(cacheKey, textPromise);
+      }
+      ledger?.record(cache, cacheKey, textPromise);
+      return textPromise;
+    };
+    // inst-md-pack-fallback: per-package pack fallback decided before
+    // that package's unit text is fetched on the attempt.
+    const plan = await SharedUnitGraphLoader.buildPlan(
+      graphs,
+      roots,
+      this.config.packFallbackBudgetMs ?? PackFallbackPolicy.DEFAULT_BUDGET_MS,
+      Date.now() - started,
+      fetchVerified,
+      resolveAssetUrl
+    );
+    const specifierToBlob = UnitBlobMinter.mint(plan.records, entryId);
+    this.loadDiagnostics.summarize(
+      manifest.id,
+      plan.bytesFetched,
+      plan.packFallbackPackages,
+      cache
+    );
+    return specifierToBlob;
+  }
+
+  /**
+   * Diagnostics-hook getter: the realm shared-dep text cache's
+   * byte/entry/budget/eviction snapshot when the cache supports it
+   * (F-011). `undefined` for a structurally conforming cache that
+   * reports no diagnostics.
+   */
+  get sharedDepTextCacheDiagnostics():
+    | RealmSharedDepTextCacheDiagnostics
+    | undefined {
+    const cache = this.sharedDepTextCache as {
+      getDiagnostics?: () => RealmSharedDepTextCacheDiagnostics;
+    };
+    return typeof cache.getDiagnostics === 'function'
+      ? cache.getDiagnostics()
+      : undefined;
   }
 
   /**
@@ -1453,6 +1633,28 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         // than issuing its own fetch, however the concurrent calls are
         // interleaved.
         textPromise = this.fetchSourceText(absoluteUrl, ledger);
+        // F-010: text cached under a declared contentHash key must first
+        // verify against that hash — unverified bytes are never admitted
+        // under the hash identity. The verifying promise rejects on
+        // mismatch and the eviction-on-rejection below removes it.
+        if (
+          dep.contentHash !== undefined &&
+          isWellFormedContentHash(dep.contentHash)
+        ) {
+          const declaredHash = dep.contentHash;
+          textPromise = textPromise.then(async (text) => {
+            const actual = await SharedUnitGraphLoader.sha256Hex(text);
+            if (actual !== declaredHash) {
+              throw new MfeLoadError(
+                `shared-dep chunk '${absoluteUrl}' for '${dep.name}@${dep.version}' ` +
+                  `failed content-identity verification: expected ${declaredHash}, ` +
+                  `got ${actual}.`,
+                entryId
+              );
+            }
+            return text;
+          });
+        }
         // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-fetch-and-cache
         // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-shared-dep
         // Evict on rejection so a transient failure doesn't poison every

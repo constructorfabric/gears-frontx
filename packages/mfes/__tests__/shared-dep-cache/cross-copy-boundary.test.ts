@@ -279,8 +279,11 @@ describe('Realm-shared shared-dependency source-text cache across two independen
     vi.resetModules();
     const copyB = await loadCopy();
 
+    // The declared hash must match the served bytes: F-010 admission
+    // verifies text against a well-formed contentHash before caching it
+    // under the hash key.
     const contentHash =
-      '0e6ffdcfeba0f920be9dfcd093ae95baba245d9b07dee5348111e3ecb25e3599';
+      '6657467c596bb6a5668bce58bbd363b4345d1da83976e25c24774c5bf64ee316';
     const fetchCalls: string[] = [];
     let releaseFetch: (() => void) | undefined;
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(((
@@ -327,7 +330,7 @@ describe('Realm-shared shared-dependency source-text cache across two independen
     const copyB = await loadCopy();
 
     const contentHash =
-      'a73f08acc63e6f8d9732679dae84b4942b3148be0a9ba8f670084b8fef530f6d';
+      '6657467c596bb6a5668bce58bbd363b4345d1da83976e25c24774c5bf64ee316';
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(jsResponse('export const depx = 1;'));
@@ -359,7 +362,7 @@ describe('Realm-shared shared-dependency source-text cache across two independen
     const copyB = await loadCopy();
 
     const contentHash =
-      'de4d39c675358c5beb85c910733bb377518691f115c5be822015449bb651133b';
+      '6657467c596bb6a5668bce58bbd363b4345d1da83976e25c24774c5bf64ee316';
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(jsResponse('export const depx = 1;'));
@@ -506,18 +509,23 @@ describe('Realm-shared shared-dependency source-text cache across two independen
     expect(fallback1).toBe(fallback2);
     expect(fallback1).not.toBe(bogusEntry.cache);
 
-    // Bounded at the same 128-entry capacity as the realm cache, checked
-    // directly on the fallback before anything else touches it — mirrors
-    // the realm-wide LRU test above, against the fallback instance instead.
-    for (let i = 0; i < 128; i += 1) {
-      fallback1.set(`fb-k${i}`, Promise.resolve(`v${i}`));
+    // Bounded by the same BYTE budget as the realm cache (ADR-0035,
+    // F-012 — the bound is retained bytes, no longer a 128-mapping
+    // count), checked directly on the fallback before anything else
+    // touches it — mirrors the realm-wide byte-LRU test below, against
+    // the fallback instance instead.
+    const chunk = 'x'.repeat(512 * 1024);
+    for (let i = 0; i < 8; i += 1) {
+      fallback1.set(`fb-k${i}`, Promise.resolve(chunk));
+      await sleep(0); // let fulfillment-time byte accounting settle
     }
     expect(fallback1.get('fb-k0')).toBeDefined(); // re-inserted as MRU
     expect(fallback2.get('fb-k1')).toBeDefined(); // MRU'd via the OTHER handler's reference
-    fallback1.set('fb-k128', Promise.resolve('v128')); // 129th distinct insertion
+    fallback1.set('fb-k8', Promise.resolve('y')); // pushes retained bytes over 4 MiB
+    await sleep(0);
     expect(fallback1.get('fb-k2')).toBeUndefined(); // evicted: least-recently-used
     expect(fallback2.get('fb-k0')).toBeDefined();
-    expect(fallback2.get('fb-k128')).toBeDefined();
+    expect(fallback2.get('fb-k8')).toBeDefined();
 
     // Genuinely shared, not merely equal by accident: a fetch driven
     // through handlerA1 is observed as a cache hit by handlerA2 — zero
@@ -589,7 +597,7 @@ describe('Realm-shared shared-dependency source-text cache across two independen
     // one shared cache, and only genuine separation produces the second
     // fetch below.
     const contentHash =
-      'deadbeefeba0f920be9dfcd093ae95baba245d9b07dee5348111e3ecb25e359a';
+      '05bb98d17d85eb09afa3bc7539f73d700c1fc37720966c9e8013059502841d47';
     const manifestA = buildManifest(
       MANIFEST_ID_A,
       'http://localhost:4101/mfe-a/',
@@ -801,7 +809,7 @@ describe('Realm-shared shared-dependency source-text cache across two independen
     fetchSpy.mockRestore();
   });
 
-  it('exact 128-entry realm-wide LRU: the 129th distinct insertion evicts the least-recently-used entry, with no multiplication by handler or copy count', async () => {
+  it('realm-wide byte-budget LRU: pushing retained bytes past the realm budget evicts the least-recently-used FULFILLED entry, with no multiplication by handler or copy count', async () => {
     const copyA = await loadCopy();
     vi.resetModules();
     const copyB = await loadCopy();
@@ -812,19 +820,25 @@ describe('Realm-shared shared-dependency source-text cache across two independen
     const cacheB = realmCacheOf(handlerB);
     expect(cacheA).toBe(cacheB); // same realm-wide instance, both copies
 
-    for (let i = 0; i < 128; i += 1) {
-      cacheA.set(`k${i}`, Promise.resolve(`v${i}`));
+    // 8 × 512 KiB = exactly the 4 MiB default realm budget
+    // (DEFAULT_SHARED_DEP_TEXT_CACHE_MAX_BYTES); the ninth admission
+    // pushes retained bytes past it and evicts the LRU fulfilled entry.
+    const chunk = 'x'.repeat(512 * 1024);
+    for (let i = 0; i < 8; i += 1) {
+      cacheA.set(`k${i}`, Promise.resolve(chunk));
+      await sleep(0);
     }
     expect(cacheA.get('k0')).toBeDefined(); // still resident, re-inserted as MRU
     expect(cacheB.get('k1')).toBeDefined(); // visible from the OTHER copy's reference
 
     // k0 and k1 are now MRU (just re-`get`); the next insertion evicts the
     // actual least-recently-used entry — k2.
-    cacheA.set('k128', Promise.resolve('v128'));
+    cacheA.set('k8', Promise.resolve('y'));
+    await sleep(0);
 
     expect(cacheA.get('k2')).toBeUndefined();
     expect(cacheB.get('k0')).toBeDefined();
-    expect(cacheB.get('k128')).toBeDefined();
+    expect(cacheB.get('k8')).toBeDefined();
   });
 
   it('a second, independently constructed handler in the same copy hits the same realm cache the first handler used', async () => {
@@ -874,7 +888,7 @@ describe('Realm-shared shared-dependency source-text cache across two independen
       const copyB = await loadCopy();
 
       const contentHash =
-        'abcd39c675358c5beb85c910733bb377518691f115c5be822015449bb651133c';
+        '06a1bd062081d32b6f2d1f969df42382068fc7c600fca72ee16f924162b3b647';
       const key = `dep-s@1.0.0@${contentHash}`;
 
       let fetchCallCount = 0;
