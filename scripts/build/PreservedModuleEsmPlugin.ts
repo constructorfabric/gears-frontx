@@ -19,15 +19,20 @@
  * Anything esbuild still inlines into a module (a JSON file, a package the
  * build does not externalize) is checked once the build ends: inlining the
  * same input into two modules would ship two copies of it, so that fails the
- * build naming the input.
+ * build naming the input. Otherwise every emitted module gets the
+ * linkage-first layout of `EsmLinkageLayout`: a barrel is plain re-exports and
+ * a defining module's export clause precedes its body, so a build reading
+ * linkage can follow a barrel binding to its defining module.
  */
-import { existsSync, realpathSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { Options } from 'tsup';
+import { EsmLinkageLayout } from './EsmLinkageLayout';
 
 type EsbuildPlugin = NonNullable<Options['esbuildPlugins']>[number];
 type PluginBuild = Parameters<EsbuildPlugin['setup']>[0];
 type BuildOptions = PluginBuild['initialOptions'];
+type BuildResult = Parameters<Parameters<PluginBuild['onEnd']>[0]>[0];
 
 export interface PreservedModuleEsmPluginOptions {
   /** Directory holding the source modules, relative to the build's working directory. Default `src`. */
@@ -140,6 +145,9 @@ export class PreservedModuleEsmPlugin {
           }
           const duplicated = [...inlinedBy].filter(([, outputPaths]) => outputPaths.length > 1);
           if (duplicated.length === 0) {
+            if (result.errors.length === 0) {
+              PreservedModuleEsmPlugin.layOutLinkage(result, Object.keys(outputs), workingDir, extension);
+            }
             return undefined;
           }
           return {
@@ -150,6 +158,54 @@ export class PreservedModuleEsmPlugin {
         });
       },
     };
+  }
+
+  /**
+   * Gives every emitted module its linkage-first layout ({@link EsmLinkageLayout}):
+   * barrels become plain re-exports, and a defining module's export clause
+   * precedes its body. Works on the in-memory output files when the build does
+   * not write (tsup), on the written files otherwise; a module's source map
+   * follows the one line a layout may insert.
+   */
+  private static layOutLinkage(
+    result: BuildResult,
+    outputPaths: readonly string[],
+    workingDir: string,
+    extension: string,
+  ): void {
+    const inMemory = result.outputFiles;
+    const byPath = new Map((inMemory ?? []).map((file, index) => [file.path, index]));
+    const read = (file: string): string | undefined => {
+      if (inMemory !== undefined) {
+        const index = byPath.get(file);
+        return index === undefined ? undefined : inMemory[index].text;
+      }
+      return existsSync(file) ? readFileSync(file, 'utf8') : undefined;
+    };
+    const write = (file: string, text: string): void => {
+      if (inMemory === undefined) {
+        writeFileSync(file, text);
+        return;
+      }
+      const index = byPath.get(file) as number;
+      inMemory[index] = { path: file, contents: new TextEncoder().encode(text), text, hash: inMemory[index].hash };
+    };
+    for (const outputPath of outputPaths) {
+      if (!outputPath.endsWith(extension)) {
+        continue;
+      }
+      const file = path.resolve(workingDir, outputPath);
+      const code = read(file);
+      const laidOut = code === undefined ? undefined : EsmLinkageLayout.layout(code);
+      if (laidOut === undefined) {
+        continue;
+      }
+      write(file, laidOut.code);
+      const map = laidOut.insertedLine === undefined ? undefined : read(`${file}.map`);
+      if (map !== undefined && laidOut.insertedLine !== undefined) {
+        write(`${file}.map`, EsmLinkageLayout.shiftSourceMap(map, laidOut.insertedLine));
+      }
+    }
   }
 
   /** Real path of an existing file, so symlinked working directories compare equal. */

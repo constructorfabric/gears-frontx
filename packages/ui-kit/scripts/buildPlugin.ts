@@ -6,6 +6,7 @@ import nodeExternals from 'rollup-plugin-node-externals';
 import type { Plugin, PluginOption, UserConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 import { libInjectCss } from 'vite-plugin-lib-inject-css';
+import { EsmLinkageLayout } from '../../../scripts/build/EsmLinkageLayout';
 
 /**
  * The drag library's subpaths the source imports, rewritten in the emitted JS to the files they
@@ -74,6 +75,7 @@ export function buildPlugin(): PluginOption[] {
     libInjectCss(),
     buildEntries(),
     preserveUseClientPlugin(),
+    linkageLayoutPlugin(),
     dts({
       outDir: 'dist',
       entryRoot: 'src',
@@ -326,6 +328,47 @@ export function buildPlugin(): PluginOption[] {
         const magicString = new MagicString(code);
         magicString.prepend(`${USE_CLIENT}\n`);
         return { code: magicString.toString(), map: magicString.generateMap({ hires: true }) };
+      },
+    };
+  }
+
+  /**
+   * Gives every emitted module the linkage-first layout the tsup-built
+   * shareable packages get (scripts/build/EsmLinkageLayout.ts at the repo
+   * root): an entry facade such as dist/<name>.js or dist/index.js becomes
+   * plain `export { … } from` re-exports, and a module's export clause sits
+   * above its body, so a host or MFE build reading linkage can follow each
+   * barrel binding to the module that defines it. Rollup itself renders
+   * re-exports plainly, but Vite's own esbuild pass over each rendered chunk
+   * turns them back into `import { … as n }` plus a trailing export clause, so
+   * this runs as the last `renderChunk` (enforce and order `post`), after that
+   * pass and after preserveUseClientPlugin: a hoisted export clause lands below
+   * the `'use client'` prologue.
+   */
+  function linkageLayoutPlugin(): Plugin {
+    return {
+      name: 'ui-kit-linkage-layout',
+      apply: 'build',
+      enforce: 'post',
+      renderChunk: {
+        order: 'post',
+        handler(code) {
+          const plan = EsmLinkageLayout.plan(code);
+          if (plan === undefined) {
+            return null;
+          }
+          const magicString = new MagicString(code);
+          for (const edit of plan.edits) {
+            if (edit.start === edit.end) {
+              magicString.appendLeft(edit.start, edit.text);
+            } else if (edit.text === '') {
+              magicString.remove(edit.start, edit.end);
+            } else {
+              magicString.overwrite(edit.start, edit.end, edit.text);
+            }
+          }
+          return { code: magicString.toString(), map: magicString.generateMap({ hires: true }) };
+        },
       },
     };
   }
