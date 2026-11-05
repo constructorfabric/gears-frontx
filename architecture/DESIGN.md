@@ -97,10 +97,10 @@ Published libraries:
 * `cpt-frontx-adr-extension-domain-occupancy` — Governs extension-domain occupancy through mount strategies and cardinality rules, with executed actions as the sole channel of an occupancy change, restoration included.
 * `cpt-frontx-adr-domain-extension-compatibility` — Admits extensions into domains by contract matching.
 * `cpt-frontx-adr-mfe-load-isolation` — Isolates loaded microfrontends at runtime.
-* `cpt-frontx-adr-lazy-import-resolution` — Separates the runtime ABI from the template-bound build through lazy import.
-* `cpt-frontx-adr-mfe-asset-discovery` — Discovers microfrontends through their manifest contract.
+* `cpt-frontx-adr-lazy-import-resolution` — Resolves lazily loaded chunks through a runtime lazy-import ABI inherited from the parent load, binding them to that load's map of shared-dependency units so units reached on demand join the same isolated graph.
+* `cpt-frontx-adr-mfe-asset-discovery` — Tells each load, through the microfrontend's manifest contract, which assets and which reachable shared code to fetch.
 * `cpt-frontx-adr-shared-dep-reuse` — Reuses shared-dependency code across microfrontends as content-identified, consumer-independent units, one per strongly connected component of a package's own module graph, under an ecosystem-owned format contract.
-* `cpt-frontx-adr-shared-dep-cache-reach` — Extends that reuse to one bounded, version-namespaced source-text cache per realm, shared by compatible independently loaded copies of the runtime without sharing module graphs.
+* `cpt-frontx-adr-shared-dep-cache-reach` — Extends that reuse to one version-namespaced cache of verified source text per realm, bounded by an application-configurable byte budget and shared by compatible copies of the runtime without sharing module graphs.
 * `cpt-frontx-adr-api-surface-organization` — Separates request/response and streaming behind a common protocol surface.
 * `cpt-frontx-adr-api-transport-bypass-and-fetch-sharing` — Provides a plugin short-circuit and a realm-shared fetch cache.
 * `cpt-frontx-adr-extension-routing-port` — Injects an optional abstract router into the runtime, places the FrontX router in the routing package, keeps occupant values private, and lets the runtime decide what the URL shows while the router writes it.
