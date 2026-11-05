@@ -53,10 +53,15 @@ vi.mock('../../src/handler/mfe-handler-mf/mf-dynamic-module-ops', async (importO
     await importOriginal<typeof import('../../src/handler/mfe-handler-mf/mf-dynamic-module-ops')>();
   return {
     ...actual,
-    importBlobModule: (blobUrl: string): Promise<unknown> =>
-      blobModuleStub.current !== undefined
-        ? Promise.resolve(blobModuleStub.current)
-        : actual.importBlobModule(blobUrl),
+    DynamicModuleOps: class extends actual.DynamicModuleOps {
+      static override async importBlobModule(
+        blobUrl: string,
+      ): Promise<unknown> {
+        return blobModuleStub.current !== undefined
+          ? Promise.resolve(blobModuleStub.current)
+          : super.importBlobModule(blobUrl);
+      }
+    },
   };
 });
 

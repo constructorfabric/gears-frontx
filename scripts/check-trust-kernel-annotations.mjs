@@ -320,6 +320,46 @@ function classifyExports(sourceFile) {
       continue;
     }
 
+    // An exported class is function-valued surface member by member: every
+    // method and accessor is a function its callers can reach, so each one
+    // is checked for the safety annotation on its OWN JSDoc (the contract
+    // `export function` declarations already follow). The constructor is
+    // excluded — it cannot be invoked as a plain function. A property whose
+    // initializer is an arrow/function expression is likewise checked;
+    // other property initializers are classified by the same rules as
+    // variable initializers.
+    if (ts.isClassDeclaration(statement)) {
+      if (isExported) {
+        const className = statement.name?.getText(sourceFile) ?? '(anonymous class)';
+        for (const member of statement.members) {
+          if (
+            ts.isMethodDeclaration(member) ||
+            ts.isGetAccessorDeclaration(member) ||
+            ts.isSetAccessorDeclaration(member)
+          ) {
+            const memberName = member.name.getText(sourceFile);
+            checked.push({ name: `${className}.${memberName}`, node: member });
+            continue;
+          }
+          if (ts.isPropertyDeclaration(member)) {
+            const memberName = member.name.getText(sourceFile);
+            if (member.initializer === undefined) continue;
+            const classification = classifyExpression(member.initializer, localDecls, member);
+            if (classification.outcome === FUNCTION_VALUED) {
+              checked.push({ name: `${className}.${memberName}`, node: member });
+            } else if (classification.outcome === UNSUPPORTED) {
+              unsupported.push({
+                name: `${className}.${memberName}`,
+                reason: classification.reason ?? 'unsupported export form',
+              });
+            }
+          }
+          // Constructor and other member kinds carry no callable value.
+        }
+      }
+      continue;
+    }
+
     // Type-level declarations carry no runtime value at all, so they can
     // never be function-valued — this is knowable from the declaration
     // kind alone, with no need to inspect content.

@@ -11,9 +11,9 @@
  * The scheme-check clause specifically (`u.startsWith(...)||...`) is NOT
  * hand-hardcoded in the expected string: it is built the same way
  * `buildLazyLoaderStubSource` itself builds it, from
- * `inlineContentSchemes()`. This is deliberate, not an
+ * `DynamicModuleOps.inlineContentSchemes()`. This is deliberate, not an
  * oversight: deriving the clause from
- * `inlineContentSchemes()` rather than hardcoding
+ * `DynamicModuleOps.inlineContentSchemes()` rather than hardcoding
  * `"blob:"`/`"data:"` literals means a change to the scheme list cannot
  * leave this test's expectation stale, because both the production code
  * and this test draw the clause from the same source of truth. Every other
@@ -23,12 +23,12 @@
  * pin, not the same category of risk.
  */
 import { describe, expect, it } from 'vitest';
-import { buildLazyLoaderStubSource, inlineContentSchemes } from '../mf-dynamic-module-ops';
+import { DynamicModuleOps } from '../mf-dynamic-module-ops';
 
 describe('buildLazyLoaderStubSource', () => {
   it('produces the exact stub source text for a given loader id', () => {
-    const source = buildLazyLoaderStubSource('loader-42');
-    const schemeCheck = inlineContentSchemes()
+    const source = DynamicModuleOps.buildLazyLoaderStubSource('loader-42');
+    const schemeCheck = DynamicModuleOps.inlineContentSchemes()
       .map((scheme) => `u.startsWith(${JSON.stringify(scheme)})`)
       .join('||');
 
@@ -42,9 +42,9 @@ describe('buildLazyLoaderStubSource', () => {
     );
   });
 
-  it('generates one startsWith(...) clause per scheme in inlineContentSchemes(), in order — proving the guard is DERIVED, not a second hand-copy', () => {
-    const source = buildLazyLoaderStubSource('loader-derived');
-    const schemes = inlineContentSchemes();
+  it('generates one startsWith(...) clause per scheme in DynamicModuleOps.inlineContentSchemes(), in order — proving the guard is DERIVED, not a second hand-copy', () => {
+    const source = DynamicModuleOps.buildLazyLoaderStubSource('loader-derived');
+    const schemes = DynamicModuleOps.inlineContentSchemes();
 
     // No hand-maintained expectation of what the schemes ARE: this asserts
     // the generated text matches whatever the shared list currently says,
@@ -64,7 +64,7 @@ describe('buildLazyLoaderStubSource', () => {
   });
 
   it('JSON-stringifies the loader id, escaping characters that could break out of the string literal', () => {
-    const source = buildLazyLoaderStubSource('a"b\\c');
+    const source = DynamicModuleOps.buildLazyLoaderStubSource('a"b\\c');
 
     expect(source).toContain(`const __id=${JSON.stringify('a"b\\c')};`);
     // No unescaped quote reaches the emitted literal.
@@ -72,7 +72,7 @@ describe('buildLazyLoaderStubSource', () => {
   });
 
   it('the generated stub rejects a resolved URL that is not blob:/data: at runtime', async () => {
-    const source = buildLazyLoaderStubSource('loader-guard');
+    const source = DynamicModuleOps.buildLazyLoaderStubSource('loader-guard');
 
     // Execute the EXACT generated body (not a re-implementation of it) via
     // the Function constructor rather than `import()`-ing it as a real ES
