@@ -1,6 +1,6 @@
 {
   "name": "@gears-frontx/ui-kit",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Standard React component base for FrontX templates - Base UI behavior, CSS Modules styling on semantic tokens, CVA variants",
   "type": "module",
   "types": "./dist/index.d.ts",
@@ -71,7 +71,7 @@
     }
   },
   "devDependencies": {
-    "@globaltypesystem/gts-ts": "0.3.0",
+    "@globaltypesystem/gts-ts": "0.11.2",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.2",
     "@testing-library/user-event": "14.6.7",

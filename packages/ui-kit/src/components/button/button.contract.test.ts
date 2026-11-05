@@ -58,6 +58,7 @@ import {
 import {
   applyContractTestTimeout,
   assertContractFreshness,
+  elementSurfaceProblem,
   registeredKitStore,
   resolveComponentRef,
   unitStore,
@@ -88,9 +89,8 @@ const ELEMENT_TYPE_ID = elementTypeId(domElementToken('button'));
 const elementSurface = loadElementSurface('button');
 
 // A schema keyword ($id, $ref) carries the URI form `gts://...`; gts-ts
-// strips it before parsing or keying the store (store.normalizeSchema), so
-// anything talking to the library gets the bare id - bareGtsId (ids.ts) is
-// the one place that conversion lives.
+// keys its store by the bare id, so anything talking to the library gets
+// the bare id - bareGtsId (ids.ts) is the one place that conversion lives.
 
 // The props validator every "props validation" test below uses: the harness's
 // own (compile.ts's compilePropsValidator), which resolves the surface this
@@ -958,20 +958,36 @@ describe('button in a GTS store', () => {
     }
   });
 
-  it("fails when the surface the component's forwards_to names is absent from the registry", () => {
-    // Negative control for the one reference gts-ts resolves itself. It sits
-    // directly on a document property, which is as deep as
-    // XGtsRefValidator's walk goes, so the surface a component names is
-    // resolved by the registry and not only by the conformance suite - a
-    // claim worth a failing case, because a reference nested inside a meaning
-    // field's value object is never reached by that walk.
+  it("checks forwards_to's grammar in the registry, and leaves resolving it to the conformance suite", () => {
+    // The registry checks a reference's grammar only (testing.ts's KitStore):
+    // a well-formed id naming no committed surface passes here, and the
+    // conformance suite's own check fails it against the committed files (the
+    // next test). A malformed one fails here, by name - the negative control.
     const gts = registeredKitStore();
     const orphaned = JSON.parse(JSON.stringify(contract)) as Record<string, unknown>;
     orphaned.forwards_to = elementTypeRef('dom_nope');
     gts.register(orphaned);
+    const unresolved = gts.validateInstance(contract.$id);
+    expect(unresolved.ok, unresolved.error).toBe(true);
+    const malformed = JSON.parse(JSON.stringify(contract)) as Record<string, unknown>;
+    malformed.forwards_to = 'not-a-gts-id';
+    gts.register(malformed);
     const result = gts.validateInstance(contract.$id);
     expect(result.ok).toBe(false);
-    expect(result.error).toContain('not found in registry');
+    expect(result.error).toContain('/forwards_to');
+    expect(result.error).toContain('not a valid GTS identifier');
+  });
+
+  it('fails a forwards_to that no committed file declares in the conformance check, which the registry passes', () => {
+    // The other half of the test above: since the registry passes a
+    // well-formed surface reference whatever it names, elementSurfaceProblem
+    // is the only check that fails one naming no committed file. Button's own
+    // reference is the positive case.
+    expect(elementSurfaceProblem(contract)).toBeUndefined();
+    const orphaned = { ...contract, forwards_to: elementTypeRef('dom_nope') };
+    expect(elementSurfaceProblem(orphaned)).toContain('which no committed file declares');
+    const malformed = { ...contract, forwards_to: 'not-a-gts-id' };
+    expect(elementSurfaceProblem(malformed)).toContain('is not a grammatical element-surface reference');
   });
 
   it('fails when a vocabulary type the component type references is not registered', () => {
@@ -988,8 +1004,8 @@ describe('button in a GTS store', () => {
   it('validates the whole document against the committed component type', () => {
     // validateContractInstance (testing.ts) documents which gts-ts API this
     // goes through: GTS.validateInstance, which finds the type through the
-    // document's own id chain, compiles it with Ajv, and then walks the
-    // document for the references that sit directly on a property.
+    // document's own id chain and validates the document against it,
+    // checking each reference's grammar.
     const result = validateContractInstance(contract);
     expect(result.ok, result.error).toBe(true);
   });
@@ -1006,7 +1022,8 @@ describe('button in a GTS store', () => {
     };
     const result = validateContractInstance(corrupted);
     expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/pattern/i);
+    expect(result.error).toContain('/dont_use_when/0/instead/component');
+    expect(result.error).toContain('not a valid GTS identifier');
   });
 
   it('rejects a component carrying an unknown key', () => {
