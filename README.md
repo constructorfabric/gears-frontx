@@ -220,14 +220,14 @@ above.
 ```bash
 FrontX/                              # Ecosystem repository root
 ├── architecture/                   # Constructor Studio SDLC artifacts (PRD, DESIGN, ADR, features)
-├── packages/                       # Ecosystem packages (published to npm)
+├── packages/                       # Ecosystem packages (published to npm, except the kit)
 │   ├── mfes/                       # Published library (core, standalone): MFE runtime — registration, loading, mounting, isolation
 │   ├── gts-plugin/                 # Published library (core, standalone): GTS default type-system provider plugin
 │   ├── api/                        # Published library (core, standalone): API communication protocols + service registry
 │   ├── telemetry/                  # Published library (core, standalone): browser telemetry SDK
 │   ├── ui-kit/                     # Published library (standalone): UI components (artifact chain is recorded debt)
 │   ├── cli/                        # Projects orchestration: template-resolution CLI (`frontx`)
-│   └── cyber-pilot-kit-frontx/     # Projects orchestration: AI Tooling Kit
+│   └── cyber-pilot-kit-frontx/     # Projects orchestration: AI Tooling Kit (private; installed from Git with `cfs`)
 ├── internal/                       # Internal build/lint config workspaces
 ├── scripts/                        # Architecture, version-policy, and test tooling
 └── tsconfig.json                   # TypeScript config (ecosystem packages only)
