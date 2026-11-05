@@ -11,11 +11,18 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./unit-format": {
+      "types": "./dist/unit-format.d.ts",
+      "import": "./dist/unit-format.js",
+      "require": "./dist/unit-format.cjs"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "fixtures"
   ],
+  "sideEffects": false,
   "peerDependencies": {
     "@gears-frontx/gts-plugin": "^0.6.0"
   },

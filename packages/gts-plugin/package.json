@@ -16,6 +16,7 @@
   "files": [
     "dist"
   ],
+  "sideEffects": true,
   "scripts": {
     "build": "tsup",
     "type-check": "tsc --noEmit",

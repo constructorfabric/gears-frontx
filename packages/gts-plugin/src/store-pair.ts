@@ -282,7 +282,12 @@ export function obtainSharedPair(
     // Adopted whichever same-realm code published it: recognition guards
     // against accidental incompatibility and does not authenticate.
     joinPair(entry, { announce: true });
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-realm-store-rendezvous:p1:inst-rs-child-schema-visibility
+    // Returning the realm's shared pair is what makes schemas a child's own
+    // plugin copy registered visible where this copy's action targets live:
+    // every compatible copy reaches the same StorePair through this slot.
     return entry;
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-realm-store-rendezvous:p1:inst-rs-child-schema-visibility
     // @cpt-end:cpt-frontx-algo-gts-type-provider-realm-store-rendezvous:p1:inst-rs-trusted-coordination
     // @cpt-end:cpt-frontx-algo-gts-type-provider-realm-store-rendezvous:p1:inst-rs-adopt
   }
