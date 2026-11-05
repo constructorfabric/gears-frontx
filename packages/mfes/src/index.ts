@@ -138,6 +138,11 @@ export { MfeHandlerMF } from './handler/mfe-handler-mf/MfeHandlerMF';
 export { LruCache } from './handler/mfe-handler-mf/LruCache';
 export { RetryHandler } from './handler/mfe-handler-mf/RetryHandler';
 export type { MfeEntryMF } from './types/mfe-entry-mf';
+export {
+  sourceImports,
+  rewriteBareSpecifier,
+  importBlobModule,
+} from './handler/mfe-handler-mf/mf-dynamic-module-ops-root-exports';
 export type {
   MfManifestGraphFileRef,
   MfManifestUnitId,
