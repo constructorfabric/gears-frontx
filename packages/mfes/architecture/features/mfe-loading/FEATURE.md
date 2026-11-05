@@ -220,7 +220,7 @@ Internal system functions and procedures that do not interact with actors direct
 
 ### Manifest Fields Drive Discovery — No Remote-Entry Parsing
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-loading-manifest-field-discovery`
+- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-loading-manifest-field-discovery`
 
 The system **MUST** derive every locating fact needed for a microfrontend load exclusively from the declared fields of the published manifest (`metaData.publicPath`, `exposeAssets.js.sync[0]`, `exposeAssets.css.sync`, `exposeAssets.css.async`, `shared[]`) without fetching or parsing a compiled remote-entry module. On each `shared[]` entry the system **MUST** honour the unit-format fields `graphFile`, `requires`, `entryRoots`, `lazyChunkRoots`, `sharedChunkRule` and `sharedBase` alongside the legacy `chunkPath`; every boundary field the runtime reads **MUST** be validated where it is read — absent or malformed roots and `requires` surface as an `MfeLoadError` naming the field and the manifest, never as a raw `TypeError` or `SyntaxError`, and an inline manifest receives the same checks as a referenced one. The `shared[]` array's published order **MUST** be treated as an enumeration order only; the system **MUST** derive the leaves-first construction order from the fetched sources themselves, so each shared dependency's blob URL is available before the dependents that reference it as a bare specifier are processed.
 

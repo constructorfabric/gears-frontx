@@ -491,9 +491,11 @@ module.exports = {
     exclude: {
       dynamic: true,
       // Only genuinely-not-ours trees are path-excluded, and none of them is a
-      // rule target: `packages/mfes/mfes` is generated output, and
-      // `.claude/worktrees` are disposable agent-spawned repo checkouts.
-      path: 'packages/mfes/mfes|\\.claude',
+      // rule target: `packages/mfes/mfes` is generated output,
+      // `.claude/worktrees` are disposable agent-spawned repo checkouts, and
+      // `packages/*/fixtures` are shipped sample packages (the unit-format
+      // fixtures deliberately include an import cycle a producer must handle).
+      path: 'packages/mfes/mfes|\\.claude|packages/[^/]+/fixtures',
     },
     // Type-only imports are erased before emit, so without this a boundary
     // crossing written as `import type` is invisible to every rule above. The
