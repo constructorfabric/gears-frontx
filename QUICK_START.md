@@ -161,20 +161,24 @@ ships no application, host, or UI of its own.
 
 The AI Tooling Framework is delivered as a **Constructor Studio kit**
 (`cyber-pilot-kit-frontx`) — the kit *is* the framework's public surface. It is
-published to npm as `@gears-frontx/cyber-pilot-kit-frontx` and installed and
-updated through the **Constructor Studio CLI** (`cfs`), not npm. On install, its `frontx_`-prefixed resources register in
-the project's `.cf-studio/config/core.toml` and become available to agents at
-session start — no training step.
+installed and updated from this repository through the **Constructor Studio
+CLI** (`cfs`); it is not published to npm. On install, its `frontx_`-prefixed resources register in
+the project's `.cf-studio/config/core.toml`. Once `cfs generate-agents` has written
+the agent integrations, they are available to agents at session start — no
+training step.
 
 ### Install the kit
 
 ```bash
 # Install the FrontX AI Tooling kit into a project (via Constructor Studio, not the frontx CLI).
 # The kit lives inside this monorepo, so install it from the repository subdirectory:
-cfs kit install git/https://github.com/constructorfabric/gears-frontx//packages/cyber-pilot-kit-frontx
+cfs kit install git/https://github.com/constructorfabric/gears-frontx.git//packages/cyber-pilot-kit-frontx
 
 # ...or from a local checkout of this repository:
 cfs kit install path/packages/cyber-pilot-kit-frontx
+
+# Write the agent integrations for the kit's skills
+cfs generate-agents
 
 # Update it later to a newer version
 cfs kit update cyber-pilot-kit-frontx

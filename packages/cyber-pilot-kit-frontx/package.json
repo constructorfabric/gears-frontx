@@ -2,26 +2,8 @@
   "name": "@gears-frontx/cyber-pilot-kit-frontx",
   "version": "0.3.1",
   "description": "FrontX AI Tooling Kit — ecosystem-level AI capabilities for AI agents working in FrontX projects",
+  "private": true,
   "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    }
-  },
-  "files": [
-    "dist",
-    ".cf-studio-kit.toml",
-    "SKILL.md",
-    "AGENTS.md",
-    "README.md",
-    "guidelines",
-    "skills"
-  ],
   "scripts": {
     "build": "tsup",
     "type-check": "tsc --noEmit",
@@ -35,9 +17,6 @@
     "tsup": "^8.0.0",
     "typescript": "^5.4.2",
     "vitest": "4.1.4"
-  },
-  "publishConfig": {
-    "access": "public"
   },
   "keywords": [
     "frontx",

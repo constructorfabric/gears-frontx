@@ -6,8 +6,10 @@ scaffolding — routes a FrontX request to the capability that serves it, and
 creates a project from a stated intent. Solution-agnostic base only; no
 template-specific content ships here.
 
-Packaged as `@gears-frontx/cyber-pilot-kit-frontx` and delivered as a Constructor
-Studio kit (`cpt-frontx-adr-ai-tooling-framework-packaging`).
+Delivered as a Constructor Studio kit, installed from this repository by Git
+reference (`cpt-frontx-adr-ai-tooling-framework-packaging`). The
+`@gears-frontx/cyber-pilot-kit-frontx` package is private: it is not published
+to npm.
 
 ## Kit shape
 
@@ -26,29 +28,33 @@ resources cannot collide with another kit installed in the same project.
 
 ### In a consuming project
 
-Distribution is the versioned npm artifact, but `cfs kit install` does not accept
-an npm specifier — it resolves a kit from GitHub, a generic Git URL, or a local
-directory. An npm-installed package *is* a local directory, so the two steps
-compose:
+`cfs kit install` resolves a kit from GitHub, a generic Git URL, or a local
+directory. The kit lives in this monorepo, so it installs from the repository
+subdirectory. `cfs generate-agents` then writes the agent integrations for the
+kit's skills:
 
 ```sh
-npm install @gears-frontx/cyber-pilot-kit-frontx
-cfs kit install ./node_modules/@gears-frontx/cyber-pilot-kit-frontx
+cfs kit install git/https://github.com/constructorfabric/gears-frontx.git//packages/cyber-pilot-kit-frontx
+cfs generate-agents
 ```
 
-The published tarball ships `.cf-studio-kit.toml` alongside `SKILL.md`,
-`skills/`, `AGENTS.md`, `README.md`, and `guidelines/` (see `files` in
-`package.json`), so the extracted package directory is a complete, valid kit
-source. Every declared resource `source` must fall inside that list — a source
-outside it leaves the resource declared and absent from the published package,
+The `.git` before `//` is required: in an `https://` source, Studio separates
+the subdirectory from the repository URL only at `.git//`.
+
+`--version` picks the Git reference to install: a tag, a branch, or a full
+commit SHA. See `cfs kit install --help`.
+
+The kit is not published to npm. Versions up to 0.3.1 were; install from Git
+instead.
+
+A Git install receives the kit's directory as Git holds it, so every declared
+resource `source` must be a path Git does not ignore. A source under `dist/`,
+for one, leaves the resource declared and absent from every installed copy,
 which the kit's own suite asserts against.
 
 Installation records the kit at `[kits.cyber-pilot-kit-frontx]` in
 `.cf-studio/config/core.toml`. Only declared resources install, each at its
 `install_path`.
-
-Alternatively, `cfs kit install` accepts a generic-Git subdirectory reference
-against this monorepo, which skips npm entirely — see `cfs kit install --help`.
 
 ### In this monorepo
 
