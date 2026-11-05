@@ -439,7 +439,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * accessor once, at construction — but the CACHE it names is shared
    * realm-wide across every compatible, independently loaded copy of this
    * package: two loads whose deduplication key already agrees that they
-   * reuse the same emitted build (`cpt-frontx-adr-shared-dep-dedup-key`)
+   * reuse the same emitted build (`cpt-frontx-adr-shared-dep-reuse`)
    * fetch that build's source text once for the whole realm, not once per
    * handler and not once per copy — including a nested extension host
    * that constructs its own `MfeHandlerMF` from its own independently
@@ -450,7 +450,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * `contentHash` is declared, the key falls back to
    * `name@version@<resolved chunk URL>`, so reuse is scoped to that one
    * manifest's own resolved URL rather than shared cross-MFE
-   * (`cpt-frontx-adr-shared-dep-dedup-key`).
+   * (`cpt-frontx-adr-shared-dep-reuse`).
    *
    * The realm-wide bound is 128 resident MAPPINGS, not per handler and not
    * per copy — see `RealmSharedDepTextCacheProvider.ts` — and bounds mapping

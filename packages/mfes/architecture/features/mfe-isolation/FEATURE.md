@@ -58,7 +58,7 @@ A registered microfrontend must evaluate as its own module instance so distinct 
 
 - **PRD**: [PRD.md](../../PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
-- **ADR**: `cpt-frontx-adr-mfe-load-isolation`, `cpt-frontx-adr-shared-dep-dedup-key`, `cpt-frontx-adr-shared-dep-cache-reach`
+- **ADR**: `cpt-frontx-adr-mfe-load-isolation`, `cpt-frontx-adr-shared-dep-reuse`, `cpt-frontx-adr-shared-dep-cache-reach`
 - **Component**: `cpt-frontx-component-mfe-runtime` (shared with F4, F5, F6, F7)
 - **Dependencies**: `cpt-frontx-feature-mfe-registry` (F4), `cpt-frontx-feature-mfe-loading` (F5)
 

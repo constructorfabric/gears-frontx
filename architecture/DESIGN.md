@@ -99,7 +99,7 @@ Published libraries:
 * `cpt-frontx-adr-mfe-load-isolation` — Isolates loaded microfrontends at runtime.
 * `cpt-frontx-adr-lazy-import-resolution` — Separates the runtime ABI from the template-bound build through lazy import.
 * `cpt-frontx-adr-mfe-asset-discovery` — Discovers microfrontends through their manifest contract.
-* `cpt-frontx-adr-shared-dep-dedup-key` — Keys cross-microfrontend shared-dependency reuse to the identity of the producing build.
+* `cpt-frontx-adr-shared-dep-reuse` — Reuses shared-dependency code across microfrontends as content-identified, consumer-independent units, one per strongly connected component of a package's own module graph, under an ecosystem-owned format contract.
 * `cpt-frontx-adr-shared-dep-cache-reach` — Extends that reuse to one bounded, version-namespaced source-text cache per realm, shared by compatible independently loaded copies of the runtime without sharing module graphs.
 * `cpt-frontx-adr-api-surface-organization` — Separates request/response and streaming behind a common protocol surface.
 * `cpt-frontx-adr-api-transport-bypass-and-fetch-sharing` — Provides a plugin short-circuit and a realm-shared fetch cache.
