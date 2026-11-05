@@ -4,7 +4,9 @@
 // that project to decide which declarations to emit, and pulling the tooling
 // in would emit declarations for it into dist/. This project extends
 // tsconfig.src.json for the compiler settings and widens `rootDir` to the
-// package root instead.
+// repository root instead: the build imports the repo-root build tooling it
+// shares with the tsup-built packages (scripts/build/EsmLinkageLayout.ts),
+// and this project emits nothing, so the wider root only admits that import.
 //
 // Without this project those files were checked by nothing: `npm run
 // type-check` skipped them, and an editor fell back to compiler defaults
@@ -29,7 +31,7 @@
     "declaration": false,
     "declarationMap": false,
     "sourceMap": false,
-    "rootDir": ".",
+    "rootDir": "../..",
     "types": ["node"]
   },
   "include": ["vite.config.ts", "vitest.config.ts", "scripts/**/*.ts", "scripts/**/*.tsx"],

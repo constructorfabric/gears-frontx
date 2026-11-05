@@ -16,7 +16,10 @@
   "files": [
     "dist"
   ],
-  "sideEffects": true,
+  "sideEffects": [
+    "./dist/plugin.js",
+    "./dist/index.cjs"
+  ],
   "scripts": {
     "build": "tsup",
     "type-check": "tsc --noEmit",

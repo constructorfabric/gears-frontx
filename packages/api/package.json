@@ -47,7 +47,7 @@
   "peerDependencies": {
     "axios": "1.14.0"
   },
-  "sideEffects": true,
+  "sideEffects": false,
   "publishConfig": {
     "access": "public"
   },
