@@ -51,8 +51,25 @@ export class UnitBlobMinter {
       if (m === '<pack>') continue;
       specifiers.add(`${record.packageName}/${m}`);
       specifiers.add(`${record.packageName}/${m.endsWith('.js') ? m.slice(0, -3) : m}`);
+      // `dir/index.js` is reached by the `pkg/dir` candidate path too,
+      // so the unit must claim that specifier or it survives unrewritten.
+      if (m.endsWith('/index.js')) {
+        specifiers.add(
+          `${record.packageName}/${m.slice(0, -'/index.js'.length)}`,
+        );
+      }
     }
     return [...specifiers];
+  }
+
+  /**
+   * Whether `source` carries a dynamic `import(...)` the runtime cannot
+   * resolve: dynamic specifiers are neither rewritten nor dependency-edged
+   * at mint time, so a unit containing one would mint a blob that fails
+   * in the browser (L6-02). `import.meta` and `import "x"` do not match.
+   */
+  private static containsDynamicImport(source: string): boolean {
+    return /(^|[^.\w$])import\s*\(/.test(source);
   }
 
   /**
@@ -64,6 +81,7 @@ export class UnitBlobMinter {
   static mint(
     records: readonly SharedDepSourceRecord[],
     entryId: string,
+    preexisting?: ReadonlyMap<string, string>,
   ): Map<string, string> {
     const recordByKey = new Map(records.map((r) => [r.key, r]));
     // modulePath -> record, per package.
@@ -78,7 +96,10 @@ export class UnitBlobMinter {
       }
     }
     const recordBlob = new Map<string, string>();
-    const specifierToBlob = new Map<string, string>();
+    // Specifiers an earlier mint of this load already answered stay
+    // answered by it — a lazily added unit never replaces an existing
+    // entry (inst-lai-lazy-roots).
+    const specifierToBlob = new Map(preexisting ?? []);
     const pending = new Map(recordByKey);
     // specifier -> record answering it; the first record claiming a
     // specifier keeps it, so one specifier never maps to two blobs.
@@ -137,7 +158,10 @@ export class UnitBlobMinter {
     const publish = (record: SharedDepSourceRecord, blob: string): void => {
       recordBlob.set(record.key, blob);
       for (const specifier of UnitBlobMinter.specifiersOf(record)) {
-        if (specifierToRecord.get(specifier) === record) {
+        if (
+          specifierToRecord.get(specifier) === record &&
+          !specifierToBlob.has(specifier)
+        ) {
           specifierToBlob.set(specifier, blob);
         }
       }
@@ -163,6 +187,16 @@ export class UnitBlobMinter {
           specifierToBlob,
           relativeToBlob(record),
         );
+        if (UnitBlobMinter.containsDynamicImport(rewritten)) {
+          throw new MfeLoadError(
+            `shared-dep unit '${record.packageName}' (${record.key}) ` +
+              'carries a dynamic import() the runtime cannot resolve — ' +
+              'dynamic specifiers are neither rewritten nor ' +
+              'dependency-edged at mint time. Re-emit the unit without ' +
+              'dynamic imports.',
+            entryId,
+          );
+        }
         publish(
           record,
           URL.createObjectURL(

@@ -80,7 +80,8 @@ export interface SharedUnitReach {
   readonly entryUnits: Map<string, Set<SharedDepGraphUnit>>;
 }
 
-interface LoadedGraph {
+/** One fetched, verified graph file plus the manifest entry declaring it. */
+export interface LoadedGraph {
   readonly dep: MfManifestShared;
   readonly graph: SharedDepGraphFile;
   readonly graphFileLocation: string;
@@ -204,22 +205,34 @@ export class SharedUnitGraphLoader {
     sharedNames: ReadonlySet<string>,
     entryId: string,
   ): { anyRequiresDeclared: boolean } {
-    const missing = new Set<string>();
+    // req -> the graph files (location + producer) requiring it, so the
+    // failure names the file and producer behind each unmet requirement.
+    const missing = new Map<string, Set<string>>();
     let anyRequiresDeclared = false;
-    for (const { graph } of graphs) {
+    for (const { graph, graphFileLocation } of graphs) {
       if (graph.requires !== undefined) {
         anyRequiresDeclared = true;
+        const label =
+          `'${graphFileLocation}' (producer ` +
+          `${SharedUnitGraphLoader.producerLabel(graph)})`;
         for (const req of graph.requires) {
           if (!sharedNames.has(req)) {
-            missing.add(req);
+            const files = missing.get(req) ?? new Set<string>();
+            files.add(label);
+            missing.set(req, files);
           }
         }
       }
     }
     if (missing.size > 0) {
-      const names = [...missing].map((n) => `'${n}'`).join(', ');
+      const detail = [...missing]
+        .map(
+          ([req, files]) =>
+            `'${req}' required by ${[...files].join(', ')}`,
+        )
+        .join('; ');
       throw new MfeLoadError(
-        `shared-dependency requires closure is not satisfied: ${names} ` +
+        `shared-dependency requires closure is not satisfied: ${detail} — ` +
           `required by fetched graph files but not declared in ` +
           `manifest.shared[].`,
         entryId,
@@ -261,6 +274,36 @@ export class SharedUnitGraphLoader {
             entryId,
           );
         }
+        roots.forEach((root, i) => {
+          const where = `${field}['${key}'][${i}]`;
+          if (typeof root === 'string') return;
+          if (typeof root !== 'object' || root === null) {
+            throw new MfeLoadError(
+              `manifest '${manifest.id}' field '${where}' must be a ` +
+                `package-name string or a unit-identifier object — got ` +
+                `${String(root)}.`,
+              entryId,
+            );
+          }
+          const unitId = root as Record<string, unknown>;
+          if (
+            typeof unitId['name'] !== 'string' ||
+            (unitId['modulePaths'] !== undefined &&
+              !(
+                Array.isArray(unitId['modulePaths']) &&
+                (unitId['modulePaths'] as unknown[]).every(
+                  (m) => typeof m === 'string',
+                )
+              ))
+          ) {
+            throw new MfeLoadError(
+              `manifest '${manifest.id}' field '${where}' carries a ` +
+                `malformed unit identifier — 'name' must be a string and ` +
+                `'modulePaths', when present, an array of strings.`,
+              entryId,
+            );
+          }
+        });
       }
       return value as Record<string, MfManifestRoot[]>;
     };
@@ -290,14 +333,119 @@ export class SharedUnitGraphLoader {
    * entry units are the main unit plus every unit owning a declared
    * `entryModulePaths` subpath.
    */
+  /**
+   * Point-of-use field check (`unit_contract_schema_language`): the unit
+   * fields the runtime reads must carry their contract shapes, else the
+   * load fails with `MfeLoadError` naming the graph file and producer —
+   * never a raw `TypeError` from an unchecked field.
+   */
+  private static assertUnitFields(
+    loaded: LoadedGraph,
+    unit: SharedDepGraphUnit,
+    entryId: string,
+  ): void {
+    const label =
+      `graph file '${loaded.graphFileLocation}' for shared dep ` +
+      `'${loaded.dep.name}' (producer ` +
+      `${SharedUnitGraphLoader.producerLabel(loaded.graph)})`;
+    const fail = (field: string, expected: string): never => {
+      throw new MfeLoadError(
+        `${label} declares a unit with a malformed '${field}' field — ` +
+          `expected ${expected}.`,
+        entryId,
+      );
+    };
+    const stringArray = (v: unknown): v is string[] =>
+      Array.isArray(v) && v.every((m) => typeof m === 'string');
+    if (!stringArray(unit.modulePaths) || unit.modulePaths.length === 0) {
+      fail('modulePaths', 'a non-empty array of strings');
+    }
+    if (typeof unit.location !== 'string') {
+      fail('location', 'a string');
+    }
+    if (typeof unit.contentHash !== 'string') {
+      fail('contentHash', 'a string');
+    }
+    if (!stringArray(unit.relativeImports)) {
+      fail('relativeImports', 'an array of strings');
+    }
+    if (!stringArray(unit.bareImports)) {
+      fail('bareImports', 'an array of strings');
+    }
+    if (
+      unit.bareSpecifiers !== undefined &&
+      !stringArray(unit.bareSpecifiers)
+    ) {
+      fail('bareSpecifiers', 'an array of strings');
+    }
+  }
+
   static reachUnits(
     roots: readonly MfManifestRoot[] | undefined,
     graphs: ReadonlyMap<string, LoadedGraph>,
+    entryId = 'shared-dep-graph',
   ): SharedUnitReach {
     const reachedPackages = new Set<string>();
     const reachedUnits = new Map<string, Set<SharedDepGraphUnit>>();
     const entryUnits = new Map<string, Set<SharedDepGraphUnit>>();
     const queue: Array<{ name: string; unit: SharedDepGraphUnit }> = [];
+    // Point-of-use validation up front: every unit field this walk reads
+    // must carry its contract shape, or the load fails naming the graph
+    // file and producer rather than throwing a raw TypeError mid-walk.
+    for (const loaded of graphs.values()) {
+      for (const unit of loaded.graph.units) {
+        SharedUnitGraphLoader.assertUnitFields(loaded, unit, entryId);
+      }
+    }
+    // Per-graph modulePath -> unit index, built once per graph rather
+    // than rescanning `graph.units` on every lookup (PERF-001).
+    const moduleIndex = new Map<
+      SharedDepGraphFile,
+      Map<string, SharedDepGraphUnit>
+    >();
+    const indexOf = (
+      graph: SharedDepGraphFile,
+    ): Map<string, SharedDepGraphUnit> => {
+      let index = moduleIndex.get(graph);
+      if (index === undefined) {
+        index = new Map();
+        for (const unit of graph.units) {
+          for (const member of unit.modulePaths ?? []) {
+            index.set(member, unit);
+          }
+        }
+        moduleIndex.set(graph, index);
+      }
+      return index;
+    };
+    const unitFor = (
+      graph: SharedDepGraphFile,
+      modulePath: string,
+    ): SharedDepGraphUnit | undefined => indexOf(graph).get(modulePath);
+    const mainUnitOf = (
+      graph: SharedDepGraphFile,
+    ): SharedDepGraphUnit | undefined => {
+      const mainPath = graph.entryModulePaths?.['.'] ?? graph.mainModulePath;
+      return (
+        (mainPath !== undefined ? unitFor(graph, mainPath) : undefined) ??
+        graph.units[0]
+      );
+    };
+    const entryUnitOf = (
+      graph: SharedDepGraphFile,
+      subpath: string,
+    ): SharedDepGraphUnit | undefined => {
+      if (subpath === '') return mainUnitOf(graph);
+      const declared = graph.entryModulePaths?.[`./${subpath}`];
+      if (declared !== undefined) return unitFor(graph, declared);
+      for (const candidate of SharedSpecifierRewriter.subpathModulePathCandidates(
+        subpath,
+      )) {
+        const unit = unitFor(graph, candidate);
+        if (unit !== undefined) return unit;
+      }
+      return undefined;
+    };
     const addTo = (
       map: Map<string, Set<SharedDepGraphUnit>>,
       name: string,
@@ -326,15 +474,38 @@ export class SharedUnitGraphLoader {
       const { name, subpath } = SharedEntryResolver.split(specifier);
       const loaded = graphs.get(name);
       if (loaded === undefined) return;
-      const unit = SharedEntryResolver.entryUnit(loaded.graph, subpath);
+      const unit = entryUnitOf(loaded.graph, subpath);
       if (unit !== undefined) addEntry(name, unit);
+    };
+    // A unit recorded by an older producer carries no `bareSpecifiers`:
+    // its `bareImports` say WHICH packages it imports but not which
+    // subpaths, so a subpath import could name any unit of the package.
+    // The only safe reach is every unit of each imported package —
+    // anything narrower leaves subpath entry units unfetched and their
+    // specifiers unrewritten (L3-003).
+    const reachWholePackage = (name: string): void => {
+      const loaded = graphs.get(name);
+      if (loaded === undefined) return;
+      for (const target of loaded.graph.units) {
+        addUnit(name, target);
+        if (
+          SharedEntryResolver.entrySpecifiersOf(loaded.graph, target)
+            .length > 0
+        ) {
+          addTo(entryUnits, name, target);
+        }
+      }
     };
     if (roots === undefined) {
       // Fetch-all path: every unit of every declared graph dep.
-      for (const [name, { graph }] of graphs) {
-        for (const unit of graph.units) {
+      for (const [name, loaded] of graphs) {
+        for (const unit of loaded.graph.units) {
+          SharedUnitGraphLoader.assertUnitFields(loaded, unit, entryId);
           addTo(reachedUnits, name, unit);
-          if (SharedEntryResolver.entrySpecifiersOf(graph, unit).length > 0) {
+          if (
+            SharedEntryResolver.entrySpecifiersOf(loaded.graph, unit)
+              .length > 0
+          ) {
             addTo(entryUnits, name, unit);
           }
         }
@@ -347,6 +518,7 @@ export class SharedUnitGraphLoader {
         const g = graphs.get(root.name);
         if (g === undefined) continue;
         for (const unit of g.graph.units) {
+          SharedUnitGraphLoader.assertUnitFields(g, unit, entryId);
           if (unit.modulePaths.some((m) => root.modulePaths?.includes(m))) {
             addEntry(root.name, unit);
           }
@@ -356,24 +528,31 @@ export class SharedUnitGraphLoader {
       reachSpecifier(root as string);
     }
     // BFS: relative imports inside a package, bare specifiers anywhere.
-    while (queue.length > 0) {
-      const { name, unit } = queue.shift() as { name: string; unit: SharedDepGraphUnit };
-      const graph = (graphs.get(name) as LoadedGraph).graph;
+    for (let head = 0; head < queue.length; head++) {
+      const { name, unit } = queue[head];
+      const loaded = graphs.get(name) as LoadedGraph;
+      SharedUnitGraphLoader.assertUnitFields(loaded, unit, entryId);
       for (const rel of unit.relativeImports) {
         for (const member of unit.modulePaths) {
           const resolved = SharedSpecifierRewriter.resolveRelativeModulePath(
             member,
             rel,
           );
-          const target = SharedEntryResolver.unitForModulePath(graph, resolved);
+          const target = unitFor(loaded.graph, resolved);
           if (target !== undefined) {
             addUnit(name, target);
             break;
           }
         }
       }
-      for (const specifier of SharedEntryResolver.importedSpecifiers(unit)) {
-        reachSpecifier(specifier);
+      if (unit.bareSpecifiers === undefined) {
+        for (const name2 of unit.bareImports) {
+          reachWholePackage(name2);
+        }
+      } else {
+        for (const specifier of SharedEntryResolver.importedSpecifiers(unit)) {
+          reachSpecifier(specifier);
+        }
       }
     }
     return { reachedUnits, reachedPackages, entryUnits };
@@ -447,30 +626,39 @@ export class SharedUnitGraphLoader {
       cacheKey: string,
     ) => Promise<string>,
     resolveAssetUrl: (location: string) => string,
+    entryId = 'shared-dep-graph',
   ): Promise<SharedUnitGraphPlan> {
     const graphByName = new Map(graphs.map((g) => [g.dep.name, g]));
     let currentRoots = roots;
-    let reach = SharedUnitGraphLoader.reachUnits(currentRoots, graphByName);
+    let reach = SharedUnitGraphLoader.reachUnits(currentRoots, graphByName, entryId);
     let packPackages = new Set<string>();
-    for (;;) {
-      packPackages = new Set(
-        graphs
-          .filter(
-            (g) =>
-              reach.reachedPackages.has(g.dep.name) &&
-              SharedUnitGraphLoader.choosesPack(g, reach, packFallbackBudgetMs, attemptElapsedMs),
-          )
-          .map((g) => g.dep.name),
-      );
-      if (currentRoots === undefined) break;
-      const known = new Set(currentRoots.filter((r) => typeof r === 'string'));
-      const added = graphs
-        .filter((g) => packPackages.has(g.dep.name))
-        .flatMap((g) => SharedEntryResolver.importedSpecifiers(g.graph.pack ?? {}))
-        .filter((specifier) => !known.has(specifier));
-      if (added.length === 0) break;
-      currentRoots = [...currentRoots, ...new Set(added)];
-      reach = SharedUnitGraphLoader.reachUnits(currentRoots, graphByName);
+    // The pack answers the package name only; on the fetch-all path every
+    // unit is reached and claimed, so substituting a pack would leave
+    // deep-subpath units neither fetched nor claimed (L3-004). Pack
+    // fallback is decided only when declared roots narrow the unit set.
+    if (roots !== undefined) {
+      for (;;) {
+        packPackages = new Set(
+          graphs
+            .filter(
+              (g) =>
+                reach.reachedPackages.has(g.dep.name) &&
+                SharedUnitGraphLoader.choosesPack(g, reach, packFallbackBudgetMs, attemptElapsedMs),
+            )
+            .map((g) => g.dep.name),
+        );
+        const declared = currentRoots as readonly MfManifestRoot[];
+        const known: Set<string> = new Set(
+          declared.filter((r): r is string => typeof r === 'string'),
+        );
+        const added = graphs
+          .filter((g) => packPackages.has(g.dep.name))
+          .flatMap((g) => SharedEntryResolver.importedSpecifiers(g.graph.pack ?? {}))
+          .filter((specifier) => !known.has(specifier));
+        if (added.length === 0) break;
+        currentRoots = [...declared, ...new Set(added)];
+        reach = SharedUnitGraphLoader.reachUnits(currentRoots, graphByName, entryId);
+      }
     }
 
     const pending: Array<{
@@ -480,9 +668,12 @@ export class SharedUnitGraphLoader {
       record: Omit<SharedDepSourceRecord, 'text'>;
     }> = [];
     const packFallbackPackages: string[] = [];
-    for (const { dep, graph } of graphs) {
+    for (const loaded of graphs) {
+      const { dep, graph } = loaded;
       if (!reach.reachedPackages.has(dep.name)) continue;
-      const unitRecord = (unit: SharedDepGraphUnit): (typeof pending)[number] => ({
+      const unitRecord = (unit: SharedDepGraphUnit): (typeof pending)[number] => {
+        SharedUnitGraphLoader.assertUnitFields(loaded, unit, entryId);
+        return {
         url: resolveAssetUrl(unit.location),
         contentHash: unit.contentHash,
         cacheKey: `${dep.name}@${dep.version}@${unit.contentHash}`,
@@ -496,7 +687,8 @@ export class SharedUnitGraphLoader {
           bareSpecifiers: SharedEntryResolver.importedSpecifiers(unit),
           relativeImports: unit.relativeImports,
         },
-      });
+        };
+      };
       if (graph.pack !== undefined && packPackages.has(dep.name)) {
         packFallbackPackages.push(dep.name);
         const packImports = graph.pack.bareImports ?? graph.requires ?? [];
