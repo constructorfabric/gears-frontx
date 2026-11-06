@@ -152,6 +152,197 @@ describe('SharedGraphSetLoader.fetchSet', () => {
       's.units.json',
     ]);
   });
+
+  it('dedupes shard locations cited under two keys (SZ-017)', () => {
+    const s = dep('s');
+    const graphs = new Map<string, SharedDepGraphFile>([
+      [
+        's',
+        graph('s', [], {
+          // Two entry keys pointing at one document.
+          entryShards: { '.': ref('s.entry.json'), './a': ref('s.entry.json') },
+        }),
+      ],
+    ]);
+    const shards = new Map<string, SharedDepGraphShard>([
+      [
+        's.entry.json',
+        { name: 's', version: '1.0.0', units: [unit(['s.js'], ['s/a']), unit(['a.js'], [])] },
+      ],
+    ]);
+    const result = SharedGraphSetLoader.fetchSet(
+      [s],
+      ['s', 's/a'],
+      undefined,
+      (d) => graphs.get(d.name),
+      (d, location) => (d.name === 's' ? shards.get(location) : undefined),
+    );
+    expect(result.shardLocations).toEqual(['s.entry.json']);
+  });
+
+  it('fetches only the partition a deep specifier names via the module index (SZ-014)', () => {
+    const s = dep('s');
+    const graphs = new Map<string, SharedDepGraphFile>([
+      [
+        's',
+        graph('s', [], {
+          unitPartitions: [ref('s.part-0.json'), ref('s.part-1.json')],
+          modulePartitions: { 'index.js': 0, 'deep/Mod.mjs': 1 },
+        }),
+      ],
+    ]);
+    const shards = new Map<string, SharedDepGraphShard>([
+      ['s.part-0.json', { name: 's', version: '1.0.0', units: [unit(['index.js'], [])] }],
+      ['s.part-1.json', { name: 's', version: '1.0.0', units: [unit(['deep/Mod.mjs'], [])] }],
+    ]);
+    const result = SharedGraphSetLoader.fetchSet(
+      [s],
+      ['s/deep/Mod.mjs'],
+      undefined,
+      (d) => graphs.get(d.name),
+      (d, location) => (d.name === 's' ? shards.get(location) : undefined),
+    );
+    // The deep specifier resolves its module path through the index —
+    // partition 0 is never fetched.
+    expect(result.shardLocations).toEqual(['s.part-1.json']);
+  });
+
+  it('composes disjoint partitions over the intra-package walk (SZ-016)', () => {
+    const s = dep('s');
+    const graphs = new Map<string, SharedDepGraphFile>([
+      [
+        's',
+        graph('s', [], {
+          mainModulePath: 'index.js',
+          unitPartitions: [ref('s.part-0.json'), ref('s.part-1.json')],
+          modulePartitions: { 'index.js': 0, 'dep.js': 1 },
+        }),
+      ],
+    ]);
+    const shards = new Map<string, SharedDepGraphShard>([
+      [
+        's.part-0.json',
+        {
+          name: 's',
+          version: '1.0.0',
+          units: [unit(['index.js'], [], { relativeImports: ['./dep.js'] })],
+        },
+      ],
+      ['s.part-1.json', { name: 's', version: '1.0.0', units: [unit(['dep.js'], [])] }],
+    ]);
+    const result = SharedGraphSetLoader.fetchSet(
+      [s],
+      ['s'],
+      undefined,
+      (d) => graphs.get(d.name),
+      (d, location) => (d.name === 's' ? shards.get(location) : undefined),
+    );
+    // The entry partition's relative edge into the unfetched partition
+    // pulls it in on the next round — no overlapping closures needed.
+    expect(result.shardLocations.sort()).toEqual(['s.part-0.json', 's.part-1.json']);
+  });
+
+  it('resolves a unit-identifier root through the module index (SZ-015)', () => {
+    const s = dep('s');
+    const graphs = new Map<string, SharedDepGraphFile>([
+      [
+        's',
+        graph('s', [], {
+          unitPartitions: [ref('s.part-0.json'), ref('s.part-1.json')],
+          modulePartitions: { 'index.js': 0, 'dep.js': 1 },
+        }),
+      ],
+    ]);
+    const shards = new Map<string, SharedDepGraphShard>([
+      ['s.part-0.json', { name: 's', version: '1.0.0', units: [unit(['index.js'], [])] }],
+      ['s.part-1.json', { name: 's', version: '1.0.0', units: [unit(['dep.js'], [])] }],
+    ]);
+    const result = SharedGraphSetLoader.fetchSet(
+      [s],
+      [{ name: 's', version: '1.0.0', modulePaths: ['dep.js'] }],
+      undefined,
+      (d) => graphs.get(d.name),
+      (d, location) => (d.name === 's' ? shards.get(location) : undefined),
+    );
+    expect(result.shardLocations).toEqual(['s.part-1.json']);
+  });
+
+  it('falls back to every partition when a specifier names no indexed path and no unitsShard exists', () => {
+    const s = dep('s');
+    const graphs = new Map<string, SharedDepGraphFile>([
+      [
+        's',
+        graph('s', [], {
+          unitPartitions: [ref('s.part-0.json'), ref('s.part-1.json')],
+          modulePartitions: { 'index.js': 0, 'dep.js': 1 },
+        }),
+      ],
+    ]);
+    const shards = new Map<string, SharedDepGraphShard>([
+      ['s.part-0.json', { name: 's', version: '1.0.0', units: [unit(['index.js'], [])] }],
+      ['s.part-1.json', { name: 's', version: '1.0.0', units: [unit(['dep.js'], [])] }],
+    ]);
+    const result = SharedGraphSetLoader.fetchSet(
+      [s],
+      [{ name: 's', version: '1.0.0', modulePaths: ['missing.js'] }],
+      undefined,
+      (d) => graphs.get(d.name),
+      (d, location) => (d.name === 's' ? shards.get(location) : undefined),
+    );
+    // An unindexed module path must not under-fetch: every partition.
+    expect(result.shardLocations.sort()).toEqual(['s.part-0.json', 's.part-1.json']);
+  });
+
+  it('fetches every partition on the fetch-all path when no unitsShard exists', () => {
+    const s = dep('s');
+    const graphs = new Map<string, SharedDepGraphFile>([
+      [
+        's',
+        graph('s', [], {
+          unitPartitions: [ref('s.part-0.json'), ref('s.part-1.json')],
+          modulePartitions: { 'index.js': 0, 'dep.js': 1 },
+        }),
+      ],
+    ]);
+    const shards = new Map<string, SharedDepGraphShard>([
+      ['s.part-0.json', { name: 's', version: '1.0.0', units: [unit(['index.js'], [])] }],
+      ['s.part-1.json', { name: 's', version: '1.0.0', units: [unit(['dep.js'], [])] }],
+    ]);
+    const result = SharedGraphSetLoader.fetchSet(
+      [s],
+      undefined,
+      undefined,
+      (d) => graphs.get(d.name),
+      (d, location) => (d.name === 's' ? shards.get(location) : undefined),
+    );
+    expect(result.shardLocations.sort()).toEqual(['s.part-0.json', 's.part-1.json']);
+  });
+
+  it('still loads the legacy overlapping-entryShards format beside the partitioned one', () => {
+    const s = dep('s');
+    const graphs = new Map<string, SharedDepGraphFile>([
+      [
+        's',
+        graph('s', [], {
+          entryShards: { '.': ref('s.entry.json') },
+          unitsShard: ref('s.units.json'),
+        }),
+      ],
+    ]);
+    const shards = new Map<string, SharedDepGraphShard>([
+      ['s.entry.json', { name: 's', version: '1.0.0', units: [unit(['s.js'], [])] }],
+      ['s.units.json', { name: 's', version: '1.0.0', units: [unit(['s.js'], [])] }],
+    ]);
+    const result = SharedGraphSetLoader.fetchSet(
+      [s],
+      ['s'],
+      undefined,
+      (d) => graphs.get(d.name),
+      (d, location) => (d.name === 's' ? shards.get(location) : undefined),
+    );
+    // The entry shard answers the root — unitsShard stays unfetched.
+    expect(result.shardLocations).toEqual(['s.entry.json']);
+  });
 });
 
 describe('SharedGraphSetLoader.load', () => {
@@ -180,5 +371,73 @@ describe('SharedGraphSetLoader.load', () => {
       'test-entry',
     );
     expect(loaded.map((g) => g.dep.name).sort()).toEqual(['a', 'b']);
+  });
+
+  it('fetches only the needed partition documents for a deep specifier and a unit-id root', async () => {
+    const texts = new Map<string, string>();
+    const put = (location: string, doc: unknown): string => {
+      const text = JSON.stringify(doc);
+      texts.set(location, text);
+      return text;
+    };
+    const refFor = async (location: string, doc: unknown) => ({
+      location,
+      contentHash: await SharedUnitGraphLoader.sha256Hex(put(location, doc)),
+    });
+    const graphDoc = (extra: Partial<SharedDepGraphFile>): SharedDepGraphFile =>
+      graph('s', [], extra);
+    // Partitioned graph: 'deep/Mod.mjs' in partition 1, 'index.js' in 0.
+    const g = graphDoc({
+      unitPartitions: [
+        await refFor('s.part-0.json', {
+          name: 's',
+          version: '1.0.0',
+          units: [unit(['index.js'], [])],
+        }),
+        await refFor('s.part-1.json', {
+          name: 's',
+          version: '1.0.0',
+          units: [unit(['deep/Mod.mjs'], [])],
+        }),
+      ],
+      modulePartitions: { 'index.js': 0, 'deep/Mod.mjs': 1 },
+    });
+    const s = dep('s', await SharedUnitGraphLoader.sha256Hex(put('s.graph.json', g)));
+    const fetched: string[] = [];
+    const fetchText = async (url: string): Promise<string> => {
+      fetched.push(url);
+      return texts.get(url)!;
+    };
+    const deepLoaded = await SharedGraphSetLoader.load(
+      [s],
+      ['s/deep/Mod.mjs'],
+      undefined,
+      (l) => l,
+      fetchText,
+      'test-entry',
+    );
+    expect(deepLoaded.map((x) => x.dep.name)).toEqual(['s']);
+    expect(deepLoaded[0].graph.units.map((u) => u.modulePaths[0])).toEqual([
+      'deep/Mod.mjs',
+    ]);
+    expect(fetched).not.toContain('s.part-0.json');
+
+    // A unit-identifier root resolves through the same index.
+    const fetched2: string[] = [];
+    const rootLoaded = await SharedGraphSetLoader.load(
+      [s],
+      [{ name: 's', version: '1.0.0', modulePaths: ['index.js'] }],
+      undefined,
+      (l) => l,
+      async (url) => {
+        fetched2.push(url);
+        return texts.get(url)!;
+      },
+      'test-entry',
+    );
+    expect(rootLoaded[0].graph.units.map((u) => u.modulePaths[0])).toEqual([
+      'index.js',
+    ]);
+    expect(fetched2).not.toContain('s.part-1.json');
   });
 });

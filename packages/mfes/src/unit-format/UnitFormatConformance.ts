@@ -23,10 +23,16 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, dirname, join, relative, sep } from 'node:path';
 
-import type { SharedDepGraphFile, SharedDepGraphUnit } from './graph-file';
+import type {
+  SharedDepGraphFile,
+  SharedDepGraphFileRef,
+  SharedDepGraphShard,
+  SharedDepGraphUnit,
+} from './graph-file';
 import type { UnitFormatViolation, UnitFormatViolationRule } from './UnitFormatViolation';
 
 const GRAPH_NAME_PATTERN = /^(.+@.+)\.graph\.([0-9a-f]{64})\.json$/;
+const SHARD_NAME_PATTERN = /^(.+@.+)\.(units|shard-.+|part-.+)\.([0-9a-f]{64})\.json$/;
 const PACK_NAME_PATTERN = /^(.+@.+)\.pack\.([0-9a-f]{64})\.js$/;
 const UNIT_NAME_PATTERN = /^.+\.([0-9a-f]{64})\.js$/;
 const NAME_HASH_PATTERN = /\.([0-9a-f]{64})\./;
@@ -34,6 +40,8 @@ const PACKAGE_DIR_PATTERN = /^(.+)@([^@/]+)$/;
 
 interface ClassifiedFiles {
   graphs: string[];
+  /** Shard/partition documents — checked through graph refs, not by name. */
+  shardDocs: string[];
   packs: string[];
   units: string[];
 }
@@ -206,7 +214,7 @@ export class UnitFormatConformance {
    * naming rules; files matching none are naming violations.
    */
   private classifyFiles(dir: string, violations: UnitFormatViolation[]): ClassifiedFiles {
-    const classified: ClassifiedFiles = { graphs: [], packs: [], units: [] };
+    const classified: ClassifiedFiles = { graphs: [], shardDocs: [], packs: [], units: [] };
     for (const file of this.listFiles(dir)) {
       const rel = relative(dir, file);
       const base = basename(rel);
@@ -215,6 +223,11 @@ export class UnitFormatConformance {
           violations.push(this.violation(dir, rel, 'naming', `graph file name "${base}" does not carry "<pkg>@<version>"`));
         }
         classified.graphs.push(rel);
+      } else if (SHARD_NAME_PATTERN.test(base)) {
+        if (!PACKAGE_DIR_PATTERN.test(SHARD_NAME_PATTERN.exec(base)![1])) {
+          violations.push(this.violation(dir, rel, 'naming', `shard file name "${base}" does not carry "<pkg>@<version>"`));
+        }
+        classified.shardDocs.push(rel);
       } else if (PACK_NAME_PATTERN.test(base)) {
         if (!PACKAGE_DIR_PATTERN.test(PACK_NAME_PATTERN.exec(base)![1])) {
           violations.push(this.violation(dir, rel, 'naming', `pack file name "${base}" does not carry "<pkg>@<version>"`));
@@ -263,10 +276,35 @@ export class UnitFormatConformance {
       );
       return;
     }
-    const allModulePaths = new Set(graph.units.flatMap((u) => u.modulePaths));
-    for (const unit of graph.units) {
+    // Shard and partition documents (R3-02): a sharded graph's index
+    // carries no units of its own — every shard/partition ref is read,
+    // hash-verified and name/version-checked, and its units run the same
+    // checks as inline units. Locations are deduped: overlapping entry
+    // shards may cite one document.
+    const shardCache = new Map<string, SharedDepGraphShard | undefined>();
+    const shardRefs: SharedDepGraphFileRef[] = [
+      ...Object.values(graph.entryShards ?? {}),
+      ...(graph.unitsShard !== undefined ? [graph.unitsShard] : []),
+      ...(graph.unitPartitions ?? []),
+    ];
+    const shardDocs: SharedDepGraphShard[] = [];
+    for (const shardRef of shardRefs) {
+      const doc = this.readShardDoc(dir, rel, graph, shardRef, shardCache, violations);
+      if (doc !== undefined) shardDocs.push(doc);
+    }
+    const seenUnitLocations = new Set<string>();
+    const allUnits = [...graph.units, ...shardDocs.flatMap((d) => d.units)].filter(
+      (unit) => {
+        if (seenUnitLocations.has(unit.location)) return false;
+        seenUnitLocations.add(unit.location);
+        return true;
+      },
+    );
+    const allModulePaths = new Set(allUnits.flatMap((u) => u.modulePaths));
+    for (const unit of allUnits) {
       this.checkUnit(dir, rel, graph, unit, allModulePaths, violations);
     }
+    this.checkPartitionIndex(dir, rel, graph, shardCache, violations);
     for (const [subpath, modulePath] of Object.entries(graph.entryModulePaths ?? {})) {
       if (!allModulePaths.has(modulePath)) {
         violations.push(
@@ -306,6 +344,140 @@ export class UnitFormatConformance {
               `pack ${graph.pack.location} imports bare specifier "${specifier}" but its bareImports does not list "${packageName}"`,
             ),
           );
+        }
+      }
+    }
+  }
+
+  /**
+   * Read, hash-verify and validate one shard/partition document a graph
+   * references (R3-02): the file must exist at `ref.location`, its
+   * SHA-256 must equal `ref.contentHash`, and the parsed document must
+   * carry `{name, version, units}` matching the graph — the same checks
+   * the runtime applies at fetch time. Results are memoized through
+   * `cache` so a document cited under two keys is read once.
+   */
+  private readShardDoc(
+    dir: string,
+    graphRel: string,
+    graph: SharedDepGraphFile,
+    ref: SharedDepGraphFileRef,
+    cache: Map<string, SharedDepGraphShard | undefined>,
+    violations: UnitFormatViolation[],
+  ): SharedDepGraphShard | undefined {
+    if (cache.has(ref.location)) return cache.get(ref.location);
+    const fail = (rule: UnitFormatViolationRule, detail: string): undefined => {
+      violations.push(this.violation(dir, graphRel, rule, detail));
+      cache.set(ref.location, undefined);
+      return undefined;
+    };
+    let text: string;
+    try {
+      text = readFileSync(join(dir, ref.location), 'utf8');
+    } catch {
+      return fail(
+        'hash-chain',
+        `graph declares shard at "${ref.location}" but no such file exists`,
+      );
+    }
+    const actual = this.sha256File(join(dir, ref.location));
+    if (actual !== ref.contentHash) {
+      return fail(
+        'hash-chain',
+        `graph declares shard "${ref.location}" contentHash ${ref.contentHash} but file SHA-256 is ${actual}`,
+      );
+    }
+    let doc: SharedDepGraphShard;
+    try {
+      doc = JSON.parse(text) as SharedDepGraphShard;
+    } catch (error) {
+      return fail(
+        'graph-format',
+        `shard file "${ref.location}" is not parseable JSON: ${(error as Error).message}`,
+      );
+    }
+    if (
+      doc.name !== graph.name ||
+      doc.version !== graph.version ||
+      !Array.isArray(doc.units)
+    ) {
+      return fail(
+        'graph-format',
+        `shard file "${ref.location}" does not carry the name, version and units of ${graph.name}@${graph.version}`,
+      );
+    }
+    cache.set(ref.location, doc);
+    return doc;
+  }
+
+  /**
+   * The `unitPartitions`/`modulePartitions` pair, when declared: the two
+   * fields must appear together, every index entry must name a valid
+   * partition owning the module path, and every member module path of
+   * every partition unit must be indexed back to its partition — the
+   * bijection the runtime's module-path → partition resolution needs
+   * (SZ-014/015/016).
+   */
+  private checkPartitionIndex(
+    dir: string,
+    graphRel: string,
+    graph: SharedDepGraphFile,
+    shardCache: ReadonlyMap<string, SharedDepGraphShard | undefined>,
+    violations: UnitFormatViolation[],
+  ): void {
+    if (graph.unitPartitions === undefined && graph.modulePartitions === undefined) {
+      return;
+    }
+    if (graph.unitPartitions === undefined || graph.modulePartitions === undefined) {
+      violations.push(
+        this.violation(
+          dir,
+          graphRel,
+          'graph-format',
+          'unitPartitions and modulePartitions must be declared together',
+        ),
+      );
+      return;
+    }
+    const parts = graph.unitPartitions.map((ref) => shardCache.get(ref.location));
+    for (const [path, idx] of Object.entries(graph.modulePartitions)) {
+      if (!Number.isInteger(idx) || idx < 0 || idx >= parts.length) {
+        violations.push(
+          this.violation(
+            dir,
+            graphRel,
+            'graph-format',
+            `modulePartitions["${path}"] names partition ${idx}, outside the ${parts.length} declared partitions`,
+          ),
+        );
+        continue;
+      }
+      const doc = parts[idx];
+      if (doc !== undefined && !doc.units.some((u) => u.modulePaths.includes(path))) {
+        violations.push(
+          this.violation(
+            dir,
+            graphRel,
+            'graph-format',
+            `modulePartitions["${path}"] names partition ${idx} but no unit of that partition owns it`,
+          ),
+        );
+      }
+    }
+    for (const [i, doc] of parts.entries()) {
+      if (doc === undefined) continue;
+      for (const unit of doc.units) {
+        for (const path of unit.modulePaths) {
+          if (graph.modulePartitions[path] !== i) {
+            violations.push(
+              this.violation(
+                dir,
+                graphRel,
+                'graph-format',
+                `unit member "${path}" of partition ${i} is not indexed to it by modulePartitions`,
+              ),
+            );
+          }
         }
       }
     }

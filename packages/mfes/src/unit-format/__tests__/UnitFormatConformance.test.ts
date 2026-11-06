@@ -290,4 +290,175 @@ describe('UnitFormatConformance', () => {
     emitConformingOutput(b, spec);
     expect(conformance.check(a, b)).toEqual([]);
   });
+
+  /**
+   * Emit a sharded graph: `units: []` in the index, the units inside
+   * content-addressed shard documents the graph references.
+   */
+  const emitShardedGraph = (
+    dir: string,
+    spec: OutputSpec & {
+      entryShards?: Record<string, UnitSpec[]>;
+      unitsShard?: UnitSpec[];
+      unitPartitions?: UnitSpec[][];
+      modulePartitions?: Record<string, number>;
+    },
+  ): SharedDepGraphFile => {
+    const key = `${spec.name}@${spec.version}`;
+    // Shard files are content-named like every contract file:
+    // `<key>.(shard-<tag>|units|part-<i>).<sha256>.json`.
+    const writeShardDoc = (tag: string, units: UnitSpec[]) => {
+      const doc = {
+        name: spec.name,
+        version: spec.version,
+        units: units.map((u) => {
+          const source = u.source ?? `// shard unit of ${key}\n`;
+          const hash = sha256(source);
+          const unitName = u.modulePaths[0].replace(/\.js$/, '');
+          mkdirSync(join(dir, key), { recursive: true });
+          const unitFile = `${unitName}.${hash}.js`;
+          writeFileSync(join(dir, key, unitFile), source);
+          return {
+            contentHash: hash,
+            modulePaths: u.modulePaths,
+            bareImports: u.bareImports ?? [],
+            ...(u.bareSpecifiers !== undefined
+              ? { bareSpecifiers: u.bareSpecifiers }
+              : {}),
+            relativeImports: u.relativeImports ?? [],
+            location: `${key}/${unitFile}`,
+          };
+        }),
+      };
+      const text = JSON.stringify(doc);
+      const hash = sha256(text);
+      const location = `${key}.${tag}.${hash}.json`;
+      writeFileSync(join(dir, location), text);
+      return { location, contentHash: hash };
+    };
+    const entryShards = Object.fromEntries(
+      Object.entries(spec.entryShards ?? {}).map(([k, units]) => [
+        k,
+        writeShardDoc(
+          `shard-${k === '.' ? 'root' : k.replace(/[^\w$.-]+/g, '-')}`,
+          units,
+        ),
+      ]),
+    );
+    const unitsShard =
+      spec.unitsShard !== undefined
+        ? writeShardDoc('units', spec.unitsShard)
+        : undefined;
+    const unitPartitions = spec.unitPartitions?.map((units, i) =>
+      writeShardDoc(`part-${i}`, units),
+    );
+    const graph: SharedDepGraphFile = {
+      name: spec.name,
+      version: spec.version,
+      unitMode: 'units',
+      units: [],
+      requires: spec.requires,
+      mainModulePath: spec.units[0]?.modulePaths[0],
+      ...(spec.entryModulePaths !== undefined
+        ? { entryModulePaths: spec.entryModulePaths }
+        : {}),
+      ...(Object.keys(entryShards).length > 0 ? { entryShards } : {}),
+      ...(unitsShard !== undefined ? { unitsShard } : {}),
+      ...(unitPartitions !== undefined ? { unitPartitions } : {}),
+      ...(spec.modulePartitions !== undefined
+        ? { modulePartitions: spec.modulePartitions }
+        : {}),
+      producer: spec.producer ?? { name: 'test-producer', version: '1.0.0' },
+    };
+    const text = JSON.stringify(graph, null, 2);
+    const hash = sha256(text);
+    writeFileSync(join(dir, `${key}.graph.${hash}.json`), text);
+    return graph;
+  };
+
+  it('runs unit checks inside shard documents (R3-02)', () => {
+    const a = makeDir();
+    emitShardedGraph(a, {
+      name: 'p',
+      version: '1.0.0',
+      units: [],
+      requires: [],
+      entryShards: {
+        '.': [
+          {
+            modulePaths: ['index.js'],
+            // Resolves to no unit of the package — a relative-import
+            // violation the index-only checks could never see.
+            relativeImports: ['./missing.js'],
+          },
+        ],
+      },
+    });
+    expect(rules(conformance.checkAll([a]))).toContain('relative-import');
+  });
+
+  it('reports a hash-chain violation for a shard whose bytes do not match its ref', () => {
+    const a = makeDir();
+    const graph = emitShardedGraph(a, {
+      name: 'p',
+      version: '1.0.0',
+      units: [],
+      entryShards: { '.': [{ modulePaths: ['index.js'] }] },
+    });
+    writeFileSync(
+      join(a, graph.entryShards!['.'].location),
+      '{"name":"p","version":"1.0.0","units":[]}',
+    );
+    expect(rules(conformance.checkAll([a]))).toContain('hash-chain');
+  });
+
+  it('reports a graph-format violation for a shard naming a different package', () => {
+    const a = makeDir();
+    const key = 'p@1.0.0';
+    mkdirSync(join(a, key), { recursive: true });
+    const bad = { name: 'other', version: '1.0.0', units: [] };
+    const badText = JSON.stringify(bad);
+    const badLoc = `${key}.shard-root.${sha256(badText)}.json`;
+    writeFileSync(join(a, badLoc), badText);
+    const graph: SharedDepGraphFile = {
+      name: 'p',
+      version: '1.0.0',
+      unitMode: 'units',
+      units: [],
+      entryShards: {
+        '.': { location: badLoc, contentHash: sha256(badText) },
+      },
+    };
+    const graphText = JSON.stringify(graph);
+    writeFileSync(join(a, `${key}.graph.${sha256(graphText)}.json`), graphText);
+    expect(rules(conformance.checkAll([a]))).toContain('graph-format');
+  });
+
+  it('accepts a conforming partitioned graph and checks its index bijection', () => {
+    const a = makeDir();
+    emitShardedGraph(a, {
+      name: 'p',
+      version: '1.0.0',
+      units: [],
+      unitPartitions: [
+        [{ modulePaths: ['index.js'], relativeImports: ['./dep.js'] }],
+        [{ modulePaths: ['dep.js'] }],
+      ],
+      modulePartitions: { 'index.js': 0, 'dep.js': 1 },
+    });
+    expect(conformance.checkAll([a])).toEqual([]);
+  });
+
+  it('reports graph-format violations for a broken modulePartitions index', () => {
+    const a = makeDir();
+    emitShardedGraph(a, {
+      name: 'p',
+      version: '1.0.0',
+      units: [],
+      unitPartitions: [[{ modulePaths: ['index.js'] }], [{ modulePaths: ['dep.js'] }]],
+      // 'dep.js' indexed to the wrong partition; 'index.js' unindexed.
+      modulePartitions: { 'dep.js': 0 },
+    });
+    expect(rules(conformance.checkAll([a]))).toContain('graph-format');
+  });
 });

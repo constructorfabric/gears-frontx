@@ -164,7 +164,7 @@ export interface SharedDepGraphShard {
   name: string;
   /** Package version, matching the index graph's `version`. */
   version: string;
-  /** The units of this shard. */
+  /** The units of this shard or partition. */
   units: SharedDepGraphUnit[];
 }
 
@@ -217,6 +217,32 @@ export interface SharedDepGraphFile {
    * undeclared subpath) and on the fetch-all path.
    */
   unitsShard?: SharedDepGraphFileRef;
+  /**
+   * Optional, for backward compatibility: the package's units as a list
+   * of disjoint partition documents, each a {@link SharedDepGraphShard}
+   * (`{name, version, units}`). Every unit of the package appears in
+   * exactly one partition; `modulePartitions` maps each member module
+   * path to the index of the partition containing it, so a specifier —
+   * an entry subpath through `entryModulePaths`, or a deep module
+   * specifier the candidate module paths name — and a unit-identifier
+   * root resolve to exactly the partition to fetch. The load composes
+   * the intra-package reach across partitions: a reached unit whose
+   * relative import resolves to a module path of an unfetched partition
+   * fetches that partition next. A whole-package reach fetches every
+   * partition (or `unitsShard` when the producer still emits one).
+   * Disjoint partitions replace overlapping per-entry shards for new
+   * producers; `entryShards`/`unitsShard` keep loading unchanged.
+   */
+  unitPartitions?: SharedDepGraphFileRef[];
+  /**
+   * Optional, for backward compatibility — required when
+   * `unitPartitions` is present: module path → index into
+   * `unitPartitions`, covering every member module path of every unit
+   * the partitions list. A path absent from the index names no unit;
+   * the load falls back to `unitsShard` or to every remaining partition
+   * rather than under-fetching.
+   */
+  modulePartitions?: Record<string, number>;
   /**
    * Package-level bare requirements: every bare import the package's units
    * keep external, declared as package names. Entries are bare package names
