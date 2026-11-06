@@ -297,6 +297,35 @@ describe('RestEndpointProtocol shared fetch identity', () => {
     });
   });
 
+  it('starts a new fetch when a query is requested again right after its only fetch was cancelled', async () => {
+    getSharedFetchCache();
+    const releaseRequest = createDeferred<void>();
+    const blockingRequestPlugin = new BlockingRequestPlugin(releaseRequest.promise);
+    const service = new SharedHeaderApiService('tenant-a', blockingRequestPlugin);
+
+    // A component that ties the fetch to its mount unmounts and mounts again at once,
+    // as React StrictMode does in development.
+    const firstMount = new AbortController();
+    const cancelledFetch = service.getCurrentUser.fetch({
+      signal: firstMount.signal,
+      staleTime: 1_000,
+    });
+    await blockingRequestPlugin.entered.promise;
+
+    firstMount.abort();
+    const secondFetch = service.getCurrentUser.fetch({
+      signal: new AbortController().signal,
+      staleTime: 1_000,
+    });
+    releaseRequest.resolve();
+
+    await expect(cancelledFetch).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(secondFetch).resolves.toEqual({
+      authorization: 'Bearer tenant-a',
+      requestNonce: null,
+    });
+  });
+
   it('reuses an in-flight shared fetch after preparation already completed while revalidating request identity', async () => {
     getSharedFetchCache();
     const noncePlugin = new RequestNoncePlugin();

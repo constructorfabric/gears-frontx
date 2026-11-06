@@ -149,7 +149,7 @@ No PRD usecase — this flow describes the consumer-issued service-call interact
    1. [x] - `p1` - **RETURN** the cached data to the consumer without issuing a transport call - `inst-return-cached`
 8. [x] - `p1` - **IF** an IN_FLIGHT entry exists for the same key - `inst-in-flight`
    1. [x] - `p1` - Attach the consumer to the shared promise by incrementing the activeConsumers counter - `inst-increment-consumers`
-   2. [x] - `p1` - Register the consumer's AbortSignal; **IF** the signal fires, decrement activeConsumers and, **IF** no consumers remain, abort the shared fetch controller - `inst-signal-abort`
+   2. [x] - `p1` - Register the consumer's AbortSignal; **IF** the signal fires, decrement activeConsumers and, **IF** no consumers remain, remove the entry from the cache and abort the shared fetch controller, so that a consumer arriving afterwards starts a new fetch instead of joining the cancelled one - `inst-signal-abort`
    3. [x] - `p1` - **RETURN** the shared promise result when it resolves - `inst-return-in-flight`
 9. [x] - `p1` - **ELSE** (IDLE) create a new IN_FLIGHT cache entry with a dedicated AbortController; invoke the fetcher (which honours any short-circuit response from the plugin chain) - `inst-start-fetch`
 10. [x] - `p1` - **IF** the fetch resolves successfully and staleTime is greater than zero - `inst-check-staletime`
@@ -188,7 +188,7 @@ No PRD usecase — this flow describes the consumer-issued service-call interact
 1. [x] - `p1` - **FROM** IDLE **TO** IN_FLIGHT **WHEN** a consumer calls getOrFetch for a key with no fresh cache entry and a new cache entry is created with pending set to true - `inst-t-idle-inflight`
 2. [x] - `p1` - **FROM** IN_FLIGHT **TO** CACHED **WHEN** the fetcher resolves successfully and staleTime is greater than zero; data and resolvedAt are recorded and pending is cleared - `inst-t-inflight-cached`
 3. [x] - `p1` - **FROM** IN_FLIGHT **TO** SHORT_CIRCUITED **WHEN** the plugin request chain returns a short-circuit response; the response resolves through the ordinary success path and is stored as a normal cached entry - `inst-t-inflight-sc`
-4. [x] - `p1` - **FROM** IN_FLIGHT **TO** IDLE **WHEN** the fetch fails, is invalidated, or staleTime is zero causing the entry to be removed on resolution - `inst-t-inflight-idle`
+4. [x] - `p1` - **FROM** IN_FLIGHT **TO** IDLE **WHEN** the fetch fails, the entry is invalidated, its last consumer leaves, or staleTime is zero causing the entry to be removed on resolution. An entry whose last consumer leaves is removed at once, before its aborted fetch settles - `inst-t-inflight-idle`
 5. [x] - `p1` - **FROM** CACHED **TO** IDLE **WHEN** the freshness window elapses (resolvedAt + staleTime ≤ now on next lookup) or an explicit invalidation is applied to the key - `inst-t-cached-idle`
 6. [x] - `p1` - **FROM** SHORT_CIRCUITED **TO** IDLE **WHEN** the entry is invalidated or its freshness window elapses — through the same paths as any CACHED entry, with no separate transition of its own - `inst-t-sc-idle`
 7. [x] - `p1` - **FROM** CACHED **TO** RELEASED **WHEN** the retainer count on the realm global decrements to zero (the last holder calls releaseSharedFetchCache), causing the entire cache to be torn down - `inst-t-cached-released`
@@ -236,7 +236,7 @@ The system **MUST** implement a shared fetch cache stored on the realm global vi
 - [x] Plugin chains execute FIFO for request hooks and LIFO for response and error hooks; a plugin returning a short-circuit value exits the request chain and the transport call is not made.
 - [x] The short-circuit contract is a discriminated value carrying `shortCircuit`; type guards detect REST and SSE short-circuits correctly; SSE short-circuit supplies a mock EventSource-like object.
 - [x] The realm-shared fetch cache is reached exclusively through the well-known global symbol; separately bundled instances in one realm converge on one cache instance.
-- [x] Concurrent consumers of the same cache key share a single in-flight fetch; when all consumers abort and no retainer holds the cache, the shared fetch is cancelled.
+- [x] Concurrent consumers of the same cache key share a single in-flight fetch; when all consumers abort and no retainer holds the cache, the shared fetch is cancelled. A consumer that asks for the same key after that, even before the cancelled fetch settles, gets a new fetch, not the cancelled fetch's AbortError.
 - [x] `retainSharedFetchCache` increments the retainer count and returns the cache; `releaseSharedFetchCache` decrements the count and tears down the cache when it reaches zero.
 - [x] Cache keys are auto-derived from the processed request identity (method, URL, headers, params, body, credentials); no call site defines a cache key manually.
 - [x] No solution-specific content — concrete endpoints, auth wiring, or application-specific plugins — appears anywhere in `@gears-frontx/api`; the surface ships no application-specific plugin of its own.
