@@ -54,6 +54,15 @@ export class SharedGraphIndex {
     }
   }
 
+  /**
+   * Drops the memoized index of `loaded`: a graph whose unit list grew
+   * (a fetched shard merged into `loaded.graph.units`) is re-indexed on
+   * its next `of` call.
+   */
+  static invalidate(loaded: LoadedGraph): void {
+    SharedGraphIndex.cache.delete(loaded);
+  }
+
   /** The unit owning `modulePath`, if any. */
   unitFor(modulePath: string): SharedDepGraphUnit | undefined {
     return this.moduleIndex.get(modulePath);
@@ -162,8 +171,16 @@ export class SharedGraphIndex {
     if (typeof unit.location !== 'string') {
       fail('location', 'a string');
     }
-    if (typeof unit.contentHash !== 'string') {
-      fail('contentHash', 'a string');
+    if (
+      typeof unit.contentHash !== 'string' &&
+      !/\.[0-9a-f]{64}\.[cm]?js$/.test(
+        typeof unit.location === 'string' ? unit.location : '',
+      )
+    ) {
+      fail(
+        'contentHash',
+        'a string, or a location carrying the content identity in its filename',
+      );
     }
     if (!stringArray(unit.relativeImports)) {
       fail('relativeImports', 'an array of strings');

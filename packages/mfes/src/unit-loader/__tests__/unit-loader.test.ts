@@ -107,6 +107,7 @@ describe('@gears-frontx/mfes/unit-loader export surface', () => {
       'PackFallbackPolicy',
       'RealmSharedDepTextCacheProvider',
       'SharedAssetUrlResolver',
+      'SharedGraphSetLoader',
       'SharedUnitGraphLoader',
       'UnitBlobMinter',
       'VerifiedUnitFetcher',

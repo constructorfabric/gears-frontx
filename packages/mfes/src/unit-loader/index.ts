@@ -37,6 +37,9 @@
 // Fetch and verify: graph-file fetching, SHA-256 content-identity
 // verification, `requires` closure checking and root reachability.
 export { SharedUnitGraphLoader } from '../handler/mfe-handler-mf/SharedUnitGraphLoader';
+// Needed-graphs fetch: the `requires` closure of the declared roots,
+// so a boot fetches only the graph files its entries can reach.
+export { SharedGraphSetLoader } from '../handler/mfe-handler-mf/SharedGraphSetLoader';
 export type {
   SharedDepSourceRecord,
   SharedUnitGraphPlan,

@@ -27,6 +27,8 @@ import type {
 } from '../../manifest/mf-manifest';
 import type {
   SharedDepGraphFile,
+  SharedDepGraphFileRef,
+  SharedDepGraphShard,
   SharedDepGraphUnit,
 } from '../../unit-format/graph-file';
 import { PackFallbackPolicy } from './PackFallbackPolicy';
@@ -107,6 +109,70 @@ export class SharedUnitGraphLoader {
     return [...new Uint8Array(digest)]
       .map((b) => b.toString(16).padStart(2, '0'))
       .join('');
+  }
+
+  /**
+   * The content identity a unit or pack record carries: its declared
+   * `contentHash`, or — when the field is omitted (compact encoding) —
+   * the `.<64-hex>.js` segment the content-addressed naming rule fixes
+   * in `location`. `undefined` when neither yields a hash.
+   */
+  static contentHashOf(holder: {
+    contentHash?: string;
+    location: string;
+  }): string | undefined {
+    if (typeof holder.contentHash === 'string') return holder.contentHash;
+    return SharedUnitGraphLoader.LOCATION_HASH.exec(holder.location)?.[1];
+  }
+
+  private static readonly LOCATION_HASH = /\.([0-9a-f]{64})\.[cm]?js$/;
+
+  /**
+   * Fetch, verify, and parse one shard document of `dep`'s graph —
+   * an entry shard or the whole-unit-list shard — and return its unit
+   * list. Integrity failure and name/version mismatch fail the load
+   * exactly as {@link loadGraph} does for the index file (F-011).
+   */
+  static async loadShard(
+    dep: MfManifestShared,
+    ref: SharedDepGraphFileRef,
+    shardUrl: string,
+    fetchText: (url: string) => Promise<string>,
+    entryId: string,
+  ): Promise<SharedDepGraphUnit[]> {
+    const text = await fetchText(shardUrl);
+    const actual = await SharedUnitGraphLoader.sha256Hex(text);
+    let parsed: SharedDepGraphShard | undefined;
+    try {
+      parsed = JSON.parse(text) as SharedDepGraphShard;
+    } catch {
+      parsed = undefined;
+    }
+    const producer =
+      parsed !== undefined
+        ? `${dep.name}@${dep.version}`
+        : 'unknown producer';
+    if (actual !== ref.contentHash) {
+      throw new MfeLoadError(
+        `graph shard '${ref.location}' for shared dep '${dep.name}' failed ` +
+          `content-identity verification: expected ${ref.contentHash}, ` +
+          `got ${actual}.`,
+        entryId,
+      );
+    }
+    if (
+      parsed === undefined ||
+      !Array.isArray(parsed.units) ||
+      parsed.version !== dep.version
+    ) {
+      throw new MfeLoadError(
+        `graph shard '${ref.location}' for shared dep '${dep.name}' is not ` +
+          `a parseable shard document for '${dep.name}@${dep.version}' ` +
+          `with a 'units' array (producer ${producer}).`,
+        entryId,
+      );
+    }
+    return parsed.units;
   }
 
   /** Producer label for error messages: `name@version` or `unknown`. */
@@ -600,8 +666,10 @@ export class SharedUnitGraphLoader {
         index.assertValidated(unit, entryId);
         return {
         url: resolveAssetUrl(unit.location),
-        contentHash: unit.contentHash,
-        cacheKey: `${dep.name}@${dep.version}@${unit.contentHash}`,
+        contentHash: SharedUnitGraphLoader.contentHashOf(unit) as string,
+        cacheKey:
+          `${dep.name}@${dep.version}@` +
+          `${SharedUnitGraphLoader.contentHashOf(unit) as string}`,
         record: {
           key: `${dep.name}@${dep.version}@${[...unit.modulePaths].sort().join(',')}`,
           packageName: dep.name,
@@ -619,8 +687,12 @@ export class SharedUnitGraphLoader {
         const packImports = graph.pack.bareImports ?? graph.requires ?? [];
         pending.push({
           url: resolveAssetUrl(graph.pack.location),
-          contentHash: graph.pack.contentHash,
-          cacheKey: `${dep.name}@${dep.version}@pack:${graph.pack.contentHash}`,
+          contentHash: SharedUnitGraphLoader.contentHashOf(
+            graph.pack
+          ) as string,
+          cacheKey:
+            `${dep.name}@${dep.version}@pack:` +
+            `${SharedUnitGraphLoader.contentHashOf(graph.pack) as string}`,
           record: {
             key: `${dep.name}@${dep.version}@pack`,
             packageName: dep.name,

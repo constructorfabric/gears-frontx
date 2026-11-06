@@ -43,8 +43,14 @@ export interface SharedDepGraphUnit {
    * Content identity (SHA-256 hex digest, 64 lowercase hex characters) of the
    * unit's emitted source. Every fetched unit is verified against this before
    * it is used or cached.
+   *
+   * Optional, for compactness: when the unit's `location` carries the
+   * content identity in its filename — the `.<64-hex>.js` segment the
+   * content-addressed naming rule fixes — the field may be omitted and the
+   * runtime derives it from `location` at the point of use. Older graph
+   * files keep declaring it.
    */
-  contentHash: string;
+  contentHash?: string;
   /**
    * Module path or paths belonging to this unit within the package.
    */
@@ -99,8 +105,10 @@ export interface SharedDepGraphUnit {
 export interface SharedDepGraphPack {
   /**
    * Content identity (SHA-256 hex digest) of the whole-package pack.
+   * Optional, as on a unit: derivable from `location`'s `.<64-hex>.js`
+   * segment when omitted.
    */
-  contentHash: string;
+  contentHash?: string;
   /**
    * Location of the pack's emitted source: a path relative to the package's
    * shared base location, or an absolute URL.
@@ -132,6 +140,35 @@ export interface SharedDepGraphProducer {
 }
 
 /**
+ * A content-addressed file reference inside a graph file: the location
+ * the text is fetched from and the SHA-256 it is verified against — the
+ * same reference shape the manifest's `graphFile` carries.
+ */
+export interface SharedDepGraphFileRef {
+  /** Location of the file: relative to the package's shared base, or absolute URL. */
+  location: string;
+  /** Content identity (SHA-256 hex digest) of the file's bytes. */
+  contentHash: string;
+}
+
+/**
+ * One per-entry graph shard — the subset of a package's units reachable
+ * from one entry specifier inside the package, emitted as its own
+ * content-addressed JSON document so a load fetches only the shards its
+ * specifiers name (`cpt-frontx-adr-shared-dep-reuse`). A shard carries no
+ * reach of its own: every unit it lists is also listed by the package's
+ * `unitsShard` document.
+ */
+export interface SharedDepGraphShard {
+  /** Package name, matching the index graph's `name`. */
+  name: string;
+  /** Package version, matching the index graph's `version`. */
+  version: string;
+  /** The units of this shard. */
+  units: SharedDepGraphUnit[];
+}
+
+/**
  * The graph file for one `package@version` — one content-addressed JSON
  * document expressing the package's units, their content identities, their
  * bare and relative imports, the package-level `requires`, the unit mode,
@@ -157,9 +194,29 @@ export interface SharedDepGraphFile {
   fallbackReason?: string;
   /**
    * The units of the package. One per strongly connected component of the
-   * package's own module graph.
+   * package's own module graph. Empty when the package's unit list is
+   * sharded — `entryShards` and `unitsShard` then carry the units.
    */
   units: SharedDepGraphUnit[];
+  /**
+   * Optional, for backward compatibility: per-entry graph shards, keyed as
+   * in `entryModulePaths` (`'.'` for the package name, `'./client'`,
+   * `'./esm/button/index.js'` for a module specifier a unit or consumer
+   * may import). Each shard document is a {@link SharedDepGraphShard}
+   * listing the units reachable inside the package from that entry — the
+   * intra-package relative-import closure of the entry's unit. A load
+   * fetches a shard only when a specifier naming it is reached; a
+   * specifier naming no shard key falls back to `unitsShard`.
+   */
+  entryShards?: Record<string, SharedDepGraphFileRef>;
+  /**
+   * Optional, for backward compatibility: the whole-unit-list shard — a
+   * {@link SharedDepGraphShard} document listing every unit of the
+   * package, fetched when the reach cannot name an entry shard (a
+   * unit-identifier root, a whole-package reach of an old-format unit, an
+   * undeclared subpath) and on the fetch-all path.
+   */
+  unitsShard?: SharedDepGraphFileRef;
   /**
    * Package-level bare requirements: every bare import the package's units
    * keep external, declared as package names. Entries are bare package names

@@ -57,6 +57,7 @@ import { FetchBudget } from './FetchBudget';
 import { ManifestCache } from './ManifestCache';
 import { PackFallbackPolicy } from './PackFallbackPolicy';
 import { SharedUnitGraphLoader, type LoadedGraph, type SharedDepSourceRecord } from './SharedUnitGraphLoader';
+import { SharedGraphSetLoader } from './SharedGraphSetLoader';
 import { SharedEntryResolver } from './SharedEntryResolver';
 import { SharedGraphIndex } from './SharedGraphIndex';
 import { SharedSpecifierRewriter } from './SharedSpecifierRewriter';
@@ -1459,17 +1460,28 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       SharedAssetUrlResolver.resolve(location, assetBase, entryId);
     const fetchText = (url: string): Promise<string> =>
       this.fetchSourceText(url, ledger);
-    const graphs = await Promise.all(
-      manifest.shared
-        .filter((d) => d.graphFile !== undefined)
-        .map((dep) =>
-          SharedUnitGraphLoader.loadGraph(
-            dep,
-            resolveAssetUrl((dep.graphFile as { location: string }).location),
-            fetchText,
-            entryId
-          )
-        )
+    const roots = SharedUnitGraphLoader.rootsForExposedModule(
+      manifest,
+      exposedModule,
+      entryId
+    );
+    if (roots === undefined) {
+      this.loadDiagnostics.reportAbsentRoots(manifest.id, exposedModule);
+    }
+    // Only the graph files the entry — or a lazy chunk it may load —
+    // can reach are fetched: the `requires` closure of the declared
+    // roots, falling back to fetch-all when no roots exist or a fetched
+    // graph file carries no `requires` to walk.
+    const lazyRoots: MfManifestRoot[] = manifest.lazyChunkRoots === undefined
+      ? []
+      : Object.values(manifest.lazyChunkRoots).flat();
+    const graphs = await SharedGraphSetLoader.load(
+      manifest.shared,
+      roots,
+      lazyRoots,
+      resolveAssetUrl,
+      fetchText,
+      entryId
     );
     for (const { dep, graph } of graphs) {
       this.loadDiagnostics.recordByteAgreement(dep, graph, manifest.id);
@@ -1484,14 +1496,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     );
     if (!anyRequiresDeclared) {
       this.loadDiagnostics.reportRequiresUncheckable(manifest.id);
-    }
-    const roots = SharedUnitGraphLoader.rootsForExposedModule(
-      manifest,
-      exposedModule,
-      entryId
-    );
-    if (roots === undefined) {
-      this.loadDiagnostics.reportAbsentRoots(manifest.id, exposedModule);
     }
     const cache = this.sharedDepTextCache;
     const { fetchVerified } = new VerifiedUnitFetcher(
@@ -1636,7 +1640,12 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     }
     const { name, subpath } = SharedEntryResolver.split(specifier);
     const loaded = graphByName.get(name);
-    if (loaded === undefined) return undefined;
+    if (loaded === undefined) {
+      // The package's graph was outside the boot fetch set (named only
+      // by a dynamic import): declared deps get a lazy `spec:` token so
+      // the resolver fetches the graph and mints on demand.
+      return `spec:${specifier}`;
+    }
     const unit = SharedGraphIndex.of(loaded).entryUnit(subpath);
     return unit === undefined ? undefined : tokenFor(loaded, unit);
   }
@@ -1660,7 +1669,17 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   ): Promise<string> {
     const fail = (detail: string): Promise<string> =>
       Promise.reject(new MfeLoadError(detail, entryId));
-    if (ctx === undefined || !token.startsWith('unit:')) {
+    if (ctx === undefined) {
+      return fail(`__frontx_lazy: unresolvable unit token '${token}'`);
+    }
+    if (token.startsWith('spec:')) {
+      return this.resolveSharedDepSpecifierImport(
+        token.slice('spec:'.length),
+        ctx,
+        entryId
+      );
+    }
+    if (!token.startsWith('unit:')) {
       return fail(`__frontx_lazy: unresolvable unit token '${token}'`);
     }
     const key = token.slice('unit:'.length);
@@ -1723,6 +1742,150 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       }
       return blob;
     });
+  }
+
+  /**
+   * The resolver behind `__frontx_lazy('spec:<bare specifier>')` calls
+   * emitted for dynamic imports naming a shared package whose graph
+   * file the initial fetch set did not cover: the dep's graph is
+   * fetched and verified on demand (deduped through the same
+   * content-identity fetch as every other shared file), its `requires`
+   * closure checked, its units registered into the load's maps, and
+   * the specifier's entry unit minted with everything it reaches —
+   * the same `runSharedDepMintBatch` path a `unit:` token takes.
+   * One in-flight resolution per specifier; a failed fetch is evicted
+   * so a later call retries.
+   */
+  private resolveSharedDepSpecifierImport(
+    specifier: string,
+    ctx: SharedDepUnitContext,
+    entryId: string
+  ): Promise<string> {
+    const { name, subpath } = SharedEntryResolver.split(specifier);
+    const dep = ctx.manifest.shared.find(
+      (d) => d.name === name && d.graphFile !== undefined
+    );
+    const blob = ctx.specifierToBlob.get(specifier);
+    if (blob !== undefined) return Promise.resolve(blob);
+    if (dep === undefined) {
+      return Promise.reject(
+        new MfeLoadError(
+          `__frontx_lazy: dynamic import '${specifier}' names no ` +
+            `shared package '${name}' declared in the manifest.`,
+          entryId
+        )
+      );
+    }
+    const token = `spec:${specifier}`;
+    let pending = ctx.pending.get(token);
+    if (pending === undefined) {
+      // The graph fetch+register happens before the mint batch is
+      // enqueued — the batch itself chains on `ctx.mintQueue` and must
+      // never be awaited from inside it.
+      pending = this.ensureSharedDepGraph(ctx, dep, entryId).then(
+        () =>
+          this.runSharedDepMintBatch(
+            ctx,
+            this.specifierRoots(ctx, dep, subpath, specifier, entryId),
+            entryId,
+            ctx.specifierToBlob
+          )
+      );
+      ctx.pending.set(token, pending);
+      const tracked = pending;
+      tracked.catch(() => {
+        if (ctx.pending.get(token) === tracked) ctx.pending.delete(token);
+      });
+    }
+    return pending.then(() => {
+      const resolved = ctx.specifierToBlob.get(specifier);
+      if (resolved === undefined) {
+        throw new MfeLoadError(
+          `__frontx_lazy: specifier '${specifier}' minted no blob URL.`,
+          entryId
+        );
+      }
+      return resolved;
+    });
+  }
+
+  /**
+   * Fetch `dep`'s graph file on demand (outside the initial
+   * requires-closure fetch set), check the `requires` closure against
+   * the manifest's shared set, and register every unit in the load's
+   * `unitByKey`. Runs BEFORE the mint batch is enqueued, so the batch
+   * walks the freshest graphs.
+   */
+  private async ensureSharedDepGraph(
+    ctx: SharedDepUnitContext,
+    dep: MfManifestShared,
+    entryId: string
+  ): Promise<void> {
+    const graphs = ctx.graphs as LoadedGraph[];
+    if (graphs.some((g) => g.dep.name === dep.name)) return;
+    const graphRef = dep.graphFile as { location: string; contentHash: string };
+    const loaded = await SharedUnitGraphLoader.loadGraph(
+      dep,
+      ctx.resolveAssetUrl(graphRef.location),
+      (url: string) =>
+        ctx.fetchVerified(
+          url,
+          graphRef.contentHash,
+          `graph:${dep.name}@${dep.version}`
+        ),
+      entryId
+    );
+    // The lazily fetched graph's requirements must hold against the
+    // manifest's shared set, as for every eagerly fetched graph.
+    SharedUnitGraphLoader.checkRequiresClosure(
+      [loaded],
+      new Set(ctx.manifest.shared.map((d) => d.name)),
+      entryId
+    );
+    graphs.push(loaded);
+    for (const unit of loaded.graph.units) {
+      if (!Array.isArray(unit.modulePaths)) continue;
+      (ctx.unitByKey as Map<string, { loaded: LoadedGraph; unit: SharedDepGraphUnit }>).set(
+        MfeHandlerMF.unitRecordKey(loaded, unit),
+        { loaded, unit }
+      );
+    }
+  }
+
+  /**
+   * The unit-id root of the unit `specifier`'s subpath names in `dep`'s
+   * (already loaded) graph — the mint batch's reachability root.
+   */
+  private specifierRoots(
+    ctx: SharedDepUnitContext,
+    dep: MfManifestShared,
+    subpath: string,
+    specifier: string,
+    entryId: string
+  ): MfManifestRoot[] {
+    const loaded = (ctx.graphs as LoadedGraph[]).find(
+      (g) => g.dep.name === dep.name
+    );
+    const target = loaded !== undefined
+      ? SharedGraphIndex.of(loaded).entryUnit(subpath)
+      : undefined;
+    if (loaded === undefined || target === undefined) {
+      throw new MfeLoadError(
+        `__frontx_lazy: dynamic import '${specifier}' resolves to no ` +
+          `unit of '${dep.name}@${dep.version}'.`,
+        entryId
+      );
+    }
+    // The minted unit answers its entry specifiers; map the dynamic
+    // specifier to its blob once the batch settles — handled by the
+    // entry specifiers the unit claims at mint time.
+    return [
+      {
+        name: dep.name,
+        version: dep.version,
+        modulePaths: [...target.modulePaths],
+      },
+    ];
   }
 
   /** Whether `char` is a space or control character a URL parse would mangle. */
