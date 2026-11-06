@@ -5,6 +5,7 @@ export default defineConfig({
   entry: {
     index: 'src/index.ts',
     'unit-format': 'src/unit-format/index.ts',
+    'unit-loader': 'src/unit-loader/index.ts',
   },
   format: ['cjs', 'esm'],
   dts: true,

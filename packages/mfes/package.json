@@ -16,6 +16,11 @@
       "types": "./dist/unit-format.d.ts",
       "import": "./dist/unit-format.js",
       "require": "./dist/unit-format.cjs"
+    },
+    "./unit-loader": {
+      "types": "./dist/unit-loader.d.ts",
+      "import": "./dist/unit-loader.js",
+      "require": "./dist/unit-loader.cjs"
     }
   },
   "files": [
