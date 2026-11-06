@@ -50,16 +50,36 @@ export class UnitFormatConformance {
    * directories conform and agree byte for byte.
    */
   check(outputA: string, outputB: string, manifestPath?: string): UnitFormatViolation[] {
-    const violations = [
-      ...this.checkOutput(outputA),
-      ...this.checkOutput(outputB),
-      ...this.compareOutputs(outputA, outputB),
-    ];
-    if (manifestPath !== undefined) {
+    return this.checkAll([outputA, outputB], manifestPath);
+  }
+
+  /**
+   * Check any number of independent output directories of the same
+   * producer and the same inputs — built under different install
+   * layouts or consumer configs — and require them byte-identical:
+   * each directory is checked against the contract, then every
+   * directory is compared byte for byte against the first. Returns one
+   * typed violation per contract failure — naming the violated rule and
+   * the offending file — or an empty list when every directory conforms
+   * and all agree byte for byte. A single directory checks conformance
+   * only, with no pair to compare.
+   */
+  checkAll(outputDirs: readonly string[], manifestPath?: string): UnitFormatViolation[] {
+    const violations: UnitFormatViolation[] = [];
+    for (const dir of outputDirs) {
+      violations.push(...this.checkOutput(dir));
+    }
+    const [first, ...rest] = outputDirs;
+    if (first !== undefined) {
+      for (const dir of rest) {
+        violations.push(...this.compareOutputs(first, dir));
+      }
+    }
+    if (manifestPath !== undefined && first !== undefined) {
       // Run once: the manifest→graph leg resolves against the manifest's
       // own directory and declared bases, so checking it per output
       // directory only duplicates violations.
-      violations.push(...this.checkManifestLeg(manifestPath, outputA));
+      violations.push(...this.checkManifestLeg(manifestPath, first));
     }
     return violations;
   }
