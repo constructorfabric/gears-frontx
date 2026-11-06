@@ -280,7 +280,7 @@ export class UnitFormatConformance {
       }
     }
     if (graph.pack !== undefined) {
-      this.checkDeclaredHash(dir, rel, graph.pack.location, graph.pack.contentHash, 'pack', violations);
+      this.checkDeclaredHash(dir, rel, graph.pack.location, UnitFormatConformance.declaredHashOf(graph.pack, 'pack'), 'pack', violations);
       // The pack obeys the same requires/bareImports rules as a unit.
       for (const bare of graph.pack.bareImports ?? []) {
         if (!graph.requires?.includes(bare)) {
@@ -312,6 +312,21 @@ export class UnitFormatConformance {
   }
 
   /**
+   * The content identity a unit or pack declares: its `contentHash`, or
+   * the `.<64-hex>.js` filename segment of its `location` when the field
+   * is omitted (compact hash encoding). An underivable hash fails as a
+   * declared-hash mismatch downstream.
+   */
+  private static declaredHashOf(
+    holder: { contentHash?: string; location: string },
+    kind: string,
+  ): string {
+    if (typeof holder.contentHash === 'string') return holder.contentHash;
+    const derived = /\.([0-9a-f]{64})\.[cm]?js$/.exec(holder.location)?.[1];
+    return derived ?? `<no declared ${kind} hash>`;
+  }
+
+  /**
    * Check one unit's declared content identity against its bytes, its bare
    * imports against the graph's `requires`, its bare specifiers against its
    * bare imports, and its relative imports against the package's module
@@ -325,7 +340,7 @@ export class UnitFormatConformance {
     allModulePaths: ReadonlySet<string>,
     violations: UnitFormatViolation[],
   ): void {
-    this.checkDeclaredHash(dir, graphRel, unit.location, unit.contentHash, 'unit', violations);
+    this.checkDeclaredHash(dir, graphRel, unit.location, UnitFormatConformance.declaredHashOf(unit, 'unit'), 'unit', violations);
     for (const bare of unit.bareImports) {
       if (!graph.requires?.includes(bare)) {
         violations.push(

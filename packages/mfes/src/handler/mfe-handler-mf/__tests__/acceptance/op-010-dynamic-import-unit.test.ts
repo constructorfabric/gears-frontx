@@ -168,15 +168,21 @@ describe('acceptance: OP-010 dynamic import() inside a unit resolves on demand',
       );
       const sources = await minted.sources();
       const unitSource = sources.find((s) => s.includes('export const r'));
+      // lodash's graph is outside the requires closure of the declared
+      // roots: the dynamic import mints a lazy `spec:` token, and the
+      // resolver fetches the package's graph and unit on demand.
       expect(unitSource).toContain(
-        '__frontx_lazy("unit:lodash@1.0.0@fp/index.js")',
+        '__frontx_lazy("spec:lodash/fp")',
       );
       const loaderId = registerSpy.mock.results[0].value as string;
       const blobUrl = await lazyGlobal().resolve(
         loaderId,
-        'unit:lodash@1.0.0@fp/index.js',
+        'spec:lodash/fp',
       );
       expect(blobUrl).toMatch(/^blob:/);
+      expect(router.calls).toContain(
+        `${PUBLIC_PATH}shared/lodash.graph.json`,
+      );
       expect(router.calls).toContain(
         `${PUBLIC_PATH}${lodash.unitLocations[0]}`,
       );
@@ -398,9 +404,11 @@ describe('acceptance: OP-010 dynamic import() inside a unit resolves on demand',
         handler.load(buildEntry(manifest), 'ext-op010-7'),
       ).resolves.toBeDefined();
       const loaderId = registerSpy.mock.results[0].value as string;
+      // lodash's graph is fetched on demand when the `spec:` token
+      // resolves; the pack delivers the package.
       const blobUrl = await lazyGlobal().resolve(
         loaderId,
-        'unit:lodash@1.0.0@index.js',
+        'spec:lodash',
       );
       expect(blobUrl).toMatch(/^blob:/);
       expect(router.calls).toContain(`${PUBLIC_PATH}${lodash.packLocation}`);
@@ -410,7 +418,7 @@ describe('acceptance: OP-010 dynamic import() inside a unit resolves on demand',
       // A repeat resolve answers from the minted pack with no new fetch.
       const callsBefore = router.calls.length;
       await expect(
-        lazyGlobal().resolve(loaderId, 'unit:lodash@1.0.0@index.js'),
+        lazyGlobal().resolve(loaderId, 'spec:lodash'),
       ).resolves.toBe(blobUrl);
       expect(
         router.calls

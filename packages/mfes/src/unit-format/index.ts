@@ -16,6 +16,8 @@ export type {
   SharedDepGraphPack,
   SharedDepGraphProducer,
   SharedDepGraphFile,
+  SharedDepGraphFileRef,
+  SharedDepGraphShard,
 } from './graph-file';
 export type { UnitFormatViolationRule, UnitFormatViolation } from './UnitFormatViolation';
 export { UnitFormatConformance } from './UnitFormatConformance';
