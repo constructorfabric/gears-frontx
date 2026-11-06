@@ -25,11 +25,13 @@
  * (MFES-7), and the decision recorded in
  * `cpt-frontx-adr-shared-dep-cache-reach` (ADR-0035).
  *
- * NOT exported from the package's public barrel (`src/index.ts`) — reachable
- * only from other files inside this package, same discipline as
- * `inbound-bridge-link.ts`. Convergence adds no exported symbol, no
- * capability method, and no constructor argument: a copy reaches the cache
- * only by calling {@link RealmSharedDepTextCacheProvider.getCache}.
+ * Not exported from the package's root barrel (`src/index.ts`); exported
+ * from the sanctioned `./unit-loader` subpath
+ * (`cpt-frontx-algo-unit-format-contract-loader-surface`), where a host
+ * loading its own shared set reaches the same rendezvous the
+ * orchestrating handler uses. Convergence adds no root-barrel symbol, no
+ * capability method, and no constructor argument: a copy reaches the
+ * cache only by calling {@link RealmSharedDepTextCacheProvider.getCache}.
  *
  * @packageDocumentation
  * @internal
