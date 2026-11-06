@@ -26,6 +26,7 @@
  */
 
 import { MfeLoadError } from '../../errors';
+import { DynamicImportScan } from '../../unit-format/dynamic-import-scan';
 import { DynamicModuleOps } from './mf-dynamic-module-ops';
 import { SharedSpecifierRewriter } from './SharedSpecifierRewriter';
 import type { SharedDepSourceRecord } from './SharedUnitGraphLoader';
@@ -65,11 +66,15 @@ export class UnitBlobMinter {
   /**
    * Whether `source` carries a dynamic `import(...)` the runtime cannot
    * resolve: dynamic specifiers are neither rewritten nor dependency-edged
-   * at mint time, so a unit containing one would mint a blob that fails
-   * in the browser (L6-02). `import.meta` and `import "x"` do not match.
+   * at mint time, so the contract prohibits them and a unit containing
+   * one would mint a blob that fails in the browser (L6-02). Delegates to
+   * the comment/string/regex-aware `DynamicImportScan` — `import.meta`,
+   * `import "x"`, and `import(` inside a string, comment or regex
+   * literal do not match, while an `import` separated from its `(` only
+   * by whitespace and comments does.
    */
   private static containsDynamicImport(source: string): boolean {
-    return /(^|[^.\w$])import\s*\(/.test(source);
+    return DynamicImportScan.containsDynamicImport(source);
   }
 
   /**
@@ -77,11 +82,19 @@ export class UnitBlobMinter {
    * specifier→blob-URL map covering every minted unit — the specifiers
    * `specifiersOf` lists for each record — which the expose chain and
    * sibling units rewrite against.
+   *
+   * `unitBlobs` is the per-load `packageName/modulePath` → blob map:
+   * relative imports are resolved and dependency edges are taken against
+   * EVERY unit minted for the load, so a lazily added batch can import a
+   * unit the entry mint already delivered — that unit's blob answers the
+   * import and adds no ordering edge. Every record minted here is
+   * published into the map for later batches.
    */
   static mint(
     records: readonly SharedDepSourceRecord[],
     entryId: string,
     preexisting?: ReadonlyMap<string, string>,
+    unitBlobs?: Map<string, string>,
   ): Map<string, string> {
     const recordByKey = new Map(records.map((r) => [r.key, r]));
     // modulePath -> record, per package.
@@ -120,11 +133,16 @@ export class UnitBlobMinter {
             member,
             rel,
           );
-          const target = modulePathToRecord.get(
-            `${record.packageName}/${resolved}`,
-          );
+          const pathKey = `${record.packageName}/${resolved}`;
+          const target = modulePathToRecord.get(pathKey);
           if (target !== undefined && target.key !== record.key) {
             deps.add(target.key);
+            break;
+          }
+          // A relative import resolved to a unit an earlier mint of this
+          // load already delivered (entry units a lazy batch re-imports)
+          // is satisfied by that blob — it adds no ordering edge.
+          if (unitBlobs?.has(pathKey)) {
             break;
           }
         }
@@ -157,6 +175,13 @@ export class UnitBlobMinter {
 
     const publish = (record: SharedDepSourceRecord, blob: string): void => {
       recordBlob.set(record.key, blob);
+      if (unitBlobs !== undefined) {
+        for (const m of record.modulePaths) {
+          if (m !== '<pack>') {
+            unitBlobs.set(`${record.packageName}/${m}`, blob);
+          }
+        }
+      }
       for (const specifier of UnitBlobMinter.specifiersOf(record)) {
         if (
           specifierToRecord.get(specifier) === record &&
@@ -170,11 +195,13 @@ export class UnitBlobMinter {
     const relativeToBlob = (
       record: SharedDepSourceRecord,
     ): ((resolvedModulePath: string) => string | undefined) =>
-      (resolved) =>
-        recordBlob.get(
-          modulePathToRecord.get(`${record.packageName}/${resolved}`)?.key ??
-            '',
+      (resolved) => {
+        const pathKey = `${record.packageName}/${resolved}`;
+        return (
+          recordBlob.get(modulePathToRecord.get(pathKey)?.key ?? '') ??
+          unitBlobs?.get(pathKey)
         );
+      };
 
     while (pending.size > 0) {
       const before = pending.size;

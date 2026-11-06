@@ -27,6 +27,12 @@ export type SharedDepUnitMode = 'units' | 'single';
  * the whole cycle when the module is part of an import cycle). A unit's
  * identity is `package@version` plus the module path or paths it contains
  * (`cpt-frontx-adr-shared-dep-reuse`).
+ *
+ * A unit's emitted source MUST NOT carry a dynamic `import(...)`: dynamic
+ * specifiers are neither rewritten nor dependency-edged at mint time, so
+ * a unit containing one mints a blob that fails in the browser. The
+ * runtime fails the load on one, and the conformance suite reports it as
+ * a violation. This applies to the pack's source as well.
  */
 export interface SharedDepGraphUnit {
   /**

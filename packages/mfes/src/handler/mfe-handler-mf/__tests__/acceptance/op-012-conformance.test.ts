@@ -204,4 +204,142 @@ describe('acceptance: OP-012 conformance pack, member-path and manifest checks',
         .some((v) => v.rule === 'hash-chain' && /pkg/.test(v.detail)),
     ).toBe(true);
   });
+
+  it('OP-012/RF-004: the manifest leg resolves graphFile.location against metaData.sharedBase', () => {
+    const { a, b } = pair();
+    const spec: OutputSpec = {
+      name: 'pkg',
+      version: '1.0.0',
+      units: [{ modulePaths: ['index.js'] }],
+    };
+    const graph = emit(a, spec);
+    emit(b, spec);
+    const graphName = `pkg@1.0.0.graph.${sha256(JSON.stringify(graph))}.json`;
+    // Real layout: manifest at the dist root, graphs under shared/.
+    mkdirSync(join(a, 'shared'), { recursive: true });
+    writeFileSync(
+      join(a, 'shared', graphName),
+      JSON.stringify(graph),
+    );
+    const manifest = {
+      metaData: { publicPath: './', sharedBase: 'shared/' },
+      shared: [
+        {
+          name: 'pkg',
+          version: '1.0.0',
+          graphFile: {
+            location: graphName,
+            contentHash: sha256(JSON.stringify(graph)),
+          },
+        },
+      ],
+    };
+    const manifestPath = join(a, 'mf-manifest.json');
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+    const violations = conformance
+      .check(a, b, manifestPath)
+      .filter((v) => v.rule === 'hash-chain');
+    expect(violations).toEqual([]);
+  });
+
+  it('OP-012/RF-004: the manifest leg reports each violation once, not once per output', () => {
+    const { a, b } = pair();
+    const spec: OutputSpec = {
+      name: 'pkg',
+      version: '1.0.0',
+      units: [{ modulePaths: ['index.js'] }],
+    };
+    const graph = emit(a, spec);
+    emit(b, spec);
+    const manifest = {
+      shared: [
+        {
+          name: 'pkg',
+          version: '1.0.0',
+          graphFile: {
+            location: `pkg@1.0.0.graph.${sha256(JSON.stringify(graph))}.json`,
+            contentHash: '0'.repeat(64),
+          },
+        },
+      ],
+    };
+    const manifestPath = join(a, 'mf-manifest.json');
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+    const violations = conformance
+      .check(a, b, manifestPath)
+      .filter(
+        (v) => v.rule === 'hash-chain' && /pkg/.test(v.detail),
+      );
+    expect(violations.length).toBe(1);
+  });
+
+  it('OP-012/RF-008: a manifest-referenced graph that is not parseable produces a violation', () => {
+    const { a, b } = pair();
+    const spec: OutputSpec = {
+      name: 'pkg',
+      version: '1.0.0',
+      units: [{ modulePaths: ['index.js'] }],
+    };
+    emit(a, spec);
+    emit(b, spec);
+    // A file present and hash-matching, but not valid JSON.
+    const bogus = 'not json {{{';
+    const bogusName = `pkg@1.0.0.graph.${sha256(bogus)}.json`;
+    writeFileSync(join(a, bogusName), bogus);
+    writeFileSync(join(b, bogusName), bogus);
+    const manifest = {
+      shared: [
+        {
+          name: 'pkg',
+          version: '1.0.0',
+          graphFile: { location: bogusName, contentHash: sha256(bogus) },
+        },
+      ],
+    };
+    const manifestPath = join(a, 'mf-manifest.json');
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+    const violations = conformance.check(a, b, manifestPath);
+    expect(
+      violations.some(
+        (v) => v.rule === 'graph-format' && /parseable/.test(v.detail),
+      ),
+    ).toBe(true);
+  });
+
+  it('OP-012/RF-003: a unit carrying a dynamic import() is a violation; one in a string is not', () => {
+    const { a, b } = pair();
+    emit(a, {
+      name: 'pkg',
+      version: '1.0.0',
+      units: [
+        {
+          modulePaths: ['index.js'],
+          source: "const p = import('./lazy.js');\nexport const x = 1;\n",
+        },
+      ],
+    });
+    emit(b, {
+      name: 'pkg',
+      version: '1.0.0',
+      units: [
+        {
+          modulePaths: ['index.js'],
+          source: 'const s = "import(\'./lazy.js\')";\nexport const x = 1;\n',
+        },
+      ],
+    });
+    const violations = conformance.check(a, b);
+    expect(
+      violations.some(
+        (v) => v.rule === 'graph-format' && /dynamic import/.test(v.detail),
+      ),
+    ).toBe(true);
+    // The string-embedded `import(` in output B is not flagged: exactly
+    // one dynamic-import violation, from output A.
+    expect(
+      violations.filter(
+        (v) => v.rule === 'graph-format' && /dynamic import/.test(v.detail),
+      ).length,
+    ).toBe(1);
+  });
 });

@@ -24,6 +24,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, dirname, join, relative, sep } from 'node:path';
 
 import type { SharedDepGraphFile, SharedDepGraphUnit } from './graph-file';
+import { DynamicImportScan } from './dynamic-import-scan';
 import type { UnitFormatViolation, UnitFormatViolationRule } from './UnitFormatViolation';
 
 const GRAPH_NAME_PATTERN = /^(.+@.+)\.graph\.([0-9a-f]{64})\.json$/;
@@ -55,25 +56,28 @@ export class UnitFormatConformance {
       ...this.compareOutputs(outputA, outputB),
     ];
     if (manifestPath !== undefined) {
-      violations.push(
-        ...this.checkManifestLeg(manifestPath, outputA),
-        ...this.checkManifestLeg(manifestPath, outputB),
-      );
+      // Run once: the manifest→graph leg resolves against the manifest's
+      // own directory and declared bases, so checking it per output
+      // directory only duplicates violations.
+      violations.push(...this.checkManifestLeg(manifestPath, outputA));
     }
     return violations;
   }
 
   /**
    * The manifest→graph leg of the hash chain: each `shared[]` entry's
-   * `graphFile` reference must name a file present in the output
-   * directory (its `location` resolved relative to the manifest file's
-   * directory), the file's SHA-256 must equal the declared
+   * `graphFile` reference must name a file present relative to the
+   * manifest's shared base — `metaData.sharedBase` when given, else
+   * `metaData.publicPath`, resolved against the manifest file's
+   * directory when relative — the file's SHA-256 must equal the declared
    * `contentHash`, and the parsed graph's `name`/`version` must match the
-   * manifest entry.
+   * manifest entry. A base or location resolving to a remote URL has no
+   * filesystem leg to check and is skipped.
    */
   private checkManifestLeg(manifestPath: string, dir: string): UnitFormatViolation[] {
     const violations: UnitFormatViolation[] = [];
     let manifest: {
+      metaData?: { sharedBase?: unknown; publicPath?: unknown };
       shared?: { name?: unknown; version?: unknown; graphFile?: { location?: unknown; contentHash?: unknown } }[];
     };
     try {
@@ -85,12 +89,24 @@ export class UnitFormatConformance {
       return violations;
     }
     const manifestDir = dirname(manifestPath);
+    const meta = manifest.metaData;
+    const base =
+      typeof meta?.sharedBase === 'string'
+        ? meta.sharedBase
+        : typeof meta?.publicPath === 'string'
+          ? meta.publicPath
+          : undefined;
     for (const dep of manifest.shared ?? []) {
       const ref = dep.graphFile;
       if (ref === undefined || typeof ref.location !== 'string' || typeof ref.contentHash !== 'string') {
         continue;
       }
-      const graphPath = join(manifestDir, ref.location);
+      const graphPath = this.resolveGraphLocation(manifestDir, base, ref.location);
+      if (graphPath === undefined) {
+        // An absolute-URL location or a remote base has no filesystem
+        // file to check — the runtime verifies those at fetch time.
+        continue;
+      }
       let actual: string;
       try {
         actual = this.sha256File(graphPath);
@@ -113,11 +129,37 @@ export class UnitFormatConformance {
             this.violation(dir, ref.location, 'hash-chain', `manifest entry '${dep.name}@${dep.version}' references a graph file for '${graph.name}@${graph.version}'`),
           );
         }
-      } catch {
-        // An unparseable graph file is already reported by checkGraph.
+      } catch (error) {
+        violations.push(
+          this.violation(dir, ref.location, 'graph-format', `graph file is not parseable JSON: ${(error as Error).message}`),
+        );
       }
     }
     return violations;
+  }
+
+  /**
+   * Resolve a `graphFile.location` to a filesystem path by the contract
+   * rule: relative to the manifest's shared base (`metaData.sharedBase`
+   * when given, else `metaData.publicPath`), and relative to the
+   * manifest file's directory when that base is relative. Returns
+   * `undefined` when the location or the base is an absolute URL — a
+   * remote reference has no file leg.
+   */
+  private resolveGraphLocation(
+    manifestDir: string,
+    base: string | undefined,
+    location: string,
+  ): string | undefined {
+    if (/^https?:\/\//i.test(location)) return undefined;
+    const relativeLocation = location.replace(/^\/+/, '');
+    if (base === undefined || base === '') {
+      return join(manifestDir, relativeLocation);
+    }
+    if (/^[a-z][a-z\d+.-]*:/i.test(base)) return undefined;
+    if (base.startsWith('//')) return undefined;
+    const basePath = base.startsWith('/') ? base : join(manifestDir, base);
+    return join(basePath, relativeLocation);
   }
 
   /**
@@ -220,6 +262,7 @@ export class UnitFormatConformance {
     }
     if (graph.pack !== undefined) {
       this.checkDeclaredHash(dir, rel, graph.pack.location, graph.pack.contentHash, 'pack', violations);
+      this.checkDynamicImport(dir, rel, graph.pack.location, 'pack', violations);
       // The pack obeys the same requires/bareImports rules as a unit.
       for (const bare of graph.pack.bareImports ?? []) {
         if (!graph.requires?.includes(bare)) {
@@ -265,6 +308,7 @@ export class UnitFormatConformance {
     violations: UnitFormatViolation[],
   ): void {
     this.checkDeclaredHash(dir, graphRel, unit.location, unit.contentHash, 'unit', violations);
+    this.checkDynamicImport(dir, graphRel, unit.location, 'unit', violations);
     for (const bare of unit.bareImports) {
       if (!graph.requires?.includes(bare)) {
         violations.push(
@@ -309,6 +353,38 @@ export class UnitFormatConformance {
           ),
         );
       }
+    }
+  }
+
+  /**
+   * A unit or pack source must not carry a dynamic `import()`: dynamic
+   * specifiers are neither rewritten nor dependency-edged at mint time,
+   * so the contract prohibits them. The scan is comment/string-aware —
+   * `import(` inside a string, comment or regex literal is not a
+   * violation. An unreadable file is already reported by the hash chain.
+   */
+  private checkDynamicImport(
+    dir: string,
+    graphRel: string,
+    location: string,
+    kind: string,
+    violations: UnitFormatViolation[],
+  ): void {
+    let source: string;
+    try {
+      source = readFileSync(join(dir, location), 'utf8');
+    } catch {
+      return;
+    }
+    if (DynamicImportScan.containsDynamicImport(source)) {
+      violations.push(
+        this.violation(
+          dir,
+          graphRel,
+          'graph-format',
+          `${kind} ${location} carries a dynamic import() the contract prohibits — dynamic specifiers are neither rewritten nor dependency-edged at mint time`,
+        ),
+      );
     }
   }
 

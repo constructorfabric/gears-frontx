@@ -201,6 +201,129 @@ describe('SharedUnitGraphLoader', () => {
     );
     expect(reachedUnits.get('pkg')?.size).toBe(2);
   });
+
+  it('does not validate units of an unreached package (point of use)', () => {
+    const ok = {
+      dep: { name: 'ok' } as never,
+      graph,
+      graphFileLocation: 'ok.graph.json',
+    };
+    const bad = {
+      dep: { name: 'bad' } as never,
+      graph: {
+        ...graph,
+        name: 'bad',
+        requires: [],
+        units: [
+          {
+            contentHash: 'x',
+            // malformed: no modulePaths at all — a TypeError shape if
+            // read eagerly, an MfeLoadError only if reached.
+            modulePaths: undefined,
+            bareImports: [],
+            relativeImports: [],
+            location: 'u.js',
+          } as never,
+        ],
+      },
+      graphFileLocation: 'bad.graph.json',
+    };
+    // 'bad' is declared but no root reaches it: point-of-use validation
+    // must not touch its units.
+    const reach = SharedUnitGraphLoader.reachUnits(
+      ['react'],
+      new Map([
+        ['react', ok],
+        ['bad', bad],
+      ]),
+    );
+    expect(reach.reachedPackages.has('bad')).toBe(false);
+    // Reaching it DOES validate — and fails with MfeLoadError, not TypeError.
+    expect(() =>
+      SharedUnitGraphLoader.reachUnits(
+        ['bad'],
+        new Map([
+          ['react', ok],
+          ['bad', bad],
+        ]),
+      ),
+    ).toThrow(MfeLoadError);
+  });
+
+  it('blocks pack fallback when legacy whole-package reach includes non-entry units', async () => {
+    // react's graph has a pack; react-dom's unit carries bareImports only
+    // (legacy shape, no bareSpecifiers), so the whole react package is
+    // reached — including its non-entry unit, which a pack delivery would
+    // drop. The pack must be blocked and both units delivered.
+    const reactUnits = [
+      {
+        contentHash: 'a',
+        modulePaths: ['index.js'],
+        bareImports: [],
+        relativeImports: [],
+        location: 'react/a.js',
+      },
+      {
+        contentHash: 'b',
+        modulePaths: ['jsx-runtime.js'],
+        bareImports: [],
+        relativeImports: [],
+        location: 'react/b.js',
+      },
+    ];
+    const react = {
+      dep: { name: 'react', version: '1.0.0' } as never,
+      graph: {
+        name: 'react',
+        version: '1.0.0',
+        unitMode: 'units' as const,
+        units: reactUnits,
+        mainModulePath: 'index.js',
+        requires: [],
+        pack: { contentHash: 'p', location: 'react/pack.js' },
+      },
+      graphFileLocation: 'react.graph.json',
+    };
+    const reactDom = {
+      dep: { name: 'react-dom', version: '1.0.0' } as never,
+      graph: {
+        name: 'react-dom',
+        version: '1.0.0',
+        unitMode: 'units' as const,
+        units: [
+          {
+            contentHash: 'd',
+            modulePaths: ['index.js'],
+            bareImports: ['react'],
+            // no bareSpecifiers — legacy producer shape
+            relativeImports: [],
+            location: 'react-dom/d.js',
+          },
+        ],
+        mainModulePath: 'index.js',
+        requires: ['react'],
+      },
+      graphFileLocation: 'react-dom.graph.json',
+    };
+    const fetched: string[] = [];
+    const plan = await SharedUnitGraphLoader.buildPlan(
+      [react, reactDom],
+      ['react-dom'],
+      0,
+      0,
+      (url) => {
+        fetched.push(url);
+        return Promise.resolve('src');
+      },
+      (location) => `http://h/${location}`,
+      'entry',
+    );
+    // The pack was NOT chosen: no pack record, both units fetched.
+    expect(plan.packFallbackPackages).toEqual([]);
+    expect(fetched).toContain('http://h/react/a.js');
+    expect(fetched).toContain('http://h/react/b.js');
+    expect(fetched).not.toContain('http://h/react/pack.js');
+  });
 });
 
 describe('SharedEntryResolver', () => {
@@ -288,6 +411,53 @@ describe('UnitBlobMinter', () => {
     });
     expect(() => UnitBlobMinter.mint([a, b], 'entry')).toThrow(MfeLoadError);
     vi.restoreAllMocks();
+  });
+
+  it('resolves a lazy batch\'s relative imports against units an earlier mint delivered', async () => {
+    const mintedTexts: Blob[] = [];
+    const spy = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockImplementation((object: Blob | MediaSource) => {
+        if (object instanceof Blob) mintedTexts.push(object);
+        return `blob:${mintedTexts.length}`;
+      });
+    const unitBlobs = new Map<string, string>();
+    // Entry mint: the index.js unit.
+    UnitBlobMinter.mint([record({})], 'entry', undefined, unitBlobs);
+    expect(unitBlobs.get('pkg/index.js')).toBe('blob:1');
+    // Lazy mint: a fresh unit importing the already-minted one.
+    const lazy = record({
+      key: 'lazy',
+      modulePaths: ['lazy.js'],
+      isPackageMain: false,
+      relativeImports: ['./index.js'],
+      text: 'import "./index.js";\nexport const l = 1;',
+    });
+    UnitBlobMinter.mint([lazy], 'entry', undefined, unitBlobs);
+    spy.mockRestore();
+    const lazyText = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(mintedTexts[1]);
+    });
+    // The relative import rewrote to the entry unit's existing blob.
+    expect(lazyText).toContain('import "blob:1"');
+  });
+
+  it('detects dynamic import() without string/comment false positives', () => {
+    const spy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:m');
+    const ok = record({
+      text: 'const s = "import(\'x\')";\n// import(\'y\')\nconst r = /import\\(/;\nexport const x = 1;',
+    });
+    expect(() => UnitBlobMinter.mint([ok], 'entry')).not.toThrow();
+    const commented = record({
+      text: "const p = import /*c*/ ('./x.js');\nexport const x = 1;",
+    });
+    expect(() => UnitBlobMinter.mint([commented], 'entry')).toThrow(
+      MfeLoadError,
+    );
+    spy.mockRestore();
   });
 });
 
