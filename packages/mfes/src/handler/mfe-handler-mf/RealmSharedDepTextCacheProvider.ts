@@ -223,6 +223,7 @@ export class RealmSharedDepTextCacheProvider {
     }
     // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-if-empty
 
+    // @cpt-begin:cpt-frontx-algo-unit-format-contract-loader-surface:p1:inst-loader-slot-adopt
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-if-version-known
     if (RealmSharedDepTextCacheProvider.isRecognizedEntry(existing)) {
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-adopt
@@ -242,7 +243,9 @@ export class RealmSharedDepTextCacheProvider {
       // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-adopt
     }
     // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-if-version-known
+    // @cpt-end:cpt-frontx-algo-unit-format-contract-loader-surface:p1:inst-loader-slot-adopt
 
+    // @cpt-begin:cpt-frontx-algo-unit-format-contract-loader-surface:p1:inst-loader-slot-versioned
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-else-version-unknown
     // The entry is malformed, or carries a protocol version this copy does
     // not recognize. Left entirely untouched below — not read further, not
@@ -271,6 +274,7 @@ export class RealmSharedDepTextCacheProvider {
     // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-return-cache
     // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-fallback-local
     // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-else-version-unknown
+    // @cpt-end:cpt-frontx-algo-unit-format-contract-loader-surface:p1:inst-loader-slot-versioned
   }
 }
 // `inst-rsdc-hold-reference` is realized by `MfeHandlerMF`'s own

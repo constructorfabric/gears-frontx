@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 description: Specifies the ecosystem-owned unit format contract for shared-dependency output — type-system-neutral JSON graph files typed by TypeScript interfaces exported from `./unit-format`, content-identified units and packs under fixed naming rules — the integrity verification every fetched file passes before cache admission, the byte-agreement measurement across builds, and the `UnitFormatConformance` suite every producing build must pass.
 ---
 
@@ -18,6 +18,7 @@ description: Specifies the ecosystem-owned unit format contract for shared-depen
   - [Unit and Graph-File Contract](#unit-and-graph-file-contract)
   - [Fetched-File Integrity Verification](#fetched-file-integrity-verification)
   - [Byte-Agreement Measurement](#byte-agreement-measurement)
+  - [Sanctioned Loader Surface](#sanctioned-loader-surface)
 - [4. States (CDSL)](#4-states-cdsl)
   - [None](#none)
 - [5. Definitions of Done](#5-definitions-of-done)
@@ -25,6 +26,7 @@ description: Specifies the ecosystem-owned unit format contract for shared-depen
   - [Integrity Verification Before Cache Admission](#integrity-verification-before-cache-admission)
   - [Byte-Agreement Measurement — Runtime and Cross-Build](#byte-agreement-measurement--runtime-and-cross-build)
   - [Producer Conformance Suite Shipped With the Contract](#producer-conformance-suite-shipped-with-the-contract)
+  - [Loader Surface Limited to Fetch, Verify, Cache and Mint](#loader-surface-limited-to-fetch-verify-cache-and-mint)
 - [6. Acceptance Criteria](#6-acceptance-criteria)
 
 <!-- /toc -->
@@ -37,7 +39,7 @@ description: Specifies the ecosystem-owned unit format contract for shared-depen
 
 ### 1.1 Overview
 
-Defines the format a producing build emits and the runtime reads for shared-dependency reuse: the unit of sharing (one unit per strongly connected component of an ESM package's own module graph, one unit per CommonJS package), the content-addressed graph file that describes each `package@version` — its units with their content identities, its package-level bare requirements, its unit mode, its producer and that producer's version, and an optional whole-package pack — and the naming and content-identity rules for units, packs and graph files. Graph files are type-system-neutral JSON build artifacts; the TypeScript interfaces exported from the package's `./unit-format` entry are their single typing source, and no graph schema exists in any type system. The ecosystem owns this contract and ships, beside those interfaces, a `UnitFormatConformance` suite that any producing build must pass; the producer implementation itself is template territory and no producer option may change unit bytes. The same contract carries the integrity verification every fetched graph file, unit and pack passes before it enters the realm cache and the byte-agreement measurement that makes a non-deterministic producer observable in the field and fails builds that disagree where they meet.
+Defines the format a producing build emits and the runtime reads for shared-dependency reuse: the unit of sharing (one unit per strongly connected component of an ESM package's own module graph, one unit per CommonJS package), the content-addressed graph file that describes each `package@version` — its units with their content identities, its package-level bare requirements, its unit mode, its producer and that producer's version, and an optional whole-package pack — and the naming and content-identity rules for units, packs and graph files. Graph files are type-system-neutral JSON build artifacts; the TypeScript interfaces exported from the package's `./unit-format` entry are their single typing source, and no graph schema exists in any type system. The ecosystem owns this contract and ships, beside those interfaces, a `UnitFormatConformance` suite that any producing build must pass; the producer implementation itself is template territory and no producer option may change unit bytes. Beside the contract subpath, the package ships a `./unit-loader` subpath exposing exactly the fetch, verify, realm-cache and mint classes — the surface a host's own unit loading (the shell boot chunk a producing build emits) consumes without reaching the registry, orchestrating handler or mediator. The same contract carries the integrity verification every fetched graph file, unit and pack passes before it enters the realm cache and the byte-agreement measurement that makes a non-deterministic producer observable in the field and fails builds that disagree where they meet.
 
 ### 1.2 Purpose
 
@@ -154,6 +156,20 @@ Internal system functions and procedures that do not interact with actors direct
 2. [ ] - `p1` - At runtime, when manifests declare differing content identities for the same `package@version` under the same `sharedChunkRule`, warn once per pair of conflicting identities — naming the producer versions involved — and emit a diagnostics event, so the conflict is observable without depending on build-time checks; mismatches between old-rule and new-rule entries are summarized once per page rather than warned per pair - `inst-runtime-warn-once`
 3. [ ] - `p1` - Treat the runtime measurement as the measurer of last resort: deterministic output stays the producing build's obligation, and the remedy for disagreement is determinism in that build, never a weaker reuse key - `inst-determinism-obligation`
 
+### Sanctioned Loader Surface
+
+- [x] `p1` - **ID**: `cpt-frontx-algo-unit-format-contract-loader-surface`
+
+**Input**: A consumer — the orchestrating handler or a host loading its own shared set — importing the package's `./unit-loader` subpath
+
+**Output**: Exactly the fetch, verify, realm-cache and mint capabilities as classes, converging on the versioned realm content-identity cache
+
+**Steps**:
+1. [x] - `p1` - Export exactly the loader capability classes — `SharedUnitGraphLoader` for fetch and verify, `UnitBlobMinter` for minting, `RealmSharedDepTextCacheProvider` for the realm cache — with their supporting types as type-only exports; nothing else crosses the subpath - `inst-loader-surface-classes`
+2. [x] - `p1` - Reach no registry, orchestrating handler (`MfeHandlerMF`) or mediator module from the subpath's module graph, and add nothing to the root barrel — a host's own loader imports the same collaborator classes the handler orchestrates, never the orchestration itself - `inst-loader-surface-no-orchestration`
+3. [x] - `p1` - Adopt a realm rendezvous slot entry whose protocol version and shape this copy recognizes — **RETURN** the published realm cache, so every compatible copy, handler-driven or host-driven, dedupes verified text by content identity - `inst-loader-slot-adopt`
+4. [x] - `p1` - On a malformed slot entry or one carrying a protocol version this copy does not recognize, **RETURN** a bounded cache local to this copy, logging a diagnostic and leaving the foreign entry untouched — a shape mismatch means do-not-share, never a thrown error (`cpt-frontx-adr-shared-dep-cache-reach`) - `inst-loader-slot-versioned`
+
 ## 4. States (CDSL)
 
 ### None
@@ -239,6 +255,24 @@ The package **MUST** ship `UnitFormatConformance` from its `./unit-format` entry
 **Touches**:
 - Entities: `MfManifest`
 
+### Loader Surface Limited to Fetch, Verify, Cache and Mint
+
+- [x] `p1` - **ID**: `cpt-frontx-dod-unit-format-contract-loader-surface`
+
+The package **MUST** publish a `./unit-loader` subpath exposing exactly the fetch/verify class `SharedUnitGraphLoader`, the mint class `UnitBlobMinter` and the realm-cache accessor `RealmSharedDepTextCacheProvider` — with `SharedDepTextCache` and `RealmSharedDepTextCacheDiagnostics` as type-only exports — the same collaborator classes `MfeHandlerMF` orchestrates. The subpath's module graph **MUST NOT** reach the registry, the orchestrating handler or the mediator, and the root barrel **MUST NOT** gain implementation exports from it. Through the accessor a consumer **MUST** reach the versioned realm rendezvous: a slot entry whose protocol version or shape the copy does not recognize **MUST** be left untouched and never shared — the copy proceeds on its own bounded fallback cache and no error is thrown — while a recognized entry **MUST** be adopted so compatible copies dedupe verified text by content identity.
+
+**Implements**:
+- `cpt-frontx-algo-unit-format-contract-loader-surface`
+
+**Addresses**:
+- `cpt-frontx-adr-shared-dep-reuse`
+- `cpt-frontx-adr-shared-dep-cache-reach`
+
+**Constraints**: none owned
+
+**Touches**:
+- Entities: `MfManifest`
+
 ## 6. Acceptance Criteria
 
 - [ ] For an ESM package, output contains one unit per strongly connected component of the package's own module graph (one unit per module except inside an import cycle); for a CommonJS or pre-bundled package, exactly one unit; each unit's identity is `package@version` + module path(s).
@@ -250,3 +284,5 @@ The package **MUST** ship `UnitFormatConformance` from its `./unit-format` entry
 - [ ] Two manifests declaring different content identities for the same `package@version` under the same `sharedChunkRule` produce exactly one warning per conflicting pair naming the producer versions, plus a diagnostics event; old-rule versus new-rule mismatches are summarized once per page.
 - [ ] `UnitFormatConformance` compares two independent output directories of the same producer and inputs, returning typed violations — naming, hash-chain, `requires`-closure, relative-import-resolution and byte-identity failures each named with the offending file — and a producer CI run fails on any violation.
 - [ ] The shipped fixture packages (ESM with an import cycle, CommonJS, barrel, subpath import) produce conforming output that the package's own tests show the runtime loading.
+- [x] The `./unit-loader` subpath exports exactly `SharedUnitGraphLoader`, `UnitBlobMinter` and `RealmSharedDepTextCacheProvider` (plus type-only supporting types), its module graph reaches no registry, orchestrating handler or mediator module, and the root barrel is unchanged.
+- [x] A realm-slot entry whose protocol version or shape a copy does not recognize is left untouched and never shared — the copy proceeds on its own bounded fallback cache with no thrown error — while a recognized entry is adopted so compatible copies dedupe verified text by content identity.
