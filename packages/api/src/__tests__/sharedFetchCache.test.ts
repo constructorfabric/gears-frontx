@@ -162,11 +162,19 @@ describe('SharedFetchCache', () => {
       staleTime: 1_000,
     });
     first.abort();
-    const secondPromise = cache.getOrFetch(['users'], async () => 'fresh', { staleTime: 1_000 });
-    lateResult.resolve('stale');
+    const freshFetcher = vi.fn(async () => 'fresh');
+    const secondPromise = cache.getOrFetch(['users'], freshFetcher, { staleTime: 1_000 });
+    await Promise.resolve();
+    await Promise.resolve();
 
+    // Checked before awaiting the second caller, which would wait on the abandoned fetch if it
+    // had joined it.
+    expect(freshFetcher).toHaveBeenCalledTimes(1);
     await expect(firstPromise).rejects.toMatchObject({ name: 'AbortError' });
     await expect(secondPromise).resolves.toBe('fresh');
+
+    // The abandoned fetch settles only after the new one has stored its data.
+    lateResult.resolve('stale');
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(cache.lookup(['users'], { staleTime: 1_000 })).toEqual({ hit: true, data: 'fresh' });
@@ -290,6 +298,36 @@ describe('SharedFetchCache', () => {
     await expect(pendingPromise).rejects.toMatchObject({ name: 'AbortError' });
     expect(inspectSharedFetchCacheBookkeepingForTest(cache).versions).toBe(0);
   });
+
+  it.each([
+    {
+      outcome: 'fails',
+      fetcher: () => new Promise<string>((_resolve, reject) => setTimeout(() => reject(new Error('boom')), 0)),
+      staleTime: 1_000,
+    },
+    {
+      outcome: 'resolves with staleTime 0',
+      fetcher: () => new Promise<string>((resolve) => setTimeout(() => resolve('replacement'), 0)),
+      staleTime: 0,
+    },
+  ])(
+    'releases version bookkeeping when the replacement for an invalidated in-flight entry $outcome',
+    async ({ fetcher, staleTime }) => {
+      const cache = createSharedFetchCache();
+      const invalidatedPromise = cache.getOrFetch(['users'], abortableFetcher([], 'first'), {
+        staleTime: 1_000,
+      });
+      await Promise.resolve();
+      cache.invalidate(['users']);
+
+      // The replacement is still in flight when the invalidated fetch settles.
+      const replacementPromise = cache.getOrFetch(['users'], fetcher, { staleTime });
+      await expect(invalidatedPromise).rejects.toMatchObject({ name: 'AbortError' });
+      await replacementPromise.catch(() => undefined);
+
+      expect(inspectSharedFetchCacheBookkeepingForTest(cache).versions).toBe(0);
+    }
+  );
 
   it('normalizes caller-provided Error abort reasons to AbortError', async () => {
     const cache = createSharedFetchCache();
