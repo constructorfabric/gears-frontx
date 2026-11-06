@@ -29,6 +29,8 @@ export function createEventsManager({ hooks, config, logger }: TelemetryContext)
   const currentPageRecordId: TelemetryRecordId | null = null;
   const scheduler = createScheduler(flush);
   let queue: TelemetryRecord[] = [];
+  // Set by teardown once the final drain has run; records logged after that are dropped.
+  let closed = false;
 
   return {
     start,
@@ -46,6 +48,8 @@ export function createEventsManager({ hooks, config, logger }: TelemetryContext)
     // Flush rather than cancel: whatever is queued is up to 5s of events, and the POST carries
     // `keepalive` so it survives the teardown that prompted this call.
     scheduler.exec();
+    // Closed only after the drain, so a parting event a teardown hook logged is in that batch.
+    closed = true;
     // @cpt-end:cpt-frontx-telemetry-algo-event-collection-forced-drain:p1:inst-teardown-drain
   }
 
@@ -85,6 +89,21 @@ export function createEventsManager({ hooks, config, logger }: TelemetryContext)
       // @cpt-end:cpt-frontx-telemetry-algo-event-collection-record-build:p1:inst-apply-identity-last
     };
     // @cpt-end:cpt-frontx-telemetry-algo-event-collection-record-build:p1:inst-build-record
+
+    // Nothing would deliver a record queued now: the visibility listener is gone, and a new
+    // timer would POST after the application asked for teardown.
+    // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-record-build:p1:inst-check-closed
+    // @cpt-begin:cpt-frontx-telemetry-state-event-collection-client-lifecycle:p2:inst-destroyed-drops-events
+    if (closed) {
+      // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-record-build:p1:inst-log-dropped
+      logger.logError('Telemetry has been destroyed; the event was not sent.', name);
+      // @cpt-end:cpt-frontx-telemetry-algo-event-collection-record-build:p1:inst-log-dropped
+      // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-record-build:p1:inst-return-dropped
+      return record;
+      // @cpt-end:cpt-frontx-telemetry-algo-event-collection-record-build:p1:inst-return-dropped
+    }
+    // @cpt-end:cpt-frontx-telemetry-state-event-collection-client-lifecycle:p2:inst-destroyed-drops-events
+    // @cpt-end:cpt-frontx-telemetry-algo-event-collection-record-build:p1:inst-check-closed
 
     // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-record-build:p1:inst-call-event-hook
     hooks.callHooksSync('event', record);
