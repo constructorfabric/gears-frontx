@@ -232,6 +232,13 @@ interface LoadBlobState {
 interface SharedDepUnitContext {
   readonly manifest: MfManifest;
   readonly graphs: readonly LoadedGraph[];
+  /**
+   * Live package-name → loaded-graph lookup `unitImportToken` resolves
+   * through: extended as a lazy `spec:` resolution fetches further graph
+   * files, so a unit minted in a later batch resolves its specifiers
+   * against every graph the load has, not only the boot fetch set.
+   */
+  readonly graphByName: Map<string, LoadedGraph>;
   readonly fetchVerified: (
     url: string,
     contentHash: string,
@@ -1555,7 +1562,12 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         return unitLoaderUrl;
       },
       tokenFor: (record, specifier) =>
-        MfeHandlerMF.unitImportToken(record, specifier, graphByName),
+        MfeHandlerMF.unitImportToken(
+          record,
+          specifier,
+          graphByName,
+          manifest.shared
+        ),
     };
     const specifierToBlob = UnitBlobMinter.mint(
       plan.records,
@@ -1573,6 +1585,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     const sharedDepUnits: SharedDepUnitContext = {
       manifest,
       graphs,
+      graphByName,
       fetchVerified,
       resolveAssetUrl,
       mintedKeys: new Set(plan.records.map((r) => r.key)),
@@ -1618,7 +1631,8 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   private static unitImportToken(
     record: SharedDepSourceRecord,
     specifier: string,
-    graphByName: ReadonlyMap<string, LoadedGraph>
+    graphByName: ReadonlyMap<string, LoadedGraph>,
+    shared: readonly MfManifestShared[]
   ): string | undefined {
     const tokenFor = (
       loaded: LoadedGraph,
@@ -1642,9 +1656,14 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     const loaded = graphByName.get(name);
     if (loaded === undefined) {
       // The package's graph was outside the boot fetch set (named only
-      // by a dynamic import): declared deps get a lazy `spec:` token so
-      // the resolver fetches the graph and mints on demand.
-      return `spec:${specifier}`;
+      // by a dynamic import): a declared dep WITH a graph file gets a
+      // lazy `spec:` token so the resolver fetches the graph and mints
+      // on demand (R3-03). Anything else — an undeclared package, or a
+      // shared entry without a graphFile — has nothing a `spec:`
+      // resolution could fetch, so the call mints untouched.
+      return shared.some((d) => d.name === name && d.graphFile !== undefined)
+        ? `spec:${specifier}`
+        : undefined;
     }
     const unit = SharedGraphIndex.of(loaded).entryUnit(subpath);
     return unit === undefined ? undefined : tokenFor(loaded, unit);
@@ -1782,7 +1801,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       // The graph fetch+register happens before the mint batch is
       // enqueued — the batch itself chains on `ctx.mintQueue` and must
       // never be awaited from inside it.
-      pending = this.ensureSharedDepGraph(ctx, dep, entryId).then(
+      pending = this.ensureSharedDepGraph(ctx, dep, specifier, entryId).then(
         () =>
           this.runSharedDepMintBatch(
             ctx,
@@ -1811,44 +1830,72 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 
   /**
    * Fetch `dep`'s graph file on demand (outside the initial
-   * requires-closure fetch set), check the `requires` closure against
-   * the manifest's shared set, and register every unit in the load's
-   * `unitByKey`. Runs BEFORE the mint batch is enqueued, so the batch
-   * walks the freshest graphs.
+   * requires-closure fetch set) TOGETHER WITH the shard or partition
+   * documents `specifier`'s reach needs (R3-01) — a sharded package's
+   * index graph carries no units of its own, so without the shard rounds
+   * a lazy import into it would find no unit — plus the index graphs of
+   * any further declared deps the reach uncovers. Runs the same
+   * walk-driven fetch-set rounds as the boot load through
+   * `SharedGraphSetLoader.loadMore`, deduped through `fetchVerified`;
+   * then checks the `requires` closure of every newly fetched graph
+   * against the manifest's shared set and registers every unit —
+   * including units merged into previously loaded graphs — in the
+   * load's `unitByKey`. Runs BEFORE the mint batch is enqueued, so the
+   * batch walks the freshest graphs.
    */
   private async ensureSharedDepGraph(
     ctx: SharedDepUnitContext,
     dep: MfManifestShared,
+    specifier: string,
     entryId: string
   ): Promise<void> {
     const graphs = ctx.graphs as LoadedGraph[];
-    if (graphs.some((g) => g.dep.name === dep.name)) return;
-    const graphRef = dep.graphFile as { location: string; contentHash: string };
-    const loaded = await SharedUnitGraphLoader.loadGraph(
-      dep,
-      ctx.resolveAssetUrl(graphRef.location),
-      (url: string) =>
+    if (
+      graphs.some(
+        (g) => g.dep.name === dep.name && g.dep.version === dep.version
+      )
+    ) {
+      return;
+    }
+    const byName = new Map(graphs.map((g) => [g.dep.name, g] as const));
+    const fresh = await SharedGraphSetLoader.loadMore(
+      ctx.manifest.shared,
+      [specifier],
+      byName,
+      ctx.resolveAssetUrl,
+      (d, url) =>
         ctx.fetchVerified(
           url,
-          graphRef.contentHash,
-          `graph:${dep.name}@${dep.version}`
+          (d.graphFile as { contentHash: string }).contentHash,
+          `graph:${d.name}@${d.version}`
+        ),
+      (d, ref, url) =>
+        ctx.fetchVerified(
+          url,
+          ref.contentHash,
+          `shard:${d.name}@${d.version}:${ref.location}`
         ),
       entryId
     );
-    // The lazily fetched graph's requirements must hold against the
+    // The lazily fetched graphs' requirements must hold against the
     // manifest's shared set, as for every eagerly fetched graph.
     SharedUnitGraphLoader.checkRequiresClosure(
-      [loaded],
+      fresh,
       new Set(ctx.manifest.shared.map((d) => d.name)),
       entryId
     );
-    graphs.push(loaded);
-    for (const unit of loaded.graph.units) {
-      if (!Array.isArray(unit.modulePaths)) continue;
-      (ctx.unitByKey as Map<string, { loaded: LoadedGraph; unit: SharedDepGraphUnit }>).set(
-        MfeHandlerMF.unitRecordKey(loaded, unit),
-        { loaded, unit }
-      );
+    for (const loaded of fresh) {
+      graphs.push(loaded);
+      ctx.graphByName.set(loaded.dep.name, loaded);
+    }
+    for (const loaded of graphs) {
+      for (const unit of loaded.graph.units) {
+        if (!Array.isArray(unit.modulePaths)) continue;
+        (ctx.unitByKey as Map<string, { loaded: LoadedGraph; unit: SharedDepGraphUnit }>).set(
+          MfeHandlerMF.unitRecordKey(loaded, unit),
+          { loaded, unit }
+        );
+      }
     }
   }
 
@@ -1864,7 +1911,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     entryId: string
   ): MfManifestRoot[] {
     const loaded = (ctx.graphs as LoadedGraph[]).find(
-      (g) => g.dep.name === dep.name
+      (g) => g.dep.name === dep.name && g.dep.version === dep.version
     );
     const target = loaded !== undefined
       ? SharedGraphIndex.of(loaded).entryUnit(subpath)

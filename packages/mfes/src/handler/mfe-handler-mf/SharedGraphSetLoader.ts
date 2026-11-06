@@ -37,6 +37,7 @@ import type {
 } from '../../manifest/mf-manifest';
 import type {
   SharedDepGraphFile,
+  SharedDepGraphFileRef,
   SharedDepGraphShard,
 } from '../../unit-format/graph-file';
 import { SharedEntryResolver } from './SharedEntryResolver';
@@ -50,16 +51,23 @@ import {
 /** Work item: one shard of `dep`'s graph to fetch and merge. */
 interface ShardWork {
   dep: MfManifestShared;
-  /** `'<units>'` for the whole-unit-list shard, else an `entryShards` key. */
+  /**
+   * `'<units>'` for the whole-unit-list shard, `'p:<index>'` for a
+   * disjoint `unitPartitions` document, else an `entryShards` key.
+   */
   key: string;
 }
 
 const UNITS_KEY = '<units>';
 
+/** The work key of `unitPartitions[i]`. */
+const partitionKey = (index: number): string => `p:${index}`;
+
 /** Merge state one pass accumulates, per package name. */
 interface MergeState {
-  /** Entry shard keys already merged into the loaded graph. */
-  entryShards: Map<string, Set<string>>;
+  /** Shard keys already merged into the loaded graph — `entryShards`
+   * keys and `'p:<index>'` partition keys alike. */
+  shardKeys: Map<string, Set<string>>;
   /** Packages whose whole-unit list is already merged. */
   allUnits: Set<string>;
   /** Merged unit locations, for dedupe across overlapping shards. */
@@ -95,25 +103,92 @@ export class SharedGraphSetLoader {
     return names;
   }
 
+  /** The ref a shard work key names, or `undefined` when it is gone. */
+  private static refFor(
+    graph: SharedDepGraphFile,
+    key: string,
+  ): SharedDepGraphFileRef | undefined {
+    if (key === UNITS_KEY) return graph.unitsShard;
+    if (key.startsWith('p:')) {
+      return graph.unitPartitions?.[Number(key.slice(2))];
+    }
+    return graph.entryShards?.[key];
+  }
+
+  /** Whether `graph` carries the disjoint-partition encoding. */
+  private static isPartitioned(graph: SharedDepGraphFile): boolean {
+    return (
+      graph.unitPartitions !== undefined &&
+      graph.modulePartitions !== undefined
+    );
+  }
+
   /**
-   * The shard work a specifier of `dep`'s package needs: the first
-   * matching `entryShards` key (`'.'` for the package name, `'./sub'`
-   * or its module-path candidates for a subpath), else the whole-unit
-   * list — nothing when the package is not sharded or the unit set is
-   * already complete.
+   * Whole-package work for a sharded graph: the whole-unit-list shard
+   * when one is declared, else every unmerged partition — nothing when
+   * the unit set is already complete or the graph is not sharded.
+   */
+  private static wholeWorks(
+    loaded: LoadedGraph,
+    merged: MergeState,
+  ): ShardWork[] {
+    const name = loaded.dep.name;
+    if (merged.allUnits.has(name)) return [];
+    if (loaded.graph.unitsShard !== undefined) {
+      return [{ dep: loaded.dep, key: UNITS_KEY }];
+    }
+    const parts = loaded.graph.unitPartitions;
+    if (parts === undefined) return [];
+    const mergedKeys = merged.shardKeys.get(name) ?? new Set<string>();
+    return parts
+      .map((_, i) => ({ dep: loaded.dep, key: partitionKey(i) }))
+      .filter((w) => !mergedKeys.has(w.key));
+  }
+
+  /**
+   * The shard work a specifier of `dep`'s package needs. A partitioned
+   * graph resolves the specifier to a module path (`entryModulePaths`,
+   * `mainModulePath`, or the subpath's module-path candidates) and names
+   * the one partition owning it through `modulePartitions` — a deep
+   * module specifier included (SZ-014); an unindexed path falls back to
+   * the whole-unit-list shard or every remaining partition rather than
+   * under-fetching. A legacy graph names the first matching
+   * `entryShards` key, else the whole-unit list — nothing when the
+   * package is not sharded or the unit set is already complete.
    */
   private static shardFor(
     loaded: LoadedGraph,
     subpath: string,
     merged: MergeState,
-  ): ShardWork | undefined {
+  ): ShardWork[] {
     const graph = loaded.graph;
-    if (graph.unitsShard === undefined && graph.entryShards === undefined) {
-      return undefined;
+    if (
+      graph.unitsShard === undefined &&
+      graph.entryShards === undefined &&
+      graph.unitPartitions === undefined
+    ) {
+      return [];
     }
     const name = loaded.dep.name;
-    if (merged.allUnits.has(name)) return undefined;
-    const mergedKeys = merged.entryShards.get(name) ?? new Set<string>();
+    if (merged.allUnits.has(name)) return [];
+    const mergedKeys = merged.shardKeys.get(name) ?? new Set<string>();
+    if (SharedGraphSetLoader.isPartitioned(graph)) {
+      const paths =
+        subpath === ''
+          ? [graph.entryModulePaths?.['.'], graph.mainModulePath]
+          : [
+              graph.entryModulePaths?.[`./${subpath}`],
+              ...SharedSpecifierRewriter.subpathModulePathCandidates(subpath),
+            ];
+      for (const path of paths) {
+        if (path === undefined) continue;
+        const idx = graph.modulePartitions?.[path];
+        if (idx === undefined) continue;
+        const key = partitionKey(idx);
+        return mergedKeys.has(key) ? [] : [{ dep: loaded.dep, key }];
+      }
+      return SharedGraphSetLoader.wholeWorks(loaded, merged);
+    }
     const candidates =
       subpath === ''
         ? ['.']
@@ -125,23 +200,45 @@ export class SharedGraphSetLoader {
           ];
     for (const key of candidates) {
       if (graph.entryShards?.[key] === undefined) continue;
-      if (!mergedKeys.has(key)) return { dep: loaded.dep, key };
-      return undefined;
+      if (!mergedKeys.has(key)) return [{ dep: loaded.dep, key }];
+      return [];
     }
-    if (graph.unitsShard !== undefined) return { dep: loaded.dep, key: UNITS_KEY };
-    return undefined;
+    if (graph.unitsShard !== undefined) {
+      return [{ dep: loaded.dep, key: UNITS_KEY }];
+    }
+    return [];
   }
 
-  /** Whole-package work for `dep`, when loaded and sharded. */
-  private static allUnitsWork(
-    name: string,
-    loaded: ReadonlyMap<string, LoadedGraph>,
+  /**
+   * The shard work a unit-identifier root (`{name, modulePaths}`) of a
+   * loaded, sharded package needs: a partitioned graph resolves each
+   * declared module path through `modulePartitions` (SZ-015) — an
+   * unindexed path falls back to the whole set rather than
+   * under-fetching; other sharded encodings need the whole-unit list.
+   */
+  private static unitIdWorks(
+    loaded: LoadedGraph,
+    modulePaths: readonly string[] | undefined,
     merged: MergeState,
-  ): ShardWork | undefined {
-    const g = loaded.get(name);
-    if (g === undefined || g.graph.unitsShard === undefined) return undefined;
-    if (merged.allUnits.has(name)) return undefined;
-    return { dep: g.dep, key: UNITS_KEY };
+  ): ShardWork[] {
+    const graph = loaded.graph;
+    if (merged.allUnits.has(loaded.dep.name)) return [];
+    if (SharedGraphSetLoader.isPartitioned(graph)) {
+      const mergedKeys =
+        merged.shardKeys.get(loaded.dep.name) ?? new Set<string>();
+      const indices = new Set<number>();
+      for (const path of modulePaths ?? []) {
+        const idx = graph.modulePartitions?.[path];
+        if (idx === undefined) {
+          return SharedGraphSetLoader.wholeWorks(loaded, merged);
+        }
+        indices.add(idx);
+      }
+      return [...indices]
+        .map((i) => ({ dep: loaded.dep, key: partitionKey(i) }))
+        .filter((w) => !mergedKeys.has(w.key));
+    }
+    return SharedGraphSetLoader.wholeWorks(loaded, merged);
   }
 
   /**
@@ -168,24 +265,31 @@ export class SharedGraphSetLoader {
         return;
       }
       if (subpath === undefined) {
-        const work = SharedGraphSetLoader.allUnitsWork(name, loaded, merged);
-        if (work !== undefined) shards.push(work);
+        shards.push(...SharedGraphSetLoader.wholeWorks(g, merged));
         return;
       }
-      const work = SharedGraphSetLoader.shardFor(g, subpath, merged);
-      if (work !== undefined) shards.push(work);
+      shards.push(...SharedGraphSetLoader.shardFor(g, subpath, merged));
     };
     const needSpecifier = (specifier: string): void => {
       const { name, subpath } = SharedEntryResolver.split(specifier);
       need(name, subpath);
     };
-    // Roots: string roots name specifiers; unit-id roots need the whole
-    // unit list of a sharded package (no shard key a module path maps to).
+    // Roots: string roots name specifiers; unit-id roots name the
+    // partitions their module paths index into (SZ-015), or the whole
+    // unit list of a legacy-sharded package.
     for (const root of combinedRoots) {
       if (typeof root === 'string') {
         needSpecifier(root);
       } else if (root !== null && typeof root === 'object') {
-        need(root.name, undefined);
+        if (!byName.has(root.name)) continue;
+        const g = loaded.get(root.name);
+        if (g === undefined) {
+          packages.add(root.name);
+          continue;
+        }
+        shards.push(
+          ...SharedGraphSetLoader.unitIdWorks(g, root.modulePaths, merged),
+        );
       }
     }
     const reach = SharedUnitGraphLoader.reachUnits(
@@ -228,6 +332,44 @@ export class SharedGraphSetLoader {
         }
       }
     }
+    // Disjoint partitions (SZ-016): a reached unit's relative import
+    // resolving to a module path of an unfetched partition fetches that
+    // partition next — the walk composes the intra-package reach across
+    // partitions instead of relying on overlapping per-entry closures.
+    for (const [name, units] of reach.reachedUnits) {
+      const g = loaded.get(name);
+      const index = g?.graph.modulePartitions;
+      if (
+        g === undefined ||
+        index === undefined ||
+        g.graph.unitPartitions === undefined
+      ) {
+        continue;
+      }
+      const mergedKeys = merged.shardKeys.get(name);
+      const emitted = new Set<string>();
+      for (const unit of units) {
+        if (
+          !Array.isArray(unit.modulePaths) ||
+          !Array.isArray(unit.relativeImports)
+        ) {
+          continue;
+        }
+        for (const rel of unit.relativeImports) {
+          for (const member of unit.modulePaths) {
+            const idx =
+              index[
+                SharedSpecifierRewriter.resolveRelativeModulePath(member, rel)
+              ];
+            if (idx === undefined) continue;
+            const key = partitionKey(idx);
+            if ((mergedKeys?.has(key) ?? false) || emitted.has(key)) continue;
+            emitted.add(key);
+            shards.push({ dep: g.dep, key });
+          }
+        }
+      }
+    }
     return { packages, shards, fetchAllRest };
   }
 
@@ -265,9 +407,9 @@ export class SharedGraphSetLoader {
       merged.allUnits.add(name);
       return;
     }
-    const set = merged.entryShards.get(name) ?? new Set<string>();
+    const set = merged.shardKeys.get(name) ?? new Set<string>();
     set.add(key);
-    merged.entryShards.set(name, set);
+    merged.shardKeys.set(name, set);
   }
 
   /**
@@ -297,7 +439,7 @@ export class SharedGraphSetLoader {
         entryId
       );
     const merged: MergeState = {
-      entryShards: new Map(),
+      shardKeys: new Map(),
       allUnits: new Set(),
       unitLocations: new Map(),
     };
@@ -305,10 +447,7 @@ export class SharedGraphSetLoader {
     const fetchShard = async (work: ShardWork): Promise<void> => {
       const g = loaded.get(work.dep.name);
       if (g === undefined) return;
-      const ref =
-        work.key === UNITS_KEY
-          ? g.graph.unitsShard
-          : g.graph.entryShards?.[work.key];
+      const ref = SharedGraphSetLoader.refFor(g.graph, work.key);
       // Mark even when the ref is gone: the work is discharged either
       // way, and leaving it unmerged would re-emit it every round.
       if (ref === undefined) {
@@ -326,9 +465,9 @@ export class SharedGraphSetLoader {
       SharedGraphSetLoader.markMerged(work.dep.name, work.key, merged);
     };
     const allShardWork = (): ShardWork[] =>
-      [...loaded.values()]
-        .filter((g) => g.graph.unitsShard !== undefined)
-        .map((g) => ({ dep: g.dep, key: UNITS_KEY }));
+      [...loaded.values()].flatMap((g) =>
+        SharedGraphSetLoader.wholeWorks(g, merged),
+      );
 
     // Fetch-all path: no roots declared, unchanged semantics — every
     // index graph, and the whole-unit list of every sharded package.
@@ -343,15 +482,46 @@ export class SharedGraphSetLoader {
       ...roots,
       ...(extraRoots ?? []),
     ];
-    // Fixpoint on the fetch set: a package is requested at most once
-    // (`wanted` keeps naming a reached package until it loads, so
-    // gating on `loaded` alone would re-request a fetch that yields no
-    // graph forever), and a round that has nothing to do — every wanted
-    // dep already requested or loaded, every wanted shard already
-    // merged — ends the loop even when `wanted` still flags
-    // `fetchAllRest` (a reached package recording no lazy imports and
-    // no `requires` keeps flagging it after the last fetch).
-    const requested = new Set<string>();
+    await SharedGraphSetLoader.runRounds(
+      fetchable,
+      combinedRoots,
+      loaded,
+      merged,
+      loadOne,
+      fetchShard,
+      byName,
+      entryId,
+    );
+    return fetchable
+      .map((d) => loaded.get(d.name))
+      .filter((g): g is LoadedGraph => g !== undefined);
+  }
+
+  /**
+   * The fetch-set fixpoint shared by {@link load} and {@link loadMore}:
+   * a package is requested at most once (`wanted` keeps naming a reached
+   * package until it loads, so gating on `loaded` alone would re-request
+   * a fetch that yields no graph forever), and a round that has nothing
+   * to do — every wanted dep already requested or loaded, every wanted
+   * shard already merged — ends the loop even when `wanted` still flags
+   * `fetchAllRest` (a reached package recording no lazy imports and no
+   * `requires` keeps flagging it after the last fetch).
+   */
+  private static async runRounds(
+    fetchable: readonly MfManifestShared[],
+    combinedRoots: readonly MfManifestRoot[],
+    loaded: Map<string, LoadedGraph>,
+    merged: MergeState,
+    loadOne: (dep: MfManifestShared) => Promise<LoadedGraph>,
+    fetchShard: (work: ShardWork) => Promise<void>,
+    byName: ReadonlyMap<string, MfManifestShared>,
+    entryId: string,
+  ): Promise<void> {
+    const allShardWork = (): ShardWork[] =>
+      [...loaded.values()].flatMap((g) =>
+        SharedGraphSetLoader.wholeWorks(g, merged),
+      );
+    const requested = new Set<string>(loaded.keys());
     let pending = SharedGraphSetLoader.rootPackageNames(combinedRoots);
     let shardQueue: ShardWork[] = [];
     let fetchAllRest = false;
@@ -362,16 +532,13 @@ export class SharedGraphSetLoader {
             .map((name) => byName.get(name))
             .filter((d): d is MfManifestShared => d !== undefined);
       const shardRound = fetchAllRest
-        ? allShardWork().filter(
-            (w) => !merged.allUnits.has(w.dep.name),
-          )
+        ? allShardWork().filter((w) => !merged.allUnits.has(w.dep.name))
         : shardQueue;
       const freshRound = round.filter((d) => !requested.has(d.name));
-      const freshShards = shardRound.filter(
-        (w) =>
-          w.key !== UNITS_KEY
-            ? !(merged.entryShards.get(w.dep.name)?.has(w.key) ?? false)
-            : !merged.allUnits.has(w.dep.name),
+      const freshShards = shardRound.filter((w) =>
+        w.key !== UNITS_KEY
+          ? !(merged.shardKeys.get(w.dep.name)?.has(w.key) ?? false)
+          : !merged.allUnits.has(w.dep.name),
       );
       if (freshRound.length === 0 && freshShards.length === 0) break;
       for (const d of freshRound) requested.add(d.name);
@@ -393,9 +560,101 @@ export class SharedGraphSetLoader {
       shardQueue = want.shards;
       fetchAllRest = want.fetchAllRest;
     }
-    return fetchable
-      .map((d) => loaded.get(d.name))
-      .filter((g): g is LoadedGraph => g !== undefined);
+  }
+
+  /**
+   * Continue the fetch set on demand — the runtime twin {@link load}
+   * uses after boot, when a lazy `spec:` import names a package whose
+   * graph was outside the initial fetch set (R3-01): the dep's index
+   * graph is fetched, then the same walk-driven rounds fetch the shard
+   * or partition documents the specifier's reach needs (deep specifiers
+   * and unit-identifier roots included) and the index graphs of newly
+   * reached declared deps. `loaded` is seeded with the graphs already
+   * fetched and is extended in place; returns the graphs this call
+   * added. Partitions whose units are already merged are seeded as
+   * merged via `modulePartitions`, so nothing is fetched twice.
+   *
+   * `fetchGraphText`/`fetchShardText` fetch raw text for the caller's
+   * dedupe/cache discipline — the documents are verified against their
+   * declared content identities inside `loadGraph`/`loadShard`, exactly
+   * as on the boot path.
+   */
+  static async loadMore(
+    deps: readonly MfManifestShared[],
+    roots: readonly MfManifestRoot[],
+    loaded: Map<string, LoadedGraph>,
+    resolveAssetUrl: (location: string) => string,
+    fetchGraphText: (dep: MfManifestShared, url: string) => Promise<string>,
+    fetchShardText: (
+      dep: MfManifestShared,
+      ref: SharedDepGraphFileRef,
+      url: string,
+    ) => Promise<string>,
+    entryId: string,
+  ): Promise<LoadedGraph[]> {
+    const fetchable = deps.filter((d) => d.graphFile !== undefined);
+    const byName = new Map(fetchable.map((d) => [d.name, d] as const));
+    const merged: MergeState = {
+      shardKeys: new Map(),
+      allUnits: new Set(),
+      unitLocations: new Map(),
+    };
+    // Seed merged partition keys from the index: a partition whose units
+    // already sit in the graph's unit list must not be fetched again.
+    for (const g of loaded.values()) {
+      const index = g.graph.modulePartitions;
+      if (index === undefined) continue;
+      for (const unit of g.graph.units) {
+        if (!Array.isArray(unit.modulePaths)) continue;
+        for (const path of unit.modulePaths) {
+          const idx = index[path];
+          if (idx !== undefined) {
+            SharedGraphSetLoader.markMerged(
+              g.dep.name,
+              partitionKey(idx),
+              merged,
+            );
+          }
+        }
+      }
+    }
+    const loadOne = (dep: MfManifestShared): Promise<LoadedGraph> =>
+      SharedUnitGraphLoader.loadGraph(
+        dep,
+        resolveAssetUrl(dep.graphFile!.location),
+        (url) => fetchGraphText(dep, url),
+        entryId,
+      );
+    const fetchShard = async (work: ShardWork): Promise<void> => {
+      const g = loaded.get(work.dep.name);
+      if (g === undefined) return;
+      const ref = SharedGraphSetLoader.refFor(g.graph, work.key);
+      if (ref === undefined) {
+        SharedGraphSetLoader.markMerged(work.dep.name, work.key, merged);
+        return;
+      }
+      const units = await SharedUnitGraphLoader.loadShard(
+        work.dep,
+        ref,
+        resolveAssetUrl(ref.location),
+        (url) => fetchShardText(work.dep, ref, url),
+        entryId,
+      );
+      SharedGraphSetLoader.mergeUnits(g, units, merged);
+      SharedGraphSetLoader.markMerged(work.dep.name, work.key, merged);
+    };
+    const before = new Set(loaded.keys());
+    await SharedGraphSetLoader.runRounds(
+      fetchable,
+      roots,
+      loaded,
+      merged,
+      loadOne,
+      fetchShard,
+      byName,
+      entryId,
+    );
+    return [...loaded.values()].filter((g) => !before.has(g.dep.name));
   }
 
   /**
@@ -421,12 +680,13 @@ export class SharedGraphSetLoader {
     const fetchable = deps.filter((d) => d.graphFile !== undefined);
     const byName = new Map(fetchable.map((d) => [d.name, d] as const));
     const merged: MergeState = {
-      entryShards: new Map(),
+      shardKeys: new Map(),
       allUnits: new Set(),
       unitLocations: new Map(),
     };
     const loaded = new Map<string, LoadedGraph>();
     const shardLocations: string[] = [];
+    const seenShardLocations = new Set<string>();
     const fetchDep = (dep: MfManifestShared): void => {
       const graph = graphOf(dep);
       if (graph === undefined) return;
@@ -439,10 +699,7 @@ export class SharedGraphSetLoader {
     const fetchShard = (work: ShardWork): void => {
       const g = loaded.get(work.dep.name);
       if (g === undefined) return;
-      const ref =
-        work.key === UNITS_KEY
-          ? g.graph.unitsShard
-          : g.graph.entryShards?.[work.key];
+      const ref = SharedGraphSetLoader.refFor(g.graph, work.key);
       if (ref === undefined) {
         SharedGraphSetLoader.markMerged(work.dep.name, work.key, merged);
         return;
@@ -450,14 +707,19 @@ export class SharedGraphSetLoader {
       const shard = shardOf(work.dep, ref.location);
       if (shard !== undefined) {
         SharedGraphSetLoader.mergeUnits(g, shard.units, merged);
-        shardLocations.push(ref.location);
+        // Two shard keys may name the same document (SZ-017): the fetch
+        // set lists each location once.
+        if (!seenShardLocations.has(ref.location)) {
+          seenShardLocations.add(ref.location);
+          shardLocations.push(ref.location);
+        }
       }
       SharedGraphSetLoader.markMerged(work.dep.name, work.key, merged);
     };
     const allShardWork = (): ShardWork[] =>
-      [...loaded.values()]
-        .filter((g) => g.graph.unitsShard !== undefined)
-        .map((g) => ({ dep: g.dep, key: UNITS_KEY }));
+      [...loaded.values()].flatMap((g) =>
+        SharedGraphSetLoader.wholeWorks(g, merged),
+      );
 
     if (roots === undefined) {
       for (const dep of fetchable) fetchDep(dep);
@@ -491,7 +753,7 @@ export class SharedGraphSetLoader {
       const freshShards = shardRound.filter(
         (w) =>
           w.key !== UNITS_KEY
-            ? !(merged.entryShards.get(w.dep.name)?.has(w.key) ?? false)
+            ? !(merged.shardKeys.get(w.dep.name)?.has(w.key) ?? false)
             : !merged.allUnits.has(w.dep.name),
       );
       if (freshRound.length === 0 && freshShards.length === 0) break;

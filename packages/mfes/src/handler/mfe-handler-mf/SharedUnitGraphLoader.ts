@@ -163,6 +163,7 @@ export class SharedUnitGraphLoader {
     if (
       parsed === undefined ||
       !Array.isArray(parsed.units) ||
+      parsed.name !== dep.name ||
       parsed.version !== dep.version
     ) {
       throw new MfeLoadError(

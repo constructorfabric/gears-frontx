@@ -50,6 +50,8 @@ export interface UnitSpec {
   /** Bare specifiers as written, subpaths included; omitted when undefined. */
   bareSpecifiers?: string[];
   relativeImports?: string[];
+  /** Literal dynamic-import specifiers; omitted when undefined. */
+  dynamicImports?: string[];
   source: string;
 }
 
@@ -100,6 +102,9 @@ export function buildGraphFile(
         ? { bareSpecifiers: unit.bareSpecifiers }
         : {}),
       relativeImports: unit.relativeImports ?? [],
+      ...(unit.dynamicImports !== undefined
+        ? { dynamicImports: unit.dynamicImports }
+        : {}),
       location: unitLocations[i],
     })),
     mainModulePath,
