@@ -26,10 +26,25 @@
  */
 
 import { MfeLoadError } from '../../errors';
-import { DynamicImportScan } from '../../unit-format/dynamic-import-scan';
 import { DynamicModuleOps } from './mf-dynamic-module-ops';
 import { SharedSpecifierRewriter } from './SharedSpecifierRewriter';
+import { UnitDynamicImportRewriter } from './UnitDynamicImportRewriter';
 import type { SharedDepSourceRecord } from './SharedUnitGraphLoader';
+
+/**
+ * How the minter handles a literal dynamic `import('<specifier>')` in a
+ * unit's source: `tokenFor` resolves the specifier against the load's
+ * verified graph files to the resolver token the rewritten call passes
+ * to `__frontx_lazy` (or `undefined` to leave the call untouched), and
+ * `loaderUrl` mints the per-load loader-stub blob URL on first use.
+ */
+export interface UnitDynamicImportRewrites {
+  readonly loaderUrl: () => string;
+  readonly tokenFor: (
+    record: SharedDepSourceRecord,
+    specifier: string,
+  ) => string | undefined;
+}
 
 export class UnitBlobMinter {
   protected constructor() {}
@@ -64,20 +79,6 @@ export class UnitBlobMinter {
   }
 
   /**
-   * Whether `source` carries a dynamic `import(...)` the runtime cannot
-   * resolve: dynamic specifiers are neither rewritten nor dependency-edged
-   * at mint time, so the contract prohibits them and a unit containing
-   * one would mint a blob that fails in the browser (L6-02). Delegates to
-   * the comment/string/regex-aware `DynamicImportScan` — `import.meta`,
-   * `import "x"`, and `import(` inside a string, comment or regex
-   * literal do not match, while an `import` separated from its `(` only
-   * by whitespace and comments does.
-   */
-  private static containsDynamicImport(source: string): boolean {
-    return DynamicImportScan.containsDynamicImport(source);
-  }
-
-  /**
    * Mint one blob URL per record, leaves first, and return the
    * specifier→blob-URL map covering every minted unit — the specifiers
    * `specifiersOf` lists for each record — which the expose chain and
@@ -89,12 +90,19 @@ export class UnitBlobMinter {
    * unit the entry mint already delivered — that unit's blob answers the
    * import and adds no ordering edge. Every record minted here is
    * published into the map for later batches.
+   *
+   * `dynamicImports`, when given, rewrites each literal
+   * `import('<specifier>')` whose specifier resolves to a unit into a
+   * `__frontx_lazy('<token>')` call the per-load unit resolver answers
+   * on demand; non-literal calls and unresolvable specifiers pass
+   * through untouched.
    */
   static mint(
     records: readonly SharedDepSourceRecord[],
     entryId: string,
     preexisting?: ReadonlyMap<string, string>,
     unitBlobs?: Map<string, string>,
+    dynamicImports?: UnitDynamicImportRewrites,
   ): Map<string, string> {
     const recordByKey = new Map(records.map((r) => [r.key, r]));
     // modulePath -> record, per package.
@@ -208,20 +216,17 @@ export class UnitBlobMinter {
       for (const [key, record] of pending) {
         const deps = depsOf(record);
         if (![...deps].every((d) => recordBlob.has(d))) continue;
-        const rewritten = SharedSpecifierRewriter.rewriteUnitSource(
+        let rewritten = SharedSpecifierRewriter.rewriteUnitSource(
           record.text,
           record.modulePaths,
           specifierToBlob,
           relativeToBlob(record),
         );
-        if (UnitBlobMinter.containsDynamicImport(rewritten)) {
-          throw new MfeLoadError(
-            `shared-dep unit '${record.packageName}' (${record.key}) ` +
-              'carries a dynamic import() the runtime cannot resolve — ' +
-              'dynamic specifiers are neither rewritten nor ' +
-              'dependency-edged at mint time. Re-emit the unit without ' +
-              'dynamic imports.',
-            entryId,
+        if (dynamicImports !== undefined) {
+          rewritten = UnitDynamicImportRewriter.rewrite(
+            rewritten,
+            dynamicImports.loaderUrl,
+            (specifier) => dynamicImports.tokenFor(record, specifier),
           );
         }
         publish(

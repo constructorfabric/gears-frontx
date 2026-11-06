@@ -24,7 +24,6 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { basename, dirname, join, relative, sep } from 'node:path';
 
 import type { SharedDepGraphFile, SharedDepGraphUnit } from './graph-file';
-import { DynamicImportScan } from './dynamic-import-scan';
 import type { UnitFormatViolation, UnitFormatViolationRule } from './UnitFormatViolation';
 
 const GRAPH_NAME_PATTERN = /^(.+@.+)\.graph\.([0-9a-f]{64})\.json$/;
@@ -282,7 +281,6 @@ export class UnitFormatConformance {
     }
     if (graph.pack !== undefined) {
       this.checkDeclaredHash(dir, rel, graph.pack.location, graph.pack.contentHash, 'pack', violations);
-      this.checkDynamicImport(dir, rel, graph.pack.location, 'pack', violations);
       // The pack obeys the same requires/bareImports rules as a unit.
       for (const bare of graph.pack.bareImports ?? []) {
         if (!graph.requires?.includes(bare)) {
@@ -328,7 +326,6 @@ export class UnitFormatConformance {
     violations: UnitFormatViolation[],
   ): void {
     this.checkDeclaredHash(dir, graphRel, unit.location, unit.contentHash, 'unit', violations);
-    this.checkDynamicImport(dir, graphRel, unit.location, 'unit', violations);
     for (const bare of unit.bareImports) {
       if (!graph.requires?.includes(bare)) {
         violations.push(
@@ -374,37 +371,40 @@ export class UnitFormatConformance {
         );
       }
     }
-  }
-
-  /**
-   * A unit or pack source must not carry a dynamic `import()`: dynamic
-   * specifiers are neither rewritten nor dependency-edged at mint time,
-   * so the contract prohibits them. The scan is comment/string-aware —
-   * `import(` inside a string, comment or regex literal is not a
-   * violation. An unreadable file is already reported by the hash chain.
-   */
-  private checkDynamicImport(
-    dir: string,
-    graphRel: string,
-    location: string,
-    kind: string,
-    violations: UnitFormatViolation[],
-  ): void {
-    let source: string;
-    try {
-      source = readFileSync(join(dir, location), 'utf8');
-    } catch {
-      return;
-    }
-    if (DynamicImportScan.containsDynamicImport(source)) {
-      violations.push(
-        this.violation(
-          dir,
-          graphRel,
-          'graph-format',
-          `${kind} ${location} carries a dynamic import() the contract prohibits — dynamic specifiers are neither rewritten nor dependency-edged at mint time`,
-        ),
-      );
+    // Every specifier the producer recorded in `dynamicImports` must
+    // resolve: a relative specifier to a unit of the same package
+    // (checked like a relative import, against every member module
+    // path), a bare specifier to a package the graph's `requires`
+    // declares.
+    for (const specifier of unit.dynamicImports ?? []) {
+      if (specifier.startsWith('./') || specifier.startsWith('../')) {
+        const resolutions = unit.modulePaths.map((member) =>
+          this.resolveRelative(member, specifier),
+        );
+        if (!resolutions.some((resolved) => allModulePaths.has(resolved))) {
+          violations.push(
+            this.violation(
+              dir,
+              graphRel,
+              'relative-import',
+              `unit ${unit.location} dynamic import "${specifier}" resolves to "${resolutions[0] ?? ''}", owned by no unit of ${graph.name}@${graph.version}`,
+            ),
+          );
+        }
+        continue;
+      }
+      const segments = specifier.split('/');
+      const packageName = segments.slice(0, specifier.startsWith('@') ? 2 : 1).join('/');
+      if (!graph.requires?.includes(packageName)) {
+        violations.push(
+          this.violation(
+            dir,
+            graphRel,
+            'requires-closure',
+            `unit ${unit.location} dynamically imports bare specifier "${specifier}" but the graph's requires does not declare "${packageName}"`,
+          ),
+        );
+      }
     }
   }
 
