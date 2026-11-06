@@ -8,6 +8,32 @@ import {
   retainSharedFetchCache,
 } from '../sharedFetchCache';
 
+/** A fetcher that behaves like fetch(): it rejects with an AbortError when its signal aborts. */
+function abortableFetcher(calls: string[], label: string) {
+  return ({ signal }: { signal?: AbortSignal }) =>
+    new Promise<string>((resolve, reject) => {
+      calls.push(label);
+      const timer = setTimeout(() => resolve(`${label} data`), 0);
+      signal?.addEventListener(
+        'abort',
+        () => {
+          clearTimeout(timer);
+          reject(new DOMException('The operation was aborted.', 'AbortError'));
+        },
+        { once: true }
+      );
+    });
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((innerResolve) => {
+    resolve = innerResolve;
+  });
+
+  return { promise, resolve };
+}
+
 beforeEach(() => {
   resetSharedFetchCache();
 });
@@ -73,6 +99,85 @@ describe('SharedFetchCache', () => {
     await expect(secondPromise).rejects.toMatchObject({ name: 'AbortError' });
     expect(capturedSignal?.aborted).toBe(true);
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts a new fetch for a consumer that arrives right after the last one left', async () => {
+    const cache = createSharedFetchCache();
+    const calls: string[] = [];
+    const first = new AbortController();
+
+    const firstPromise = cache.getOrFetch(['users'], abortableFetcher(calls, 'first'), {
+      signal: first.signal,
+      staleTime: 1_000,
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    first.abort();
+    const secondPromise = cache.getOrFetch(['users'], abortableFetcher(calls, 'second'), {
+      signal: new AbortController().signal,
+      staleTime: 1_000,
+    });
+
+    await expect(firstPromise).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(secondPromise).resolves.toBe('second data');
+    expect(calls).toEqual(['first', 'second']);
+  });
+
+  it('drops the entry and its aliases as soon as its last consumer leaves', async () => {
+    const cache = createSharedFetchCache();
+    const controller = new AbortController();
+
+    const pendingPromise = cache.getOrFetch(
+      ['GET', '/api/users'],
+      abortableFetcher([], 'first'),
+      {
+        signal: controller.signal,
+        aliases: [['/api/users', 'GET', '/current-user']],
+        staleTime: 1_000,
+      }
+    );
+    await Promise.resolve();
+
+    controller.abort();
+
+    expect(cache.isPending(['GET', '/api/users'])).toBe(false);
+    expect(inspectSharedFetchCacheBookkeepingForTest(cache)).toEqual({
+      entries: 0,
+      aliasesByPrimaryKey: 0,
+      primaryKeysByAlias: 0,
+      versions: 0,
+    });
+    await expect(pendingPromise).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('keeps the new fetch result when a fetch its last consumer left resolves late', async () => {
+    const cache = createSharedFetchCache();
+    const lateResult = createDeferred<string>();
+    const first = new AbortController();
+
+    // This fetcher ignores its signal, so it resolves after it was aborted.
+    const firstPromise = cache.getOrFetch(['users'], () => lateResult.promise, {
+      signal: first.signal,
+      staleTime: 1_000,
+    });
+    first.abort();
+    const freshFetcher = vi.fn(async () => 'fresh');
+    const secondPromise = cache.getOrFetch(['users'], freshFetcher, { staleTime: 1_000 });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Checked before awaiting the second caller, which would wait on the abandoned fetch if it
+    // had joined it.
+    expect(freshFetcher).toHaveBeenCalledTimes(1);
+    await expect(firstPromise).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(secondPromise).resolves.toBe('fresh');
+
+    // The abandoned fetch settles only after the new one has stored its data.
+    lateResult.resolve('stale');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(cache.lookup(['users'], { staleTime: 1_000 })).toEqual({ hit: true, data: 'fresh' });
   });
 
   it('drops cached data after invalidate so the next consumer refetches', async () => {
@@ -193,6 +298,36 @@ describe('SharedFetchCache', () => {
     await expect(pendingPromise).rejects.toMatchObject({ name: 'AbortError' });
     expect(inspectSharedFetchCacheBookkeepingForTest(cache).versions).toBe(0);
   });
+
+  it.each([
+    {
+      outcome: 'fails',
+      fetcher: () => new Promise<string>((_resolve, reject) => setTimeout(() => reject(new Error('boom')), 0)),
+      staleTime: 1_000,
+    },
+    {
+      outcome: 'resolves with staleTime 0',
+      fetcher: () => new Promise<string>((resolve) => setTimeout(() => resolve('replacement'), 0)),
+      staleTime: 0,
+    },
+  ])(
+    'releases version bookkeeping when the replacement for an invalidated in-flight entry $outcome',
+    async ({ fetcher, staleTime }) => {
+      const cache = createSharedFetchCache();
+      const invalidatedPromise = cache.getOrFetch(['users'], abortableFetcher([], 'first'), {
+        staleTime: 1_000,
+      });
+      await Promise.resolve();
+      cache.invalidate(['users']);
+
+      // The replacement is still in flight when the invalidated fetch settles.
+      const replacementPromise = cache.getOrFetch(['users'], fetcher, { staleTime });
+      await expect(invalidatedPromise).rejects.toMatchObject({ name: 'AbortError' });
+      await replacementPromise.catch(() => undefined);
+
+      expect(inspectSharedFetchCacheBookkeepingForTest(cache).versions).toBe(0);
+    }
+  );
 
   it('normalizes caller-provided Error abort reasons to AbortError', async () => {
     const cache = createSharedFetchCache();

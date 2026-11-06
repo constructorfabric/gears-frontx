@@ -276,7 +276,7 @@ class SharedFetchCacheImpl implements SharedFetchCache {
         requestedStaleTime
       );
       // @cpt-begin:cpt-frontx-algo-api-protocol-surface-shared-cache:p1:inst-in-flight
-      return this.attachConsumer(existingEntry, options?.signal);
+      return this.attachConsumer(cacheKey, existingEntry, options?.signal);
       // @cpt-end:cpt-frontx-algo-api-protocol-surface-shared-cache:p1:inst-in-flight
     }
 
@@ -342,7 +342,7 @@ class SharedFetchCacheImpl implements SharedFetchCache {
     // @cpt-end:cpt-frontx-algo-api-protocol-surface-shared-cache:p1:inst-start-fetch
 
     this.entries.set(cacheKey, entry);
-    return this.attachConsumer(entry, options?.signal);
+    return this.attachConsumer(cacheKey, entry, options?.signal);
   }
 
   invalidate(key: readonly unknown[]): void {
@@ -440,6 +440,7 @@ class SharedFetchCacheImpl implements SharedFetchCache {
   }
 
   private attachConsumer<TData>(
+    cacheKey: string,
     entry: CacheEntry<TData>,
     signal?: AbortSignal
   ): Promise<TData> {
@@ -465,7 +466,7 @@ class SharedFetchCacheImpl implements SharedFetchCache {
         entry.activeConsumers -= 1;
 
         if (entry.pending && entry.activeConsumers === 0) {
-          entry.controller.abort(createAbortError(signal?.reason));
+          this.abandonEntry(cacheKey, entry, signal?.reason);
         }
         // @cpt-end:cpt-frontx-algo-api-protocol-surface-shared-cache:p1:inst-signal-abort
       };
@@ -502,6 +503,26 @@ class SharedFetchCacheImpl implements SharedFetchCache {
     });
   }
 
+  /**
+   * Cancels an in-flight entry that no consumer is waiting for. The entry leaves
+   * the cache before its fetch is aborted, so the next consumer of the key starts
+   * a new fetch instead of joining this one and getting its AbortError. When the
+   * aborted fetch settles, its handlers find a different entry under the key, or
+   * none, and leave it alone.
+   */
+  private abandonEntry(cacheKey: string, entry: CacheEntry<unknown>, reason: unknown): void {
+    // @cpt-begin:cpt-frontx-algo-api-protocol-surface-shared-cache:p1:inst-signal-abort
+    // @cpt-begin:cpt-frontx-state-api-protocol-surface-fetch-cache-entry:p1:inst-t-inflight-idle
+    if (this.entries.get(cacheKey) === entry) {
+      this.entries.delete(cacheKey);
+      this.removeAliases(cacheKey);
+    }
+    // @cpt-end:cpt-frontx-state-api-protocol-surface-fetch-cache-entry:p1:inst-t-inflight-idle
+
+    entry.controller.abort(createAbortError(reason));
+    // @cpt-end:cpt-frontx-algo-api-protocol-surface-shared-cache:p1:inst-signal-abort
+  }
+
   private invalidateCacheKey(cacheKey: string): void {
     // @cpt-begin:cpt-frontx-state-api-protocol-surface-fetch-cache-entry:p1:inst-t-cached-idle
     const entry = this.entries.get(cacheKey);
@@ -522,7 +543,13 @@ class SharedFetchCacheImpl implements SharedFetchCache {
       return;
     }
 
-    if (this.versions.get(cacheKey) === version + 1) {
+    // With no entry under the key, the record only numbers the next entry. It is released whether
+    // this entry was invalidated (`version + 1`) or was the replacement an earlier invalidation
+    // numbered (`version`): that earlier entry may have settled while this one was in the map,
+    // skipping its own cleanup. Every settling entry checks that the entry under the key is still
+    // its own before it writes or evicts, so releasing the record cannot let a stale fetch through.
+    const recordedVersion = this.versions.get(cacheKey);
+    if (recordedVersion === version || recordedVersion === version + 1) {
       this.versions.delete(cacheKey);
     }
   }
