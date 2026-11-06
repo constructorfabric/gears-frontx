@@ -10,6 +10,7 @@ import { SharedEntryResolver } from '../SharedEntryResolver';
 import { SharedSpecifierRewriter } from '../SharedSpecifierRewriter';
 import { SharedUnitGraphLoader } from '../SharedUnitGraphLoader';
 import { UnitBlobMinter } from '../UnitBlobMinter';
+import { UnitDynamicImportRewriter } from '../UnitDynamicImportRewriter';
 import { LoadDiagnosticsAccumulator } from '../LoadDiagnosticsAccumulator';
 import { MfeLoadError } from '../../../errors';
 import type { SharedDepSourceRecord } from '../SharedUnitGraphLoader';
@@ -445,6 +446,17 @@ describe('UnitBlobMinter', () => {
     expect(lazyText).toContain('import "blob:1"');
   });
 
+  it('keeps the first blob published for a module path (first writer wins)', () => {
+    let n = 0;
+    const spy = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockImplementation(() => `blob:${++n}`);
+    const unitBlobs = new Map<string, string>([['pkg/index.js', 'blob:first']]);
+    UnitBlobMinter.mint([record({})], 'entry', undefined, unitBlobs);
+    spy.mockRestore();
+    expect(unitBlobs.get('pkg/index.js')).toBe('blob:first');
+  });
+
   it('mints a unit carrying a dynamic import() untouched when no rewrite options are given', () => {
     const spy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:m');
     const ok = record({
@@ -484,6 +496,45 @@ describe('UnitBlobMinter', () => {
     expect(text).toContain('__frontx_lazy("unit:./x.js")');
     expect(text).toContain('import(expr)');
     expect(text).not.toContain("import('./x.js')");
+  });
+});
+
+describe('UnitDynamicImportRewriter', () => {
+  const tokenFor = (s: string): string | undefined =>
+    s === './x.js' ? `unit:${s}` : undefined;
+
+  it('binds the ABI under its own name when the unit does not use it', () => {
+    const out = UnitDynamicImportRewriter.rewrite(
+      "const a = import('./x.js');",
+      () => 'blob:stub',
+      tokenFor,
+    );
+    expect(out).toBe(
+      'import{__frontx_lazy}from"blob:stub";\nconst a = __frontx_lazy("unit:./x.js");',
+    );
+  });
+
+  it('picks a collision-free local name when the unit already declares __frontx_lazy', () => {
+    const src =
+      "const __frontx_lazy = 5, __frontx_lazy_1 = 6;\nconst a = import('./x.js');\nexport { __frontx_lazy };";
+    const out = UnitDynamicImportRewriter.rewrite(src, () => 'blob:stub', tokenFor);
+    expect(out).toContain(
+      'import{__frontx_lazy as __frontx_lazy_2}from"blob:stub";',
+    );
+    expect(out).toContain('const a = __frontx_lazy_2("unit:./x.js");');
+    // The unit's own bindings are untouched.
+    expect(out).toContain('const __frontx_lazy = 5, __frontx_lazy_1 = 6;');
+    expect(out).toContain('export { __frontx_lazy };');
+  });
+
+  it('treats a longer identifier containing the name as no collision', () => {
+    const out = UnitDynamicImportRewriter.rewrite(
+      "const my__frontx_lazy$ = 1;\nconst a = import('./x.js');",
+      () => 'blob:stub',
+      tokenFor,
+    );
+    expect(out).toContain('import{__frontx_lazy}from"blob:stub";');
+    expect(out).toContain('__frontx_lazy("unit:./x.js")');
   });
 });
 

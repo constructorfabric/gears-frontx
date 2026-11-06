@@ -34,7 +34,11 @@
 // @cpt-state:cpt-frontx-state-mfe-loading-load-lifecycle:p1
 
 import type { MfeEntryMF } from '../../types/mfe-entry-mf';
-import type { MfManifest, MfManifestShared } from '../../manifest/mf-manifest';
+import type {
+  MfManifest,
+  MfManifestRoot,
+  MfManifestShared,
+} from '../../manifest/mf-manifest';
 import { LazyLoaderRegistry } from '../../lazy-loader/LazyLoaderRegistry';
 import { MfeHandler, MfeEntryLifecycle } from '../MfeHandler';
 import { ChildMfeBridge } from '../ChildMfeBridge';
@@ -235,6 +239,13 @@ interface SharedDepUnitContext {
   readonly resolveAssetUrl: (location: string) => string;
   readonly mintedKeys: Set<string>;
   readonly pending: Map<string, Promise<void>>;
+  /**
+   * Tail of the load's mint-batch chain: every lazy-chunk and on-demand
+   * unit batch runs strictly after the previous one settles, so two
+   * concurrent builds reaching the same unit never both mint it — the
+   * later batch re-reads `mintedKeys` once the earlier one has marked it.
+   */
+  readonly mintQueue: { tail: Promise<void> };
   /**
    * Per-load `packageName/modulePath` → blob URL map: every unit minted
    * for the load, so a lazy batch resolves its relative imports and
@@ -1562,6 +1573,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       resolveAssetUrl,
       mintedKeys: new Set(plan.records.map((r) => r.key)),
       pending: new Map<string, Promise<void>>(),
+      mintQueue: { tail: Promise.resolve() },
       unitBlobs,
       specifierToBlob,
       unitByKey,
@@ -1660,49 +1672,39 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       );
     }
     const { loaded, unit } = target;
-    const blobOf = (): string | undefined =>
-      ctx.unitBlobs.get(`${loaded.dep.name}/${unit.modulePaths[0]}`);
-    if (ctx.mintedKeys.has(key)) {
-      const blob = blobOf();
-      if (blob !== undefined) return Promise.resolve(blob);
-    }
+    // The unit's own blob when it was minted as a unit; otherwise the
+    // blob answering one of its entry specifiers — a package delivered by
+    // its pack (CommonJS or budget fallback) mints a `<pack>` record that
+    // `unitBlobs` never carries, and the pack answers the package name.
+    const entrySpecifiers = SharedGraphIndex.of(loaded).entrySpecifiersOf(unit);
+    const blobOf = (): string | undefined => {
+      const own = ctx.unitBlobs.get(`${loaded.dep.name}/${unit.modulePaths[0]}`);
+      if (own !== undefined) return own;
+      for (const specifier of entrySpecifiers) {
+        const blob = ctx.specifierToBlob.get(specifier);
+        if (blob !== undefined) return blob;
+      }
+      return undefined;
+    };
+    const ready = blobOf();
+    if (ready !== undefined) return Promise.resolve(ready);
     let pending = ctx.pending.get(token);
     if (pending === undefined) {
-      pending = (async () => {
-        const plan = await SharedUnitGraphLoader.buildPlan(
-          ctx.graphs as LoadedGraph[],
-          [
-            {
-              name: loaded.dep.name,
-              version: loaded.dep.version,
-              modulePaths: [...unit.modulePaths],
-            },
-          ],
-          this.config.packFallbackBudgetMs ?? PackFallbackPolicy.DEFAULT_BUDGET_MS,
-          0,
-          ctx.fetchVerified,
-          ctx.resolveAssetUrl,
-          entryId
-        );
-        const fresh = plan.records.filter((r) => !ctx.mintedKeys.has(r.key));
-        // Mint FIRST, mark minted only on success — same discipline as
-        // the lazy-chunk path, so a failed build retries in full.
-        const minted = UnitBlobMinter.mint(
-          fresh,
-          entryId,
-          ctx.specifierToBlob,
-          ctx.unitBlobs,
-          ctx.dynamicImports
-        );
-        for (const record of plan.records) {
-          ctx.mintedKeys.add(record.key);
-        }
-        for (const [specifier, blob] of minted) {
-          if (!ctx.specifierToBlob.has(specifier)) {
-            ctx.specifierToBlob.set(specifier, blob);
-          }
-        }
-      })();
+      pending = this.runSharedDepMintBatch(
+        ctx,
+        [
+          {
+            name: loaded.dep.name,
+            version: loaded.dep.version,
+            modulePaths: [...unit.modulePaths],
+          },
+        ],
+        entryId,
+        ctx.specifierToBlob,
+        // An earlier batch in the chain may have delivered the unit while
+        // this one waited — then there is nothing left to fetch.
+        () => blobOf() !== undefined
+      );
       ctx.pending.set(token, pending);
       const tracked = pending;
       tracked.catch(() => {
@@ -1730,6 +1732,61 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   }
 
   /**
+   * Run one fetch+mint batch for `roots` on the load's mint-batch chain
+   * (`ctx.mintQueue`): the batch starts only after every earlier batch of
+   * the load has settled, so concurrent lazy-chunk and on-demand unit
+   * builds never interleave. Inside the batch, `satisfied` (when given)
+   * short-circuits a batch an earlier one already answered; the plan's
+   * records are re-filtered against `mintedKeys` AFTER the fetch await,
+   * so a unit another batch minted meanwhile is reused, never re-minted.
+   * Mint FIRST, mark minted only on success: a throw leaves every key
+   * unmarked so a later resolve retries the batch in full. The chain
+   * itself never latches on a failure — the next batch still runs.
+   */
+  private runSharedDepMintBatch(
+    ctx: SharedDepUnitContext,
+    roots: readonly MfManifestRoot[],
+    entryId: string,
+    specifierToBlob: Map<string, string>,
+    satisfied?: () => boolean
+  ): Promise<void> {
+    const batch = async (): Promise<void> => {
+      if (satisfied?.() === true) return;
+      const plan = await SharedUnitGraphLoader.buildPlan(
+        ctx.graphs as LoadedGraph[],
+        roots,
+        this.config.packFallbackBudgetMs ?? PackFallbackPolicy.DEFAULT_BUDGET_MS,
+        0,
+        ctx.fetchVerified,
+        ctx.resolveAssetUrl,
+        entryId
+      );
+      const fresh = plan.records.filter((r) => !ctx.mintedKeys.has(r.key));
+      const minted = UnitBlobMinter.mint(
+        fresh,
+        entryId,
+        specifierToBlob,
+        ctx.unitBlobs,
+        ctx.dynamicImports
+      );
+      for (const record of plan.records) {
+        ctx.mintedKeys.add(record.key);
+      }
+      for (const [specifier, blob] of minted) {
+        if (!specifierToBlob.has(specifier)) {
+          specifierToBlob.set(specifier, blob);
+        }
+      }
+    };
+    const run = ctx.mintQueue.tail.then(batch);
+    ctx.mintQueue.tail = run.then(
+      () => undefined,
+      () => undefined
+    );
+    return run;
+  }
+
+  /**
    * Fetch and mint the units `lazyChunkRoots` declares for the lazy chunk
    * `filename`, extending `sharedDepBlobUrls` — never rewriting it
    * (`inst-lai-lazy-roots`). One in-flight build per filename; units
@@ -1746,36 +1803,12 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     if (roots === undefined || roots.length === 0) return;
     let pending = ctx.pending.get(filename);
     if (pending === undefined) {
-      pending = (async () => {
-        const plan = await SharedUnitGraphLoader.buildPlan(
-          ctx.graphs as LoadedGraph[],
-          roots,
-          this.config.packFallbackBudgetMs ?? PackFallbackPolicy.DEFAULT_BUDGET_MS,
-          0,
-          ctx.fetchVerified,
-          ctx.resolveAssetUrl,
-          loadState.entryId
-        );
-        const fresh = plan.records.filter((r) => !ctx.mintedKeys.has(r.key));
-        // Mint FIRST, mark minted only on success: a throw must leave
-        // every key unmarked so a later resolve retries the batch rather
-        // than skipping it with specifiers unrewritten.
-        const minted = UnitBlobMinter.mint(
-          fresh,
-          loadState.entryId,
-          loadState.sharedDepBlobUrls,
-          ctx.unitBlobs,
-          ctx.dynamicImports
-        );
-        for (const record of plan.records) {
-          ctx.mintedKeys.add(record.key);
-        }
-        for (const [specifier, blob] of minted) {
-          if (!loadState.sharedDepBlobUrls.has(specifier)) {
-            loadState.sharedDepBlobUrls.set(specifier, blob);
-          }
-        }
-      })();
+      pending = this.runSharedDepMintBatch(
+        ctx,
+        roots,
+        loadState.entryId,
+        loadState.sharedDepBlobUrls
+      );
       ctx.pending.set(filename, pending);
       // A rejected build must not latch: evict it so a later resolve of
       // the same lazy chunk retries the unit build.

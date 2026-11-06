@@ -19,7 +19,9 @@
  * as `import(someVariable)` — the trust kernel's own `import(blobUrl)`
  * shape — is left exactly as emitted. When at least one call is
  * rewritten, the `__frontx_lazy` binding is imported from the per-load
- * loader stub via a line prepended to the source; the stub URL is
+ * loader stub via a line prepended to the source — under a local alias
+ * when the unit already spells `__frontx_lazy`, so the injected binding
+ * never collides with one of the unit's own identifiers; the stub URL is
  * requested lazily so a unit without dynamic imports mints no stub.
  *
  * One class per file (`runtime_style`).
@@ -31,6 +33,9 @@
 import { DynamicImportScan } from '../../unit-format/dynamic-import-scan';
 
 export class UnitDynamicImportRewriter {
+  /** The loader stub's exported lazy-import binding (ADR-0022). */
+  private static readonly ABI_NAME = '__frontx_lazy';
+
   protected constructor() {}
 
   /**
@@ -50,6 +55,7 @@ export class UnitDynamicImportRewriter {
   ): string {
     let out = source;
     let rewroteAny = false;
+    const local = UnitDynamicImportRewriter.localBindingName(source);
     // Back to front so earlier replacements never shift a later site's
     // recorded offsets.
     for (const call of DynamicImportScan.literalCalls(source).reverse()) {
@@ -57,13 +63,43 @@ export class UnitDynamicImportRewriter {
       if (token === undefined) continue;
       out =
         out.slice(0, call.start) +
-        `__frontx_lazy(${JSON.stringify(token)})` +
+        `${local}(${JSON.stringify(token)})` +
         out.slice(call.closeParen + 1);
       rewroteAny = true;
     }
     if (rewroteAny) {
-      out = `import{__frontx_lazy}from${JSON.stringify(loaderUrl())};\n${out}`;
+      const binding =
+        local === UnitDynamicImportRewriter.ABI_NAME
+          ? local
+          : `${UnitDynamicImportRewriter.ABI_NAME} as ${local}`;
+      out = `import{${binding}}from${JSON.stringify(loaderUrl())};\n${out}`;
     }
     return out;
+  }
+
+  /**
+   * A local name for the imported ABI binding that collides with no
+   * identifier in `source`: `__frontx_lazy` itself when the unit never
+   * spells it, else the first free `__frontx_lazy_<n>`. The check is
+   * deliberately conservative — any whole-identifier occurrence counts,
+   * even inside a string or comment — since an over-avoided name costs
+   * nothing while a shadowed or redeclared one breaks the module.
+   */
+  private static localBindingName(source: string): string {
+    // Every whole-identifier `__frontx_lazy` / `__frontx_lazy_<n>` the
+    // unit spells (an identifier character on either side means a longer,
+    // unrelated identifier).
+    const taken = new Set<string>();
+    for (const match of source.matchAll(
+      /(?<![\w$\u0080-\uffff])__frontx_lazy(?:_\d+)?(?![\w$\u0080-\uffff])/g,
+    )) {
+      taken.add(match[0]);
+    }
+    const base = UnitDynamicImportRewriter.ABI_NAME;
+    if (!taken.has(base)) return base;
+    for (let n = 1; ; n++) {
+      const candidate = `${base}_${n}`;
+      if (!taken.has(candidate)) return candidate;
+    }
   }
 }
