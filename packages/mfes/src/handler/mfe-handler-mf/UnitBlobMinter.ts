@@ -185,8 +185,12 @@ export class UnitBlobMinter {
       recordBlob.set(record.key, blob);
       if (unitBlobs !== undefined) {
         for (const m of record.modulePaths) {
-          if (m !== '<pack>') {
-            unitBlobs.set(`${record.packageName}/${m}`, blob);
+          const pathKey = `${record.packageName}/${m}`;
+          // First writer wins: a module path an earlier batch of this
+          // load already published keeps that blob, so every importer of
+          // the module — whichever batch minted it — sees one instance.
+          if (m !== '<pack>' && !unitBlobs.has(pathKey)) {
+            unitBlobs.set(pathKey, blob);
           }
         }
       }

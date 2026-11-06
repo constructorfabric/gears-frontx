@@ -276,6 +276,158 @@ describe('acceptance: OP-010 dynamic import() inside a unit resolves on demand',
     }
   });
 
+  it('two concurrent resolves of different tokens reaching the same unit mint it once from one fetch', async () => {
+    const MAIN_SRC =
+      "const a = import('./a.js');\nconst b = import('./b.js');\nexport const r = 1;\n";
+    const A_SRC = "import { c } from './c.js';\nexport const a = c;\n";
+    const B_SRC = "import { c } from './c.js';\nexport const b = c;\n";
+    const C_SRC = 'export const c = 42;\n';
+    const graph = buildGraphFile(
+      'react',
+      '1.0.0',
+      [
+        { modulePaths: ['index.js'], source: MAIN_SRC },
+        { modulePaths: ['a.js'], source: A_SRC, relativeImports: ['./c.js'] },
+        { modulePaths: ['b.js'], source: B_SRC, relativeImports: ['./c.js'] },
+        { modulePaths: ['c.js'], source: C_SRC },
+      ],
+      'index.js',
+      [],
+    );
+    const manifest = buildManifest([graphSharedDep('react', graph)], {
+      entryRoots: { './lifecycle': ['react'] },
+    });
+    const router = createFetchRouter({
+      [`${PUBLIC_PATH}assets/lifecycle.js`]: {
+        body: 'import "react";\nexport default {};',
+      },
+      [`${PUBLIC_PATH}shared/react.graph.json`]: { body: graph.text },
+      [`${PUBLIC_PATH}${graph.unitLocations[0]}`]: { body: MAIN_SRC },
+      [`${PUBLIC_PATH}${graph.unitLocations[1]}`]: { body: A_SRC, delayMs: 5 },
+      [`${PUBLIC_PATH}${graph.unitLocations[2]}`]: { body: B_SRC },
+      [`${PUBLIC_PATH}${graph.unitLocations[3]}`]: { body: C_SRC, delayMs: 10 },
+    });
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(router as typeof fetch);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const registerSpy = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
+    const minted = captureMintedSources();
+    stubSuccessfulImport(blobModuleStub);
+    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    try {
+      await expect(
+        handler.load(buildEntry(manifest), 'ext-op010-6'),
+      ).resolves.toBeDefined();
+      const loaderId = registerSpy.mock.results[0].value as string;
+      const [aUrl, bUrl] = await Promise.all([
+        lazyGlobal().resolve(loaderId, 'unit:react@1.0.0@a.js'),
+        lazyGlobal().resolve(loaderId, 'unit:react@1.0.0@b.js'),
+      ]);
+      expect(aUrl).toMatch(/^blob:/);
+      expect(bUrl).toMatch(/^blob:/);
+      expect(aUrl).not.toBe(bUrl);
+      const cLocation = `${PUBLIC_PATH}${graph.unitLocations[3]}`;
+      expect(router.calls.filter((u) => u === cLocation)).toHaveLength(1);
+      const sources = await minted.sources();
+      expect(sources.filter((s) => s === C_SRC)).toHaveLength(1);
+      // Both importers rewrite './c.js' to the SAME blob URL.
+      const importerOf = (marker: string): string =>
+        sources.find((s) => s.includes(marker)) as string;
+      const cRef = (s: string): string | undefined =>
+        /from\s*["'](blob:[^"']+)["']/.exec(s)?.[1];
+      expect(cRef(importerOf('export const a'))).toBeDefined();
+      expect(cRef(importerOf('export const a'))).toBe(
+        cRef(importerOf('export const b')),
+      );
+    } finally {
+      minted.restore();
+      registerSpy.mockRestore();
+      fetchSpy.mockRestore();
+      warnSpy.mockRestore();
+      blobModuleStub.current = undefined;
+    }
+  });
+
+  it('a dynamic import into a pack-delivered package resolves to the pack blob', async () => {
+    const MAIN_SRC = "const p = import('lodash');\nexport const r = 1;\n";
+    const LODASH_SRC = 'export const l = 1;\n';
+    const PACK_SRC = 'module.exports = { l: 1 }; // cjs pack\n';
+    const react = buildGraphFile(
+      'react',
+      '1.0.0',
+      [{ modulePaths: ['index.js'], source: MAIN_SRC }],
+      'index.js',
+      [],
+    );
+    const lodash = buildGraphFile(
+      'lodash',
+      '1.0.0',
+      [{ modulePaths: ['index.js'], source: LODASH_SRC }],
+      'index.js',
+      [],
+      PACK_SRC,
+    );
+    const manifest = buildManifest(
+      [graphSharedDep('react', react), graphSharedDep('lodash', lodash)],
+      { entryRoots: { './lifecycle': ['react'] } },
+    );
+    const router = createFetchRouter({
+      [`${PUBLIC_PATH}assets/lifecycle.js`]: {
+        body: 'import "react";\nexport default {};',
+      },
+      [`${PUBLIC_PATH}shared/react.graph.json`]: { body: react.text },
+      [`${PUBLIC_PATH}${react.unitLocations[0]}`]: { body: MAIN_SRC },
+      [`${PUBLIC_PATH}shared/lodash.graph.json`]: { body: lodash.text },
+      [`${PUBLIC_PATH}${lodash.unitLocations[0]}`]: { body: LODASH_SRC },
+      [`${PUBLIC_PATH}${lodash.packLocation}`]: { body: PACK_SRC },
+    });
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(router as typeof fetch);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const registerSpy = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
+    const minted = captureMintedSources();
+    stubSuccessfulImport(blobModuleStub);
+    const handler = new MfeHandlerMF(ENTRY_BASE_ID, {
+      retries: 0,
+      packFallbackBudgetMs: 0,
+    } as ConstructorParameters<typeof MfeHandlerMF>[1]);
+    try {
+      await expect(
+        handler.load(buildEntry(manifest), 'ext-op010-7'),
+      ).resolves.toBeDefined();
+      const loaderId = registerSpy.mock.results[0].value as string;
+      const blobUrl = await lazyGlobal().resolve(
+        loaderId,
+        'unit:lodash@1.0.0@index.js',
+      );
+      expect(blobUrl).toMatch(/^blob:/);
+      expect(router.calls).toContain(`${PUBLIC_PATH}${lodash.packLocation}`);
+      expect(router.calls).not.toContain(
+        `${PUBLIC_PATH}${lodash.unitLocations[0]}`,
+      );
+      // A repeat resolve answers from the minted pack with no new fetch.
+      const callsBefore = router.calls.length;
+      await expect(
+        lazyGlobal().resolve(loaderId, 'unit:lodash@1.0.0@index.js'),
+      ).resolves.toBe(blobUrl);
+      expect(
+        router.calls
+          .slice(callsBefore)
+          .filter((u) => u.endsWith(String(lodash.packLocation))),
+      ).toHaveLength(0);
+      const sources = await minted.sources();
+      expect(sources.filter((s) => s === PACK_SRC)).toHaveLength(1);
+    } finally {
+      minted.restore();
+      registerSpy.mockRestore();
+      fetchSpy.mockRestore();
+      warnSpy.mockRestore();
+      blobModuleStub.current = undefined;
+    }
+  });
+
   it('import.meta is not a dynamic import', async () => {
     const SRC = 'const u = import.meta.url;\nexport const x = 1;\n';
     const graph = buildGraphFile(
