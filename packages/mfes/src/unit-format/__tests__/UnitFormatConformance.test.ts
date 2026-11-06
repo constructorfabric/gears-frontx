@@ -232,6 +232,52 @@ describe('UnitFormatConformance', () => {
     expect(rules(conformance.check(a, b))).toContain('byte-identity');
   });
 
+  it('accepts three byte-identical output sets through checkAll', () => {
+    const a = makeDir();
+    const b = makeDir();
+    const c = makeDir();
+    const spec: OutputSpec = {
+      name: 'p',
+      version: '1.0.0',
+      units: [{ modulePaths: ['i.js'], source: 'export const i = 1;\n' }],
+    };
+    emitConformingOutput(a, spec);
+    emitConformingOutput(b, spec);
+    emitConformingOutput(c, spec);
+    expect(conformance.checkAll([a, b, c])).toEqual([]);
+  });
+
+  it('reports a byte-identity violation through checkAll when any set disagrees', () => {
+    const a = makeDir();
+    const b = makeDir();
+    const c = makeDir();
+    const spec: OutputSpec = {
+      name: 'p',
+      version: '1.0.0',
+      units: [{ modulePaths: ['i.js'] }],
+    };
+    emitConformingOutput(a, spec);
+    emitConformingOutput(b, spec);
+    emitConformingOutput(c, {
+      ...spec,
+      units: [{ modulePaths: ['i.js'], source: '// different bytes\n' }],
+    });
+    expect(rules(conformance.checkAll([a, b, c]))).toContain('byte-identity');
+  });
+
+  it('checks a single output set through checkAll without a pair to compare', () => {
+    const a = makeDir();
+    const spec: OutputSpec = {
+      name: 'p',
+      version: '1.0.0',
+      units: [{ modulePaths: ['i.js'] }],
+    };
+    emitConformingOutput(a, spec);
+    expect(conformance.checkAll([a])).toEqual([]);
+    writeFileSync(join(a, 'stray.js'), '// not content addressed\n');
+    expect(rules(conformance.checkAll([a]))).toContain('naming');
+  });
+
   it('accepts scoped package names in the naming rules', () => {
     const a = makeDir();
     const b = makeDir();
