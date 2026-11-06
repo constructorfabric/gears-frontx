@@ -28,11 +28,15 @@ export type SharedDepUnitMode = 'units' | 'single';
  * identity is `package@version` plus the module path or paths it contains
  * (`cpt-frontx-adr-shared-dep-reuse`).
  *
- * A unit's emitted source MUST NOT carry a dynamic `import(...)`: dynamic
- * specifiers are neither rewritten nor dependency-edged at mint time, so
- * a unit containing one mints a blob that fails in the browser. The
- * runtime fails the load on one, and the conformance suite reports it as
- * a violation. This applies to the pack's source as well.
+ * A unit's emitted source MAY carry a dynamic `import(...)` with a
+ * literal specifier: at mint time the runtime rewrites each literal
+ * `import()` whose target resolves to a unit — a relative module of the
+ * same package or a shared package/subpath — into the per-load lazy
+ * resolver that fetches, verifies and mints the target unit on demand.
+ * A non-literal call (`import(expr)`) passes through untouched, and the
+ * producer records each dynamic specifier in the optional
+ * `dynamicImports` field so the conformance suite can check that each
+ * resolves.
  */
 export interface SharedDepGraphUnit {
   /**
@@ -67,6 +71,18 @@ export interface SharedDepGraphUnit {
    * package, resolved against the unit's member module paths.
    */
   relativeImports: string[];
+  /**
+   * Specifiers this unit imports dynamically through literal
+   * `import('<specifier>')` calls — relative module paths and bare
+   * specifiers alike, exactly as written. Optional, for backward
+   * compatibility. The conformance suite checks that every recorded
+   * specifier resolves: a relative specifier to a unit of the same
+   * package, a bare specifier to a package the graph's `requires`
+   * declares. The runtime does not read the field — it locates literal
+   * `import()` calls in the source itself at mint time and resolves each
+   * against the same unit set.
+   */
+  dynamicImports?: string[];
   /**
    * Location of the unit's emitted source: a path relative to the package's
    * shared base location, or an absolute URL.

@@ -445,7 +445,7 @@ describe('UnitBlobMinter', () => {
     expect(lazyText).toContain('import "blob:1"');
   });
 
-  it('detects dynamic import() without string/comment false positives', () => {
+  it('mints a unit carrying a dynamic import() untouched when no rewrite options are given', () => {
     const spy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:m');
     const ok = record({
       text: 'const s = "import(\'x\')";\n// import(\'y\')\nconst r = /import\\(/;\nexport const x = 1;',
@@ -454,10 +454,36 @@ describe('UnitBlobMinter', () => {
     const commented = record({
       text: "const p = import /*c*/ ('./x.js');\nexport const x = 1;",
     });
-    expect(() => UnitBlobMinter.mint([commented], 'entry')).toThrow(
-      MfeLoadError,
-    );
+    expect(() => UnitBlobMinter.mint([commented], 'entry')).not.toThrow();
     spy.mockRestore();
+  });
+
+  it('rewrites a literal import() to __frontx_lazy via the supplied options and leaves non-literals untouched', async () => {
+    const mintedTexts: Blob[] = [];
+    const spy = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockImplementation((object: Blob | MediaSource) => {
+        if (object instanceof Blob) mintedTexts.push(object);
+        return `blob:${mintedTexts.length}`;
+      });
+    const rec = record({
+      text: "const a = import('./x.js');\nconst b = import(expr);\nexport const x = 1;",
+    });
+    UnitBlobMinter.mint([rec], 'entry', undefined, undefined, {
+      loaderUrl: () => 'blob:stub',
+      tokenFor: (_r, s) => (s === './x.js' ? `unit:${s}` : undefined),
+    });
+    spy.mockRestore();
+    const text = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(mintedTexts[mintedTexts.length - 1]);
+    });
+    expect(text).toContain('import{__frontx_lazy}from"blob:stub"');
+    expect(text).toContain('__frontx_lazy("unit:./x.js")');
+    expect(text).toContain('import(expr)');
+    expect(text).not.toContain("import('./x.js')");
   });
 });
 

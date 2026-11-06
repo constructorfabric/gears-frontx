@@ -52,8 +52,12 @@ import { VerifiedUnitFetcher } from './VerifiedUnitFetcher';
 import { FetchBudget } from './FetchBudget';
 import { ManifestCache } from './ManifestCache';
 import { PackFallbackPolicy } from './PackFallbackPolicy';
-import { SharedUnitGraphLoader, type LoadedGraph } from './SharedUnitGraphLoader';
-import { UnitBlobMinter } from './UnitBlobMinter';
+import { SharedUnitGraphLoader, type LoadedGraph, type SharedDepSourceRecord } from './SharedUnitGraphLoader';
+import { SharedEntryResolver } from './SharedEntryResolver';
+import { SharedGraphIndex } from './SharedGraphIndex';
+import { SharedSpecifierRewriter } from './SharedSpecifierRewriter';
+import { UnitBlobMinter, type UnitDynamicImportRewrites } from './UnitBlobMinter';
+import type { SharedDepGraphUnit } from '../../unit-format/graph-file';
 import { LoadDiagnosticsAccumulator } from './LoadDiagnosticsAccumulator';
 import type { RealmSharedDepTextCacheDiagnostics } from './ByteBudgetLruCache';
 
@@ -238,6 +242,27 @@ interface SharedDepUnitContext {
    * included (inst-lai-lazy-roots).
    */
   readonly unitBlobs: Map<string, string>;
+  /**
+   * The load's specifier → blob map — the very `Map` instance
+   * `loadState.sharedDepBlobUrls` carries — so an on-demand unit mint
+   * extends it, never replacing entries.
+   */
+  readonly specifierToBlob: Map<string, string>;
+  /**
+   * Unit record key → graph unit, for every unit of every loaded graph
+   * file: the lookup the `unit:` resolver token resolves through.
+   */
+  readonly unitByKey: ReadonlyMap<
+    string,
+    { loaded: LoadedGraph; unit: SharedDepGraphUnit }
+  >;
+  /**
+   * The mint-time dynamic-import rewrite options handed to
+   * `UnitBlobMinter.mint` at every mint of this load — initial plan,
+   * lazy-chunk batch, and on-demand unit batch alike — so a unit in any
+   * batch resolves its literal `import()` calls the same way.
+   */
+  readonly dynamicImports: UnitDynamicImportRewrites;
 }
 
 /**
@@ -1476,11 +1501,53 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       entryId
     );
     const unitBlobs = new Map<string, string>();
+    // The dynamic-import machinery: every unit of every graph keyed by
+    // its record key, the specifier→token resolution the minter applies
+    // per literal call site, and a lazily minted `__frontx_lazy` loader
+    // stub whose registry resolver fetches+verifies+mints the named unit
+    // on demand. The ctx is captured by reference — it is populated
+    // below, before any resolver call can arrive (resolvers run only
+    // once the load's blobs are evaluated, long after mint returns).
+    const graphByName = new Map(graphs.map((g) => [g.dep.name, g] as const));
+    const unitByKey = new Map<
+      string,
+      { loaded: LoadedGraph; unit: SharedDepGraphUnit }
+    >();
+    for (const loaded of graphs) {
+      for (const unit of loaded.graph.units) {
+        if (!Array.isArray(unit.modulePaths)) continue;
+        unitByKey.set(MfeHandlerMF.unitRecordKey(loaded, unit), {
+          loaded,
+          unit,
+        });
+      }
+    }
+    const ctxRef: { current?: SharedDepUnitContext } = {};
+    let unitLoaderUrl: string | undefined;
+    const dynamicImports: UnitDynamicImportRewrites = {
+      loaderUrl: () => {
+        if (unitLoaderUrl === undefined) {
+          const registry = LazyLoaderRegistry.ensureExposed();
+          const loaderId = registry.register((token) =>
+            this.resolveSharedDepUnitImport(token, ctxRef.current, entryId)
+          );
+          unitLoaderUrl = URL.createObjectURL(
+            new Blob([DynamicModuleOps.buildLazyLoaderStubSource(loaderId)], {
+              type: 'text/javascript',
+            })
+          );
+        }
+        return unitLoaderUrl;
+      },
+      tokenFor: (record, specifier) =>
+        MfeHandlerMF.unitImportToken(record, specifier, graphByName),
+    };
     const specifierToBlob = UnitBlobMinter.mint(
       plan.records,
       entryId,
       undefined,
-      unitBlobs
+      unitBlobs,
+      dynamicImports
     );
     this.loadDiagnostics.summarize(
       manifest.id,
@@ -1488,21 +1555,172 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       plan.packFallbackPackages,
       cache
     );
+    const sharedDepUnits: SharedDepUnitContext = {
+      manifest,
+      graphs,
+      fetchVerified,
+      resolveAssetUrl,
+      mintedKeys: new Set(plan.records.map((r) => r.key)),
+      pending: new Map<string, Promise<void>>(),
+      unitBlobs,
+      specifierToBlob,
+      unitByKey,
+      dynamicImports,
+    };
+    ctxRef.current = sharedDepUnits;
     return {
       urls: specifierToBlob,
       // inst-lai-lazy-roots: keep what a lazy chunk needs to fetch and
       // mint the units its declared roots reach — the verified graphs,
       // the fetch/resolve functions, and the keys already minted.
-      sharedDepUnits: {
-        manifest,
-        graphs,
-        fetchVerified,
-        resolveAssetUrl,
-        mintedKeys: new Set(plan.records.map((r) => r.key)),
-        pending: new Map<string, Promise<void>>(),
-        unitBlobs,
-      },
+      sharedDepUnits,
     };
+  }
+
+  /**
+   * The record key `UnitBlobMinter`/`buildPlan` gives `unit`:
+   * `name@version` plus the sorted member module paths.
+   */
+  private static unitRecordKey(
+    loaded: LoadedGraph,
+    unit: SharedDepGraphUnit
+  ): string {
+    return `${loaded.dep.name}@${loaded.dep.version}@${[...unit.modulePaths]
+      .sort()
+      .join(',')}`;
+  }
+
+  /**
+   * The resolver token a literal dynamic-import specifier in `record`
+   * rewrites to — `unit:<recordKey>` of the unit the specifier names —
+   * or `undefined` when the specifier resolves to no unit of any loaded
+   * graph (the call is then left untouched). Relative specifiers resolve
+   * against EVERY member module path of the issuing unit (F-016); bare
+   * specifiers resolve to the owning package's entry unit the same way a
+   * static subpath specifier does.
+   */
+  private static unitImportToken(
+    record: SharedDepSourceRecord,
+    specifier: string,
+    graphByName: ReadonlyMap<string, LoadedGraph>
+  ): string | undefined {
+    const tokenFor = (
+      loaded: LoadedGraph,
+      unit: SharedDepGraphUnit
+    ): string => `unit:${MfeHandlerMF.unitRecordKey(loaded, unit)}`;
+    if (specifier.startsWith('./') || specifier.startsWith('../')) {
+      const loaded = graphByName.get(record.packageName);
+      if (loaded === undefined) return undefined;
+      const index = SharedGraphIndex.of(loaded);
+      for (const member of record.modulePaths) {
+        const resolved = SharedSpecifierRewriter.resolveRelativeModulePath(
+          member,
+          specifier
+        );
+        const unit = index.unitFor(resolved);
+        if (unit !== undefined) return tokenFor(loaded, unit);
+      }
+      return undefined;
+    }
+    const { name, subpath } = SharedEntryResolver.split(specifier);
+    const loaded = graphByName.get(name);
+    if (loaded === undefined) return undefined;
+    const unit = SharedGraphIndex.of(loaded).entryUnit(subpath);
+    return unit === undefined ? undefined : tokenFor(loaded, unit);
+  }
+
+  /**
+   * The resolver behind `__frontx_lazy('unit:<key>')` calls emitted into
+   * minted units: look the target unit up, mint it (and everything its
+   * static edges reach) on demand when the load has not already, and
+   * resolve to its blob URL. Reuses the lazy-chunk machinery —
+   * `SharedUnitGraphLoader.buildPlan` for the fetch+verify of the target
+   * and the units its relative and bare edges reach, `UnitBlobMinter.mint`
+   * over the fresh records with the load's maps as the preexisting set —
+   * so the per-load specifier and `packageName/modulePath` maps are only
+   * ever extended, never replaced (inst-lai-lazy-roots). One in-flight
+   * build per token; a failed build is evicted so a later call retries.
+   */
+  private resolveSharedDepUnitImport(
+    token: string,
+    ctx: SharedDepUnitContext | undefined,
+    entryId: string
+  ): Promise<string> {
+    const fail = (detail: string): Promise<string> =>
+      Promise.reject(new MfeLoadError(detail, entryId));
+    if (ctx === undefined || !token.startsWith('unit:')) {
+      return fail(`__frontx_lazy: unresolvable unit token '${token}'`);
+    }
+    const key = token.slice('unit:'.length);
+    const target = ctx.unitByKey.get(key);
+    if (target === undefined) {
+      return fail(
+        `__frontx_lazy: dynamic import names unit '${key}', which no ` +
+          'loaded graph file declares.'
+      );
+    }
+    const { loaded, unit } = target;
+    const blobOf = (): string | undefined =>
+      ctx.unitBlobs.get(`${loaded.dep.name}/${unit.modulePaths[0]}`);
+    if (ctx.mintedKeys.has(key)) {
+      const blob = blobOf();
+      if (blob !== undefined) return Promise.resolve(blob);
+    }
+    let pending = ctx.pending.get(token);
+    if (pending === undefined) {
+      pending = (async () => {
+        const plan = await SharedUnitGraphLoader.buildPlan(
+          ctx.graphs as LoadedGraph[],
+          [
+            {
+              name: loaded.dep.name,
+              version: loaded.dep.version,
+              modulePaths: [...unit.modulePaths],
+            },
+          ],
+          this.config.packFallbackBudgetMs ?? PackFallbackPolicy.DEFAULT_BUDGET_MS,
+          0,
+          ctx.fetchVerified,
+          ctx.resolveAssetUrl,
+          entryId
+        );
+        const fresh = plan.records.filter((r) => !ctx.mintedKeys.has(r.key));
+        // Mint FIRST, mark minted only on success — same discipline as
+        // the lazy-chunk path, so a failed build retries in full.
+        const minted = UnitBlobMinter.mint(
+          fresh,
+          entryId,
+          ctx.specifierToBlob,
+          ctx.unitBlobs,
+          ctx.dynamicImports
+        );
+        for (const record of plan.records) {
+          ctx.mintedKeys.add(record.key);
+        }
+        for (const [specifier, blob] of minted) {
+          if (!ctx.specifierToBlob.has(specifier)) {
+            ctx.specifierToBlob.set(specifier, blob);
+          }
+        }
+      })();
+      ctx.pending.set(token, pending);
+      const tracked = pending;
+      tracked.catch(() => {
+        if (ctx.pending.get(token) === tracked) {
+          ctx.pending.delete(token);
+        }
+      });
+    }
+    return pending.then(() => {
+      const blob = blobOf();
+      if (blob === undefined) {
+        throw new MfeLoadError(
+          `__frontx_lazy: unit '${key}' minted no blob URL.`,
+          entryId
+        );
+      }
+      return blob;
+    });
   }
 
   /** Whether `char` is a space or control character a URL parse would mangle. */
@@ -1546,7 +1764,8 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
           fresh,
           loadState.entryId,
           loadState.sharedDepBlobUrls,
-          ctx.unitBlobs
+          ctx.unitBlobs,
+          ctx.dynamicImports
         );
         for (const record of plan.records) {
           ctx.mintedKeys.add(record.key);

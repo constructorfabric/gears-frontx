@@ -177,5 +177,11 @@ export class SharedGraphIndex {
     ) {
       fail('bareSpecifiers', 'an array of strings');
     }
+    if (
+      unit.dynamicImports !== undefined &&
+      !stringArray(unit.dynamicImports)
+    ) {
+      fail('dynamicImports', 'an array of strings');
+    }
   }
 }

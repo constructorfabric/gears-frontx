@@ -29,6 +29,7 @@ interface UnitSpec {
   bareImports?: string[];
   bareSpecifiers?: string[];
   relativeImports?: string[];
+  dynamicImports?: string[];
   source?: string;
 }
 
@@ -61,6 +62,9 @@ function emit(dir: string, spec: OutputSpec): SharedDepGraphFile {
         ? { bareSpecifiers: u.bareSpecifiers }
         : {}),
       relativeImports: u.relativeImports ?? [],
+      ...(u.dynamicImports !== undefined
+        ? { dynamicImports: u.dynamicImports }
+        : {}),
       location,
     };
   });
@@ -306,40 +310,70 @@ describe('acceptance: OP-012 conformance pack, member-path and manifest checks',
     ).toBe(true);
   });
 
-  it('OP-012/RF-003: a unit carrying a dynamic import() is a violation; one in a string is not', () => {
+  it('OP-012/RF-003: a unit carrying a dynamic import() is not a violation; recorded dynamicImports must resolve', () => {
     const { a, b } = pair();
-    emit(a, {
+    const spec: OutputSpec = {
       name: 'pkg',
       version: '1.0.0',
       units: [
         {
           modulePaths: ['index.js'],
           source: "const p = import('./lazy.js');\nexport const x = 1;\n",
+          dynamicImports: ['./lazy.js'],
         },
+        { modulePaths: ['lazy.js'] },
       ],
-    });
-    emit(b, {
+    };
+    emit(a, spec);
+    emit(b, spec);
+    expect(conformance.check(a, b)).toEqual([]);
+  });
+
+  it('OP-012/RF-003: a recorded relative dynamicImports specifier resolving to no unit is a relative-import violation', () => {
+    const { a, b } = pair();
+    const spec: OutputSpec = {
       name: 'pkg',
       version: '1.0.0',
       units: [
         {
           modulePaths: ['index.js'],
-          source: 'const s = "import(\'./lazy.js\')";\nexport const x = 1;\n',
+          source: "const p = import('./missing.js');\nexport const x = 1;\n",
+          dynamicImports: ['./missing.js'],
         },
       ],
-    });
+    };
+    emit(a, spec);
+    emit(b, spec);
     const violations = conformance.check(a, b);
     expect(
       violations.some(
-        (v) => v.rule === 'graph-format' && /dynamic import/.test(v.detail),
+        (v) => v.rule === 'relative-import' && /dynamic import/.test(v.detail),
       ),
     ).toBe(true);
-    // The string-embedded `import(` in output B is not flagged: exactly
-    // one dynamic-import violation, from output A.
+  });
+
+  it('OP-012/RF-003: a recorded bare dynamicImports specifier whose package requires does not declare is a requires-closure violation', () => {
+    const { a, b } = pair();
+    const spec: OutputSpec = {
+      name: 'pkg',
+      version: '1.0.0',
+      units: [
+        {
+          modulePaths: ['index.js'],
+          source: "const p = import('lodash/fp');\nexport const x = 1;\n",
+          dynamicImports: ['lodash/fp'],
+        },
+      ],
+      requires: [],
+    };
+    emit(a, spec);
+    emit(b, spec);
+    const violations = conformance.check(a, b);
     expect(
-      violations.filter(
-        (v) => v.rule === 'graph-format' && /dynamic import/.test(v.detail),
-      ).length,
-    ).toBe(1);
+      violations.some(
+        (v) =>
+          v.rule === 'requires-closure' && /dynamically imports/.test(v.detail),
+      ),
+    ).toBe(true);
   });
 });
