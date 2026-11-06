@@ -34,11 +34,16 @@ interface ByteAgreementRecord {
   readonly packageName: string;
   readonly producer: string;
   readonly manifestId: string;
+  readonly contentHash: string;
 }
 
 export class LoadDiagnosticsAccumulator {
   private readonly emitted = new LruCache<string, true>(64);
-  private readonly agreements = new Map<string, ByteAgreementRecord>();
+  // Keyed by `name@version` — the pair a conflict or agreement is ABOUT.
+  // Keying by content hash made identical bytes the trigger (a warn on
+  // agreement) and left different bytes for the same name@version silent,
+  // which is the case that actually needs a diagnostic.
+  private readonly agreements = new LruCache<string, ByteAgreementRecord>(64);
 
   /** Emit `message` once per handler lifetime, deduplicated by `key`. */
   warnOnce(key: string, message: string): void {
@@ -62,14 +67,37 @@ export class LoadDiagnosticsAccumulator {
     const producer = graph.producer
       ? `${graph.producer.name}@${graph.producer.version}`
       : 'unknown producer';
-    const prior = this.agreements.get(hash);
+    const key = `${dep.name}@${dep.version}`;
+    const prior = this.agreements.get(key);
     if (prior === undefined) {
-      this.agreements.set(hash, { packageName: dep.name, producer, manifestId });
+      this.agreements.set(key, {
+        packageName: dep.name,
+        producer,
+        manifestId,
+        contentHash: hash,
+      });
       return;
     }
     if (prior.manifestId === manifestId) return;
+    const pair = [prior.manifestId, manifestId].sort().join('|');
+    if (prior.contentHash !== hash) {
+      // Conflict: the same name@version declares different bytes across
+      // manifests — each load resolves its own declared identity, and the
+      // disagreement is surfaced rather than silently tolerated.
+      this.warnOnce(
+        `byte-conflict:${key}:${pair}`,
+        `[MfeHandlerMF] shared-dep conflict: '${key}' declares ` +
+          `different bytes across manifests — contentHash ` +
+          `${prior.contentHash.slice(0, 12)}… ('${prior.producer}' in ` +
+          `manifest '${prior.manifestId}') versus ${hash.slice(0, 12)}… ` +
+          `('${producer}' in manifest '${manifestId}'). The same ` +
+          `name@version carries different bytes; each load resolves its ` +
+          `own declared identity.`,
+      );
+      return;
+    }
     this.warnOnce(
-      `byte-agreement:${hash}`,
+      `byte-agreement:${key}:${pair}`,
       `[MfeHandlerMF] byte-agreement: shared dep '${dep.name}' declares ` +
         `identical bytes (contentHash ${hash.slice(0, 12)}…) already ` +
         `declared by '${prior.producer}' in manifest '${prior.manifestId}' ` +

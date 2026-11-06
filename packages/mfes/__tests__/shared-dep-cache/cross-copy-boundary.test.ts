@@ -227,14 +227,16 @@ function buildSharedBlobUrls(
         b: string,
         e: string,
         x: string
-      ) => Promise<Map<string, string>>;
+      ) => Promise<{ urls: Map<string, string> }>;
     }
-  ).buildSharedDepBlobUrls(
-    manifest,
-    baseUrlOf(handler, manifest, entryId),
-    entryId,
-    extensionId
-  );
+  )
+    .buildSharedDepBlobUrls(
+      manifest,
+      baseUrlOf(handler, manifest, entryId),
+      entryId,
+      extensionId
+    )
+    .then((result) => result.urls);
 }
 
 /** Reads a handler's `sharedDepTextCache` field via reflection. */

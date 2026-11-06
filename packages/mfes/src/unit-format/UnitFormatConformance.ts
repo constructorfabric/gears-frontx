@@ -7,10 +7,14 @@
  * `cpt-frontx-dod-unit-format-contract-conformance-suite`).
  *
  * Checks: the fixed naming rules, the content-identity chain graph file →
- * units/pack, closure of each graph file's `requires` over its units' bare
- * imports, resolution of every intra-package relative import to a unit, and
- * byte identity across the two output directories. The suite takes no type
- * system and has no test-runner dependency — it returns typed violations.
+ * units/pack — extended to manifest → graph when a manifest path is
+ * supplied — closure of each graph file's `requires` over its units' and
+ * pack's bare imports, each unit's and the pack's bare specifiers against
+ * their bare imports, declared `entryModulePaths` against unit module
+ * paths, resolution of every intra-package relative import to a unit
+ * (against every member module path), and byte identity across the two
+ * output directories. The suite takes no type system and has no
+ * test-runner dependency — it returns typed violations.
  *
  * @packageDocumentation
  */
@@ -44,12 +48,75 @@ export class UnitFormatConformance {
    * the violated rule and the offending file — or an empty list when both
    * directories conform and agree byte for byte.
    */
-  check(outputA: string, outputB: string): UnitFormatViolation[] {
+  check(outputA: string, outputB: string, manifestPath?: string): UnitFormatViolation[] {
     const violations = [
       ...this.checkOutput(outputA),
       ...this.checkOutput(outputB),
       ...this.compareOutputs(outputA, outputB),
     ];
+    if (manifestPath !== undefined) {
+      violations.push(
+        ...this.checkManifestLeg(manifestPath, outputA),
+        ...this.checkManifestLeg(manifestPath, outputB),
+      );
+    }
+    return violations;
+  }
+
+  /**
+   * The manifest→graph leg of the hash chain: each `shared[]` entry's
+   * `graphFile` reference must name a file present in the output
+   * directory (its `location` resolved relative to the manifest file's
+   * directory), the file's SHA-256 must equal the declared
+   * `contentHash`, and the parsed graph's `name`/`version` must match the
+   * manifest entry.
+   */
+  private checkManifestLeg(manifestPath: string, dir: string): UnitFormatViolation[] {
+    const violations: UnitFormatViolation[] = [];
+    let manifest: {
+      shared?: { name?: unknown; version?: unknown; graphFile?: { location?: unknown; contentHash?: unknown } }[];
+    };
+    try {
+      manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    } catch (error) {
+      violations.push(
+        this.violation(dir, manifestPath, 'graph-format', `manifest is not parseable JSON: ${(error as Error).message}`),
+      );
+      return violations;
+    }
+    const manifestDir = dirname(manifestPath);
+    for (const dep of manifest.shared ?? []) {
+      const ref = dep.graphFile;
+      if (ref === undefined || typeof ref.location !== 'string' || typeof ref.contentHash !== 'string') {
+        continue;
+      }
+      const graphPath = join(manifestDir, ref.location);
+      let actual: string;
+      try {
+        actual = this.sha256File(graphPath);
+      } catch {
+        violations.push(
+          this.violation(dir, ref.location, 'hash-chain', `manifest declares ${dep.name} graph file at "${ref.location}" but no such file exists`),
+        );
+        continue;
+      }
+      if (actual !== ref.contentHash) {
+        violations.push(
+          this.violation(dir, ref.location, 'hash-chain', `manifest declares ${dep.name} graphFile contentHash ${ref.contentHash} but file SHA-256 is ${actual}`),
+        );
+        continue;
+      }
+      try {
+        const graph = JSON.parse(readFileSync(graphPath, 'utf8')) as SharedDepGraphFile;
+        if (graph.name !== dep.name || graph.version !== dep.version) {
+          violations.push(
+            this.violation(dir, ref.location, 'hash-chain', `manifest entry '${dep.name}@${dep.version}' references a graph file for '${graph.name}@${graph.version}'`),
+          );
+        }
+      } catch {
+        // An unparseable graph file is already reported by checkGraph.
+      }
+    }
     return violations;
   }
 
@@ -153,6 +220,33 @@ export class UnitFormatConformance {
     }
     if (graph.pack !== undefined) {
       this.checkDeclaredHash(dir, rel, graph.pack.location, graph.pack.contentHash, 'pack', violations);
+      // The pack obeys the same requires/bareImports rules as a unit.
+      for (const bare of graph.pack.bareImports ?? []) {
+        if (!graph.requires?.includes(bare)) {
+          violations.push(
+            this.violation(
+              dir,
+              rel,
+              'requires-closure',
+              `pack ${graph.pack.location} keeps bare import "${bare}" external but the graph's requires does not declare it`,
+            ),
+          );
+        }
+      }
+      for (const specifier of graph.pack.bareSpecifiers ?? []) {
+        const segments = specifier.split('/');
+        const packageName = segments.slice(0, specifier.startsWith('@') ? 2 : 1).join('/');
+        if (!(graph.pack.bareImports ?? []).includes(packageName)) {
+          violations.push(
+            this.violation(
+              dir,
+              rel,
+              'requires-closure',
+              `pack ${graph.pack.location} imports bare specifier "${specifier}" but its bareImports does not list "${packageName}"`,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -198,14 +292,20 @@ export class UnitFormatConformance {
       }
     }
     for (const specifier of unit.relativeImports) {
-      const resolved = this.resolveRelativeImport(unit, specifier);
-      if (!allModulePaths.has(resolved)) {
+      // The runtime resolves against EVERY member module path (F-016):
+      // the import issues from whichever member could carry it, so the
+      // check fails only when no member's resolution lands on an owned
+      // module path.
+      const resolutions = unit.modulePaths.map((member) =>
+        this.resolveRelative(member, specifier),
+      );
+      if (!resolutions.some((resolved) => allModulePaths.has(resolved))) {
         violations.push(
           this.violation(
             dir,
             graphRel,
             'relative-import',
-            `unit ${unit.location} relative import "${specifier}" resolves to "${resolved}", owned by no unit of ${graph.name}@${graph.version}`,
+            `unit ${unit.location} relative import "${specifier}" resolves to "${resolutions[0] ?? ''}", owned by no unit of ${graph.name}@${graph.version}`,
           ),
         );
       }
@@ -213,14 +313,11 @@ export class UnitFormatConformance {
   }
 
   /**
-   * Resolve a unit's relative import against its first member module path —
-   * the entry module of the strongly connected component — using URL
-   * resolution, so `'./foo.js'` from a unit whose module path is `'bar.js'`
-   * names `'foo.js'`.
+   * Resolve `specifier` against the directory of `memberModulePath` using
+   * URL resolution — the same semantics the runtime applies per member.
    */
-  private resolveRelativeImport(unit: SharedDepGraphUnit, specifier: string): string {
-    const baseModule = unit.modulePaths[0] ?? '';
-    return new URL(specifier, new URL(baseModule, 'http://r/')).pathname.slice(1);
+  private resolveRelative(memberModulePath: string, specifier: string): string {
+    return new URL(specifier, new URL(memberModulePath, 'http://r/')).pathname.slice(1);
   }
 
   /**

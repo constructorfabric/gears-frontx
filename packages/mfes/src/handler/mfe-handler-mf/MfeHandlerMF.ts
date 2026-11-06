@@ -49,7 +49,7 @@ import { AttemptSourceTextLedger } from './AttemptSourceTextLedger';
 import { FetchBudget } from './FetchBudget';
 import { ManifestCache } from './ManifestCache';
 import { PackFallbackPolicy } from './PackFallbackPolicy';
-import { SharedUnitGraphLoader } from './SharedUnitGraphLoader';
+import { SharedUnitGraphLoader, type LoadedGraph } from './SharedUnitGraphLoader';
 import { UnitBlobMinter } from './UnitBlobMinter';
 import { LoadDiagnosticsAccumulator } from './LoadDiagnosticsAccumulator';
 import type { RealmSharedDepTextCacheDiagnostics } from './ByteBudgetLruCache';
@@ -201,6 +201,33 @@ interface LoadBlobState {
    * its own attempt is still in flight.
    */
   readonly attemptLedger?: AttemptSourceTextLedger;
+  /**
+   * Shared-dep unit context for `lazyChunkRoots` (`inst-lai-lazy-roots`):
+   * present only when the load took the unit-format graph path, so a lazy
+   * chunk resolving through this state can fetch and mint the units its
+   * declared roots reach and extend `sharedDepBlobUrls`.
+   */
+  readonly sharedDepUnits?: SharedDepUnitContext;
+}
+
+/**
+ * What a lazy chunk needs to fetch and mint the units its
+ * `lazyChunkRoots` reach: the manifest (for the roots map), the verified
+ * graph files, the verified-fetch and asset-URL functions the initial
+ * plan used, the record keys already minted, and one in-flight promise
+ * per lazy chunk so concurrent resolves share one unit build.
+ */
+interface SharedDepUnitContext {
+  readonly manifest: MfManifest;
+  readonly graphs: readonly LoadedGraph[];
+  readonly fetchVerified: (
+    url: string,
+    contentHash: string,
+    cacheKey: string,
+  ) => Promise<string>;
+  readonly resolveAssetUrl: (location: string) => string;
+  readonly mintedKeys: Set<string>;
+  readonly pending: Map<string, Promise<void>>;
 }
 
 /**
@@ -834,14 +861,15 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // Build shared dep blob URLs first (leaves first, dependency order).
     // Each dep's standalone ESM may import other shared deps as bare specifiers;
     // those are rewritten to already-resolved blob URLs before creating the blob.
-    const sharedDepBlobUrls = await this.buildSharedDepBlobUrls(
-      manifest,
-      baseUrl,
-      entryId,
-      extensionId,
-      exposedModule,
-      ledger
-    );
+    const { urls: sharedDepBlobUrls, sharedDepUnits } =
+      await this.buildSharedDepBlobUrls(
+        manifest,
+        baseUrl,
+        entryId,
+        extensionId,
+        exposedModule,
+        ledger
+      );
     // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-run-manifest-discovery
 
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-expose-chunk
@@ -864,6 +892,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       sharedDepBlobUrls,
       entryChunkFilename: exposeChunkFilename,
       attemptLedger: ledger,
+      sharedDepUnits,
     };
     // @cpt-end:cpt-frontx-state-mfe-isolation-load-blob-state:p1:inst-blob-building
 
@@ -1323,7 +1352,10 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     extensionId: string,
     exposedModule: string,
     ledger?: AttemptSourceTextLedger
-  ): Promise<Map<string, string>> {
+  ): Promise<{
+    urls: Map<string, string>;
+    sharedDepUnits?: SharedDepUnitContext;
+  }> {
     // `sources`/`sharedDepBlobUrls` are keyed by bare `dep.name`, while
     // `sharedDepTextCache` is keyed by the more precise `name@version`. Two
     // shared entries with the same name but different versions would
@@ -1346,12 +1378,14 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     }
     const sources = await this.fetchSharedDepSources(manifest, baseUrl, entryId, ledger);
     const sharedNames = new Set(manifest.shared.map((d) => d.name));
-    return this.createBlobUrlsInDependencyOrder(
-      sources,
-      sharedNames,
-      entryId,
-      extensionId
-    );
+    return {
+      urls: this.createBlobUrlsInDependencyOrder(
+        sources,
+        sharedNames,
+        entryId,
+        extensionId
+      ),
+    };
   }
 
   /**
@@ -1367,22 +1401,27 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     entryId: string,
     exposedModule: string,
     ledger?: AttemptSourceTextLedger
-  ): Promise<Map<string, string>> {
+  ): Promise<{
+    urls: Map<string, string>;
+    sharedDepUnits?: SharedDepUnitContext;
+  }> {
     const started = Date.now();
     const sharedBase = manifest.metaData.sharedBase;
-    const assetBase =
-      sharedBase !== undefined
-        ? MfeHandlerMF.asDirectoryBase(
-            MfeHandlerMF.parseUrl(sharedBase, baseUrl) ??
-              MfeHandlerMF.parseUrl(baseUrl) ??
-              new URL(baseUrl)
-          )
-        : baseUrl;
-    const resolveAssetUrl = (location: string): string => {
-      if (/^https?:\/\//i.test(location)) return location;
-      const url = MfeHandlerMF.parseUrl(location, assetBase);
-      return url !== undefined ? url.href : `${assetBase}${location}`;
-    };
+    let assetBase = baseUrl;
+    if (sharedBase !== undefined) {
+      const resolvedBase = MfeHandlerMF.parseUrl(sharedBase, baseUrl);
+      if (resolvedBase === undefined || !/^https?:$/i.test(resolvedBase.protocol)) {
+        throw MfeHandlerMF.manifestDataRejection(
+          `manifest.metaData.sharedBase "${String(sharedBase)}" does not ` +
+            'resolve to an http(s) URL — shared-file locations cannot be ' +
+            'resolved against it.',
+          entryId
+        );
+      }
+      assetBase = MfeHandlerMF.asDirectoryBase(resolvedBase);
+    }
+    const resolveAssetUrl = (location: string): string =>
+      MfeHandlerMF.resolveSharedAssetUrl(location, assetBase, entryId);
     const fetchText = (url: string): Promise<string> =>
       this.fetchSourceText(url, ledger);
     const graphs = await Promise.all(
@@ -1457,7 +1496,8 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       this.config.packFallbackBudgetMs ?? PackFallbackPolicy.DEFAULT_BUDGET_MS,
       Date.now() - started,
       fetchVerified,
-      resolveAssetUrl
+      resolveAssetUrl,
+      entryId
     );
     const specifierToBlob = UnitBlobMinter.mint(plan.records, entryId);
     this.loadDiagnostics.summarize(
@@ -1466,7 +1506,115 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       plan.packFallbackPackages,
       cache
     );
-    return specifierToBlob;
+    return {
+      urls: specifierToBlob,
+      // inst-lai-lazy-roots: keep what a lazy chunk needs to fetch and
+      // mint the units its declared roots reach — the verified graphs,
+      // the fetch/resolve functions, and the keys already minted.
+      sharedDepUnits: {
+        manifest,
+        graphs,
+        fetchVerified,
+        resolveAssetUrl,
+        mintedKeys: new Set(plan.records.map((r) => r.key)),
+        pending: new Map<string, Promise<void>>(),
+      },
+    };
+  }
+
+  /**
+   * Resolve a shared-file `location` (graph file, unit or pack) by the
+   * same rules `resolveSharedChunkUrl` applies to `chunkPath`: an http(s)
+   * absolute URL of a file, or a relative path that stays under
+   * `assetBase` and names a file. Protocol-relative `//host` spellings,
+   * non-http(s) schemes, backslashes, spaces/control characters and `..`
+   * escapes fail the load before any fetch (SEC-001).
+   */
+  private static resolveSharedAssetUrl(
+    location: string,
+    assetBase: string,
+    entryId: string
+  ): string {
+    const rejection = () =>
+      MfeHandlerMF.manifestDataRejection(
+        `shared-file location "${String(location)}" is neither an http(s) ` +
+          'URL of a file nor a file path that stays under the shared ' +
+          'asset base location.',
+        entryId
+      );
+    if (typeof (location as unknown) !== 'string') {
+      throw rejection();
+    }
+    const isControlOrSpace = (char: string): boolean => {
+      const code = char.charCodeAt(0);
+      return code <= 0x20 || (code >= 0x7f && code <= 0x9f);
+    };
+    if ([...location].some((char) => isControlOrSpace(char) || char === '\\')) {
+      throw rejection();
+    }
+    if (/^https?:\/\//i.test(location)) {
+      const absolute = MfeHandlerMF.parseUrl(location);
+      if (!absolute || absolute.pathname.endsWith('/')) {
+        throw rejection();
+      }
+      return absolute.href;
+    }
+    const relativePath = location.replace(/^\/+/, '');
+    if (location.startsWith('//') || MfeHandlerMF.hasUrlScheme(relativePath)) {
+      throw rejection();
+    }
+    const url = MfeHandlerMF.parseUrl(relativePath, assetBase);
+    if (!url?.href.startsWith(assetBase) || url.pathname.endsWith('/')) {
+      throw rejection();
+    }
+    return url.href;
+  }
+
+  /**
+   * Fetch and mint the units `lazyChunkRoots` declares for the lazy chunk
+   * `filename`, extending `sharedDepBlobUrls` — never rewriting it
+   * (`inst-lai-lazy-roots`). One in-flight build per filename; units
+   * already minted by the initial plan or an earlier lazy build are
+   * reused as they are.
+   */
+  private async ensureLazySharedDepUnits(
+    loadState: LoadBlobState,
+    filename: string
+  ): Promise<void> {
+    const ctx = loadState.sharedDepUnits;
+    if (ctx === undefined) return;
+    const roots = ctx.manifest.lazyChunkRoots?.[filename];
+    if (roots === undefined || roots.length === 0) return;
+    let pending = ctx.pending.get(filename);
+    if (pending === undefined) {
+      pending = (async () => {
+        const plan = await SharedUnitGraphLoader.buildPlan(
+          ctx.graphs as LoadedGraph[],
+          roots,
+          this.config.packFallbackBudgetMs ?? PackFallbackPolicy.DEFAULT_BUDGET_MS,
+          0,
+          ctx.fetchVerified,
+          ctx.resolveAssetUrl,
+          loadState.entryId
+        );
+        const fresh = plan.records.filter((r) => !ctx.mintedKeys.has(r.key));
+        for (const record of plan.records) {
+          ctx.mintedKeys.add(record.key);
+        }
+        const minted = UnitBlobMinter.mint(
+          fresh,
+          loadState.entryId,
+          loadState.sharedDepBlobUrls
+        );
+        for (const [specifier, blob] of minted) {
+          if (!loadState.sharedDepBlobUrls.has(specifier)) {
+            loadState.sharedDepBlobUrls.set(specifier, blob);
+          }
+        }
+      })();
+      ctx.pending.set(filename, pending);
+    }
+    await pending;
   }
 
   /**
@@ -2413,6 +2561,11 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       relPath
     );
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-resolve-relative-path
+
+    // inst-lai-lazy-roots: fetch and mint the shared-dep units this lazy
+    // chunk's declared roots reach before its own chain is built, so its
+    // bare specifiers rewrite to blob URLs.
+    await this.ensureLazySharedDepUnits(loadState, filename);
 
     // Fresh per-build failure token (see `ChainBuildState`) for THIS
     // `resolveLazyChunk` call, scoped to `loadState`. A network blip on one
