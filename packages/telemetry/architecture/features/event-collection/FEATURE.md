@@ -94,6 +94,9 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
 **Error Scenarios**:
 - No `window` present: start, plugin registration and teardown return the client unchanged, so collection never starts.
 - Start called a second time on the same client: refused and reported; the client stays in its already-started state.
+- Start called after teardown: refused and reported, whether or not the client was started before teardown.
+- Teardown called a second time: does nothing; no teardown hook runs again.
+- Event logged after teardown: reported through the logger, and neither queued nor sent.
 - Plugin registered after start: stored and never set up, so its enrichment silently does nothing.
 - Delivery rejected by the network or the collector: the batch is already drained from the queue and is lost; the rejection reaches the console only.
 
@@ -106,7 +109,7 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
 6. [x] - `p1` - Developer starts the client where the application boots - `inst-start-client`
 7. [x] - `p1` - **IF** `window` is undefined - `inst-check-window`
    1. [x] - `p1` - **RETURN** the client unchanged; no collection occurs - `inst-no-window-noop`
-8. [x] - `p1` - **IF** the client has already been started - `inst-check-started`
+8. [x] - `p1` - **IF** the client has already been started, or has been torn down - `inst-check-started`
    1. [x] - `p1` - Report the refusal through the logger (surfaced when verbose) and **RETURN** the client unchanged - `inst-refuse-restart`
 9. [x] - `p1` - System registers the built-in plugins after any the developer registered, sets every plugin up, installs listeners, and refreshes the session - `inst-start-collection`
 10. [x] - `p1` - Developer logs a domain event by name with optional data - `inst-log-event`
@@ -144,33 +147,39 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
 **Steps**:
 1. [x] - `p1` - **IF** `window` is undefined - `inst-guard-window`
    1. [x] - `p1` - **RETURN** the client without touching any manager - `inst-return-unstarted`
-2. [x] - `p1` - **IF** the start flag is already set - `inst-guard-restart`
+2. [x] - `p1` - **IF** the client is already STARTED - `inst-guard-restart`
    1. [x] - `p1` - Report through the logger (surfaced when verbose) that the client is already started and a new client should be built - `inst-log-restart-refused`
    2. [x] - `p1` - **RETURN** the client unchanged - `inst-return-already-started`
-3. [x] - `p1` - Set the start flag, which teardown deliberately never clears - `inst-set-started`
-4. [x] - `p1` - Register the built-in session, device, navigation, application-info and autocapture plugins, after any the caller registered so a colliding caller plugin is replaced, passing navigation through as falsy where navigation capture is disabled in configuration so it is never registered - `inst-register-builtins`
-5. [x] - `p1` - Start the session manager's activity listeners - `inst-start-session`
-6. [x] - `p1` - Start the events manager's visibility listener - `inst-start-events`
-7. [x] - `p1` - Run every registered plugin's setup in one pass - `inst-setup-plugins`
-8. [x] - `p1` - Refresh the session so a new session is minted or an existing one continued - `inst-refresh-session`
-9. [x] - `p1` - Invoke the start hooks - `inst-call-start-hooks`
-10. [x] - `p1` - **RETURN** the client for chaining - `inst-return-started`
+3. [x] - `p1` - **IF** the client is DESTROYED - `inst-guard-destroyed`
+   1. [x] - `p1` - Report through the logger (surfaced when verbose) that the client has been destroyed and a new client should be built - `inst-log-destroyed-refused`
+   2. [x] - `p1` - **RETURN** the client unchanged - `inst-return-destroyed-unchanged`
+4. [x] - `p1` - Mark the client STARTED - `inst-set-started`
+5. [x] - `p1` - Register the built-in session, device, navigation, application-info and autocapture plugins, after any the caller registered so a colliding caller plugin is replaced, passing navigation through as falsy where navigation capture is disabled in configuration so it is never registered - `inst-register-builtins`
+6. [x] - `p1` - Start the session manager's activity listeners - `inst-start-session`
+7. [x] - `p1` - Start the events manager's visibility listener - `inst-start-events`
+8. [x] - `p1` - Run every registered plugin's setup in one pass - `inst-setup-plugins`
+9. [x] - `p1` - Refresh the session so a new session is minted or an existing one continued - `inst-refresh-session`
+10. [x] - `p1` - Invoke the start hooks - `inst-call-start-hooks`
+11. [x] - `p1` - **RETURN** the client for chaining - `inst-return-started`
 
 ### Client Teardown
 
 - [x] `p1` - **ID**: `cpt-frontx-telemetry-algo-event-collection-destroy`
 
-**Input**: A client, started or not
+**Input**: A client in any state
 
 **Output**: No listeners installed, no timers pending, and everything queued delivered
 
 **Steps**:
 1. [x] - `p1` - **IF** `window` is undefined - `inst-guard-window-destroy`
    1. [x] - `p1` - **RETURN** without touching any manager - `inst-return-no-teardown`
-2. [x] - `p1` - Detach the session manager's activity listeners - `inst-detach-session`
-3. [x] - `p1` - Invoke the teardown hooks, so a plugin may log a parting event - `inst-call-destroy-hooks`
-4. [x] - `p1` - Tear the events manager down last, so a parting event reaches the queue before the final delivery - `inst-teardown-events-last`
-5. [x] - `p1` - **RETURN** control; the start flag stays set, so this client cannot be restarted - `inst-return-destroyed`
+2. [x] - `p1` - **IF** the client is already DESTROYED - `inst-guard-repeat-destroy`
+   1. [x] - `p1` - **RETURN** without running teardown again - `inst-return-already-destroyed`
+3. [x] - `p1` - Mark the client DESTROYED before teardown runs, so a start or teardown called from a teardown hook is refused rather than run partway through - `inst-set-destroyed`
+4. [x] - `p1` - Detach the session manager's activity listeners - `inst-detach-session`
+5. [x] - `p1` - Invoke the teardown hooks, so a plugin may log a parting event - `inst-call-destroy-hooks`
+6. [x] - `p1` - Tear the events manager down last, so a parting event reaches the queue before the final delivery - `inst-teardown-events-last`
+7. [x] - `p1` - **RETURN** control; the client stays DESTROYED, so it cannot be restarted - `inst-return-destroyed`
 
 ### Record Construction And Enrichment
 
@@ -178,17 +187,20 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
 
 **Input**: Either an event name with optional data, or a whole record
 
-**Output**: An enriched record, queued, with a drain scheduled
+**Output**: An enriched record, queued, with a drain scheduled; after teardown, the record unqueued
 
 **Steps**:
 1. [x] - `p1` - Normalize the arguments: a leading string is a name-and-data call, otherwise the first argument is a whole record - `inst-normalize-params`
 2. [x] - `p1` - Log the call through the logger when verbose - `inst-log-call`
 3. [x] - `p1` - Build the record from name, data and any caller-supplied field overrides - `inst-build-record`
 4. [x] - `p1` - Apply the SDK-assigned identifier and trigger timestamp **after** the caller's fields, so identity cannot be overridden - `inst-apply-identity-last`
-5. [x] - `p1` - Invoke the enrichment hook, letting every registered plugin mutate the record - `inst-call-event-hook`
-6. [x] - `p1` - Push the record onto the queue - `inst-enqueue`
-7. [x] - `p1` - Schedule the drain, resetting the debounce - `inst-schedule-drain`
-8. [x] - `p1` - **RETURN** the record to the caller - `inst-return-record`
+5. [x] - `p1` - **IF** the events manager has been torn down - `inst-check-closed`
+   1. [x] - `p1` - Report through the logger (surfaced when verbose) that the event was not sent - `inst-log-dropped`
+   2. [x] - `p1` - **RETURN** the record without offering it to the enrichment hook, queueing it or scheduling a drain - `inst-return-dropped`
+6. [x] - `p1` - Invoke the enrichment hook, letting every registered plugin mutate the record - `inst-call-event-hook`
+7. [x] - `p1` - Push the record onto the queue - `inst-enqueue`
+8. [x] - `p1` - Schedule the drain, resetting the debounce - `inst-schedule-drain`
+9. [x] - `p1` - **RETURN** the record to the caller - `inst-return-record`
 
 ### Queue Drain And Delivery
 
@@ -242,7 +254,7 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
 1. [x] - `p1` - On visibility change, **IF** the document is not hidden - `inst-check-hidden`
    1. [x] - `p1` - **RETURN** without draining - `inst-return-still-visible`
 2. [x] - `p1` - Execute the drain immediately rather than waiting for the debounce - `inst-exec-drain`
-3. [x] - `p1` - On teardown, detach the visibility listener, then drain rather than cancelling the pending timer - `inst-teardown-drain`
+3. [x] - `p1` - On teardown, detach the visibility listener, drain rather than cancelling the pending timer, then stop accepting records, so a record logged after teardown is never sent - `inst-teardown-drain`
 
 ### Session Continuation
 
@@ -303,11 +315,13 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
 **Initial State**: CREATED
 
 **Transitions**:
-1. [x] - `p1` - **FROM** CREATED **TO** STARTED **WHEN** start is called with `window` present and the start flag unset; built-ins are registered, plugins set up, listeners installed and the session refreshed - `inst-created-to-started`
+1. [x] - `p1` - **FROM** CREATED **TO** STARTED **WHEN** start is called with `window` present on a client that has been neither started nor torn down; built-ins are registered, plugins set up, listeners installed and the session refreshed - `inst-created-to-started`
 2. [x] - `p1` - **FROM** STARTED **TO** STARTED **WHEN** start is called again; the call is refused and reported, and no plugin is set up a second time - `inst-started-to-started`
 3. [x] - `p1` - **FROM** STARTED **TO** DESTROYED **WHEN** teardown is called; session listeners detach, teardown hooks run, and the queue is delivered - `inst-started-to-destroyed`
 4. [x] - `p1` - **FROM** CREATED **TO** DESTROYED **WHEN** teardown is called on a client that was never started - `inst-created-to-destroyed`
-5. [x] - `p1` - **FROM** DESTROYED **TO** DESTROYED **WHEN** start is called after teardown; the start flag was never cleared, so the call is refused and the client remains single-use - `inst-destroyed-terminal`
+5. [x] - `p1` - **FROM** DESTROYED **TO** DESTROYED **WHEN** start is called after teardown, whether or not the client was started before; the call is refused and reported, and the client remains single-use - `inst-destroyed-terminal`
+6. [x] - `p1` - **FROM** DESTROYED **TO** DESTROYED **WHEN** teardown is called again; nothing runs, so no teardown hook runs twice - `inst-destroyed-repeat-destroy`
+7. [x] - `p1` - **FROM** DESTROYED **TO** DESTROYED **WHEN** an event is logged after teardown; it is reported, and neither queued nor sent - `inst-destroyed-drops-events`
 
 ### Session State Machine
 
@@ -344,7 +358,7 @@ The system **MUST** build a client from configuration requiring only application
 
 - [x] `p1` - **ID**: `cpt-frontx-telemetry-dod-event-collection-single-use`
 
-The system **MUST** refuse a second start on the same client and report the refusal, **MUST NOT** clear the start flag during teardown, and **MUST** order teardown so that session listeners detach, then teardown hooks run, then the events manager tears down and delivers — so that an event logged by a teardown hook still reaches the final batch.
+The system **MUST** refuse a second start on the same client and report the refusal, **MUST** keep a torn-down client DESTROYED — refusing and reporting a start, running nothing on a second teardown, and neither queueing nor sending an event logged after teardown — and **MUST** order teardown so that session listeners detach, then teardown hooks run, then the events manager tears down and delivers — so that an event logged by a teardown hook still reaches the final batch.
 
 **Implements**:
 - `cpt-frontx-telemetry-algo-event-collection-start`
@@ -467,7 +481,8 @@ The system **MUST** supply session, device, navigation and application-info enri
 
 - [x] A client created with only application name, version and endpoint collects and delivers enriched records, with every other option resolved to its documented default.
 - [x] Importing the package and calling start, plugin registration and teardown in a process without `window` completes without error and collects nothing.
-- [x] A second start on the same client is refused and reported, and no plugin is set up twice; a client destroyed and then started again stays refused.
+- [x] A second start on the same client is refused and reported, and no plugin is set up twice; a client destroyed and then started stays refused, whether or not it was started before.
+- [x] A second teardown runs no teardown hook again, and an event logged after teardown is never sent.
 - [x] An event logged from a teardown hook appears in the batch delivered by teardown.
 - [x] A record's identifier and trigger timestamp are SDK-assigned and survive a caller supplying those fields explicitly.
 - [x] A record is fully enriched when it enters the queue, and the events manager contains no reference to any context field by name.

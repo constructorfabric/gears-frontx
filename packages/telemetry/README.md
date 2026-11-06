@@ -65,7 +65,8 @@ Log events after `start()`. The built-in plugins are only registered there, so a
 earlier goes out without session, device or app context.
 
 Call `destroy()` on teardown. It runs the `destroy` hooks, sends whatever is still queued, and
-removes the listeners.
+removes the listeners. The client is finished after that: an event logged to it is dropped, and
+it cannot be started again.
 
 ## Configuration
 
@@ -104,8 +105,9 @@ All methods except `logEvent` and `destroy` are chainable.
 Register plugins before `start()`. `setup()` runs inside `start()`, so a plugin passed to
 `plugin()` afterwards is stored and never set up.
 
-`destroy()` does not unregister plugin hooks, so calling `start()` again on the same client
-registers them a second time. Build a new client instead.
+A client is single-use. `start()` on a client that is already started, or has been destroyed, is
+refused (and reported when `verbose`), a second `destroy()` does nothing, and an event logged after
+`destroy()` is dropped. Build a new client instead.
 
 ## Framework integration
 

@@ -48,7 +48,7 @@ Delivery is deliberately separated from collection. Records accumulate in an in-
 | Requirement | Design Response |
 |-------------|------------------|
 | `cpt-frontx-telemetry-fr-client-creation` | `cpt-frontx-telemetry-component-client` normalizes configuration once at construction and guards every lifecycle method on the presence of `window`, so a server import yields a functioning object that collects nothing. |
-| `cpt-frontx-telemetry-fr-client-lifecycle` | The client owns a start flag that teardown deliberately does not clear, making a second start refusable rather than silently duplicating hooks; teardown orders session detach, plugin teardown hooks, then events-manager teardown so a parting event still reaches the queue before the final delivery. |
+| `cpt-frontx-telemetry-fr-client-lifecycle` | The client keeps one lifecycle state (created, started or destroyed), so a second start, or a start after teardown, is refused rather than silently duplicating hooks, and a second teardown does nothing; teardown orders session detach, plugin teardown hooks, then events-manager teardown so a parting event still reaches the queue before the final delivery, after which the events manager accepts no more records. |
 | `cpt-frontx-telemetry-fr-custom-events` | `cpt-frontx-telemetry-component-events-manager` builds each record with caller fields first and SDK identity last, so identity cannot be overridden, then invokes the enrichment hook before queueing. |
 | `cpt-frontx-telemetry-fr-batched-delivery` | A scheduler owned by the events manager debounces the drain and is reset by each new record; a document visibility listener and the teardown path both force an immediate drain, and the request carries `keepalive`. |
 | `cpt-frontx-telemetry-fr-collector-endpoint` | The events manager resolves the endpoint from normalized configuration only, and selects between two envelope builders on the configured envelope version. |
@@ -230,7 +230,7 @@ Gives the application one object to hold and one lifecycle to manage, and confin
 
 - Normalizes raw configuration once and builds the shared context: configuration, hook registry, logger.
 - Constructs the four managers and wires them to each other.
-- Owns the lifecycle: start, teardown, and the single-use rule that refuses a second start.
+- Owns the lifecycle: start, teardown, and the single-use rule that refuses a second start and a start after teardown.
 - Registers the built-in plugins as part of start, after any the caller registered, omitting navigation where configuration switches navigation capture off.
 - Guards every lifecycle method on the presence of `window`.
 - Orders teardown so that session detach precedes plugin teardown hooks, which precede the events manager's flushing teardown.
@@ -239,7 +239,7 @@ Gives the application one object to hold and one lifecycle to manage, and confin
 
 - Does NOT enrich records, own the queue, or construct envelopes.
 - Does NOT read or write browser storage.
-- Does NOT re-enter a usable state after teardown; the start flag is deliberately not cleared, so restarting is refused rather than repaired.
+- Does NOT re-enter a usable state after teardown; a destroyed client refuses start, ignores a second teardown, and sends no event logged afterwards.
 - Does NOT bind to any application framework — no such entry point exists in this package.
 
 ##### Related components (by ID)

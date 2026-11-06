@@ -34,10 +34,8 @@ export function createTelemetry(configRaw: TelemetryConfig): TelemetryService {
   const pluginsManager = createPluginsManager(context, sessionManager, eventsManager);
   const rootApi = { plugin, start, destroy, logEvent, identify };
   // @cpt-end:cpt-frontx-telemetry-flow-event-collection-instrument:p1:inst-construct-managers
-  // The CREATED state: no listener installed and no plugin set up until `start()` runs.
-  // @cpt-begin:cpt-frontx-telemetry-state-event-collection-client-lifecycle:p2:inst-created-to-started
-  let started = false;
-  // @cpt-end:cpt-frontx-telemetry-state-event-collection-client-lifecycle:p2:inst-created-to-started
+  // Starts CREATED: no listener installed and no plugin set up until `start()` runs.
+  let lifecycle: 'created' | 'started' | 'destroyed' = 'created';
 
   return rootApi;
 
@@ -68,14 +66,13 @@ export function createTelemetry(configRaw: TelemetryConfig): TelemetryService {
     // @cpt-end:cpt-frontx-telemetry-flow-event-collection-instrument:p1:inst-check-window
     // @cpt-end:cpt-frontx-telemetry-algo-event-collection-start:p1:inst-guard-window
 
-    // `destroy()` leaves the registered hooks in place, so this flag is never cleared: a second
-    // `start()` would set every plugin up again, duplicating its `event` hook and its listeners.
-    // A client is single-use by design — build a new one instead of restarting this one.
-    // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-start:p1:inst-guard-restart
+    // A client is single-use by design. `destroy()` leaves the registered hooks in place, so a
+    // `start()` after `start()` or after `destroy()` would set every plugin up again, duplicating
+    // its `event` hook and its listeners. Build a new client instead of restarting this one.
     // @cpt-begin:cpt-frontx-telemetry-flow-event-collection-instrument:p1:inst-check-started
+    // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-start:p1:inst-guard-restart
     // @cpt-begin:cpt-frontx-telemetry-state-event-collection-client-lifecycle:p2:inst-started-to-started
-    // @cpt-begin:cpt-frontx-telemetry-state-event-collection-client-lifecycle:p2:inst-destroyed-terminal
-    if (started) {
+    if (lifecycle === 'started') {
       // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-start:p1:inst-log-restart-refused
       // @cpt-begin:cpt-frontx-telemetry-flow-event-collection-instrument:p1:inst-refuse-restart
       logger.logError('Telemetry is already started; build a new client instead of restarting.');
@@ -85,13 +82,28 @@ export function createTelemetry(configRaw: TelemetryConfig): TelemetryService {
       return rootApi;
       // @cpt-end:cpt-frontx-telemetry-algo-event-collection-start:p1:inst-return-already-started
     }
-    // @cpt-end:cpt-frontx-telemetry-state-event-collection-client-lifecycle:p2:inst-destroyed-terminal
     // @cpt-end:cpt-frontx-telemetry-state-event-collection-client-lifecycle:p2:inst-started-to-started
-    // @cpt-end:cpt-frontx-telemetry-flow-event-collection-instrument:p1:inst-check-started
     // @cpt-end:cpt-frontx-telemetry-algo-event-collection-start:p1:inst-guard-restart
+    // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-start:p1:inst-guard-destroyed
+    // @cpt-begin:cpt-frontx-telemetry-state-event-collection-client-lifecycle:p2:inst-destroyed-terminal
+    if (lifecycle === 'destroyed') {
+      // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-start:p1:inst-log-destroyed-refused
+      // @cpt-begin:cpt-frontx-telemetry-flow-event-collection-instrument:p1:inst-refuse-restart
+      logger.logError('Telemetry has been destroyed; build a new client instead of restarting.');
+      // @cpt-end:cpt-frontx-telemetry-flow-event-collection-instrument:p1:inst-refuse-restart
+      // @cpt-end:cpt-frontx-telemetry-algo-event-collection-start:p1:inst-log-destroyed-refused
+      // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-start:p1:inst-return-destroyed-unchanged
+      return rootApi;
+      // @cpt-end:cpt-frontx-telemetry-algo-event-collection-start:p1:inst-return-destroyed-unchanged
+    }
+    // @cpt-end:cpt-frontx-telemetry-state-event-collection-client-lifecycle:p2:inst-destroyed-terminal
+    // @cpt-end:cpt-frontx-telemetry-algo-event-collection-start:p1:inst-guard-destroyed
+    // @cpt-end:cpt-frontx-telemetry-flow-event-collection-instrument:p1:inst-check-started
 
     // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-start:p1:inst-set-started
-    started = true;
+    // @cpt-begin:cpt-frontx-telemetry-state-event-collection-client-lifecycle:p2:inst-created-to-started
+    lifecycle = 'started';
+    // @cpt-end:cpt-frontx-telemetry-state-event-collection-client-lifecycle:p2:inst-created-to-started
     // @cpt-end:cpt-frontx-telemetry-algo-event-collection-start:p1:inst-set-started
 
     // @cpt-begin:cpt-frontx-telemetry-flow-event-collection-instrument:p1:inst-start-collection
@@ -152,6 +164,23 @@ export function createTelemetry(configRaw: TelemetryConfig): TelemetryService {
       // @cpt-end:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-return-no-teardown
     }
     // @cpt-end:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-guard-window-destroy
+
+    // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-guard-repeat-destroy
+    // @cpt-begin:cpt-frontx-telemetry-state-event-collection-client-lifecycle:p2:inst-destroyed-repeat-destroy
+    if (lifecycle === 'destroyed') {
+      // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-return-already-destroyed
+      return;
+      // @cpt-end:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-return-already-destroyed
+    }
+    // @cpt-end:cpt-frontx-telemetry-state-event-collection-client-lifecycle:p2:inst-destroyed-repeat-destroy
+    // @cpt-end:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-guard-repeat-destroy
+
+    // Set before teardown runs, so a `start()` or `destroy()` called from a teardown hook is
+    // refused rather than run partway through. Records still reach the queue until the events
+    // manager's own teardown has delivered it.
+    // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-set-destroyed
+    lifecycle = 'destroyed';
+    // @cpt-end:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-set-destroyed
 
     // @cpt-begin:cpt-frontx-telemetry-flow-event-collection-instrument:p1:inst-teardown-order
     // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-detach-session

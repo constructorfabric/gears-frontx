@@ -498,6 +498,54 @@ describe('Telemetry Client', () => {
     expect(counted).toHaveLength(1);
   });
 
+  test('should refuse start() after destroy() on a client that was never started', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const setup = vi.fn();
+    const telemetry = createTelemetry({ ...mockAppInfo, verbose: true });
+    telemetry.plugin({ name: 'probe', setup });
+
+    telemetry.destroy();
+    telemetry.start();
+    // Without the fix, start() above sets the built-ins up; tear them down so no listener leaks.
+    onTestFinished(() => telemetry.destroy());
+
+    expect(setup).not.toHaveBeenCalled();
+    expect(consoleError).toHaveBeenCalledWith(
+      'Telemetry has been destroyed; build a new client instead of restarting.',
+    );
+  });
+
+  test('should send nothing for an event logged after destroy()', () => {
+    const telemetry = createTelemetry(mockAppInfo);
+    telemetry.start();
+    telemetry.destroy();
+    fetchMock.mockClear();
+
+    telemetry.logEvent('after_destroy');
+    vi.advanceTimersByTime(6000);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test('should run teardown once when destroy() is called twice', () => {
+    const destroyHook = vi.fn();
+    const telemetry = createTelemetry(mockAppInfo);
+    telemetry.plugin({
+      name: 'teardown-counter',
+      setup: (context) => {
+        context.addHook('destroy', destroyHook);
+      },
+    });
+
+    telemetry.start();
+    telemetry.logEvent('before_destroy');
+    telemetry.destroy();
+    telemetry.destroy();
+
+    expect(destroyHook).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   test('should still start when localStorage reads are blocked', () => {
     vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
       throw new DOMException('The operation is insecure.', 'SecurityError');
