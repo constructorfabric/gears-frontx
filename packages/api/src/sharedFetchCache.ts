@@ -543,7 +543,13 @@ class SharedFetchCacheImpl implements SharedFetchCache {
       return;
     }
 
-    if (this.versions.get(cacheKey) === version + 1) {
+    // With no entry under the key, the record only numbers the next entry. It is released whether
+    // this entry was invalidated (`version + 1`) or was the replacement an earlier invalidation
+    // numbered (`version`): that earlier entry may have settled while this one was in the map,
+    // skipping its own cleanup. Every settling entry checks that the entry under the key is still
+    // its own before it writes or evicts, so releasing the record cannot let a stale fetch through.
+    const recordedVersion = this.versions.get(cacheKey);
+    if (recordedVersion === version || recordedVersion === version + 1) {
       this.versions.delete(cacheKey);
     }
   }
