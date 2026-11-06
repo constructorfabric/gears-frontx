@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import { joinWithinRoot } from '@gears-frontx/test-support/path-guard';
 import { FsContentStore } from '../fs-content-store';
 import { resolveInstalledContentPath } from '../fs-installed-content-path';
+import { InvalidBundleKeyError } from '../../bundle/envelope';
 import { MANIFEST_FILENAME } from '../../manifest/types';
 import { UnreachablePathError } from '../fs-project-io';
 
@@ -51,6 +52,36 @@ describe('FsContentStore', () => {
 
     const roundTripped = JSON.parse(store.read('my-template')!);
     expect(roundTripped).toEqual({ $frontxTemplateFiles: bundle });
+  });
+
+  it('write() refuses an invalid bundle key before creating any inventory content', () => {
+    const store = new FsContentStore(root);
+    const bundle = JSON.stringify({
+      $frontxTemplateFiles: {
+        [MANIFEST_FILENAME]: '{"name":"my-template"}',
+        '../other-template.txt': null,
+      },
+    });
+
+    expect(() => store.write('my-template', bundle)).toThrowError(InvalidBundleKeyError);
+    expect(fs.readdirSync(root)).toEqual([]);
+  });
+
+  it('replace() refuses an invalid bundle key before removing the installed version', () => {
+    const store = new FsContentStore(root);
+    store.write('my-template', '{"name":"my-template","version":"1.0.0"}');
+    const installedPath = resolveInstalledContentPath(root, 'my-template');
+    const originalManifest = fs.readFileSync(joinWithinRoot(installedPath, MANIFEST_FILENAME), 'utf-8');
+    const bundle = JSON.stringify({
+      $frontxTemplateFiles: {
+        [MANIFEST_FILENAME]: '{"name":"my-template","version":"2.0.0"}',
+        '../other-template.txt': 'must not be written',
+      },
+    });
+
+    expect(() => store.replace('my-template', bundle)).toThrowError(InvalidBundleKeyError);
+    expect(fs.readFileSync(joinWithinRoot(installedPath, MANIFEST_FILENAME), 'utf-8')).toBe(originalManifest);
+    expect(fs.existsSync(joinWithinRoot(root, 'other-template.txt'))).toBe(false);
   });
 
   it('has() reflects real on-disk presence', () => {

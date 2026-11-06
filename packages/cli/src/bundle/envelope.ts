@@ -5,12 +5,10 @@ import { foldForIdentity } from '../paths/volume-case';
 // reader consumes: `{ "$frontxTemplateFiles": { <relative path>: <file text> } }`.
 //
 // Core owns this shape here so that every module on both sides of it — the
-// `adapters/` that produce an envelope and the `manifest/` and `resolver/`
-// modules that read one — names the marker once. The readers must not reach
-// into the IO layer for it, and each side previously carried its own copy.
-// The two parses stay separate on purpose: the producing side additionally
-// rejects an empty map and non-string values, a stricter rule than a reader
-// needs.
+// `adapters/` that produce or materialize an envelope and the `manifest/` and
+// `resolver/` modules that read one — names and decodes the marker once. A
+// consumer that needs a stricter value type refines the decoded map without
+// parsing the envelope again.
 //
 // A key is a relative path with POSIX separators on every host, because the
 // envelope is a wire format rather than a host path: the GitHub adapter takes
@@ -57,6 +55,16 @@ export interface InvalidBundleKey {
   // Completes "carries the file <key>, which ..." — names the actual rule, and
   // reads as a clause a semicolon can follow.
   reason: string;
+}
+
+export class InvalidBundleKeyError extends Error {
+  constructor(
+    readonly key: string,
+    readonly reason: string,
+  ) {
+    super(`Template bundle carries the file ${JSON.stringify(key)}, which ${reason}; the template was refused.`);
+    this.name = 'InvalidBundleKeyError';
+  }
 }
 
 export function findInvalidBundleKey(keys: readonly string[]): InvalidBundleKey | undefined {

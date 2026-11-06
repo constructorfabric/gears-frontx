@@ -2,16 +2,13 @@
 // (`cpt-frontx-algo-cli-scaffolding-existing-content`) — the two content
 // readers that algorithm's pure logic depends on, matching every other
 // adapter in this package's convention of one real adapter per injected
-// seam type, kept in its own file since this concern (reading real file
-// CONTENT, not just enumerating paths) is new: `adapters/fs-project-io.ts`'s
-// `createFsListTargetFilesFn` and `adapters/fs-read-content-items.ts`'s
-// `createFsReadContentItemsFn` each enumerate paths for a DIFFERENT
-// existing purpose, neither returning the `{path, content}` pairs
-// reconciliation needs to compare on-disk bytes against a template's
-// payload.
+// seam type, kept in its own file since this concern reads real file CONTENT,
+// not just paths: `adapters/fs-project-io.ts`'s
+// `createFsListTargetFilesFn` enumerates paths for the delete plan and does
+// not return the `{path, content}` pairs reconciliation needs to compare
+// on-disk bytes against a template's payload.
 //
-// Deliberately simple, matching `adapters/fs-read-content-items.ts`'s own
-// scope: a plain recursive `readdir`/`readFile` walk, no symlink-cycle
+// Deliberately simple: a plain recursive `readdir`/`readFile` walk, no symlink-cycle
 // handling (neither walk below ever descends INTO a symlinked directory, so
 // there is no cycle to guard against). `readInstalledContent`'s
 // installed-content-path enumeration mirrors that adapter's own walk exactly
@@ -159,10 +156,8 @@ function listFilesRecursive(
       // particular blocks forever on an `open()` for either direction when
       // no counterpart end is attached, and this walk must never attempt
       // one. Only for the EXISTING-content walk; `readInstalledContent`
-      // below keeps skipping it outright, unchanged, matching
-      // `fs-read-content-items.ts`'s identical scope for the identical
-      // reason (a template's installed content is not expected to contain
-      // one).
+      // below keeps skipping it outright, unchanged, because a template's
+      // installed content is not expected to contain one.
       items.push({ path: relativePath, content: SPECIAL_CONTENT_MARKER });
     }
     // `readInstalledContent` (`reportSymlinksAsExisting` false): a symlink,

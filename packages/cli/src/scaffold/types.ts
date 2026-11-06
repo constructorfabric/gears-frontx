@@ -1,5 +1,3 @@
-import type { InventoryEntry } from '../inventory/types';
-
 // Injected write function — caller supplies; no direct filesystem access in core logic.
 export type WriteFileFn = (destPath: string, content: string) => Promise<void>;
 
@@ -46,12 +44,6 @@ export interface ContentItem {
   path: string;    // relative path within the template
   content: string; // file content to write at destination
 }
-
-// Injected content reader — reads a resolved template's content items
-// directly from its installed content path (never from the manifest).
-// No filesystem access in core logic; the caller supplies the real
-// implementation once the installed content path is materialized to disk.
-export type ReadContentItemsFn = (entry: InventoryEntry) => Promise<ContentItem[]>;
 
 // One (template, target) claim staged by the rewritten uniform-apply path
 // (`cpt-frontx-algo-cli-scaffolding-uniform-apply`'s own `inst-ua-stage-entry`)

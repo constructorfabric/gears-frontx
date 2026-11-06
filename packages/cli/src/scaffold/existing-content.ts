@@ -84,8 +84,8 @@ export const SPECIAL_CONTENT_MARKER = '\uFFFF\uFFFFfrontx:existing-content:speci
 // under the template's installed content path, template-relative (never
 // project-relative), unfiltered by any target's effective ownership. Reuses
 // `ContentItem` (`scaffold/types.ts`) rather than inventing a second "path
-// plus content" shape — the same shape `ReadContentItemsFn` already reads
-// for materialization. This module itself narrows the result down to one
+// plus content" shape — the same shape the materialization pipeline already
+// consumes. This module itself narrows the result down to one
 // target's effective ownership area (`joinUnderTarget` +
 // `isWithinEffectiveOwnership` below), so the seam only has to enumerate,
 // never judge scope.

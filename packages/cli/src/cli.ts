@@ -67,7 +67,7 @@ import type { DeleteOutcome, ConfirmDeletionFn } from './commands/delete';
 
 import { TemplateInventory } from './inventory/TemplateInventory';
 import type { FetchFn } from './resolver/types';
-import type { AssertPathWithinRootFn, ReadContentItemsFn, WriteFileFn } from './scaffold/types';
+import type { AssertPathWithinRootFn, WriteFileFn } from './scaffold/types';
 import type { CanonicalizeTargetFn } from './scaffold/conflict-check';
 import type { ResolveInstalledContentPathFn, UniformApplyBatch } from './scaffold/assembler';
 import type { ReadExistingContentFn, ReadInstalledContentFn } from './scaffold/existing-content';
@@ -85,7 +85,6 @@ import type { ValidateCommandResult } from './commands/validate';
 
 import { FsInventoryIndex } from './adapters/fs-inventory-index';
 import { FsContentStore } from './adapters/fs-content-store';
-import { createFsReadContentItemsFn } from './adapters/fs-read-content-items';
 import { createGithubFetchFn, resolveInventoryRoot } from './adapters/github-fetch';
 import { createLocalFetchFn } from './adapters/local-fetch';
 import { createFsReadTargetPathStateFn } from './adapters/fs-target-path';
@@ -111,6 +110,7 @@ import {
   describeNonRegularKind,
 } from './adapters/fs-project-io';
 import { InvalidInventoryIndexError } from './adapters/fs-inventory-index';
+import { InvalidBundleKeyError } from './bundle/envelope';
 
 // @cpt-begin:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-if-yes-without-json
 // @cpt-begin:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-return-yes-without-json
@@ -264,7 +264,6 @@ export function usageText(): string {
 export interface CliDeps {
   inventory: TemplateInventory;
   fetchFn: FetchFn;
-  readContentFn: ReadContentItemsFn;
   writeFileFn: WriteFileFn;
   readFileFn: ReadFileFn;
   listPayloadFilesFn: ListPayloadFilesFn;
@@ -377,7 +376,6 @@ export function createRealDeps(): CliDeps {
     fetchFn: process.env.FRONTX_TEST_LOCAL_SOURCE_DIR
       ? createLocalFetchFn(process.env.FRONTX_TEST_LOCAL_SOURCE_DIR)
       : createGithubFetchFn({ token: process.env.GITHUB_TOKEN }),
-    readContentFn: createFsReadContentItemsFn(inventoryRoot),
     writeFileFn: createFsWriteFileFn(),
     readFileFn: createFsReadFileFn(),
     listPayloadFilesFn: createFsListPayloadFilesFn(),
@@ -2203,6 +2201,12 @@ export async function run(argv: string[], deps: CliDeps): Promise<CommandOutcome
     // @cpt-end:cpt-frontx-state-cli-invocation-run:p1:inst-st-dispatched-user-error
     // @cpt-end:cpt-frontx-state-cli-invocation-run:p1:inst-st-dispatched-success
   } catch (error) {
+    if (error instanceof InvalidBundleKeyError) {
+      const envelope = err('INVALID_PATH', error.message, { path: error.key });
+      return parseJsonMode(parsed.args)
+        ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(envelope) }
+        : { exitCode: EXIT_USER_ERROR, stderr: error.message };
+    }
     // A containment violation is a USER error, not an internal one: the tree
     // the caller pointed at carries a symlink leading out of the project, which
     // they can see and fix. Reported through the ordinary envelope so a `--json`

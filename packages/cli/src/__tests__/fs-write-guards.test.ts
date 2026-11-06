@@ -223,9 +223,9 @@ const WRITE_ALLOW_LIST: Record<string, FileAllowList> = {
         note: '`replace()`: the identical pair, run immediately above.',
       },
       {
-        guard: 'assertWithinRoot',
+        guard: 'readWritableBundle',
         note:
-          '`writeBundle` bundle-loop branch: `assertWithinRoot` on `filePath` runs immediately above, but it only refuses an escape from the store root — `../../index.json` stays inside it. The effective guard is the key check the CALLER\'s resolver ran on every key before this content could reach the store (`findInvalidBundleKey`, `resolver/resolve.ts`, `inst-resolve-bundle-keys`): a safe relative path, no key a directory of another, no two keys naming one location.',
+          '`writeBundle` bundle-loop branch: `write()`/`replace()` call `readWritableBundle` before any mutation; it applies `findInvalidBundleKey` to the complete map in this adapter as the executable last line of defence.',
       },
     ],
     'fs.rmSync': [
@@ -238,9 +238,9 @@ const WRITE_ALLOW_LIST: Record<string, FileAllowList> = {
     'fs.writeFileSync': [
       { guard: 'assertWithinRoot', note: '`writeBundle` fallback branch: containment checked immediately above.' },
       {
-        guard: 'assertWithinRoot',
+        guard: 'readWritableBundle',
         note:
-          '`writeBundle` bundle-loop branch: `assertWithinRoot` only refuses an escape from the store root; the key shape and the key set are proven by the CALLER\'s resolver (`findInvalidBundleKey`, `resolver/resolve.ts`, `inst-resolve-bundle-keys`), as on the `fs.mkdirSync` entry above.',
+          '`writeBundle` bundle-loop branch: `write()`/`replace()` call `readWritableBundle` before any mutation; it applies `findInvalidBundleKey` to the complete map in this adapter as the executable last line of defence.',
       },
     ],
   },
@@ -407,11 +407,6 @@ const READ_ALLOW_LIST: Record<string, FileAllowList> = {
       },
     ],
     'fs.readdirSync': [{ guard: 'walkFiles', note: 'Dirent-typed; a symlink is resolved only afterward, explicitly.' }],
-  },
-  'adapters/fs-read-content-items.ts': {
-    'fs.existsSync': [{ guard: 'createFsReadContentItemsFn', note: 'Metadata-only probe on a template\'s own installed content path.' }],
-    'fs.readdirSync': [{ guard: 'listContentItems', note: 'Dirent-typed walk; never follows a symlink.' }],
-    'fs.readFileSync': [{ guard: 'listContentItems', note: 'Only reached for a dirent that is `dirEntry.isFile()`.' }],
   },
   'adapters/fs-upgrade-io.ts': {
     'fs.lstatSync': [{ guard: 'createFsReadDiskEntryFn', note: 'Classifies the entry before ever reading content; a special entry never reaches `readFileSync`.' }],

@@ -52,9 +52,8 @@ export function resolveInstalledContentPath(root: string, name: string): string 
 // `action` names what was actually refused — `'write'` (the default, for
 // every call site this function already had before the read side below was
 // closed) or `'read'`, so a caller proving containment before READING an
-// installed content path (`fs-content-store.ts`'s `read()`/`has()`,
-// `fs-read-content-items.ts`) never reports "refusing to write" for an
-// operation that never wrote anything.
+// installed content path (`fs-content-store.ts`'s `read()`/`has()`) never
+// reports "refusing to write" for an operation that never wrote anything.
 export function assertWithinRoot(root: string, candidatePath: string, action: 'write' | 'read' = 'write'): void {
   const resolvedRoot = resolveNearestExistingAncestor(path.resolve(root));
   const resolvedCandidate = resolveNearestExistingAncestor(path.resolve(candidatePath));

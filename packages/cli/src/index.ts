@@ -93,7 +93,6 @@ export type {
   WriteFileFn,
   ConflictCheckFn,
   ContentItem,
-  ReadContentItemsFn,
   ContributionEntry,
   StagedAssembly,
 } from './scaffold/types.js';

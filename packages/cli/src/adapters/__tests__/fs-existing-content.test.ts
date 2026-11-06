@@ -211,8 +211,7 @@ describe('createFsReadInstalledContentFn (symlinks — unchanged by the fix)', (
   // A template's own installed content is a DIFFERENT data source (never
   // expected to be a symlink farm) — the SYMLINK-INVISIBLE FIX targets only
   // `readExistingContent` (the suite above); this walk keeps its
-  // pre-existing behaviour, matching `adapters/fs-read-content-items.ts`'s
-  // own simple scope.
+  // pre-existing behaviour.
   it('still skips a symlink in a template payload outright', async () => {
     const dir = await makeTemplate();
     await writeFile(path.join(dir, 'real.json'), '{}', 'utf-8');

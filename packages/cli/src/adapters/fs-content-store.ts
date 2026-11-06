@@ -2,7 +2,12 @@
 // @cpt-algo:cpt-frontx-algo-template-resolution-bounded-update:p1
 import fs from 'node:fs';
 import path from 'node:path';
-import { BUNDLE_MARKER } from '../bundle/envelope';
+import {
+  BUNDLE_MARKER,
+  findInvalidBundleKey,
+  InvalidBundleKeyError,
+  readBundleFiles,
+} from '../bundle/envelope';
 import { MANIFEST_FILENAME } from '../manifest/types';
 import type { ContentStorePort } from '../inventory/types';
 import { assertWithinRoot, resolveInstalledContentPath } from './fs-installed-content-path';
@@ -31,6 +36,7 @@ export class FsContentStore implements ContentStorePort {
 
   // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-write
   write(name: string, content: string): void {
+    const bundle = readWritableBundle(content);
     const installedPath = resolveInstalledContentPath(this.root, name);
     assertWithinRoot(this.root, installedPath);
     // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-write-guard
@@ -39,12 +45,13 @@ export class FsContentStore implements ContentStorePort {
     // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-write-guard-fail
     // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-write-guard
     fs.mkdirSync(installedPath, { recursive: true });
-    writeBundle(this.root, installedPath, content);
+    writeBundle(this.root, installedPath, content, bundle);
   }
   // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-write
 
   // @cpt-begin:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-replace
   replace(name: string, content: string): void {
+    const bundle = readWritableBundle(content);
     const installedPath = resolveInstalledContentPath(this.root, name);
     assertWithinRoot(this.root, installedPath);
     // @cpt-begin:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-replace-guard
@@ -67,7 +74,7 @@ export class FsContentStore implements ContentStorePort {
       fs.rmSync(installedPath, { recursive: true, force: true });
     }
     fs.mkdirSync(installedPath, { recursive: true });
-    writeBundle(this.root, installedPath, content);
+    writeBundle(this.root, installedPath, content, bundle);
   }
   // @cpt-end:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-replace
 
@@ -130,31 +137,30 @@ function assertPathReachableAsDirectory(installedPath: string): void {
   }
 }
 
-// A "bundle" is an explicit envelope — `{ [BUNDLE_MARKER]: { <relative
-// path>: <file text>, ... } }` — distinguishing a multi-file bundle from an
-// ordinary manifest JSON string (which may itself be a JSON object with
-// string-valued fields and would otherwise be indistinguishable from a
-// one-entry file map by shape alone). Anything else (a plain manifest
-// string, unparseable input, JSON without the marker) is not a bundle.
-function parseBundle(content: string): Record<string, string> | undefined {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(content);
-  } catch {
-    return undefined;
+// The shared decoder accepts the envelope's wire shape. The content store
+// additionally requires a non-empty map of strings because any other value
+// keeps the historical bare-manifest fallback. Key validity is checked here
+// as an executable last line of defence before `write()` creates a directory
+// or `replace()` removes the installed version.
+function readWritableBundle(content: string): Record<string, string> | undefined {
+  const files = readBundleFiles(content);
+  if (files === undefined) return undefined;
+  const invalidKey = findInvalidBundleKey(Object.keys(files));
+  if (invalidKey !== undefined) {
+    throw new InvalidBundleKeyError(invalidKey.key, invalidKey.reason);
   }
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return undefined;
-  const filesValue = (parsed as Record<string, unknown>)[BUNDLE_MARKER];
-  if (typeof filesValue !== 'object' || filesValue === null || Array.isArray(filesValue)) return undefined;
-  const obj = filesValue as Record<string, unknown>;
-  const entries = Object.entries(obj);
+  const entries = Object.entries(files);
   if (entries.length === 0) return undefined;
   if (!entries.every(([, value]) => typeof value === 'string')) return undefined;
-  return obj as Record<string, string>;
+  return files as Record<string, string>;
 }
 
-function writeBundle(root: string, installedPath: string, content: string): void {
-  const bundle = parseBundle(content);
+function writeBundle(
+  root: string,
+  installedPath: string,
+  content: string,
+  bundle: Record<string, string> | undefined,
+): void {
   if (!bundle) {
     // Fallback: the only known real file is the manifest itself.
     const manifestPath = path.join(installedPath, MANIFEST_FILENAME);

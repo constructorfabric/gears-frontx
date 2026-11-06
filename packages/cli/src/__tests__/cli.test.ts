@@ -23,10 +23,10 @@ import {
 } from '../adapters/fs-project-io';
 import type { CliDeps } from '../cli';
 import { TemplateInventory } from '../inventory/TemplateInventory';
-import { BUNDLE_MARKER } from '../bundle/envelope';
+import { BUNDLE_MARKER, InvalidBundleKeyError } from '../bundle/envelope';
 import { MANIFEST_FILENAME } from '../manifest/types';
 import type { FetchFn } from '../resolver/types';
-import type { AssertPathWithinRootFn, ContentItem, ReadContentItemsFn, WriteFileFn } from '../scaffold/types';
+import type { AssertPathWithinRootFn, ContentItem, WriteFileFn } from '../scaffold/types';
 import type { TargetPathState } from '../commands/add-template';
 import type { ListPayloadFilesFn, ResolveDeclaredExclusionFn, ReadFileFn, TemplateManifest } from '../manifest/types';
 import type { OwnershipBoundary, ReferencedTemplate } from '../manifest/legacy-ownership';
@@ -149,7 +149,6 @@ function makeDeps(overrides: Partial<CliDeps> = {}): DepsFixture {
     return manifest;
   });
 
-  const readContentFn: ReadContentItemsFn = vi.fn(async (entry) => contentByName.get(entry.name) ?? []);
   const writeFileFn: WriteFileFn = vi.fn(async () => undefined);
   const readFileFn: ReadFileFn = vi.fn(async () => {
     throw new Error('manifest not found');
@@ -186,7 +185,6 @@ function makeDeps(overrides: Partial<CliDeps> = {}): DepsFixture {
   const deps: CliDeps = {
     inventory: new TemplateInventory(),
     fetchFn,
-    readContentFn,
     writeFileFn,
     readFileFn,
     listPayloadFilesFn,
@@ -210,8 +208,8 @@ function makeDeps(overrides: Partial<CliDeps> = {}): DepsFixture {
     listFolderFilesFn: vi.fn(async () => []),
     // `assemble`/`apply`/`seed` — the installed-content-path resolver is the
     // identity function here: content is registered (and read back) keyed by
-    // the template's own NAME, exactly as `readContentFn`/`registerContent`
-    // above already key it, so `resolveInstalledContentPathFn(name)` handing
+    // the template's own NAME, exactly as `registerContent` above already
+    // keys it, so `resolveInstalledContentPathFn(name)` handing
     // back `name` itself lets `createReadInstalledContentFn` below read from
     // the SAME `contentByName` map without a second content registry.
     resolveInstalledContentPathFn: vi.fn((name: string) => name),
@@ -578,6 +576,29 @@ describe('dispatch: install (cpt-frontx-flow-template-resolution-install)', () =
     const outcome = await run(['install', 'github:acme/foo@v1.0.0'], deps);
     expect(outcome.exitCode).toBe(EXIT_INTERNAL_ERROR);
     expect(outcome.stderr).toContain('inventory store exploded');
+  });
+
+  it('reports an inventory store bundle-key refusal as INVALID_PATH under --json', async () => {
+    const invalidBundle = new InvalidBundleKeyError('../other-template.txt', 'contains a ".." path segment');
+    const refusingInventory = {
+      install: vi.fn(async () => {
+        throw invalidBundle;
+      }),
+    } as unknown as TemplateInventory;
+    const { deps } = makeDeps({ inventory: refusingInventory });
+
+    const outcome = await run(['install', 'github:acme/foo@v1.0.0', '--json'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(outcome.stderr).toBeUndefined();
+    expect(JSON.parse(outcome.stdout ?? '')).toMatchObject({
+      ok: false,
+      error: {
+        code: 'INVALID_PATH',
+        message: invalidBundle.message,
+        details: { path: '../other-template.txt' },
+      },
+    });
   });
 });
 
