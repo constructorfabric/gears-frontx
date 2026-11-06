@@ -115,7 +115,7 @@ export interface ExtensionDomain {
   /** Lifecycle stage type IDs supported for extensions in this domain */
   readonly extensionsLifecycleStages: readonly string[];
   /** Optional lifecycle hooks - explicitly declared actions for each stage */
-  lifecycle?: LifecycleHook[];
+  readonly lifecycle?: readonly LifecycleHook[];
   /**
    * Optional route name for this domain, in the routing grammar's `name`
    * alphabet (lower-case letter, then lower-case letters/digits/`-`).
@@ -156,7 +156,7 @@ export interface Extension {
   /** MfeEntry type ID to mount */
   entry: string;
   /** Optional lifecycle hooks - explicitly declared actions for each stage */
-  lifecycle?: LifecycleHook[];
+  readonly lifecycle?: readonly LifecycleHook[];
   /**
    * Optional declared route of the extension.
    * A deliberate exception to the "domain-specific fields go to derived
