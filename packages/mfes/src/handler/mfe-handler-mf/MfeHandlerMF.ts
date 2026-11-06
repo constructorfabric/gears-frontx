@@ -228,6 +228,13 @@ interface SharedDepUnitContext {
   readonly resolveAssetUrl: (location: string) => string;
   readonly mintedKeys: Set<string>;
   readonly pending: Map<string, Promise<void>>;
+  /**
+   * Per-load `packageName/modulePath` → blob URL map: every unit minted
+   * for the load, so a lazy batch resolves its relative imports and
+   * dependency edges against ALL units the load delivered — entry units
+   * included (inst-lai-lazy-roots).
+   */
+  readonly unitBlobs: Map<string, string>;
 }
 
 /**
@@ -1409,6 +1416,23 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     const sharedBase = manifest.metaData.sharedBase;
     let assetBase = baseUrl;
     if (sharedBase !== undefined) {
+      // The same pre-parse rejections a location gets: a protocol-relative
+      // '//host' base, a backslash, or a space/control character can
+      // never be a shared-file base.
+      if (
+        typeof (sharedBase as unknown) !== 'string' ||
+        sharedBase.startsWith('//') ||
+        [...sharedBase].some(
+          (char) => MfeHandlerMF.isControlOrSpace(char) || char === '\\'
+        )
+      ) {
+        throw MfeHandlerMF.manifestDataRejection(
+          `manifest.metaData.sharedBase "${String(sharedBase)}" does not ` +
+            'resolve to an http(s) URL — shared-file locations cannot be ' +
+            'resolved against it.',
+          entryId
+        );
+      }
       const resolvedBase = MfeHandlerMF.parseUrl(sharedBase, baseUrl);
       if (resolvedBase === undefined || !/^https?:$/i.test(resolvedBase.protocol)) {
         throw MfeHandlerMF.manifestDataRejection(
@@ -1499,7 +1523,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       resolveAssetUrl,
       entryId
     );
-    const specifierToBlob = UnitBlobMinter.mint(plan.records, entryId);
+    const unitBlobs = new Map<string, string>();
+    const specifierToBlob = UnitBlobMinter.mint(
+      plan.records,
+      entryId,
+      undefined,
+      unitBlobs
+    );
     this.loadDiagnostics.summarize(
       manifest.id,
       plan.bytesFetched,
@@ -1518,17 +1548,28 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         resolveAssetUrl,
         mintedKeys: new Set(plan.records.map((r) => r.key)),
         pending: new Map<string, Promise<void>>(),
+        unitBlobs,
       },
     };
+  }
+
+  /** Whether `char` is a space or control character a URL parse would mangle. */
+  private static isControlOrSpace(char: string): boolean {
+    const code = char.charCodeAt(0);
+    return code <= 0x20 || (code >= 0x7f && code <= 0x9f);
   }
 
   /**
    * Resolve a shared-file `location` (graph file, unit or pack) by the
    * same rules `resolveSharedChunkUrl` applies to `chunkPath`: an http(s)
-   * absolute URL of a file, or a relative path that stays under
-   * `assetBase` and names a file. Protocol-relative `//host` spellings,
-   * non-http(s) schemes, backslashes, spaces/control characters and `..`
-   * escapes fail the load before any fetch (SEC-001).
+   * absolute URL of a file, or a path resolved against `assetBase` —
+   * normalized to a directory base here — that stays under it and names
+   * a file. A leading '/' resolves to the origin root, not under the
+   * base, so containment rejects it unless the base is the origin root.
+   * Protocol-relative `//host` spellings, non-http(s) schemes,
+   * backslashes, spaces/control characters, percent-encoded dot segments
+   * (`%2e%2e`), and `..` escapes fail the load before any fetch
+   * (SEC-001).
    */
   private static resolveSharedAssetUrl(
     location: string,
@@ -1542,14 +1583,24 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
           'asset base location.',
         entryId
       );
+    const base = MfeHandlerMF.parseUrl(assetBase);
+    if (base === undefined) {
+      throw rejection();
+    }
+    // Always a directory base: containment is a path-prefix check, so the
+    // base pathname must end with '/' or '/dir-evil/' would pass a
+    // '/dir/' prefix test.
+    const baseHref = MfeHandlerMF.asDirectoryBase(base);
     if (typeof (location as unknown) !== 'string') {
       throw rejection();
     }
-    const isControlOrSpace = (char: string): boolean => {
-      const code = char.charCodeAt(0);
-      return code <= 0x20 || (code >= 0x7f && code <= 0x9f);
-    };
-    if ([...location].some((char) => isControlOrSpace(char) || char === '\\')) {
+    if ([...location].some((char) => MfeHandlerMF.isControlOrSpace(char) || char === '\\')) {
+      throw rejection();
+    }
+    // Percent-encoded dot segments ('%2e', '%2e%2e', '.%2e') are rejected
+    // outright: URL parsing decodes them for dot-segment resolution, so
+    // containing them anyway would only disguise an escape attempt.
+    if (/%2e/i.test(location)) {
       throw rejection();
     }
     if (/^https?:\/\//i.test(location)) {
@@ -1559,12 +1610,11 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       }
       return absolute.href;
     }
-    const relativePath = location.replace(/^\/+/, '');
-    if (location.startsWith('//') || MfeHandlerMF.hasUrlScheme(relativePath)) {
+    if (location.startsWith('//') || MfeHandlerMF.hasUrlScheme(location)) {
       throw rejection();
     }
-    const url = MfeHandlerMF.parseUrl(relativePath, assetBase);
-    if (!url?.href.startsWith(assetBase) || url.pathname.endsWith('/')) {
+    const url = MfeHandlerMF.parseUrl(location, baseHref);
+    if (!url?.href.startsWith(baseHref) || url.pathname.endsWith('/')) {
       throw rejection();
     }
     return url.href;
@@ -1598,14 +1648,18 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
           loadState.entryId
         );
         const fresh = plan.records.filter((r) => !ctx.mintedKeys.has(r.key));
-        for (const record of plan.records) {
-          ctx.mintedKeys.add(record.key);
-        }
+        // Mint FIRST, mark minted only on success: a throw must leave
+        // every key unmarked so a later resolve retries the batch rather
+        // than skipping it with specifiers unrewritten.
         const minted = UnitBlobMinter.mint(
           fresh,
           loadState.entryId,
-          loadState.sharedDepBlobUrls
+          loadState.sharedDepBlobUrls,
+          ctx.unitBlobs
         );
+        for (const record of plan.records) {
+          ctx.mintedKeys.add(record.key);
+        }
         for (const [specifier, blob] of minted) {
           if (!loadState.sharedDepBlobUrls.has(specifier)) {
             loadState.sharedDepBlobUrls.set(specifier, blob);
@@ -1613,6 +1667,14 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         }
       })();
       ctx.pending.set(filename, pending);
+      // A rejected build must not latch: evict it so a later resolve of
+      // the same lazy chunk retries the unit build.
+      const tracked = pending;
+      tracked.catch(() => {
+        if (ctx.pending.get(filename) === tracked) {
+          ctx.pending.delete(filename);
+        }
+      });
     }
     await pending;
   }

@@ -32,9 +32,41 @@ import {
 } from '../helpers/manifest-builder';
 import { createFetchRouter } from '../helpers/fetch-router';
 import { resetRealmSharedDepTextCache } from '../helpers/realm-cache';
+import { stubSuccessfulImport } from '../helpers/blob-module-stub';
 
 beforeEach(resetRealmSharedDepTextCache);
 afterEach(resetRealmSharedDepTextCache);
+
+async function loadWithUnitSource(source: string): Promise<unknown> {
+  const graph = buildGraphFile(
+    'react',
+    '1.0.0',
+    [{ modulePaths: ['index.js'], source }],
+    'index.js',
+    [],
+  );
+  const router = createFetchRouter({
+    [`${PUBLIC_PATH}assets/lifecycle.js`]: { body: 'export default {};' },
+    [`${PUBLIC_PATH}shared/react.graph.json`]: { body: graph.text },
+    [`${PUBLIC_PATH}${graph.unitLocations[0]}`]: { body: source },
+  });
+  const fetchSpy = vi
+    .spyOn(globalThis, 'fetch')
+    .mockImplementation(router as typeof fetch);
+  const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  stubSuccessfulImport(blobModuleStub);
+  const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+  const manifest = buildManifest([graphSharedDep('react', graph)]);
+  try {
+    return await handler
+      .load(buildEntry(manifest), 'ext-op010')
+      .then(() => null, (e: unknown) => e);
+  } finally {
+    fetchSpy.mockRestore();
+    warnSpy.mockRestore();
+    blobModuleStub.current = undefined;
+  }
+}
 
 describe('acceptance: OP-010 dynamic import inside a unit fails fast', () => {
   it('OP-010: a unit source containing import() rejects the load with MfeLoadError', async () => {
@@ -75,5 +107,34 @@ describe('acceptance: OP-010 dynamic import inside a unit fails fast', () => {
       fetchSpy.mockRestore();
       warnSpy.mockRestore();
     }
+  });
+
+  it('OP-010: a dynamic import hidden behind a comment still rejects — import /*c*/ (', async () => {
+    const outcome = await loadWithUnitSource(
+      "const p = import /*c*/ ('./lazy.js');\nexport const r = 1;\n",
+    );
+    expect(outcome).toBeInstanceOf(MfeLoadError);
+    expect(String((outcome as Error).message)).toMatch(
+      /dynamic import|import\(\)/i,
+    );
+  });
+
+  it('OP-010: import() inside strings, comments and regex literals is not a false positive', async () => {
+    const outcome = await loadWithUnitSource(
+      'const s = "import(\'./x.js\')";\n' +
+        '// import(\'./y.js\')\n' +
+        '/* import(\'./z.js\') */\n' +
+        'const r = /import\\(/;\n' +
+        'const t = `import(\'./t.js\')`;\n' +
+        'export const x = 1;\n',
+    );
+    expect(outcome).toBeNull();
+  });
+
+  it('OP-010: import.meta is not a dynamic import', async () => {
+    const outcome = await loadWithUnitSource(
+      'const u = import.meta.url;\nexport const x = 1;\n',
+    );
+    expect(outcome).toBeNull();
   });
 });
