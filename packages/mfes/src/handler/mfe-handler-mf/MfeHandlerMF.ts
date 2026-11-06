@@ -46,6 +46,9 @@ import { SharedDepSpecifierScan } from './mf-shared-dep-specifier-scan';
 import { LruCache } from './LruCache';
 import { RealmSharedDepTextCacheProvider, DEFAULT_SHARED_DEP_TEXT_CACHE_MAX_BYTES, type SharedDepTextCache } from './RealmSharedDepTextCacheProvider';
 import { AttemptSourceTextLedger } from './AttemptSourceTextLedger';
+import { DeterministicLoadFailure } from './DeterministicLoadFailure';
+import { SharedAssetUrlResolver } from './SharedAssetUrlResolver';
+import { VerifiedUnitFetcher } from './VerifiedUnitFetcher';
 import { FetchBudget } from './FetchBudget';
 import { ManifestCache } from './ManifestCache';
 import { PackFallbackPolicy } from './PackFallbackPolicy';
@@ -289,25 +292,6 @@ interface ChainBuildState {
 }
 
 /**
- * Marker for a load failure a repeat attempt cannot change.
- *
- * A dependency cycle is a property of the microfrontend's build, and a
- * refusal of the manifest's own data (`publicPath`, a shared `chunkPath`)
- * depends only on the manifest, so every attempt reaches the same refusal:
- * retrying only multiplies the source fetches and delays the same
- * user-visible error by the retry backoff. The
- * marker is a module-private symbol rather than an error subclass so that
- * `MfeLoadError` — the handler's public error contract — is unchanged.
- */
-const DETERMINISTIC_LOAD_FAILURE = Symbol('frontx.deterministicLoadFailure');
-
-/** Mark `error` as one no further attempt could change, and return it. */
-function markDeterministicLoadFailure<E extends Error>(error: E): E {
-  Object.defineProperty(error, DETERMINISTIC_LOAD_FAILURE, { value: true });
-  return error;
-}
-
-/**
  * Sentinel wrapper carrying a deterministic failure out of the retry loop as
  * a fulfilment, so `RetryHandler` — which retries every rejection — makes no
  * further attempt. Unwrapped by `load()` into the original rejection.
@@ -325,15 +309,6 @@ function isDeterministicFailureSentinel(
     typeof value === 'object' &&
     value !== null &&
     DETERMINISTIC_FAILURE in (value as object)
-  );
-}
-
-/** Whether `error` was marked by {@link markDeterministicLoadFailure}. */
-function isDeterministicLoadFailure(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    (error as Record<symbol, unknown>)[DETERMINISTIC_LOAD_FAILURE] === true
   );
 }
 
@@ -632,7 +607,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
               ledger
             );
           } catch (error) {
-            if (isDeterministicLoadFailure(error)) {
+            if (DeterministicLoadFailure.is(error)) {
               // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-no-retry-deterministic
               return { [DETERMINISTIC_FAILURE]: error as Error };
               // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-no-retry-deterministic
@@ -1023,7 +998,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    */
   private static manifestDataRejection(message: string, entryId: string): MfeLoadError {
     // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-manifest-invalid-fail
-    return markDeterministicLoadFailure(new MfeLoadError(message, entryId));
+    return DeterministicLoadFailure.mark(new MfeLoadError(message, entryId));
     // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-manifest-invalid-fail
   }
 
@@ -1445,7 +1420,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       assetBase = MfeHandlerMF.asDirectoryBase(resolvedBase);
     }
     const resolveAssetUrl = (location: string): string =>
-      MfeHandlerMF.resolveSharedAssetUrl(location, assetBase, entryId);
+      SharedAssetUrlResolver.resolve(location, assetBase, entryId);
     const fetchText = (url: string): Promise<string> =>
       this.fetchSourceText(url, ledger);
     const graphs = await Promise.all(
@@ -1483,35 +1458,12 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       this.loadDiagnostics.reportAbsentRoots(manifest.id, exposedModule);
     }
     const cache = this.sharedDepTextCache;
-    const fetchVerified = (
-      url: string,
-      contentHash: string,
-      cacheKey: string
-    ): Promise<string> => {
-      let textPromise = cache.get(cacheKey);
-      if (textPromise === undefined) {
-        textPromise = this.fetchSourceText(url, ledger).then(async (text) => {
-          const actual = await SharedUnitGraphLoader.sha256Hex(text);
-          if (actual !== contentHash) {
-            throw new MfeLoadError(
-              `shared-dep source '${url}' failed content-identity ` +
-                `verification: expected ${contentHash}, got ${actual}.`,
-              entryId
-            );
-          }
-          return text;
-        });
-        const rejectedPromise = textPromise;
-        rejectedPromise.catch(() => {
-          if (cache.get(cacheKey) === rejectedPromise) {
-            cache.delete(cacheKey);
-          }
-        });
-        cache.set(cacheKey, textPromise);
-      }
-      ledger?.record(cache, cacheKey, textPromise);
-      return textPromise;
-    };
+    const { fetchVerified } = new VerifiedUnitFetcher(
+      fetchText,
+      entryId,
+      cache,
+      ledger
+    );
     // inst-md-pack-fallback: per-package pack fallback decided before
     // that package's unit text is fetched on the attempt.
     const plan = await SharedUnitGraphLoader.buildPlan(
@@ -1557,67 +1509,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   private static isControlOrSpace(char: string): boolean {
     const code = char.charCodeAt(0);
     return code <= 0x20 || (code >= 0x7f && code <= 0x9f);
-  }
-
-  /**
-   * Resolve a shared-file `location` (graph file, unit or pack) by the
-   * same rules `resolveSharedChunkUrl` applies to `chunkPath`: an http(s)
-   * absolute URL of a file, or a path resolved against `assetBase` —
-   * normalized to a directory base here — that stays under it and names
-   * a file. A leading '/' resolves to the origin root, not under the
-   * base, so containment rejects it unless the base is the origin root.
-   * Protocol-relative `//host` spellings, non-http(s) schemes,
-   * backslashes, spaces/control characters, percent-encoded dot segments
-   * (`%2e%2e`), and `..` escapes fail the load before any fetch
-   * (SEC-001).
-   */
-  private static resolveSharedAssetUrl(
-    location: string,
-    assetBase: string,
-    entryId: string
-  ): string {
-    const rejection = () =>
-      MfeHandlerMF.manifestDataRejection(
-        `shared-file location "${String(location)}" is neither an http(s) ` +
-          'URL of a file nor a file path that stays under the shared ' +
-          'asset base location.',
-        entryId
-      );
-    const base = MfeHandlerMF.parseUrl(assetBase);
-    if (base === undefined) {
-      throw rejection();
-    }
-    // Always a directory base: containment is a path-prefix check, so the
-    // base pathname must end with '/' or '/dir-evil/' would pass a
-    // '/dir/' prefix test.
-    const baseHref = MfeHandlerMF.asDirectoryBase(base);
-    if (typeof (location as unknown) !== 'string') {
-      throw rejection();
-    }
-    if ([...location].some((char) => MfeHandlerMF.isControlOrSpace(char) || char === '\\')) {
-      throw rejection();
-    }
-    // Percent-encoded dot segments ('%2e', '%2e%2e', '.%2e') are rejected
-    // outright: URL parsing decodes them for dot-segment resolution, so
-    // containing them anyway would only disguise an escape attempt.
-    if (/%2e/i.test(location)) {
-      throw rejection();
-    }
-    if (/^https?:\/\//i.test(location)) {
-      const absolute = MfeHandlerMF.parseUrl(location);
-      if (!absolute || absolute.pathname.endsWith('/')) {
-        throw rejection();
-      }
-      return absolute.href;
-    }
-    if (location.startsWith('//') || MfeHandlerMF.hasUrlScheme(location)) {
-      throw rejection();
-    }
-    const url = MfeHandlerMF.parseUrl(location, baseHref);
-    if (!url?.href.startsWith(baseHref) || url.pathname.endsWith('/')) {
-      throw rejection();
-    }
-    return url.href;
   }
 
   /**
@@ -1961,7 +1852,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-shared-cycle
       if (pending.size === before) {
         // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-raise-shared-cycle
-        throw markDeterministicLoadFailure(
+        throw DeterministicLoadFailure.mark(
           new MfeLoadError(
             'circular shared dependencies: no dependency order exists over ' +
               `${describeSharedDepCycle(pending)}. ` +
@@ -2016,7 +1907,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-shared-dep-bare-specifier
     if (survivor !== undefined) {
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-raise-shared-dep-bare-specifier
-      throw markDeterministicLoadFailure(
+      throw DeterministicLoadFailure.mark(
         new MfeLoadError(
           `shared-dep chunk '${depName}' still imports the bare specifier ` +
             `'${survivor}' after rewriting its declared shared ` +
@@ -2361,7 +2252,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         "origin URL would evaluate that module outside this load's " +
         'isolated graph. Rebuild the microfrontend so that its chunk graph ' +
         'is acyclic.';
-    return markDeterministicLoadFailure(
+    return DeterministicLoadFailure.mark(
       new MfeLoadError(message, loadState.entryId)
     );
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-diagnose-cycle
