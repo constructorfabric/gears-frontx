@@ -732,4 +732,62 @@ describe('SharedGraphSetLoader.loadMore', () => {
     expect(calls).toEqual([]);
     expect(byName.get('s')!.graph.units).toHaveLength(2);
   });
+
+  it('a vanished shard ref is recorded merged — a repeat loadMore emits no work for it (R5-01)', { timeout: 15_000 }, async () => {
+    const store = makeStore();
+    const s = await store.depFor(
+      's',
+      graph('s', [], {
+        mainModulePath: 'index.js',
+        entryModulePaths: { '.': 'index.js', './gone': 'gone.js' },
+        unitPartitions: [
+          await store.refFor('s.part-0.json', {
+            name: 's',
+            version: '1.0.0',
+            units: [unit(['index.js'], [])],
+          }),
+        ],
+        // The index names a partition slot the ref array lacks: the
+        // planned work's ref is gone by fetch time.
+        modulePartitions: { 'index.js': 0, 'gone.js': 3 },
+      }),
+    );
+    const loaded = await SharedGraphSetLoader.load(
+      [s],
+      ['s'],
+      undefined,
+      (l) => l,
+      fetchOver(store.texts, []),
+      'test-entry',
+    );
+    const byName = new Map(loaded.map((g) => [g.dep.name, g] as const));
+    const calls: string[] = [];
+    const more = (): Promise<LoadedGraph[]> =>
+      SharedGraphSetLoader.loadMore(
+        [s],
+        ['s/gone'],
+        byName,
+        (l) => l,
+        (_d, url) => fetchOver(store.texts, calls)(url),
+        (_d, _r, url) => fetchOver(store.texts, calls)(url),
+        'test-entry',
+      );
+    await more();
+    // The vanished key was discharged — and RECORDED on the graph, so
+    // the next `loadMore` seeds it as merged instead of re-emitting it.
+    expect(byName.get('s')!.mergedShardKeys?.has('p:3')).toBe(true);
+    expect(calls).toEqual([]);
+    // The ref reappearing must not revive the work: the repeat performs
+    // no fetch even though partition 3 is now fetchable.
+    const g = byName.get('s')!;
+    (g.graph.unitPartitions as SharedDepGraphFileRef[])[3] =
+      await store.refFor('s.part-3.json', {
+        name: 's',
+        version: '1.0.0',
+        units: [unit(['gone.js'], [])],
+      });
+    await more();
+    expect(calls).toEqual([]);
+    expect(g.graph.units).toHaveLength(1);
+  });
 });

@@ -675,8 +675,12 @@ export class SharedGraphSetLoader {
       const g = loaded.get(work.dep.name);
       if (g === undefined) return;
       const ref = SharedGraphSetLoader.refFor(g.graph, work.key);
+      // Record even when the ref is gone, exactly as `load` does: the
+      // work is discharged either way, and an unrecorded key would be
+      // re-emitted by the next `loadMore` call (R5-01).
       if (ref === undefined) {
         SharedGraphSetLoader.markMerged(work.dep.name, work.key, merged);
+        SharedGraphSetLoader.recordMerged(g, work.key);
         return;
       }
       const units = await SharedUnitGraphLoader.loadShard(
