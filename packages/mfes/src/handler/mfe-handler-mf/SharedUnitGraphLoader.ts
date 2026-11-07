@@ -88,6 +88,15 @@ export interface LoadedGraph {
   readonly dep: MfManifestShared;
   readonly graph: SharedDepGraphFile;
   readonly graphFileLocation: string;
+  /**
+   * Shard-document keys already merged into `graph.units` —
+   * `entryShards` keys, `'p:<index>'` partition keys and `'<units>'`
+   * for the whole-unit-list shard, whatever the graph's encoding.
+   * Recorded by the fetch-set loader so a later on-demand round
+   * (`SharedGraphSetLoader.loadMore`) never fetches or merges a shard
+   * document twice. Runtime-only: never serialized.
+   */
+  mergedShardKeys?: Set<string>;
 }
 
 export class SharedUnitGraphLoader {

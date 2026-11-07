@@ -224,10 +224,16 @@ export class SharedGraphSetLoader {
     const graph = loaded.graph;
     if (merged.allUnits.has(loaded.dep.name)) return [];
     if (SharedGraphSetLoader.isPartitioned(graph)) {
+      // A unit-identifier root without module paths names no indexed
+      // partition — fall back to the whole package rather than
+      // fetching nothing (R4-03).
+      if (modulePaths === undefined || modulePaths.length === 0) {
+        return SharedGraphSetLoader.wholeWorks(loaded, merged);
+      }
       const mergedKeys =
         merged.shardKeys.get(loaded.dep.name) ?? new Set<string>();
       const indices = new Set<number>();
-      for (const path of modulePaths ?? []) {
+      for (const path of modulePaths) {
         const idx = graph.modulePartitions?.[path];
         if (idx === undefined) {
           return SharedGraphSetLoader.wholeWorks(loaded, merged);
@@ -413,6 +419,15 @@ export class SharedGraphSetLoader {
   }
 
   /**
+   * Record `key` on the loaded graph itself, so a later `loadMore`
+   * call can seed its merge state for every graph form — partitioned,
+   * legacy `entryShards`/`unitsShard`, unsharded alike (R4-05).
+   */
+  private static recordMerged(loaded: LoadedGraph, key: string): void {
+    (loaded.mergedShardKeys ??= new Set<string>()).add(key);
+  }
+
+  /**
    * Fetch and verify the graph documents the roots can reach: index
    * graphs of the packages the unit walk names, plus the entry or
    * whole-unit-list shards of sharded packages the reach needs.
@@ -452,6 +467,7 @@ export class SharedGraphSetLoader {
       // way, and leaving it unmerged would re-emit it every round.
       if (ref === undefined) {
         SharedGraphSetLoader.markMerged(work.dep.name, work.key, merged);
+        SharedGraphSetLoader.recordMerged(g, work.key);
         return;
       }
       const units = await SharedUnitGraphLoader.loadShard(
@@ -463,6 +479,7 @@ export class SharedGraphSetLoader {
       );
       SharedGraphSetLoader.mergeUnits(g, units, merged);
       SharedGraphSetLoader.markMerged(work.dep.name, work.key, merged);
+      SharedGraphSetLoader.recordMerged(g, work.key);
     };
     const allShardWork = (): ShardWork[] =>
       [...loaded.values()].flatMap((g) =>
@@ -522,9 +539,23 @@ export class SharedGraphSetLoader {
         SharedGraphSetLoader.wholeWorks(g, merged),
       );
     const requested = new Set<string>(loaded.keys());
-    let pending = SharedGraphSetLoader.rootPackageNames(combinedRoots);
-    let shardQueue: ShardWork[] = [];
-    let fetchAllRest = false;
+    // Seed from `wanted` up front (R4-04): the roots may need shard or
+    // partition documents of graphs ALREADY in `loaded` — computing the
+    // queue only after a fetch round would end the loop before the
+    // walk ever ran.
+    const seed = SharedGraphSetLoader.wanted(
+      loaded,
+      merged,
+      combinedRoots,
+      byName,
+      entryId,
+    );
+    let pending = new Set<string>([
+      ...SharedGraphSetLoader.rootPackageNames(combinedRoots),
+      ...seed.packages,
+    ]);
+    let shardQueue: ShardWork[] = seed.shards;
+    let fetchAllRest = seed.fetchAllRest;
     for (;;) {
       const round = fetchAllRest
         ? fetchable.filter((d) => !loaded.has(d.name))
@@ -599,8 +630,23 @@ export class SharedGraphSetLoader {
       allUnits: new Set(),
       unitLocations: new Map(),
     };
+    // Seed merge state for EVERY loaded graph form (R4-05): the shard
+    // keys a previous round recorded on the graph itself — partitioned,
+    // legacy `entryShards`/`unitsShard` and unsharded alike — so no
+    // shard document is fetched twice, and the already-merged unit
+    // locations so an overlapping merge duplicates no unit.
+    for (const g of loaded.values()) {
+      merged.unitLocations.set(
+        g.dep.name,
+        new Set(g.graph.units.map((u) => u.location)),
+      );
+      for (const key of g.mergedShardKeys ?? []) {
+        SharedGraphSetLoader.markMerged(g.dep.name, key, merged);
+      }
+    }
     // Seed merged partition keys from the index: a partition whose units
-    // already sit in the graph's unit list must not be fetched again.
+    // already sit in the graph's unit list must not be fetched again —
+    // the fallback for graphs merged before keys were recorded.
     for (const g of loaded.values()) {
       const index = g.graph.modulePartitions;
       if (index === undefined) continue;
@@ -642,6 +688,7 @@ export class SharedGraphSetLoader {
       );
       SharedGraphSetLoader.mergeUnits(g, units, merged);
       SharedGraphSetLoader.markMerged(work.dep.name, work.key, merged);
+      SharedGraphSetLoader.recordMerged(g, work.key);
     };
     const before = new Set(loaded.keys());
     await SharedGraphSetLoader.runRounds(
