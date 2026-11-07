@@ -1801,7 +1801,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       // The graph fetch+register happens before the mint batch is
       // enqueued — the batch itself chains on `ctx.mintQueue` and must
       // never be awaited from inside it.
-      pending = this.ensureSharedDepGraph(ctx, dep, specifier, entryId).then(
+      pending = this.ensureSharedDepGraph(ctx, specifier, entryId).then(
         () =>
           this.runSharedDepMintBatch(
             ctx,
@@ -1845,18 +1845,15 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    */
   private async ensureSharedDepGraph(
     ctx: SharedDepUnitContext,
-    dep: MfManifestShared,
     specifier: string,
     entryId: string
   ): Promise<void> {
     const graphs = ctx.graphs as LoadedGraph[];
-    if (
-      graphs.some(
-        (g) => g.dep.name === dep.name && g.dep.version === dep.version
-      )
-    ) {
-      return;
-    }
+    // No early return when the index graph is already loaded (R4-04):
+    // the specifier may need a shard or partition document the boot
+    // fetch set did not cover — `loadMore` runs the same walk-driven
+    // rounds and its seeded merge state dedupes everything already
+    // fetched, so a fully covered specifier costs no fetch.
     const byName = new Map(graphs.map((g) => [g.dep.name, g] as const));
     const fresh = await SharedGraphSetLoader.loadMore(
       ctx.manifest.shared,

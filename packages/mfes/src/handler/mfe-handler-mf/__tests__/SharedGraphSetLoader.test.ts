@@ -6,7 +6,10 @@
  * injected reader cannot supply.
  */
 import { describe, expect, it } from 'vitest';
-import type { MfManifestShared } from '../../../manifest/mf-manifest';
+import type {
+  MfManifestRoot,
+  MfManifestShared,
+} from '../../../manifest/mf-manifest';
 import type {
   SharedDepGraphFile,
   SharedDepGraphFileRef,
@@ -14,7 +17,10 @@ import type {
   SharedDepGraphUnit,
 } from '../../../unit-format/graph-file';
 import { SharedGraphSetLoader } from '../SharedGraphSetLoader';
-import { SharedUnitGraphLoader } from '../SharedUnitGraphLoader';
+import {
+  SharedUnitGraphLoader,
+  type LoadedGraph,
+} from '../SharedUnitGraphLoader';
 
 const unit = (
   modulePaths: string[],
@@ -242,6 +248,33 @@ describe('SharedGraphSetLoader.fetchSet', () => {
     expect(result.shardLocations.sort()).toEqual(['s.part-0.json', 's.part-1.json']);
   });
 
+  it('fetches the whole package for a unit-id root without modulePaths (R4-03)', () => {
+    const s = dep('s');
+    const graphs = new Map<string, SharedDepGraphFile>([
+      [
+        's',
+        graph('s', [], {
+          unitPartitions: [ref('s.part-0.json'), ref('s.part-1.json')],
+          modulePartitions: { 'index.js': 0, 'dep.js': 1 },
+        }),
+      ],
+    ]);
+    const shards = new Map<string, SharedDepGraphShard>([
+      ['s.part-0.json', { name: 's', version: '1.0.0', units: [unit(['index.js'], [])] }],
+      ['s.part-1.json', { name: 's', version: '1.0.0', units: [unit(['dep.js'], [])] }],
+    ]);
+    const result = SharedGraphSetLoader.fetchSet(
+      [s],
+      // An EMPTY `modulePaths`: the root names no indexed partition,
+      // so the whole package must be fetched, not nothing.
+      [{ name: 's', version: '1.0.0', modulePaths: [] }],
+      undefined,
+      (d) => graphs.get(d.name),
+      (d, location) => (d.name === 's' ? shards.get(location) : undefined),
+    );
+    expect(result.shardLocations.sort()).toEqual(['s.part-0.json', 's.part-1.json']);
+  });
+
   it('resolves a unit-identifier root through the module index (SZ-015)', () => {
     const s = dep('s');
     const graphs = new Map<string, SharedDepGraphFile>([
@@ -439,5 +472,264 @@ describe('SharedGraphSetLoader.load', () => {
       'index.js',
     ]);
     expect(fetched2).not.toContain('s.part-1.json');
+  });
+
+  it('fetches the whole package for a unit-id root without modulePaths on a partitioned graph (R4-03)', { timeout: 15_000 }, async () => {
+    const texts = new Map<string, string>();
+    const put = (location: string, doc: unknown): string => {
+      const text = JSON.stringify(doc);
+      texts.set(location, text);
+      return text;
+    };
+    const refFor = async (location: string, doc: unknown) => ({
+      location,
+      contentHash: await SharedUnitGraphLoader.sha256Hex(put(location, doc)),
+    });
+    const g = graph('s', [], {
+      unitPartitions: [
+        await refFor('s.part-0.json', {
+          name: 's',
+          version: '1.0.0',
+          units: [unit(['index.js'], [])],
+        }),
+        await refFor('s.part-1.json', {
+          name: 's',
+          version: '1.0.0',
+          units: [unit(['dep.js'], [])],
+        }),
+      ],
+      modulePartitions: { 'index.js': 0, 'dep.js': 1 },
+    });
+    const s = dep('s', await SharedUnitGraphLoader.sha256Hex(put('s.graph.json', g)));
+    const fetched: string[] = [];
+    const loaded = await SharedGraphSetLoader.load(
+      [s],
+      // A unit-identifier root whose `modulePaths` member is ABSENT —
+      // an older manifest shape the validator tolerates: no indexed
+      // partition is named, so every partition must arrive (R4-03).
+      [{ name: 's', version: '1.0.0' } as MfManifestRoot],
+      undefined,
+      (l) => l,
+      async (url) => {
+        fetched.push(url);
+        return texts.get(url)!;
+      },
+      'test-entry',
+    );
+    expect(loaded[0].graph.units.map((u) => u.modulePaths[0]).sort()).toEqual([
+      'dep.js',
+      'index.js',
+    ]);
+    expect(fetched.sort()).toEqual(
+      ['s.graph.json', 's.part-0.json', 's.part-1.json'].sort(),
+    );
+  });
+});
+
+/**
+ * R4-05: `loadMore` continues a load whose graphs were fetched by `load`
+ * — for EVERY graph form (unsharded, legacy `entryShards`/`unitsShard`,
+ * partitioned) an already-merged shard document is never fetched again
+ * and an overlapping shard merge never duplicates a unit.
+ */
+describe('SharedGraphSetLoader.loadMore', () => {
+  /** In-memory document store with real content identities. */
+  const makeStore = () => {
+    const texts = new Map<string, string>();
+    return {
+      texts,
+      put(location: string, doc: unknown): string {
+        const text = JSON.stringify(doc);
+        texts.set(location, text);
+        return text;
+      },
+      async refFor(location: string, doc: unknown) {
+        return {
+          location,
+          contentHash: await SharedUnitGraphLoader.sha256Hex(
+            this.put(location, doc),
+          ),
+        };
+      },
+      async depFor(name: string, doc: SharedDepGraphFile) {
+        return dep(
+          name,
+          await SharedUnitGraphLoader.sha256Hex(
+            this.put(`${name}.graph.json`, doc),
+          ),
+        );
+      },
+    };
+  };
+
+  const fetchOver = (
+    texts: ReadonlyMap<string, string>,
+    calls: string[],
+  ) =>
+    async (url: string): Promise<string> => {
+      calls.push(url);
+      return texts.get(url)!;
+    };
+
+  it('partitioned: a later specifier fetches only its unfetched partition, repeats fetch nothing', { timeout: 15_000 }, async () => {
+    const store = makeStore();
+    const s = await store.depFor(
+      's',
+      graph('s', [], {
+        mainModulePath: 'index.js',
+        entryModulePaths: { '.': 'index.js', './feature': 'feature.js' },
+        unitPartitions: [
+          await store.refFor('s.part-0.json', {
+            name: 's',
+            version: '1.0.0',
+            units: [unit(['index.js'], [])],
+          }),
+          await store.refFor('s.part-1.json', {
+            name: 's',
+            version: '1.0.0',
+            units: [unit(['feature.js'], [])],
+          }),
+        ],
+        modulePartitions: { 'index.js': 0, 'feature.js': 1 },
+      }),
+    );
+    const bootFetches: string[] = [];
+    const loaded = await SharedGraphSetLoader.load(
+      [s],
+      ['s'],
+      undefined,
+      (l) => l,
+      fetchOver(store.texts, bootFetches),
+      'test-entry',
+    );
+    expect(bootFetches.sort()).toEqual(['s.graph.json', 's.part-0.json']);
+    const byName = new Map(loaded.map((g) => [g.dep.name, g] as const));
+    const shardCalls: string[] = [];
+    const graphCalls: string[] = [];
+    const more = (): Promise<LoadedGraph[]> =>
+      SharedGraphSetLoader.loadMore(
+        [s],
+        ['s/feature'],
+        byName,
+        (l) => l,
+        (_d, url) => fetchOver(store.texts, graphCalls)(url),
+        (_d, _r, url) => fetchOver(store.texts, shardCalls)(url),
+        'test-entry',
+      );
+    const added1 = await more();
+    expect(added1).toEqual([]);
+    expect(shardCalls).toEqual(['s.part-1.json']);
+    expect(graphCalls).toEqual([]);
+    const locations = byName.get('s')!.graph.units.map((u) => u.location);
+    expect(new Set(locations).size).toBe(locations.length);
+    // The repeat lazy load: the partition is recorded merged on the
+    // graph — no shard document is fetched again and units stay unique.
+    shardCalls.length = 0;
+    const added2 = await more();
+    expect(added2).toEqual([]);
+    expect(shardCalls).toEqual([]);
+    expect(graphCalls).toEqual([]);
+    expect(byName.get('s')!.graph.units).toHaveLength(2);
+  });
+
+  it('legacy entryShards/unitsShard: repeated lazy loads never re-fetch or duplicate units', { timeout: 15_000 }, async () => {
+    const store = makeStore();
+    const shared = unit(['shared.js'], []);
+    const s = await store.depFor(
+      's',
+      graph('s', [], {
+        mainModulePath: 'index.js',
+        entryShards: {
+          '.': await store.refFor('s.entry.json', {
+            name: 's',
+            version: '1.0.0',
+            units: [
+              unit(['index.js'], [], { relativeImports: ['./shared.js'] }),
+              shared,
+            ],
+          }),
+          './x': await store.refFor('s.x.json', {
+            name: 's',
+            version: '1.0.0',
+            // Overlaps the entry shard: 'shared.js' must merge once.
+            units: [unit(['x.js'], [], { relativeImports: ['./shared.js'] }), shared],
+          }),
+        },
+        unitsShard: await store.refFor('s.units.json', {
+          name: 's',
+          version: '1.0.0',
+          units: [unit(['index.js'], [], { relativeImports: ['./shared.js'] }), unit(['x.js'], []), shared],
+        }),
+      }),
+    );
+    const bootFetches: string[] = [];
+    const loaded = await SharedGraphSetLoader.load(
+      [s],
+      ['s'],
+      undefined,
+      (l) => l,
+      fetchOver(store.texts, bootFetches),
+      'test-entry',
+    );
+    expect(bootFetches.sort()).toEqual(['s.entry.json', 's.graph.json']);
+    const byName = new Map(loaded.map((g) => [g.dep.name, g] as const));
+    const shardCalls: string[] = [];
+    const more = (roots: string[]): Promise<LoadedGraph[]> =>
+      SharedGraphSetLoader.loadMore(
+        [s],
+        roots,
+        byName,
+        (l) => l,
+        (_d, url) => fetchOver(store.texts, shardCalls)(url),
+        (_d, _r, url) => fetchOver(store.texts, shardCalls)(url),
+        'test-entry',
+      );
+    // The second shard merges; the overlapping unit dedupes.
+    await more(['s/x']);
+    expect(shardCalls).toEqual(['s.x.json']);
+    const locations = byName.get('s')!.graph.units.map((u) => u.location);
+    expect(new Set(locations).size).toBe(locations.length);
+    expect(byName.get('s')!.graph.units).toHaveLength(3);
+    // Repeats — the same specifier and the already-covered entry —
+    // fetch nothing; unitsShard is never touched.
+    shardCalls.length = 0;
+    await more(['s/x']);
+    await more(['s']);
+    expect(shardCalls).toEqual([]);
+    expect(byName.get('s')!.graph.units).toHaveLength(3);
+  });
+
+  it('unsharded: a later specifier of an inline graph fetches nothing', { timeout: 15_000 }, async () => {
+    const store = makeStore();
+    const s = await store.depFor(
+      's',
+      graph('s', [unit(['index.js'], []), unit(['feature.js'], [])], {
+        mainModulePath: 'index.js',
+      }),
+    );
+    const bootFetches: string[] = [];
+    const loaded = await SharedGraphSetLoader.load(
+      [s],
+      ['s'],
+      undefined,
+      (l) => l,
+      fetchOver(store.texts, bootFetches),
+      'test-entry',
+    );
+    expect(bootFetches).toEqual(['s.graph.json']);
+    const byName = new Map(loaded.map((g) => [g.dep.name, g] as const));
+    const calls: string[] = [];
+    const added = await SharedGraphSetLoader.loadMore(
+      [s],
+      ['s/feature'],
+      byName,
+      (l) => l,
+      (_d, url) => fetchOver(store.texts, calls)(url),
+      (_d, _r, url) => fetchOver(store.texts, calls)(url),
+      'test-entry',
+    );
+    expect(added).toEqual([]);
+    expect(calls).toEqual([]);
+    expect(byName.get('s')!.graph.units).toHaveLength(2);
   });
 });
