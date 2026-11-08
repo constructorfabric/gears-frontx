@@ -12,6 +12,8 @@
 /**
  * Asset file lists for a module or shared dependency.
  */
+import type { SharedDepEntryListRefs } from '../unit-format/fetch-list';
+
 export interface MfManifestAssets {
   js: {
     /** Synchronous JS chunks loaded eagerly at module evaluation time. */
@@ -304,4 +306,17 @@ export interface MfManifest {
    * (see `cpt-frontx-adr-mfe-asset-discovery`).
    */
   lazyChunkRoots?: Record<string, MfManifestRoot[]>;
+  /**
+   * Fetch-list document per exposed entry: keyed by the exposed module
+   * name (e.g. `'./lifecycle'`), each value the location and content
+   * identity of that entry's `SharedDepFetchList` document. When the
+   * entry being loaded carries a list, the runtime loads its shared
+   * dependencies through the list model — read the list, fetch every
+   * item missing from the realm text cache in one parallel batch, mint
+   * per load in dependency order — with no graph discovery
+   * (`cpt-frontx-adr-shared-dep-reuse`). Absent for producing builds
+   * that have not adopted fetch lists; the runtime then falls back to
+   * the legacy `chunkPath` entries of `shared[]`.
+   */
+  entryLists?: SharedDepEntryListRefs;
 }
