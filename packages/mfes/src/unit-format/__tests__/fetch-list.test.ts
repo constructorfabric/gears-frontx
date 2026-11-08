@@ -12,6 +12,8 @@ import type {
   SharedDepOpaqueImport,
   SharedDepEntryListRefs,
   SharedDepBootData,
+  SharedDepProducer,
+  SharedDepImportEdge,
   // Graph-file types stay exported pending removal of their consumers.
   SharedDepGraphFile,
   SharedDepGraphUnit,
@@ -23,6 +25,8 @@ import type {
 } from '../index';
 
 const HEX64 = 'a'.repeat(64);
+const HEX64_B = 'b'.repeat(64);
+const HASH_RE = /^[0-9a-f]{64}$/;
 
 describe('SharedDepListItem', () => {
   it('carries URL, content hash, answered specifiers and import edges', () => {
@@ -30,12 +34,12 @@ describe('SharedDepListItem', () => {
       location: 'react@19.2.4/entry.abc123.js',
       contentHash: HEX64,
       answers: ['react', 'react/jsx-runtime'],
-      imports: ['scheduler'],
+      imports: ['scheduler', { item: HEX64_B }] as SharedDepImportEdge[],
     };
     expect(item.location).toBe('react@19.2.4/entry.abc123.js');
     expect(item.contentHash).toHaveLength(64);
     expect(item.answers).toContain('react/jsx-runtime');
-    expect(item.imports).toEqual(['scheduler']);
+    expect(item.imports).toEqual(['scheduler', { item: HEX64_B }]);
   });
 
   it('requires every field — an empty-but-complete item is valid', () => {
@@ -86,11 +90,43 @@ describe('SharedDepFetchList', () => {
   });
 
   it('may record the producer that emitted it', () => {
-    const list: SharedDepFetchList = {
-      items: [],
-      producer: { name: 'unit-producer', version: '1.0.0' },
-    };
+    const producer: SharedDepProducer = { name: 'unit-producer', version: '1.0.0' };
+    const list: SharedDepFetchList = { items: [], producer };
     expect(list.producer?.name).toBe('unit-producer');
+  });
+
+  it('carries content identities in the SHA-256 hex format', () => {
+    const item: SharedDepListItem = {
+      location: 'a.js',
+      contentHash: '0123456789abcdef'.repeat(4),
+      answers: ['a'],
+      imports: [],
+    };
+    const ref: SharedDepFileRef = { location: 'a.list.json', contentHash: item.contentHash };
+    expect(item.contentHash).toMatch(HASH_RE);
+    expect(ref.contentHash).toMatch(HASH_RE);
+  });
+
+  it('closes over every imported edge — each is answered by an item on the list or its parent chain', () => {
+    const parent: SharedDepFetchList = {
+      items: [{ location: 'react.js', contentHash: HEX64_B, answers: ['react'], imports: [] }],
+    };
+    const list: SharedDepFetchList = {
+      items: [
+        { location: 'a.js', contentHash: HEX64, answers: ['a'], imports: ['react', 'b', { item: 'c'.repeat(64) }] },
+        { location: 'b.js', contentHash: 'c'.repeat(64), answers: ['b'], imports: [] },
+      ],
+    };
+    const answered = new Set(
+      [...parent.items, ...list.items].flatMap((i) => i.answers),
+    );
+    const identities = new Set([...parent.items, ...list.items].map((i) => i.contentHash));
+    for (const item of list.items) {
+      for (const edge of item.imports) {
+        if (typeof edge === 'string') expect(answered.has(edge)).toBe(true);
+        else expect(identities.has(edge.item)).toBe(true);
+      }
+    }
   });
 });
 
@@ -103,11 +139,20 @@ describe('manifest and boot-data carriers', () => {
     expect(refs['./lifecycle'].contentHash).toBe(HEX64);
   });
 
-  it('embeds the shell boot list inline in boot data', () => {
+  it('embeds the shell boot list and its lazy lists inline in boot data', () => {
+    const lazyList: SharedDepFetchList = {
+      items: [{ location: 'lazy-dep.js', contentHash: HEX64_B, answers: ['lazy-dep'], imports: ['react'] }],
+    };
     const boot: SharedDepBootData = {
-      list: { items: [{ location: 'react.js', contentHash: HEX64, answers: ['react'], imports: [] }] },
+      list: {
+        items: [{ location: 'react.js', contentHash: HEX64, answers: ['react'], imports: [] }],
+        lazy: { './lazy/Panel.js': { location: 'unused-when-inline', contentHash: HEX64 } },
+      },
+      lazyLists: { './lazy/Panel.js': lazyList },
     };
     expect(boot.list.items).toHaveLength(1);
+    expect(Object.keys(boot.lazyLists)).toEqual(Object.keys(boot.list.lazy ?? {}));
+    expect(boot.lazyLists['./lazy/Panel.js'].items[0].answers).toContain('lazy-dep');
   });
 });
 

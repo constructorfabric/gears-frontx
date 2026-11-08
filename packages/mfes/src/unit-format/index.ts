@@ -13,6 +13,8 @@
  */
 
 export type {
+  SharedDepProducer,
+  SharedDepImportEdge,
   SharedDepFileRef,
   SharedDepListItem,
   SharedDepOpaqueImport,
