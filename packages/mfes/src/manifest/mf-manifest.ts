@@ -30,47 +30,6 @@ export interface MfManifestAssets {
 }
 
 /**
- * A reference to a shared package's graph file, by location and content
- * identity.
- *
- * There is one content-addressed graph file per package version. It
- * expresses the package's units; each unit's content identity; each
- * unit's bare imports and relative imports; which module paths belong
- * to which unit; whether the package is split into units or delivered as
- * a single unit, and why; the producer and its version; and, optionally,
- * a whole-package pack with its own content identity
- * (see `cpt-frontx-adr-shared-dep-reuse`).
- *
- * The manifest references each shared package's graph file so the runtime
- * can close the manifest-declared roots over the graph file to determine
- * the reachable unit set before fetching (see
- * `cpt-frontx-adr-mfe-asset-discovery`).
- */
-export interface MfManifestGraphFileRef {
-  /**
-   * Location of the graph file: an absolute URL starting with `http://` or
-   * `https://` (in any case), fetched at its parsed form, or a path
-   * relative to the manifest's shared base location when one is given
-   * (`metaData.sharedBase`), and otherwise relative to the asset base
-   * location (`metaData.publicPath`). Resolved by the same rules as a
-   * shared-dependency `chunkPath`
-   * (`cpt-frontx-algo-mfe-loading-manifest-discovery`,
-   * `inst-md-resolve-chunk-path`).
-   */
-  location: string;
-  /**
-   * Expected SHA-256 hex digest (64 lowercase hex characters) of the
-   * graph file `location` points at. The runtime verifies every fetched
-   * graph file against this declared content identity before it is used
-   * or cached; a mismatch fails the load, is reported through the
-   * runtime's diagnostics, and the mismatching text is never cached.
-   * The graph file in turn lists each unit's content hash
-   * (see `cpt-frontx-adr-mfe-asset-discovery`).
-   */
-  contentHash: string;
-}
-
-/**
  * A single shared dependency entry from `MfManifest.shared[]`.
  * Declares a standalone ESM dependency with a resolved version and an
  * MFE-relative chunkPath to its standalone bundle.
@@ -114,20 +73,6 @@ export interface MfManifestShared {
    * Absent for producing builds that have not adopted it.
    */
   contentHash?: string;
-  /**
-   * Optional reference to this package's graph file, by location and
-   * content identity. When present, the runtime fetches and verifies the
-   * graph file, then closes the manifest-declared roots over it to
-   * determine the reachable units before fetching — so a load fetches
-   * only the units its entry reaches rather than every declared shared
-   * entry (see `cpt-frontx-adr-mfe-asset-discovery`). Absent for producing
-   * builds that have not adopted graph files; in that case the runtime
-   * falls back to fetching the whole-package entry at `chunkPath`.
-   *
-   * Unread by the runtime since the list-driven loader; pending removal
-   * in phase 22 together with the graph-file types.
-   */
-  graphFile?: MfManifestGraphFileRef;
   /**
    * Optional package-level bare requirements for this shared dependency:
    * every external package the package's units need, declared as bare
@@ -234,39 +179,6 @@ export interface MfManifestMetaData {
 }
 
 /**
- * A unit identifier within a shared package, identifying one strongly
- * connected component of the package's own module graph (usually a single
- * module, or the whole cycle when the module is part of an import cycle).
- *
- * Identity: package name, package version, and the module path or paths
- * the unit contains (see `cpt-frontx-adr-shared-dep-reuse`).
- */
-export interface MfManifestUnitId {
-  /** Package name as declared in the manifest's `shared[]`. */
-  name: string;
-  /** Package version as declared in the manifest's `shared[]`. */
-  version: string;
-  /** Module path or paths belonging to this unit within the package. */
-  modulePaths: string[];
-}
-
-/**
- * A reachability root: the shared code an exposed entry or a lazily
- * loaded chunk reaches directly.
- *
- * Either a package reference — the package name as a string, resolved
- * against the manifest's `shared[]` entries — or a unit identifier
- * (package name, version, and module paths, as the graph file's format
- * contract provides). The runtime closes the roots over the packages'
- * graph files to determine the reachable unit set before fetching
- * (see `cpt-frontx-adr-mfe-asset-discovery`).
- *
- * Unread by the runtime since the list-driven loader; pending removal
- * in phase 22 together with the graph-file types.
- */
-export type MfManifestRoot = string | MfManifestUnitId;
-
-/**
  * MFE manifest — package-level metadata for an MFE package.
  *
  * Contains metaData (publicPath, remoteEntry descriptor) and shared[]
@@ -285,39 +197,6 @@ export interface MfManifest {
   metaData: MfManifestMetaData;
   /** Shared dependency declarations with chunk paths and unwrap keys. */
   shared: MfManifestShared[];
-  /**
-   * Roots per exposed entry: which shared code each exposed entry reaches
-   * directly — the entry's roots. Keyed by the exposed module name (e.g.
-   * `'./lifecycle'`), matching the `exposedModule` on the MFE entry that
-   * references this manifest. The runtime closes these roots over the
-   * packages' graph files to determine the reachable unit set before
-   * fetching, so a load fetches only the units its entry reaches rather
-   * than every declared shared entry. Absent when the producing build
-   * has not adopted roots — the runtime then falls back to fetching every
-   * declared shared entry and reports that through diagnostics
-   * (see `cpt-frontx-adr-mfe-asset-discovery`,
-   * `cpt-frontx-algo-mfe-loading-manifest-discovery`).
-   *
-   * Unread by the runtime since the list-driven loader; pending removal
-   * in phase 22 together with the graph-file types.
-   */
-  entryRoots?: Record<string, MfManifestRoot[]>;
-  /**
-   * Roots per lazily loaded chunk: which shared code each lazily loaded
-   * chunk reaches directly. Keyed by the chunk path relative to the asset
-   * base URL. The runtime determines and fetches the units a lazy chunk
-   * reaches — its manifest-declared roots, closed over the packages'
-   * graph files — when that chunk loads, adding them to the parent load's
-   * per-load unit map. Units already in the map are reused as they are and
-   * an existing entry is never replaced
-   * (`cpt-frontx-algo-mfe-loading-lazy-import-abi`, `inst-lai-lazy-roots`).
-   * Absent when the producing build has not adopted lazy-chunk roots
-   * (see `cpt-frontx-adr-mfe-asset-discovery`).
-   *
-   * Unread by the runtime since the list-driven loader; pending removal
-   * in phase 22 together with the graph-file types.
-   */
-  lazyChunkRoots?: Record<string, MfManifestRoot[]>;
   /**
    * Fetch-list document per exposed entry: keyed by the exposed module
    * name (e.g. `'./lifecycle'`), each value the location and content

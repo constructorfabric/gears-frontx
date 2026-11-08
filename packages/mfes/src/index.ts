@@ -143,11 +143,6 @@ export {
   rewriteBareSpecifier,
   importBlobModule,
 } from './handler/mfe-handler-mf/mf-dynamic-module-ops-root-exports';
-export type {
-  MfManifestGraphFileRef,
-  MfManifestUnitId,
-  MfManifestRoot,
-} from './manifest/mf-manifest';
 export type { RealmSharedDepTextCacheDiagnostics } from './handler/mfe-handler-mf/ByteBudgetLruCache';
 
 // Only the creation function crosses the barrel: the concrete registry and

@@ -4,8 +4,7 @@
  * source for the per-entry flat fetch lists a producing build emits and
  * the runtime reads, and the `UnitFormatConformance` suite every
  * producing build must pass
- * (`cpt-frontx-feature-unit-format-contract`, DESIGN §3.3). The
- * graph-file types stay exported pending removal of their consumers.
+ * (`cpt-frontx-feature-unit-format-contract`, DESIGN §3.3).
  *
  * Contract types only live in this subpath; the root barrel is unchanged.
  *
@@ -22,14 +21,5 @@ export type {
   SharedDepEntryListRefs,
   SharedDepBootData,
 } from './fetch-list';
-export type {
-  SharedDepUnitMode,
-  SharedDepGraphUnit,
-  SharedDepGraphPack,
-  SharedDepGraphProducer,
-  SharedDepGraphFile,
-  SharedDepGraphFileRef,
-  SharedDepGraphShard,
-} from './graph-file';
 export type { UnitFormatViolationRule, UnitFormatViolation } from './UnitFormatViolation';
 export { UnitFormatConformance } from './UnitFormatConformance';

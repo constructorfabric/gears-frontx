@@ -1,7 +1,6 @@
 /**
  * Type-level and fixture-shape tests for the per-entry flat fetch-list
- * contract (`fetch-list.ts`), and for the graph-file types that stay
- * exported while their consumers are removed
+ * contract (`fetch-list.ts`)
  * (`cpt-frontx-feature-unit-format-contract`).
  */
 import { describe, expect, it } from 'vitest';
@@ -14,14 +13,6 @@ import type {
   SharedDepBootData,
   SharedDepProducer,
   SharedDepImportEdge,
-  // Graph-file types stay exported pending removal of their consumers.
-  SharedDepGraphFile,
-  SharedDepGraphUnit,
-  SharedDepGraphFileRef,
-  SharedDepGraphShard,
-  SharedDepGraphPack,
-  SharedDepGraphProducer,
-  SharedDepUnitMode,
 } from '../index';
 
 const HEX64 = 'a'.repeat(64);
@@ -153,24 +144,5 @@ describe('manifest and boot-data carriers', () => {
     expect(boot.list.items).toHaveLength(1);
     expect(Object.keys(boot.lazyLists)).toEqual(Object.keys(boot.list.lazy ?? {}));
     expect(boot.lazyLists['./lazy/Panel.js'].items[0].answers).toContain('lazy-dep');
-  });
-});
-
-describe('graph-file types (pending removal)', () => {
-  it('stay exported while their consumers exist', () => {
-    const mode: SharedDepUnitMode = 'units';
-    const unit: SharedDepGraphUnit = {
-      modulePaths: ['index.js'],
-      bareImports: [],
-      relativeImports: [],
-      location: 'u.js',
-    };
-    const ref: SharedDepGraphFileRef = { location: 'g.json', contentHash: HEX64 };
-    const shard: SharedDepGraphShard = { name: 'p', version: '1.0.0', units: [unit] };
-    const pack: SharedDepGraphPack = { location: 'p.js' };
-    const producer: SharedDepGraphProducer = { name: 'x', version: '1' };
-    const graph: SharedDepGraphFile = { name: 'p', version: '1.0.0', unitMode: mode, units: [unit] };
-    expect(graph.units[0].modulePaths).toEqual(['index.js']);
-    expect([ref, shard, pack, producer]).toBeDefined();
   });
 });
