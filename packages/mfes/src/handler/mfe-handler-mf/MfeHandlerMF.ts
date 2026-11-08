@@ -229,6 +229,12 @@ interface SharedDepListLoadContext {
   readonly loader: SharedDepListLoader;
   readonly ctx: SharedDepListContext;
   readonly entryId: string;
+  /**
+   * The shared asset base (`metaData.sharedBase` resolved, or the load's
+   * own base URL when absent): the base the `lazy`/`patterns` record keys
+   * — shared-base-relative locations — are expressed against.
+   */
+  readonly assetBase: string;
   readonly resolveAssetUrl: (location: string) => string;
   readonly dynamicImports: ListDynamicImportRewrites;
 }
@@ -1411,7 +1417,9 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       ledger
     );
     const ctx = loader.createContext();
+    const listDocBytesBefore = loader.bytesFetched;
     const list = await loader.fetchListDocument(entryListRef, resolveAssetUrl);
+    const listDocBytes = loader.bytesFetched - listDocBytesBefore;
     // The dynamic-import machinery closes over `sharedDepLists`: the
     // resolver mints dependent lists on demand through the same load's
     // context; the stub URL mints on first rewritten call.
@@ -1420,6 +1428,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       loader,
       ctx,
       entryId,
+      assetBase,
       resolveAssetUrl,
       dynamicImports: {
         loaderUrl: () => {
@@ -1440,13 +1449,17 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
           MfeHandlerMF.listImportToken(record, specifier, ctx),
       },
     };
-    await loader.loadList(
+    const itemBytes = await loader.loadList(
       ctx,
       list,
       resolveAssetUrl,
       sharedDepLists.dynamicImports
     );
-    this.loadDiagnostics.summarize(manifest.id, 0, [], this.sharedDepTextCache);
+    this.loadDiagnostics.summarize(
+      manifest.id,
+      listDocBytes + itemBytes,
+      this.sharedDepTextCache
+    );
     return { urls: ctx.specifierToBlob, sharedDepLists };
   }
 
@@ -1533,21 +1546,42 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * chunk `filename` carries, extending `sharedDepBlobUrls` — never
    * rewriting it (`inst-lai-lazy-roots`). One in-flight resolution per
    * key; items already minted by the entry batch or an earlier lazy
-   * batch are reused as they are. The record key is the lazy chunk's
-   * location relative to the shared base; when the shared base is the
-   * asset base that is the chunk's filename itself.
+   * batch are reused as they are. `filename` is relative to the load's
+   * asset base (`publicPath`), while the `lazy`/`patterns` record keys
+   * are locations relative to the shared base — when
+   * `metaData.sharedBase` differs from `publicPath` the two do not
+   * coincide, so the filename is first resolved to the shared-base
+   * location the records are keyed by. A filename no record key matches
+   * emits a once-per-page diagnostic rather than silently skipping the
+   * dependent-list load.
    */
   private async ensureLazySharedDepList(
     loadState: LoadBlobState,
     filename: string
   ): Promise<void> {
-    const ctx = loadState.sharedDepLists;
-    if (ctx === undefined) return;
-    await ctx.loader.resolveDependent(
-      ctx.ctx,
+    const shared = loadState.sharedDepLists;
+    if (shared === undefined) return;
+    const key = SharedDepListLoader.dependentListKeyCandidates(
       filename,
-      ctx.resolveAssetUrl,
-      ctx.dynamicImports
+      loadState.baseUrl,
+      shared.assetBase
+    ).find((candidate) => shared.ctx.dependentLists.has(candidate));
+    if (key === undefined) {
+      this.loadDiagnostics.warnOnce(
+        `lazy-list-miss:${loadState.entryId}:${filename}`,
+        `[MfeHandlerMF] lazy chunk '${filename}' of '${loadState.entryId}' ` +
+          "matched no key in the load's lazy/patterns fetch-list records " +
+          '(checked against the shared-base location); its dependent ' +
+          'list, if the producer recorded one under a different spelling, ' +
+          'is not loaded.'
+      );
+      return;
+    }
+    await shared.loader.resolveDependent(
+      shared.ctx,
+      key,
+      shared.resolveAssetUrl,
+      shared.dynamicImports
     );
   }
 

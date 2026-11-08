@@ -76,6 +76,9 @@ export class SharedDepListLoader {
     cacheKey: string,
   ) => Promise<string>;
 
+  private readonly encoder = new TextEncoder();
+  private fetchedBytes = 0;
+
   constructor(
     fetchText: (url: string) => Promise<string>,
     private readonly entryId: string,
@@ -83,11 +86,23 @@ export class SharedDepListLoader {
     ledger?: AttemptSourceTextLedger,
   ) {
     this.fetchVerified = new VerifiedUnitFetcher(
-      fetchText,
+      async (url) => {
+        const text = await fetchText(url);
+        this.fetchedBytes += this.encoder.encode(text).length;
+        return text;
+      },
       entryId,
       cache,
       ledger,
     ).fetchVerified;
+  }
+
+  /**
+   * UTF-8 bytes this loader's `fetchText` actually transferred so far —
+   * realm cache joins and deduplicated repeats count nothing (F-011).
+   */
+  get bytesFetched(): number {
+    return this.fetchedBytes;
   }
 
   /** Fresh per-load context. */
@@ -184,14 +199,19 @@ export class SharedDepListLoader {
    * list order is thrown after every sibling settles (deterministic
    * surfacing); nothing is minted on failure, so a retry re-runs the
    * batch in full.
+   *
+   * Returns the UTF-8 bytes this call's batch actually transferred —
+   * cache-joined items count nothing — for the per-load diagnostics
+   * summary (F-011).
    */
   async loadList(
     ctx: SharedDepListContext,
     list: SharedDepFetchList,
     resolveAssetUrl: (location: string) => string,
     dynamicImports?: ListDynamicImportRewrites,
-  ): Promise<void> {
+  ): Promise<number> {
     this.registerList(ctx, list);
+    const bytesBefore = this.fetchedBytes;
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-reachable-units
     const missing = list.items.filter(
       (item) => !ctx.itemBlobByHash.has(item.contentHash),
@@ -214,7 +234,7 @@ export class SharedDepListLoader {
       (r) => (r as PromiseFulfilledResult<SharedDepListRecord>).value,
     );
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-reachable-units
-    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-pack-fallback
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-pack-fallback-v2
     SharedDepListMinter.mint(
       records,
       ctx.itemByHash,
@@ -225,7 +245,8 @@ export class SharedDepListLoader {
       this.entryId,
       dynamicImports,
     );
-    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-pack-fallback
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-pack-fallback-v2
+    return this.fetchedBytes - bytesBefore;
   }
 
   /**
@@ -269,6 +290,55 @@ export class SharedDepListLoader {
     }
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-lazy-roots
     return pending;
+  }
+
+  /**
+   * Candidate `lazy`/`patterns` record keys for a lazy chunk known only
+   * by its asset-base-relative `filename` (the `__frontx_lazy` path
+   * resolved against the entry chunk's directory). Record keys are
+   * shared-base-relative locations, so when `metaData.sharedBase` and
+   * `publicPath` differ the bare filename never matches: the candidates
+   * are the filename itself (bases equal, or producer recorded the
+   * asset-base-relative path), the chunk's absolute URL (absolute keys),
+   * and its location relative to the shared asset base — a `…/` climb
+   * when the chunk lives outside it.
+   */
+  static dependentListKeyCandidates(
+    filename: string,
+    baseUrl: string,
+    assetBase: string,
+  ): string[] {
+    const candidates = new Set<string>([filename]);
+    try {
+      const target = new URL(filename, baseUrl);
+      candidates.add(target.href);
+      const base = new URL(assetBase);
+      if (target.origin === base.origin) {
+        if (target.href.startsWith(base.href)) {
+          candidates.add(target.href.slice(base.href.length));
+        } else {
+          const baseDirs = base.pathname.split('/').filter(Boolean);
+          const targetSegments = target.pathname
+            .split('/')
+            .filter(Boolean);
+          let common = 0;
+          while (
+            common < baseDirs.length &&
+            common < targetSegments.length - 1 &&
+            baseDirs[common] === targetSegments[common]
+          ) {
+            common += 1;
+          }
+          candidates.add(
+            '../'.repeat(baseDirs.length - common) +
+              targetSegments.slice(common).join('/'),
+          );
+        }
+      }
+    } catch {
+      // An unparseable URL leaves the filename candidate only.
+    }
+    return [...candidates];
   }
 
   /**

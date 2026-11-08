@@ -59,8 +59,11 @@ vi.mock('../mf-dynamic-module-ops', async (importOriginal) => {
   };
 });
 
+import { createHash } from 'node:crypto';
 import { MfeHandlerMF } from '../MfeHandlerMF';
 import { LruCache } from '../LruCache';
+import { SharedDepListLoader } from '../SharedDepListLoader';
+import { SharedAssetUrlResolver } from '../SharedAssetUrlResolver';
 import { MfeLoadError } from '../../../errors';
 import type { MfeEntryMF } from '../../../types/mfe-entry-mf';
 import type { MfManifest, MfManifestShared } from '../../../manifest/mf-manifest';
@@ -2924,5 +2927,127 @@ describe('MfeHandlerMF - stylesheet wrapper keeps the mount contract', () => {
 
     await expect(unmounting).rejects.toBe(unmountFailure);
     expect(shadowRoot.querySelectorAll('link')).toHaveLength(0);
+  });
+});
+
+/**
+ * `ensureLazySharedDepList` resolves the lazy chunk's asset-base-relative
+ * filename to the shared-base location the `lazy`/`patterns` records are
+ * keyed by, so dependent lists resolve when `metaData.sharedBase` differs
+ * from `publicPath`; a filename no record key matches emits a
+ * once-per-page diagnostic instead of silently skipping.
+ */
+describe('MfeHandlerMF — lazy dependent-list key resolution (sharedBase ≠ publicPath)', () => {
+  const ENTRY = 'mock.mfe.entry.v1~lazy-list-key';
+  const PUBLIC_BASE = 'https://mfe.test/app/';
+  const SHARED_BASE = 'https://mfe.test/shared/';
+  const hash = (text: string): string =>
+    createHash('sha256').update(text).digest('hex');
+  const resolveShared = (location: string): string =>
+    SharedAssetUrlResolver.resolve(location, SHARED_BASE, ENTRY);
+
+  function loadState(sharedDepLists: unknown) {
+    return {
+      baseUrl: PUBLIC_BASE,
+      entryId: ENTRY,
+      sharedDepLists,
+    };
+  }
+
+  it('resolves the dependent list recorded under the shared-base location', async () => {
+    const lazyItemText = 'export const l=1;';
+    const lazyList = {
+      items: [
+        {
+          location: 'units/lazydep.js',
+          contentHash: hash(lazyItemText),
+          answers: ['pkg-lazy'],
+          imports: [],
+        },
+      ],
+    };
+    const lazyText = JSON.stringify(lazyList);
+    const files = new Map([
+      [resolveShared('lists/lazy.json'), lazyText],
+      [resolveShared('units/lazydep.js'), lazyItemText],
+    ]);
+    const calls: string[] = [];
+    const fetchText = async (url: string): Promise<string> => {
+      calls.push(url);
+      const text = files.get(url);
+      if (text === undefined) throw new Error(`404 ${url}`);
+      return text;
+    };
+    const handler = new MfeHandlerMF(ENTRY, { retries: 0 });
+    const loader = new SharedDepListLoader(fetchText, ENTRY, new Map() as never);
+    const ctx = loader.createContext();
+    ctx.dependentLists.set('../app/chunks/lazy.js', {
+      location: 'lists/lazy.json',
+      contentHash: hash(lazyText),
+    });
+    await (
+      handler as unknown as {
+        ensureLazySharedDepList: (
+          state: unknown,
+          filename: string
+        ) => Promise<void>;
+      }
+    ).ensureLazySharedDepList(
+      loadState({
+        loader,
+        ctx,
+        entryId: ENTRY,
+        assetBase: SHARED_BASE,
+        resolveAssetUrl: resolveShared,
+        dynamicImports: {
+          loaderUrl: () => 'blob:loader-stub',
+          tokenFor: () => undefined,
+        },
+      }),
+      'chunks/lazy.js'
+    );
+    expect(calls.sort()).toEqual(
+      [resolveShared('lists/lazy.json'), resolveShared('units/lazydep.js')].sort()
+    );
+    expect(ctx.specifierToBlob.get('pkg-lazy')).toMatch(/^blob:/);
+  });
+
+  it('emits a diagnostic when no lazy/patterns key matches the chunk', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const fetchText = async (): Promise<string> => {
+        throw new Error('must not fetch');
+      };
+      const handler = new MfeHandlerMF(ENTRY, { retries: 0 });
+      const loader = new SharedDepListLoader(fetchText, ENTRY, new Map() as never);
+      const ctx = loader.createContext();
+      ctx.dependentLists.set('../app/chunks/other.js', { items: [] });
+      await (
+        handler as unknown as {
+          ensureLazySharedDepList: (
+            state: unknown,
+            filename: string
+          ) => Promise<void>;
+        }
+      ).ensureLazySharedDepList(
+        loadState({
+          loader,
+          ctx,
+          entryId: ENTRY,
+          assetBase: SHARED_BASE,
+          resolveAssetUrl: resolveShared,
+          dynamicImports: {
+            loaderUrl: () => 'blob:loader-stub',
+            tokenFor: () => undefined,
+          },
+        }),
+        'chunks/lazy.js'
+      );
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("matched no key in the load's lazy/patterns")
+      );
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

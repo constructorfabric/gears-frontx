@@ -123,6 +123,9 @@ export interface MfManifestShared {
    * entry (see `cpt-frontx-adr-mfe-asset-discovery`). Absent for producing
    * builds that have not adopted graph files; in that case the runtime
    * falls back to fetching the whole-package entry at `chunkPath`.
+   *
+   * Unread by the runtime since the list-driven loader; pending removal
+   * in phase 22 together with the graph-file types.
    */
   graphFile?: MfManifestGraphFileRef;
   /**
@@ -257,6 +260,9 @@ export interface MfManifestUnitId {
  * contract provides). The runtime closes the roots over the packages'
  * graph files to determine the reachable unit set before fetching
  * (see `cpt-frontx-adr-mfe-asset-discovery`).
+ *
+ * Unread by the runtime since the list-driven loader; pending removal
+ * in phase 22 together with the graph-file types.
  */
 export type MfManifestRoot = string | MfManifestUnitId;
 
@@ -291,6 +297,9 @@ export interface MfManifest {
    * declared shared entry and reports that through diagnostics
    * (see `cpt-frontx-adr-mfe-asset-discovery`,
    * `cpt-frontx-algo-mfe-loading-manifest-discovery`).
+   *
+   * Unread by the runtime since the list-driven loader; pending removal
+   * in phase 22 together with the graph-file types.
    */
   entryRoots?: Record<string, MfManifestRoot[]>;
   /**
@@ -304,6 +313,9 @@ export interface MfManifest {
    * (`cpt-frontx-algo-mfe-loading-lazy-import-abi`, `inst-lai-lazy-roots`).
    * Absent when the producing build has not adopted lazy-chunk roots
    * (see `cpt-frontx-adr-mfe-asset-discovery`).
+   *
+   * Unread by the runtime since the list-driven loader; pending removal
+   * in phase 22 together with the graph-file types.
    */
   lazyChunkRoots?: Record<string, MfManifestRoot[]>;
   /**
