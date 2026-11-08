@@ -28,7 +28,7 @@ import {
   RealmSharedDepTextCacheProvider,
   type SharedDepTextCache,
 } from './RealmSharedDepTextCacheProvider';
-import { SharedUnitGraphLoader } from './SharedUnitGraphLoader';
+import { SharedDepSha256 } from './SharedDepSha256';
 
 export class VerifiedUnitFetcher {
   /**
@@ -73,7 +73,7 @@ export class VerifiedUnitFetcher {
     let textPromise = cache.get(cacheKey);
     if (textPromise === undefined) {
       textPromise = this.fetchText(url).then(async (text) => {
-        const actual = await SharedUnitGraphLoader.sha256Hex(text);
+        const actual = await SharedDepSha256.hex(text);
         if (actual !== contentHash) {
           throw new MfeLoadError(
             `shared-dep source '${url}' failed content-identity ` +

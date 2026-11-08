@@ -1,21 +1,19 @@
 /**
- * Sanctioned subpath `@gears-frontx/mfes/unit-loader`: the unit loader a
+ * Sanctioned subpath `@gears-frontx/mfes/unit-loader`: the list loader a
  * host-side boot chunk (or any runtime copy that is not the orchestrating
- * `MfeHandlerMF`) uses to fetch, verify, realm-cache and mint shared-dependency
- * units — and nothing else.
+ * `MfeHandlerMF`) uses to read a fetch list, fetch and verify its items,
+ * realm-cache them, and mint per-load `blob:` URLs — and nothing else.
  *
  * The surface is exactly the loader capability classes:
- * `SharedUnitGraphLoader` (fetch and verify of the `./unit-format` graph
- * files and unit/pack text), `UnitBlobMinter` (minting per-load `blob:`
- * URLs in dependency order), `RealmSharedDepTextCacheProvider` (the
- * realm-wide, version-namespaced content-identity cache compatible
- * copies of this package converge on), `VerifiedUnitFetcher` (the fetch
- * → SHA-256 verify → realm-cache admit → evict-on-reject discipline a
- * `buildPlan` call consumes), `SharedAssetUrlResolver` (shared-file
- * `location` → fetch URL validation), and `PackFallbackPolicy` (carrying
- * the documented `DEFAULT_BUDGET_MS` static for `buildPlan`'s
- * `packFallbackBudgetMs`). With them a host runs
- * `loadGraph` → `buildPlan` → `mint` with no hand-written fetch or URL
+ * `SharedDepListLoader` (list read, one-parallel-batch fetch,
+ * dependency-order mint, lazy/pattern dependent-list resolution),
+ * `VerifiedUnitFetcher` (the fetch → SHA-256 verify → realm-cache admit
+ * → evict-on-reject discipline), `SharedAssetUrlResolver` (shared-file
+ * `location` → fetch URL validation), and
+ * `RealmSharedDepTextCacheProvider` (the realm-wide, version-namespaced
+ * content-identity cache compatible copies of this package converge
+ * on). With them a host runs `fetchListDocument`/`registerList` →
+ * `loadList` → `resolveDependent` with no hand-written fetch or URL
  * logic. The accompanying types are type-only and carry no
  * implementation.
  *
@@ -34,18 +32,19 @@
 
 // @cpt-begin:cpt-frontx-algo-unit-format-contract-loader-surface:p1:inst-loader-surface-classes
 // @cpt-begin:cpt-frontx-algo-unit-format-contract-loader-surface:p1:inst-loader-surface-no-orchestration
-// Fetch and verify: graph-file fetching, SHA-256 content-identity
-// verification, `requires` closure checking and root reachability.
-export { SharedUnitGraphLoader } from '../handler/mfe-handler-mf/SharedUnitGraphLoader';
-// Needed-graphs fetch: the `requires` closure of the declared roots,
-// so a boot fetches only the graph files its entries can reach.
-export { SharedGraphSetLoader } from '../handler/mfe-handler-mf/SharedGraphSetLoader';
+// List loader: read an entry's flat fetch list (from a document
+// reference or inline boot data), fetch every item missing from the
+// realm cache in one parallel batch, mint per load in dependency
+// order, and resolve lazy/pattern dependent lists on first use.
+export { SharedDepListLoader } from '../handler/mfe-handler-mf/SharedDepListLoader';
 export type {
-  SharedDepSourceRecord,
-  SharedUnitGraphPlan,
-  SharedUnitReach,
-  LoadedGraph,
-} from '../handler/mfe-handler-mf/SharedUnitGraphLoader';
+  SharedDepListContext,
+} from '../handler/mfe-handler-mf/SharedDepListLoader';
+export type {
+  SharedDepListRecord,
+  SharedDepListMintMaps,
+  ListDynamicImportRewrites,
+} from '../handler/mfe-handler-mf/SharedDepListMinter';
 
 // Verified fetch: fetch → SHA-256 verify → realm-cache admit →
 // evict-on-reject, deduping verified text by content identity through
@@ -59,14 +58,6 @@ export type { AttemptSourceTextLedger } from '../handler/mfe-handler-mf/AttemptS
 // `chunkPath` is checked against.
 export { SharedAssetUrlResolver } from '../handler/mfe-handler-mf/SharedAssetUrlResolver';
 
-// Pack fallback: the `DEFAULT_BUDGET_MS` static is the documented
-// default for `buildPlan`'s `packFallbackBudgetMs`.
-export { PackFallbackPolicy } from '../handler/mfe-handler-mf/PackFallbackPolicy';
-
-// Mint: leaves-first `blob:` URL minting and the specifier→blob map a
-// load rewrites unit and own-chunk imports against.
-export { UnitBlobMinter } from '../handler/mfe-handler-mf/UnitBlobMinter';
-
 // Realm cache: the versioned `Symbol.for` rendezvous compatible copies
 // converge on; an entry whose shape or protocol version a copy does not
 // recognize is left untouched and never shared (do-not-share), the copy
@@ -75,12 +66,17 @@ export { RealmSharedDepTextCacheProvider } from '../handler/mfe-handler-mf/Realm
 export type { SharedDepTextCache } from '../handler/mfe-handler-mf/RealmSharedDepTextCacheProvider';
 export type { RealmSharedDepTextCacheDiagnostics } from '../handler/mfe-handler-mf/ByteBudgetLruCache';
 
-// Manifest contract types `loadGraph`/`rootsForExposedModule`/`buildPlan`
-// are typed against (type-only: no implementation crosses the subpath).
+// Fetch-list contract types the loader is typed against (type-only: no
+// implementation crosses the subpath).
 export type {
-  MfManifest,
-  MfManifestShared,
-  MfManifestRoot,
-} from '../manifest/mf-manifest';
+  SharedDepFetchList,
+  SharedDepListItem,
+  SharedDepFileRef,
+  SharedDepBootData,
+  SharedDepImportEdge,
+  SharedDepOpaqueImport,
+  SharedDepProducer,
+} from '../unit-format/fetch-list';
+export type { MfManifest } from '../manifest/mf-manifest';
 // @cpt-end:cpt-frontx-algo-unit-format-contract-loader-surface:p1:inst-loader-surface-no-orchestration
 // @cpt-end:cpt-frontx-algo-unit-format-contract-loader-surface:p1:inst-loader-surface-classes
