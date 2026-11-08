@@ -23,7 +23,37 @@
  * @packageDocumentation
  */
 
-import type { SharedDepGraphProducer } from './graph-file';
+/**
+ * One import edge a chunk carries, recorded so dependency-order minting
+ * needs no edge derived from source text at mint time. A bare specifier
+ * (`'react'`, `'react/jsx-runtime'`, `'@scope/pkg/feature'`) records an
+ * external edge answered by the item whose `answers` name it; an
+ * intra-package relative edge — a chunk importing a sibling module of
+ * the same package that lives in another item — is recorded resolved,
+ * as the content identity of the item that supplies it.
+ */
+export type SharedDepImportEdge =
+  | string
+  | {
+      /**
+       * Resolved intra-package edge: the `contentHash` of the item on
+       * the same list (or its parent chain) that supplies the imported
+       * module.
+       */
+      item: string;
+    };
+
+/**
+ * The producer that emitted a fetch list, recorded for runtime
+ * diagnostics and for error messages that name the producer behind a
+ * document (`cpt-frontx-adr-shared-dep-reuse`).
+ */
+export interface SharedDepProducer {
+  /** Producer name (e.g. the build tool that emitted the list). */
+  name: string;
+  /** Producer version. */
+  version: string;
+}
 
 /**
  * A content-addressed file reference: the location a document is fetched
@@ -78,13 +108,18 @@ export interface SharedDepListItem {
    */
   answers: string[];
   /**
-   * The import edges this chunk carries: every bare specifier the
-   * chunk's source imports. At mint time each specifier is rewritten to
-   * the item that answers it — a chunk already minted in the same load
-   * when its `contentHash` matched an earlier item, otherwise minted in
-   * dependency order.
+   * The import edges this chunk carries — every edge the runtime needs
+   * for dependency-order minting, recorded explicitly so no edge is
+   * derived from source text at mint time. A bare specifier entry
+   * records an external edge answered by the item whose `answers` name
+   * it; an `{ item }` entry records an intra-package relative edge
+   * already resolved to the content identity of the item that supplies
+   * it (see {@link SharedDepImportEdge}). At mint time each specifier is
+   * rewritten to the item that answers it — a chunk already minted in
+   * the same load when its `contentHash` matched an earlier item,
+   * otherwise minted in dependency order.
    */
-  imports: string[];
+  imports: SharedDepImportEdge[];
 }
 
 /**
@@ -156,7 +191,7 @@ export interface SharedDepFetchList {
    * diagnostics and for error messages that name the producer behind a
    * document.
    */
-  producer?: SharedDepGraphProducer;
+  producer?: SharedDepProducer;
 }
 
 /**
@@ -170,14 +205,30 @@ export type SharedDepEntryListRefs = Record<string, SharedDepFileRef>;
 
 /**
  * The shell boot data embedded in the shell boot chunk: the shell's own
- * boot {@link SharedDepFetchList} — with its lazy-target and
- * pattern-import lists nested in the usual way — carried inline because
- * the shell emits no manifest. The boot chunk imports the unit loader
- * from `@gears-frontx/mfes/unit-loader` and loads the shell's shared set
- * through it exactly as a microfrontend load does
+ * boot {@link SharedDepFetchList} plus the lazy-target lists it
+ * references, carried inline because the shell emits no manifest. Where
+ * a microfrontend's manifest and list documents name dependent lists by
+ * external {@link SharedDepFileRef}, the boot data embeds the inline
+ * boot list and the lazy lists themselves. The boot chunk imports the
+ * unit loader from `@gears-frontx/mfes/unit-loader` and loads the
+ * shell's shared set through it exactly as a microfrontend load does
  * (`cpt-frontx-adr-shared-dep-reuse`).
  */
 export interface SharedDepBootData {
-  /** The shell boot entry's inline fetch list. */
+  /**
+   * The shell boot entry's inline fetch list. Its `lazy` record keeps
+   * the usual keys — each lazy target's chunk location relative to the
+   * shared base — and each key is answered by an entry in
+   * {@link SharedDepBootData.lazyLists} rather than by a fetched
+   * document.
+   */
   list: SharedDepFetchList;
+  /**
+   * The lazy-target lists the boot list references, embedded inline and
+   * keyed exactly like the boot list's `lazy` record — by the lazy
+   * target's chunk location relative to the shared base. Each value is
+   * the target's own {@link SharedDepFetchList}, holding only what the
+   * target needs beyond its parent chain's lists.
+   */
+  lazyLists: Record<string, SharedDepFetchList>;
 }
