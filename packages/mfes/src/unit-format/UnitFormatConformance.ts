@@ -4,7 +4,7 @@
  * output directories of the same producer and the same inputs; any returned
  * violation fails the producer run and the output is not admitted for reuse
  * (`cpt-frontx-feature-unit-format-contract`,
- * `cpt-frontx-dod-unit-format-contract-conformance-suite`).
+ * `cpt-frontx-dod-unit-format-contract-conformance-suite-v2`).
  *
  * Checks: the fixed naming rules, the content-identity chain graph file →
  * units/pack — extended to manifest → graph when a manifest path is

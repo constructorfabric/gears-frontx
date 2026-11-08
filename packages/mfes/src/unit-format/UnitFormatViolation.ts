@@ -2,7 +2,7 @@
  * Typed violations returned by `UnitFormatConformance` — one object per
  * violated contract rule, naming the rule and the offending file
  * (`cpt-frontx-feature-unit-format-contract`,
- * `cpt-frontx-dod-unit-format-contract-conformance-suite`).
+ * `cpt-frontx-dod-unit-format-contract-conformance-suite-v2`).
  *
  * @packageDocumentation
  */

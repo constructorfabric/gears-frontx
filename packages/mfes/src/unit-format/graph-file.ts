@@ -11,6 +11,11 @@
  * on hash verification plus build-time conformance — and reads the fields it
  * needs at the point of use.
  *
+ * The flat fetch-list contract of `fetch-list.ts` is the loading
+ * contract these types serve. The graph-file types below remain exported
+ * while their runtime and producer/plugin consumers are removed; they
+ * are deleted with the last consumer.
+ *
  * @packageDocumentation
  */
 
