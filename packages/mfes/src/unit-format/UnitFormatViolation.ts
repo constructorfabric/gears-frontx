@@ -12,28 +12,22 @@
  * taxonomy producer CI reports against:
  *
  * - `naming` — a file does not follow the fixed naming rules
- *   (`<pkg>@<version>/<unit>.<hash>.js`, `<pkg>@<version>.pack.<hash>.js`,
- *   `<pkg>@<version>.graph.<hash>.json`).
- * - `graph-format` — a graph file is not parseable JSON, is missing a
- *   field the contract requires, or declares an entry module path no unit
- *   owns.
- * - `hash-chain` — a content identity in the chain graph file → units/pack
- *   does not match the bytes it names (including the graph file's own name
- *   hash not matching its content).
- * - `requires-closure` — a unit's bare import is not covered by the graph
- *   file's package-level `requires`, or a unit's bare specifier names a
- *   package its bare imports do not list.
- * - `relative-import` — an intra-package relative import resolves to no
- *   unit in the same graph file.
+ *   (`<pkg>@<version>/<path>.<hash>.js`,
+ *   `<pkg>@<version>/<entry>.list.<hash>.json`,
+ *   `<pkg>@<version>/pattern/<name>.<hash>.<ext>`).
+ * - `list-format` — a fetch-list document or the manifest's `entryLists`
+ *   reference is not parseable JSON or is missing a field the contract
+ *   requires.
+ * - `hash-chain` — a content identity in the chain list document →
+ *   items (or manifest → list document) does not match the bytes it
+ *   names (including a file's own name hash not matching its content).
  * - `byte-identity` — two output directories of the same producer and inputs
  *   disagree in file set or bytes.
  */
 export type UnitFormatViolationRule =
   | 'naming'
-  | 'graph-format'
+  | 'list-format'
   | 'hash-chain'
-  | 'requires-closure'
-  | 'relative-import'
   | 'byte-identity';
 
 /**
