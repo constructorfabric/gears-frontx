@@ -6,15 +6,19 @@
  * (`cpt-frontx-feature-unit-format-contract`,
  * `cpt-frontx-dod-unit-format-contract-conformance-suite-v2`).
  *
- * Checks: the fixed naming rules, the content-identity chain graph file →
- * units/pack — extended to manifest → graph when a manifest path is
- * supplied — closure of each graph file's `requires` over its units' and
- * pack's bare imports, each unit's and the pack's bare specifiers against
- * their bare imports, declared `entryModulePaths` against unit module
- * paths, resolution of every intra-package relative import to a unit
- * (against every member module path), and byte identity across the two
- * output directories. The suite takes no type system and has no
- * test-runner dependency — it returns typed violations.
+ * Checks: the fixed naming rules — chunks `<pkg>@<version>/<path>.<sha256>.js`,
+ * fetch-list documents `<pkg>@<version>/<entry>.list.<sha256>.json`, and
+ * pattern-matched files `<pkg>@<version>/pattern/<name>.<sha256>.<ext>`
+ * (plus the legacy graph/pack/shard names the format carried) — the
+ * content-identity chain graph file → units/pack — extended to
+ * manifest → graph when a manifest path is supplied — closure of each
+ * graph file's `requires` over its units' and pack's bare imports, each
+ * unit's and the pack's bare specifiers against their bare imports,
+ * declared `entryModulePaths` against unit module paths, resolution of
+ * every intra-package relative import to a unit (against every member
+ * module path), and byte identity across the two output directories.
+ * The suite takes no type system and has no test-runner dependency —
+ * it returns typed violations.
  *
  * @packageDocumentation
  */
@@ -35,6 +39,8 @@ const GRAPH_NAME_PATTERN = /^(.+@.+)\.graph\.([0-9a-f]{64})\.json$/;
 const SHARD_NAME_PATTERN = /^(.+@.+)\.(units|shard-.+|part-.+)\.([0-9a-f]{64})\.json$/;
 const PACK_NAME_PATTERN = /^(.+@.+)\.pack\.([0-9a-f]{64})\.js$/;
 const UNIT_NAME_PATTERN = /^.+\.([0-9a-f]{64})\.js$/;
+const LIST_NAME_PATTERN = /^.+\.list\.([0-9a-f]{64})\.json$/;
+const PATTERN_FILE_NAME_PATTERN = /^.+\.([0-9a-f]{64})\.[a-z0-9]+$/i;
 const NAME_HASH_PATTERN = /\.([0-9a-f]{64})\./;
 const PACKAGE_DIR_PATTERN = /^(.+)@([^@/]+)$/;
 
@@ -44,6 +50,10 @@ interface ClassifiedFiles {
   shardDocs: string[];
   packs: string[];
   units: string[];
+  /** Fetch-list documents `<entry>.list.<sha256>.json` under `<pkg>@<version>`. */
+  lists: string[];
+  /** Pattern-matched files under `<pkg>@<version>/pattern/`. */
+  patternFiles: string[];
 }
 
 /**
@@ -206,6 +216,12 @@ export class UnitFormatConformance {
     for (const unitPath of classified.units) {
       this.checkFileNameHash(dir, unitPath, violations);
     }
+    for (const listPath of classified.lists) {
+      this.checkFileNameHash(dir, listPath, violations);
+    }
+    for (const patternPath of classified.patternFiles) {
+      this.checkFileNameHash(dir, patternPath, violations);
+    }
     return violations;
   }
 
@@ -214,7 +230,14 @@ export class UnitFormatConformance {
    * naming rules; files matching none are naming violations.
    */
   private classifyFiles(dir: string, violations: UnitFormatViolation[]): ClassifiedFiles {
-    const classified: ClassifiedFiles = { graphs: [], shardDocs: [], packs: [], units: [] };
+    const classified: ClassifiedFiles = {
+      graphs: [],
+      shardDocs: [],
+      packs: [],
+      units: [],
+      lists: [],
+      patternFiles: [],
+    };
     for (const file of this.listFiles(dir)) {
       const rel = relative(dir, file);
       const base = basename(rel);
@@ -233,6 +256,23 @@ export class UnitFormatConformance {
           violations.push(this.violation(dir, rel, 'naming', `pack file name "${base}" does not carry "<pkg>@<version>"`));
         }
         classified.packs.push(rel);
+      } else if (LIST_NAME_PATTERN.test(base)) {
+        const parent = basename(dirname(rel));
+        if (dirname(rel) === '.' || !PACKAGE_DIR_PATTERN.test(parent)) {
+          violations.push(
+            this.violation(dir, rel, 'naming', `list file "${rel}" is not inside a "<pkg>@<version>" directory`),
+          );
+        }
+        classified.lists.push(rel);
+      } else if (
+        basename(dirname(rel)) === 'pattern' &&
+        dirname(dirname(rel)) !== '.' &&
+        PACKAGE_DIR_PATTERN.test(basename(dirname(dirname(rel)))) &&
+        PATTERN_FILE_NAME_PATTERN.test(base)
+      ) {
+        // `<pkg>@<version>/pattern/<name>.<sha256>.<ext>` — a file a
+        // statically bounded pattern import matched.
+        classified.patternFiles.push(rel);
       } else if (UNIT_NAME_PATTERN.test(base)) {
         const parent = basename(dirname(rel));
         if (dirname(rel) === '.' || !PACKAGE_DIR_PATTERN.test(parent)) {

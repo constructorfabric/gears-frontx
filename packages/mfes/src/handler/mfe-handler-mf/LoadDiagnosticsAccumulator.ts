@@ -35,13 +35,12 @@ export class LoadDiagnosticsAccumulator {
   }
 
   /**
-   * Per-load diagnostics summary: bytes fetched, pack-fallback
-   * packages, and realm cache totals (F-011).
+   * Per-load diagnostics summary: bytes fetched and realm cache totals
+   * (F-011).
    */
   summarize(
     manifestId: string,
     bytesFetched: number,
-    packFallbackPackages: readonly string[],
     realmCache: SharedDepTextCache,
   ): void {
     const diagSource = realmCache as unknown as {
@@ -54,9 +53,7 @@ export class LoadDiagnosticsAccumulator {
     console.warn(
       `[MfeHandlerMF] shared-dependency diagnostics for manifest ` +
         `'${manifestId}': fetched ${bytesFetched} bytes of verified ` +
-        `unit/pack text; pack fallback packages: ` +
-        `${packFallbackPackages.length > 0 ? packFallbackPackages.join(', ') : 'none'}; ` +
-        `realm cache holds ${diag?.bytes ?? 0} bytes in ` +
+        `unit text; realm cache holds ${diag?.bytes ?? 0} bytes in ` +
         `${diag?.entries ?? 0} entries (budget ${diag?.budget ?? 0}, ` +
         `evictions ${diag?.evictions ?? 0}).`,
     );

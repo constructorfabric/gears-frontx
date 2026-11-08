@@ -125,6 +125,12 @@ export class SharedDepListMinter {
     };
     const blobOf = (hash: string): string | undefined =>
       minted.get(hash) ?? maps.itemBlobByHash.get(hash);
+    // location → contentHash over the load's combined item set; built
+    // once rather than per record.
+    const locationToHash = new Map<string, string>();
+    for (const item of items.values()) {
+      locationToHash.set(item.location, item.contentHash);
+    }
 
     while (pending.size > 0) {
       const before = pending.size;
@@ -151,10 +157,6 @@ export class SharedDepListMinter {
         // Intra-package relative edges: the source's relative specifier
         // resolves against this item's `location` to the supplying
         // item's location; rewrite to that item's blob.
-        const locationToHash = new Map<string, string>();
-        for (const item of items.values()) {
-          locationToHash.set(item.location, item.contentHash);
-        }
         rewritten = rewritten.replace(
           /(from|import)(\s*["'])([^"']+)(["'])/g,
           (whole, kind: string, gap: string, specifier: string, quote: string) => {
