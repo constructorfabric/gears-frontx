@@ -84,14 +84,21 @@ class Catcher extends Component<{ children: ReactNode }, { error: Error | undefi
   }
 }
 
-async function mount(node: ReactNode) {
+/** Mounts `node`; `render` renders the same root again with another node. */
+async function mountRoot(node: ReactNode) {
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
-  await act(async () => {
-    root.render(node);
-  });
-  return container;
+  const render = (next: ReactNode) =>
+    act(async () => {
+      root.render(next);
+    });
+  await render(node);
+  return { container, render };
+}
+
+async function mount(node: ReactNode) {
+  return (await mountRoot(node)).container;
 }
 
 async function click(container: HTMLElement) {
@@ -199,6 +206,60 @@ describe('ExtensionRouter search options', () => {
     await click(container);
     expect(container.textContent).toContain('q:string:456');
     expect(adapter.lastWrite).toBe(composedUrl('/en', [searchEntry('456'), SIDEBAR_ENTRY]));
+  });
+
+  // Each codec alone is told apart from its default: the engine's default
+  // parser reads `1.50` as the number 1.5, and its default serializer writes
+  // the text `456` JSON-quoted.
+  it('with only a text parser, reads a value as written and writes with the default serializer', async () => {
+    adapter = resetRealm(composedUrl('/en', [searchEntry('1.50'), SIDEBAR_ENTRY]));
+    const container = await mount(<ExtensionRouter routeTree={searchTree()} parseSearch={parseTextSearch} />);
+    expect(container.textContent).toContain('q:string:1.50');
+
+    await click(container);
+    expect(adapter.lastWrite).toBe(composedUrl('/en', [searchEntry('"456"'), SIDEBAR_ENTRY]));
+  });
+
+  it('with only a text serializer, reads with the default parser and writes a string as it is', async () => {
+    adapter = resetRealm(composedUrl('/en', [searchEntry('1.50'), SIDEBAR_ENTRY]));
+    const container = await mount(<ExtensionRouter routeTree={searchTree()} stringifySearch={stringifyTextSearch} />);
+    expect(container.textContent).toContain('q:string:1.5');
+    expect(container.textContent).not.toContain('q:string:1.50');
+
+    await click(container);
+    expect(adapter.lastWrite).toBe(composedUrl('/en', [searchEntry('456'), SIDEBAR_ENTRY]));
+  });
+
+  it('builds the router again for a new parser, which loads and reads with it', async () => {
+    adapter = resetRealm(composedUrl('/en', [searchEntry('abc'), SIDEBAR_ENTRY]));
+    const tree = searchTree();
+    const { container, render } = await mountRoot(
+      <ExtensionRouter routeTree={tree} parseSearch={parseTextSearch} stringifySearch={stringifyTextSearch} />,
+    );
+    expect(container.textContent).toContain('q:string:abc');
+
+    const parseUpperCase = parseSearchWith((value) => value.toUpperCase());
+    await render(
+      <ExtensionRouter routeTree={tree} parseSearch={parseUpperCase} stringifySearch={stringifyTextSearch} />,
+    );
+    expect(container.textContent).toContain('q:string:ABC');
+  });
+
+  it('builds the router again for a new serializer, which loads and writes with it', async () => {
+    adapter = resetRealm(composedUrl('/en', [searchEntry('abc'), SIDEBAR_ENTRY]));
+    const tree = searchTree();
+    const { container, render } = await mountRoot(
+      <ExtensionRouter routeTree={tree} parseSearch={parseTextSearch} stringifySearch={stringifyTextSearch} />,
+    );
+    expect(container.textContent).toContain('q:string:abc');
+
+    // Quotes a string that would read back as another JSON value, as the
+    // engine's default serializer does.
+    const stringifyQuoting = stringifySearchWith(JSON.stringify, JSON.parse);
+    await render(<ExtensionRouter routeTree={tree} parseSearch={parseTextSearch} stringifySearch={stringifyQuoting} />);
+    expect(container.textContent).toContain('q:string:abc');
+    await click(container);
+    expect(adapter.lastWrite).toBe(composedUrl('/en', [searchEntry('"456"'), SIDEBAR_ENTRY]));
   });
 });
 

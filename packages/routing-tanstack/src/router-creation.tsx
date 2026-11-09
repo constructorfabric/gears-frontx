@@ -159,8 +159,9 @@ interface EngineProviderTreeProps<TRouteTree extends AnyRoute> {
    * identity does destroy the previously adapted `history` (the effect's
    * cleanup runs against the old dependency value before the new setup
    * runs); what is *not* torn down is the previous router object itself —
-   * `useMemo` simply drops it, and `RouterProvider` swaps to the new one —
-   * so an identity change here without an actual engine swap still leaks
+   * `useMemo` simply drops it, and the new one mounts under a `RouterProvider`
+   * of its own (see `routerKey` below) — so an identity change here without
+   * an actual engine swap still leaks
    * whatever internal state that discarded router held beyond its shared
    * `history` member. */
   readonly routeTree: TRouteTree;
@@ -264,6 +265,22 @@ export interface EngineProviderFromRouterProps<TRouter extends AnyRouter> {
  * StrictMode mount still ends with exactly one live subscription, and an
  * actual unmount still ends with zero.
  */
+// The key each router mounts under. TanStack's `Transitioner` runs a router's
+// first load once per mount of itself (in a development build), and it would
+// stay mounted when only the router changes: a router built again, for a new
+// route tree or search function, would then never load and render nothing.
+// Its own key mounts it afresh.
+const routerKeys = new WeakMap<AnyRouter, number>();
+let lastRouterKey = 0;
+function routerKey(router: AnyRouter): number {
+  let key = routerKeys.get(router);
+  if (key === undefined) {
+    key = ++lastRouterKey;
+    routerKeys.set(router, key);
+  }
+  return key;
+}
+
 export function EngineProvider<TRouteTree extends AnyRoute>(props: EngineProviderProps<TRouteTree>): ReactElement;
 export function EngineProvider<TRouter extends AnyRouter>(props: EngineProviderFromRouterProps<TRouter>): ReactElement;
 export function EngineProvider(
@@ -329,6 +346,6 @@ export function EngineProvider(
   // @cpt-end:cpt-frontx-algo-routing-engine-provider-teardown:p2:inst-when-mount
 
   // @cpt-begin:cpt-frontx-algo-routing-engine-provider-router-creation:p2:inst-mount-router-provider
-  return <RouterProvider router={router} />;
+  return <RouterProvider key={routerKey(router)} router={router} />;
   // @cpt-end:cpt-frontx-algo-routing-engine-provider-router-creation:p2:inst-mount-router-provider
 }
