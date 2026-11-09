@@ -20,7 +20,7 @@ export interface ExtensionRouterProps {
    * object. The engine's default reads each value as JSON. Build one with
    * this package's re-exported `parseSearchWith`, and keep its identity across
    * renders, as a module-level constant does: a new function builds the
-   * router again.
+   * router again, which mounts afresh, so route-local state starts over.
    */
   readonly parseSearch?: SearchParser;
   /**

@@ -236,6 +236,26 @@ export interface EngineProviderFromRouterProps<TRouter extends AnyRouter> {
   readonly router: TRouter;
 }
 
+const routerKeys = new WeakMap<AnyRouter, number>();
+let lastRouterKey = 0;
+
+/**
+ * The key `router` mounts under. TanStack's `Transitioner` runs a router's
+ * first load once per mount of itself (in a development build), and it would
+ * stay mounted when only the router changes: a router built again, for a new
+ * route tree or search function, would then never load and render nothing.
+ * Its own key mounts it afresh, so route-local state starts over, as it does
+ * for a new router in a production build anyway.
+ */
+function routerKey(router: AnyRouter): number {
+  let key = routerKeys.get(router);
+  if (key === undefined) {
+    key = ++lastRouterKey;
+    routerKeys.set(router, key);
+  }
+  return key;
+}
+
 /**
  * Mounts a router built over an adapted virtual history into the
  * microfrontend's own component tree via `RouterProvider` (FEATURE §3,
@@ -265,22 +285,6 @@ export interface EngineProviderFromRouterProps<TRouter extends AnyRouter> {
  * StrictMode mount still ends with exactly one live subscription, and an
  * actual unmount still ends with zero.
  */
-// The key each router mounts under. TanStack's `Transitioner` runs a router's
-// first load once per mount of itself (in a development build), and it would
-// stay mounted when only the router changes: a router built again, for a new
-// route tree or search function, would then never load and render nothing.
-// Its own key mounts it afresh.
-const routerKeys = new WeakMap<AnyRouter, number>();
-let lastRouterKey = 0;
-function routerKey(router: AnyRouter): number {
-  let key = routerKeys.get(router);
-  if (key === undefined) {
-    key = ++lastRouterKey;
-    routerKeys.set(router, key);
-  }
-  return key;
-}
-
 export function EngineProvider<TRouteTree extends AnyRoute>(props: EngineProviderProps<TRouteTree>): ReactElement;
 export function EngineProvider<TRouter extends AnyRouter>(props: EngineProviderFromRouterProps<TRouter>): ReactElement;
 export function EngineProvider(
