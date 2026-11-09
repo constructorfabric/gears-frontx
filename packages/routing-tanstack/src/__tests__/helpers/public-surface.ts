@@ -2,7 +2,7 @@ import * as tanstackIndex from '../../index.js';
 
 // The `@tanstack/react-router` names `src/index.ts` forwards verbatim at its
 // own bottom (DESIGN §3.3, "API Contracts" — the engine's own route-tree
-// builders and scoped route hooks) — a third-party surface this package's
+// builders, scoped route hooks and search codec builders) — a third-party surface this package's
 // own build cannot regress, so it is excluded from the derived runtime list
 // below rather than pinned alongside this package's own exports.
 const REACT_ROUTER_PASSTHROUGH = [
@@ -17,6 +17,8 @@ const REACT_ROUTER_PASSTHROUGH = [
   'Outlet',
   'redirect',
   'notFound',
+  'parseSearchWith',
+  'stringifySearchWith',
 ] as const;
 
 // The engine-provider FEATURE's own authored public surface — the runtime

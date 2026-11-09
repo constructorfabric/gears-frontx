@@ -6,11 +6,12 @@
 // §3.3 (`cpt-frontx-routing-tanstack-interface-package-entry`) and the
 // `engine-provider` FEATURE's DoD `cpt-frontx-dod-routing-engine-provider-extension-router`
 // (packages/routing-tanstack/architecture/features/engine-provider/FEATURE.md):
-// `ExtensionRouter`, `navigation`, and the engine's route-tree builders and
-// scoped route hooks. History adaptation, router construction, the provider
-// component, the engine-provider port types and the entry-address type stay
-// internal: while public, they would let code build a history or a router
-// over another extension's part of the URL.
+// `ExtensionRouter`, `navigation`, the engine's route-tree builders and
+// scoped route hooks, and its search parser and serializer builders. History
+// adaptation, router construction, the provider component, the
+// engine-provider port types and the entry-address type stay internal: while
+// public, they would let code build a history or a router over another
+// extension's part of the URL.
 // @cpt-dod:cpt-frontx-dod-routing-engine-provider-extension-router:p1
 export { ExtensionRouter } from './extension-router.js';
 export type { ExtensionRouterProps } from './extension-router.js';
@@ -25,6 +26,8 @@ export type { Navigation } from './navigation.js';
 // consumer, which the ecosystem-wide `no-restricted-imports` guard exists to
 // prevent. The engine's `createRouter` is not among them: it is used inside
 // this package only (DESIGN, engine dependency `@tanstack/react-router`).
+// `parseSearchWith` and `stringifySearchWith` build the `parseSearch` and
+// `stringifySearch` functions `ExtensionRouter` takes.
 export {
   createRootRoute,
   createRootRouteWithContext,
@@ -37,4 +40,6 @@ export {
   Outlet,
   redirect,
   notFound,
+  parseSearchWith,
+  stringifySearchWith,
 } from '@tanstack/react-router';

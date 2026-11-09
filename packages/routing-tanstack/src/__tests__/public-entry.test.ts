@@ -10,7 +10,9 @@ const EXPECTED_RUNTIME_EXPORTS = [
   'createRoute',
   'navigation',
   'notFound',
+  'parseSearchWith',
   'redirect',
+  'stringifySearchWith',
   'useNavigate',
   'useParams',
   'useRouterState',
@@ -18,7 +20,7 @@ const EXPECTED_RUNTIME_EXPORTS = [
 ];
 
 describe('public entry', () => {
-  it('exports exactly ExtensionRouter, navigation, the route-tree builders and the scoped route hooks', () => {
+  it('exports exactly ExtensionRouter, navigation, the route-tree builders, the scoped route hooks and the search codec builders', () => {
     expect(Object.keys(entry).sort()).toEqual(EXPECTED_RUNTIME_EXPORTS);
   });
 

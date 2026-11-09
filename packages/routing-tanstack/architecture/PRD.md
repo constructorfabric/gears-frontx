@@ -139,9 +139,9 @@ The system **MUST**, internally, adapt the navigation substrate's `NavigationHis
 
 - [ ] `p1` - **ID**: `cpt-frontx-routing-tanstack-fr-extension-router`
 
-The system **MUST** provide an extension router that a runtime renders from its own route tree, and that gives the runtime exactly one router over its own private subroute. In an extension's runtime, that subroute is the extension's own entry, and the extension router **MUST** read the extension's entry address from the runtime's FrontX router. In the shell runtime, whose FrontX router was never supplied navigation, that subroute is the shell's subroute (the pathname). In an extension runtime whose FrontX router was supplied navigation but has no occupant value, the extension has no access to the router, and the extension router **MUST** refuse. The extension router **MUST NOT** mount, load, or place any extension.
+The system **MUST** provide an extension router that a runtime renders from its own route tree, and that gives the runtime exactly one router over its own private subroute. In an extension's runtime, that subroute is the extension's own entry, and the extension router **MUST** read the extension's entry address from the runtime's FrontX router. In the shell runtime, whose FrontX router was never supplied navigation, that subroute is the shell's subroute (the pathname). In an extension runtime whose FrontX router was supplied navigation but has no occupant value, the extension has no access to the router, and the extension router **MUST** refuse. The extension router **MUST** accept the engine's search parser and serializer from the runtime and construct its router with them, using the engine's own when none is given, and **MUST NOT** accept any other construction option. The extension router **MUST NOT** mount, load, or place any extension.
 
-**Rationale**: A microfrontend authors nothing beyond its own route tree; one router per extension keeps its routing table to its own subroute and keeps routing code out of the shell and the microfrontend.
+**Rationale**: A microfrontend authors nothing beyond its own route tree, and its search parser and serializer when the engine's default reading of search values does not suit it; one router per extension keeps its routing table to its own subroute and keeps routing code out of the shell and the microfrontend.
 
 **Actors**: `cpt-frontx-routing-tanstack-actor-microfrontend-developer`
 
@@ -159,7 +159,7 @@ The system **MUST** provide a navigation facade to give code outside the rendere
 
 - [ ] `p1` - **ID**: `cpt-frontx-routing-tanstack-fr-public-entry`
 
-The system **MUST** limit its public entry to the extension router, the navigation facade, and the engine's route-tree builders and scoped route hooks, and **MUST** keep history adaptation, router construction — the engine's own included — the provider component and the entry address internal.
+The system **MUST** limit its public entry to the extension router, the navigation facade, and the engine's route-tree builders, scoped route hooks and search codec builders, and **MUST** keep history adaptation, router construction — the engine's own included — the provider component and the entry address internal.
 
 **Rationale**: Each internal item would let code build a history or a router over another extension's part of the URL if it were public.
 

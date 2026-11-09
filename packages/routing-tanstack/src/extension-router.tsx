@@ -6,14 +6,31 @@
 // the shell runtime, the shell's subroute (the pathname).
 import { useMemo, useState, type ReactElement } from 'react';
 import { resolveNavigationHistory, router } from '@gears-frontx/routing';
-import type { AnyRoute } from '@tanstack/react-router';
+import type { AnyRoute, SearchParser, SearchSerializer } from '@tanstack/react-router';
 import { adaptProviderHistory } from './engine-provider-history.js';
 import { createProviderRouter, EngineProvider } from './router-creation.js';
 
-/** `ExtensionRouter`'s only input: the runtime's own route tree, authored
- * with this package's re-exported route-tree builders. */
+/** `ExtensionRouter`'s input: the runtime's own route tree, authored with
+ * this package's re-exported route-tree builders, and optionally the engine's
+ * search parser and serializer. */
 export interface ExtensionRouterProps {
   readonly routeTree: AnyRoute;
+  /**
+   * Reads the virtual location's search string into the router's search
+   * object. The engine's default reads each value as JSON. Build one with
+   * this package's re-exported `parseSearchWith`, and keep its identity across
+   * renders, as a module-level constant does: a new function builds the
+   * router again.
+   */
+  readonly parseSearch?: SearchParser;
+  /**
+   * Writes the router's search object back as a search string. The engine's
+   * default writes a string that would read back as another JSON value
+   * JSON-quoted. Build one with this package's re-exported
+   * `stringifySearchWith`; keep its identity across renders, as for
+   * `parseSearch`.
+   */
+  readonly stringifySearch?: SearchSerializer;
 }
 
 /**
@@ -27,7 +44,7 @@ export interface ExtensionRouterProps {
 // @cpt-flow:cpt-frontx-flow-routing-engine-provider-render-extension-router:p1
 // @cpt-dod:cpt-frontx-dod-routing-engine-provider-extension-router:p1
 // @cpt-begin:cpt-frontx-algo-routing-engine-provider-extension-router:p2:inst-er-accept-route-tree
-export function ExtensionRouter({ routeTree }: ExtensionRouterProps): ReactElement {
+export function ExtensionRouter({ routeTree, parseSearch, stringifySearch }: ExtensionRouterProps): ReactElement {
   // @cpt-end:cpt-frontx-algo-routing-engine-provider-extension-router:p2:inst-er-accept-route-tree
   // @cpt-begin:cpt-frontx-flow-routing-engine-provider-render-extension-router:p1:inst-run-extension-router
   // @cpt-begin:cpt-frontx-algo-routing-engine-provider-extension-router:p2:inst-er-adapt-history
@@ -43,9 +60,13 @@ export function ExtensionRouter({ routeTree }: ExtensionRouterProps): ReactEleme
   // @cpt-end:cpt-frontx-algo-routing-engine-provider-extension-router:p2:inst-er-adapt-history
 
   // @cpt-begin:cpt-frontx-algo-routing-engine-provider-extension-router:p2:inst-er-create-router
-  // Built again only when the route tree changes; no construction option is
-  // supplied.
-  const engineRouter = useMemo(() => createProviderRouter(routeTree, history), [routeTree, history]);
+  // Built again only when the route tree or a search function changes. The
+  // search parser and serializer are the only construction options supplied;
+  // the engine falls back to its own default for one left undefined.
+  const engineRouter = useMemo(
+    () => createProviderRouter(routeTree, history, { parseSearch, stringifySearch }),
+    [routeTree, history, parseSearch, stringifySearch],
+  );
   // @cpt-end:cpt-frontx-algo-routing-engine-provider-extension-router:p2:inst-er-create-router
 
   // @cpt-begin:cpt-frontx-algo-routing-engine-provider-extension-router:p2:inst-er-render

@@ -2,7 +2,17 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, Component, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { DomainKey, EntryAddress, ExtensionToken } from '@gears-frontx/routing';
-import { createRootRoute, createRoute, ExtensionRouter, Link, Outlet, useNavigate } from '../index.js';
+import {
+  createRootRoute,
+  createRoute,
+  ExtensionRouter,
+  Link,
+  Outlet,
+  parseSearchWith,
+  stringifySearchWith,
+  useNavigate,
+  useSearch,
+} from '../index.js';
 import { resetRealm, entry, type FakeHistoryAdapter } from './helpers/index.js';
 import { composedUrl, DASHBOARD_ENTRY, SIDEBAR_ENTRY } from './helpers/composed-url.js';
 
@@ -121,6 +131,74 @@ describe('ExtensionRouter in a routed extension', () => {
       composedUrl('/en', [entry('screen', 'dashboard', [{ name: 'route', value: 'settings/profile' }]), SIDEBAR_ENTRY], 'page'),
     );
     expect(adapter.lastWrite).not.toContain('frag');
+  });
+});
+
+// A route that keeps `q` a string, the way a route that reads a search box
+// does: TanStack's default parser reads `q=123` as the number 123.
+function searchTree() {
+  const root = createRootRoute({ component: Outlet });
+  return root.addChildren([
+    createRoute({
+      getParentRoute: () => root,
+      path: '/settings/general',
+      validateSearch: (search: Record<string, unknown>) => ({
+        q: search.q === undefined ? undefined : String(search.q),
+      }),
+      component: function ShowQuery() {
+        const { q } = useSearch({ strict: false });
+        const navigate = useNavigate();
+        return (
+          <>
+            {`q:${typeof q}:${String(q)}`}
+            <button data-testid="go" onClick={() => void navigate({ to: '.', search: { q: '456' } })}>
+              go
+            </button>
+          </>
+        );
+      },
+    }),
+  ]);
+}
+
+// Text in and text out: every value reads as the string written, and a
+// string is written as it is.
+const parseTextSearch = parseSearchWith((value) => value);
+const stringifyTextSearch = stringifySearchWith(JSON.stringify);
+
+function searchEntry(q: string) {
+  return entry('screen', 'dashboard', [
+    { name: 'route', value: 'settings/general' },
+    { name: 'q', value: q },
+  ]);
+}
+
+describe('ExtensionRouter search options', () => {
+  beforeEach(() => {
+    adapter = resetRealm(composedUrl('/en', [searchEntry('123'), SIDEBAR_ENTRY]));
+    ownEntryAddress.mockReset().mockReturnValue(OWN);
+  });
+
+  it('with the engine default, rewrites a number-shaped string value JSON-quoted on load', async () => {
+    const container = await mount(<ExtensionRouter routeTree={searchTree()} />);
+    expect(container.textContent).toContain('q:string:123');
+    expect(adapter.lastWrite).toBe(composedUrl('/en', [searchEntry('"123"'), SIDEBAR_ENTRY]));
+  });
+
+  it('with a text parser and serializer, leaves the entry as written on load and writes a string as it is', async () => {
+    const container = await mount(
+      <ExtensionRouter
+        routeTree={searchTree()}
+        parseSearch={parseTextSearch}
+        stringifySearch={stringifyTextSearch}
+      />,
+    );
+    expect(container.textContent).toContain('q:string:123');
+    expect(adapter.lastWrite).toBeUndefined();
+
+    await click(container);
+    expect(container.textContent).toContain('q:string:456');
+    expect(adapter.lastWrite).toBe(composedUrl('/en', [searchEntry('456'), SIDEBAR_ENTRY]));
   });
 });
 

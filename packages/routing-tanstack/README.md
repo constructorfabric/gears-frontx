@@ -16,13 +16,16 @@ repository; they are not part of the published package.
 
 ## Public entry
 
-- `ExtensionRouter({ routeTree })` — builds and renders the runtime's one router from the route
-  tree the runtime provides.
+- `ExtensionRouter({ routeTree, parseSearch?, stringifySearch? })` — builds and renders the
+  runtime's one router from the route tree the runtime provides, reading and writing search values
+  with the engine's default or with the parser and serializer given (see Search values).
 - `navigation()` — `navigate(path)`, `replace(path)` and `location()` over the runtime's own private
   subroute, for code outside the rendered tree, such as an action handler.
 - The engine's route-tree builders and scoped route hooks, re-exported unchanged:
   `createRootRoute`, `createRootRouteWithContext`, `createRoute`, `useNavigate`, `useParams`,
   `useSearch`, `useRouterState`, `Link`, `Outlet`, `redirect`, `notFound`.
+- The engine's search codec builders, re-exported unchanged for `ExtensionRouter`'s search options:
+  `parseSearchWith`, `stringifySearchWith`.
 
 History adaptation, router construction and the provider component are internal to this package.
 
@@ -58,8 +61,8 @@ keeps the current page hash unchanged, and an href this package builds carries n
 
 ## Subscription lifetime
 
-`ExtensionRouter` builds its history once per mount and its router again only when the route tree
-changes. The history observes the shared navigation history only while the router is mounted: the
+`ExtensionRouter` builds its history once per mount and its router again only when the route tree,
+or the search parser or serializer it was given, changes. The history observes the shared navigation history only while the router is mounted: the
 subscription is established at mount and released at unmount, and the two are exact inverses, so a
 component that mounts and unmounts repeatedly (including React's development-mode double-mount) ends
 up with exactly one live subscription while it is mounted and none once it is gone.
@@ -69,8 +72,37 @@ call, and never subscribes.
 
 ## Router construction options
 
-`ExtensionRouter` supplies no construction option beyond the route tree and the history, so the
-router it builds carries no router context.
+Beyond the route tree and the history, `ExtensionRouter` passes the engine two construction options
+at most, `parseSearch` and `stringifySearch`, and only when you give them. The router it builds
+carries no router context.
+
+## Search values
+
+By default the engine reads each search value as JSON, so `q=123` reads as the number 123. A route
+that keeps `q` a string turns it back into `'123'` in its `validateSearch`. When the router loads,
+it writes the entry again, and the engine writes a string that would read back as another JSON
+value JSON-quoted: the address changes from `q=123` to `q=%22123%22`. The same happens to `true`,
+`false` and `1.50`, which also loses its text, and a value typed into a search box is written quoted
+too.
+
+To keep search values as text, give `ExtensionRouter` a parser and a serializer that read and write
+them as text:
+
+```tsx
+import { ExtensionRouter, parseSearchWith, stringifySearchWith } from '@gears-frontx/routing-tanstack';
+
+// Module-level, so the router is not built again on every render.
+const parseSearch = parseSearchWith((value) => value);
+const stringifySearch = stringifySearchWith(JSON.stringify);
+
+export function Content() {
+  return <ExtensionRouter routeTree={routeTree} parseSearch={parseSearch} stringifySearch={stringifySearch} />;
+}
+```
+
+Every value then reads as the string written, so a route that wants a number or a boolean turns it
+into one in its own `validateSearch`. An object or an array is still written as JSON and reads back
+as that JSON text.
 
 ## What an entry cannot carry
 
