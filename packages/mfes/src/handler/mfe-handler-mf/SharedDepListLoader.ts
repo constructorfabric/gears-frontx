@@ -217,9 +217,18 @@ export class SharedDepListLoader {
     this.registerList(ctx, list);
     const bytesBefore = this.fetchedBytes;
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-reachable-units
-    const missing = list.items.filter(
-      (item) => !ctx.itemBlobByHash.has(item.contentHash),
-    );
+    const missing: SharedDepListItem[] = [];
+    const queuedHashes = new Set<string>();
+    for (const item of list.items) {
+      if (ctx.itemBlobByHash.has(item.contentHash)) continue;
+      // One fetch per content identity: the same contentHash emitted
+      // under two locations is one payload. Every location stays
+      // registered on `ctx` (registerList ran above), so both still
+      // resolve and mint.
+      if (queuedHashes.has(item.contentHash)) continue;
+      queuedHashes.add(item.contentHash);
+      missing.push(item);
+    }
     const settled = await Promise.allSettled(
       missing.map(async (item): Promise<SharedDepListRecord> => {
         const text = await this.fetchVerified(

@@ -73,6 +73,35 @@ describe('UnitFormatConformance (list model)', () => {
     expect(violations.some((v) => v.rule === 'hash-chain')).toBe(true);
   });
 
+  it('applies list-completeness to scoped packages: a specifier of a delivered @scope/name with no answering item is flagged', () => {
+    const a = dir();
+    const pkgDir = join(a, '@scope', 'pkg@1.0.0');
+    mkdirSync(pkgDir, { recursive: true });
+    const chunkText = 'export const x = 1;\n';
+    const chunkHash = sha256(chunkText);
+    const chunk = `index.${chunkHash}.js`;
+    writeFileSync(join(pkgDir, chunk), chunkText);
+    const listText = JSON.stringify({
+      items: [
+        {
+          location: `@scope/pkg@1.0.0/${chunk}`,
+          contentHash: chunkHash,
+          answers: ['@scope/pkg'],
+          // A specifier of the delivered scoped package nothing answers.
+          imports: ['@scope/pkg/missing'],
+        },
+      ],
+    });
+    const listHash = sha256(listText);
+    writeFileSync(join(pkgDir, `pkg.list.${listHash}.json`), listText);
+    const violations = new UnitFormatConformance().check(a, a);
+    expect(
+      violations.some(
+        (v) => v.rule === 'list-completeness' && v.detail.includes('@scope/pkg/missing'),
+      ),
+    ).toBe(true);
+  }, 30000);
+
   it('checks the manifest→entryLists hash chain', () => {
     const a = dir();
     const { list, listHash } = emit(a);

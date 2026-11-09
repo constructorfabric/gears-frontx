@@ -230,9 +230,17 @@ export class UnitFormatConformance {
       for (const item of doc.items ?? []) {
         for (const answered of item.answers ?? []) answers.add(answered);
       }
-      const pkgDir = rel.split(sep)[0];
-      const root = pkgDir.replace(/@[^@/]+$/, '');
-      if (pkgDir.includes('@')) deliveredRoots.add(root);
+      // Package identity keeps the scope: a scoped package's
+      // directory is two segments — `@scope/name@version` — so the
+      // delivered-root derivation must not stop at `@scope` alone or
+      // every scoped package's completeness checks silently disable.
+      const segments = rel.split(sep);
+      const pkgDir =
+        segments.length > 1 && segments[0]!.startsWith('@')
+          ? `${segments[0]}${sep}${segments[1]}`
+          : segments[0]!;
+      const root = pkgDir.replace(/@[^@/\\]+$/, '');
+      if (PACKAGE_DIR_PATTERN.test(pkgDir)) deliveredRoots.add(root);
     }
     for (const [rel, doc] of parsed) {
       const itemHashes = new Set((doc.items ?? []).map((i) => i.contentHash));
