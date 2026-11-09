@@ -61,6 +61,26 @@ describe('SharedDepListLoader', () => {
     expect(ctx2.specifierToBlob.get('pkg-a')).not.toBe(ctx.specifierToBlob.get('pkg-a'));
   });
 
+  it('fetches one payload per contentHash when two locations share it; both resolve', async () => {
+    const text = 'export const a=1;';
+    const a = item2('chunks/a.js', text, ['pkg-a']);
+    const twin = item2('other-pkg@1.0.0/chunks/a.js', text);
+    const files = new Map([[resolve(a.location), text]]);
+    const { fetchText, calls } = fetchSpy(files);
+    const l = new SharedDepListLoader(fetchText, 'e', new Map() as never);
+    const ctx = l.createContext();
+    await l.loadList(ctx, { items: [a, twin] }, resolve);
+    // One fetch for the shared content identity, not one per location.
+    expect(calls).toEqual([resolve(a.location)]);
+    // Both locations stay registered and resolve to the minted blob.
+    expect(ctx.itemByLocation.get(a.location)?.contentHash).toBe(a.contentHash);
+    expect(ctx.itemByLocation.get(twin.location)?.contentHash).toBe(a.contentHash);
+    expect(l.blobForKey(ctx, twin.location)).toBe(
+      ctx.itemBlobByHash.get(a.contentHash),
+    );
+    expect(ctx.specifierToBlob.get('pkg-a')).toMatch(/^blob:/);
+  }, 30000);
+
   it('fetches a lazy dependent list in one round on first use, deduped', async () => {
     const main = item2('chunks/main.js', "export const m=1;", ['pkg-main']);
     const lazyItem = item2('chunks/lazy.js', "export const l=1;", ['pkg-lazy']);
