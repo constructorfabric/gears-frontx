@@ -83,6 +83,26 @@ describe('lifecycle hooks on the real store', () => {
     expect(plugin.validateInstance(EXT_ID).valid).toBe(true);
   });
 
+  it('registers a domain whose hook dispatches an action type an application registered', () => {
+    const pingType = 'gts.frontx.mfes.comm.action.v1~test.lifecyclehooks.fixture.ping.v1~';
+    plugin.registerSchema({
+      $id: `gts://${pingType}`,
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        type: { 'x-gts-type-ref': '/$id' },
+        target: { 'x-gts-instance-ref': 'gts.frontx.mfes.ext.domain.v1~*' },
+        payload: { type: 'object' },
+      },
+      required: ['type', 'target'],
+    });
+    const hooked = domain(HOOKED_DOMAIN_ID, [{ stage: init, actions_chain: { action: { type: pingType, target: DOMAIN_ID } } }]);
+
+    expect(() => plugin.register(hooked)).not.toThrow();
+    expect(plugin.validateInstance(HOOKED_DOMAIN_ID).valid).toBe(true);
+  });
+
   it('refuses a hook whose action type is a registered type that is not an action', () => {
     // The stage type is on the store, so only the action-family check can refuse it.
     const hooked = domain(HOOKED_DOMAIN_ID, [
@@ -91,5 +111,7 @@ describe('lifecycle hooks on the real store', () => {
 
     expect(() => plugin.register(hooked)).toThrow(/actions_chain\/action\/type/);
     expect(plugin.validateInstance(HOOKED_DOMAIN_ID).valid).toBe(false);
+    // The refused domain never reached the store.
+    expect(plugin.getSchema(HOOKED_DOMAIN_ID)).toBeUndefined();
   });
 });
