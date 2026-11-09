@@ -1,0 +1,13 @@
+{
+  "name": "@unit-format-fixture/side-effects-barrel",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": [
+    "./src/index.js"
+  ],
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  }
+}

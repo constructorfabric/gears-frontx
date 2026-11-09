@@ -21,10 +21,14 @@
  * - `hash-chain` — a content identity in the chain list document →
  *   items (or manifest → list document) does not match the bytes it
  *   names (including a file's own name hash not matching its content).
- * - `list-completeness` — a specifier or `{ item }` edge on a fetch
- *   list has no answering item across the output's lists: a specifier
- *   of a package the output delivers that no item's `answers` names,
- *   or a resolved `{ item }` content identity no item carries.
+ * - `list-completeness` — a list-closure violation on a fetch list: a
+ *   specifier or `{ item }` edge with no answering item on the entry's
+ *   combined lists, a specifier answered by more than one item across
+ *   the combined lists, or a lazy/pattern document carrying a chunk a
+ *   parent chain's lists already carry (the delta property).
+ * - `consumer-independence` — the same `package@version` emitted by two
+ *   builds carrying different consumer subsets disagrees in file set or
+ *   bytes under that package's directory.
  * - `byte-identity` — two output directories of the same producer and inputs
  *   disagree in file set or bytes.
  */
@@ -33,6 +37,7 @@ export type UnitFormatViolationRule =
   | 'list-format'
   | 'hash-chain'
   | 'list-completeness'
+  | 'consumer-independence'
   | 'byte-identity';
 
 /**
