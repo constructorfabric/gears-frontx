@@ -10,9 +10,15 @@
  * `<pkg>@<version>/<path>.<sha256>.js`, fetch-list documents
  * `<pkg>@<version>/<entry>.list.<sha256>.json`, and pattern-matched files
  * `<pkg>@<version>/pattern/<name>.<sha256>.<ext>` — the content identity a
- * file name declares against the SHA-256 of its bytes, the
- * content-identity chain manifest → entry list document when a manifest
- * path is supplied, and byte identity across the output directories.
+ * file name declares against the SHA-256 of its bytes, list-document
+ * completeness (every `{ item }` edge resolves to an item on the same
+ * list, every specifier edge of a delivered package names an item's
+ * `answers` somewhere in the output, every `lazy`/`patterns` reference
+ * names a present document whose hash matches, and every item's
+ * `location`/`contentHash` names a present chunk of matching bytes),
+ * the content-identity chain manifest → entry list document when a
+ * manifest path is supplied, and byte identity across the output
+ * directories.
  * The suite takes no type system and has no test-runner dependency —
  * it returns typed violations.
  *
@@ -20,9 +26,11 @@
  */
 
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { isBuiltin } from 'node:module';
 import { basename, dirname, join, relative, sep } from 'node:path';
 
+import type { SharedDepFetchList, SharedDepImportEdge } from './fetch-list';
 import type { UnitFormatViolation, UnitFormatViolationRule } from './UnitFormatViolation';
 
 const LIST_NAME_PATTERN = /^.+\.list\.([0-9a-f]{64})\.json$/;
@@ -186,6 +194,99 @@ export class UnitFormatConformance {
     }
     for (const patternPath of classified.patternFiles) {
       this.checkFileNameHash(dir, patternPath, violations);
+    }
+    violations.push(...this.checkLists(dir, classified.lists));
+    return violations;
+  }
+
+  /**
+   * The list-document legs of the contract: each list parses; every
+   * item's `location`/`contentHash` names a present chunk of matching
+   * bytes; every `{ item }` edge resolves to an item on the same list;
+   * every specifier edge is answered by an item's `answers` somewhere
+   * in the output — when the specifier's root package is delivered in
+   * this output (specifiers of packages outside the delivered set —
+   * built-ins, optional peers, native-staying imports — keep their
+   * native edge); and every `lazy`/`patterns` reference names a
+   * present document whose hash matches.
+   */
+  private checkLists(dir: string, lists: readonly string[]): UnitFormatViolation[] {
+    const violations: UnitFormatViolation[] = [];
+    const parsed = new Map<string, SharedDepFetchList>();
+    /** Answered specifiers and package roots across the whole output. */
+    const answers = new Set<string>();
+    const deliveredRoots = new Set<string>();
+    for (const rel of lists) {
+      let doc: SharedDepFetchList;
+      try {
+        doc = JSON.parse(readFileSync(join(dir, rel), 'utf8')) as SharedDepFetchList;
+      } catch (error) {
+        violations.push(
+          this.violation(dir, rel, 'list-format', `fetch list is not parseable JSON: ${(error as Error).message}`),
+        );
+        continue;
+      }
+      parsed.set(rel, doc);
+      for (const item of doc.items ?? []) {
+        for (const answered of item.answers ?? []) answers.add(answered);
+      }
+      const pkgDir = rel.split(sep)[0];
+      const root = pkgDir.replace(/@[^@/]+$/, '');
+      if (pkgDir.includes('@')) deliveredRoots.add(root);
+    }
+    for (const [rel, doc] of parsed) {
+      const itemHashes = new Set((doc.items ?? []).map((i) => i.contentHash));
+      for (const item of doc.items ?? []) {
+        const chunkPath = join(dir, item.location);
+        if (!existsSync(chunkPath)) {
+          violations.push(
+            this.violation(dir, rel, 'hash-chain', `list item names chunk "${item.location}" but no such file exists`),
+          );
+        } else {
+          const actual = this.sha256File(chunkPath);
+          if (actual !== item.contentHash) {
+            violations.push(
+              this.violation(dir, item.location, 'hash-chain', `list declares item contentHash ${item.contentHash} but file SHA-256 is ${actual}`),
+            );
+          }
+        }
+        for (const edge of (item.imports ?? []) as SharedDepImportEdge[]) {
+          if (typeof edge !== 'string') {
+            if (!itemHashes.has(edge.item)) {
+              violations.push(
+                this.violation(dir, rel, 'list-completeness', `resolved item edge ${edge.item} of "${item.location}" has no answering item on this list`),
+              );
+            }
+            continue;
+          }
+          if (isBuiltin(edge)) continue;
+          const root = edge.startsWith('@')
+            ? edge.split('/').slice(0, 2).join('/')
+            : edge.split('/')[0];
+          if (deliveredRoots.has(root) && !answers.has(edge)) {
+            violations.push(
+              this.violation(dir, rel, 'list-completeness', `specifier "${edge}" imported by "${item.location}" is answered by no emitted item`),
+            );
+          }
+        }
+      }
+      for (const record of [doc.lazy, doc.patterns]) {
+        for (const [key, ref] of Object.entries(record ?? {})) {
+          const docPath = join(dir, ref.location);
+          if (!existsSync(docPath)) {
+            violations.push(
+              this.violation(dir, rel, 'hash-chain', `list references "${key}" at "${ref.location}" but no such file exists`),
+            );
+            continue;
+          }
+          const actual = this.sha256File(docPath);
+          if (actual !== ref.contentHash) {
+            violations.push(
+              this.violation(dir, ref.location, 'hash-chain', `list declares "${key}" contentHash ${ref.contentHash} but file SHA-256 is ${actual}`),
+            );
+          }
+        }
+      }
     }
     return violations;
   }

@@ -169,8 +169,12 @@ export class SharedDepListLoader {
     for (const item of list.items) {
       if (!ctx.itemByHash.has(item.contentHash)) {
         ctx.itemByHash.set(item.contentHash, item);
-        ctx.itemByLocation.set(item.location, item);
       }
+      // Every location registers: the same content identity emitted
+      // under another package's directory is a distinct location —
+      // a minted item's relative specifier resolves against its own
+      // item's location and must find the twin's location too.
+      ctx.itemByLocation.set(item.location, item);
     }
     for (const record of [list.lazy, list.patterns]) {
       if (record === undefined) continue;
@@ -237,7 +241,7 @@ export class SharedDepListLoader {
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-pack-fallback-v2
     SharedDepListMinter.mint(
       records,
-      ctx.itemByHash,
+      new Map([...ctx.itemByLocation.values()].map((i) => [i.location, i])),
       {
         itemBlobByHash: ctx.itemBlobByHash,
         specifierToBlob: ctx.specifierToBlob,

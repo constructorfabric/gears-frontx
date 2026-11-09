@@ -21,6 +21,10 @@
  * - `hash-chain` — a content identity in the chain list document →
  *   items (or manifest → list document) does not match the bytes it
  *   names (including a file's own name hash not matching its content).
+ * - `list-completeness` — a specifier or `{ item }` edge on a fetch
+ *   list has no answering item across the output's lists: a specifier
+ *   of a package the output delivers that no item's `answers` names,
+ *   or a resolved `{ item }` content identity no item carries.
  * - `byte-identity` — two output directories of the same producer and inputs
  *   disagree in file set or bytes.
  */
@@ -28,6 +32,7 @@ export type UnitFormatViolationRule =
   | 'naming'
   | 'list-format'
   | 'hash-chain'
+  | 'list-completeness'
   | 'byte-identity';
 
 /**
