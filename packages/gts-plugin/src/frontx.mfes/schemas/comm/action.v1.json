@@ -4,8 +4,8 @@
   "type": "object",
   "properties": {
     "type": {
-      "x-gts-type-ref": "/$id",
-      "$comment": "Self-reference to this action's type ID"
+      "x-gts-type-ref": "gts.frontx.mfes.comm.action.v1~*",
+      "$comment": "A registered action type ID. Not `/$id`: this schema also checks the action of a lifecycle hook's actions chain, inside a domain or an extension, where `/$id` names the domain or extension type being validated, not the action's. Each concrete action schema still checks `type` against its own ID with `/$id`"
     },
     "target": {
       "anyOf": [
