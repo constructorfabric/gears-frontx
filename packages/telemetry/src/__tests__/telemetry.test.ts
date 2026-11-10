@@ -546,6 +546,71 @@ describe('Telemetry Client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  test('should finish teardown when a destroy hook throws', () => {
+    const removeListener = vi.spyOn(document, 'removeEventListener');
+    const telemetry = createTelemetry(mockAppInfo);
+    telemetry.plugin({
+      name: 'failing-teardown',
+      setup: (context) => {
+        context.addHook('destroy', () => {
+          throw new Error('teardown failed');
+        });
+      },
+    });
+
+    telemetry.start();
+    telemetry.logEvent('before_destroy');
+
+    expect(() => telemetry.destroy()).toThrow('teardown failed');
+    // The final drain ran and the visibility listener is gone, although the hook threw.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(removeListener).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+
+    telemetry.logEvent('after_destroy');
+    vi.advanceTimersByTime(6000);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('should send nothing for an event whose enrichment hook destroys the client', () => {
+    const telemetry = createTelemetry(mockAppInfo);
+    telemetry.plugin({
+      name: 'destroy-on-event',
+      setup: (context) => {
+        context.addHook('event', (record) => {
+          if (record.name === 'last_event') {
+            telemetry.destroy();
+          }
+        });
+      },
+    });
+
+    telemetry.start();
+    telemetry.logEvent('last_event');
+    const sentByTeardown = fetchMock.mock.calls.length;
+    vi.advanceTimersByTime(6000);
+
+    expect(fetchMock).toHaveBeenCalledTimes(sentByTeardown);
+    const bodies = fetchMock.mock.calls.map(([, init]) => String(init?.body)).join('\n');
+    expect(bodies).not.toContain('last_event');
+  });
+
+  test('should send nothing for an event logged while the final batch is sent', () => {
+    const telemetry = createTelemetry(mockAppInfo);
+    // A wrapped `fetch` that logs a record of its own request, as an instrumentation layer might.
+    fetchMock.mockImplementationOnce(() => {
+      telemetry.logEvent('logged_by_fetch');
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    telemetry.start();
+    telemetry.logEvent('before_destroy');
+    telemetry.destroy();
+    vi.advanceTimersByTime(6000);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   test('should still start when localStorage reads are blocked', () => {
     vi.spyOn(localStorage, 'getItem').mockImplementation(() => {
       throw new DOMException('The operation is insecure.', 'SecurityError');

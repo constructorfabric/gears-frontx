@@ -96,7 +96,8 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
 - Start called a second time on the same client: refused and reported; the client stays in its already-started state.
 - Start called after teardown: refused and reported, whether or not the client was started before teardown.
 - Teardown called a second time: does nothing; no teardown hook runs again.
-- Event logged after teardown: reported through the logger, and neither queued nor sent.
+- Teardown hook throws: the events manager still tears down and delivers the queue, and the hook's error reaches the caller.
+- Event logged after teardown, including from an enrichment hook that called teardown or during the final delivery: reported through the logger, and neither queued nor sent.
 - Plugin registered after start: stored and never set up, so its enrichment silently does nothing.
 - Delivery rejected by the network or the collector: the batch is already drained from the queue and is lost; the rejection reaches the console only.
 
@@ -178,7 +179,7 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
 3. [x] - `p1` - Mark the client DESTROYED before teardown runs, so a start or teardown called from a teardown hook is refused rather than run partway through - `inst-set-destroyed`
 4. [x] - `p1` - Detach the session manager's activity listeners - `inst-detach-session`
 5. [x] - `p1` - Invoke the teardown hooks, so a plugin may log a parting event - `inst-call-destroy-hooks`
-6. [x] - `p1` - Tear the events manager down last, so a parting event reaches the queue before the final delivery - `inst-teardown-events-last`
+6. [x] - `p1` - Tear the events manager down last, so a parting event reaches the queue before the final delivery. It runs even when a teardown hook throws, because the client is already DESTROYED and no later teardown would reach it; the hook's error then reaches the caller - `inst-teardown-events-last`
 7. [x] - `p1` - **RETURN** control; the client stays DESTROYED, so it cannot be restarted - `inst-return-destroyed`
 
 ### Record Construction And Enrichment
@@ -198,9 +199,12 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
    1. [x] - `p1` - Report through the logger (surfaced when verbose) that the event was not sent - `inst-log-dropped`
    2. [x] - `p1` - **RETURN** the record without offering it to the enrichment hook, queueing it or scheduling a drain - `inst-return-dropped`
 6. [x] - `p1` - Invoke the enrichment hook, letting every registered plugin mutate the record - `inst-call-event-hook`
-7. [x] - `p1` - Push the record onto the queue - `inst-enqueue`
-8. [x] - `p1` - Schedule the drain, resetting the debounce - `inst-schedule-drain`
-9. [x] - `p1` - **RETURN** the record to the caller - `inst-return-record`
+7. [x] - `p1` - **IF** the events manager was torn down while the enrichment hook ran, because a hook called teardown - `inst-recheck-closed`
+   1. [x] - `p1` - Report through the logger (surfaced when verbose) that the event was not sent - `inst-log-dropped-by-hook`
+   2. [x] - `p1` - **RETURN** the record without queueing it or scheduling a drain, since the final delivery has already run - `inst-return-dropped-by-hook`
+8. [x] - `p1` - Push the record onto the queue - `inst-enqueue`
+9. [x] - `p1` - Schedule the drain, resetting the debounce - `inst-schedule-drain`
+10. [x] - `p1` - **RETURN** the record to the caller - `inst-return-record`
 
 ### Queue Drain And Delivery
 
@@ -254,7 +258,7 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
 1. [x] - `p1` - On visibility change, **IF** the document is not hidden - `inst-check-hidden`
    1. [x] - `p1` - **RETURN** without draining - `inst-return-still-visible`
 2. [x] - `p1` - Execute the drain immediately rather than waiting for the debounce - `inst-exec-drain`
-3. [x] - `p1` - On teardown, detach the visibility listener, drain rather than cancelling the pending timer, then stop accepting records, so a record logged after teardown is never sent - `inst-teardown-drain`
+3. [x] - `p1` - On teardown, detach the visibility listener, stop accepting records, then drain rather than cancelling the pending timer, so a record logged during the final delivery or after it is never sent. The teardown hooks have run by then, so a parting event is already queued - `inst-teardown-drain`
 
 ### Session Continuation
 
@@ -358,7 +362,7 @@ The system **MUST** build a client from configuration requiring only application
 
 - [x] `p1` - **ID**: `cpt-frontx-telemetry-dod-event-collection-single-use`
 
-The system **MUST** refuse a second start on the same client and report the refusal, **MUST** keep a torn-down client DESTROYED — refusing and reporting a start, running nothing on a second teardown, and neither queueing nor sending an event logged after teardown — and **MUST** order teardown so that session listeners detach, then teardown hooks run, then the events manager tears down and delivers — so that an event logged by a teardown hook still reaches the final batch.
+The system **MUST** refuse a second start on the same client and report the refusal, **MUST** keep a torn-down client DESTROYED — refusing and reporting a start, running nothing on a second teardown, and neither queueing nor sending an event logged after teardown — and **MUST** order teardown so that session listeners detach, then teardown hooks run, then the events manager tears down and delivers — so that an event logged by a teardown hook still reaches the final batch — and **MUST** tear the events manager down even when a teardown hook throws.
 
 **Implements**:
 - `cpt-frontx-telemetry-algo-event-collection-start`
@@ -484,6 +488,8 @@ The system **MUST** supply session, device, navigation and application-info enri
 - [x] A second start on the same client is refused and reported, and no plugin is set up twice; a client destroyed and then started stays refused, whether or not it was started before.
 - [x] A second teardown runs no teardown hook again, and an event logged after teardown is never sent.
 - [x] An event logged from a teardown hook appears in the batch delivered by teardown.
+- [x] A teardown hook that throws still leaves no visibility listener installed and the queue delivered, and teardown rethrows its error.
+- [x] An event logged from an enrichment hook that tears the client down, or logged while the final batch is being sent, is never sent.
 - [x] A record's identifier and trigger timestamp are SDK-assigned and survive a caller supplying those fields explicitly.
 - [x] A record is fully enriched when it enters the queue, and the events manager contains no reference to any context field by name.
 - [x] Records logged in a burst are delivered as one batch on the debounce; the page becoming hidden and client teardown each force an immediate delivery.

@@ -29,7 +29,7 @@ export function createEventsManager({ hooks, config, logger }: TelemetryContext)
   const currentPageRecordId: TelemetryRecordId | null = null;
   const scheduler = createScheduler(flush);
   let queue: TelemetryRecord[] = [];
-  // Set by teardown once the final drain has run; records logged after that are dropped.
+  // Set by teardown just before the final drain; records logged after that are dropped.
   let closed = false;
 
   return {
@@ -45,11 +45,13 @@ export function createEventsManager({ hooks, config, logger }: TelemetryContext)
   function destroy() {
     // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-forced-drain:p1:inst-teardown-drain
     document.removeEventListener('visibilitychange', handleVisibilityChange);
+    // Closed before the drain. The teardown hooks have already run, so a parting event is queued by
+    // now, and a record logged during the final send (by a wrapped `fetch`, for instance) would
+    // otherwise schedule a POST after teardown.
+    closed = true;
     // Flush rather than cancel: whatever is queued is up to 5s of events, and the POST carries
     // `keepalive` so it survives the teardown that prompted this call.
     scheduler.exec();
-    // Closed only after the drain, so a parting event a teardown hook logged is in that batch.
-    closed = true;
     // @cpt-end:cpt-frontx-telemetry-algo-event-collection-forced-drain:p1:inst-teardown-drain
   }
 
@@ -108,6 +110,19 @@ export function createEventsManager({ hooks, config, logger }: TelemetryContext)
     // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-record-build:p1:inst-call-event-hook
     hooks.callHooksSync('event', record);
     // @cpt-end:cpt-frontx-telemetry-algo-event-collection-record-build:p1:inst-call-event-hook
+
+    // An enrichment hook can tear the client down itself. The final drain has then run without
+    // this record, and queueing it now would schedule a POST after teardown.
+    // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-record-build:p1:inst-recheck-closed
+    if (closed) {
+      // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-record-build:p1:inst-log-dropped-by-hook
+      logger.logError('Telemetry has been destroyed; the event was not sent.', name);
+      // @cpt-end:cpt-frontx-telemetry-algo-event-collection-record-build:p1:inst-log-dropped-by-hook
+      // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-record-build:p1:inst-return-dropped-by-hook
+      return record;
+      // @cpt-end:cpt-frontx-telemetry-algo-event-collection-record-build:p1:inst-return-dropped-by-hook
+    }
+    // @cpt-end:cpt-frontx-telemetry-algo-event-collection-record-build:p1:inst-recheck-closed
 
     // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-record-build:p1:inst-enqueue
     queue.push(record);
