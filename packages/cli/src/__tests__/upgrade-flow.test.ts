@@ -198,7 +198,26 @@ describe('upgradeToOrigin (cpt-frontx-flow-upgrade-changeset-review-approval)', 
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.code).toBe('TEMPLATE_NOT_REGISTERED');
+    expect(result.details).toEqual({ name: 'my-template' });
+    expect(result.message).toBe('Upgrade refused: template "my-template" has no entry in the project state store; no diff computed. Register the template first, then retry upgrade.');
     expect(h.presentPlan).not.toHaveBeenCalled();
+    expect(h.projectStateWriteCount()).toBe(0);
+  });
+
+  it('names restore and explains the prerequisite when the template has no project-state entry', async () => {
+    const h = makeHarness();
+    h.seedProjectState({ formatVersion: 1, templates: {}, projectOwnedRoots: [] });
+
+    const result = await restorePreceding('my-template', h.deps);
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'TEMPLATE_NOT_REGISTERED',
+      details: { name: 'my-template' },
+      message: 'Restore refused: template "my-template" has no entry in the project state store; no diff computed. Register and upgrade it first so a preceding origin is recorded, then retry restore.',
+    });
+    expect(h.presentPlan).not.toHaveBeenCalled();
+    expect(h.projectStateWriteCount()).toBe(0);
   });
 
   it('refuses TARGET_NOT_APPLIED for a name whose targets[] is empty', async () => {

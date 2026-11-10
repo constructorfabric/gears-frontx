@@ -104,7 +104,11 @@ export async function unregisterTemplate(
   // @cpt-begin:cpt-frontx-algo-composed-provenance-unregister:p1:inst-cpunreg-if-absent
   if (entry === undefined) {
     // @cpt-begin:cpt-frontx-algo-composed-provenance-unregister:p1:inst-cpunreg-return-not-registered
-    return { ok: false, code: 'TEMPLATE_NOT_REGISTERED', message: `Template "${name}" is not registered.` };
+    return {
+      ok: false,
+      code: 'TEMPLATE_NOT_REGISTERED',
+      message: `Unregister refused: template "${name}" is not registered. Use the exact name of a registered template, then retry unregister.`,
+    };
     // @cpt-end:cpt-frontx-algo-composed-provenance-unregister:p1:inst-cpunreg-return-not-registered
   }
   // @cpt-end:cpt-frontx-algo-composed-provenance-unregister:p1:inst-cpunreg-if-absent

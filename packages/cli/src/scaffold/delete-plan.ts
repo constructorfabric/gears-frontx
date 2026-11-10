@@ -184,7 +184,7 @@ export async function computeDeletionPlan(
     return {
       ok: false,
       code: 'TARGET_NOT_APPLIED',
-      message: `"${target}" is not an applied instance of any registered template.`,
+      message: `Delete refused: target "${target}" is not an applied instance of a registered template. Check .frontx/project.json for an applied target and retry delete with that path.`,
       details: { target },
     };
     // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-return-not-found

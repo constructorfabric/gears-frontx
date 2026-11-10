@@ -253,7 +253,12 @@ function mapCommitFailure(outcome: Extract<CommitOutcome, { ok: false }>): Upgra
  * directions — everything else, including every refusal and every
  * commit-outcome mapping, is identical for both.
  */
-async function driveUpgrade(name: string, deriveCandidate: DeriveCandidateFn, deps: UpgradeEngineDeps): Promise<UpgradeFlowOutcome> {
+async function driveUpgrade(
+  operation: 'Upgrade' | 'Restore',
+  name: string,
+  deriveCandidate: DeriveCandidateFn,
+  deps: UpgradeEngineDeps,
+): Promise<UpgradeFlowOutcome> {
   // @cpt-begin:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-read-provenance
   // @cpt-begin:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-invoke
   // @cpt-begin:cpt-frontx-state-upgrade-changeset-lifecycle:p1:inst-st-read-to-refused
@@ -279,7 +284,7 @@ async function driveUpgrade(name: string, deriveCandidate: DeriveCandidateFn, de
     return {
       ok: false,
       code: 'TEMPLATE_NOT_REGISTERED',
-      message: `"${name}" has no entry in the project state store; no diff computed.`,
+      message: `${operation} refused: template "${name}" has no entry in the project state store; no diff computed. ${operation === 'Restore' ? 'Register and upgrade it first so a preceding origin is recorded, then retry restore.' : 'Register the template first, then retry upgrade.'}`,
       details: { name },
     };
     // @cpt-end:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-return-not-registered
@@ -528,7 +533,7 @@ export async function upgradeToOrigin(
   newOrigin: string,
   deps: UpgradeEngineDeps,
 ): Promise<UpgradeFlowOutcome> {
-  return driveUpgrade(templateName, () => ({ ok: true, origin: newOrigin }), deps);
+  return driveUpgrade('Upgrade', templateName, () => ({ ok: true, origin: newOrigin }), deps);
 }
 // @cpt-end:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-invoke-upgrade
 
@@ -554,6 +559,7 @@ export async function upgradeToOrigin(
 export async function restorePreceding(templateName: string, deps: UpgradeEngineDeps): Promise<UpgradeFlowOutcome> {
   // @cpt-begin:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-invoke
   return driveUpgrade(
+    'Restore',
     templateName,
     (entry) =>
       entry.previous === undefined

@@ -102,7 +102,7 @@ async function resolveOrigin(
       return {
         ok: false,
         code: resolved.error.code,
-        message: `Local origin "${origin}" could not be resolved: ${resolved.error.message}`,
+        message: `Register refused: local origin "${origin}" could not be resolved: ${resolved.error.message} Use an existing template directory inside the project root (not the root itself) with a valid manifest, then retry register.`,
       };
     }
     // Recorded EXACTLY as given (`inst-cpreg-install`'s local-origin

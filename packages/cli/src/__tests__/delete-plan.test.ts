@@ -114,7 +114,12 @@ describe('computeDeletionPlan (cpt-frontx-algo-cli-scaffolding-delete-plan)', ()
       noUnenumerableEntries,
     );
 
-    expect(result).toMatchObject({ ok: false, code: 'TARGET_NOT_APPLIED', details: { target: 'packages/app' } });
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'TARGET_NOT_APPLIED',
+      details: { target: 'packages/app' },
+      message: 'Delete refused: target "packages/app" is not an applied instance of a registered template. Check .frontx/project.json for an applied target and retry delete with that path.',
+    });
   });
 
   // The same directory reaches `toPreserve` twice — once as another

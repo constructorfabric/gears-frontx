@@ -57,7 +57,12 @@ describe('unregisterTemplate (cpt-frontx-algo-composed-provenance-unregister)', 
 
     const result = await unregisterTemplate('foo', '/repo', read, write);
 
-    expect(result).toEqual({ ok: false, code: 'TEMPLATE_NOT_REGISTERED', message: 'Template "foo" is not registered.' });
+    expect(result).toEqual({
+      ok: false,
+      code: 'TEMPLATE_NOT_REGISTERED',
+      message: 'Unregister refused: template "foo" is not registered. Use the exact name of a registered template, then retry unregister.',
+    });
+    expect(write).not.toHaveBeenCalled();
   });
 
   it('refuses with TARGETS_EXIST and lists every dependent target, preserving the entry', async () => {

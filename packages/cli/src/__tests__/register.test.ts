@@ -329,7 +329,16 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
       listFolderFilesFn,
     );
 
-    expect(result).toMatchObject({ ok: false, code: 'INVALID_PATH' });
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'INVALID_PATH',
+      message: expect.stringContaining('Register refused: local origin "path:templates/missing"'),
+    });
+    if (result.ok) return;
+    expect(result.message).toContain('existing template directory');
+    expect(result.message).toContain('valid manifest');
+    expect(result.message).toContain('retry register');
+    expect(write).not.toHaveBeenCalled();
     expect(readFileFn).not.toHaveBeenCalled();
   });
 
