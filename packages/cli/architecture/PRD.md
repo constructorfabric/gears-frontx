@@ -187,7 +187,7 @@ The system **MUST** allow a Project Developer to register a template's resolved 
 
 - [ ] `p1` - **ID**: `cpt-frontx-fr-cli-project-state`
 
-The system **MUST** record a project's registered templates, each template's origin and version, every target each has been applied to, and the project's own ownership exceptions in one project state file, and **MUST** read and write that one file atomically for every operation that changes it.
+The system **MUST** record a project's registered templates, each template's origin and version, every target each has been applied to, and the project's own ownership exceptions in one project state file, and **MUST** read and write that one file atomically for every operation that changes it. `validate --project` **MUST** compare the recorded project state with the filesystem and report whether the project is valid without changing files.
 
 **Rationale**: Gives every lifecycle command one consistent, self-contained source of truth for a project's CLI-managed state, so registration, applied targets, and ownership exceptions can never drift apart across separate documents.
 
@@ -277,7 +277,7 @@ The system **MUST** allow a developer to review and approve an upgrade change se
 
 - [ ] `p2` - **ID**: `cpt-frontx-fr-cli-upgrade-restore`
 
-After an approved upgrade is applied, the system **MUST** allow a developer to restore every target to the previously applied template state within the preceding template version's boundary by re-invoking `upgrade <templateName> --restore` — a flag on the upgrade command, not a separate command. Content the upgrade added into ground the new version newly claimed lies outside that boundary; restoring **MUST** leave it in place, reported as skipped, rather than removing it.
+After an approved upgrade is applied, the system **MUST** allow a developer to restore every target to the previously applied template state within the preceding template version's boundary by re-invoking `upgrade <templateName> --restore` — a flag on the upgrade command, not a separate command. Content the upgrade added into ground the new version newly claimed lies outside that boundary; restoring **MUST** leave it in place, reported as skipped, rather than removing it. Upgrade and restore plans also report paths skipped because they fall outside the effective boundary, use a reserved temporary-file name, or occupy ground recorded as relinquished by an earlier upgrade. A skip leaves that path unchanged while the recorded version advances, so a later upgrade may report the retained path as a conflict.
 
 **Rationale**: Keeps approved upgrades reversible, so a bad template update can be backed out — reaching back exactly one generation. The project state file (`cpt-frontx-fr-cli-project-state`) records, alongside a template's current origin and version, the one `origin`/`version` pair the name held immediately before its most recent upgrade or restore, overwritten by the next such transition and cleared when `register --replace` starts a new lineage for the name; this one generation is what makes a restore possible without any separate history carrier. A `path:` origin whose folder has since moved on from that recorded generation is not reversible through the CLI; auditing or recovering anything beyond that one generation remains available only through the Git history of that Git-tracked file.
 
@@ -289,7 +289,7 @@ After an approved upgrade is applied, the system **MUST** allow a developer to r
 
 - [ ] `p1` - **ID**: `cpt-frontx-fr-cli-template-delete`
 
-The system **MUST** allow a developer to delete an applied template's target, removing the target's owned ground while preserving its declared exclusions, any nested target, and the project's own ownership exceptions beneath it. The system **MUST** require explicit confirmation before deleting, defaulting to not deleting, and **MUST** support a non-destructive preview that lists exactly what would be removed and what would be preserved without deleting anything.
+The system **MUST** allow a developer to delete an applied template's target, removing the target's owned ground while preserving its declared exclusions (both recorded and current declarations when they differ), any nested target, the project's own ownership exceptions, ground recorded as relinquished by an earlier upgrade, local origin folders beneath or overlapping the target, environment-owned entries, and entries that cannot be enumerated safely. The system **MUST** require explicit confirmation before deleting, defaulting to not deleting, and **MUST** support a non-destructive preview that lists what would be removed and preserved; a covering preserved root may represent paths beneath it. A successful result reports `exclusionsDrift` when the declarations differ. Removing a template's last target also removes its `.frontx/ai/<name>/` bundle; if that cleanup fails after target deletion succeeds, the successful result **MUST** report the remaining path and reason as `aiBundleResidue`.
 
 **Rationale**: Lets a repository shrink deliberately without an accidental invocation destroying project-owned files or another template's nested content, and gives a developer or an AI agent acting for one a way to inspect the consequences of a destructive operation before committing to it.
 
@@ -301,7 +301,7 @@ The system **MUST** allow a developer to delete an applied template's target, re
 
 - [ ] `p1` - **ID**: `cpt-frontx-fr-cli-machine-envelope`
 
-The system **MUST** report the result of every command's machine-readable mode as one structured success-or-failure result, drawn from one stable, finite vocabulary of failure reasons shared across all commands. The system **MUST NOT** block on interactive input in machine-readable mode, and **MUST** represent a decision that would otherwise require a prompt — including confirming a destructive operation — as part of that same structured result rather than as a blocking question.
+The system **MUST** report the result of every command's machine-readable mode as one structured success-or-failure result, drawn from one stable, finite vocabulary of failure reasons shared across all commands. The system **MUST NOT** block on interactive input in machine-readable mode, and **MUST** represent a decision that would otherwise require a prompt — including confirming a destructive operation — as part of that same structured result rather than as a blocking question. A machine-readable confirmation is approved only by a subsequent `--json --yes` call bound to the reviewed plan digest; `--yes` without `--json` is not a prompt-suppression mode. A non-destructive `delete --dry-run` needs no confirmation.
 
 **Rationale**: Lets an AI agent or a scripted caller parse one result shape and branch on one shared set of failure reasons across the whole command surface, instead of learning a bespoke shape and a bespoke failure signal per command as the surface grows.
 

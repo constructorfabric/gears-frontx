@@ -197,7 +197,7 @@ filename restrictions; those apply to AI-bundle names only.
 | `frontx upgrade <name> <origin> [--json [--yes --plan-digest=<digest>]]` \| `frontx upgrade <name> --restore [--json [--yes --plan-digest=<digest>]]` | Upgrade a registered template to a new origin, or reverse its most recent upgrade, as a reviewable change set (the confirming `--json --yes` call must carry the review's `--plan-digest`, which binds approval to that plan; without it nothing is applied and the current review is returned). `frontx upgrade <name> --recover [--json [--yes --plan-digest=<digest>]]` finishes or cancels an interrupted upgrade/restore after a fresh review; until then every writing command answers `RECOVERY_REQUIRED` |
 | `frontx unregister <name>` | Remove a registered template that has no applied targets; the one exception is an entry whose origin is confirmed absent (a read or permission error does not qualify) and that recorded no `excludedSubtrees` — it is dropped (JSON `outcome: "orphan-dropped"`) and its files are left on disk. This orphan branch is defensive for an unsupported intermediate state, not a supported migration. See [QUICK_START.md](QUICK_START.md) |
 | `frontx ownership add\|remove\|list <path>` | Manage the project's own reserved paths (`projectOwnedRoots`) |
-| `frontx delete <target> [--dry-run] [--json [--yes --plan-digest=<digest>]]` | Delete an applied template target; confirmation-gated and bound to the reviewed plan (`--yes` needs `--json` and the review's `--plan-digest`; a plan that changed after review is shown again, nothing deleted). Lists what it would remove and the protected ground it preserves (exclusions, nested targets, project-owned roots, and others; covering roots may stand in for the paths beneath them). `--dry-run` needs no confirmation |
+| `frontx delete <target> [--dry-run] [--json [--yes --plan-digest=<digest>]]` | Delete an applied template target; confirmation-gated and bound to the reviewed plan (`--yes` needs `--json` and the review's `--plan-digest`; a plan that changed after review is shown again, nothing deleted). Lists paths to remove and preserve, including exclusions, nested targets, project-owned roots, recorded relinquished ground, local origins under the target, environment entries, and unenumerable entries; a covering root may represent paths beneath it. Removing a name's last target also removes its AI bundle; if bundle cleanup fails, the successful result reports `aiBundleResidue`. `--dry-run` needs no confirmation |
 | `frontx validate <templateDir> [--json]` | Validate a template manifest for publication |
 | `frontx validate --project` | Validate `.frontx/project.json` against the registry, the local inventory, and the filesystem |
 | `frontx update-local <identity> <spec>` | Refresh a locally installed template from its source |
@@ -207,6 +207,13 @@ envelope on stdout. `--yes` is accepted only together with `--json` (on `delete`
 and `upgrade`): without `--json` those commands ask for confirmation interactively,
 and `--yes` alone is refused with exit code 1. The one exception is
 `delete --dry-run`, which needs no confirmation, issues no `planDigest` and accepts `--yes` as a no-op.
+
+Upgrade and restore plans may also include `skipped[]` entries: `OUTSIDE_BOUNDARY`,
+`RESERVED_TEMP_NAME`, or `RETAINED_GROUND`. Skipped paths stay unchanged while the
+recorded version advances; a later upgrade may report retained paths as conflicts.
+Running `upgrade <name> --restore` again is a redo to the origin it just left; only
+one preceding generation is recorded. See [QUICK_START.md](QUICK_START.md) for the
+restore refusal cases and local `path:` upgrade form.
 
 ### AI Tooling
 

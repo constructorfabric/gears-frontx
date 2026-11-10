@@ -277,11 +277,12 @@ reversible with `--restore`; running `--restore` a second time in a row records
 the origin it just left, so it goes back to where the first one came from (a
 redo), and only the generation before that is out of reach.
 
-`--restore` refuses with `NOTHING_TO_RESTORE` when no preceding origin is
-recorded — the name was never upgraded or restored, or a later
-`register --replace` started a new lineage — and with `ORIGIN_UNAVAILABLE` or
-`VERSION_MISMATCH` when the recorded preceding origin no longer resolves, or no
-longer reports the recorded version.
+`--restore` refuses with `TEMPLATE_NOT_REGISTERED` when the name is not
+registered, and with `TARGET_NOT_APPLIED` when its registration has no applied
+targets. It returns `NOTHING_TO_RESTORE` when no preceding origin is recorded —
+the name was never upgraded or restored, or a later `register --replace` started
+a new lineage — and `ORIGIN_UNAVAILABLE` or `VERSION_MISMATCH` when the recorded
+preceding origin no longer resolves, or no longer reports its recorded version.
 
 A plan can also carry a `skipped` list, separate from the operations above: paths
 the upgrade or restore deliberately leaves exactly as they are, each with a
