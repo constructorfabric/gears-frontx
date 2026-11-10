@@ -129,15 +129,14 @@ function canonicalizeBatch(
     for (const rawTarget of targets) {
       const canonical = canonicalizeForRecording(rawTarget, canonicalizeFn);
       if (canonical === null) return { ok: false, rawTarget };
-      // Folds case per the project volume (`paths/volume-case.ts`), not a
-      // bare `.includes`: two spellings of one not-yet-existing target
-      // (`app`/`App`) in this SAME template's own list are the identical
-      // ground `checkTargetConflicts` would otherwise refuse as a
-      // `TARGET_CONFLICT` a moment later — this template's own idempotent
-      // duplicate, not a conflict with itself, so it is dropped here exactly
-      // as an exact-spelling duplicate already is.
-      if (canonicalTargets.some((existing) => foldForIdentity(existing) === foldForIdentity(canonical))) continue;
-      canonicalTargets.push(canonical.normalize("NFC"));
+      // Compare with conflict-check's NFC identity while retaining the
+      // canonicalizer's on-disk spelling in project state.
+      if (
+        canonicalTargets.some(
+          (existing) => foldForIdentity(existing.normalize('NFC')) === foldForIdentity(canonical.normalize('NFC')),
+        )
+      ) continue;
+      canonicalTargets.push(canonical);
     }
     setOwn(templates, name, canonicalTargets);
   }

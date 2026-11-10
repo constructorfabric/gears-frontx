@@ -386,6 +386,43 @@ describe('validateUpgrade (cpt-frontx-algo-upgrade-changeset-validate)', () => {
     });
   });
 
+  it('refuses an upgrade that drops an exclusion occupied by a nested target of the same name', async () => {
+    const entry = baseEntry({ targets: ['app', 'app/src/plugins'] });
+    const { resolvePayload } = makeResolvePayload({
+      'origin-a': payload({ origin: 'origin-a', version: '1.0.0', excludedSubtrees: ['src/plugins/'] }),
+      'origin-b': payload({ origin: 'origin-b', version: '2.0.0', excludedSubtrees: [] }),
+    });
+
+    const result = await validateUpgrade(
+      baseInput({ entry, document: makeDocument('my-template', entry), resolvePayload }),
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.code).toBe('TARGET_CONFLICT');
+    expect(result.details).toMatchObject({
+      conflicts: [{ target: 'app', contestingTarget: 'app/src/plugins', contestingTemplateName: 'my-template' }],
+    });
+  });
+
+  it('allows a same-name nested target when the candidate retains its exclusion', async () => {
+    const entry = baseEntry({ targets: ['app', 'app/src/plugins'] });
+    const { resolvePayload } = makeResolvePayload({
+      'origin-a': payload({ origin: 'origin-a', version: '1.0.0', excludedSubtrees: ['src/plugins/'] }),
+      'origin-b': payload({ origin: 'origin-b', version: '2.0.0', excludedSubtrees: ['src/plugins/'] }),
+    });
+
+    const result = await validateUpgrade(
+      baseInput({ entry, document: makeDocument('my-template', entry), resolvePayload }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.kind).toBe('plan');
+    if (result.kind !== 'plan') return;
+    expect(result.plan.targets).toEqual(['app', 'app/src/plugins']);
+  });
+
   it('returns a plan accumulating operations and skipped paths across every target, with correct from/to', async () => {
     const entry = baseEntry({ targets: ['app1', 'app2'] });
     const { resolvePayload } = makeResolvePayload({

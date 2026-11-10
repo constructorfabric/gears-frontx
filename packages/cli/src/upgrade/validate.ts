@@ -202,13 +202,14 @@ export interface ValidateInput {
   // such recorded expectation and never supplies this
   // (`inst-val-if-candidate-version-mismatch`'s own text).
   candidateExpectedVersion?: string;
-  // For `projectOwnedRoots` and every OTHER registered template's targets
-  // (`inst-cls-if-newly-claimed-nested`'s nesting-aware check needs both).
+  // For `projectOwnedRoots` and every other recorded target, including this
+  // name's sibling targets (`inst-cls-if-newly-claimed-nested` needs both).
   document: ProjectStateDocument;
   repoRoot: string;
   resolvePayload: ResolvePayloadFn;
-  // Resolves one OTHER registered template's declared `excludedSubtrees` —
-  // its MANIFEST only, never its payload.
+  // Resolves another registered name's declared `excludedSubtrees` — its
+  // MANIFEST only, never its payload. This name's sibling targets use the
+  // already-resolved baseline exclusions instead.
   //
   // A separate seam from `resolvePayload` on purpose, and the distinction is
   // load-bearing rather than stylistic. The nesting check needs nothing from
@@ -384,9 +385,9 @@ export async function validateUpgrade(input: ValidateInput): Promise<ValidateOut
   }
   // @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-if-candidate-is-baseline
 
-  // Every OTHER registered template's targets, each tagged with that
-  // template's currently declared `excludedSubtrees` joined under each of
-  // its own targets — the identical join `commands/ownership.ts`'s own
+  // Every recorded target, each tagged with that registered name's currently
+  // declared `excludedSubtrees` joined under that target — the identical join
+  // `commands/ownership.ts`'s own
   // `buildRecordedTargets` performs for the identical reason
   // (`checkTargetConflicts`'s nesting check compares a `TargetClaim`'s
   // `excludedSubtrees` against a full project-relative path, so each
@@ -405,12 +406,12 @@ export async function validateUpgrade(input: ValidateInput): Promise<ValidateOut
   // check — it can only ADMIT more conflicts, never silently permit one.
   const otherTemplateTargets: { target: string; templateName: string; excludedSubtrees: string[] }[] = [];
   for (const [otherName, otherEntry] of Object.entries(document.templates)) {
-    if (otherName === name) continue;
     if (otherEntry.targets.length === 0) continue;
     // MANIFEST-only, never a payload read — see `resolveRegisteredExclusions`'s
     // own doc comment on `ValidateInput` for why routing this through
     // `resolvePayload` would defeat `cpt-frontx-cli-nfr-template-scale`.
-    const declaredExclusions = await resolveRegisteredExclusions(otherName, otherEntry.origin);
+    const declaredExclusions =
+      otherName === name ? baseline.excludedSubtrees : await resolveRegisteredExclusions(otherName, otherEntry.origin);
     for (const otherTarget of otherEntry.targets) {
       otherTemplateTargets.push({
         target: otherTarget,
@@ -455,7 +456,7 @@ export async function validateUpgrade(input: ValidateInput): Promise<ValidateOut
   }
 
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-judge-resolved-other-targets
-  // Another template's recorded target may since have become a symlink
+  // Another recorded target may since have become a symlink
   // (`mv dst real && ln -s real dst`): its files then live at the RESOLVED
   // location, which the classification — comparing the spelling of each path —
   // would judge as this name's own ground and REPLACE. Ground resolved strictly
@@ -469,11 +470,11 @@ export async function validateUpgrade(input: ValidateInput): Promise<ValidateOut
   // current manifest copied in by a no-op repair, so it proves nothing: absent.
   const recordedAtApply = entry.exclusionsBackfilled === true ? [] : (entry.excludedSubtrees ?? []);
   for (const [otherName, otherEntry] of Object.entries(document.templates)) {
-    if (otherName === name) continue;
     for (const otherTarget of otherEntry.targets) {
       const resolvedOther = canonicalizeFn(otherTarget);
       if (resolvedOther === null || foldForIdentity(resolvedOther) === foldForIdentity(otherTarget)) continue;
       for (const target of entry.targets) {
+        if (otherName === name && foldForIdentity(otherTarget) === foldForIdentity(target)) continue;
         if (pathWithinTarget(target, resolvedOther)) {
           aliasConflicts.push({ target, contestingTarget: resolvedOther, contestingTemplateName: otherName });
         } else if (pathWithinTarget(resolvedOther, target)) {
@@ -504,7 +505,7 @@ export async function validateUpgrade(input: ValidateInput): Promise<ValidateOut
       code: 'TARGET_CONFLICT',
       message:
         `"${name}"'s upgrade was refused: ${aliasConflicts.length} of its target(s) coincide with, or sit inside, the ` +
-        "resolved location of another registered template's recorded target, which is a symlink.",
+        "resolved location of another registered target, which is a symlink.",
       details: { conflicts: aliasConflicts },
     };
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-return-resolved-other-conflict
@@ -584,7 +585,9 @@ export async function validateUpgrade(input: ValidateInput): Promise<ValidateOut
       candidate,
       projectOwnedRoots: document.projectOwnedRoots,
       localOriginFolder,
-      otherTemplateTargets,
+      otherTemplateTargets: otherTemplateTargets.filter(
+        (other) => other.templateName !== name || foldForIdentity(other.target) !== foldForIdentity(target),
+      ),
       additionalExclusionRoots,
       recordedExcludedSubtrees: recordedAtApply,
       readDiskEntry,
@@ -715,7 +718,7 @@ export async function validateUpgrade(input: ValidateInput): Promise<ValidateOut
     return {
       ok: false,
       code: 'TARGET_CONFLICT',
-      message: `"${name}"'s upgrade was refused: ${targetConflicts.length} target(s) newly claim ground another registered template's target nests inside.`,
+      message: `"${name}"'s upgrade was refused: ${targetConflicts.length} target(s) newly claim ground occupied by another registered target.`,
       details: { conflicts: targetConflicts },
     };
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-return-nested-conflict

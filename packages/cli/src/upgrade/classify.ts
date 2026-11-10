@@ -209,9 +209,8 @@ export interface ClassifyInput {
   candidate: ResolvedPayload;
   projectOwnedRoots: string[];
   localOriginFolder?: string;
-  // Every target already recorded across every registered template — EXCLUDING
-  // this template's own targets, per `inst-cls-if-newly-claimed-nested`'s own
-  // text ("every other registered template's already-recorded targets").
+  // Every recorded target except this classification's own target; sibling
+  // targets under the same registered name still participate in nesting checks.
   otherTemplateTargets: { target: string; templateName: string; excludedSubtrees: string[] }[];
   // Reserved ground BEYOND the six-term subtraction, appended to both
   // boundaries: every OTHER registered template's local `path:` origin folder,
@@ -518,11 +517,12 @@ export async function classifyTarget(input: ClassifyInput): Promise<ClassifyResu
     // check `assemble`/`apply`/`ownership add` already run — a single
     // "target under check" with no template identity of its own (mirrors
     // `commands/ownership.ts`'s identical single-candidate shape),
-    // against every OTHER template's recorded targets. `projectOwnedRoots`
+    // against every other recorded target, including this name's sibling
+    // targets. `projectOwnedRoots`
     // and local origin folders are passed empty here: the ROOT of this
     // ground already passed the six-term subtraction above, so it cannot
     // itself sit inside any of those — the only thing left to learn from
-    // this call is whether another template's target nests inside it.
+    // this call is whether another recorded target nests inside it.
     //
     // The claim carries the CANDIDATE's own re-rooted exclusions, NOT an
     // empty list. Empty was wrong for a candidate that NARROWS an exclusion
