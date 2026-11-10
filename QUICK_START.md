@@ -49,17 +49,21 @@ frontx list          # show built-in defaults, this project's registered templat
 frontx list --json   # {"ok":true,"data":{"defaults":[...],"registered":[...],"installed":[...]}}
 ```
 
-`acme` above is a placeholder: any repository can publish templates. The FrontX
-templates are published from
-[`constructorfabric/gears-frontx-templates`](https://github.com/constructorfabric/gears-frontx-templates),
-addressed the same way — by a source-spec naming the repository, the template
-directory and a ref:
-
-```bash
-frontx install github:<owner>/<templates-repo>//<template>@<ref>
-```
-
-See that repository's README for the templates it publishes and the ref to pin.
+`acme` above is a placeholder: any repository can publish templates. This
+repository contains none, and no published template source is declared
+compatible with the current CLI here. The FrontX templates repository
+([`constructorfabric/gears-frontx-templates`](https://github.com/constructorfabric/gears-frontx-templates))
+has been where they were published from, but when this was checked
+(2026-11-09) its manifests still used the legacy `schemaVersion` /
+`ownershipBoundaries` form, which `install` and `register` refuse with
+`INVALID_MANIFEST` (`update-local` reaches the same refusal only when the named
+template is already installed and the fetch and earlier checks succeed), and its README describes older command forms
+(`frontx seed … --source`, `frontx add … --source`) that this CLI does not
+accept. Do not follow that README for this CLI's commands, and do not assume
+its templates work until they are republished in the current manifest form;
+nothing here promises a release or compatibility between the two. To try the
+register-and-apply flow now, use a local template as described in
+[A minimal local template (current contract)](#a-minimal-local-template-current-contract).
 
 A template is tracked under the identity its own `frontx-template.json` declares, not under
 the repository name. Installing a template whose identity is already taken by a different
@@ -71,13 +75,30 @@ Before a project can apply a template, register its origin — this creates
 `.frontx/project.json` on first use:
 
 ```bash
-# A remote origin is pinned to the exact commit the fetch settled on
+# A remote origin is meant to be pinned to the exact commit the fetch settled on
+# (see the note below the block)
 frontx register github:acme/my-template@v1.0.0
 
 # A path: origin naming a folder inside the project is recorded as given,
 # unpinned — there is nothing external to pin against
 frontx register path:vendor/my-local-template
 ```
+
+**Pin guarantee, current status (known defect).** The intended contract is that a
+remote origin is recorded as the exact immutable commit or version the fetch
+resolved, never a moving ref. The current implementation does not guarantee
+this. It takes the pin from a hexadecimal suffix on the downloaded archive's
+root folder, and when that suffix is present it replaces the ref you typed with
+it — even a full commit SHA, which has been observed to be recorded as a
+7-character value; that suffix is an archive-root identifier, not necessarily a
+commit abbreviation, and an abbreviation can be ambiguous. When no such suffix
+is present, the ref you typed is kept as given and may move. So exact
+reproducibility of a remote origin is **not currently guaranteed**, whatever
+ref you type; reading `templates[name].origin` in `.frontx/project.json` after
+registering shows what was recorded but does not prove it is an exact immutable
+commit. If you need a guarantee, wait for a verified pinning fix, or control
+the source and its versioning yourself outside this CLI; this guide makes no
+promise about either. A `path:` origin is never pinned (below).
 
 Registering the identical origin again is a no-op. Registering a *different*
 origin for an already-registered name fails unless `--replace` is given, and
@@ -107,6 +128,29 @@ account for, unless `--adopt-existing` is given to adopt it as-is. The exact
 rule and the reasoning behind it live in
 [`packages/cli/architecture/features/cli-scaffolding/FEATURE.md`](packages/cli/architecture/features/cli-scaffolding/FEATURE.md).
 
+If a template in the batch is getting its first target and the project already
+holds a `.frontx/ai/<name>/` bundle for it, `apply --json` writes nothing and
+answers `CONFIRMATION_REQUIRED`. Its `details.aiReplacements` lists every
+change, with these kinds:
+
+- `replace` overwrites the file, local edits included;
+- `local-only` is a file the candidate lacks, and confirming deletes it;
+- `local-only-directory` is a directory, and confirming removes it.
+
+If the existing bundle entry itself is a symlink, the review identifies the
+link path and its recorded target. Confirmation removes that link entry and
+materializes the reviewed bundle at that path; it leaves the target (including
+a dangling target) untouched. A changed link target invalidates the reviewed
+plan before removal.
+
+This review is issued before `apply` checks that every name is registered,
+that targets do not conflict, and that existing content is accounted for. So
+run `assemble` on the batch first. The confirming call
+`--yes --plan-digest=<details.planDigest>` can still be refused, writing
+nothing. One example is `EXISTING_PATHS_REQUIRE_DECISION`, which `assemble`
+does not check. The digest binds the batch and the flags, so adding
+`--adopt-existing` afterwards produces a new review.
+
 ### 4. Or seed a new project from the built-in defaults
 
 `seed` creates `.frontx/project.json`, auto-registers each named template, and
@@ -128,26 +172,125 @@ is the path that works for any template, from any repository that publishes one.
 `seed` refuses a directory that already carries a `.frontx/project.json` — a
 project once seeded is extended through `apply`, never re-seeded.
 
+### A minimal local template (current contract)
+
+A template is a folder with a `frontx-template.json` of exactly four fields —
+`name`, `version`, `description` and `excludedSubtrees` (an array, possibly
+empty, of target-relative directories the template does not own) — plus its
+payload. A `path:` origin must name a folder inside the project. This sequence
+was run against the current binary:
+
+```bash
+mkdir -p my-project/vendor/my-template/src && cd my-project
+cat > vendor/my-template/frontx-template.json <<'JSON'
+{
+  "name": "@acme/my-template",
+  "version": "1.0.0",
+  "description": "A minimal local template",
+  "excludedSubtrees": []
+}
+JSON
+echo "export const hello = 'world';" > vendor/my-template/src/index.ts
+
+frontx validate vendor/my-template     # PASS: manifest conforms to the template contract
+frontx register path:vendor/my-template
+frontx assemble --input '{"templates":{"@acme/my-template":["app"]}}'   # preview, writes nothing
+frontx apply    --input '{"templates":{"@acme/my-template":["app"]}}'   # writes app/src/index.ts
+frontx validate --project              # PASS
+```
+
+A manifest that still carries the legacy `schemaVersion` or `ownershipBoundaries`
+fields is refused by `register` with `INVALID_MANIFEST`; `frontx validate <dir>`
+reports what the contract requires. This walkthrough is a local exercise, not a
+statement that any published template source works with this CLI.
+
 ### 5. Upgrade a registered template
 
 ```bash
 # Interactive: review the change set, then approve
-frontx upgrade @acme/my-template github:acme/my-template@1.1.0
+frontx upgrade @acme/my-template github:acme/my-template@v1.1.0
 
-# Non-interactive (CI/agent): accept automatically
-frontx upgrade @acme/my-template github:acme/my-template@1.1.0 --yes
+# Non-interactive (CI/agent): two calls. The first returns CONFIRMATION_REQUIRED
+# with the plan (and its planDigest) and writes nothing; the second, identical
+# plus --yes and the reviewed plan's digest, acts only on that plan.
+# PLAN_DIGEST is details.planDigest copied from the first call's output,
+# for the plan you reviewed and approved
+frontx upgrade @acme/my-template github:acme/my-template@v1.1.0 --json
+frontx upgrade @acme/my-template github:acme/my-template@v1.1.0 --json --yes --plan-digest="$PLAN_DIGEST"
 
 # Reverse the most recent upgrade, back to the origin it just left
 frontx upgrade @acme/my-template --restore
 ```
 
+`--yes` is accepted only together with `--json`; `upgrade … --yes` on its own is
+refused (exit code 1) rather than treated as approval.
+
+For `upgrade`, `--plan-digest` is required on the confirming call and binds approval
+to the plan that was reviewed — including the AI-extension bundle changes it
+lists: a plan that differs when the confirming
+call recomputes it (the project or the candidate changed, or nothing is left to
+change because the project already reached the candidate) is not applied and
+nothing is written. A changed plan comes back as a fresh `CONFIRMATION_REQUIRED`
+with its own plan and digest to review; if the project already reached the
+candidate, the `CONFIRMATION_REQUIRED` carries `details.reviewSuperseded` and
+`details.at` but no plan or digest, because there is nothing left to approve. Without it,
+`--json --yes` applies nothing and answers with the current review and its digest.
+`--plan-digest` belongs to the confirming call (`--json --yes`) only. If an
+upgrade is interrupted after it started writing, every writing command refuses
+with `RECOVERY_REQUIRED` until `frontx upgrade <name> --recover` (same review →
+`--yes --plan-digest` protocol) finishes or cancels it.
+
+If `RECOVERY_REQUIRED` reports a `pendingPostCommit` intent with no matching
+receipt, the CLI refuses before planning or dispatching any writer. This orphaned
+state has no automatic `--recover` path: manual recovery is required before
+writing commands can continue. The CLI does not infer or apply a repair.
+
+A `path:` origin names a folder inside the project, so upgrading a template
+registered that way means pointing it at a second folder holding the new
+version, for example `frontx upgrade @acme/my-template path:vendor/my-template-v2`.
+A `path:` origin whose folder has since moved on from the recorded generation is
+not reversible through `--restore`.
+
 Each registered template upgrades **independently**: the CLI diffs every one
 of its applied targets against the new origin's payload, presents the
 resulting whole-file operation plan (`ADD`/`REPLACE`/`REMOVE`/`KEEP_LOCAL`/
-`UNCHANGED` — never a textual diff) for review, and commits it atomically
-across every target once approved. `.frontx/project.json` records the origin
+`UNCHANGED` — never a textual diff) for review, and applies it once approved.
+The record of the new generation in `.frontx/project.json` is written as a
+single state-document write (temporary file plus rename), but the file writes
+across targets are not one transaction: the CLI attempts to roll back a write
+failure it catches, and a failed state write leaves the files that already
+landed with the record still naming the old generation. If the process dies or
+the state write fails before that record is written, re-running the identical
+upgrade is the intended remedy and is designed to converge, provided the same
+origin and baseline still resolve and nothing else, such as another frontx
+process or an outside edit, touched the project in between. The tests behind
+this (an in-memory simulated crash, and a killed child process at selected
+points before the record is written, with inventory promotion and the AI bundle
+refresh stubbed) do not cover every crash point, the built CLI, or a crash after
+the record is written: there the project already names the new generation, an
+identical re-run reports nothing to do, and an interrupted inventory promotion or
+AI bundle refresh is not completed by it. Concurrent runs (there is no lock) and
+power loss are not covered either; the repository's own version control is the
+fallback for anything outside those conditions. `.frontx/project.json` records the origin
 a name is upgrading (or restoring) away from, so exactly one generation is
-reversible with `--restore`.
+reversible with `--restore`; running `--restore` a second time in a row records
+the origin it just left, so it goes back to where the first one came from (a
+redo), and only the generation before that is out of reach.
+
+`--restore` refuses with `NOTHING_TO_RESTORE` when no preceding origin is
+recorded — the name was never upgraded or restored, or a later
+`register --replace` started a new lineage — and with `ORIGIN_UNAVAILABLE` or
+`VERSION_MISMATCH` when the recorded preceding origin no longer resolves, or no
+longer reports the recorded version.
+
+A plan can also carry a `skipped` list, separate from the operations above: paths
+the upgrade or restore deliberately leaves exactly as they are, each with a
+reason — `OUTSIDE_BOUNDARY` (outside what the template owns),
+`RESERVED_TEMP_NAME` (collides with the CLI's own temporary-file convention) or
+`RETAINED_GROUND` (ground a template gave up on an earlier upgrade, whose old
+files are kept). Skipped paths do not stop the operation: the recorded version
+still advances to the new one, so a later upgrade may report a left-behind file
+as a conflict if it differs from both the recorded version and the next one.
 
 ### 6. Delete an applied target
 
@@ -158,10 +301,63 @@ frontx delete ./existing-repo/packages/mfe-a
 `delete` computes what it would remove and what it would preserve, prompts for
 confirmation (defaulting to No), and only then removes the target's ground
 from disk and its entry from `.frontx/project.json`. `--dry-run` reports the
-same plan without deleting anything or requiring confirmation. Once every
-target under a name has been deleted, `frontx unregister <name>` removes the
-now-targetless registration; unregistering a name that still has applied
-targets is refused, naming them.
+same plan without deleting anything or requiring confirmation; it is evaluated
+before the confirmation gate, so it succeeds without `--yes`.
+
+The confirmation is bound to the plan you reviewed. Interactively, the plan is
+recomputed after your "y"; if it differs (a file appeared, the preserved set or
+the AI-bundle removal changed) nothing is deleted, the updated plan is shown in
+full and you are asked again. Every prompt, the updated ones included, names the
+owning template, and states whether the owner's
+`.frontx/ai/<name>/` bundle will be removed with everything in it.
+
+What it preserves is not only the template's declared `excludedSubtrees`: the
+protected ground covers any nested target, the project's own `projectOwnedRoots`,
+ground the same template recorded as given up on an earlier upgrade, the local
+origin folder of a `path:` template that lies under the target (its own or
+another's), the environment entries (`.git`, `.DS_Store`, `Thumbs.db`), and
+entries that cannot be enumerated (a FIFO, a socket, a dangling symlink; these
+are listed only where an owned path covers them). The `toPreserve` list is
+deduplicated, so a covering preserved root can stand in for the individual
+paths beneath it rather than naming each one. The `.frontx` folder is the CLI's
+own and is not listed.
+
+In `--json` mode the confirmation is the two-call protocol: without `--yes`,
+`delete` returns `CONFIRMATION_REQUIRED` with `toDelete` and `toPreserve` and
+removes nothing; its `details` also carry `templateName`, `aiBundle`
+(`removed`, `path`), `relinquishedGround` when present, and a `planDigest`.
+After the plan is reviewed and approved, `delete <target> --json --yes
+--plan-digest=<planDigest>` recomputes the plan and acts only when its digest
+equals the stated one. If it differs, nothing is deleted and the answer is
+`CONFIRMATION_REQUIRED` again with the updated plan, its new `planDigest` and
+`planChangedSinceReview: true` — review that whole plan and confirm with its
+digest only if it is approved. `--yes` without `--plan-digest` deletes nothing
+and returns the current plan. The digest binds the listed paths, the preserved
+set, recorded-ground changes and whether the AI bundle directory is removed; it
+does not bind file bytes, the bundle's contents (removed recursively) or what a
+symlink points at, and the check is not atomic with the removals after it.
+`--dry-run` is the exception: it returns the plan as a successful result
+before the confirmation gate, so it needs no `--yes`, and that result is a
+report, not a completed deletion. `--yes` without `--json` is refused (exit
+code 1) unless `--dry-run` is given, where it is accepted and has no effect. A
+successful `--json` delete reports `toDelete`,
+`toPreserve`, `templateName` and `wasLastTarget`, plus `exclusionsDrift`
+(`current` and `recorded`) when the manifest's declaration and the recorded one
+differ — both are honoured. Deleting a name's last target also removes its
+`.frontx/ai/<name>/` extension bundle; if that cleanup fails the deletion still
+succeeds and the result carries `aiBundleResidue` (`path`, `message`) naming
+what is left.
+
+Once every target under a name has been deleted, `frontx unregister <name>`
+removes the now-targetless registration; unregistering a name that still has
+applied targets is refused with `TARGETS_EXIST`, naming them. The one exception
+is an entry whose origin is confirmed absent (the read finds nothing; a read or
+permission error does not qualify and keeps `TARGETS_EXIST`) and that never
+recorded `excludedSubtrees` (a state only an unsupported intermediate build could have written;
+a hand-edited file is outside the supported contract): no deletion plan can be computed for it, so `unregister` drops the
+registration and leaves every target's files on disk untouched. This branch is defensive: it exists for an unsupported intermediate state and is not a supported migration path. Human mode
+prints a text confirmation; with `--json` the envelope data is
+`{"name":...,"outcome":"orphan-dropped","orphanedTargets":[...]}`.
 
 ### 7. Manage the project's own reserved paths
 
@@ -198,16 +394,17 @@ frontx validate --project
 
 | Command | Purpose |
 |---------|---------|
-| `frontx install <spec>` | Install a template from `host:owner/repo[//subtree]@ref` into the inventory |
+| `frontx install <spec> [--json]` | Install a template from `host:owner/repo[//subtree]@ref` into the inventory |
 | `frontx list [--json]` | List built-in defaults, this project's registered templates, and the local inventory; `--json` emits `{"ok":true,"data":{"defaults":[...],"registered":[...],"installed":[...]}}` |
 | `frontx register <origin> [--replace] [--json]` | Register a template's origin under the current project |
-| `frontx unregister <name> [--json]` | Unregister a template that has no applied targets |
+| `frontx unregister <name> [--json]` | Unregister a template that has no applied targets (or drop an orphan entry whose origin is confirmed absent, see §6) |
 | `frontx assemble --input <batch-json> [--json]` | Preview an explicit batch against every registered template's declared ownership; writes nothing |
-| `frontx apply --input <batch-json> [--adopt-existing] [--json]` | Apply an explicit batch into the current project |
-| `frontx seed <dir> --input <batch-json> [--adopt-existing] [--json]` | Bootstrap a **new** project directory from the CLI's built-in default templates only |
-| `frontx upgrade <name> <origin> [--yes] [--json]` | Upgrade a registered template to a new origin (reviewable change set) |
-| `frontx upgrade <name> --restore [--yes] [--json]` | Reverse a template's most recent upgrade |
-| `frontx delete <target> [--yes] [--dry-run] [--json]` | Delete an applied template target; confirmation-gated |
+| `frontx apply --input <batch-json> [--adopt-existing] [--json [--yes --plan-digest=<digest>]]` | Apply an explicit batch into the current project; replacing an existing `.frontx/ai/<name>` bundle is reviewed first and needs `--yes --plan-digest` |
+| `frontx seed <dir> --input <batch-json> [--adopt-existing] [--json [--yes --plan-digest=<digest>]]` | Bootstrap a **new** project directory from the CLI's built-in default templates only; an existing `.frontx/ai/<name>` bundle is reviewed before anything is written |
+| `frontx upgrade <name> <origin> [--json [--yes --plan-digest=<digest>]]` | Upgrade a registered template to a new origin (reviewable change set) |
+| `frontx upgrade <name> --restore [--json [--yes --plan-digest=<digest>]]` | Reverse a template's most recent upgrade |
+| `frontx upgrade <name> --recover [--json [--yes --plan-digest=<digest>]]` | Finish or cancel an interrupted upgrade/restore after a fresh review |
+| `frontx delete <target> [--dry-run] [--json [--yes --plan-digest=<digest>]]` | Delete an applied template target; confirmation-gated and bound to the reviewed plan. `--yes` needs `--json` and `--plan-digest`, except together with `--dry-run` (`delete <target> --dry-run --yes` is accepted without `--json`) |
 | `frontx ownership add\|remove\|list <path> [--json]` | Manage the project's own reserved paths (`projectOwnedRoots`) |
 | `frontx validate <templateDir> [--json]` | Validate a template for publication |
 | `frontx validate --project [--json]` | Validate `.frontx/project.json` against the registry, the local inventory, and the filesystem |
@@ -216,10 +413,20 @@ frontx validate --project
 
 Exit codes: `0` success, `1` user error, `2` internal error.
 
-A destructive command's `--json` mode never prompts: without `--yes` it
-returns `CONFIRMATION_REQUIRED` with the computed plan, and re-issuing the
-identical command with `--yes` recomputes that plan from scratch before
-acting on it — it never trusts the first call's result. Every command's
+A destructive command's (`delete`, `upgrade`) `--json` mode never prompts:
+without `--yes` it returns `CONFIRMATION_REQUIRED` with the computed plan (the
+one exception is `delete --dry-run --json`, which returns the plan as a
+successful result before the confirmation gate), and
+re-issuing the command with `--yes` recomputes that plan from scratch
+before acting on it — it never trusts the first call's result. For `delete` the
+confirming call must also state `--plan-digest=<details.planDigest>` of the
+reviewed plan, and a plan that differs is returned for a new review instead of
+deleted. The same holds for `upgrade` (and `apply`/`seed` when they would replace an
+existing AI bundle): without the digest nothing is applied (see the upgrade
+section); a dry-run result is
+not the preview a confirming call binds to. `--yes` is
+accepted only together with `--json`, except that `delete --dry-run` accepts it
+without `--json` and needs no confirmation at all. Every command's
 `--json` mode emits exactly one JSON value on stdout — either
 `{"ok":true,"data":...}` or `{"ok":false,"error":{"code","message","details"}}`
 — with a non-zero exit on failure.
@@ -322,14 +529,17 @@ Beyond the direct `frontx upgrade` path, the kit **orchestrates** upgrades over
 the CLI's machine-readable command surface (`src/upgrade-orchestration/`):
 
 ```bash
-frontx upgrade @acme/my-template github:acme/my-template@1.1.0 --json
+frontx upgrade @acme/my-template github:acme/my-template@v1.1.0 --json
 ```
 
 There is no stdin exchange: the surface is a two-call protocol. The first
 `--json` invocation above writes nothing and returns `CONFIRMATION_REQUIRED`
 with the computed plan in `details.plan`; approval is expressed by re-issuing
-the identical command with `--yes` appended, which recomputes the plan and
-acts on it. That two-call shape is what lets the kit layer review gates,
+the identical command with `--yes` and `--plan-digest=<details.planDigest>`
+appended; the kit always forwards the digest (it refuses to confirm when the
+preview carries none), so the CLI recomputes the plan and acts only if it is
+the plan that was reviewed. A direct `frontx upgrade … --json --yes` without the
+digest applies nothing and returns the review. That two-call shape is what lets the kit layer review gates,
 migration analysis, and downstream impact assessment onto the change set
 between the two calls, before anything is applied.
 

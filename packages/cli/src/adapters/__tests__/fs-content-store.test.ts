@@ -7,9 +7,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import { joinWithinRoot } from '@gears-frontx/test-support/path-guard';
-import { FsContentStore } from '../fs-content-store';
+import { FsContentStore, InvalidBundleError } from '../fs-content-store';
 import { resolveInstalledContentPath } from '../fs-installed-content-path';
-import { InvalidBundleKeyError } from '../../bundle/envelope';
+import { InvalidBundleKeyError, isBinaryBundleValue, decodeBundleValue, readBundleFiles, encodeBundleValue } from '../../bundle/envelope';
 import { MANIFEST_FILENAME } from '../../manifest/types';
 import { UnreachablePathError } from '../fs-project-io';
 
@@ -33,7 +33,14 @@ describe('FsContentStore', () => {
     const manifestPath = joinWithinRoot(resolveInstalledContentPath(root, 'my-template'), MANIFEST_FILENAME);
     expect(fs.existsSync(manifestPath)).toBe(true);
     expect(fs.readFileSync(manifestPath, 'utf-8')).toBe('{"name":"my-template"}');
-    expect(store.read('my-template')).toBe('{"name":"my-template"}');
+    // read() now returns a bundle JSON with BinaryBundleValue entries
+    const raw = store.read('my-template');
+    expect(raw).toBeDefined();
+    const files = readBundleFiles(raw!);
+    expect(files).toBeDefined();
+    const mv = files![MANIFEST_FILENAME];
+    expect(isBinaryBundleValue(mv)).toBe(true);
+    if (isBinaryBundleValue(mv)) expect(decodeBundleValue(mv)?.toString('utf-8')).toBe('{"name":"my-template"}');
   });
 
   // inst-resolve-write — a JSON file-map bundle materializes as the
@@ -50,8 +57,16 @@ describe('FsContentStore', () => {
     expect(fs.readFileSync(joinWithinRoot(installedPath, MANIFEST_FILENAME), 'utf-8')).toBe(bundle[MANIFEST_FILENAME]);
     expect(fs.readFileSync(joinWithinRoot(installedPath, 'src', 'index.ts'), 'utf-8')).toBe(bundle['src/index.ts']);
 
-    const roundTripped = JSON.parse(store.read('my-template')!);
-    expect(roundTripped).toEqual({ $frontxTemplateFiles: bundle });
+    // read() now returns a bundle JSON with BinaryBundleValue; decode each entry and compare
+    const raw2 = store.read('my-template')!;
+    const files2 = readBundleFiles(raw2);
+    expect(files2).toBeDefined();
+    const decoded: Record<string, string> = {};
+    for (const [k, v] of Object.entries(files2!)) {
+      expect(isBinaryBundleValue(v)).toBe(true);
+      if (isBinaryBundleValue(v)) decoded[k] = decodeBundleValue(v)!.toString('utf-8');
+    }
+    expect(decoded).toEqual(bundle);
   });
 
   it('write() refuses an invalid bundle key before creating any inventory content', () => {
@@ -182,7 +197,11 @@ describe('FsContentStore', () => {
       fs.symlinkSync(realDir, resolveInstalledContentPath(root, '@x/aliased'), 'dir');
 
       const store = new FsContentStore(root);
-      expect(store.read('@x/aliased')).toBe('manifest text');
+      const rawAliased = store.read('@x/aliased');
+      const filesAliased = readBundleFiles(rawAliased!);
+      const mvAliased = filesAliased?.[MANIFEST_FILENAME];
+      expect(isBinaryBundleValue(mvAliased)).toBe(true);
+      if (isBinaryBundleValue(mvAliased)) expect(decodeBundleValue(mvAliased)?.toString('utf-8')).toBe('manifest text');
       expect(store.has('@x/aliased')).toBe(true);
     });
 
@@ -234,6 +253,106 @@ describe('FsContentStore', () => {
       const store = new FsContentStore(root);
       expect(() => store.replace('@x/inv', 'content')).toThrow(UnreachablePathError);
     });
+  });
+
+  // H2 regression: present-but-invalid envelope must throw and leave store/index untouched.
+  describe('invalid bundle envelope is rejected before any store mutation', () => {
+    it('write() throws InvalidBundleError for malformed (non-canonical) base64 and creates no content', () => {
+      const store = new FsContentStore(root);
+      const content = JSON.stringify({ $frontxTemplateFiles: { [MANIFEST_FILENAME]: { encoding: 'base64', data: '/w===' } } });
+      expect(() => store.write('tpl', content)).toThrow(InvalidBundleError);
+      expect(fs.readdirSync(root)).toEqual([]);
+    });
+
+    it('write() throws InvalidBundleError for an empty file map and creates no content', () => {
+      const store = new FsContentStore(root);
+      const content = JSON.stringify({ $frontxTemplateFiles: {} });
+      expect(() => store.write('tpl', content)).toThrow(InvalidBundleError);
+      expect(fs.readdirSync(root)).toEqual([]);
+    });
+
+    it('write() throws InvalidBundleError for an unrecognised value type and creates no content', () => {
+      const store = new FsContentStore(root);
+      const content = JSON.stringify({ $frontxTemplateFiles: { [MANIFEST_FILENAME]: 42 } });
+      expect(() => store.write('tpl', content)).toThrow(InvalidBundleError);
+      expect(fs.readdirSync(root)).toEqual([]);
+    });
+
+    // H2 r3: marker-level invalidity — $frontxTemplateFiles value is not a plain object map
+    it.each([
+      { label: 'null marker value', content: JSON.stringify({ $frontxTemplateFiles: null }) },
+      { label: 'array marker value', content: JSON.stringify({ $frontxTemplateFiles: [] }) },
+      { label: 'number marker value', content: JSON.stringify({ $frontxTemplateFiles: 42 }) },
+      { label: 'string marker value', content: JSON.stringify({ $frontxTemplateFiles: 'not-a-map' }) },
+    ])('write() throws InvalidBundleError for $label and creates no content', ({ content }) => {
+      const store = new FsContentStore(root);
+      expect(() => store.write('tpl', content)).toThrow(InvalidBundleError);
+      expect(fs.readdirSync(root)).toEqual([]);
+    });
+
+    it('replace() throws InvalidBundleError for malformed base64 and leaves the installed version unchanged', () => {
+      const store = new FsContentStore(root);
+      store.write('tpl', '{"name":"tpl","version":"1.0.0"}');
+      const installedPath = resolveInstalledContentPath(root, 'tpl');
+      const originalManifest = fs.readFileSync(path.join(installedPath, MANIFEST_FILENAME), 'utf-8');
+
+      const bad = JSON.stringify({ $frontxTemplateFiles: { [MANIFEST_FILENAME]: { encoding: 'base64', data: 'YQ====' } } });
+      expect(() => store.replace('tpl', bad)).toThrow(InvalidBundleError);
+      expect(fs.readFileSync(path.join(installedPath, MANIFEST_FILENAME), 'utf-8')).toBe(originalManifest);
+    });
+
+    // Verify destructive seam (rmSync) is not called for null/array/number/string marker.
+    // If the installed directory still exists after the failed replace, rmSync was not called.
+    it.each([
+      { label: 'null marker', bad: JSON.stringify({ $frontxTemplateFiles: null }) },
+      { label: 'array marker', bad: JSON.stringify({ $frontxTemplateFiles: ['x'] }) },
+      { label: 'number marker', bad: JSON.stringify({ $frontxTemplateFiles: 0 }) },
+      { label: 'string marker', bad: JSON.stringify({ $frontxTemplateFiles: 'x' }) },
+    ])('replace() with $label throws before removing the installed version', ({ bad }) => {
+      const store = new FsContentStore(root);
+      store.write('tpl', '{"name":"tpl","version":"1.0.0"}');
+      const installedPath = resolveInstalledContentPath(root, 'tpl');
+      const originalManifest = fs.readFileSync(path.join(installedPath, MANIFEST_FILENAME), 'utf-8');
+
+      expect(() => store.replace('tpl', bad)).toThrow(InvalidBundleError);
+      // Original manifest still present — proves rmSync was not called on the installed directory.
+      expect(fs.existsSync(path.join(installedPath, MANIFEST_FILENAME))).toBe(true);
+      expect(fs.readFileSync(path.join(installedPath, MANIFEST_FILENAME), 'utf-8')).toBe(originalManifest);
+    });
+
+    // Absent marker is NOT an error — it is the legitimate bare-manifest fallback.
+    it('write() with absent $frontxTemplateFiles writes content as the manifest file (legitimate fallback)', () => {
+      const store = new FsContentStore(root);
+      store.write('tpl', '{"name":"tpl","version":"1.0.0"}');
+      const installedPath = resolveInstalledContentPath(root, 'tpl');
+      expect(fs.readFileSync(path.join(installedPath, MANIFEST_FILENAME), 'utf-8')).toBe('{"name":"tpl","version":"1.0.0"}');
+    });
+  });
+
+  // H3 regression: __proto__ as a bundle key must be preserved as an own entry.
+  it('preserves a __proto__ file through write/read without prototype pollution', () => {
+    const store = new FsContentStore(root);
+    const protoContent = '{"proto":"file"}';
+    // Object literal `{ '__proto__': x }` sets the prototype, not an own prop.
+    // Use null-prototype + defineProperty to produce a JSON string with
+    // "__proto__" as a real key: `{"frontx-template.json":"...","__proto__":...}`.
+    const fileMap = Object.create(null) as Record<string, unknown>;
+    Object.defineProperty(fileMap, MANIFEST_FILENAME, { value: '{"name":"tpl","version":"1.0.0"}', enumerable: true });
+    Object.defineProperty(fileMap, '__proto__', { value: encodeBundleValue(Buffer.from(protoContent, 'utf-8')), enumerable: true });
+    const bundle = JSON.stringify({ $frontxTemplateFiles: fileMap });
+    store.write('tpl', bundle);
+
+    const installedPath = resolveInstalledContentPath(root, 'tpl');
+    expect(fs.existsSync(path.join(installedPath, '__proto__'))).toBe(true);
+    expect(fs.readFileSync(path.join(installedPath, '__proto__'), 'utf-8')).toBe(protoContent);
+
+    const raw = store.read('tpl')!;
+    const files = readBundleFiles(raw);
+    expect(files).toBeDefined();
+    expect(Object.prototype.hasOwnProperty.call(files, '__proto__')).toBe(true);
+    const v = files!['__proto__'];
+    expect(isBinaryBundleValue(v)).toBe(true);
+    expect(decodeBundleValue(v as never)?.toString('utf-8')).toBe(protoContent);
   });
 
   // DEFECT 1 (regression): the store root itself reached through a

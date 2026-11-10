@@ -1,5 +1,6 @@
 // @cpt-algo:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1
-import { BUNDLE_MARKER, readBundleFiles } from '../bundle/envelope';
+import { BUNDLE_MARKER, readBundleFiles, isBinaryBundleValue, decodeBundleValue, BinaryBundleValue } from '../bundle/envelope';
+import { setOwn } from '../own-record';
 
 // Narrowing an acquired multi-file bundle to the subtree a source-spec named
 // (cpt-frontx-adr-source-spec-syntax). Selection is a filter
@@ -11,7 +12,8 @@ export type NarrowSubtreeResult =
   | { ok: true; content: string }
   | { ok: false; reason: 'no-bundle'; subtree: string; message: string }
   | { ok: false; reason: 'empty-subtree'; subtree: string; message: string }
-  | { ok: false; reason: 'escaping-path'; subtree: string; path: string; message: string };
+  | { ok: false; reason: 'escaping-path'; subtree: string; path: string; message: string }
+  | { ok: false; reason: 'invalid-entry'; subtree: string; path: string; message: string };
 
 // Keep only the files under `subtree` and re-root every retained path so it is
 // relative to the subtree rather than to the repository. Re-rooting is not
@@ -20,7 +22,9 @@ export type NarrowSubtreeResult =
 // the installed content path.
 export function narrowBundleToSubtree(content: string, subtree: string): NarrowSubtreeResult {
   const files = readBundleFiles(content);
-  if (files === undefined) {
+  if (files == null) {
+    // undefined = no marker; null = marker present but invalid value.
+    // Both mean the content is not a usable multi-file bundle.
     return {
       ok: false,
       reason: 'no-bundle',
@@ -30,19 +34,28 @@ export function narrowBundleToSubtree(content: string, subtree: string): NarrowS
   }
 
   const prefix = `${subtree}/`;
-  const narrowed: Record<string, string> = {};
-  for (const [path, text] of Object.entries(files)) {
-    if (typeof text !== 'string') continue;
+  // Collect the candidate set before any validation so escape priority is
+  // global — independent of entry iteration order and of whether a later
+  // entry has an invalid value.
+  const candidates: Array<{ path: string; reRooted: string; value: unknown }> = [];
+  for (const [path, value] of Object.entries(files)) {
     if (!path.startsWith(prefix)) continue;
     const reRooted = path.slice(prefix.length);
     // A key equal to the prefix names the subtree itself, not a file under it.
     if (reRooted.length === 0) continue;
+    candidates.push({ path, reRooted, value });
+  }
 
-    // Re-rooting is what creates the escape, so the parser cannot have caught
-    // it: `shell/../sibling/evil.txt` is inside the repository and becomes
-    // `../sibling/evil.txt` once `shell/` is stripped. Refusing the whole
-    // narrowing rather than dropping the key keeps the refusal visible instead
-    // of installing a partial template.
+  // Pass 1: escape check over the whole selected set.
+  // Re-rooting is what creates the escape, so the parser cannot have caught
+  // it: `shell/../sibling/evil.txt` is inside the repository and becomes
+  // `../sibling/evil.txt` once `shell/` is stripped. Refusing the whole
+  // narrowing rather than dropping the key keeps the refusal visible instead
+  // of installing a partial template. Run on ALL candidates regardless of
+  // value type — an escaping path is dangerous whether its content is
+  // readable. Escape wins over value errors across the whole set, not just
+  // per-entry.
+  for (const { path, reRooted } of candidates) {
     if (escapesSubtree(reRooted)) {
       return {
         ok: false,
@@ -52,8 +65,30 @@ export function narrowBundleToSubtree(content: string, subtree: string): NarrowS
         message: `Subtree "${subtree}" carries "${path}", which resolves outside the subtree once re-rooted, so nothing was installed.`,
       };
     }
+  }
 
-    narrowed[reRooted] = text;
+  // Pass 2: value validation.
+  const narrowed: Record<string, string | BinaryBundleValue> = {};
+  for (const { path, reRooted, value } of candidates) {
+    if (typeof value !== 'string' && !isBinaryBundleValue(value)) {
+      return {
+        ok: false,
+        reason: 'invalid-entry',
+        subtree,
+        path,
+        message: `Subtree "${subtree}" entry "${path}" has an unrecognised value type, so nothing was installed.`,
+      };
+    }
+    if (isBinaryBundleValue(value) && decodeBundleValue(value) === null) {
+      return {
+        ok: false,
+        reason: 'invalid-entry',
+        subtree,
+        path,
+        message: `Subtree "${subtree}" entry "${path}" contains non-canonical base64, so nothing was installed.`,
+      };
+    }
+    setOwn(narrowed, reRooted, value);
   }
 
   if (Object.keys(narrowed).length === 0) {

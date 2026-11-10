@@ -39,7 +39,7 @@ function payload(overrides: Partial<ResolvedPayload> = {}): ResolvedPayload {
  * own fakes rather than inventing a third style.
  */
 function makeHarness() {
-  const disk = new Map<string, string>();
+  const disk = new Map<string, Buffer | string>();
   let projectStateContent: string | null = null;
   let projectStateWriteCount = 0;
 
@@ -62,7 +62,7 @@ function makeHarness() {
   const readDiskEntry = vi.fn(async (absolutePath: string): Promise<DiskEntry> => {
     return disk.has(absolutePath) ? { kind: 'file', content: disk.get(absolutePath)! } : { kind: 'absent' };
   });
-  const writeDiskFile = vi.fn(async (absolutePath: string, content: string) => {
+  const writeDiskFile = vi.fn(async (absolutePath: string, content: Buffer | string) => {
     disk.set(absolutePath, content);
   });
   const renameDiskFile = vi.fn(async (from: string, to: string) => {
@@ -404,7 +404,7 @@ describe('upgradeToOrigin (cpt-frontx-flow-upgrade-changeset-review-approval)', 
       h.disk.set(to, h.disk.get(from)!);
       h.disk.delete(from);
     });
-    (h.deps.writeDiskFile as unknown as ReturnType<typeof vi.fn>).mockImplementation(async (absolutePath: string, content: string) => {
+    (h.deps.writeDiskFile as unknown as ReturnType<typeof vi.fn>).mockImplementation(async (absolutePath: string, content: Buffer | string) => {
       // Every temp-file materialization succeeds; only recovery's own
       // attempt to restore app1's already-landed destination back to
       // baseline content fails.

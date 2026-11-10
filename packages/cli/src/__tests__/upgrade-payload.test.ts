@@ -52,6 +52,7 @@ function fakeDeps(overrides: Partial<ResolvePayloadDeps> = {}): ResolvePayloadDe
       vi.fn(() => {
         throw new Error('canonicalizeFn not stubbed for this test');
       }),
+    readFolderFileBinaryFn: overrides.readFolderFileBinaryFn ?? (async (p) => Buffer.from(await overrides.readFileFn!(p))),
   };
 }
 
@@ -86,8 +87,8 @@ describe('createResolvePayloadFn — local "path:" origin', () => {
     // exactly as given (the module's own header comment, `payload.ts:213-216`).
     expect(result.payload.origin).toBe('path:templates/shell');
     expect(Object.fromEntries(result.payload.files)).toEqual({
-      'README.md': '# hello',
-      'src/index.ts': 'export {}',
+      'README.md': Buffer.from('# hello'),
+      'src/index.ts': Buffer.from('export {}'),
     });
   });
 
@@ -151,7 +152,7 @@ describe('createResolvePayloadFn — local "path:" origin', () => {
     expect(readFileFn).toHaveBeenCalledWith(expect.stringContaining('.frontx/ai/@scope/tpl/x.md'));
     // ...but excluded from the final payload regardless.
     expect(result.payload.files.has('.frontx/ai/@scope/tpl/x.md')).toBe(false);
-    expect(result.payload.files.get('.frontx-extras/note.md')).toBe('sibling content');
+    expect(result.payload.files.get('.frontx-extras/note.md')).toEqual(Buffer.from('sibling content'));
   });
 
   describe('refusals', () => {
@@ -381,6 +382,143 @@ describe('createResolvePayloadFn — remote origin', () => {
 
     expect(result).toMatchObject({ ok: false, code: 'ORIGIN_UNAVAILABLE' });
   });
+
+  // H2a regression: a bundle entry with non-canonical base64 must fail the
+  // whole resolution, not be silently dropped (which would create a phantom
+  // REMOVE in the upgrade changeset for the missing file).
+  it('refuses ORIGIN_UNAVAILABLE when a payload entry carries non-canonical base64, naming the offending path', async () => {
+    const manifest = manifestJson({ name: 'shell', version: '1.0.0' });
+    const bundleContent = JSON.stringify({
+      [BUNDLE_MARKER]: {
+        [MANIFEST_FILENAME]: manifest,
+        'binary.bin': { encoding: 'base64', data: 'YQ====' }, // extra padding — non-canonical
+      },
+    });
+    const fetchFn = vi.fn(async () => bundleContent);
+    const deps = fakeDeps({ fetchFn });
+    const resolvePayload = createResolvePayloadFn(deps);
+
+    const result = await resolvePayload('github:acme/foo@v1.0.0');
+
+    expect(result).toMatchObject({ ok: false, code: 'ORIGIN_UNAVAILABLE' });
+    if (result.ok) return;
+    expect(result.message).toContain('binary.bin');
+  });
+
+  // H2a regression: an unknown value type must also fail, not be silently skipped.
+  it('refuses ORIGIN_UNAVAILABLE when a payload entry has an unrecognised value type (number)', async () => {
+    const manifest = manifestJson({ name: 'shell', version: '1.0.0' });
+    const bundleContent = JSON.stringify({
+      [BUNDLE_MARKER]: {
+        [MANIFEST_FILENAME]: manifest,
+        'data.bin': 42,
+      },
+    });
+    const fetchFn = vi.fn(async () => bundleContent);
+    const deps = fakeDeps({ fetchFn });
+    const resolvePayload = createResolvePayloadFn(deps);
+
+    const result = await resolvePayload('github:acme/foo@v1.0.0');
+
+    expect(result).toMatchObject({ ok: false, code: 'ORIGIN_UNAVAILABLE' });
+    if (result.ok) return;
+    expect(result.message).toContain('data.bin');
+  });
+
+  // M1 regression: $frontxTemplateFiles present but null must fail upstream
+  // (resolver + payload), not fall back to bare-manifest treatment.
+  it('refuses ORIGIN_UNAVAILABLE when $frontxTemplateFiles is present but null — not treated as bare manifest', async () => {
+    const bundleContent = JSON.stringify({ $frontxTemplateFiles: null });
+    const fetchFn = vi.fn(async () => bundleContent);
+    const deps = fakeDeps({ fetchFn });
+    const resolvePayload = createResolvePayloadFn(deps);
+
+    const result = await resolvePayload('github:acme/foo@v1.0.0');
+
+    expect(result).toMatchObject({ ok: false, code: 'ORIGIN_UNAVAILABLE' });
+  });
+
+  // Positive control: a valid absent-marker manifest still resolves OK.
+  it('resolves a bare-manifest with no $frontxTemplateFiles key (absent, not null) correctly', async () => {
+    const manifest = manifestJson({ name: 'shell', version: '2.0.0' });
+    const fetchFn = vi.fn(async () => manifest);
+    const deps = fakeDeps({ fetchFn });
+    const resolvePayload = createResolvePayloadFn(deps);
+
+    const result = await resolvePayload('github:acme/foo@v2.0.0');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.payload.files.size).toBe(0);
+  });
+
+  // H2b regression: empty envelope ({$frontxTemplateFiles:{}}) must fail — the outer JSON
+  // must not be treated as a bare manifest even when its fields look valid.
+  it('refuses ORIGIN_UNAVAILABLE when $frontxTemplateFiles is present but empty — no fallback to bare manifest', async () => {
+    const bundleContent = JSON.stringify({ $frontxTemplateFiles: {} });
+    const fetchFn = vi.fn(async () => bundleContent);
+    const deps = fakeDeps({ fetchFn });
+    const resolvePayload = createResolvePayloadFn(deps);
+
+    const result = await resolvePayload('github:acme/foo@v1.0.0');
+
+    expect(result).toMatchObject({ ok: false, code: 'ORIGIN_UNAVAILABLE' });
+  });
+
+  // H2b regression: envelope present with valid fields but no frontx-template.json entry.
+  it('refuses ORIGIN_UNAVAILABLE when $frontxTemplateFiles has entries but none is frontx-template.json', async () => {
+    const manifest = manifestJson({ name: 'shell', version: '1.0.0' });
+    const bundleContent = JSON.stringify({
+      name: manifest, version: '1.0.0', excludedSubtrees: [], description: 'x',
+      [BUNDLE_MARKER]: { 'src/index.ts': 'export {};' },
+    });
+    const fetchFn = vi.fn(async () => bundleContent);
+    const deps = fakeDeps({ fetchFn });
+    const resolvePayload = createResolvePayloadFn(deps);
+
+    const result = await resolvePayload('github:acme/foo@v1.0.0');
+
+    expect(result).toMatchObject({ ok: false, code: 'ORIGIN_UNAVAILABLE' });
+  });
+
+  // H2a regression: .frontx/ai/* entries with non-canonical base64 must fail the resolver,
+  // not be silently skipped by payload's isTemplatePayloadPath filter.
+  it('refuses ORIGIN_UNAVAILABLE when a .frontx/ai/* entry has non-canonical base64 (not silently filtered)', async () => {
+    const manifest = manifestJson({ name: 'shell', version: '1.0.0' });
+    const bundleContent = JSON.stringify({
+      [BUNDLE_MARKER]: {
+        [MANIFEST_FILENAME]: manifest,
+        '.frontx/ai/scope/shell/prompt.md': { encoding: 'base64', data: 'YQ====' },
+      },
+    });
+    const fetchFn = vi.fn(async () => bundleContent);
+    const deps = fakeDeps({ fetchFn });
+    const resolvePayload = createResolvePayloadFn(deps);
+
+    const result = await resolvePayload('github:acme/foo@v1.0.0');
+
+    expect(result).toMatchObject({ ok: false, code: 'ORIGIN_UNAVAILABLE' });
+    if (result.ok) return;
+    expect(result.message).toContain('.frontx/ai/scope/shell/prompt.md');
+  });
+
+  // H2a regression: extra fields in a BinaryBundleValue make it unrecognised.
+  it('refuses ORIGIN_UNAVAILABLE when a payload entry has extra fields in its BinaryBundleValue (strict form)', async () => {
+    const manifest = manifestJson({ name: 'shell', version: '1.0.0' });
+    const bundleContent = JSON.stringify({
+      [BUNDLE_MARKER]: {
+        [MANIFEST_FILENAME]: manifest,
+        'README.md': { encoding: 'base64', data: 'YQ==', extra: true },
+      },
+    });
+    const fetchFn = vi.fn(async () => bundleContent);
+    const deps = fakeDeps({ fetchFn });
+    const resolvePayload = createResolvePayloadFn(deps);
+
+    const result = await resolvePayload('github:acme/foo@v1.0.0');
+
+    expect(result).toMatchObject({ ok: false, code: 'ORIGIN_UNAVAILABLE' });
+  });
 });
 
 describe('versionMatchesRecorded', () => {
@@ -572,5 +710,84 @@ describe('isTemplatePayloadPath (../manifest/types.ts) — the shared payload-me
   it('includes ordinary payload content', () => {
     expect(isTemplatePayloadPath('src/index.ts')).toBe(true);
     expect(isTemplatePayloadPath('package.json')).toBe(true);
+  });
+});
+
+// Binary-baseline regression suite: unchanged binary files must NOT trigger a
+// false CONTENT_CONFLICT during upgrade review. Root cause was the UTF-8
+// `readFolderFileFn` path in `resolver/resolve.ts` corrupting non-UTF-8 bytes;
+// fix is `readFolderFileBinaryFn` → `encodeBundleValue` → decoded Buffer on the
+// baseline side, matching the disk Buffer read by `createFsReadDiskEntryFn`.
+describe('createResolvePayloadFn — binary file bytes preserved via readFolderFileBinaryFn', () => {
+  // Bytes that are not valid UTF-8: 0xff, 0xfe, 0x80 each produce three
+  // replacement bytes (0xef 0xbf 0xbd) through Node's utf-8 round-trip, so
+  // Buffer.from(str, 'utf-8').equals(original) is false without the fix.
+  const binaryBytes = Buffer.from([0x00, 0xff, 0xfe, 0x80, 0x0a, 0x41]);
+
+  function makeManifest(name = 'bytes-tpl') {
+    return JSON.stringify({ name, version: '1.0.0', excludedSubtrees: [], description: 'd' });
+  }
+
+  it('binary file is decoded to Buffer with correct bytes when readFolderFileBinaryFn is supplied', async () => {
+    const manifest = makeManifest();
+    const readFileFn = vi.fn(async (p: string) => {
+      if (p.endsWith(MANIFEST_FILENAME)) return manifest;
+      throw new Error('readFileFn must not be called for non-manifest files when binary reader is present');
+    });
+    const readFolderFileBinaryFn = vi.fn(async (p: string) => p.endsWith(MANIFEST_FILENAME) ? Buffer.from(manifest) : binaryBytes);
+    const listDiskFiles = vi.fn(async () => [MANIFEST_FILENAME, 'binary.bin']);
+    const deps = fakeDeps({ canonicalizeFn: (raw) => raw, readFileFn, readFolderFileBinaryFn, listDiskFiles });
+    const result = await createResolvePayloadFn(deps)('path:vendor/one');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const fileValue = result.payload.files.get('binary.bin');
+    expect(Buffer.isBuffer(fileValue)).toBe(true);
+    expect((fileValue as Buffer).equals(binaryBytes)).toBe(true);
+    expect(readFolderFileBinaryFn).toHaveBeenCalledWith(expect.stringContaining('binary.bin'));
+  });
+
+  it('refuses a text-only reader instead of silently corrupting binary content', async () => {
+    const deps = fakeDeps({ canonicalizeFn: (raw) => raw });
+    // Exercise a JavaScript caller that bypasses the required TypeScript seam.
+    Reflect.deleteProperty(deps, 'readFolderFileBinaryFn');
+    await expect(createResolvePayloadFn(deps)('path:vendor/one')).rejects.toThrow('readFolderFileBinaryFn');
+  });
+
+  it('user-modified bytes differ from baseline Buffer (correct CONTENT_CONFLICT would fire)', async () => {
+    const manifest = makeManifest();
+    const readFileFn = vi.fn(async (p: string) => {
+      if (p.endsWith(MANIFEST_FILENAME)) return manifest;
+      throw new Error('readFileFn must not be called for non-manifest files');
+    });
+    const userModifiedBytes = Buffer.from([0x00, 0xff, 0xff, 0x55, 0x53, 0x45, 0x52]);
+    const readFolderFileBinaryFn = vi.fn(async (p: string) => p.endsWith(MANIFEST_FILENAME) ? Buffer.from(manifest) : binaryBytes);
+    const listDiskFiles = vi.fn(async () => [MANIFEST_FILENAME, 'binary.bin']);
+    const deps = fakeDeps({ canonicalizeFn: (raw) => raw, readFileFn, readFolderFileBinaryFn, listDiskFiles });
+    const result = await createResolvePayloadFn(deps)('path:vendor/one');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const baselineValue = result.payload.files.get('binary.bin');
+    expect(Buffer.isBuffer(baselineValue)).toBe(true);
+    // user-modified bytes correctly differ from baseline → conflict detection works
+    expect((baselineValue as Buffer).equals(userModifiedBytes)).toBe(false);
+    expect((baselineValue as Buffer).equals(binaryBytes)).toBe(true);
+  });
+
+  it('NUL-only file (single 0x00) round-trips correctly with binary reader', async () => {
+    const manifest = makeManifest();
+    const nulBytes = Buffer.from([0x00]);
+    const readFileFn = vi.fn(async (p: string) => {
+      if (p.endsWith(MANIFEST_FILENAME)) return manifest;
+      throw new Error('readFileFn must not be called for non-manifest files');
+    });
+    const readFolderFileBinaryFn = vi.fn(async (p: string) => p.endsWith(MANIFEST_FILENAME) ? Buffer.from(manifest) : nulBytes);
+    const listDiskFiles = vi.fn(async () => [MANIFEST_FILENAME, 'nul.dat']);
+    const deps = fakeDeps({ canonicalizeFn: (raw) => raw, readFileFn, readFolderFileBinaryFn, listDiskFiles });
+    const result = await createResolvePayloadFn(deps)('path:vendor/nul');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const fileValue = result.payload.files.get('nul.dat');
+    expect(Buffer.isBuffer(fileValue)).toBe(true);
+    expect((fileValue as Buffer).equals(nulBytes)).toBe(true);
   });
 });

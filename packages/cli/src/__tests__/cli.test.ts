@@ -1,5 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { Writable } from 'node:stream';
 import {
@@ -22,7 +25,11 @@ import {
   ProjectStateUnreadableError,
 } from '../adapters/fs-project-io';
 import type { CliDeps } from '../cli';
+import type { Transition, TransitionIntent, TransitionReceipt, WithMutationScopeFn } from '../operations/coordination';
 import { TemplateInventory } from '../inventory/TemplateInventory';
+import { FsInventoryIndex } from '../adapters/fs-inventory-index';
+import { FsContentStore } from '../adapters/fs-content-store';
+import { InventoryState } from '../inventory/types';
 import { BUNDLE_MARKER, InvalidBundleKeyError } from '../bundle/envelope';
 import { MANIFEST_FILENAME } from '../manifest/types';
 import type { FetchFn } from '../resolver/types';
@@ -133,6 +140,45 @@ export interface DepsFixture {
 
 // Builds an isolated set of fakes for one test — no real fs/network, per
 // this package's dependency-injection test convention.
+// In-memory mutation boundary: this suite never touches the real filesystem; the
+// fs boundary has its own coverage in `coordination.test.ts`. `events` records
+// the receipt lifecycle so tests can assert begin/markDone/finalize ordering.
+// The upgrade confirmation protocol: review first, then confirm with the
+// reviewed plan's digest. Falls back to the plain `--yes` call when the review
+// carries no digest (a refusal or a no-op), whose answer is then asserted.
+async function confirmedUpgrade(args: string[], deps: CliDeps): ReturnType<typeof run> {
+  const review = await run(args, deps);
+  const digest = (JSON.parse(review.stdout ?? '{}') as { error?: { details?: { planDigest?: string } } }).error?.details?.planDigest;
+  return run([...args, '--yes', ...(digest !== undefined ? [`--plan-digest=${digest}`] : [])], deps);
+}
+
+const memoryId = (i: number) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`;
+function memoryTransition(projectRoot: string, intent: TransitionIntent, events: string[], phase: TransitionReceipt['phase'] = 'prepared', id = memoryId(99)): Transition {
+  const receipt: TransitionReceipt = { schemaVersion: 1, id, projectRoot, inventoryRoot: '/inventory', intent, phase };
+  return {
+    receipt,
+    receiptPath: `/receipts/${id}.json`,
+    async finalize(result, _entry, beforeRelease) {
+      events.push(`finalize:${result}`);
+      await beforeRelease?.();
+    },
+  };
+}
+function memoryScope(events: string[] = [], pending: { intent: TransitionIntent; phase?: TransitionReceipt['phase'] }[] = [], modes: string[] = []): WithMutationScopeFn {
+  return async (projectRoot, mode, body) => {
+    modes.push(mode);
+    return body({
+      projectRoot,
+      inventoryRoot: '/inventory',
+      pending: pending.map((p, i) => memoryTransition(projectRoot, p.intent, events, p.phase, memoryId(i))),
+      beginTransition: (intent) => {
+        events.push(`begin:${intent.name}:${JSON.parse(intent.fromEntry).version}:${intent.tasks.inventory}:${intent.tasks.ai}`);
+        return memoryTransition(projectRoot, intent, events);
+      },
+    });
+  };
+}
+
 function makeDeps(overrides: Partial<CliDeps> = {}): DepsFixture {
   const manifestsByRef = new Map<string, string>();
   const contentByName = new Map<string, ContentItem[]>();
@@ -186,6 +232,7 @@ function makeDeps(overrides: Partial<CliDeps> = {}): DepsFixture {
     inventory: new TemplateInventory(),
     fetchFn,
     writeFileFn,
+    readFolderFileBinaryFn: async (p) => Buffer.from(await deps.readFileFn(p)),
     readFileFn,
     listPayloadFilesFn,
     resolveDeclaredExclusionFn,
@@ -251,6 +298,9 @@ function makeDeps(overrides: Partial<CliDeps> = {}): DepsFixture {
     // default" discipline as `confirmDeletion` above; the upgrade dispatch
     // tests exercise `--json` mode instead of overriding this.
     presentUpgradePlan: vi.fn(async (): Promise<'approved' | 'declined'> => 'declined'),
+    withMutationScope: memoryScope(),
+    confirmRecovery: vi.fn(async () => false),
+    confirmAiReplacement: vi.fn(async () => false),
     ...overrides,
   };
 
@@ -1771,7 +1821,7 @@ describe('dispatch: upgrade (cpt-frontx-flow-upgrade-changeset-review-approval, 
     const { deps, registerManifest } = makeDeps({ readProjectStateFn, writeProjectStateFn });
     registerTwoVersions(registerManifest);
 
-    const outcome = await run(['upgrade', 'foo', 'github:acme/foo@v2.0.0', '--json', '--yes'], deps);
+    const outcome = await confirmedUpgrade(['upgrade', 'foo', 'github:acme/foo@v2.0.0', '--json'], deps);
 
     expect(outcome.exitCode).toBe(EXIT_SUCCESS);
     const parsed = JSON.parse(outcome.stdout ?? '');
@@ -1781,6 +1831,86 @@ describe('dispatch: upgrade (cpt-frontx-flow-upgrade-changeset-review-approval, 
       version: '2.0.0',
       previous: { origin: 'github:acme/foo@v1.0.0', version: '1.0.0' },
     });
+  });
+
+  it.each([
+    ['the approved candidate', false, 'success'],
+    ['other bytes than approved', true, 'RECOVERY_REQUIRED'],
+  ])('marks inventory promotion done only when the slot reads back as the approved candidate (%s)', async (_label, tamper, expected) => {
+    const events: string[] = [];
+    let stored = '';
+    let storedSource = '';
+    const inventory = {
+      lookup: vi.fn(() => ({ name: 'foo', source: storedSource || 'github:acme/foo@v1.0.0', ref: '', status: 'INSTALLED', content: stored })),
+      updateLocal: vi.fn(async (name: string, spec: string, fetchFn: FetchFn) => {
+        const fetched = await fetchFn('replayed');
+        stored = typeof fetched === 'string' ? fetched : fetched.content;
+        storedSource = spec;
+        return { ok: true, value: { name, ref: '' } };
+      }),
+      readInstalled: vi.fn(() => (tamper ? JSON.stringify(cleanManifest('foo', '1.0.0')) : stored)),
+    } as unknown as TemplateInventory;
+    const { readProjectStateFn, writeProjectStateFn, written } = seededProjectState({
+      formatVersion: 1,
+      templates: { foo: { origin: 'github:acme/foo@v1.0.0', version: '1.0.0', targets: ['packages/app'] } },
+      projectOwnedRoots: [],
+    });
+    const { deps, registerManifest } = makeDeps({ readProjectStateFn, writeProjectStateFn, inventory, withMutationScope: memoryScope(events) });
+    registerTwoVersions(registerManifest);
+    const outcome = await confirmedUpgrade(['upgrade', 'foo', 'github:acme/foo@v2.0.0', '--json'], deps);
+    const envelope = JSON.parse(outcome.stdout ?? '') as { ok: boolean; data?: { outcome: string }; error?: { code: string } };
+    expect(envelope.ok ? envelope.data?.outcome : envelope.error?.code).toBe(expected);
+    expect(events).toEqual(tamper ? ['begin:foo:1.0.0:pending:not-required'] : ['begin:foo:1.0.0:pending:not-required', 'finalize:committed']);
+    // The authoritative task status lives in the committed entry (r9 §2.3): still
+    // pending after a failed read-back, cleared only by verified finalization.
+    expect(written().templates.foo.pendingPostCommit).toEqual(tamper ? { intentId: memoryId(99), inventory: 'pending', ai: 'not-required' } : undefined);
+    expect(written().formatVersion).toBe(3);
+    // The promotion replayed the reviewed fetch: the fake fetch saw no extra candidate request.
+    expect(inventory.updateLocal).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses a digestless --json --yes with the review and its digest, writing nothing', async () => {
+    const events: string[] = [];
+    const { readProjectStateFn, writeProjectStateFn, written } = seededProjectState({
+      formatVersion: 1,
+      templates: { foo: { origin: 'github:acme/foo@v2.0.0', version: '2.0.0', targets: ['packages/app'], previous: { origin: 'github:acme/foo@v1.0.0', version: '1.0.0' } } },
+      projectOwnedRoots: [],
+    });
+    const { deps, registerManifest } = makeDeps({ readProjectStateFn, writeProjectStateFn, withMutationScope: memoryScope(events) });
+    registerTwoVersions(registerManifest);
+    for (const args of [['upgrade', 'foo', 'github:acme/foo@v1.0.0'], ['upgrade', 'foo', '--restore']]) {
+      const outcome = await run([...args, '--json', '--yes'], deps);
+      expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+      const envelope = JSON.parse(outcome.stdout ?? '') as { error: { code: string; message: string; details: { planDigest: string } } };
+      expect(envelope.error.code).toBe('CONFIRMATION_REQUIRED');
+      expect(envelope.error.message).toContain('--plan-digest');
+      expect(envelope.error.details.planDigest).toMatch(/^[0-9a-f]{64}$/);
+    }
+    expect(events).toEqual([]);
+    expect(writeProjectStateFn).not.toHaveBeenCalled();
+    expect(written().templates.foo).toMatchObject({ version: '2.0.0' });
+  });
+
+  it('writes the transition receipt only once an approved plan takes its first effect, and releases it on success', async () => {
+    const events: string[] = [];
+    const withMutationScope = memoryScope(events);
+    const seed = () => seededProjectState({
+      formatVersion: 1,
+      templates: { foo: { origin: 'github:acme/foo@v1.0.0', version: '1.0.0', targets: ['packages/app'] } },
+      projectOwnedRoots: [],
+    });
+
+    const preview = makeDeps({ ...seed(), withMutationScope });
+    registerTwoVersions(preview.registerManifest);
+    await run(['upgrade', 'foo', 'github:acme/foo@v2.0.0', '--json'], preview.deps);
+    expect(events).toEqual([]);
+
+    const approved = makeDeps({ ...seed(), withMutationScope });
+    registerTwoVersions(approved.registerManifest);
+    const outcome = await confirmedUpgrade(['upgrade', 'foo', 'github:acme/foo@v2.0.0', '--json'], approved.deps);
+    expect(JSON.parse(outcome.stdout ?? '')).toMatchObject({ ok: true, data: { outcome: 'success' } });
+    // No inventory slot (never installed) and no AI bundle on either side: both tasks not required.
+    expect(events).toEqual(['begin:foo:1.0.0:not-required:not-required', 'finalize:committed']);
   });
 
   it('a candidate resolving to the already-recorded {origin, version} is an idempotent no-op', async () => {
@@ -1794,7 +1924,7 @@ describe('dispatch: upgrade (cpt-frontx-flow-upgrade-changeset-review-approval, 
     const { deps, registerManifest } = makeDeps({ readProjectStateFn, writeProjectStateFn });
     registerManifest('github:acme/foo@v1.0.0', cleanManifest('foo', '1.0.0'));
 
-    const outcome = await run(['upgrade', 'foo', 'github:acme/foo@v1.0.0', '--json', '--yes'], deps);
+    const outcome = await confirmedUpgrade(['upgrade', 'foo', 'github:acme/foo@v1.0.0', '--json'], deps);
 
     expect(outcome.exitCode).toBe(EXIT_SUCCESS);
     expect(JSON.parse(outcome.stdout ?? '')).toMatchObject({ ok: true, data: { outcome: 'noop' } });
@@ -1820,7 +1950,7 @@ describe('dispatch: upgrade (cpt-frontx-flow-upgrade-changeset-review-approval, 
     const { deps, registerManifest } = makeDeps({ readProjectStateFn, writeProjectStateFn });
     registerManifest('github:acme/foo@v1.0.0', cleanManifest('foo', '1.0.0'));
 
-    const outcome = await run(['upgrade', 'foo', 'github:acme/foo@v1.0.0', '--json', '--yes'], deps);
+    const outcome = await confirmedUpgrade(['upgrade', 'foo', 'github:acme/foo@v1.0.0', '--json'], deps);
 
     expect(outcome.exitCode).toBe(EXIT_SUCCESS);
     expect(JSON.parse(outcome.stdout ?? '')).toMatchObject({ ok: true, data: { outcome: 'noop' } });
@@ -1848,18 +1978,12 @@ describe('dispatch: upgrade (cpt-frontx-flow-upgrade-changeset-review-approval, 
     expect(written().templates.foo).toMatchObject({ origin: 'github:acme/foo@v1.0.0', version: '1.0.0' });
   });
 
-  // `EXIT_INTERNAL_ERROR` (2) must be reachable through the envelope path:
-  // every render*Outcome failure branch must not hardcode `EXIT_USER_ERROR`
-  // (1) regardless of `result.code`, or an `INTERNAL`-coded outcome (as
-  // opposed to a thrown exception, already covered by `install`'s own
-  // "exits internal-error when the dispatched behavior fails unexpectedly"
-  // test) would report itself indistinguishably from an ordinary refusal.
   // Drives `upgrade`'s own post-commit inventory-promotion failure: the
   // state-write transition lands, but the SEPARATE write to the local
-  // inventory (`promoteInventory`'s own `updateLocal` call) fails, which
-  // `upgrade/commit.ts` reports as `INTERNAL` precisely because the
-  // transition stands committed while the promotion did not.
-  it('exits with the distinct internal-error code (2) when the outcome carries INTERNAL, not the user-error code (1)', async () => {
+  // inventory (`promoteInventory`'s own `updateLocal` call) fails. The engine
+  // reports `INTERNAL`; the CLI keeps the transition receipt and answers
+  // RECOVERY_REQUIRED, so a retry cannot report a noop over the half-done step.
+  it('a committed transition whose post-commit promotion fails stays guarded: RECOVERY_REQUIRED with its INTERNAL cause', async () => {
     const { readProjectStateFn, writeProjectStateFn, written } = seededProjectState({
       formatVersion: 1,
       templates: { foo: { origin: 'github:acme/foo@v1.0.0', version: '1.0.0', targets: ['packages/app'] } },
@@ -1883,16 +2007,94 @@ describe('dispatch: upgrade (cpt-frontx-flow-upgrade-changeset-review-approval, 
     const { deps, registerManifest } = makeDeps({ readProjectStateFn, writeProjectStateFn, inventory: brokenInventory });
     registerTwoVersions(registerManifest);
 
-    const outcome = await run(['upgrade', 'foo', 'github:acme/foo@v2.0.0', '--json', '--yes'], deps);
+    const outcome = await confirmedUpgrade(['upgrade', 'foo', 'github:acme/foo@v2.0.0', '--json'], deps);
 
-    expect(outcome.exitCode).toBe(EXIT_INTERNAL_ERROR);
-    const envelope = JSON.parse(outcome.stdout ?? '') as { ok: boolean; error: { code: string; message: string } };
+    // A committed transition whose post-commit step failed stays guarded for
+    // `--recover`: RECOVERY_REQUIRED (exit 1), with the engine's INTERNAL as its cause.
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    const envelope = JSON.parse(outcome.stdout ?? '') as { ok: boolean; error: { code: string; message: string; details: Record<string, unknown> } };
     expect(envelope.ok).toBe(false);
-    expect(envelope.error.code).toBe('INTERNAL');
+    expect(envelope.error.code).toBe('RECOVERY_REQUIRED');
+    expect(envelope.error.details).toMatchObject({ cause: 'INTERNAL', transitionCommitted: true });
+    expect(envelope.error.message).toContain('frontx upgrade foo --recover');
     // The transition itself still landed — only the SEPARATE inventory
     // promotion failed — exactly the invariant `upgrade/commit.ts`'s own
     // "transition itself STANDS committed" comment documents.
     expect(written().templates.foo).toMatchObject({ origin: 'github:acme/foo@v2.0.0', version: '2.0.0' });
+  });
+
+  // inst-bupd-return-overlap / inst-com-return-promotion-failure — the bounded
+  // update's overlap refusal, reached as the post-commit PROMOTION. The project
+  // transition has already committed by then, so the text that rides inside the
+  // INTERNAL error must not say "nothing was changed"; it scopes its no-change
+  // statement to the inventory, and the inventory really is byte-identical.
+  it('inst-bupd-return-overlap: promotion refused by an overlapping inventory entry reports a committed project and an untouched inventory', async () => {
+    const storeRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'frontx-promotion-overlap-')));
+    try {
+      const names = ['foo', 'foo/b'];
+      const index: Record<string, unknown> = {};
+      for (const n of names) {
+        index[n] = {
+          name: n,
+          source: `github:acme/${n.replace('/', '-')}@v1.0.0`,
+          ref: 'v1.0.0',
+          status: InventoryState.INSTALLED,
+          content: `content-of:${n}`,
+        };
+        const dir = path.join(storeRoot, ...n.split('/'));
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, 'payload.txt'), `payload of ${n}\n`);
+      }
+      fs.writeFileSync(path.join(storeRoot, 'index.json'), JSON.stringify(index, null, 2));
+      const snapshot = (): Record<string, string> => {
+        const out: Record<string, string> = {};
+        const walk = (dir: string): void => {
+          for (const entry of fs.readdirSync(dir).sort()) {
+            const full = path.join(dir, entry);
+            const st = fs.lstatSync(full, { bigint: true });
+            const rel = path.relative(storeRoot, full);
+            if (st.isDirectory()) {
+              out[rel] = `dir ino=${st.ino}`;
+              walk(full);
+            } else {
+              out[rel] = `file ino=${st.ino} ${crypto.createHash('sha256').update(fs.readFileSync(full)).digest('hex')}`;
+            }
+          }
+        };
+        walk(storeRoot);
+        return out;
+      };
+      const inventoryBefore = snapshot();
+
+      const { readProjectStateFn, writeProjectStateFn, written } = seededProjectState({
+        formatVersion: 1,
+        templates: { foo: { origin: 'github:acme/foo@v1.0.0', version: '1.0.0', targets: ['packages/app'] } },
+        projectOwnedRoots: [],
+      });
+      const inventory = new TemplateInventory(new FsInventoryIndex(storeRoot), new FsContentStore(storeRoot));
+      const { deps, registerManifest } = makeDeps({ readProjectStateFn, writeProjectStateFn, inventory });
+      registerTwoVersions(registerManifest);
+
+      const outcome = await confirmedUpgrade(['upgrade', 'foo', 'github:acme/foo@v2.0.0', '--json'], deps);
+
+      expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+      const envelope = JSON.parse(outcome.stdout ?? '') as { ok: boolean; error: { code: string; message: string; details: Record<string, unknown> } };
+      expect(envelope.ok).toBe(false);
+      expect(envelope.error.code).toBe('RECOVERY_REQUIRED');
+      expect(envelope.error.details).toMatchObject({ cause: 'INTERNAL', transitionCommitted: true });
+      // The refusal itself came from the overlap guard, propagated through promotion.
+      expect(envelope.error.message).toContain('transition committed');
+      expect(envelope.error.message).toContain('"foo" and "foo/b"');
+      expect(envelope.error.message).toContain('This update did not change the inventory index or any inventory content');
+      expect(envelope.error.message).not.toMatch(/nothing was changed/i);
+      // Project side: the transition is committed.
+      expect(written().templates.foo).toMatchObject({ origin: 'github:acme/foo@v2.0.0', version: '2.0.0' });
+      // Inventory side: byte-identical, including the index and both content directories.
+      expect(snapshot()).toEqual(inventoryBefore);
+    } finally {
+      fs.rmSync(storeRoot, { recursive: true, force: true });
+    }
+    expect(fs.existsSync(storeRoot)).toBe(false);
   });
 
   // Contrast: an ordinary user-error outcome (no INTERNAL code) still exits
@@ -1913,6 +2115,242 @@ describe('dispatch: upgrade (cpt-frontx-flow-upgrade-changeset-review-approval, 
 // dispatch cases in this file that route their outcome through the shared
 // `envelope.ts` shape under `--json` (cpt-frontx-dod-cli-invocation-json-
 // envelope-dispatch), rather than a bespoke shape of their own.
+describe('mutation boundary and upgrade --recover', () => {
+  function seededProjectState(document: ProjectStateDocument) {
+    const stored = JSON.stringify(document);
+    return { readProjectStateFn: vi.fn(async () => stored) as ReadProjectStateFn, writeProjectStateFn: vi.fn(async () => undefined) as WriteProjectStateFn };
+  }
+  const entry = { origin: 'github:acme/foo@v2.0.0', version: '2.0.0', targets: ['packages/app'], previous: { origin: 'github:acme/foo@v1.0.0', version: '1.0.0' } };
+  const intentFor = (fromEntry: unknown, extra: Partial<TransitionIntent> = {}): TransitionIntent => ({
+    kind: 'upgrade',
+    name: 'foo',
+    from: { origin: 'github:acme/foo@v1.0.0', version: '1.0.0' },
+    to: { origin: 'github:acme/foo@v2.0.0', version: '2.0.0' },
+    fromEntry: JSON.stringify(fromEntry),
+    planDigest: 'd',
+    candidateHash: 'c',
+    footprint: [],
+    tasks: { inventory: 'not-required', ai: 'not-required' },
+    ...extra,
+  });
+  const canonical = async (value: unknown) => (await import('../canonical-json')).canonicalJson(value);
+  const scopeWith = (pending: TransitionIntent[], events: string[], modes: string[]) => memoryScope(events, pending.map((intent) => ({ intent })), modes);
+
+  it('enters the boundary for writers only, in recover mode only for --recover', async () => {
+    const modes: string[] = [];
+    const { deps } = makeDeps({ withMutationScope: scopeWith([], [], modes) });
+    await run(['list', '--json'], deps);
+    await run(['ownership', '--json', 'list'], deps);
+    expect(modes).toEqual([]);
+    await run(['ownership', 'add', 'docs', '--json'], deps);
+    await run(['upgrade', 'foo', '--recover', '--json'], deps);
+    expect(modes).toEqual(['normal', 'recover']);
+  });
+
+  it('maps a boundary refusal to its own envelope code with the user-error exit', async () => {
+    const { CoordinationError } = await import('../operations/coordination');
+    const { deps } = makeDeps({
+      withMutationScope: async () => { throw new CoordinationError('RESOURCE_BUSY', 'busy'); },
+    });
+    const outcome = await run(['register', 'foo', 'path:x', '--json'], deps);
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(JSON.parse(outcome.stdout ?? '')).toEqual({ ok: false, error: { code: 'RESOURCE_BUSY', message: 'busy', details: {} } });
+  });
+
+  it('refuses an orphan pending post-commit entry before a writer can plan, and permits the normal path', async () => {
+    const pendingEntry = { ...entry, pendingPostCommit: { intentId: '00000000-0000-4000-8000-000000000001', inventory: 'pending' as const, ai: 'not-required' as const } };
+    const { readProjectStateFn, writeProjectStateFn } = seededProjectState({ formatVersion: 3, templates: { foo: pendingEntry }, projectOwnedRoots: [] });
+    const { deps } = makeDeps({ readProjectStateFn, writeProjectStateFn });
+    const outcome = await run(['ownership', 'add', 'docs', '--json'], deps);
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(JSON.parse(outcome.stdout ?? '')).toMatchObject({
+      ok: false,
+      error: { code: 'RECOVERY_REQUIRED', message: expect.stringContaining('manual recovery is required') },
+    });
+    expect(JSON.stringify(JSON.parse(outcome.stdout ?? ''))).toContain('cannot repair this orphaned state automatically');
+    expect(readProjectStateFn).toHaveBeenCalledTimes(1);
+    expect(writeProjectStateFn).not.toHaveBeenCalled();
+
+    const normal = makeDeps({ readProjectStateFn: vi.fn(async () => null) as ReadProjectStateFn });
+    const normalOutcome = await run(['ownership', 'add', 'docs', '--json'], normal.deps);
+    expect(JSON.parse(normalOutcome.stdout ?? '')).not.toMatchObject({ error: { code: 'RECOVERY_REQUIRED' } });
+  });
+
+  it('rejects --recover combined with a transition argument before entering the boundary', async () => {
+    const modes: string[] = [];
+    const { deps } = makeDeps({ withMutationScope: scopeWith([], [], modes) });
+    for (const extra of [['--restore'], ['github:acme/foo@v3.0.0']]) {
+      const outcome = await run(['upgrade', 'foo', '--recover', '--json', ...extra], deps);
+      expect(JSON.parse(outcome.stdout ?? '')).toMatchObject({ ok: false, error: { code: 'INVALID_INPUT' } });
+    }
+  });
+
+  it('reports no-pending, and cancels a transition whose entry never changed', async () => {
+    const { readProjectStateFn, writeProjectStateFn } = seededProjectState({ formatVersion: 1, templates: { foo: entry }, projectOwnedRoots: [] });
+    const events: string[] = [];
+    const none = makeDeps({ readProjectStateFn, writeProjectStateFn, withMutationScope: scopeWith([], events, []) });
+    expect(JSON.parse((await run(['upgrade', 'foo', '--recover', '--json'], none.deps)).stdout ?? '')).toEqual({ ok: true, data: { outcome: 'no-pending', name: 'foo' } });
+
+    const intent = { ...intentFor(null), fromEntry: await canonical(entry) };
+    const pending = makeDeps({ readProjectStateFn, writeProjectStateFn, withMutationScope: scopeWith([intent], events, []) });
+    const outcome = await run(['upgrade', 'foo', '--recover', '--json'], pending.deps);
+    expect(JSON.parse(outcome.stdout ?? '')).toEqual({ ok: true, data: { outcome: 'cancelled', name: 'foo' } });
+    expect(events).toEqual(['finalize:cancelled']);
+    expect(writeProjectStateFn).not.toHaveBeenCalled();
+  });
+
+  it('keeps the records when the entry changed in a way the transition cannot explain', async () => {
+    const { readProjectStateFn, writeProjectStateFn } = seededProjectState({ formatVersion: 1, templates: { foo: entry }, projectOwnedRoots: [] });
+    const events: string[] = [];
+    // The recorded transition went v8 -> v9; the project is at v2 with v1 as previous.
+    const unrelated = intentFor({ origin: 'github:acme/foo@v8.0.0' }, {
+      from: { origin: 'github:acme/foo@v8.0.0', version: '8.0.0' },
+      to: { origin: 'github:acme/foo@v9.0.0', version: '9.0.0' },
+    });
+    const { deps } = makeDeps({ readProjectStateFn, writeProjectStateFn, withMutationScope: scopeWith([unrelated], events, []) });
+    const outcome = await run(['upgrade', 'foo', '--recover', '--json'], deps);
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(JSON.parse(outcome.stdout ?? '')).toMatchObject({ ok: false, error: { code: 'RECOVERY_REQUIRED' } });
+    expect(events).toEqual([]);
+  });
+
+  it('a committed transition with no pending task is finalized without any effect', async () => {
+    const { readProjectStateFn, writeProjectStateFn } = seededProjectState({
+      formatVersion: 3,
+      templates: { foo: { ...entry, pendingPostCommit: { intentId: memoryId(0), inventory: 'not-required', ai: 'not-required' } } },
+      projectOwnedRoots: [],
+    });
+    const events: string[] = [];
+    const { deps } = makeDeps({ readProjectStateFn, writeProjectStateFn, withMutationScope: scopeWith([intentFor({ origin: 'github:acme/foo@v1.0.0' })], events, []) });
+    const outcome = await run(['upgrade', 'foo', '--recover', '--json'], deps);
+    expect(JSON.parse(outcome.stdout ?? '')).toEqual({ ok: true, data: { outcome: 'recovered', name: 'foo' } });
+    expect(events).toEqual(['finalize:committed']);
+    // Finalization cleared the entry's own post-commit record, and nothing else.
+    const cleared = JSON.parse(vi.mocked(writeProjectStateFn).mock.calls.at(-1)![1]) as ProjectStateDocument;
+    expect(cleared.templates.foo).toEqual(entry);
+    expect(cleared.formatVersion).toBe(3);
+  });
+
+  it('refuses a committed transition whose entry lacks its own post-commit record', async () => {
+    const { readProjectStateFn, writeProjectStateFn } = seededProjectState({ formatVersion: 1, templates: { foo: entry }, projectOwnedRoots: [] });
+    const events: string[] = [];
+    const { deps } = makeDeps({ readProjectStateFn, writeProjectStateFn, withMutationScope: scopeWith([intentFor({ origin: 'github:acme/foo@v1.0.0' })], events, []) });
+    const outcome = await run(['upgrade', 'foo', '--recover', '--json'], deps);
+    expect(JSON.parse(outcome.stdout ?? '')).toMatchObject({ ok: false, error: { code: 'RECOVERY_REQUIRED' } });
+    expect(events).toEqual([]);
+    expect(writeProjectStateFn).not.toHaveBeenCalled();
+  });
+
+  it('a committed transition with a pending task re-acquires the pinned candidate and refuses on a different hash', async () => {
+    const { readProjectStateFn, writeProjectStateFn } = seededProjectState({
+      formatVersion: 3,
+      templates: { foo: { ...entry, pendingPostCommit: { intentId: memoryId(0), inventory: 'not-required', ai: 'pending' } } },
+      projectOwnedRoots: [],
+    });
+    const events: string[] = [];
+    const intent = intentFor({ origin: 'github:acme/foo@v1.0.0' }, { tasks: { inventory: 'not-required', ai: 'pending' }, candidateHash: 'not-the-approved-bytes' });
+    const { deps, registerManifest } = makeDeps({ readProjectStateFn, writeProjectStateFn, withMutationScope: scopeWith([intent], events, []) });
+    registerManifest('github:acme/foo@v2.0.0', cleanManifest('foo', '2.0.0'));
+    const outcome = await run(['upgrade', 'foo', '--recover', '--json', '--yes'], deps);
+    expect(JSON.parse(outcome.stdout ?? '')).toMatchObject({ ok: false, error: { code: 'RECOVERY_REQUIRED', message: expect.stringContaining('no longer has the bytes') } });
+    expect(events).toEqual([]);
+  });
+
+  // live-recovery r1 call 021: a confirmed --recover whose task fails again threw
+  // out of the command (exit 2, raw stderr) instead of answering in the envelope.
+  it('a confirmed recovery whose task fails again answers RECOVERY_REQUIRED in the envelope and keeps every record for a retry', async () => {
+    // The approved candidate's hash, taken from a real confirmed upgrade of the same fixture.
+    let approved: TransitionIntent | undefined;
+    const capture: WithMutationScopeFn = (root, mode, body) =>
+      memoryScope()(root, mode, (s) => body({ ...s, beginTransition: (i) => ((approved = i), s.beginTransition(i)) }));
+    const v1 = seededProjectState({ formatVersion: 1, templates: { foo: { origin: 'github:acme/foo@v1.0.0', version: '1.0.0', targets: ['packages/app'] } }, projectOwnedRoots: [] });
+    const first = makeDeps({ ...v1, withMutationScope: capture });
+    first.registerManifest('github:acme/foo@v1.0.0', cleanManifest('foo', '1.0.0'));
+    first.registerManifest('github:acme/foo@v2.0.0', cleanManifest('foo', '2.0.0'));
+    await confirmedUpgrade(['upgrade', 'foo', 'github:acme/foo@v2.0.0', '--json'], first.deps);
+    expect(approved).toBeDefined();
+
+    const { readProjectStateFn, writeProjectStateFn } = seededProjectState({
+      formatVersion: 3,
+      templates: { foo: { ...entry, pendingPostCommit: { intentId: memoryId(0), inventory: 'pending', ai: 'not-required' } } },
+      projectOwnedRoots: [],
+    });
+    const events: string[] = [];
+    const intent = intentFor({ origin: 'github:acme/foo@v1.0.0' }, { tasks: { inventory: 'pending', ai: 'not-required' }, candidateHash: approved!.candidateHash });
+    const { deps, registerManifest } = makeDeps({ readProjectStateFn, writeProjectStateFn, withMutationScope: scopeWith([intent], events, []) });
+    registerManifest('github:acme/foo@v2.0.0', cleanManifest('foo', '2.0.0'));
+    const updateLocal = vi.spyOn(deps.inventory, 'updateLocal').mockImplementation(() => {
+      throw new Error('EACCES: permission denied');
+    });
+
+    const review = await run(['upgrade', 'foo', '--recover', '--json'], deps);
+    const planDigest = (JSON.parse(review.stdout ?? '') as { error: { details: { planDigest: string } } }).error.details.planDigest;
+    const confirmed = ['upgrade', 'foo', '--recover', '--json', '--yes', `--plan-digest=${planDigest}`];
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const outcome = await run(confirmed, deps);
+      expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+      expect(outcome.stderr ?? '').toBe('');
+      expect(JSON.parse(outcome.stdout ?? '')).toMatchObject({
+        ok: false,
+        error: {
+          code: 'RECOVERY_REQUIRED',
+          message: expect.stringContaining('frontx upgrade foo --recover'),
+          details: { cause: 'INTERNAL', transitionCommitted: true, receipt: `/receipts/${memoryId(0)}.json` },
+        },
+      });
+    }
+    expect(updateLocal).toHaveBeenCalledTimes(2);
+    // Nothing was finalized or marked done: the pending record and receipt stay for the retry.
+    expect(events).toEqual([]);
+    expect(writeProjectStateFn).not.toHaveBeenCalled();
+  });
+
+  // AC 494: the recovered path with a pending inventory task — promotion through the
+  // in-memory inventory, verified read-back, markDone, then finalization.
+  it('a confirmed recovery with a pending inventory task promotes the approved candidate and finalizes', async () => {
+    let approved: TransitionIntent | undefined;
+    const capture: WithMutationScopeFn = (root, mode, body) =>
+      memoryScope()(root, mode, (s) => body({ ...s, beginTransition: (i) => ((approved = i), s.beginTransition(i)) }));
+    const v1 = seededProjectState({ formatVersion: 1, templates: { foo: { origin: 'github:acme/foo@v1.0.0', version: '1.0.0', targets: ['packages/app'] } }, projectOwnedRoots: [] });
+    const first = makeDeps({ ...v1, withMutationScope: capture });
+    first.registerManifest('github:acme/foo@v1.0.0', cleanManifest('foo', '1.0.0'));
+    first.registerManifest('github:acme/foo@v2.0.0', cleanManifest('foo', '2.0.0'));
+    await confirmedUpgrade(['upgrade', 'foo', 'github:acme/foo@v2.0.0', '--json'], first.deps);
+    expect(approved).toBeDefined();
+
+    const events: string[] = [];
+    const intent = intentFor({ origin: 'github:acme/foo@v1.0.0' }, { tasks: { inventory: 'pending', ai: 'not-required' }, candidateHash: approved!.candidateHash });
+    // A stateful in-memory project.json: markDone's write must be visible to finalization's clear.
+    const { deps, registerManifest, readProjectStateDocument } = makeDeps({ withMutationScope: scopeWith([intent], events, []) });
+    await deps.writeProjectStateFn('', JSON.stringify({
+      formatVersion: 3,
+      templates: { foo: { ...entry, pendingPostCommit: { intentId: memoryId(0), inventory: 'pending', ai: 'not-required' } } },
+      projectOwnedRoots: [],
+    }));
+    const seeded = vi.mocked(deps.writeProjectStateFn).mock.calls.length;
+    registerManifest('github:acme/foo@v1.0.0', cleanManifest('foo', '1.0.0'));
+    registerManifest('github:acme/foo@v2.0.0', cleanManifest('foo', '2.0.0'));
+    // The slot still holds the old version, as after a commit whose promotion failed.
+    expect((await deps.inventory.install('github:acme/foo@v1.0.0', deps.fetchFn)).ok).toBe(true);
+    const updateLocal = vi.spyOn(deps.inventory, 'updateLocal');
+
+    const review = await run(['upgrade', 'foo', '--recover', '--json'], deps);
+    const details = (JSON.parse(review.stdout ?? '') as { error: { details: { planDigest: string; plan: { remaining: unknown } } } }).error.details;
+    expect(details.plan.remaining).toEqual({ inventory: { slot: 'foo', origin: 'github:acme/foo@v2.0.0' } });
+    expect(updateLocal).not.toHaveBeenCalled();
+    expect(vi.mocked(deps.writeProjectStateFn).mock.calls.length).toBe(seeded);
+
+    const outcome = await run(['upgrade', 'foo', '--recover', '--json', '--yes', `--plan-digest=${details.planDigest}`], deps);
+    expect(outcome.exitCode).toBe(EXIT_SUCCESS);
+    expect(JSON.parse(outcome.stdout ?? '')).toEqual({ ok: true, data: { outcome: 'recovered', name: 'foo' } });
+    expect(updateLocal).toHaveBeenCalledTimes(1);
+    expect(deps.inventory.lookup('foo')?.source).toBe('github:acme/foo@v2.0.0');
+    expect(events).toEqual(['finalize:committed']);
+    // markDone then finalization cleared the entry's own post-commit record, and nothing else.
+    expect(readProjectStateDocument()?.templates.foo).toEqual(entry);
+  });
+});
+
 describe('dispatch: register (cpt-frontx-flow-composed-provenance-register-template)', () => {
   // `register` must not take its first non-flag token as `<origin>` and
   // silently drop any further positional — proves `register` shares the
@@ -2151,7 +2589,16 @@ describe('dispatch: delete (cpt-frontx-flow-cli-scaffolding-delete-target)', () 
     return { readProjectStateFn, writeProjectStateFn, written: () => JSON.parse(stored) as ProjectStateDocument };
   }
 
-  it('--json --yes deletes an applied target\'s ground and removes it from targets[]', async () => {
+  // The review call of the `--json` protocol: writes nothing, returns the digest
+  // the confirming `--yes` call states.
+  async function reviewDigest(deps: Parameters<typeof run>[1], target: string): Promise<string> {
+    const review = await run(['delete', target, '--json'], deps);
+    const parsed = JSON.parse(review.stdout ?? '') as { error: { code: string; details: { planDigest: string } } };
+    expect(parsed.error.code).toBe('CONFIRMATION_REQUIRED');
+    return parsed.error.details.planDigest;
+  }
+
+  it('--json --yes --plan-digest deletes an applied target\'s ground and removes it from targets[]', async () => {
     const { readProjectStateFn, writeProjectStateFn, written } = seededProjectState({
       formatVersion: 1,
       templates: { foo: { origin: 'github:acme/foo@v1.0.0', version: '1.0.0', targets: ['packages/app'], excludedSubtrees: [] } },
@@ -2163,13 +2610,67 @@ describe('dispatch: delete (cpt-frontx-flow-cli-scaffolding-delete-target)', () 
       listTargetFilesFn: vi.fn(async () => ['src/index.ts']),
     });
 
-    const outcome = await run(['delete', 'packages/app', '--json', '--yes'], deps);
+    const digest = await reviewDigest(deps, 'packages/app');
+    const outcome = await run(['delete', 'packages/app', '--json', '--yes', `--plan-digest=${digest}`], deps);
 
     expect(outcome.exitCode).toBe(EXIT_SUCCESS);
     const parsed = JSON.parse(outcome.stdout ?? '');
-    expect(parsed).toMatchObject({ ok: true, data: { toDelete: ['packages/app/src/index.ts'] } });
+    expect(parsed).toMatchObject({
+      ok: true,
+      data: { toDelete: ['packages/app/src/index.ts'], boundToReviewedPlan: true, planDigest: digest, aiBundle: { removed: true } },
+    });
     expect(written().templates.foo.targets).toEqual([]);
     expect(deps.removeProjectFile).toHaveBeenCalled();
+  });
+
+  it('a bare --json --yes deletes nothing and returns the plan with its digest for review', async () => {
+    const { readProjectStateFn, writeProjectStateFn, written } = seededProjectState({
+      formatVersion: 1,
+      templates: { foo: { origin: 'github:acme/foo@v1.0.0', version: '1.0.0', targets: ['packages/app'], excludedSubtrees: [] } },
+      projectOwnedRoots: [],
+    });
+    const { deps } = makeDeps({ readProjectStateFn, writeProjectStateFn, listTargetFilesFn: vi.fn(async () => ['src/index.ts']) });
+
+    const outcome = await run(['delete', 'packages/app', '--json', '--yes'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    const parsed = JSON.parse(outcome.stdout ?? '');
+    expect(parsed).toMatchObject({ ok: false, error: { code: 'CONFIRMATION_REQUIRED', details: { toDelete: ['packages/app/src/index.ts'] } } });
+    expect(parsed.error.details.planDigest).toMatch(/^[0-9a-f]{64}$/);
+    expect(written().templates.foo.targets).toEqual(['packages/app']);
+    expect(deps.removeProjectFile).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['without --yes', ['--json']],
+    ['without --json', []],
+    ['with --dry-run', ['--json', '--yes', '--dry-run']],
+  ])('refuses --plan-digest %s as INVALID_INPUT, doing nothing', async (_label, flags) => {
+    const { deps } = makeDeps();
+    const outcome = await run(['delete', 'packages/app', ...flags, `--plan-digest=${'a'.repeat(64)}`], deps);
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    expect(`${outcome.stdout ?? ''}${outcome.stderr ?? ''}`).toContain('--plan-digest');
+    if (outcome.stdout !== undefined && flags.includes('--json')) {
+      expect(JSON.parse(outcome.stdout)).toMatchObject({ ok: false, error: { code: 'INVALID_INPUT' } });
+    }
+    expect(deps.removeProjectFile).not.toHaveBeenCalled();
+  });
+
+  it.each([['not hex', 'z'.repeat(64)], ['63 characters', 'a'.repeat(63)], ['uppercase', 'A'.repeat(64)], ['empty', '']])(
+    'refuses a malformed --plan-digest (%s) as INVALID_INPUT',
+    async (_label, value) => {
+      const { deps } = makeDeps();
+      const outcome = await run(['delete', 'packages/app', '--json', '--yes', `--plan-digest=${value}`], deps);
+      expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+      expect(JSON.parse(outcome.stdout ?? '')).toMatchObject({ ok: false, error: { code: 'INVALID_INPUT' } });
+      expect(deps.removeProjectFile).not.toHaveBeenCalled();
+    },
+  );
+
+  it('usage and help name the delete confirmation flag', async () => {
+    const { deps } = makeDeps();
+    const outcome = await run(['help'], deps);
+    expect(outcome.stdout).toContain('delete <target> [--dry-run] [--json [--yes --plan-digest=<digest>]]');
   });
 
   // A containment violation reaches `run()` as a throw from the adapter layer,
@@ -2198,7 +2699,8 @@ describe('dispatch: delete (cpt-frontx-flow-cli-scaffolding-delete-target)', () 
       listTargetFilesFn: vi.fn(async () => ['src/index.ts']),
     });
 
-    const outcome = await run(['delete', 'packages/app', '--json', '--yes'], deps);
+    const digest = await reviewDigest(deps, 'packages/app');
+    const outcome = await run(['delete', 'packages/app', '--json', '--yes', `--plan-digest=${digest}`], deps);
 
     expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
     expect(outcome.stderr).toBeUndefined();

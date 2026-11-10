@@ -1,6 +1,6 @@
 import { pathWithinSubtree, pathWithinTarget, targetsNest } from '../paths/relative-path';
 import { foldForIdentity } from '../paths/volume-case';
-import { CLI_RESERVED_ROOTS } from './effective-ownership';
+import { CLI_RESERVED_ROOTS, reservedEnvironmentPrefix } from './effective-ownership';
 
 // Resolves a caller-supplied target path against the project root, fail-
 // closed: `null` when the path cannot be PROVEN to stay inside the root
@@ -50,6 +50,20 @@ export interface TargetConflictContestant {
 export interface TargetConflictEntry {
   ground: string;
   contestants: TargetConflictContestant[];
+}
+
+// What kind of contest an entry records, read from its structured contestants
+// and the same identity fold the checker itself decided with - never from the
+// human-readable `ground`, which spells a target verbatim and so may contain
+// any delimiter (a target named `foo contains bar` is a valid path).
+//   reserved - one contestant: the target under check landed on reserved ground;
+//   coincide - two contestants whose targets are the same ground;
+//   nested   - two contestants, one target strictly inside the other.
+export type ConflictKind = 'reserved' | 'coincide' | 'nested';
+export function classifyConflict(entry: TargetConflictEntry): ConflictKind {
+  const [a, b] = entry.contestants;
+  if (b === undefined) return 'reserved';
+  return foldForIdentity(a.target) === foldForIdentity(b.target) ? 'coincide' : 'nested';
 }
 
 export type ConflictCheckResult =
@@ -138,7 +152,7 @@ export function checkTargetConflicts(input: ConflictCheckInput): ConflictCheckRe
       return { ok: false, kind: 'INVALID_PATH', path: claim.target };
       // @cpt-end:cpt-frontx-algo-cli-scaffolding-conflict-check:p1:inst-cc-return-escape
     }
-    canonicalizedUnderCheck.push({ ...claim, target: canonical });
+    canonicalizedUnderCheck.push({ ...claim, target: canonical.normalize("NFC") });
   }
   // @cpt-end:cpt-frontx-algo-cli-scaffolding-conflict-check:p1:inst-cc-foreach-target
 
@@ -151,7 +165,7 @@ export function checkTargetConflicts(input: ConflictCheckInput): ConflictCheckRe
   // unrelated batch cannot repair it.
   const combined: Array<TargetClaim & { staged: boolean }> = [
     ...canonicalizedUnderCheck.map((claim) => ({ ...claim, staged: true })),
-    ...input.recordedTargets.map((claim) => ({ ...claim, staged: false })),
+    ...input.recordedTargets.map((claim) => ({ ...claim, target: claim.target.normalize("NFC"), staged: false })),
   ];
   // @cpt-end:cpt-frontx-algo-cli-scaffolding-conflict-check:p1:inst-cc-combine
 
@@ -299,6 +313,19 @@ export function checkTargetConflicts(input: ConflictCheckInput): ConflictCheckRe
       });
       // @cpt-end:cpt-frontx-algo-cli-scaffolding-conflict-check:p1:inst-cc-record-reserved
     }
+    // A claim at or inside an environment-owned entry at ANY depth is judged
+    // the same way as at the project root. A claim already reported above for a
+    // root-spelled entry is not reported a second time.
+    const nestedPrefix = reservedEnvironmentPrefix(claim.target);
+    if (
+      nestedPrefix !== undefined &&
+      !conflicts.some((c) => c.contestants.length === 1 && c.contestants[0]?.target === claim.target)
+    ) {
+      conflicts.push({
+        ground: nestedPrefix,
+        contestants: [{ target: claim.target, templateName: claim.templateName }],
+      });
+    }
   }
   // @cpt-end:cpt-frontx-algo-cli-scaffolding-conflict-check:p1:inst-cc-if-reserved-ground
 
@@ -326,16 +353,11 @@ export function checkTargetConflicts(input: ConflictCheckInput): ConflictCheckRe
   //
   // `.frontx` and the reserved environment entries sitting inside a target
   // under check (an ordinary root-level `apply` target contains both) are
-  // likewise not merely permitted here but subtracted downstream. Note the
-  // exact scope of that subtraction, which is narrower than "wherever they
-  // sit beneath the target": `computeExclusionRoots` adds them at their
-  // PROJECT-ROOT spelling only (`.git`, `.DS_Store`), so a nested spelling
-  // such as `pkg/a/.DS_Store` is NOT excluded from a target at `pkg/a`. That
-  // follows from whole-target ownership — a template owns its whole target,
-  // and the reserved entries are project-level facts, not per-directory ones
-  // — and the FEATURE's own acceptance criteria pin only the root case. It
-  // is recorded here rather than glossed over, because the previous wording
-  // of this comment claimed the broader guarantee and did not have it.
+  // likewise not merely permitted here but subtracted downstream. `.frontx` is
+  // subtracted at its project-root spelling only; the environment entries
+  // (`.git`, `.DS_Store`, `Thumbs.db`) are subtracted at ANY depth within the
+  // target by name in any ASCII case (`reservedEnvironmentPrefix`), so `pkg/a/.DS_Store`
+  // is not owned by a target at `pkg/a`. No Unicode folding is applied.
   // @cpt-end:cpt-frontx-algo-cli-scaffolding-conflict-check:p1:inst-cc-permit-reverse
   // @cpt-end:cpt-frontx-algo-cli-scaffolding-conflict-check:p1:inst-cc-if-reverse-containment
 

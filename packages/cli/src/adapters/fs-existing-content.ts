@@ -144,7 +144,7 @@ function listFilesRecursive(
       }
       items.push(...listFilesRecursive(root, skipInstallOutput, reportSymlinksAsExisting, relativePath));
     } else if (entry.isFile()) {
-      items.push({ path: relativePath, content: fs.readFileSync(path.join(root, relativePath), 'utf-8') });
+      items.push({ path: relativePath, content: fs.readFileSync(path.join(root, relativePath)) });
     } else if (reportSymlinksAsExisting && entry.isSymbolicLink()) {
       // Reported, never resolved and never descended into — see this
       // constant's own doc comment for why an uncomparable marker, rather

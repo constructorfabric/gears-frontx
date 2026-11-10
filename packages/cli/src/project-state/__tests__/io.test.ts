@@ -102,16 +102,22 @@ describe('readProjectState', () => {
   });
 
   // Regression: a bare `typeof formatVersion === 'number'` check accepted
-  // ANY number — a document stamped `formatVersion: 2` by a future schema
-  // generation this build does not understand would have been read (and,
-  // on the next mutation, silently rewritten) as if it were the current
-  // shape, rather than refused.
-  it('returns PROJECT_INVALID for a well-formed document stamped with a formatVersion other than 1', async () => {
-    const { read } = fakeStore(JSON.stringify({ formatVersion: 2, templates: {}, projectOwnedRoots: [] }));
+  // ANY number — a document stamped by a future schema generation this build
+  // does not understand would have been read (and, on the next mutation,
+  // silently rewritten) as if it were the current shape, rather than refused.
+  // Exactly `1`, `2` and `3` are understood.
+  it.each([0, 4, '3', null])('returns PROJECT_INVALID for a well-formed document stamped formatVersion %j', async (version) => {
+    const { read } = fakeStore(JSON.stringify({ formatVersion: version, templates: {}, projectOwnedRoots: [] }));
 
     const result = await readProjectState('/repo', read);
 
     expect(result).toMatchObject({ ok: false, error: 'PROJECT_INVALID' });
+  });
+
+  it('reads a formatVersion 2 document, with or without a protection field', async () => {
+    const { read } = fakeStore(JSON.stringify({ formatVersion: 2, templates: {}, projectOwnedRoots: [] }));
+
+    expect(await readProjectState('/repo', read)).toMatchObject({ ok: true, document: { formatVersion: 2 } });
   });
 });
 
@@ -214,5 +220,41 @@ describe('mutateProjectState', () => {
     const readBack = await readProjectState('/repo', read);
     expect(readBack).toEqual({ ok: true, document: priorDocument });
     expect(stored).toBe(JSON.stringify(priorDocument));
+  });
+});
+
+describe('mutateProjectState formatVersion stamp', () => {
+  const plain = { origin: 'path:a', version: '1.0.0', targets: ['app'], excludedSubtrees: ['sub/'] };
+
+  it.each([
+    ['exclusionsBackfilled', { exclusionsBackfilled: true as const }],
+    ['relinquishedGround', { relinquishedGround: ['app/sub'] }],
+    ['provenExcludedSubtrees', { provenExcludedSubtrees: ['sub/'] }],
+  ])('stamps 2 when an entry carries %s, which a build that predates it would drop', async (_field, extra) => {
+    const { read, write, written } = fakeStore(null);
+
+    const result = await mutateProjectState(
+      '/repo',
+      { kind: 'set-template', name: 'a', entry: { ...plain, ...extra } },
+      read,
+      write,
+    );
+
+    expect(result).toMatchObject({ ok: true, document: { formatVersion: 2 } });
+    expect(JSON.parse(written()!)).toMatchObject({ formatVersion: 2 });
+  });
+
+  it('stamps 1 when no entry carries one, even over a stored 2, and refuses a stored 1 that carries one', async () => {
+    const guarded = { formatVersion: 2, templates: { a: { ...plain, relinquishedGround: ['app/sub'] } }, projectOwnedRoots: [] };
+    const dropped = fakeStore(JSON.stringify(guarded));
+    expect(
+      await mutateProjectState('/repo', { kind: 'remove-template', name: 'a' }, dropped.read, dropped.write),
+    ).toMatchObject({ ok: true, document: { formatVersion: 1 } });
+
+    const earlier = fakeStore(JSON.stringify({ ...guarded, formatVersion: 1 }));
+    expect(
+      await mutateProjectState('/repo', { kind: 'add-owned-root', path: 'docs' }, earlier.read, earlier.write),
+    ).toMatchObject({ ok: false, error: 'PROJECT_INVALID', message: expect.stringContaining('unsupported intermediate build') });
+    expect(earlier.written()).toBe(JSON.stringify({ ...guarded, formatVersion: 1 }));
   });
 });

@@ -33,7 +33,7 @@ type CallLogEntry =
  * needing a real filesystem.
  */
 function makeHarness(initialDisk: Record<string, string> = {}) {
-  const disk = new Map<string, string>(Object.entries(initialDisk));
+  const disk = new Map<string, Buffer | string>(Object.entries(initialDisk));
   const callLog: CallLogEntry[] = [];
   let throwOn: { op: 'read' | 'write' | 'rename' | 'unlink' | 'list'; path: string } | null = null;
 
@@ -49,7 +49,7 @@ function makeHarness(initialDisk: Record<string, string> = {}) {
     return disk.has(absolutePath) ? { kind: 'file', content: disk.get(absolutePath)! } : { kind: 'absent' };
   };
 
-  const writeDiskFile: CommitDeps['writeDiskFile'] = async (absolutePath: string, content: string) => {
+  const writeDiskFile: CommitDeps['writeDiskFile'] = async (absolutePath: string, content: Buffer | string) => {
     callLog.push({ kind: 'write', path: absolutePath });
     maybeThrow('write', absolutePath);
     disk.set(absolutePath, content);
@@ -550,7 +550,7 @@ describe('commitUpgrade (cpt-frontx-algo-upgrade-changeset-commit)', () => {
     });
 
     const originalWrite = harness.deps.writeDiskFile;
-    harness.deps.writeDiskFile = async (absolutePath: string, content: string) => {
+    harness.deps.writeDiskFile = async (absolutePath: string, content: Buffer | string) => {
       if (absolutePath === `/repo/app/new.ts${RESERVED_TEMP_SUFFIX}`) {
         throw new PathContainmentError(absolutePath, '/repo');
       }
@@ -594,7 +594,7 @@ describe('commitUpgrade (cpt-frontx-algo-upgrade-changeset-commit)', () => {
       return originalRename(from, to);
     };
     const originalWrite = harness.deps.writeDiskFile;
-    harness.deps.writeDiskFile = async (absolutePath: string, content: string) => {
+    harness.deps.writeDiskFile = async (absolutePath: string, content: Buffer | string) => {
       if (absolutePath === '/repo/app/replace-me.ts') {
         throw new Error('simulated recovery failure');
       }
@@ -653,7 +653,7 @@ describe('commitUpgrade (cpt-frontx-algo-upgrade-changeset-commit)', () => {
     // fails.
     harness.failNextCall('rename', '/repo/app/added.ts');
     const originalWrite = harness.deps.writeDiskFile;
-    harness.deps.writeDiskFile = async (absolutePath: string, content: string) => {
+    harness.deps.writeDiskFile = async (absolutePath: string, content: Buffer | string) => {
       if (absolutePath === '/repo/app/replace-me.ts') {
         throw new Error('simulated recovery failure');
       }

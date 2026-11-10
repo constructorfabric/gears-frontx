@@ -1,8 +1,8 @@
 // @cpt-algo:cpt-frontx-algo-template-manifest-validate-contract:p1
 // @cpt-algo:cpt-frontx-algo-template-manifest-refuse-legacy:p2
 // @cpt-dod:cpt-frontx-dod-template-manifest-legacy-refused-outright:p2
-import { readBundleFiles } from '../bundle/envelope';
-import { isSafeRelativePath } from '../paths/relative-path';
+import { readBundleFiles, isBinaryBundleValue, decodeBundleValue } from '../bundle/envelope';
+import { isSafeRelativePath, normalizeProjectRelativePath } from '../paths/relative-path';
 import { refuseLegacyManifest } from './refuse-legacy';
 import { MANIFEST_FILENAME } from './types';
 import type { ManifestViolation, ManifestValidationResult, TemplateManifest } from './types';
@@ -31,11 +31,22 @@ export type ReadManifestResult =
 // shape itself is owned by `bundle/envelope.ts`, a core module: `manifest/`
 // stays free of any dependency on the IO `adapters/` layer without carrying
 // its own copy of the parse.
-function unwrapBundleEnvelope(content: string): string {
+// Returns { text } on success, or { fail: message } on hard failure.
+// Only a genuinely absent marker (undefined from readBundleFiles) legitimises
+// the bare-manifest path; a present envelope must supply a valid manifest.
+function unwrapBundleEnvelope(content: string): { text: string } | { fail: string } {
   const files = readBundleFiles(content);
-  if (files === undefined) return content;
+  if (files === undefined) return { text: content }; // marker absent → bare manifest
+  if (files === null)
+    return { fail: 'Template bundle $frontxTemplateFiles value is not a plain object map; the template was refused.' };
+  // Marker present and valid map: must find and return a valid manifest entry.
   const manifestText = files[MANIFEST_FILENAME];
-  return typeof manifestText === 'string' ? manifestText : content;
+  if (typeof manifestText === 'string') return { text: manifestText };
+  if (isBinaryBundleValue(manifestText)) {
+    const decoded = decodeBundleValue(manifestText);
+    if (decoded !== null) return { text: decoded.toString('utf-8') };
+  }
+  return { fail: 'Template bundle has $frontxTemplateFiles but "frontx-template.json" is missing or not a readable string; the template was refused.' };
 }
 
 // Parse and validate manifest content in one step, returning the typed manifest.
@@ -52,7 +63,11 @@ function unwrapBundleEnvelope(content: string): string {
 // `INVALID_MANIFEST` refusal naming every undeclared field present, never a
 // translated or partially-credited shape.
 export function readManifestFromContent(content: string): ReadManifestResult {
-  const manifestText = unwrapBundleEnvelope(content);
+  const unwrapped = unwrapBundleEnvelope(content);
+  if ('fail' in unwrapped) {
+    return { ok: false, message: unwrapped.fail };
+  }
+  const manifestText = unwrapped.text;
 
   // A manifest that fails to parse at all is not this check's concern —
   // `validateManifestContract` below already produces the canonical
@@ -162,21 +177,15 @@ export function isWellFormedExcludedSubtree(value: unknown): value is string {
 // RECORDED `excludedSubtrees` entry rather than reformulating "what a
 // declared excluded subtree looks like" a second time.
 export function isStrictDescendantOfTarget(value: string): boolean {
-  const resolved: string[] = [];
-  for (const segment of value.replace(/\\/g, '/').split('/')) {
-    if (segment === '' || segment === '.') continue;
-    if (segment === '..') {
-      // Nothing left to ascend from means the entry has walked out of the
-      // target; anything above the target is not a descendant of it.
-      if (resolved.length === 0) return false;
-      resolved.pop();
-      continue;
-    }
-    resolved.push(segment);
-  }
-  // An entry that resolves to nothing at all denotes the target itself,
-  // which is not a STRICT descendant of itself.
-  return resolved.length > 0;
+  // One walk for every "project-relative spelling" question: the shared
+  // normaliser (`paths/relative-path.ts`). Backslashes read as separators and
+  // leading slashes are dropped first, so this keeps answering exactly what it
+  // answered before — only where the walk lives has changed.
+  const normalized = normalizeProjectRelativePath(value.replace(/\\/g, '/').replace(/^\/+/, ''));
+  // `null` means the entry has walked out of the target; `.` means it resolves
+  // to nothing at all, the target itself, which is not a STRICT descendant of
+  // itself.
+  return normalized !== null && normalized !== '.';
 }
 
 // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-read-manifest

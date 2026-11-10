@@ -4,9 +4,11 @@
 // @cpt-dod:cpt-frontx-dod-template-resolution-bundle-key-validity:p1
 import path from 'node:path';
 import { readManifestFromContent } from '../manifest/validate-contract';
-import { isSafeRelativePath } from '../paths/relative-path';
+import { isSafeRelativePath, pathWithinSubtree } from '../paths/relative-path';
 import { MANIFEST_FILENAME } from '../manifest/types';
-import { BUNDLE_MARKER, findInvalidBundleKey, readBundleFiles } from '../bundle/envelope';
+import { setOwn } from '../own-record';
+import { BUNDLE_MARKER, findInvalidBundleKey, readBundleFiles, isBinaryBundleValue, decodeBundleValue, encodeBundleValue } from '../bundle/envelope';
+import type { BinaryBundleValue } from '../bundle/envelope';
 import type { StructuredRef } from '../spec-parser/types';
 import { formatTemplateAddress } from '../spec-parser/parse';
 import { narrowBundleToSubtree } from './narrow-subtree';
@@ -48,8 +50,12 @@ async function resolveLocalOrigin(rawOrigin: string, deps: ResolveDeps): Promise
     // of being silently misreported as a user-facing path error.
     throw new Error(
       `resolveToInventory: local origin "${rawOrigin}" requires deps.local (canonicalizeFn/existsFn/` +
-        'listFolderFilesFn/readFolderFileFn) to be supplied.',
+        'listFolderFilesFn/readFolderFileBinaryFn) to be supplied.',
     );
+  }
+
+  if (typeof local.readFolderFileBinaryFn !== 'function') {
+    throw new Error('resolveToInventory: local origins require readFolderFileBinaryFn to preserve file bytes.');
   }
 
   const relativePath = rawOrigin.slice(LOCAL_ORIGIN_PREFIX.length);
@@ -117,9 +123,9 @@ async function resolveLocalOrigin(rawOrigin: string, deps: ResolveDeps): Promise
   // happened: nothing was ever parsed, because nothing was ever read.
   // Refusing here, naming what actually stood in the way, is what keeps
   // `register`/`install`/`apply`'s own eventual refusal message truthful.
-  let manifestText: string;
+  let manifestBytes: Buffer;
   try {
-    manifestText = await local.readFolderFileFn(path.join(absoluteDir, MANIFEST_FILENAME));
+    manifestBytes = await local.readFolderFileBinaryFn(path.join(absoluteDir, MANIFEST_FILENAME));
   } catch (error) {
     if (error instanceof NotRegularFileError || error instanceof UnreachablePathError || error instanceof PathUnreadableError) {
       return {
@@ -130,11 +136,11 @@ async function resolveLocalOrigin(rawOrigin: string, deps: ResolveDeps): Promise
         },
       };
     }
-    manifestText = '';
+    manifestBytes = Buffer.alloc(0);
   }
   // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-local-path-read
 
-  const identity = resolveManifestIdentity(manifestText, source);
+  const identity = resolveManifestIdentity(manifestBytes.toString('utf-8'), source);
   if (!identity.ok) return identity.result;
 
   // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-local-path-continue
@@ -148,10 +154,11 @@ async function resolveLocalOrigin(rawOrigin: string, deps: ResolveDeps): Promise
   let content: string;
   try {
     const relativeFiles = await local.listFolderFilesFn(absoluteDir);
-    const files: Record<string, string> = { [MANIFEST_FILENAME]: manifestText };
+    const files: Record<string, string | BinaryBundleValue> = { [MANIFEST_FILENAME]: encodeBundleValue(manifestBytes) };
     for (const relativeFile of relativeFiles) {
       if (relativeFile === MANIFEST_FILENAME) continue; // already read above; never re-read
-      files[relativeFile] = await local.readFolderFileFn(path.join(absoluteDir, relativeFile));
+      const absFile = path.join(absoluteDir, relativeFile);
+      setOwn(files, relativeFile, encodeBundleValue(await local.readFolderFileBinaryFn(absFile)));
     }
     content = JSON.stringify({ [BUNDLE_MARKER]: files });
   } catch (readError) {
@@ -206,6 +213,7 @@ async function resolveRemoteOrigin(ref: StructuredRef, fetchFn: FetchFn): Promis
   // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-fetch
   let content: string;
   let pinnedRef: string | undefined;
+  let symlinks: string[] = [];
   try {
     const fetchOutcome = await fetchFn(url);
     // `FetchFn` returns `string | FetchResult` (`resolver/types.ts`) — a
@@ -218,6 +226,7 @@ async function resolveRemoteOrigin(ref: StructuredRef, fetchFn: FetchFn): Promis
     } else {
       content = fetchOutcome.content;
       pinnedRef = fetchOutcome.pinnedRef;
+      symlinks = fetchOutcome.symlinks ?? [];
     }
   } catch (err) {
     // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-fetch-fail-check
@@ -269,6 +278,23 @@ async function resolveRemoteOrigin(ref: StructuredRef, fetchFn: FetchFn): Promis
   }
   // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-subtree
 
+  // A symlink the adapter could not materialize, inside the scope this
+  // resolution keeps, would make the installed content differ from the commit;
+  // refuse it as a fetch failure instead of dropping it. One outside the
+  // selected subtree would never have been materialized, so it does not count.
+  const subtree = ref.subtree;
+  const symlinkInScope = symlinks.find((link) => subtree === undefined || pathWithinSubtree(link, subtree));
+  if (symlinkInScope !== undefined) {
+    return {
+      ok: false,
+      error: {
+        message:
+          `Failed to fetch template from registry: "${url}" carries the symlink "${symlinkInScope}" ` +
+          'inside the template, and symlinks are not materialized; the template was refused.',
+      },
+    };
+  }
+
   // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-pin
   // Settle the pin BEFORE identity resolution, per this step's own place in
   // the algorithm (step 7, ahead of step 9's manifest read) — every message
@@ -276,22 +302,11 @@ async function resolveRemoteOrigin(ref: StructuredRef, fetchFn: FetchFn): Promis
   // identity-missing refusals below, and the final returned record) already
   // carries the immutable form rather than the typed one.
   //
-  // `pinnedRef` is present only when the fetch adapter both supports pinning
-  // and validated its candidate (`github-fetch.ts`'s `extractPinnedSha`); a
-  // `path:` origin never reaches this function at all
-  // (`inst-resolve-local-path-read` records its origin unpinned by a
-  // separate, earlier branch), and any other adapter that reports none
-  // — deliberately or because it has nothing to pin against, like the
-  // TEST-ONLY `adapters/local-fetch.ts` — falls back to today's pre-existing
-  // behavior: the typed ref, honestly unpinned, exactly as `register`'s own
-  // header has always documented for that case. Now that
-  // `inst-resolve-host-unsupported` refuses any host outside
-  // `SUPPORTED_HOST_ADDRESS_BUILDERS` before this point is ever reached, the
-  // real `github-fetch.ts` adapter always reports a pin, so this fallback is
-  // reachable in production only were `github-fetch.ts` itself to stop
-  // reporting one; today it is exercised solely through an injected test
-  // `FetchFn` that deliberately reports none, which is exactly what the
-  // existing fixtures above do.
+  // The CLI's GitHub adapter (`github-fetch.ts`) never returns without the
+  // full 40-hex commit its archive states; it refuses instead. An injected
+  // `FetchFn` that reports no pin (the TEST-ONLY `adapters/local-fetch.ts`
+  // behind `FRONTX_TEST_LOCAL_SOURCE_DIR`, or a library caller's own adapter)
+  // leaves the typed ref recorded: those routes are outside the pin guarantee.
   if (pinnedRef !== undefined) {
     source = buildSourceSpec({ ...ref, ref: pinnedRef });
   }
@@ -313,6 +328,16 @@ async function resolveRemoteOrigin(ref: StructuredRef, fetchFn: FetchFn): Promis
   // developer owns for a risk the listing does not carry.
   // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-bundle-keys-fail
   const bundleFiles = readBundleFiles(content);
+  // null means marker present but invalid value — refuse immediately.
+  if (bundleFiles === null) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_PATH',
+        message: `Template resolved from "${source}" has $frontxTemplateFiles but its value is not a plain object map; the template was refused.`,
+      },
+    };
+  }
   const invalidKey = bundleFiles === undefined ? undefined : findInvalidBundleKey(Object.keys(bundleFiles));
   if (invalidKey !== undefined) {
     // @cpt-begin:cpt-frontx-state-template-resolution-inventory-lifecycle:p1:inst-state-reject-loop
@@ -333,6 +358,33 @@ async function resolveRemoteOrigin(ref: StructuredRef, fetchFn: FetchFn): Promis
   }
   // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-bundle-keys-fail
   // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-bundle-keys
+
+  // Validate every bundle entry value: string or strict BinaryBundleValue with
+  // canonical base64. Covers all keys including .frontx/ paths that payload
+  // filtering would otherwise skip — a corrupt record must be refused before
+  // any consumer can use it, not silently dropped at a later filter boundary.
+  if (bundleFiles !== undefined) {
+    for (const [key, value] of Object.entries(bundleFiles)) {
+      if (typeof value === 'string') continue;
+      if (isBinaryBundleValue(value)) {
+        if (decodeBundleValue(value) !== null) continue;
+        return {
+          ok: false,
+          error: {
+            code: 'INVALID_PATH',
+            message: `Template resolved from "${source}" carries "${key}" with non-canonical base64; the template was refused.`,
+          },
+        };
+      }
+      return {
+        ok: false,
+        error: {
+          code: 'INVALID_PATH',
+          message: `Template resolved from "${source}" carries "${key}" with an unrecognised value type; the template was refused.`,
+        },
+      };
+    }
+  }
 
   // Identity is what the template's own manifest declares, not the
   // repository the reference named (`cpt-frontx-adr-template-manifest-

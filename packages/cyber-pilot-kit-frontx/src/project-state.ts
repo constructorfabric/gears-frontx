@@ -28,7 +28,7 @@ export interface TemplateEntry {
 }
 
 export interface ProjectStateDocument {
-  formatVersion: 1;
+  formatVersion: 1 | 2;
   templates: Record<string, TemplateEntry>;
   projectOwnedRoots: string[];
 }
@@ -38,5 +38,5 @@ export interface ProjectStateDocument {
 // holds no matching entry. A lookup, not a search: `templates` is already
 // keyed by name.
 export function selectTemplateEntry(document: ProjectStateDocument, templateName: string): TemplateEntry | undefined {
-  return document.templates[templateName];
+  return Object.prototype.hasOwnProperty.call(document.templates, templateName) ? document.templates[templateName] : undefined;
 }

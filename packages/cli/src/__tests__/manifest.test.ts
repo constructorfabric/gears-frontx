@@ -583,6 +583,73 @@ describe('readManifestFromContent — bundle envelope unwrap', () => {
 
     expect(result.ok).toBe(false);
   });
+
+  // M1 regression: $frontxTemplateFiles present but invalid (null/array/number/string)
+  // must be a hard failure, not treated as a bare-manifest fallback.
+  it.each([
+    { label: 'null', content: JSON.stringify({ $frontxTemplateFiles: null }) },
+    { label: 'array', content: JSON.stringify({ $frontxTemplateFiles: [] }) },
+    { label: 'number', content: JSON.stringify({ $frontxTemplateFiles: 42 }) },
+    { label: 'string', content: JSON.stringify({ $frontxTemplateFiles: 'not-a-map' }) },
+  ])('refuses when $frontxTemplateFiles is present but its value is $label — not treated as bare manifest', ({ content }) => {
+    const result = readManifestFromContent(content);
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain('$frontxTemplateFiles');
+  });
+
+  // H2b regression: envelope present with empty map (marker present, no frontx-template.json)
+  // must be refused, not fall back to the outer JSON as bare manifest.
+  it('refuses when $frontxTemplateFiles is an empty map — the outer JSON must not be used as bare manifest', () => {
+    // This outer JSON happens to have valid manifest fields; without the fix
+    // the caller would read it as a bare manifest and return ok:true.
+    const content = JSON.stringify({ $frontxTemplateFiles: {} });
+
+    const result = readManifestFromContent(content);
+
+    expect(result.ok).toBe(false);
+  });
+
+  it('refuses when $frontxTemplateFiles map lacks frontx-template.json — outer JSON must not be treated as bare manifest', () => {
+    const content = JSON.stringify({
+      name: 'my-tpl', version: '1.0.0', excludedSubtrees: [], description: 'x',
+      $frontxTemplateFiles: { 'src/index.ts': 'export {};' },
+    });
+
+    const result = readManifestFromContent(content);
+
+    expect(result.ok).toBe(false);
+  });
+
+  // Positive control: a manifest with no $frontxTemplateFiles key (truly absent) is legitimate.
+  it('accepts a bare manifest with no $frontxTemplateFiles key (marker genuinely absent)', () => {
+    const manifest = validManifest();
+
+    const result = readManifestFromContent(manifest);
+
+    expect(result.ok).toBe(true);
+  });
+
+  // LOW diagnostic: the two refusal causes must produce distinct messages so
+  // a template author can tell whether the marker value is wrong or the
+  // manifest entry is simply absent from an otherwise-valid map.
+  it('reports a marker-shape error (not a "missing manifest" message) when $frontxTemplateFiles value is not a plain object', () => {
+    const result = readManifestFromContent(JSON.stringify({ $frontxTemplateFiles: null }));
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain('not a plain object');
+  });
+
+  it('reports a missing-manifest message (not a "plain object" message) when $frontxTemplateFiles is a valid map but lacks frontx-template.json', () => {
+    const result = readManifestFromContent(JSON.stringify({ $frontxTemplateFiles: {} }));
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain('"frontx-template.json"');
+    expect(result.message).not.toContain('not a plain object');
+  });
 });
 
 describe('readManifestFromContent — refuseLegacyManifest wiring', () => {

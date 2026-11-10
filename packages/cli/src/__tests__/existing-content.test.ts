@@ -654,6 +654,8 @@ describe('createFsReadExistingContentFn — target itself is not a directory', (
 
     const items = await readExistingContent('app');
 
-    expect(items).toEqual([{ path: 'app/a.txt', content: 'content' }]);
+    expect(items).toHaveLength(1);
+    expect(items[0].path).toBe('app/a.txt');
+    expect(Buffer.isBuffer(items[0].content) ? items[0].content.toString('utf-8') : items[0].content).toBe('content');
   });
 });

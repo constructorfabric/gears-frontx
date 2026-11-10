@@ -44,14 +44,14 @@
 // files". That is the truthful reading of what the resolver actually
 // returned; it is not this module's place to invent payload content the
 // fetch never delivered.
-import { readBundleFiles } from '../bundle/envelope';
+import { readBundleFiles, isBinaryBundleValue, decodeBundleValue } from '../bundle/envelope';
 import { parseSourceSpec } from '../spec-parser/parse';
 import { resolveToInventory } from '../resolver/resolve';
 import { readManifestFromContent } from '../manifest/validate-contract';
 import { MANIFEST_FILENAME, isTemplatePayloadPath } from '../manifest/types';
 import type { ReadFileFn } from '../manifest/types';
 import { parseLocalOrigin } from '../resolver/types';
-import type { FetchFn, InventoryReadyRecord, PathExistsFn } from '../resolver/types';
+import type { FetchFn, InventoryReadyRecord, PathExistsFn, ReadFolderFileBinaryFn } from '../resolver/types';
 import type { CanonicalizeTargetFn } from '../scaffold/conflict-check';
 import type { ListDiskFilesFn, ResolvedPayload, ResolvePayloadFn, ResolvePayloadResult } from './types';
 
@@ -72,12 +72,7 @@ import type { ListDiskFilesFn, ResolvedPayload, ResolvePayloadFn, ResolvePayload
 export interface ResolvePayloadDeps {
   repoRoot: string;
   fetchFn: FetchFn;
-  // Reads a local `path:` origin's files, one at a time — the resolver's own
-  // `ReadFolderFileFn` seam (`resolver/types.ts`), reused here under this
-  // module's pre-existing name. The same function now reads BOTH the
-  // manifest and every other payload file, since the shared resolver reads a
-  // local origin's whole folder uniformly rather than through two
-  // independently-maintained read paths.
+  // Text seam shared by callers; local resolution uses only the byte reader below.
   readFileFn: ReadFileFn;
   // Enumerates a local `path:` origin folder's own regular files — the
   // resolver's own `ListFolderFilesFn` seam, reused under this module's
@@ -89,6 +84,8 @@ export interface ResolvePayloadDeps {
   // Proves a local origin's relative path stays inside the project root —
   // the SAME seam register and apply already hold a `path:` origin to.
   canonicalizeFn: CanonicalizeTargetFn;
+  // Reads original bytes for the manifest and payload alike.
+  readFolderFileBinaryFn: ReadFolderFileBinaryFn;
 }
 
 /**
@@ -178,21 +175,57 @@ function buildPayloadFromResolved(record: InventoryReadyRecord, origin: string):
   // one even for a single-file folder); only a remote origin can still hand
   // back a bare manifest, per this module's own header.
   const bundleFiles = readBundleFiles(record.content);
-  const manifestContent = bundleFiles
-    ? typeof bundleFiles[MANIFEST_FILENAME] === 'string'
-      ? (bundleFiles[MANIFEST_FILENAME] as string)
-      : record.content
-    : record.content;
+  // Extract manifest text: decode BinaryBundleValue when present.
+  let manifestContent = record.content;
+  if (bundleFiles) {
+    const mv = bundleFiles[MANIFEST_FILENAME];
+    if (typeof mv === 'string') {
+      manifestContent = mv;
+    } else if (isBinaryBundleValue(mv)) {
+      const decoded = decodeBundleValue(mv);
+      if (decoded !== null) manifestContent = decoded.toString('utf-8');
+    }
+  }
 
   const declared = readDeclared(manifestContent, origin);
   if (!declared.ok) return declared.failure;
 
-  const files = new Map<string, string>();
+  const files = new Map<string, Buffer | string>();
+  // The candidate's own AI bundle bytes (`.frontx/ai/<name>/…`), kept beside the
+  // payload so the AI review and its materialization use these exact bytes and
+  // never re-read a source that may have changed since (plan-ai-recovery r9 §5).
+  const aiPrefix = `.frontx/ai/${declared.declared.name}/`;
+  const aiFiles = new Map<string, Buffer>();
   if (bundleFiles) {
     for (const [relativePath, value] of Object.entries(bundleFiles)) {
-      if (typeof value !== 'string') continue;
+      if (relativePath.startsWith(aiPrefix)) {
+        const bytes = typeof value === 'string' ? Buffer.from(value, 'utf-8') : isBinaryBundleValue(value) ? decodeBundleValue(value) : null;
+        if (bytes === null) {
+          return { ok: false, code: 'ORIGIN_UNAVAILABLE', message: `Origin "${origin}" resolved, but "${relativePath}" could not be decoded; the template was refused.` };
+        }
+        aiFiles.set(relativePath.slice(aiPrefix.length), bytes);
+        continue;
+      }
       if (!isTemplatePayloadPath(relativePath)) continue;
-      files.set(relativePath, value);
+      if (typeof value === 'string') {
+        files.set(relativePath, value);
+      } else if (isBinaryBundleValue(value)) {
+        const decoded = decodeBundleValue(value);
+        if (decoded === null) {
+          return {
+            ok: false,
+            code: 'ORIGIN_UNAVAILABLE',
+            message: `Origin "${origin}" resolved, but "${relativePath}" contains non-canonical base64; the template was refused.`,
+          };
+        }
+        files.set(relativePath, decoded);
+      } else {
+        return {
+          ok: false,
+          code: 'ORIGIN_UNAVAILABLE',
+          message: `Origin "${origin}" resolved, but "${relativePath}" has an unrecognised value type; the template was refused.`,
+        };
+      }
     }
   }
   // A bare-manifest resolution yields an empty payload — see this module's
@@ -210,9 +243,19 @@ function buildPayloadFromResolved(record: InventoryReadyRecord, origin: string):
       // the SAME resolver field a remote origin's pin already does.
       origin: record.source,
       files,
+      aiFiles,
       excludedSubtrees: declared.declared.excludedSubtrees,
     },
   };
+}
+
+/**
+ * Rebuilds the payload a stored inventory content string carries, through the
+ * SAME unwrap this module applies to a fresh resolution — so a promoted slot can
+ * be compared with the approved candidate by `candidateHash`.
+ */
+export function payloadFromStoredContent(content: string, origin: string): ResolvePayloadResult {
+  return buildPayloadFromResolved({ name: '', content, ref: '', source: origin }, origin);
 }
 
 async function resolveLocalPayload(origin: string, deps: ResolvePayloadDeps): Promise<ResolvePayloadResult> {
@@ -234,7 +277,7 @@ async function resolveLocalPayload(origin: string, deps: ResolvePayloadDeps): Pr
         canonicalizeFn: deps.canonicalizeFn,
         existsFn: deps.existsFn,
         listFolderFilesFn: deps.listDiskFiles,
-        readFolderFileFn: deps.readFileFn,
+        readFolderFileBinaryFn: deps.readFolderFileBinaryFn,
       },
     },
   );

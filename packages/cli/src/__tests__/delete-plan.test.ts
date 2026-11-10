@@ -7,6 +7,7 @@ import type { InventoryEntry } from '../inventory/types';
 import type { CanonicalizeTargetFn } from '../scaffold/conflict-check';
 import type { ProjectStateDocument, TemplateEntry } from '../project-state/types';
 import type { ReadFileFn } from '../manifest/types';
+import type { ClassifyPathStrictFn } from '../scaffold/strict-path';
 
 // Every fixture target below is already a well-formed project-relative
 // POSIX path, so canonicalization is the identity — mirrors
@@ -572,5 +573,66 @@ describe('computeDeletionPlan (cpt-frontx-algo-cli-scaffolding-delete-plan)', ()
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.toDelete).toEqual([]);
+  });
+
+  // A1 — mutation-sensitive: origin protection uses the CANONICAL path, not the raw/alias.
+  // Dropping `located.canonical` in favour of `origin.raw` in delete-plan.ts:223 would remove
+  // 'app/inner-real' from registeredOriginRoots and toPreserve, leaving inner-real/f.txt in toDelete.
+  // Note: 'app/alias-inner' also appears in toPreserve via ownerLocalOriginFolderBeneath (lenient
+  // canonicalize), so alias-inner/f.txt is always protected regardless of strict-classifier result.
+  it('A1-plan: registeredOriginRoots uses the canonical path; deleting the alias but not the canonical would break this', async () => {
+    // fake strict classifier: 'app/alias-inner' resolves to canonical 'app/inner-real'
+    const strictClassify: ClassifyPathStrictFn = (raw) => {
+      if (raw === 'app/alias-inner') return { kind: 'present', canonical: 'app/inner-real', entries: [] };
+      return { kind: 'absent', canonical: raw, entries: [] };
+    };
+    const document = doc({
+      '@x/a': entry(['app'], { origin: 'path:app/alias-inner', excludedSubtrees: [] }),
+    });
+    const result = await computeDeletionPlan(
+      'app',
+      '/repo',
+      document,
+      fakeInventory({ '@x/a': { excludedSubtrees: [] } }),
+      identityCanonicalize,
+      fakeListTargetFiles({ '/repo/app': ['alias-inner/f.txt', 'inner-real/f.txt', 'other.ts'] }),
+      fakeReadFileFn({}),   // path: origin → readFileFn called; ENOENT → no current declaration
+      noUnenumerableEntries,
+      strictClassify,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // canonical path goes into registeredOriginRoots and toPreserve
+    expect(result.toPreserve).toContain('app/inner-real');
+    // canonical dir files are not deleted
+    expect(result.toDelete).not.toContain('app/inner-real/f.txt');
+  });
+
+  // A1-r4 — mutation-sensitive: protectedRoots second pass resolves candidates through
+  // canonicalizeFn. A candidate with a different lexical spelling (alias) must be preserved when
+  // its resolved path falls inside a registered origin root. Removing the protectedRoots guard at
+  // delete-plan.ts:613-623 would leave `app/link/t/x` in toDelete even though it resolves to
+  // `app/real/t/x`, which is inside the protected origin root `app/real/t`.
+  it('A1-plan-r4: a lexical alias resolving inside a registered origin root is preserved via the protectedRoots pass', async () => {
+    // alias canonicalizer: app/link/* → app/real/*
+    const resolveAlias: CanonicalizeTargetFn = (p) =>
+      p === 'app/link/t' || p.startsWith('app/link/t/') ? p.replace('app/link', 'app/real') : p;
+    const document = doc({
+      '@x/a': entry(['app'], { origin: 'path:app/real/t', excludedSubtrees: [] }),
+    });
+    const result = await computeDeletionPlan(
+      'app',
+      '/repo',
+      document,
+      fakeInventory({ '@x/a': { excludedSubtrees: [] } }),
+      resolveAlias,
+      fakeListTargetFiles({ '/repo/app': ['link/t/x'] }),
+      fakeReadFileFn({}),
+      noUnenumerableEntries,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // app/link/t/x resolves to app/real/t/x (inside protected root app/real/t) → must not be deleted
+    expect(result.toDelete).not.toContain('app/link/t/x');
   });
 });

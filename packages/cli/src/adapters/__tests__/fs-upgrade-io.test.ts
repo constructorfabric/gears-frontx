@@ -42,7 +42,8 @@ describe('fs-upgrade-io', () => {
 
       const result = await readDiskEntry(filePath);
 
-      expect(result).toEqual({ kind: 'file', content: 'hello world' });
+      expect(result).toMatchObject({ kind: 'file' });
+      if (result.kind === 'file') expect(Buffer.isBuffer(result.content) ? result.content.toString('utf-8') : result.content).toBe('hello world');
     });
 
     it('reports a missing path as {kind: "absent"}, never a throw', async () => {
@@ -165,7 +166,9 @@ describe('fs-upgrade-io', () => {
         const readDiskEntry = createFsReadDiskEntryFn(project);
 
         expect(await readDiskEntry(project)).toEqual({ kind: 'directory' });
-        expect(await readDiskEntry(`${project}/app/../other.txt`)).toEqual({ kind: 'file', content: 'inside' });
+        const r = await readDiskEntry(`${project}/app/../other.txt`);
+        expect(r.kind).toBe('file');
+        if (r.kind === 'file') expect(Buffer.isBuffer(r.content) ? r.content.toString('utf-8') : r.content).toBe('inside');
       });
     });
   });

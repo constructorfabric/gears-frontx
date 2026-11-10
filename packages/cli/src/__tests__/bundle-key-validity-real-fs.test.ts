@@ -43,6 +43,7 @@ import { createGithubFetchFn } from '../adapters/github-fetch';
 import { isVolumeCaseInsensitive } from '../paths/volume-case';
 import { craftTarball, tarballFetch } from './support/crafted-tarball';
 import type { CraftedTarball } from './support/crafted-tarball';
+import { withReviewedDigestAsync } from './support/confirm-upgrade';
 
 const SHA_V1 = '1111111111111111111111111111111111111111';
 const SHA_V2 = '2222222222222222222222222222222222222222';
@@ -196,6 +197,10 @@ function depsServing(tarballs: Record<string, CraftedTarball>): CliDeps {
 }
 
 async function invoke(argv: string[], tarballs: Record<string, CraftedTarball>): Promise<{ exitCode: number; envelope: Envelope }> {
+  return withReviewedDigestAsync(argv, (a) => invokeOnce(a, tarballs));
+}
+
+async function invokeOnce(argv: string[], tarballs: Record<string, CraftedTarball>): Promise<{ exitCode: number; envelope: Envelope }> {
   const outcome = await run([...argv, '--json'], depsServing(tarballs));
   return { exitCode: outcome.exitCode, envelope: JSON.parse(outcome.stdout ?? '') as Envelope };
 }

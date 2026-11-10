@@ -19,6 +19,12 @@ function claim(target: string, templateName: string | null, excludedSubtrees: st
 }
 
 describe('checkTargetConflicts', () => {
+  it('refuses NFC/NFD-equivalent targets and allows ordinary distinct names', () => {
+    const result = checkTargetConflicts({ targetsUnderCheck: [claim('packages/café', 'one'), claim('packages/cafe\u0301', 'two')], recordedTargets: [], projectOwnedRoots: [], canonicalizeFn: identityCanonicalize });
+    expect(result).toMatchObject({ ok: false, kind: 'TARGET_CONFLICT' });
+    expect(checkTargetConflicts({ targetsUnderCheck: [claim('packages/cafe', 'one'), claim('packages/cafes', 'two')], recordedTargets: [], projectOwnedRoots: [], canonicalizeFn: identityCanonicalize })).toEqual({ ok: true });
+  });
+
   it('passes on an empty batch against an empty project', () => {
     const result = checkTargetConflicts({
       targetsUnderCheck: [],

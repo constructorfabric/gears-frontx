@@ -1,5 +1,6 @@
 // Injected write function — caller supplies; no direct filesystem access in core logic.
-export type WriteFileFn = (destPath: string, content: string) => Promise<void>;
+// Accepts Buffer (binary files) or string (text/special-marker cases).
+export type WriteFileFn = (destPath: string, content: Buffer | string) => Promise<void>;
 
 // Injected containment guard — proves an absolute path stays inside a
 // project root the caller already resolved, symlinks resolved, throwing
@@ -41,8 +42,9 @@ export type ConflictCheckFn = (targetDir: string) => Promise<boolean>;
 // installed content path — never carried by the manifest
 // (cpt-frontx-algo-cli-scaffolding-uniform-apply inst-ua-read-content).
 export interface ContentItem {
-  path: string;    // relative path within the template
-  content: string; // file content to write at destination
+  path: string;
+  // Buffer for regular files; string for SYMLINK/DIRECTORY/SPECIAL markers.
+  content: Buffer | string;
 }
 
 // One (template, target) claim staged by the rewritten uniform-apply path

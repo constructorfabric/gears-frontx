@@ -5,7 +5,7 @@ import { readManifestFromContent } from '../manifest/validate-contract';
 import { TemplateInventory } from '../inventory/TemplateInventory';
 import { resolveToInventory } from '../resolver/resolve';
 import { parseLocalOrigin } from '../resolver/types';
-import type { FetchFn, PathExistsFn, ListFolderFilesFn, ReadFolderFileFn } from '../resolver/types';
+import type { FetchFn, ReadFolderFileBinaryFn, PathExistsFn, ListFolderFilesFn, ReadFolderFileFn } from '../resolver/types';
 import type { CanonicalizeTargetFn } from '../scaffold/conflict-check';
 import type { TemplateEntry } from '../project-state/types';
 import { OFFICIAL_DEFAULT_TEMPLATES, officialDefaultOrigin } from './official-defaults';
@@ -157,6 +157,20 @@ export interface RegisteredTemplateEntry {
   // preserve, this field is only the recorded half of it. Omitted, never
   // `[]`, for a document written before this field existed.
   excludedSubtrees?: string[];
+  // Present, only ever `true`, when the entry is marked: an old file may sit in
+  // ground its declaration excluded, so the recorded `excludedSubtrees` is not
+  // read as proof of what its targets were written under
+  // (`TemplateEntry.exclusionsBackfilled`). Absent, never `false`, otherwise.
+  exclusionsBackfilled?: true;
+  // The ground (project-relative directory roots) the entry keeps preserved
+  // after the mark: an upgrade skips, and a delete keeps, old files beneath it
+  // (`RETAINED_GROUND`). Omitted, never `[]`, when nothing is retained.
+  relinquishedGround?: string[];
+  // Present on a marked entry that still has durable proof (recorded at apply
+  // time, only ever narrowed) that these target-relative regions were excluded
+  // in every write of its files, so a template nested there is not retained
+  // (`TemplateEntry.provenExcludedSubtrees`). Absent means nothing is proven.
+  provenExcludedSubtrees?: string[];
 }
 
 export interface ListCatalog {
@@ -180,6 +194,7 @@ export interface CatalogResolveDeps {
   existsFn: PathExistsFn;
   listFolderFilesFn: ListFolderFilesFn;
   readFileFn: ReadFolderFileFn;
+  readFolderFileBinaryFn: ReadFolderFileBinaryFn;
   repoRoot: string;
 }
 
@@ -196,7 +211,7 @@ async function resolveLocalManifest(
         canonicalizeFn: deps.canonicalizeFn,
         existsFn: deps.existsFn,
         listFolderFilesFn: deps.listFolderFilesFn,
-        readFolderFileFn: deps.readFileFn,
+        readFolderFileBinaryFn: deps.readFolderFileBinaryFn,
       },
     },
   );
@@ -266,6 +281,9 @@ async function buildRegistered(
       targets: entry.targets,
       ...(description !== undefined ? { description } : {}),
       ...(entry.excludedSubtrees !== undefined ? { excludedSubtrees: entry.excludedSubtrees } : {}),
+      ...(entry.exclusionsBackfilled === true ? { exclusionsBackfilled: true as const } : {}),
+      ...(entry.relinquishedGround !== undefined ? { relinquishedGround: entry.relinquishedGround } : {}),
+      ...(entry.provenExcludedSubtrees !== undefined ? { provenExcludedSubtrees: entry.provenExcludedSubtrees } : {}),
     });
   }
   return entries;

@@ -1,3 +1,4 @@
+import { createFsReadFolderFileBinaryFn } from '../adapters/fs-project-io';
 // @cpt-algo:cpt-frontx-algo-cli-scaffolding-delete-plan:p1
 // @cpt-flow:cpt-frontx-flow-cli-scaffolding-assemble-preview:p1
 //
@@ -135,6 +136,7 @@ describe('delete and assemble agreeing on an edited manifest\'s declared exclude
     const assembleDeps: ResolveAndCheckDeps = {
       inventory: noInventory,
       fetchFn: vi.fn(async () => ''),
+      readFolderFileBinaryFn: createFsReadFolderFileBinaryFn(),
       readFileFn: createFsReadFileFn(),
       canonicalizeFn,
       existsFn: createFsPathExistsFn(),

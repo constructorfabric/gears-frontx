@@ -1,9 +1,9 @@
 // @cpt-algo:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1
 import { describe, it, expect, vi } from 'vitest';
 import { resolveToInventory } from '../resolver/resolve';
-import { BUNDLE_MARKER } from '../bundle/envelope';
+import { BUNDLE_MARKER, encodeBundleValue } from '../bundle/envelope';
 import type { StructuredRef } from '../spec-parser/types';
-import type { FetchFn, ListFolderFilesFn, LocalOriginDeps, PathExistsFn, ReadFolderFileFn } from '../resolver/types';
+import type { FetchFn, ListFolderFilesFn, LocalOriginDeps, PathExistsFn, ReadFolderFileBinaryFn } from '../resolver/types';
 import type { TemplateManifest } from '../manifest/types';
 import { MANIFEST_FILENAME } from '../manifest/types';
 import { NotRegularFileError } from '../adapters/fs-project-io';
@@ -332,15 +332,15 @@ describe('resolveToInventory — bundle keys', () => {
 describe('resolveToInventory — local "path:" origin', () => {
   // A minimal local folder: canonicalizeFn is a pass-through, the folder
   // "exists", and `files` (relative path -> content) is what
-  // `listFolderFilesFn`/`readFolderFileFn` serve.
+  // `listFolderFilesFn`/`readFolderFileBinaryFn` serve.
   function localDeps(files: Record<string, string>, overrides: Partial<LocalOriginDeps> = {}): LocalOriginDeps {
     const existsFn: PathExistsFn = overrides.existsFn ?? (async () => true);
     const listFolderFilesFn: ListFolderFilesFn = overrides.listFolderFilesFn ?? (async () => Object.keys(files));
-    const readFolderFileFn: ReadFolderFileFn =
-      overrides.readFolderFileFn ??
+    const readFolderFileBinaryFn: ReadFolderFileBinaryFn =
+      overrides.readFolderFileBinaryFn ??
       (async (absolutePath: string) => {
         for (const [relativePath, content] of Object.entries(files)) {
-          if (absolutePath.endsWith(relativePath)) return content;
+          if (absolutePath.endsWith(relativePath)) return Buffer.from(content);
         }
         throw new Error(`no fixture content for ${absolutePath}`);
       });
@@ -349,7 +349,7 @@ describe('resolveToInventory — local "path:" origin', () => {
       canonicalizeFn: overrides.canonicalizeFn ?? ((rawPath: string) => rawPath),
       existsFn,
       listFolderFilesFn,
-      readFolderFileFn,
+      readFolderFileBinaryFn,
     };
   }
 
@@ -376,8 +376,8 @@ describe('resolveToInventory — local "path:" origin', () => {
     expect(result.value.source).toBe('path:templates/widget-kit');
     expect(result.value.ref).toBe('');
     const bundle = JSON.parse(result.value.content) as Record<string, Record<string, string>>;
-    expect(bundle[BUNDLE_MARKER][MANIFEST_FILENAME]).toBe(files[MANIFEST_FILENAME]);
-    expect(bundle[BUNDLE_MARKER]['README.md']).toBe('# widget-kit');
+    expect(bundle[BUNDLE_MARKER][MANIFEST_FILENAME]).toEqual(encodeBundleValue(Buffer.from(files[MANIFEST_FILENAME])));
+    expect(bundle[BUNDLE_MARKER]['README.md']).toEqual(encodeBundleValue(Buffer.from('# widget-kit')));
   });
 
   // The bundle-key rule is NOT applied here (see `inst-resolve-bundle-keys` in
@@ -428,16 +428,16 @@ describe('resolveToInventory — local "path:" origin', () => {
   // inst-resolve-local-path-check's "and confirm it exists" clause: a
   // canonical, in-root path that simply is not there.
   it('refuses INVALID_PATH for a canonical path that does not exist', async () => {
-    const readFolderFileFn = vi.fn();
+    const readFolderFileBinaryFn = vi.fn();
     const result = await resolveToInventory(
       { kind: 'local', origin: 'path:templates/missing' },
-      { fetchFn: noopFetch, local: localDeps({}, { existsFn: async () => false, readFolderFileFn }) },
+      { fetchFn: noopFetch, local: localDeps({}, { existsFn: async () => false, readFolderFileBinaryFn }) },
     );
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe('INVALID_PATH');
-    expect(readFolderFileFn).not.toHaveBeenCalled();
+    expect(readFolderFileBinaryFn).not.toHaveBeenCalled();
   });
 
   // inst-resolve-if-legacy-manifest, run identically for a local origin: the
@@ -481,7 +481,7 @@ describe('resolveToInventory — local "path:" origin', () => {
         local: localDeps(
           {},
           {
-            readFolderFileFn: async () => {
+            readFolderFileBinaryFn: async () => {
               throw new Error('ENOENT: no such file');
             },
             listFolderFilesFn,
@@ -517,7 +517,7 @@ describe('resolveToInventory — local "path:" origin', () => {
         local: localDeps(
           {},
           {
-            readFolderFileFn: async () => {
+            readFolderFileBinaryFn: async () => {
               throw typedError;
             },
             listFolderFilesFn,

@@ -25,7 +25,7 @@
 //      envelope to stdout and NEVER reads stdin. Two outcomes:
 //        - `{ok:true, data:{outcome:'noop', at:{origin,version}}}` — the
 //          project is already at the target version; there is nothing to
-//          confirm and nothing was or will be written.
+//          confirm and no upgrade will be applied.
 //        - `{ok:false, error:{code:'CONFIRMATION_REQUIRED', message,
 //          details:{name, plan}}}` — `details.plan` is the engine's
 //          reviewable plan (`packages/cli/src/upgrade/plan.ts`'s
@@ -286,6 +286,18 @@ export function createInvokeUpgradeCommand(options: InvokeUpgradeCommandOptions 
         `"CONFIRMATION_REQUIRED"'s details did not carry the expected {name, plan:{name, from, to, operations}} shape: ${JSON.stringify(first.error.details)}`,
       );
     }
+    // The review is bound to the plan the engine computed for it: the engine
+    // names that plan's identity (`details.planDigest`, a hash of every
+    // operation's bytes, not the displayed list), and the confirming call
+    // below must state it. Without it nothing proves the second call applies
+    // what was reviewed, so its absence is a protocol violation, never a
+    // reason to confirm unbound.
+    const planDigest = isRecord(first.error.details) ? first.error.details.planDigest : undefined;
+    if (typeof planDigest !== 'string' || planDigest === '') {
+      throw new Error(
+        `"CONFIRMATION_REQUIRED"'s details carried no planDigest, so an approval cannot be bound to the reviewed plan: ${JSON.stringify(first.error.details)}`,
+      );
+    }
     const decision = await onChangeSet(changeSet);
     // @cpt-end:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1:inst-relay-changeset
 
@@ -297,11 +309,38 @@ export function createInvokeUpgradeCommand(options: InvokeUpgradeCommandOptions 
     }
 
     // Approved: re-issue the IDENTICAL command with `--yes` appended, which
-    // is what actually gates the engine's apply step on this decision.
-    const second = await runUpgradeInvocation(projectRoot, [...baseArgs, '--yes']);
+    // is what actually gates the engine's apply step on this decision, plus
+    // the reviewed plan's digest: the engine recomputes its own plan and
+    // commits only when it is that plan, byte for byte.
+    const second = await runUpgradeInvocation(projectRoot, [...baseArgs, '--yes', `--plan-digest=${planDigest}`]);
     // @cpt-end:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1:inst-gate-decision
 
-    if (second.ok) return mapSuccessDataToResult(second.data);
+    if (second.ok) {
+      const result = mapSuccessDataToResult(second.data);
+      // The reviewed plan changed something, so a confirming call that finds
+      // nothing to do is not the approved upgrade: never reported as a plain
+      // no-op (the orchestrator would read that as a decline).
+      if (result.ok && result.status === 'noop') {
+        return {
+          ok: false,
+          status: 'apply-failed',
+          code: 'CONFIRMATION_REQUIRED',
+          message: 'The plan changed after it was reviewed (the project is already at the candidate); the approved upgrade was not applied.',
+        };
+      }
+      return result;
+    }
+    if (second.error.code === 'CONFIRMATION_REQUIRED') {
+      // The confirming call computed a different plan than the one reviewed
+      // (the project or the candidate changed in between): nothing was
+      // written, and the approval is NOT carried over to the new plan.
+      return {
+        ok: false,
+        status: 'apply-failed',
+        code: second.error.code,
+        message: `The plan changed after it was reviewed; nothing was applied. ${second.error.message}`,
+      };
+    }
     return { ok: false, status: 'apply-failed', code: second.error.code, message: second.error.message };
   };
 }

@@ -1,3 +1,4 @@
+import { createFsReadFolderFileBinaryFn } from '../adapters/fs-project-io';
 // @cpt-algo:cpt-frontx-algo-composed-provenance-register:p1
 // @cpt-algo:cpt-frontx-algo-cli-scaffolding-delete-plan:p1
 //
@@ -161,7 +162,7 @@ describe('legacy excludedSubtrees recovery — register --replace and delete aga
       root,
       noInventory,
       noopFetch,
-      fns.readFileFn,
+      createFsReadFolderFileBinaryFn(),
       fns.canonicalizeFn,
       fns.readProjectStateFn,
       fns.writeProjectStateFn,
@@ -189,7 +190,7 @@ describe('legacy excludedSubtrees recovery — register --replace and delete aga
       root,
       noInventory,
       noopFetch,
-      fns.readFileFn,
+      createFsReadFolderFileBinaryFn(),
       fns.canonicalizeFn,
       fns.readProjectStateFn,
       fns.writeProjectStateFn,

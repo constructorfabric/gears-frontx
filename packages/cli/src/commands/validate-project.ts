@@ -45,11 +45,13 @@
 // accumulates every violation before reporting: this algorithm's own Output
 // line names exactly ONE outcome, never a list.
 import path from 'node:path';
+import { aliasedOwnedRootMessage, aliasedOwnedRootViolation } from '../project-state/alias';
+import { overlappingBundlePairs } from '../project-state/bundle-identity';
 import { readProjectState, projectStatePath } from '../project-state/io';
 import type { ProjectStateDocument, ReadProjectStateFn } from '../project-state/types';
 import { resolveToInventory } from '../resolver/resolve';
 import { parseLocalOrigin } from '../resolver/types';
-import type { FetchFn, ListFolderFilesFn, PathExistsFn, ResolveOrigin, ResolveResult } from '../resolver/types';
+import type { FetchFn, ReadFolderFileBinaryFn, ListFolderFilesFn, PathExistsFn, ResolveOrigin, ResolveResult } from '../resolver/types';
 import { joinUnderTarget } from '../paths/relative-path';
 import { readManifestFromContent } from '../manifest/validate-contract';
 import type { ReadFileFn } from '../manifest/types';
@@ -63,6 +65,7 @@ export interface ValidateProjectDeps {
   existsFn: PathExistsFn;
   listFolderFilesFn: ListFolderFilesFn;
   readFileFn: ReadFileFn;
+  readFolderFileBinaryFn: ReadFolderFileBinaryFn;
   fetchFn: FetchFn;
 }
 
@@ -79,7 +82,8 @@ export type ValidateProjectErrorCode =
   | 'VERSION_MISMATCH'
   | 'ORIGIN_UNAVAILABLE'
   | 'TARGET_CONFLICT'
-  | 'INVALID_PATH';
+  | 'INVALID_PATH'
+  | 'RECOVERY_REQUIRED';
 
 export type ValidateProjectOutcome =
   | { ok: true }
@@ -140,6 +144,41 @@ function findStructuralIssue(document: ProjectStateDocument, canonicalizeFn: Can
 
     }
   }
+  // An ownership root that reaches its ground through a symlink is judged by
+  // the same disk-aware check the engines that act on ownership run on load.
+  const aliasedRoot = aliasedOwnedRootViolation(document, canonicalizeFn);
+  if (aliasedRoot !== undefined) {
+    return {
+      message: aliasedOwnedRootMessage(document, canonicalizeFn) ?? `Project state document is not valid: ${aliasedRoot.clause}.`,
+      details: { path: aliasedRoot.root },
+    };
+  }
+  // Two registered names whose AI-bundle directories (`.frontx/ai/<name>/`)
+  // coincide or nest: a bundle refresh or removal acts on that directory by
+  // name and recursively, so one could clear bytes the other materialized.
+  // `register` refuses to create the state; this reports a document that
+  // already holds it (a merge of two registrations, a hand edit — see
+  // `project-state/bundle-identity.ts`). The guards on such a state are
+  // partial, per command: apply, upgrade and restore refuse when the other
+  // name has applied targets (apply also when it is in the same batch), and
+  // delete refuses only a last target in that case. A name with no applied
+  // target can be unregistered; once both carry applied targets no CLI path
+  // reconciles the pair, and undoing the registration in version control is
+  // an outside suggestion, not a verified repair.
+  const overlapPair = overlappingBundlePairs(document.templates)[0];
+  if (overlapPair !== undefined) {
+    return {
+      message:
+        `Templates "${overlapPair[0]}" and "${overlapPair[1]}" have overlapping AI-bundle directories ` +
+        `(.frontx/ai/${overlapPair[0]} and .frontx/ai/${overlapPair[1]}); a bundle refresh or removal of one ` +
+        'could clear bytes of the other. If one of them has no applied target, unregister it; if both do, the ' +
+        'CLI has no command that reconciles the pair (apply, upgrade, restore and the delete of a last target ' +
+        'refuse while the other has applied targets; other deletes are not covered), so reconcile it outside ' +
+        'the CLI, for example by undoing the change that registered one of the two names in version control, ' +
+        'and check the project state, targets and AI-bundle files afterwards.',
+      details: { names: overlapPair },
+    };
+  }
   // The SAME target recorded under two DIFFERENT names is deliberately NOT a
   // structural finding here. `inst-valpa-if-malformed` scopes this step to
   // "any `targets[]` array carries a duplicate entry" — a duplicate WITHIN one
@@ -178,7 +217,12 @@ export async function validateProject(repoRoot: string, deps: ValidateProjectDep
   // @cpt-begin:cpt-frontx-algo-composed-provenance-validate-project:p1:inst-valpa-if-malformed
   if (!stateResult.ok) {
     // @cpt-begin:cpt-frontx-algo-composed-provenance-validate-project:p1:inst-valpa-return-invalid
-    return { ok: false, code: 'PROJECT_INVALID', message: stateResult.message };
+    return {
+      ok: false,
+      code: 'PROJECT_INVALID',
+      message: stateResult.message,
+      ...(stateResult.details ? { details: stateResult.details } : {}),
+    };
     // @cpt-end:cpt-frontx-algo-composed-provenance-validate-project:p1:inst-valpa-return-invalid
   }
   const document = stateResult.document;
@@ -209,6 +253,19 @@ export async function validateProject(repoRoot: string, deps: ValidateProjectDep
   }
   // @cpt-end:cpt-frontx-algo-composed-provenance-validate-project:p1:inst-valpa-if-absent
 
+  // A transition with unfinished post-commit work is not a healthy completed
+  // state (plan-ai-recovery r9 §4): reported before any per-name check.
+  for (const [name, entry] of Object.entries(document.templates)) {
+    if (entry.pendingPostCommit !== undefined) {
+      return {
+        ok: false,
+        code: 'RECOVERY_REQUIRED',
+        message: `"${name}" has unfinished post-commit work from an upgrade or restore; run "frontx upgrade ${name} --recover".`,
+        details: { name, pendingPostCommit: entry.pendingPostCommit },
+      };
+    }
+  }
+
   // @cpt-begin:cpt-frontx-algo-composed-provenance-validate-project:p1:inst-valpa-foreach-name
   const excludedSubtreesByName = new Map<string, string[]>();
   for (const [name, entry] of Object.entries(document.templates)) {
@@ -225,7 +282,7 @@ export async function validateProject(repoRoot: string, deps: ValidateProjectDep
           canonicalizeFn: deps.canonicalizeFn,
           existsFn: deps.existsFn,
           listFolderFilesFn: deps.listFolderFilesFn,
-          readFolderFileFn: deps.readFileFn,
+          readFolderFileBinaryFn: deps.readFolderFileBinaryFn,
         },
       });
     }

@@ -33,22 +33,34 @@ import type {
   UniformApplyInventoryPort,
 } from '../scaffold/assembler';
 import { checkTargetConflicts } from '../scaffold/conflict-check';
-import type { CanonicalizeTargetFn, TargetClaim } from '../scaffold/conflict-check';
+import { classifyConflict } from '../scaffold/conflict-check';
+import type { CanonicalizeTargetFn, TargetClaim, TargetConflictEntry } from '../scaffold/conflict-check';
 import { reconcileExistingContent } from '../scaffold/existing-content';
 import type { ReadExistingContentFn, ReadInstalledContentFn } from '../scaffold/existing-content';
 import { materializeOrRemoveAiBundle } from '../scaffold/ai-bundle';
+import { classifyAiDestination } from './apply-ai-review';
 import type { BundleExistsFn, CopyBundleFn, RemoveBundleFn } from '../scaffold/ai-bundle';
 import { isWithinEffectiveOwnership } from '../scaffold/effective-ownership';
 import type { AssertPathWithinRootFn, ContributionEntry, StagedAssembly, WriteFileFn } from '../scaffold/types';
 import { readProjectState, mutateProjectState } from '../project-state/io';
+import { aliasedOwnedRootRefusal } from '../project-state/alias';
+import {
+  changedDeclarations,
+  declarationCovered,
+  exclusionGroundRoots,
+  narrowedProvenExclusions,
+  withProvenExclusions,
+  withRetainedGround,
+} from '../project-state/retained-ground';
 import type { ProjectStateDocument, ReadProjectStateFn, TemplateEntry, WriteProjectStateFn } from '../project-state/types';
 import { resolveRegisteredExcludedSubtrees } from '../scaffold/registered-manifest';
 import { isTemplatePayloadPath } from '../manifest/types';
 import type { ReadFileFn } from '../manifest/types';
 import { parseLocalOrigin } from '../resolver/types';
-import type { FetchFn, ListFolderFilesFn, PathExistsFn } from '../resolver/types';
-import { joinUnderTarget } from '../paths/relative-path';
+import type { FetchFn, ReadFolderFileBinaryFn, ListFolderFilesFn, PathExistsFn } from '../resolver/types';
+import { canonicalizeForRecording, joinUnderTarget, recordingRefusalReason } from '../paths/relative-path';
 import { foldForIdentity } from '../paths/volume-case';
+import { bundleOverlapMessage, bundleConflictsOf } from '../project-state/bundle-identity';
 import type { ErrorCode } from '../envelope';
 // `apply`'s own blanket `catch` at the end of `runApplyPipeline` must not
 // report two deliberate, typed refusals as `INTERNAL`: `PathContainmentError`
@@ -73,6 +85,7 @@ import type { ErrorCode } from '../envelope';
 import { PathContainmentError, ExistingSymlinkDestinationError } from '../adapters/fs-project-io';
 import { AiNamespaceAliasError } from '../adapters/fs-ai-bundle';
 import type { RemoveProjectFileFn } from '../upgrade/types';
+import { setOwn } from '../own-record';
 
 /**
  * Canonicalizes every target in a raw batch to a project-relative path,
@@ -86,6 +99,15 @@ import type { RemoveProjectFileFn } from '../upgrade/types';
  * rather than three different steps risking three different ideas of what
  * one raw target string resolves to.
  */
+// The refusal text for a target `canonicalizeForRecording` would not record:
+// the grammar reason when that is what refused it, the containment text otherwise.
+function invalidTargetMessage(rawTarget: string, canonicalizeFn: CanonicalizeTargetFn): string {
+  const reason = recordingRefusalReason(rawTarget, canonicalizeFn);
+  return reason === undefined
+    ? `Target "${rawTarget}" could not be proven to stay inside the project root.`
+    : `Target "${rawTarget}" cannot be recorded: it ${reason}.`;
+}
+
 function canonicalizeBatch(
   batch: UniformApplyBatch,
   canonicalizeFn: CanonicalizeTargetFn,
@@ -105,7 +127,7 @@ function canonicalizeBatch(
     // its own contents is a defect regardless of who currently reads it.
     const canonicalTargets: string[] = [];
     for (const rawTarget of targets) {
-      const canonical = canonicalizeFn(rawTarget);
+      const canonical = canonicalizeForRecording(rawTarget, canonicalizeFn);
       if (canonical === null) return { ok: false, rawTarget };
       // Folds case per the project volume (`paths/volume-case.ts`), not a
       // bare `.includes`: two spellings of one not-yet-existing target
@@ -115,9 +137,9 @@ function canonicalizeBatch(
       // duplicate, not a conflict with itself, so it is dropped here exactly
       // as an exact-spelling duplicate already is.
       if (canonicalTargets.some((existing) => foldForIdentity(existing) === foldForIdentity(canonical))) continue;
-      canonicalTargets.push(canonical);
+      canonicalTargets.push(canonical.normalize("NFC"));
     }
-    templates[name] = canonicalTargets;
+    setOwn(templates, name, canonicalTargets);
   }
   return { ok: true, batch: { templates } };
 }
@@ -183,6 +205,21 @@ async function buildRecordedTargetClaims(
     for (const target of entry.targets) {
       const excludedSubtrees = declaredExclusions.map((declared) => joinUnderTarget(target, declared));
       claims.push({ target, templateName: name, excludedSubtrees });
+      // The claim is judged at the place it RESOLVES to as well as under its
+      // spelling: a recorded target that has become a symlink alias
+      // (`dst -> real`) is ground a batch target spelled `real/sub` — or `real`
+      // — would otherwise claim a second time. `checkTargetConflicts`
+      // canonicalises only the targets under check, so the resolved claim is
+      // added here, with the declared exclusions re-rooted under it. A target
+      // that does not resolve adds nothing: the spelled claim already stands.
+      const resolved = canonicalizeFn(target);
+      if (resolved !== null && foldForIdentity(resolved) !== foldForIdentity(target)) {
+        claims.push({
+          target: resolved,
+          templateName: name,
+          excludedSubtrees: declaredExclusions.map((declared) => joinUnderTarget(resolved, declared)),
+        });
+      }
     }
   }
   return claims;
@@ -192,6 +229,7 @@ export interface ResolveAndCheckDeps {
   inventory: UniformApplyInventoryPort;
   fetchFn: FetchFn;
   readFileFn: ReadFileFn;
+  readFolderFileBinaryFn: ReadFolderFileBinaryFn;
   canonicalizeFn: CanonicalizeTargetFn;
   // The shared resolver's own local-origin seams (`resolver/types.ts`'s
   // `LocalOriginDeps`) — threaded through to `uniformApply`'s
@@ -208,6 +246,111 @@ export type ResolveAndCheckOutcome =
 
 // @cpt-dod:cpt-frontx-dod-cli-scaffolding-uniform-apply:p1
 // @cpt-dod:cpt-frontx-dod-cli-scaffolding-conflict-check:p1
+// The refusal text for a batch conflict, with the one next action that fits
+// each kind of contested ground. A reserved-ground conflict (one contestant:
+// the checker names only the target under check) is never cured by a template
+// exclusion, and exact coincidence cannot be nested; only a strict host/guest
+// containment can be reconciled by a host that already declares the inner
+// ground in its manifest `excludedSubtrees`. `seed` has no separate preview,
+// and a failed seed leaves no registrations to preview, so its advice is to
+// retry with the revised batch.
+export function targetConflictMessage(conflicts: readonly TargetConflictEntry[], mode: 'batch' | 'seed'): string {
+  const names = [
+    ...new Set(conflicts.flatMap((c) => c.contestants.map((x) => x.templateName).filter((n): n is string => n !== null))),
+  ];
+  // Classified from the structured contestants, never from `ground` text.
+  const kinds = new Set(conflicts.map(classifyConflict));
+  const actions: string[] = [];
+  if (kinds.has('reserved')) {
+    actions.push('move any target that is at or inside reserved ground (such as .frontx) elsewhere');
+  }
+  if (kinds.has('coincide')) actions.push('give templates whose targets coincide distinct targets');
+  if (kinds.has('nested')) {
+    actions.push(
+      'move a nested target outside its containing target, or use a containing template whose manifest already ' +
+        'declares that nested ground in excludedSubtrees',
+    );
+  }
+  const retry =
+    mode === 'seed'
+      ? 'then run seed again with the revised batch'
+      : 'then preview the revised batch again with assemble';
+  return (
+    `Aborted — the staged batch has an intersecting claim contested by: ${names.join(', ') || 'unknown'}; ` +
+    `nothing written. Revise the batch: ${actions.join('; ')}; ${retry}.`
+  );
+}
+
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-assemble-preview:p1:inst-asm-resolve
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve
+/**
+ * The checks the FEATURE orders before anything is resolved: the state read,
+ * the aliased-root check, target canonicalisation and the bundle-overlap
+ * refusal. Side-effect free; `apply` runs it ahead of the AI replacement review.
+ */
+export async function checkBatchBeforeResolution(
+  rawBatch: UniformApplyBatch,
+  repoRoot: string,
+  canonicalizeFn: CanonicalizeTargetFn,
+  readProjectStateFn: ReadProjectStateFn,
+): Promise<{ ok: true; document: ProjectStateDocument; batch: UniformApplyBatch } | Extract<ResolveAndCheckOutcome, { ok: false }>> {
+  const stateResult = await readProjectState(repoRoot, readProjectStateFn);
+  if (!stateResult.ok) {
+    return { ok: false, code: 'PROJECT_INVALID', message: stateResult.message, ...(stateResult.details ? { details: stateResult.details } : {}) };
+  }
+  const document = stateResult.document;
+  const aliased = aliasedOwnedRootRefusal(document, canonicalizeFn);
+  if (aliased !== undefined) return { ok: false, code: 'PROJECT_INVALID', ...aliased };
+
+  const canonicalized = canonicalizeBatch(rawBatch, canonicalizeFn);
+  if (!canonicalized.ok) {
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-assemble-preview:p1:inst-asm-resolve
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve
+    return {
+      ok: false,
+      code: 'INVALID_PATH',
+      message: invalidTargetMessage(canonicalized.rawTarget, canonicalizeFn),
+      // `path`, not `target`: this is the same single-offending-path shape
+      // every other `INVALID_PATH` refusal in this package's `details`
+      // already carries (`commands/ownership.ts`, `commands/validate.ts`,
+      // and this file's own `PathContainmentError` catch below) — one
+      // vocabulary for one fact, rather than a second field name invented
+      // for the identical thing because this refusal happens to fire from a
+      // different call site.
+      details: { path: canonicalized.rawTarget },
+    };
+  }
+
+  // A name's AI bundle is cleared and rewritten by name at
+  // `.frontx/ai/<name>/`. Judged over the PROSPECTIVE state — the already
+  // applied names plus every name this batch is about to materialize — so two
+  // names in the SAME batch whose directories nest are refused even when
+  // neither has a recorded target or a bundle yet, and a nested name's
+  // refresh cannot clear an ancestor's nested bytes. Refused before anything
+  // resolves or is written (`project-state/bundle-identity.ts`).
+  const batchNames = Object.keys(canonicalized.batch.templates);
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-assemble-preview:p1:inst-asm-if-bundle-overlap
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-bundle-overlap
+  for (const name of batchNames) {
+    const conflicts = bundleConflictsOf(document.templates, name, batchNames);
+    if (conflicts.length > 0) {
+      // @cpt-begin:cpt-frontx-flow-cli-scaffolding-assemble-preview:p1:inst-asm-return-bundle-overlap
+      // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-bundle-overlap
+      return {
+        ok: false,
+        code: 'REGISTRATION_CONFLICT',
+        message: bundleOverlapMessage(name, conflicts, `Apply refused for "${name}"`),
+        details: { name, overlapping: conflicts },
+      };
+      // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-bundle-overlap
+      // @cpt-end:cpt-frontx-flow-cli-scaffolding-assemble-preview:p1:inst-asm-return-bundle-overlap
+    }
+  }
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-bundle-overlap
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-assemble-preview:p1:inst-asm-if-bundle-overlap
+  return { ok: true, document, batch: canonicalized.batch };
+}
+
 /**
  * Reads the current project state document, canonicalizes and stages the
  * batch through `uniformApply`, and runs the pre-flight conflict check
@@ -223,51 +366,29 @@ export type ResolveAndCheckOutcome =
  * never two independently-formulated resolve-and-check paths for the two
  * flows.
  */
-// @cpt-begin:cpt-frontx-flow-cli-scaffolding-assemble-preview:p1:inst-asm-resolve
-// @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve
 export async function resolveAndCheckBatch(
   rawBatch: UniformApplyBatch,
   repoRoot: string,
   deps: ResolveAndCheckDeps,
   readProjectStateFn: ReadProjectStateFn,
 ): Promise<ResolveAndCheckOutcome> {
-  const stateResult = await readProjectState(repoRoot, readProjectStateFn);
-  if (!stateResult.ok) {
-    return { ok: false, code: 'PROJECT_INVALID', message: stateResult.message };
-  }
-  const document = stateResult.document;
-
-  const canonicalized = canonicalizeBatch(rawBatch, deps.canonicalizeFn);
-  if (!canonicalized.ok) {
-    // @cpt-end:cpt-frontx-flow-cli-scaffolding-assemble-preview:p1:inst-asm-resolve
-    // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve
-    return {
-      ok: false,
-      code: 'INVALID_PATH',
-      message: `Target "${canonicalized.rawTarget}" could not be proven to stay inside the project root.`,
-      // `path`, not `target`: this is the same single-offending-path shape
-      // every other `INVALID_PATH` refusal in this package's `details`
-      // already carries (`commands/ownership.ts`, `commands/validate.ts`,
-      // and this file's own `PathContainmentError` catch below) — one
-      // vocabulary for one fact, rather than a second field name invented
-      // for the identical thing because this refusal happens to fire from a
-      // different call site.
-      details: { path: canonicalized.rawTarget },
-    };
-  }
+  const checked = await checkBatchBeforeResolution(rawBatch, repoRoot, deps.canonicalizeFn, readProjectStateFn);
+  if (!checked.ok) return checked;
+  const { document } = checked;
 
   const uniformDeps: UniformApplyDeps = {
     repoRoot,
     inventory: deps.inventory,
     fetchFn: deps.fetchFn,
     readFileFn: deps.readFileFn,
+    readFolderFileBinaryFn: deps.readFolderFileBinaryFn,
     canonicalizeFn: deps.canonicalizeFn,
     existsFn: deps.existsFn,
     listFolderFilesFn: deps.listFolderFilesFn,
     resolveInstalledContentPathFn: deps.resolveInstalledContentPathFn,
   };
   // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p1:inst-as-req-resolved
-  const staged = await uniformApply(canonicalized.batch, document, uniformDeps);
+  const staged = await uniformApply(checked.batch, document, uniformDeps);
   // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p1:inst-as-req-resolved
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-assemble-preview:p1:inst-asm-if-resolve-fail
@@ -327,15 +448,17 @@ export async function resolveAndCheckBatch(
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-conflict
   if (!verdict.ok) {
     if (verdict.kind === 'INVALID_PATH') {
-      // Defensive: every target under check was already canonicalized above
-      // (`canonicalizeBatch`), so the checker's own internal
-      // re-canonicalization of an already-canonical string cannot genuinely
-      // disagree — kept only so this branch is exhaustive over
-      // `ConflictCheckResult`'s discriminant rather than assumed away.
+      // Every target under check was already canonicalized above
+      // (`canonicalizeBatch`), and the canonicaliser is idempotent (a real-fs
+      // test pins it over a set of raw spellings), so the checker's own
+      // re-canonicalization of an already-canonical string cannot disagree.
+      // Kept so this branch is exhaustive over `ConflictCheckResult`'s
+      // discriminant — and as the fail-closed answer, never a write, should that
+      // idempotence ever stop holding.
       return {
         ok: false,
         code: 'INVALID_PATH',
-        message: `Target "${verdict.path}" could not be proven to stay inside the project root.`,
+        message: invalidTargetMessage(verdict.path, deps.canonicalizeFn),
         // Same `path` shape as every other single-offending-path
         // `INVALID_PATH` refusal in this package — see the sibling refusal
         // just above this function's own `canonicalizeBatch` check for the
@@ -346,19 +469,10 @@ export async function resolveAndCheckBatch(
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-assemble-preview:p1:inst-asm-return-conflict
     // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p1:inst-as-resolved-aborted-conflict
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-conflict
-    const contestingTemplates = [
-      ...new Set(
-        verdict.conflicts.flatMap((conflict) =>
-          conflict.contestants.map((contestant) => contestant.templateName).filter((n): n is string => n !== null),
-        ),
-      ),
-    ];
     return {
       ok: false,
       code: 'TARGET_CONFLICT',
-      message:
-        `Aborted — the staged batch has an intersecting claim contested by: ${contestingTemplates.join(', ') || 'unknown'}; ` +
-        'nothing written.',
+      message: targetConflictMessage(verdict.conflicts, 'batch'),
       details: { conflicts: verdict.conflicts },
     };
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-conflict
@@ -390,9 +504,9 @@ export async function resolveAndCheckBatch(
 async function computePayloadForTarget(
   entry: ContributionEntry,
   readInstalledContentFn: ReadInstalledContentFn,
-): Promise<Map<string, string>> {
+): Promise<Map<string, Buffer | string>> {
   const rawContent = await readInstalledContentFn(entry.installedContentPath);
-  const payload = new Map<string, string>();
+  const payload = new Map<string, Buffer | string>();
   for (const item of rawContent) {
     if (!isTemplatePayloadPath(item.path)) continue;
     const projectPath = entry.target === '.' ? item.path : `${entry.target}/${item.path}`;
@@ -482,6 +596,13 @@ export interface ApplyPipelineDeps extends ResolveAndCheckDeps {
   readProjectStateFn: ReadProjectStateFn;
   writeProjectStateFn: WriteProjectStateFn;
   bundleExistsFn: BundleExistsFn;
+  // Approved, snapshot-bound AI bundle replacements (`commands/apply-ai-review.ts`),
+  // decided before this pipeline runs: the name's bundle step runs this instead
+  // of the copy, and the replaced tree is never removed by rollback.
+  aiReplacements?: ReadonlyMap<string, () => void>;
+  // Runs once after every check passed and before the first project write:
+  // installs the batch's staged candidates (`commands/staged-inventory.ts`).
+  beforeFirstWrite?: () => Promise<{ ok: true } | { ok: false; code: ErrorCode; message: string; details?: Record<string, unknown> }>;
   copyBundleFn: CopyBundleFn;
   removeBundleFn: RemoveBundleFn;
   // Proves an individual payload path stays inside `repoRoot`, symlinks
@@ -605,11 +726,20 @@ export async function rollbackWrittenPaths(
   dirsThisCallCreated: ReadonlySet<string>,
   removeBundleFn: RemoveBundleFn,
   bundledNamesThisCall: ReadonlySet<string>,
+  // Receives every project-relative path this rollback could not remove. The
+  // rollback is best-effort and never throws: a removal that fails must not
+  // drop the report of what is still on disk (partial result, reported).
+  unremoved: string[],
 ): Promise<void> {
   const candidateDirs = new Set<string>();
   for (const relativePath of writtenPaths) {
     const absolutePath = path.join(repoRoot, relativePath);
-    await removeProjectFileFn(absolutePath);
+    try {
+      await removeProjectFileFn(absolutePath);
+    } catch {
+      unremoved.push(relativePath);
+      continue;
+    }
     // `relativePath` is project-relative (no `..` segment can survive
     // `joinUnderTarget`/effective-ownership scoping this far), so
     // `absolutePath` is always a proper descendant of `repoRoot` and this
@@ -625,10 +755,15 @@ export async function rollbackWrittenPaths(
     (a, b) => b.split(path.sep).length - a.split(path.sep).length,
   );
   for (const dir of deepestFirst) {
-    await removeEmptyDirFn(dir);
+    // An empty directory left behind is residue, not a file the report must name.
+    await removeEmptyDirFn(dir).catch(() => undefined);
   }
   for (const name of bundledNamesThisCall) {
-    await removeBundleFn(repoRoot, name);
+    try {
+      await removeBundleFn(repoRoot, name);
+    } catch {
+      unremoved.push(`.frontx/ai/${name}`);
+    }
   }
 }
 // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-rollback-writes
@@ -720,6 +855,73 @@ export type ApplyBatchOutcome =
   | { ok: true; applied: ApplyBatchTargetRef[]; noop: ApplyBatchTargetRef[] }
   | { ok: false; code: ErrorCode; message: string; details?: Record<string, unknown> };
 
+/**
+ * The entry to record once `newTargets` have been materialized under
+ * `applied`, the `excludedSubtrees` the manifest declared at THIS apply.
+ *
+ * `register` records its own moment's declaration, but a `path:` origin's
+ * manifest can change between `register` and `apply`, so the recorded value is
+ * evidence of what a target's files were written under only if it was
+ * re-established when they were written:
+ *  - no target applied yet: nothing else is described by the value, so the
+ *    entry takes the declaration these files were just written under (and any
+ *    leftover mark goes, since there is no older history to distrust);
+ *  - targets already applied and the recorded value equals `applied`: every
+ *    target was written under that one declaration, so nothing changes;
+ *  - targets already applied and the declaration differs (or the value is
+ *    already marked unproven): one per-name value cannot describe both
+ *    histories, so the entry is marked `exclusionsBackfilled` — no consumer
+ *    then reads the recorded value as proof of what any target was written
+ *    under. A legacy entry with no recorded value stays as it is: it has
+ *    no value to mistake for proof.
+ */
+function recordApplyTimeDeclaration(
+  existing: TemplateEntry,
+  mergedTargets: string[],
+  applied: readonly string[],
+): TemplateEntry {
+  if (existing.targets.length === 0) {
+    // The evidence goes with the mark: this apply records the one declaration
+    // every file was written under.
+    const { exclusionsBackfilled: _unproven, provenExcludedSubtrees: _evidence, ...rest } = existing;
+    return { ...rest, targets: mergedTargets, excludedSubtrees: [...applied] };
+  }
+  if (existing.excludedSubtrees === undefined) {
+    return { ...existing, targets: mergedTargets };
+  }
+  // A marked entry keeps the location of every exclusion in play under every
+  // target it now has (`project-state/retained-ground.ts`), the one it recorded
+  // and the one this apply wrote under, so a later narrowing cannot erase where
+  // an old file may sit.
+  if (existing.exclusionsBackfilled === true) {
+    // The evidence only narrows to what this apply also excluded, and only what
+    // the narrowed evidence still covers is left out of the retained ground.
+    const proven = narrowedProvenExclusions(existing.provenExcludedSubtrees, applied);
+    return withRetainedGround(
+      withProvenExclusions({ ...existing, targets: mergedTargets }, proven),
+      exclusionGroundRoots(
+        mergedTargets,
+        [...existing.excludedSubtrees, ...applied].filter((declared) => !declarationCovered(declared, proven ?? [])),
+      ),
+    );
+  }
+  const recorded = new Set(existing.excludedSubtrees);
+  const sameDeclaration = recorded.size === new Set(applied).size && applied.every((declared) => recorded.has(declared));
+  return sameDeclaration
+    ? { ...existing, targets: mergedTargets }
+    : withRetainedGround(
+        // Marking an unmarked entry: what it recorded and this apply both
+        // exclude is proven; nothing else is.
+        withProvenExclusions(
+          { ...existing, targets: mergedTargets, exclusionsBackfilled: true },
+          narrowedProvenExclusions(existing.excludedSubtrees, applied),
+        ),
+        // The entry was unmarked, so its recorded declaration is evidence of what
+        // its targets were written under: only a region that changed is retained.
+        exclusionGroundRoots(mergedTargets, changedDeclarations(existing.excludedSubtrees, applied)),
+      );
+}
+
 // @cpt-dod:cpt-frontx-dod-cli-scaffolding-existing-content-protocol:p1
 // @cpt-dod:cpt-frontx-dod-cli-scaffolding-ai-bundle:p1
 /**
@@ -735,6 +937,32 @@ export async function runApplyPipeline(
   repoRoot: string,
   adoptExisting: boolean,
   deps: ApplyPipelineDeps,
+): Promise<ApplyBatchOutcome> {
+  const unremoved: string[] = [];
+  const outcome = await runApplyPipelineSteps(rawBatch, repoRoot, adoptExisting, deps, unremoved);
+  if (outcome.ok || unremoved.length === 0) return outcome;
+  return {
+    ...outcome,
+    message: outcome.message + describeUnremoved(unremoved),
+    details: { ...outcome.details, unremovedPaths: unremoved },
+  };
+}
+
+// The clause a refusal gains when its own rollback could not remove some of
+// what the batch wrote: the earlier "removed" clause holds for every OTHER path.
+export function describeUnremoved(unremoved: readonly string[]): string {
+  return (
+    ` However, rollback could not remove ${unremoved.length} of those path(s), which remain on disk: ${unremoved.join(', ')}; ` +
+    'nothing was recorded for them — remove them (or restore them from version control) before re-running.'
+  );
+}
+
+async function runApplyPipelineSteps(
+  rawBatch: UniformApplyBatch,
+  repoRoot: string,
+  adoptExisting: boolean,
+  deps: ApplyPipelineDeps,
+  unremoved: string[],
 ): Promise<ApplyBatchOutcome> {
   // The batch names one or more registered templates and their targets,
   // "individually or together" — the uniform batch shape is what makes those
@@ -768,7 +996,36 @@ export async function runApplyPipeline(
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-recorded-noop
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-existing-content
-  const payloads = new Map<ContributionEntry, Map<string, string>>();
+  // GATE (plan-ai-recovery r9 §5): a name gaining its first target copies its
+  // AI bundle into `.frontx/ai/<name>/`. Creating an absent bundle is ordinary;
+  // REPLACING one that already exists (residue, or files someone put there), or
+  // reclaiming anything that is not a plain directory at or above that path (a
+  // file, FIFO or link — a blocker the review cannot represent), would change
+  // bytes nobody reviewed. Unless `aiReplacements` carries the approved
+  // replacement, that is refused here, before any write.
+  const bundleGateNames = new Set<string>();
+  for (const entry of unrecorded) {
+    if ((document.templates[entry.templateName]?.targets.length ?? 0) > 0) continue;
+    if (bundleGateNames.has(entry.templateName)) continue;
+    bundleGateNames.add(entry.templateName);
+    if (deps.aiReplacements?.has(entry.templateName)) continue; // reviewed and approved before any effect
+    if (
+      (await deps.bundleExistsFn(entry.installedContentPath, entry.templateName)) &&
+      ((await deps.bundleExistsFn(repoRoot, entry.templateName)) || classifyAiDestination(repoRoot, entry.templateName) !== 'absent')
+    ) {
+      return {
+        ok: false,
+        code: 'CONTENT_CONFLICT',
+        message:
+          `Something already stands at or above .frontx/ai/${entry.templateName}; applying "${entry.templateName}" would ` +
+          'replace or reclaim it without an approved review. Run apply through the frontx command to review a bundle ' +
+          'replacement, or move a blocking file or link aside, and retry. Nothing was written to the project.',
+        details: { aiBundle: `.frontx/ai/${entry.templateName}` },
+      };
+    }
+  }
+
+  const payloads = new Map<ContributionEntry, Map<string, Buffer | string>>();
   const identicalByEntry = new Map<ContributionEntry, Set<string>>();
   const contentConflictPaths: string[] = [];
   // The subset of `contentConflictPaths` refused because a symlink stands at
@@ -798,7 +1055,7 @@ export async function runApplyPipeline(
   // again after materialization (below) — detection, not prevention, but
   // the batch is then refused and nothing is recorded, rather than
   // reporting success over content it silently corrupted.
-  const adoptedSnapshots: { target: string; path: string; content: string }[] = [];
+  const adoptedSnapshots: { target: string; path: string; content: Buffer | string }[] = [];
   for (const entry of unrecorded) {
     const payload = await computePayloadForTarget(entry, deps.readInstalledContentFn);
     payloads.set(entry, payload);
@@ -871,7 +1128,7 @@ export async function runApplyPipeline(
   const dirsThisCallCreated = new Set<string>();
   const probedDirs = new Set<string>();
   for (const entry of unrecorded) {
-    const payload = payloads.get(entry) ?? new Map<string, string>();
+    const payload = payloads.get(entry) ?? new Map<string, Buffer | string>();
     const identical = identicalByEntry.get(entry) ?? new Set<string>();
     for (const [projectPath] of payload) {
       if (identical.has(projectPath)) continue;
@@ -970,6 +1227,29 @@ export async function runApplyPipeline(
   // wrote before stopping, rather than leaving the caller to guess (or
   // assume "nothing written", which only the checks ABOVE this point can
   // honestly claim).
+  // Every item passed every check: only now may staged auto-installs land
+  // (`commands/staged-inventory.ts`), still before the first project write.
+  if (deps.beforeFirstWrite !== undefined) {
+    let committed: Awaited<ReturnType<NonNullable<ApplyPipelineDeps['beforeFirstWrite']>>>;
+    try {
+      committed = await deps.beforeFirstWrite();
+    } catch (error) {
+      committed = {
+        ok: false,
+        code: 'INTERNAL',
+        message: `The batch's staged installs could not be committed: ${error instanceof Error ? error.message : String(error)}.`,
+      };
+    }
+    if (!committed.ok) {
+      return {
+        ok: false,
+        code: committed.code,
+        message: `${committed.message} Nothing was written to the project.`,
+        ...(committed.details !== undefined ? { details: committed.details } : {}),
+      };
+    }
+  }
+
   const writtenPaths: string[] = [];
   // True from the moment this call's FIRST project-state commit
   // (`mutateProjectState` below) succeeds
@@ -1001,7 +1281,7 @@ export async function runApplyPipeline(
     // @cpt-begin:cpt-frontx-state-cli-scaffolding-assembly-op:p1:inst-as-reconciled-assembled
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize
     for (const entry of unrecorded) {
-      const payload = payloads.get(entry) ?? new Map<string, string>();
+      const payload = payloads.get(entry) ?? new Map<string, Buffer | string>();
       const identical = identicalByEntry.get(entry) ?? new Set<string>();
       for (const [projectPath, content] of payload) {
         // Already correct on disk — writing it again would be harmless but
@@ -1024,7 +1304,7 @@ export async function runApplyPipeline(
     // it silently corrupted.
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-adopted-corrupted
     if (adoptedSnapshots.length > 0) {
-      const rereadByTarget = new Map<string, Map<string, string>>();
+      const rereadByTarget = new Map<string, Map<string, Buffer | string>>();
       const corruptedAdoptedPaths: string[] = [];
       for (const snapshot of adoptedSnapshots) {
         let reread = rereadByTarget.get(snapshot.target);
@@ -1033,7 +1313,13 @@ export async function runApplyPipeline(
           reread = new Map(rawExisting.map((item) => [item.path, item.content]));
           rereadByTarget.set(snapshot.target, reread);
         }
-        if (reread.get(snapshot.path) !== snapshot.content) corruptedAdoptedPaths.push(snapshot.path);
+        const rereadContent = reread.get(snapshot.path);
+        const equal =
+          rereadContent === snapshot.content ||
+          (Buffer.isBuffer(rereadContent) && Buffer.isBuffer(snapshot.content) && rereadContent.equals(snapshot.content)) ||
+          (Buffer.isBuffer(rereadContent) && typeof snapshot.content === 'string' && rereadContent.equals(Buffer.from(snapshot.content, 'utf-8'))) ||
+          (typeof rereadContent === 'string' && Buffer.isBuffer(snapshot.content) && snapshot.content.equals(Buffer.from(rereadContent, 'utf-8')));
+        if (!equal) corruptedAdoptedPaths.push(snapshot.path);
       }
       if (corruptedAdoptedPaths.length > 0) {
         // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-adopted-corrupted
@@ -1055,6 +1341,7 @@ export async function runApplyPipeline(
           dirsThisCallCreated,
           deps.removeBundleFn,
           bundledNamesThisCall,
+          unremoved,
         );
         return {
           ok: false,
@@ -1082,6 +1369,28 @@ export async function runApplyPipeline(
       handledNames.add(entry.templateName);
       const targetsBefore = document.templates[entry.templateName]?.targets.length ?? 0;
       if (targetsBefore > 0) continue; // this name already had a target before this batch
+      const approvedReplacement = deps.aiReplacements?.get(entry.templateName);
+      if (approvedReplacement !== undefined) {
+        // The reviewed replacement writes only its snapshot bytes and refuses if the
+        // destination drifted; it is NOT recorded for rollback, which would remove
+        // the replaced tree instead of restoring it.
+        try {
+          approvedReplacement();
+        } catch (error) {
+          await rollbackWrittenPaths(repoRoot, writtenPaths, deps.removeProjectFileFn, deps.removeEmptyDirFn, dirsThisCallCreated, deps.removeBundleFn, bundledNamesThisCall, unremoved);
+          return {
+            ok: false,
+            code: 'CONTENT_CONFLICT',
+            message:
+              `The reviewed AI-extension bundle replacement for "${entry.templateName}" could not be applied: ` +
+              `${error instanceof Error ? error.message : String(error)}; nothing was recorded` +
+              describeWrittenPaths(writtenPaths, true) +
+              describeBundleRollback(bundledNamesThisCall, true),
+            details: { name: entry.templateName, aiBundle: `.frontx/ai/${entry.templateName}`, writtenPaths },
+          };
+        }
+        continue;
+      }
       try {
         const bundleOutcome = await materializeOrRemoveAiBundle({
           manifestName: entry.templateName,
@@ -1121,6 +1430,7 @@ export async function runApplyPipeline(
           dirsThisCallCreated,
           deps.removeBundleFn,
           bundledNamesThisCall,
+          unremoved,
         );
         const bundleFailureDetails = {
           name: entry.templateName,
@@ -1199,6 +1509,7 @@ export async function runApplyPipeline(
             dirsThisCallCreated,
             deps.removeBundleFn,
             bundledNamesThisCall,
+            unremoved,
           );
         }
         return {
@@ -1215,9 +1526,14 @@ export async function runApplyPipeline(
         };
       }
       const mergedTargets = [...existingEntry.targets, ...newTargets];
+      const appliedDeclaration = unrecorded.find((entry) => entry.templateName === name)?.excludedSubtrees ?? [];
       const written = await mutateProjectState(
         repoRoot,
-        { kind: 'set-template', name, entry: { ...existingEntry, targets: mergedTargets } },
+        {
+          kind: 'set-template',
+          name,
+          entry: recordApplyTimeDeclaration(existingEntry, mergedTargets, appliedDeclaration),
+        },
         deps.readProjectStateFn,
         deps.writeProjectStateFn,
       );
@@ -1251,6 +1567,7 @@ export async function runApplyPipeline(
             dirsThisCallCreated,
             deps.removeBundleFn,
             bundledNamesThisCall,
+            unremoved,
           );
         }
         return {
@@ -1261,8 +1578,12 @@ export async function runApplyPipeline(
             describeWrittenPaths(writtenPaths, !recordedAnyThisCall) +
             describeBundleRollback(bundledNamesThisCall, !recordedAnyThisCall),
           details:
-            writtenPaths.length > 0 || bundledNamesThisCall.size > 0
-              ? { ...(writtenPaths.length > 0 ? { writtenPaths } : {}), ...bundledNamesDetail(bundledNamesThisCall) }
+            writtenPaths.length > 0 || bundledNamesThisCall.size > 0 || written.details !== undefined
+              ? {
+                  ...written.details,
+                  ...(writtenPaths.length > 0 ? { writtenPaths } : {}),
+                  ...bundledNamesDetail(bundledNamesThisCall),
+                }
               : undefined,
         };
       }
@@ -1292,6 +1613,7 @@ export async function runApplyPipeline(
         dirsThisCallCreated,
         deps.removeBundleFn,
         bundledNamesThisCall,
+        unremoved,
       );
     }
     // `canRollback` decides whether the removal above ran, never whether

@@ -35,7 +35,7 @@
 // 'declined'` value the engine already produced, so no second plan
 // computation or capture mechanism is needed.
 import { upgradeToOrigin, restorePreceding } from '../upgrade/flow';
-import { renderReviewablePlan } from '../upgrade/plan';
+import { computePlanDigest, renderReviewablePlan, reviewNotes } from '../upgrade/plan';
 import type { UpgradeEngineDeps, UpgradeFlowOutcome } from '../upgrade/flow';
 import type { UpgradePlan, PresentUpgradePlanFn } from '../upgrade/types';
 import type { ErrorCode } from '../envelope';
@@ -43,6 +43,11 @@ import type { ErrorCode } from '../envelope';
 export interface UpgradeCommandFlags {
   jsonMode: boolean;
   yes: boolean;
+  // `--plan-digest=<hex>`: the `details.planDigest` of the `CONFIRMATION_REQUIRED`
+  // review this `--yes` call confirms. When present, the call commits only if
+  // the plan it computes itself has exactly that digest; otherwise nothing is
+  // written and the freshly computed plan is returned for a new review.
+  expectedPlanDigest?: string;
 }
 
 // Which direction this invocation requested — the ONE thing that
@@ -76,13 +81,35 @@ export async function upgradeCommand(
   // `templateName`/`direction`/`flags` are accepted as this function's own
   // parameters — the CLI dispatch layer (`cli.ts`) has already parsed the
   // process invocation down to these.
+  // `--yes` bound to a reviewed plan (`--plan-digest`) approves only that plan:
+  // a plan whose content differs (project or candidate changed since the
+  // review) is declined here, which the substitution below reports as a fresh
+  // `CONFIRMATION_REQUIRED` — reviewed equals applied across the two calls.
+  let planChangedSinceReview = false;
+  // Automated approval must name the plan it approves (plan-ai-recovery r9 §1):
+  // a digestless `--json --yes` is answered with the review, never applied.
+  let digestMissing = false;
   const presentPlan: PresentUpgradePlanFn = flags.jsonMode
     ? flags.yes
-      ? async () => 'approved'
+      ? async (plan) => {
+          if (flags.expectedPlanDigest === undefined) {
+            digestMissing = true;
+            return 'declined';
+          }
+          if (computePlanDigest(plan) === flags.expectedPlanDigest) return 'approved';
+          planChangedSinceReview = true;
+          return 'declined';
+        }
       : async () => 'declined' // never reads stdin — see this file's header
     : presentInteractively;
 
-  const deps: UpgradeEngineDeps = { ...engineDeps, presentPlan };
+  const deps: UpgradeEngineDeps = {
+    ...engineDeps,
+    presentPlan,
+    // A digest names a reviewed plan, and a reviewed plan is never a no-op:
+    // for this call a no-op outcome is itself a changed plan (see the flow).
+    ...(flags.jsonMode && flags.yes && flags.expectedPlanDigest !== undefined ? { boundToReviewedPlan: true } : {}),
+  };
 
   const outcome: UpgradeFlowOutcome =
     direction.kind === 'forward'
@@ -90,6 +117,20 @@ export async function upgradeCommand(
       : await restorePreceding(templateName, deps);
   // @cpt-end:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-invoke
   // @cpt-end:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-invoke-upgrade
+
+  // The state the digest was computed against is gone (the project reached the
+  // candidate meanwhile): same answer as any other changed plan — fail closed,
+  // the approval is not carried over. No plan exists to show; nothing written.
+  if (outcome.ok && outcome.outcome === 'review-superseded') {
+    return {
+      ok: false,
+      code: 'CONFIRMATION_REQUIRED',
+      message:
+        `"${templateName}"'s upgrade plan is not the plan that was reviewed: the project is already at ` +
+        `"${outcome.at.origin}" (version ${outcome.at.version}), so there is nothing left to approve. Nothing has been written.`,
+      details: { name: templateName, reviewSuperseded: true, at: outcome.at },
+    };
+  }
 
   // The substitution this file's header describes: an engine-reported
   // decline reached ONLY because `presentPlan` above never actually asked
@@ -102,20 +143,31 @@ export async function upgradeCommand(
   // caller" step — this is the identical dispatch-layer substitution
   // `commands/delete.ts` already makes for `delete` (`inst-del-if-json-no-
   // yes`), which is that OTHER feature's own instruction, not this one's.
-  if (outcome.ok && outcome.outcome === 'declined' && flags.jsonMode && !flags.yes) {
+  if (outcome.ok && outcome.outcome === 'declined' && flags.jsonMode && (!flags.yes || planChangedSinceReview || digestMissing)) {
     return {
       ok: false,
       code: 'CONFIRMATION_REQUIRED',
-      message:
-        `"${templateName}"'s upgrade requires confirmation. Re-issue this exact command with --yes after ` +
-        'obtaining authorization out of band; nothing has been written.',
+      message: (digestMissing
+        ? `"${templateName}"'s upgrade was not applied: --yes confirms only a reviewed plan. Review the plan in this envelope and ` +
+          're-issue with --yes --plan-digest=<details.planDigest>; nothing has been written.'
+        : planChangedSinceReview
+        ? `"${templateName}"'s upgrade plan is not the plan that was reviewed: the project or the candidate changed ` +
+          'since the review. Nothing has been written; review the plan in this envelope and confirm it with its own planDigest.'
+        : `"${templateName}"'s upgrade requires confirmation. Re-issue this exact command with --yes ` +
+          '--plan-digest=<details.planDigest> after obtaining authorization out of band; nothing has been written.') +
+        reviewNotes(outcome.plan).map((note) => ` ${note}`).join(''),
       // Projected, never the internal plan: `renderReviewablePlan` strips the
       // three content fields the commit algorithm needs (`expectedDisk`,
       // `newContent`, `baselineContent`), which would otherwise put up to
       // three full copies of every changed file — and the baseline's own
       // content — into this envelope. See `../upgrade/plan.ts` for why that
       // contradicts what the plan is.
-      details: { name: templateName, plan: renderReviewablePlan(outcome.plan) },
+      details: {
+        name: templateName,
+        plan: renderReviewablePlan(outcome.plan),
+        planDigest: computePlanDigest(outcome.plan),
+        ...(reviewNotes(outcome.plan).length > 0 ? { notes: reviewNotes(outcome.plan) } : {}),
+      },
     };
   }
 

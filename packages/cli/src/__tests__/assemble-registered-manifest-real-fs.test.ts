@@ -1,3 +1,4 @@
+import { createFsReadFolderFileBinaryFn } from '../adapters/fs-project-io';
 // @cpt-flow:cpt-frontx-flow-cli-scaffolding-assemble-preview:p1
 //
 // Real-filesystem coverage for a regression in `scaffold/registered-
@@ -80,6 +81,7 @@ async function setup(repoRoot: string, bManifestReadable: boolean): Promise<{ de
   const deps: ResolveAndCheckDeps = {
     inventory: noInventory,
     fetchFn: vi.fn(async () => ''),
+    readFolderFileBinaryFn: createFsReadFolderFileBinaryFn(),
     readFileFn: createFsReadFileFn(),
     canonicalizeFn: createFsCanonicalizeTargetFn(repoRoot),
     existsFn: createFsPathExistsFn(),

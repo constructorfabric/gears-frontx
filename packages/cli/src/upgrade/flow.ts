@@ -48,7 +48,10 @@ import type { CommitDeps, CommitOutcome } from './commit';
 import { validateUpgrade } from './validate';
 import type { ValidateInput } from './validate';
 import { readProjectState, mutateProjectState } from '../project-state/io';
-import type { ReadProjectStateFn, TemplateEntry, WriteProjectStateFn } from '../project-state/types';
+import { aliasedOwnedRootRefusal } from '../project-state/alias';
+import { bundleOverlapMessage, bundleConflictsOf } from '../project-state/bundle-identity';
+import { exclusionGroundRoots, withRetainedGround } from '../project-state/retained-ground';
+import type { PendingPostCommit, ReadProjectStateFn, TemplateEntry, WriteProjectStateFn } from '../project-state/types';
 import type {
   ListDiskFilesFn,
   OriginVersion,
@@ -61,6 +64,8 @@ import type {
   UpgradeRefusal,
   WriteDiskFileFn,
 } from './types';
+import { getOwn } from '../own-record';
+import type { AiReviewSnapshot } from '../operations/ai-review';
 
 export type UpgradeFlowOutcome =
   // `recordedExclusions` is present only when this no-op WROTE the
@@ -71,6 +76,10 @@ export type UpgradeFlowOutcome =
   | { ok: true; outcome: 'noop'; at: OriginVersion; recordedExclusions?: string[] }
   | { ok: true; outcome: 'declined'; plan: UpgradePlan }
   | { ok: true; outcome: 'success'; plan: UpgradePlan; reclaimedTempPaths: string[] }
+  // A confirming call bound to a reviewed plan (`UpgradeEngineDeps.boundToReviewedPlan`)
+  // found nothing to upgrade: the state it was reviewed against no longer
+  // exists, so the approval cannot apply to anything. Nothing was written.
+  | { ok: true; outcome: 'review-superseded'; at: OriginVersion }
   | UpgradeRefusal;
 
 // Every seam both `commitUpgrade` and `validateUpgrade` need, gathered in one
@@ -102,8 +111,23 @@ export interface UpgradeEngineDeps {
   listDiskFiles: ListDiskFilesFn;
   canonicalizeFn: (raw: string) => string | null;
   presentPlan: PresentUpgradePlanFn;
+  // True for a confirming call that carries the digest of a plan an earlier
+  // call presented for review. A reviewed plan is never a no-op, so for such a
+  // call "no-op" means the project moved on after the review: the flow then
+  // returns `review-superseded` BEFORE the no-op branch's own document write
+  // (the exclusions backfill), instead of taking a path that never consults
+  // the digest.
+  boundToReviewedPlan?: boolean;
   promoteInventory: (name: string) => Promise<void>;
   refreshAiBundle: (name: string) => Promise<void>;
+  // Captures the AI bundle review for a computed plan before it is presented;
+  // the returned snapshot becomes `plan.ai` and so part of the reviewed digest.
+  reviewAi?: (plan: UpgradePlan) => Promise<AiReviewSnapshot | undefined>;
+  // Called once, after approval and before the first effect of `commitUpgrade`:
+  // the wiring layer writes its recovery receipt here. A throw aborts before any write.
+  onApproved?: (plan: UpgradePlan) => Promise<void>;
+  // Passed to the commit write (`CommitDeps.pendingPostCommit`).
+  pendingPostCommit?: () => PendingPostCommit | undefined;
 }
 
 function toCommitDeps(deps: UpgradeEngineDeps): CommitDeps {
@@ -118,6 +142,7 @@ function toCommitDeps(deps: UpgradeEngineDeps): CommitDeps {
     writeProjectStateFn: deps.writeProjectStateFn,
     promoteInventory: deps.promoteInventory,
     refreshAiBundle: deps.refreshAiBundle,
+    ...(deps.pendingPostCommit !== undefined ? { pendingPostCommit: deps.pendingPostCommit } : {}),
   };
 }
 
@@ -234,10 +259,15 @@ async function driveUpgrade(name: string, deriveCandidate: DeriveCandidateFn, de
   // @cpt-begin:cpt-frontx-state-upgrade-changeset-lifecycle:p1:inst-st-read-to-refused
   const stateResult = await readProjectState(deps.repoRoot, deps.readProjectStateFn);
   if (!stateResult.ok) {
-    return { ok: false, code: 'PROJECT_INVALID', message: stateResult.message };
+    return { ok: false, code: 'PROJECT_INVALID', message: stateResult.message, ...(stateResult.details ? { details: stateResult.details } : {}) };
   }
   const document = stateResult.document;
-  const entry = document.templates[name];
+  // The disk-aware half of the recorded-path judgement (`project-state/alias.ts`):
+  // an ownership root that reaches its ground through a symlink would not
+  // protect it under the name the classification compares by.
+  const aliased = aliasedOwnedRootRefusal(document, deps.canonicalizeFn);
+  if (aliased !== undefined) return { ok: false, code: 'PROJECT_INVALID', ...aliased };
+  const entry = getOwn(document.templates, name);
   // @cpt-end:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-invoke
   // @cpt-end:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-read-provenance
 
@@ -258,6 +288,21 @@ async function driveUpgrade(name: string, deriveCandidate: DeriveCandidateFn, de
   // @cpt-end:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-if-not-registered
   // @cpt-end:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-if-not-registered
 
+  // Unfinished post-commit work (plan-ai-recovery r9 §7): no new transition and no
+  // noop/success may be reported over it, whatever the operation records say.
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-if-pending-post-commit
+  if (entry.pendingPostCommit !== undefined) {
+    // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-return-pending-post-commit
+    return {
+      ok: false,
+      code: 'RECOVERY_REQUIRED',
+      message: `"${name}" has unfinished post-commit work from an earlier upgrade or restore; run "frontx upgrade ${name} --recover" first.`,
+      details: { name, pendingPostCommit: entry.pendingPostCommit },
+    };
+    // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-return-pending-post-commit
+  }
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-if-pending-post-commit
+
   // @cpt-begin:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-if-empty-targets
   // @cpt-begin:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-if-empty-targets
   if (entry.targets.length === 0) {
@@ -274,6 +319,30 @@ async function driveUpgrade(name: string, deriveCandidate: DeriveCandidateFn, de
   }
   // @cpt-end:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-if-empty-targets
   // @cpt-end:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-if-empty-targets
+
+  // The commit refreshes `.frontx/ai/<name>/` by clearing it recursively. A
+  // registered template with applied targets whose bundle lives inside that
+  // directory would lose it, and one whose directory contains it may hold
+  // files of its own at that nested path, so the upgrade/restore is refused
+  // before any plan is computed or anything is written
+  // (`project-state/bundle-identity.ts`).
+  // @cpt-begin:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-if-bundle-overlap
+  // @cpt-begin:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-if-bundle-overlap
+  const bundleConflicts = bundleConflictsOf(document.templates, name);
+  if (bundleConflicts.length > 0) {
+    // @cpt-begin:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-return-bundle-overlap
+    // @cpt-begin:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-return-bundle-overlap
+    return {
+      ok: false,
+      code: 'REGISTRATION_CONFLICT',
+      message: bundleOverlapMessage(name, bundleConflicts, `Upgrade refused for "${name}"`),
+      details: { name, overlapping: bundleConflicts },
+    };
+    // @cpt-end:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-return-bundle-overlap
+    // @cpt-end:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-return-bundle-overlap
+  }
+  // @cpt-end:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-if-bundle-overlap
+  // @cpt-end:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-if-bundle-overlap
 
   // @cpt-begin:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-if-unavailable
   // @cpt-begin:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-else
@@ -340,6 +409,7 @@ async function driveUpgrade(name: string, deriveCandidate: DeriveCandidateFn, de
   // entirely, and consumes no reversal.
   // @cpt-begin:cpt-frontx-state-upgrade-changeset-lifecycle:p1:inst-st-read-to-noop
   if (validated.kind === 'noop') {
+    if (deps.boundToReviewedPlan === true) return { ok: true, outcome: 'review-superseded', at: validated.at };
     // @cpt-begin:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-if-noop-missing-exclusions
     // @cpt-begin:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-if-noop-missing-exclusions
     // A no-op for the pair {origin, version} is not a no-op for a document
@@ -350,7 +420,16 @@ async function driveUpgrade(name: string, deriveCandidate: DeriveCandidateFn, de
     // `inst-read-provenance`/`inst-rst-invoke`; never re-read.
     let recordedExclusions: string[] | undefined;
     if (entry.excludedSubtrees === undefined) {
-      const repaired: TemplateEntry = { ...entry, excludedSubtrees: validated.excludedSubtrees };
+      // With applied targets the value is the CURRENT declaration, not what
+      // was in force when those files were written: mark it so no consumer
+      // reads it as history (`TemplateEntry.exclusionsBackfilled`).
+      const repaired: TemplateEntry =
+        entry.targets.length > 0
+          ? withRetainedGround(
+              { ...entry, excludedSubtrees: validated.excludedSubtrees, exclusionsBackfilled: true as const },
+              exclusionGroundRoots(entry.targets, validated.excludedSubtrees),
+            )
+          : { ...entry, excludedSubtrees: validated.excludedSubtrees };
       // @cpt-begin:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-record-noop-exclusions
       // @cpt-begin:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-record-noop-exclusions
       const written = await mutateProjectState(
@@ -362,7 +441,7 @@ async function driveUpgrade(name: string, deriveCandidate: DeriveCandidateFn, de
       // @cpt-end:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-record-noop-exclusions
       // @cpt-end:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-record-noop-exclusions
       if (!written.ok) {
-        return { ok: false, code: 'PROJECT_INVALID', message: written.message };
+        return { ok: false, code: 'PROJECT_INVALID', message: written.message, ...(written.details ? { details: written.details } : {}) };
       }
       recordedExclusions = validated.excludedSubtrees;
     }
@@ -373,6 +452,10 @@ async function driveUpgrade(name: string, deriveCandidate: DeriveCandidateFn, de
   // @cpt-end:cpt-frontx-state-upgrade-changeset-lifecycle:p1:inst-st-read-to-noop
 
   const plan = validated.plan;
+  if (deps.reviewAi !== undefined) {
+    const ai = await deps.reviewAi(plan);
+    if (ai !== undefined) plan.ai = ai;
+  }
 
   // @cpt-begin:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-present-changeset
   // @cpt-begin:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-present
@@ -413,6 +496,7 @@ async function driveUpgrade(name: string, deriveCandidate: DeriveCandidateFn, de
   // CURRENT entry, its `to` is the recorded preceding pair), so landing the
   // plan and recording the origin just left as the new preceding origin is
   // the SAME call for both flows — restore needs no separate commit step.
+  if (deps.onApproved !== undefined) await deps.onApproved(plan);
   const commitOutcome = await commitUpgrade(plan, toCommitDeps(deps));
   // @cpt-end:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-reverse-content
   // @cpt-end:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-apply-changeset

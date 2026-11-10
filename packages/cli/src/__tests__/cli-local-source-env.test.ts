@@ -10,6 +10,19 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import { joinWithinRoot } from '@gears-frontx/test-support/path-guard';
 import { createRealDeps } from '../cli';
+import { readBundleFiles, isBinaryBundleValue, decodeBundleValue, BUNDLE_MARKER, encodeBundleValue } from '../bundle/envelope';
+import { parseSourceSpec } from '../spec-parser/parse';
+import { resolveToInventory } from '../resolver/resolve';
+import type { FetchFn } from '../resolver/types';
+
+const SEAM_MANIFEST = JSON.stringify({ name: 'fixture', version: '1.0.0', excludedSubtrees: [], description: 'Seam fixture.' });
+const TYPED_SPEC = 'github:acme/alpha@v1.0.0';
+
+async function resolveTyped(fetchFn: FetchFn) {
+  const parsed = parseSourceSpec(TYPED_SPEC);
+  if (!parsed.ok) throw new Error('bad spec');
+  return resolveToInventory({ kind: 'remote', ref: parsed.value }, { fetchFn });
+}
 
 describe('createRealDeps — TEST-ONLY FRONTX_TEST_LOCAL_SOURCE_DIR hook', () => {
   const originalEnv = process.env.FRONTX_TEST_LOCAL_SOURCE_DIR;
@@ -38,9 +51,11 @@ describe('createRealDeps — TEST-ONLY FRONTX_TEST_LOCAL_SOURCE_DIR hook', () =>
     // assuming the string arm.
     const content = typeof fetchOutcome === 'string' ? fetchOutcome : fetchOutcome.content;
 
-    expect(JSON.parse(content)).toEqual({
-      $frontxTemplateFiles: { 'frontx-template.json': '{"name":"fixture","version":"1.0.0"}' },
-    });
+    const files = readBundleFiles(content);
+    expect(files).toBeDefined();
+    const v = files!['frontx-template.json'];
+    expect(isBinaryBundleValue(v)).toBe(true);
+    if (isBinaryBundleValue(v)) expect(decodeBundleValue(v)?.toString('utf-8')).toBe('{"name":"fixture","version":"1.0.0"}');
   });
 
   it('preserves the production GitHub fetchFn when the env var is unset — a bogus url fails the network path, not the local-adapter path', async () => {
@@ -56,5 +71,29 @@ describe('createRealDeps — TEST-ONLY FRONTX_TEST_LOCAL_SOURCE_DIR hook', () =>
     await expect(deps.fetchFn('https://this-host-does-not-resolve.invalid.example/x')).rejects.not.toThrow(
       /does not exist or is not a directory/,
     );
+  });
+
+  // D1/D2 document the routes outside the pin guarantee: an adapter that
+  // reports no pin leaves the typed ref recorded. Flip these if that changes.
+  it('D1. the env-wired local adapter records the typed ref, not a commit pin', async () => {
+    fs.writeFileSync(joinWithinRoot(localDir, 'frontx-template.json'), SEAM_MANIFEST);
+    process.env.FRONTX_TEST_LOCAL_SOURCE_DIR = localDir;
+
+    const resolved = await resolveTyped(createRealDeps().fetchFn);
+    expect(resolved.ok).toBe(true);
+    if (resolved.ok) {
+      expect(resolved.value.source).toBe(TYPED_SPEC);
+      expect(resolved.value.ref).toBe('v1.0.0');
+    }
+  });
+
+  it('D2. a bare-string FetchFn records the typed ref, not a commit pin', async () => {
+    const content = JSON.stringify({ [BUNDLE_MARKER]: { 'frontx-template.json': encodeBundleValue(Buffer.from(SEAM_MANIFEST)) } });
+    const resolved = await resolveTyped(async () => content);
+    expect(resolved.ok).toBe(true);
+    if (resolved.ok) {
+      expect(resolved.value.source).toBe(TYPED_SPEC);
+      expect(resolved.value.ref).toBe('v1.0.0');
+    }
   });
 });

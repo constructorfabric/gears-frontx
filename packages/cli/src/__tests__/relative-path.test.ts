@@ -13,6 +13,7 @@ import {
   pathsNest,
   pathWithinTarget,
   targetsNest,
+  unaddressableProjectPathReason,
   unsafeRelativePathReason,
 } from '../paths/relative-path';
 
@@ -225,7 +226,32 @@ describe('nonCanonicalProjectPathReason — a path the engine may judge is alrea
     { value: 'app/', reason: 'is not in canonical form (it names "app")' },
     { value: '../x', reason: 'is absolute or climbs out of the project root' },
     { value: '/etc/x', reason: 'is absolute or climbs out of the project root' },
+    { value: '~', reason: 'begins with "~"' },
+    { value: '~/x', reason: 'begins with "~"' },
   ])('refuses $value', ({ value, reason }) => {
-    expect(nonCanonicalProjectPathReason(value)).toBe(reason);
+    expect(nonCanonicalProjectPathReason(value)).toContain(reason);
+  });
+});
+
+describe('unaddressableProjectPathReason — the engine-side judgement adds the character-level checks', () => {
+  it.each([
+    { value: 'app\u0000', reason: 'contains a control character' },
+    { value: 'app\u0001/x', reason: 'contains a control character' },
+    { value: 'app ', reason: 'has leading or trailing whitespace' },
+    { value: ' app', reason: 'has leading or trailing whitespace' },
+    { value: 'app/../x', reason: 'is not in canonical form' },
+    { value: '~/x', reason: 'begins with "~"' },
+  ])('refuses $value', ({ value, reason }) => {
+    expect(unaddressableProjectPathReason(value)).toContain(reason);
+  });
+
+  it.each(['app', '.', 'a\\b', 'a:b'])('accepts %s', (value) => {
+    expect(unaddressableProjectPathReason(value)).toBeUndefined();
+  });
+
+  // The state store judges with the narrower predicate: apply's canonicaliser
+  // lets these through to its writes, so the store must not refuse them after.
+  it.each(['app ', 'app\u0001'])('leaves %j to the engine, not the state store', (value) => {
+    expect(nonCanonicalProjectPathReason(value)).toBeUndefined();
   });
 });

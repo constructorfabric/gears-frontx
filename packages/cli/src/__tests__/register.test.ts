@@ -80,7 +80,7 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
     const { read, write, written } = fakeProjectState();
     const inventory = fakeInventory();
 
-    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, throwingReadFileFn, identityCanonicalize, read, write, existsFn, listFolderFilesFn);
+    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
 
     expect(result).toEqual({
       ok: true,
@@ -99,7 +99,7 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
     });
     const inventory = fakeInventory();
 
-    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, throwingReadFileFn, identityCanonicalize, read, write, existsFn, listFolderFilesFn);
+    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
 
     expect(result).toEqual({
       ok: true,
@@ -124,7 +124,7 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
     });
     const inventory = fakeInventory();
 
-    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, throwingReadFileFn, identityCanonicalize, read, write, existsFn, listFolderFilesFn);
+    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
 
     // Its OWN outcome, not `noop`: the document was written.
     expect(result).toEqual({
@@ -150,7 +150,7 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
     });
     const inventory = fakeInventory();
 
-    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, throwingReadFileFn, identityCanonicalize, read, write, existsFn, listFolderFilesFn);
+    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
 
     expect(result).toMatchObject({ ok: false, code: 'REGISTRATION_CONFLICT' });
   });
@@ -165,7 +165,7 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
     });
     const inventory = fakeInventory();
 
-    const result = await registerTemplate('github:acme/foo@v1.0.0', true, '/repo', inventory, noopFetch, throwingReadFileFn, identityCanonicalize, read, write, existsFn, listFolderFilesFn);
+    const result = await registerTemplate('github:acme/foo@v1.0.0', true, '/repo', inventory, noopFetch, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
 
     expect(result).toEqual({
       ok: true,
@@ -185,7 +185,7 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
     });
     const inventory = fakeInventory();
 
-    const result = await registerTemplate('github:acme/foo@v1.0.0', true, '/repo', inventory, noopFetch, throwingReadFileFn, identityCanonicalize, read, write, existsFn, listFolderFilesFn);
+    const result = await registerTemplate('github:acme/foo@v1.0.0', true, '/repo', inventory, noopFetch, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
 
     expect(result).toMatchObject({ ok: false, code: 'TARGETS_EXIST', details: { name: 'foo', targets: ['packages/foo'] } });
     expect(write).not.toHaveBeenCalled();
@@ -200,7 +200,7 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
       install: async () => ({ ok: false, error: { message: 'unreachable registry' } }),
     });
 
-    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, throwingReadFileFn, identityCanonicalize, read, write, existsFn, listFolderFilesFn);
+    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
 
     expect(result).toEqual({ ok: false, code: 'ORIGIN_UNAVAILABLE', message: 'unreachable registry' });
     expect(write).not.toHaveBeenCalled();
@@ -214,7 +214,7 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
       lookup: () => ({ name: 'foo', source: 'github:acme/foo@v1.0.0', ref: 'v1.0.0', status: InventoryState.INSTALLED, content: JSON.stringify(drifted) }),
     });
 
-    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, throwingReadFileFn, identityCanonicalize, read, write, existsFn, listFolderFilesFn);
+    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
 
     expect(result).toMatchObject({ ok: false, code: 'INVALID_MANIFEST', details: { field: 'name' } });
     expect(write).not.toHaveBeenCalled();
@@ -228,7 +228,7 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
       lookup: () => ({ name: 'foo', source: 'github:acme/foo@v1.0.0', ref: 'v1.0.0', status: InventoryState.INSTALLED, content: JSON.stringify(drifted) }),
     });
 
-    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, throwingReadFileFn, identityCanonicalize, read, write, existsFn, listFolderFilesFn);
+    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
 
     expect(result).toMatchObject({ ok: false, code: 'INVALID_MANIFEST', details: { field: 'version' } });
   });
@@ -241,7 +241,7 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
       lookup: () => ({ name: 'foo', source: 'github:acme/foo@v1.0.0', ref: 'v1.0.0', status: InventoryState.INSTALLED, content: JSON.stringify(drifted) }),
     });
 
-    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, throwingReadFileFn, identityCanonicalize, read, write, existsFn, listFolderFilesFn);
+    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
 
     expect(result).toMatchObject({ ok: false, code: 'INVALID_MANIFEST', details: { field: 'description' } });
   });
@@ -258,7 +258,7 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
       lookup: () => ({ name: 'foo', source: 'github:acme/foo@v1.0.0', ref: 'v1.0.0', status: InventoryState.INSTALLED, content: legacy }),
     });
 
-    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, throwingReadFileFn, identityCanonicalize, read, write, existsFn, listFolderFilesFn);
+    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
 
     expect(result).toMatchObject({
       ok: false,
@@ -283,7 +283,7 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
       return manifestContent({ name: 'local-foo' });
     });
 
-    const result = await registerTemplate('path:templates/local-foo', false, '/repo', inventory, noopFetch, readFileFn, identityCanonicalize, read, write, existsFn, listFolderFilesFn);
+    const result = await registerTemplate('path:templates/local-foo', false, '/repo', inventory, noopFetch, async (p) => Buffer.from(await (readFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
 
     expect(result).toEqual({
       ok: true,
@@ -321,7 +321,7 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
       '/repo',
       inventory,
       noopFetch,
-      readFileFn,
+      async (p) => Buffer.from(await (readFileFn)(p)),
       identityCanonicalize,
       read,
       write,
@@ -350,7 +350,7 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
       '/repo',
       inventory,
       noopFetch,
-      readFileFn,
+      async (p) => Buffer.from(await (readFileFn)(p)),
       identityCanonicalize,
       read,
       write,
@@ -378,7 +378,7 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
       '/repo',
       inventory,
       noopFetch,
-      readFileFn,
+      async (p) => Buffer.from(await (readFileFn)(p)),
       escapingCanonicalize,
       read,
       write,
@@ -414,7 +414,7 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
       '/repo',
       inventory,
       noopFetch,
-      readFileFn,
+      async (p) => Buffer.from(await (readFileFn)(p)),
       rootCanonicalize,
       read,
       write,
@@ -465,7 +465,7 @@ describe('registerTemplate — end-to-end pinning through the REAL inventory', (
       '/repo',
       inventory,
       pinningFetch,
-      throwingReadFileFn,
+      async (p) => Buffer.from(await (throwingReadFileFn)(p)),
       identityCanonicalize,
       read,
       write,
@@ -497,7 +497,7 @@ describe('registerTemplate — end-to-end pinning through the REAL inventory', (
       '/repo',
       inventory,
       unpinnedFetch,
-      throwingReadFileFn,
+      async (p) => Buffer.from(await (throwingReadFileFn)(p)),
       identityCanonicalize,
       read,
       write,

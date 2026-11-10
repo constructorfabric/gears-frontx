@@ -47,6 +47,8 @@ export type ErrorCode =
   | 'INVALID_PATH'
   | 'NOTHING_TO_RESTORE'
   | 'INVALID_INPUT'
+  | 'RECOVERY_REQUIRED'
+  | 'RESOURCE_BUSY'
   | 'INTERNAL';
 
 export interface EnvelopeError {

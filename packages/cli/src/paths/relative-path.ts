@@ -47,7 +47,7 @@ export function unsafeRelativePathReason(value: string): string | undefined {
 // A control character (NUL among them) must never reach a filesystem adapter in
 // a path-like value: it makes the platform API throw, which escapes the result
 // union every caller here returns instead.
-function hasControlChar(value: string): boolean {
+export function hasControlChar(value: string): boolean {
   for (const character of value) {
     const code = character.codePointAt(0) ?? 0;
     if (code < 0x20 || code === 0x7f) return true;
@@ -201,8 +201,63 @@ export function normalizeProjectRelativePath(value: string): string | null {
 // not either climbs out of the root or names a location other than the one its
 // text shows, and which of those it is changes nothing about what to do with it.
 export function nonCanonicalProjectPathReason(value: string): string | undefined {
+  // The apply canonicaliser (`createFsCanonicalizeTargetFn`) refuses a first
+  // segment of `~`: the shell did not expand it, and resolved literally it
+  // would name a directory called `~` inside the project. A path this engine is
+  // to judge must be one apply could have recorded, so it is refused here too.
+  if (value.split('/')[0] === '~') return 'begins with "~", a home-directory spelling the shell did not expand';
   const normalized = normalizeProjectRelativePath(value);
   if (normalized === null) return 'is absolute or climbs out of the project root';
   if (normalized !== value) return `is not in canonical form (it names "${normalized}")`;
   return undefined;
+}
+
+// `nonCanonicalProjectPathReason` plus the two character-level checks of the
+// shared rule (`unsafeRelativePathReason`): a control character (NUL among them)
+// makes the platform API throw past every result union, and surrounding
+// whitespace names a different directory than the text appears to. THE grammar a
+// recorded path is judged with — by the project state store (load and write) and
+// by the upgrade engine alike — and, through `canonicalizeForRecording` below,
+// the grammar `apply` and `ownership add` admit a path to the record with, so the
+// engines can never disagree about a state the CLI itself wrote. Backslash and
+// colon are NOT refused: a `path:` origin's folder and the files under it may
+// legitimately carry them.
+export function unaddressableProjectPathReason(value: string): string | undefined {
+  if (hasControlChar(value)) return 'contains a control character';
+  if (value.trim() !== value) return 'has leading or trailing whitespace';
+  return nonCanonicalProjectPathReason(value);
+}
+
+// The ONE gate between a raw, user-typed path and the project state record:
+// the filesystem canonicaliser's answer, but only when that answer is a spelling
+// the record's grammar (`unaddressableProjectPathReason`) accepts. A raw value
+// carrying a control character is refused before the canonicaliser is asked
+// (the platform API throws on a NUL). `null` is "nothing is recorded": every
+// command that records a path (`apply`, `ownership add`) refuses it as an
+// invalid path BEFORE anything is written, so the store never has to refuse what
+// a command has already acted on.
+// Why `canonicalizeForRecording` refused `raw`, when the answer is the record's
+// grammar (a control character, surrounding whitespace, a `~` first segment, a
+// non-canonical spelling) rather than a failure to prove the path stays inside
+// the project root; `undefined` for the latter. The refusal messages of every
+// command that records a path name this reason instead of the containment text,
+// which would send the developer looking for a symlink that is not there.
+export function recordingRefusalReason(raw: string, canonicalizeFn: (raw: string) => string | null): string | undefined {
+  if (hasControlChar(raw)) return 'contains a control character';
+  const canonical = canonicalizeFn(raw);
+  if (canonical === null) {
+    // The canonicaliser refuses a `~` first segment itself, so `./~` never
+    // comes back as a canonical spelling to judge; read the reason off the
+    // normalised raw value.
+    const normalized = normalizeProjectRelativePath(raw);
+    return normalized !== null && normalized.split('/')[0] === '~' ? nonCanonicalProjectPathReason(normalized) : undefined;
+  }
+  return unaddressableProjectPathReason(canonical);
+}
+
+export function canonicalizeForRecording(raw: string, canonicalizeFn: (raw: string) => string | null): string | null {
+  if (hasControlChar(raw)) return null;
+  const canonical = canonicalizeFn(raw);
+  if (canonical === null) return null;
+  return unaddressableProjectPathReason(canonical) === undefined ? canonical : null;
 }

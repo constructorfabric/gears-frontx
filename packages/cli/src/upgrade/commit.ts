@@ -11,7 +11,7 @@
 //   reclaim stale temp -> verify no reserved temp path is occupied by
 //   anything but a regular file -> materialize every new temp file -> verify
 //   every destination against what classification saw -> only then
-//   rename/unlink -> commit {origin,version} atomically -> promote inventory
+//   rename/unlink -> commit {origin,version} in one state-document write -> promote inventory
 //   -> refresh the AI bundle
 //
 // Each rule in that chain exists to close one specific failure window:
@@ -58,6 +58,7 @@ import { RESERVED_TEMP_SUFFIX, isReservedTempName } from '../paths/reserved-temp
 import { joinUnderTarget } from '../paths/relative-path';
 import { isWithinEffectiveOwnership } from '../scaffold/effective-ownership';
 import { mutateProjectState } from '../project-state/io';
+import type { PendingPostCommit } from '../project-state/types';
 import type { ReadProjectStateFn, WriteProjectStateFn, TemplateEntry } from '../project-state/types';
 import type {
   ListDiskFilesFn,
@@ -69,6 +70,18 @@ import type {
   UpgradeRefusalCode,
   WriteDiskFileFn,
 } from './types';
+
+// Byte-aware equality: null==null, Buffer by content, string by value,
+// cross-type by UTF-8 bytes.
+function contentBytesEqual(a: Buffer | string | null, b: Buffer | string | null): boolean {
+  if (a === null) return b === null;
+  if (b === null) return false;
+  if (Buffer.isBuffer(a) && Buffer.isBuffer(b)) return a.equals(b);
+  if (typeof a === 'string' && typeof b === 'string') return a === b;
+  const ba = Buffer.isBuffer(a) ? a : Buffer.from(a, 'utf-8');
+  const bb = Buffer.isBuffer(b) ? b : Buffer.from(b, 'utf-8');
+  return ba.equals(bb);
+}
 
 export type CommitOutcome =
   // `reclaimedTempPaths` names every stale reserved-suffix path
@@ -113,8 +126,11 @@ export interface CommitDeps {
   listDiskFiles: ListDiskFilesFn;
   readProjectStateFn: ReadProjectStateFn;
   writeProjectStateFn: WriteProjectStateFn;
-  // `inst-com-replace-inventory` (step 12): promotes the staged candidate
-  // content into `name`'s local inventory slot. A SEPARATE write to a
+  // `inst-com-replace-inventory` (step 12): promotes the committed origin
+  // into `name`'s local inventory slot. The wiring layer (`cli.ts`)
+  // re-resolves the recorded origin after the commit rather than writing
+  // staged candidate content, and a local `path:` origin or a name never
+  // installed into the inventory is a no-op. A SEPARATE write to a
   // SEPARATE store from `inst-com-commit-state`'s project-state write -
   // never described as part of that write, and never allowed to unwind it.
   // Rejecting signals failure; the actual local-inventory mechanics are the
@@ -132,6 +148,9 @@ export interface CommitDeps {
   // (this feature's `flow.ts`, not yet written) closes over that function
   // and the resolved payload to build this callback.
   refreshAiBundle: (name: string) => Promise<void>;
+  // The post-commit record written IN the commit write (plan-ai-recovery r9
+  // §2.3): read at the commit point, after approval recorded the transition.
+  pendingPostCommit?: () => PendingPostCommit | undefined;
 }
 
 // ADD/REPLACE always carry `newContent` per `UpgradeOperation`'s own
@@ -140,7 +159,7 @@ export interface CommitDeps {
 // keyed on `op`. This turns a violation of that contract into an ordinary
 // I/O-phase failure (caught by `inst-com-catch` like any other) instead of
 // a silent `undefined` write reaching `writeDiskFile`.
-function requireNewContent(op: UpgradeOperation): string {
+function requireNewContent(op: UpgradeOperation): Buffer | string {
   if (op.newContent === undefined) {
     throw new Error(
       `Upgrade plan operation "${op.op}" for "${op.path}" in target "${op.target}" carries no content to materialize.`,
@@ -458,7 +477,7 @@ export async function commitUpgrade(plan: UpgradePlan, deps: CommitDeps): Promis
         continue;
       }
       const currentContent = entry.kind === 'file' ? entry.content : null;
-      if (currentContent !== op.expectedDisk) {
+      if (!contentBytesEqual(currentContent, op.expectedDisk)) {
         drifted.push({ target: op.target, path: op.path });
       }
     }
@@ -632,7 +651,9 @@ export async function commitUpgrade(plan: UpgradePlan, deps: CommitDeps): Promis
   // project state document"). `previous` is set to `plan.from` regardless
   // of whether `from` itself carried a `previous` - reversal always goes
   // back exactly one generation, never further.
+  const pending = deps.pendingPostCommit?.();
   const entry: TemplateEntry = {
+    ...(pending !== undefined ? { pendingPostCommit: pending } : {}),
     origin: plan.to.origin,
     version: plan.to.version,
     targets: plan.targets,
@@ -643,6 +664,22 @@ export async function commitUpgrade(plan: UpgradePlan, deps: CommitDeps): Promis
     // (`inst-dp-if-recorded-exclusions`) must see whichever declaration is
     // now actually registered.
     excludedSubtrees: plan.toExcludedSubtrees,
+    // A file the template wrote and the candidate now excludes is skipped, not
+    // removed: it stays on disk under a declaration that never governed its
+    // writing, so the new value is not proof of what wrote it. That case marks,
+    // and so does an entry that was ALREADY marked: the mark is sticky across
+    // successive upgrades, because a later plan whose skip list is empty (the
+    // file is no longer in either payload) says nothing about whether the file
+    // is still on disk. An `OUTSIDE_BOUNDARY` skip for an independent reason (a
+    // project-owned root, the template's own excluded subtree, a file only the
+    // candidate ships) names ground the template never wrote, so it proves
+    // nothing about declaration history and does not mark.
+    ...(plan.relinquishesWrittenGround || plan.priorHistoryUnproven ? { exclusionsBackfilled: true as const } : {}),
+    // What `delete` retained for a deleted target survives the rebuilt entry.
+    ...(plan.priorRelinquishedGround !== undefined ? { relinquishedGround: plan.priorRelinquishedGround } : {}),
+    // The durable proof that a long-standing excluded region was never written
+    // (`TemplateEntry.provenExcludedSubtrees`), narrowed by validation.
+    ...(plan.provenExcludedSubtrees !== undefined ? { provenExcludedSubtrees: plan.provenExcludedSubtrees } : {}),
   };
   // `mutateProjectState` reports a malformed existing document as
   // `{ ok: false }` but lets the WRITE itself throw (`project-state/io.ts`
@@ -658,6 +695,7 @@ export async function commitUpgrade(plan: UpgradePlan, deps: CommitDeps): Promis
     { kind: 'set-template', name: plan.name, entry },
     deps.readProjectStateFn,
     deps.writeProjectStateFn,
+    pending !== undefined ? { transitionIntentId: pending.intentId } : {},
   ).catch((caught: unknown) => ({
     ok: false as const,
     error: 'INTERNAL' as const,
@@ -743,7 +781,7 @@ export async function commitUpgrade(plan: UpgradePlan, deps: CommitDeps): Promis
     return {
       ok: false,
       code: escaped ? 'INVALID_PATH' : 'INTERNAL',
-      message: `${plan.name}'s transition and inventory promotion both landed, but its AI-extension bundle could not be refreshed: ${caught instanceof Error ? caught.message : String(caught)}`,
+      message: `${plan.name}'s transition committed (with any required inventory promotion), but its AI-extension bundle could not be refreshed: ${caught instanceof Error ? caught.message : String(caught)}`,
       details: { bundle: plan.name },
     };
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-commit:p1:inst-com-return-bundle-refresh-failure

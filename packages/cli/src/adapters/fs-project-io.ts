@@ -31,8 +31,10 @@ import type { ReadProjectFileFn, WriteProjectFileFn, RemoveProjectFileFn } from 
 import type { ReadProjectStateFn, WriteProjectStateFn } from '../project-state/types';
 import type { CanonicalizeTargetFn } from '../scaffold/conflict-check';
 import type { ListTargetFilesFn, ListUnenumerableTargetEntriesFn } from '../scaffold/delete-plan';
+import type { ClassifyPathStrictFn, EntryKindFn, StrictPathClassification, StrictPathEntry } from '../scaffold/strict-path';
 import type { PathExistsFn } from '../resolver/types';
 import { foldForIdentity, isVolumeCaseInsensitive } from '../paths/volume-case';
+import { RESERVED_ENVIRONMENT_ENTRIES } from '../manifest/validate-contract';
 
 // `writeFile` below refuses to hand `destPath` straight to
 // `fs.writeFileSync` when it already exists as a symlink. `fs.writeFileSync`
@@ -159,10 +161,14 @@ export class ExistingSymlinkDestinationError extends Error {
  * that a project may legitimately contain its own (non-aliasing) symlinks.
  */
 export function createFsWriteFileFn(): WriteFileFn {
-  return async function writeFile(destPath: string, content: string): Promise<void> {
+  return async function writeFile(destPath: string, content: Buffer | string): Promise<void> {
     fs.mkdirSync(resolveWriteParentDir(destPath), { recursive: true });
     refuseIfDestinationIsSymlink(destPath);
-    fs.writeFileSync(destPath, content, 'utf-8');
+    if (Buffer.isBuffer(content)) {
+      fs.writeFileSync(destPath, content);
+    } else {
+      fs.writeFileSync(destPath, content, 'utf-8');
+    }
   };
 }
 
@@ -442,6 +448,26 @@ export function createFsReadFileFn(): ReadFileFn {
 
 // @cpt-algo:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1
 /**
+ * Byte-preserving variant of `createFsReadFileFn` for all files (including the manifest) in a
+ * local `path:` origin. Returns a raw `Buffer` so binary files with invalid
+ * UTF-8 sequences are not corrupted when the bundle is later compared to disk
+ * content (`resolver/types.ts`'s `ReadFolderFileBinaryFn`).
+ */
+export function createFsReadFolderFileBinaryFn(): (absolutePath: string) => Promise<Buffer> {
+  return async function readFolderFileBinary(filePath: string): Promise<Buffer> {
+    const kind = resolvePathKind(filePath);
+    if (kind === 'absent') throw enoentError(filePath);
+    if (kind !== 'file') throw new NotRegularFileError(filePath, kind);
+    try {
+      return fs.readFileSync(filePath);
+    } catch (error) {
+      if (isEnoent(error)) throw error;
+      throw new PathUnreadableError(filePath, errnoCodeOf(error));
+    }
+  };
+}
+
+/**
  * Real `PathExistsFn` (`../resolver/types.ts`) — the resolver's own
  * existence half of `inst-resolve-local-path-check`, distinct from
  * `CanonicalizeTargetFn`: canonicalization alone proves containment, not
@@ -632,8 +658,23 @@ export function createFsWriteProjectStateFn(): WriteProjectStateFn {
     // about dangling symlinks above `resolveWriteParentDir`).
     fs.mkdirSync(resolveWriteParentDir(writeDestination), { recursive: true });
     const tempPath = path.join(dir, `.${path.basename(writeDestination)}.${crypto.randomUUID()}.tmp`);
-    fs.writeFileSync(tempPath, content, 'utf-8');
-    fs.renameSync(tempPath, writeDestination);
+    try {
+      fs.writeFileSync(tempPath, content, 'utf-8');
+      fs.renameSync(tempPath, writeDestination);
+    } catch (error) {
+      // After a CAUGHT failure (during the temp write or the rename) this call's own `tempPath`
+      // (a fresh random UUID name, so a collision with another file is not expected) is removed
+      // on a best-effort basis; the destination and every other file are never touched, and a
+      // cleanup failure never replaces the original error. If that removal fails, or a hard kill
+      // (SIGKILL) runs no catch at all, the temp stays behind: partial if its write did not
+      // finish, complete if it did. That residue is documented, not reclaimed here.
+      try {
+        fs.rmSync(tempPath, { force: true });
+      } catch {
+        /* best effort: the original failure is the one reported */
+      }
+      throw error;
+    }
   };
 }
 // @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-write-atomic
@@ -909,7 +950,13 @@ export function createFsCanonicalizeTargetFn(projectRoot: string): CanonicalizeT
     // one spelling, or a real root target becomes indistinguishable from
     // "nothing" the moment it reaches them.
     const relative = path.relative(realRoot, resolved);
-    return relative === '' ? '.' : toPosixPath(relative);
+    const canonical = relative === '' ? '.' : toPosixPath(relative);
+    // Idempotent: what this returns, fed back in, must come back unchanged. A
+    // raw `./~` passes the first-segment check above (its first segment is
+    // `.`) and resolves to a directory literally called `~` — whose canonical
+    // spelling then begins with `~` and would be refused if asked again.
+    if (canonical.split('/')[0] === '~') return null;
+    return canonical;
   };
 }
 
@@ -1194,6 +1241,14 @@ function joinRelative(relativeDir: string, name: string): string {
 // term that formula does not declare.
 const DEFAULT_SKIP_NAMES: ReadonlySet<string> = new Set(['node_modules']);
 
+// Exact names the two DELETE enumerations prune: environment-owned entries are
+// never this CLI's to delete, so neither walk enters, follows or reads them.
+// Held lowercase: the prune compares the ASCII-lowercased entry name, so every
+// ASCII case variant is pruned on every volume (human ruling 2026-11-09).
+const RESERVED_ENV_PRUNE_NAMES: ReadonlySet<string> = new Set(
+  RESERVED_ENVIRONMENT_ENTRIES.map((n) => n.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32))),
+);
+
 // `unenumerableSink`, when supplied, collects every path this walk would
 // otherwise silently drop from its own return value: a FIFO, socket, or
 // device found directly; a symlink that is dangling or escapes `root`; and a
@@ -1213,6 +1268,7 @@ function walkFiles(
   visitedRealDirs: Set<string>,
   skipNames: ReadonlySet<string> = DEFAULT_SKIP_NAMES,
   unenumerableSink?: string[],
+  pruneNames?: ReadonlySet<string>,
 ): string[] {
   const absoluteDir = path.join(templateDir, relativeDir);
   const entries = fs.readdirSync(absoluteDir, { withFileTypes: true });
@@ -1223,6 +1279,13 @@ function walkFiles(
     // excluded.
     if (skipNames.has(entry.name)) continue;
     const relativePath = joinRelative(relativeDir, entry.name);
+    // An exactly named pruned entry (an environment-owned `.git`, `.DS_Store`,
+    // `Thumbs.db`) is never listed, descended into, followed or even stat'ed: it
+    // is reported through the sink so a delete plan can still disclose it.
+    if (pruneNames?.has(entry.name.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32))) === true) {
+      unenumerableSink?.push(toPosixPath(relativePath));
+      continue;
+    }
 
     if (entry.isDirectory()) {
       // `visitedRealDirs` tracks the CURRENT ancestor chain, not "every
@@ -1239,7 +1302,7 @@ function walkFiles(
       // visited" - only a cycle back to a directory still open on the
       // current path is a cycle at all.
       files.push(
-        ...descendDirectory(templateDir, relativePath, root, visitedRealDirs, undefined, skipNames, unenumerableSink),
+        ...descendDirectory(templateDir, relativePath, root, visitedRealDirs, undefined, skipNames, unenumerableSink, pruneNames),
       );
       continue;
     }
@@ -1265,7 +1328,7 @@ function walkFiles(
     const targetStat = fs.statSync(resolved);
     if (targetStat.isDirectory()) {
       files.push(
-        ...descendDirectory(templateDir, relativePath, root, visitedRealDirs, resolved, skipNames, unenumerableSink),
+        ...descendDirectory(templateDir, relativePath, root, visitedRealDirs, resolved, skipNames, unenumerableSink, pruneNames),
       );
     } else if (targetStat.isFile()) {
       files.push(toPosixPath(relativePath));
@@ -1290,13 +1353,14 @@ function descendDirectory(
   knownRealPath?: string,
   skipNames: ReadonlySet<string> = DEFAULT_SKIP_NAMES,
   unenumerableSink?: string[],
+  pruneNames?: ReadonlySet<string>,
 ): string[] {
   const absoluteDir = path.join(templateDir, relativeDir);
   const resolvedDir = knownRealPath ?? realPathOrNull(absoluteDir);
   if (resolvedDir !== null && visitedRealDirs.has(resolvedDir)) return []; // cycle back to an open ancestor
   if (resolvedDir !== null) visitedRealDirs.add(resolvedDir);
   try {
-    return walkFiles(templateDir, relativeDir, root, visitedRealDirs, skipNames, unenumerableSink);
+    return walkFiles(templateDir, relativeDir, root, visitedRealDirs, skipNames, unenumerableSink, pruneNames);
   } finally {
     if (resolvedDir !== null) visitedRealDirs.delete(resolvedDir);
   }
@@ -1428,7 +1492,7 @@ export function createFsListTargetFilesFn(): ListTargetFilesFn {
       throw new TargetNotDirectoryError(absoluteDir);
     }
     try {
-      return walkFiles(absoluteDir, '', root, new Set([root]), new Set());
+      return walkFiles(absoluteDir, '', root, new Set([root]), new Set(), undefined, RESERVED_ENV_PRUNE_NAMES);
     } catch (error) {
       throw Object.assign(
         new Error(`could not enumerate target directory ${absoluteDir}: ${describeError(error)}`),
@@ -1495,7 +1559,7 @@ export function createFsListUnenumerableTargetEntriesFn(): ListUnenumerableTarge
     if (!rootStat.isDirectory()) return []; // the sibling enumerator already throws `TargetNotDirectoryError` for this exact shape
     const unenumerable: string[] = [];
     try {
-      walkFiles(absoluteDir, '', root, new Set([root]), new Set(), unenumerable);
+      walkFiles(absoluteDir, '', root, new Set([root]), new Set(), unenumerable, RESERVED_ENV_PRUNE_NAMES);
     } catch (error) {
       // The sibling `listTargetFilesFn` call `computeDeletionPlan` always
       // makes first walks this identical tree and would already have thrown
@@ -1514,3 +1578,143 @@ export function createFsListUnenumerableTargetEntriesFn(): ListUnenumerableTarge
   };
 }
 // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-find-unenumerable
+
+// --- strict path classification (delete: registered local origins) -----------
+
+const MAX_STRICT_SYMLINK_RESOLUTIONS = 40;
+
+/**
+ * Fail-closed counterpart of `createFsCanonicalizeTargetFn` for locating a
+ * registered local origin. It walks the path one component at a time with
+ * `lstat`, so that "the location is genuinely absent" (ENOENT / ENOTDIR) is
+ * told apart from "it cannot be determined" (EACCES, EIO, a link cycle, a
+ * readlink failure, a raw value that is not a project path), which the
+ * lenient canonicalizer folds into the nearest existing ancestor. Only the
+ * FINAL resolved location is judged against the project root, exactly as the
+ * canonicalizer judges it, so the walk does not change which location an
+ * origin denotes; for every non-`unknown` result `canonical` equals the
+ * canonicalizer's. `entries` lists each directory entry the access path
+ * traverses (links marked), so a caller can see what the origin's path
+ * depends on, not only where it ends up. Reads only; stable tree assumed.
+ */
+
+// Resolves the actual stored name of `seg` within `parent` using inode comparison.
+// Handles all FS-level Unicode equivalences (NFC/NFD, ß↔ss on APFS, case folding) without
+// predicting which transformations the FS applies. Returns null on failure → caller fails closed.
+// Stable tree assumed; no TOCTOU guarantee. Any error during sibling enumeration (including
+// ENOENT) is treated as incomplete enumeration and fails closed: NFC/lowercase comparison cannot
+// reliably identify FS-equivalent names (e.g. ß↔ss on APFS), so no selective skip is safe.
+// TOCTOU boundary: the stable-tree contract is the caller's responsibility. Concurrent mutation
+// outside that contract may produce incorrect results (false `unknown` or wrong identity);
+// no atomicity guarantee exists between the initial lstat and the per-name enumeration lstats.
+function resolvePhysicalName(parent: string, seg: string, st: fs.Stats): string | null {
+  let names: string[];
+  try {
+    names = fs.readdirSync(parent);
+  } catch {
+    return null;
+  }
+  const ciSeg = seg.normalize('NFC').toLowerCase();
+  const matches: string[] = [];
+  for (const name of names) {
+    try {
+      const est = fs.lstatSync(path.join(parent, name));
+      if (est.ino === st.ino && est.dev === st.dev) matches.push(name);
+    } catch {
+      return null; // any enumeration error → incomplete → fail closed
+    }
+  }
+  if (matches.length === 0) return null;
+  if (matches.length === 1) return matches[0];
+  // Multiple entries share this inode (hard links). Prefer `seg` — the requested name —
+  // even when an alphabetically-prior hard link would otherwise be returned first.
+  const exact = matches.find((n) => n === seg);
+  if (exact !== undefined) return exact;
+  const ci = matches.filter((n) => n.normalize('NFC').toLowerCase() === ciSeg);
+  if (ci.length === 1) return ci[0];
+  return null; // ambiguous hard links — fail closed
+}
+
+export function createFsClassifyPathStrictFn(projectRoot: string): ClassifyPathStrictFn {
+  const realRoot = realPathOrNull(projectRoot);
+  if (realRoot === null) throw new Error(`project root could not be resolved: ${projectRoot}`);
+  return function classifyPathStrict(raw: string): StrictPathClassification {
+    const first = raw.replace(/\\/g, '/').split('/')[0];
+    if (first === '~') return { kind: 'unknown', reason: 'invalid' };
+    const lexical = path.resolve(realRoot, raw);
+    if (!isInside(realRoot, lexical)) return { kind: 'unknown', reason: 'invalid' };
+    const queue = path.relative(realRoot, lexical).split(path.sep).filter((seg) => seg !== '');
+    const entries: StrictPathEntry[] = [];
+    const rel = (abs: string): string | undefined => {
+      if (!isInside(realRoot, abs)) return undefined;
+      const r = path.relative(realRoot, abs);
+      return r === '' ? '.' : toPosixPath(r);
+    };
+    let resolved = realRoot;
+    let links = 0;
+    let absentRest: string[] | undefined;
+    while (queue.length > 0) {
+      const seg = queue.shift() as string;
+      if (seg === '.') continue;
+      if (seg === '..') {
+        resolved = path.dirname(resolved);
+        continue;
+      }
+      const candidate = path.join(resolved, seg);
+      let st: fs.Stats;
+      try {
+        st = fs.lstatSync(candidate);
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code === 'ENOENT' || code === 'ENOTDIR') {
+          resolved = candidate;
+          absentRest = [...queue];
+          queue.length = 0;
+          break;
+        }
+        return { kind: 'unknown', reason: code ?? 'lstat-error' };
+      }
+      // Use the physical stored name from the parent directory (inode match) so that all
+      // filesystem-level Unicode equivalences — NFC/NFD, ß↔ss on APFS, case folding — are
+      // captured regardless of the input spelling. Fail closed on any resolution failure.
+      const physical = resolvePhysicalName(resolved, seg, st);
+      if (physical === null) return { kind: 'unknown', reason: 'physical-name-resolution' };
+      const physicalCandidate = path.join(resolved, physical);
+      const entryPath = rel(physicalCandidate);
+      if (st.isSymbolicLink()) {
+        if (++links > MAX_STRICT_SYMLINK_RESOLUTIONS) return { kind: 'unknown', reason: 'cycle' };
+        if (entryPath !== undefined) entries.push({ path: entryPath, symlink: true });
+        let target: string;
+        try {
+          target = fs.readlinkSync(physicalCandidate);
+        } catch (error) {
+          return { kind: 'unknown', reason: (error as NodeJS.ErrnoException).code ?? 'readlink-error' };
+        }
+        if (path.isAbsolute(target)) resolved = path.parse(target).root;
+        queue.unshift(...target.split(/[\\/]/).filter((part) => part !== ''));
+        continue;
+      }
+      if (entryPath !== undefined) entries.push({ path: entryPath, symlink: false });
+      resolved = physicalCandidate;
+    }
+    const finalPath = absentRest === undefined ? resolved : path.join(resolved, ...absentRest);
+    if (!isInside(realRoot, finalPath)) return { kind: 'outside', entries };
+    const canonical = rel(finalPath) as string;
+    return { kind: absentRest === undefined ? 'present' : 'absent', canonical, entries };
+  };
+}
+
+export function createFsEntryKindFn(projectRoot: string): EntryKindFn {
+  const realRoot = realPathOrNull(projectRoot);
+  if (realRoot === null) throw new Error(`project root could not be resolved: ${projectRoot}`);
+  return function entryKind(projectRelative: string) {
+    try {
+      const st = fs.lstatSync(path.join(realRoot, projectRelative));
+      if (st.isSymbolicLink()) return 'symlink';
+      return st.isDirectory() ? 'directory' : 'other';
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      return code === 'ENOENT' || code === 'ENOTDIR' ? 'absent' : { unknown: code ?? 'lstat-error' };
+    }
+  };
+}

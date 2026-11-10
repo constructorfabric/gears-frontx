@@ -623,40 +623,70 @@ describe('createFsReadProjectStateFn / createFsWriteProjectStateFn', () => {
   // completes), so this proves the destination is untouched by an
   // interruption at exactly that point, not merely by a fake that never
   // touches disk at all.
-  it('an interruption after the temp file is written but before rename leaves the prior document intact', async () => {
+  it('a caught failure after the temp file is written leaves the prior document intact and removes only its own temp', async () => {
     const dir = await makeRepo();
-    const location = path.join(dir, '.frontx', 'project.json');
+    const stateDir = path.join(dir, '.frontx');
+    const location = path.join(stateDir, 'project.json');
     const writeProjectState = createFsWriteProjectStateFn();
     const readProjectState = createFsReadProjectStateFn();
+    const priorContent = JSON.stringify({ formatVersion: 1, templates: {}, projectOwnedRoots: [] });
+    const candidate = JSON.stringify({ formatVersion: 1, templates: {}, projectOwnedRoots: ['scripts'] });
+    await writeProjectState(location, priorContent);
+    // Another writer's leftover: removal must be scoped to this call's own temp.
+    const stranger = path.join(stateDir, '.project.json.other-process.tmp');
+    await writeFile(stranger, 'someone else\n', 'utf-8');
+
+    // Evidence that the write really reached disk BEFORE the interruption: at the
+    // moment rename fires, this call's own temp exists holding the full candidate.
+    let ownTempAtFailure: { name: string; content: string } | undefined;
+    const renameSpy = vi.spyOn(fs, 'renameSync').mockImplementation(() => {
+      const own = fs.readdirSync(stateDir).find((name) => name.endsWith('.tmp') && name !== path.basename(stranger));
+      if (own !== undefined) ownTempAtFailure = { name: own, content: fs.readFileSync(path.join(stateDir, own), 'utf-8') };
+      throw new Error('simulated interruption before rename completes');
+    });
+    try {
+      await expect(writeProjectState(location, candidate)).rejects.toThrow('simulated interruption before rename completes');
+    } finally {
+      renameSpy.mockRestore();
+    }
+
+    expect(ownTempAtFailure?.content).toBe(candidate);
+    // The destination still holds the PRIOR valid document, byte-for-byte.
+    expect(await readProjectState(location)).toBe(priorContent);
+    // Intended contract (a CAUGHT error runs the catch): own temp removed, nothing else touched.
+    const entries = await readdir(stateDir);
+    expect(entries).not.toContain(ownTempAtFailure?.name);
+    expect(entries.filter((name) => name.endsWith('.tmp'))).toEqual([path.basename(stranger)]);
+    expect(await readFile(stranger, 'utf-8')).toBe('someone else\n');
+  });
+
+  it('a failing cleanup never replaces the original error, and the temp it could not remove stays behind', async () => {
+    const dir = await makeRepo();
+    const stateDir = path.join(dir, '.frontx');
+    const location = path.join(stateDir, 'project.json');
+    const writeProjectState = createFsWriteProjectStateFn();
     const priorContent = JSON.stringify({ formatVersion: 1, templates: {}, projectOwnedRoots: [] });
     await writeProjectState(location, priorContent);
 
     const renameSpy = vi.spyOn(fs, 'renameSync').mockImplementation(() => {
       throw new Error('simulated interruption before rename completes');
     });
+    const rmSpy = vi.spyOn(fs, 'rmSync').mockImplementation(() => {
+      throw new Error('simulated cleanup failure');
+    });
     try {
       await expect(
         writeProjectState(location, JSON.stringify({ formatVersion: 1, templates: {}, projectOwnedRoots: ['scripts'] })),
       ).rejects.toThrow('simulated interruption before rename completes');
     } finally {
+      rmSpy.mockRestore();
       renameSpy.mockRestore();
     }
 
-    // The destination still holds the PRIOR valid document, byte-for-byte.
-    const readBack = await readProjectState(location);
-    expect(readBack).toBe(priorContent);
-    // The orphaned temp file is left behind (never cleaned up on this
-    // failure path, which the spec does not require), proving the write
-    // actually reached disk before the simulated interruption rather than
-    // failing before ever touching the filesystem.
-    const entries = await readdir(path.join(dir, '.frontx'));
-    expect(entries.some((name) => name !== 'project.json' && name.endsWith('.tmp'))).toBe(true);
-    const orphan = entries.find((name) => name.endsWith('.tmp'));
-    expect(orphan).toBeDefined();
-    if (orphan) {
-      const orphanContent = await readFile(path.join(dir, '.frontx', orphan), 'utf-8');
-      expect(JSON.parse(orphanContent)).toEqual({ formatVersion: 1, templates: {}, projectOwnedRoots: ['scripts'] });
-    }
+    expect(await createFsReadProjectStateFn()(location)).toBe(priorContent);
+    // Residue is documented, never read as state; a hard kill (SIGKILL) skips the catch and leaves the same shape.
+    const orphans = (await readdir(stateDir)).filter((name) => name.endsWith('.tmp'));
+    expect(orphans).toHaveLength(1);
   });
 });
 

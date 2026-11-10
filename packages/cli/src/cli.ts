@@ -35,15 +35,25 @@ import { validateProject } from './commands/validate-project';
 import type { ValidateProjectOutcome } from './commands/validate-project';
 import { assembleBatch } from './commands/assemble';
 import type { AssembleOutcome } from './commands/assemble';
-import { runApplyPipeline } from './commands/apply';
+import { checkBatchBeforeResolution, runApplyPipeline } from './commands/apply';
 import type { ApplyBatchOutcome, ApplyPipelineDeps } from './commands/apply';
-import { seedRepository } from './commands/seed-repository';
+import { alreadySeededRefusal, seedRepository } from './commands/seed-repository';
 import type { SeedRepositoryOutcome, RemoveEmptyDirFn } from './commands/seed-repository';
 import { upgradeCommand } from './commands/upgrade';
 import type { UpgradeCommandOutcome, UpgradeDirection } from './commands/upgrade';
 import type { UpgradeEngineDeps } from './upgrade/flow';
-import { renderReviewablePlan } from './upgrade/plan';
-import { createResolvePayloadFn } from './upgrade/payload';
+import { computePlanDigest, protectedSkipNote, renderReviewablePlan, reviewNotes } from './upgrade/plan';
+import { candidateHash, changedFootprint, createCandidateAcquisition, createPendingPostCommitStore, footprintOf, withoutPending } from './commands/upgrade-transition';
+import { captureFsAiReview, reviewFsAiCandidate } from './adapters/fs-ai-review-capture';
+import { hashCandidateTree, reviewApplyAiReplacements } from './commands/apply-ai-review';
+import { createStagedInventory } from './commands/staged-inventory';
+import { parseSourceSpec } from './spec-parser/parse';
+import { resolveToInventory } from './resolver/resolve';
+import { officialDefaultOrigin } from './commands/official-defaults';
+import type { ProjectStateDocument } from './project-state/types';
+import { AiReviewDriftError, applyFsAiReview } from './adapters/fs-ai-review-materialize';
+import { createHash } from 'node:crypto';
+import { createResolvePayloadFn, payloadFromStoredContent } from './upgrade/payload';
 import { readProjectState } from './project-state/io';
 import { resolveRegisteredExcludedSubtrees } from './scaffold/registered-manifest';
 import {
@@ -62,7 +72,7 @@ import type { OwnershipAddOutcome, OwnershipRemoveOutcome, OwnershipListOutcome 
 import { deleteTarget } from './commands/delete';
 import { materializeOrRemoveAiBundle } from './scaffold/ai-bundle';
 import type { RemoveAiBundleFn } from './commands/delete';
-import { createFsBundleExistsFn, createFsCopyBundleFn, createFsRemoveBundleFn } from './adapters/fs-ai-bundle';
+import { AiNamespaceAliasError, createFsBundleExistsFn, createFsCopyBundleFn, createFsRemoveBundleFn } from './adapters/fs-ai-bundle';
 import type { DeleteOutcome, ConfirmDeletionFn } from './commands/delete';
 
 import { TemplateInventory } from './inventory/TemplateInventory';
@@ -74,29 +84,32 @@ import type { ReadExistingContentFn, ReadInstalledContentFn } from './scaffold/e
 import { createFsReadExistingContentFn, createFsReadInstalledContentFn } from './adapters/fs-existing-content';
 import { resolveInstalledContentPath } from './adapters/fs-installed-content-path';
 import type { ListPayloadFilesFn, ResolveDeclaredExclusionFn, ReadFileFn } from './manifest/types';
-import type { ListFolderFilesFn, PathExistsFn } from './resolver/types';
+import type { ListFolderFilesFn, PathExistsFn, ReadFolderFileBinaryFn } from './resolver/types';
 import type { ReadTargetPathStateFn } from './commands/add-template';
 import type { ReadProjectStateFn, WriteProjectStateFn } from './project-state/types';
 import type { ListTargetFilesFn, ListUnenumerableTargetEntriesFn } from './scaffold/delete-plan';
-import type { RemoveProjectFileFn, PresentUpgradePlanFn } from './upgrade/types';
+import type { RemoveProjectFileFn, PresentUpgradePlanFn, ReadDiskEntryFn, ResolvePayloadFn, UpgradePlan } from './upgrade/types';
 import { ok, err } from './envelope';
 import type { ErrorCode } from './envelope';
 import type { ValidateCommandResult } from './commands/validate';
 
 import { FsInventoryIndex } from './adapters/fs-inventory-index';
-import { FsContentStore } from './adapters/fs-content-store';
+import { FsContentStore, UnindexedSlotResidueError } from './adapters/fs-content-store';
 import { createGithubFetchFn, resolveInventoryRoot } from './adapters/github-fetch';
 import { createLocalFetchFn } from './adapters/local-fetch';
 import { createFsReadTargetPathStateFn } from './adapters/fs-target-path';
 import {
   createFsWriteFileFn,
   createFsReadFileFn,
+  createFsReadFolderFileBinaryFn,
   createFsListPayloadFilesFn,
   createFsResolveDeclaredExclusionFn,
   createFsRemoveProjectFileFn,
   createFsReadProjectStateFn,
   createFsWriteProjectStateFn,
   createFsCanonicalizeTargetFn,
+  createFsClassifyPathStrictFn,
+  createFsEntryKindFn,
   createFsListTargetFilesFn,
   createFsListUnenumerableTargetEntriesFn,
   createFsPathExistsFn,
@@ -110,7 +123,17 @@ import {
   describeNonRegularKind,
 } from './adapters/fs-project-io';
 import { InvalidInventoryIndexError } from './adapters/fs-inventory-index';
-import { InvalidBundleKeyError } from './bundle/envelope';
+import { InvalidBundleKeyError, decodeBundleValue, isBinaryBundleValue, readBundleFiles } from './bundle/envelope';
+import { MANIFEST_FILENAME } from './manifest/types';
+import { getOwn, setOwn } from './own-record';
+import { canonicalJson } from './canonical-json';
+import {
+  CoordinationError,
+  createFsWithMutationScope,
+  type MutationScope,
+  type Transition,
+  type WithMutationScopeFn,
+} from './operations/coordination';
 
 // @cpt-begin:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-if-yes-without-json
 // @cpt-begin:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-return-yes-without-json
@@ -230,14 +253,20 @@ export function usageText(): string {
     '                                           Seed a new or empty repository from a batch',
     '  apply --input <batch-json> [--adopt-existing] [--json]',
     '                                           Apply a batch into an already-assembled repository',
-    '  upgrade <templateName> <new-origin> [--json [--yes]]   Upgrade a registered template to a new origin',
-    '  upgrade <templateName> --restore [--json [--yes]]      Restore a template to its immediately preceding origin',
+    '  upgrade <templateName> <new-origin> [--json [--yes --plan-digest=<digest>]]   Upgrade a registered template to a new origin',
+    '  upgrade <templateName> --restore [--json [--yes --plan-digest=<digest>]]   Restore a template to its immediately preceding origin',
+    '  upgrade <templateName> --recover [--json [--yes --plan-digest=<digest>]]   Finish or cancel an interrupted upgrade/restore of a template',
     '  register <origin> [--replace] [--json]  Register a template origin under the current project',
-    '  unregister <name> [--json]              Unregister a template with no applied targets',
+    '  unregister <name> [--json]              Unregister a template with no applied targets, or drop an',
+    '                                           unusable orphan (origin confirmed absent, no recorded',
+    '                                           exclusions; its files stay on disk). The orphan',
+    '                                           branch is defensive, not a supported migration',
     '  ownership add <path> [--json]           Mark an existing path as project-owned',
     '  ownership remove <path> [--json]        Un-mark a project-owned path',
     '  ownership list [--json]                 List the project-owned root paths',
-    '  delete <target> [--dry-run] [--json [--yes]]  Delete an applied template target',
+    '  delete <target> [--dry-run] [--json [--yes --plan-digest=<digest>]]  Delete an applied template target',
+    '                                           (--yes needs --json and the reviewed plan\'s --plan-digest;',
+    '                                           --dry-run only previews, with no digest)',
     '  help                                    Show this usage summary',
     '  version                                 Print the installed CLI version',
     '',
@@ -289,6 +318,8 @@ export interface CliDeps {
   // command that can resolve a local origin.
   existsFn: PathExistsFn;
   listFolderFilesFn: ListFolderFilesFn;
+  // Reads original bytes for every local-origin file, including the manifest.
+  readFolderFileBinaryFn: ReadFolderFileBinaryFn;
   // `assemble`/`apply`/`seed` (`cpt-frontx-algo-cli-scaffolding-uniform-
   // apply`'s own seam) — resolves a name already installed in the local
   // inventory to its real on-disk installed content directory. Stored here
@@ -361,7 +392,19 @@ export interface CliDeps {
   // all in `--json` mode — see the `upgrade` dispatch case for that
   // protocol.
   presentUpgradePlan: PresentUpgradePlanFn;
+  // Every writing command runs inside this one shared mutation boundary
+  // (`operations/coordination.ts`): namespace mutex, pending-receipt and
+  // reservation discovery, and the upgrade transition receipt.
+  withMutationScope: WithMutationScopeFn;
+  // `upgrade --recover` (interactive) — shows the fresh recovery plan and asks;
+  // defaults to No exactly like `presentUpgradePlan`.
+  confirmRecovery: ConfirmRecoveryFn;
+  // `apply` (interactive) — shows a reviewed AI bundle replacement and asks;
+  // defaults to No.
+  confirmAiReplacement: ConfirmRecoveryFn;
 }
+
+export type ConfirmRecoveryFn = (summary: string) => Promise<boolean>;
 
 /** Assembles the real, fs/network-backed dependency set for the `frontx` executable. */
 export function createRealDeps(): CliDeps {
@@ -378,6 +421,7 @@ export function createRealDeps(): CliDeps {
       : createGithubFetchFn({ token: process.env.GITHUB_TOKEN }),
     writeFileFn: createFsWriteFileFn(),
     readFileFn: createFsReadFileFn(),
+    readFolderFileBinaryFn: createFsReadFolderFileBinaryFn(),
     listPayloadFilesFn: createFsListPayloadFilesFn(),
     resolveDeclaredExclusionFn: createFsResolveDeclaredExclusionFn(),
     readTargetPathStateFn: createFsReadTargetPathStateFn(),
@@ -407,6 +451,9 @@ export function createRealDeps(): CliDeps {
     listUnenumerableTargetEntriesFn: createFsListUnenumerableTargetEntriesFn(),
     confirmDeletion: createInteractiveDeletionConfirm(),
     presentUpgradePlan: createInteractiveUpgradeApproval(),
+    withMutationScope: createFsWithMutationScope(inventoryRoot),
+    confirmRecovery: createInteractiveConfirm('Run this recovery? [y/N] '),
+    confirmAiReplacement: createInteractiveConfirm('Replace these AI bundle files? [y/N] '),
   };
 }
 
@@ -528,6 +575,11 @@ export async function writeInteractiveLineOrEscalate(
 
 function createInteractiveDeletionConfirm(): ConfirmDeletionFn {
   return async function confirmDeletion(plan): Promise<'confirmed' | 'declined'> {
+    if (plan.changedSinceShown) {
+      await writeInteractiveLineOrEscalate('The plan changed since it was shown. Updated plan:\n');
+    }
+    // The owner is hashed into the approved plan, so it is shown on every prompt.
+    await writeInteractiveLineOrEscalate(`Owning template: ${plan.templateName}\n`);
     await writeInteractiveLineOrEscalate(`Would delete:\n${plan.toDelete.map((p) => `  ${p}`).join('\n') || '  (nothing)'}\n`);
     await writeInteractiveLineOrEscalate(`Would preserve:\n${plan.toPreserve.map((p) => `  ${p}`).join('\n') || '  (nothing)'}\n`);
     if (plan.exclusionsDrift) {
@@ -537,6 +589,21 @@ function createInteractiveDeletionConfirm(): ConfirmDeletionFn {
           `${plan.exclusionsDrift.recorded.join(', ') || '(none)'}. Both are honoured above.\n`,
       );
     }
+    if (plan.relinquishedGround && plan.relinquishedGround.length > 0) {
+      await writeInteractiveLineOrEscalate(
+        `Will record as relinquished ground (kept protected after this delete): ${plan.relinquishedGround.join(', ')}\n`,
+      );
+    }
+    await writeInteractiveLineOrEscalate(
+      plan.aiBundle.removed
+        ? `AI bundle ${plan.aiBundle.path}/ will be removed with everything in it (last target of ${plan.templateName}).\n` +
+          (plan.aiBundle.tree?.files.map((f) => `  - ${plan.aiBundle.path}/${f.path} (${f.length} bytes)\n`).join('') ?? '')
+        : `No AI bundle is removed (other targets of ${plan.templateName} remain).\n`,
+    );
+    await writeInteractiveLineOrEscalate(
+      `Confirming also removes "${plan.target}" from "${plan.templateName}"'s applied targets` +
+        `${plan.aiBundle.removed ? ` and removes its AI bundle at ${plan.aiBundle.path}` : ''} — even if every file is preserved.\n`,
+    );
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     try {
       const answer = await askWithDefaultOnEndOfInput(rl, `Delete "${plan.target}"? [y/N] `);
@@ -545,6 +612,70 @@ function createInteractiveDeletionConfirm(): ConfirmDeletionFn {
       rl.close();
     }
   };
+}
+
+/**
+ * The plain-language statement a human reads about `RETAINED_GROUND` skips,
+ * in two tenses that must not be mixed up. BEFORE approval nothing has been
+ * decided: the wording is conditional and says declining writes nothing.
+ * AFTER the commit it is past tense. Empty when nothing was held back for that
+ * reason. The `--json` envelope carries the same facts as `plan.skipped`
+ * (`target`, `path`, `reason`) and `plan.to`, plus `plan.retainedGround`
+ * naming the template and the recorded ground that holds the paths.
+ */
+function heldBackCount(skipped: { reason: string }[]): number {
+  return skipped.filter((entry) => entry.reason === 'RETAINED_GROUND').length;
+}
+
+// Who holds the ground, in words: the template whose entry records it and the
+// recorded roots. How it is released is the holder's own `delete` of every
+// target and then `unregister`, which the person decides; nothing is offered.
+function retainedGroundHolders(held: { template: string; ground: string }[] | undefined): string {
+  const holders = new Map<string, Set<string>>();
+  for (const entry of held ?? []) {
+    const grounds = holders.get(entry.template) ?? new Set<string>();
+    grounds.add(entry.ground);
+    holders.set(entry.template, grounds);
+  }
+  if (holders.size === 0) return '';
+  const described = [...holders].map(([template, grounds]) => `${template} at ${[...grounds].sort().join(', ')}`).join('; ');
+  return (
+    ` The ground is recorded by ${described} (relinquishedGround in .frontx/project.json). ` +
+    (holders.size > 1
+      ? `Each stays recorded until its template's targets are deleted and it is unregistered, and the held files stay protected while any holder remains. `
+      : `It stays recorded until that template's targets are deleted and it is unregistered. `) +
+    `Removing a holder does not by itself say the held files may be removed.`
+  );
+}
+
+function retainedGroundPlanNote(
+  skipped: { reason: string }[],
+  to: { version: string },
+  holders?: { template: string; ground: string }[],
+): string {
+  const held = heldBackCount(skipped);
+  if (held === 0) return '';
+  return (
+    `If approved, ${held} file(s) in ground a template gave up (RETAINED_GROUND) will be left exactly as they are, ` +
+    `and the recorded version will become ${to.version} all the same; a later upgrade may then report them as conflicts ` +
+    `if they differ from both the recorded version and the next one. Declining writes nothing.` +
+    retainedGroundHolders(holders)
+  );
+}
+
+function retainedGroundResultNote(
+  skipped: { reason: string }[],
+  to: { version: string },
+  holders?: { template: string; ground: string }[],
+): string {
+  const held = heldBackCount(skipped);
+  if (held === 0) return '';
+  return (
+    `${held} file(s) in ground a template gave up (RETAINED_GROUND) were left exactly as they are; ` +
+    `the recorded version is ${to.version} all the same, so a later upgrade may report them as conflicts ` +
+    `if they differ from both the recorded version and the next one.` +
+    retainedGroundHolders(holders)
+  );
 }
 
 /**
@@ -562,6 +693,18 @@ function createInteractiveDeletionConfirm(): ConfirmDeletionFn {
  * closed reader escalates to the internal-error exit code instead of being
  * silently swallowed while the prompt proceeds.
  */
+function createInteractiveConfirm(question: string): ConfirmRecoveryFn {
+  return async function confirm(summary) {
+    await writeInteractiveLineOrEscalate(`${summary}\n`);
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    try {
+      return (await askWithDefaultOnEndOfInput(rl, question)).trim().toLowerCase() === 'y';
+    } finally {
+      rl.close();
+    }
+  };
+}
+
 function createInteractiveUpgradeApproval(): PresentUpgradePlanFn {
   return async function presentUpgradePlan(plan): Promise<'approved' | 'declined'> {
     // Rendered from the PROJECTED plan, and as a file/action list rather than
@@ -572,6 +715,7 @@ function createInteractiveUpgradeApproval(): PresentUpgradePlanFn {
     // mechanism` fixes whole-file granularity precisely so the review is "a
     // list of files and actions, not ... textual deltas inside them".
     const reviewable = renderReviewablePlan(plan);
+    const retainedNote = retainedGroundPlanNote(reviewable.skipped, reviewable.to, reviewable.retainedGround);
     const lines = [
       `Upgrade "${reviewable.name}"`,
       `  from ${reviewable.from.origin} (version ${reviewable.from.version})`,
@@ -579,6 +723,11 @@ function createInteractiveUpgradeApproval(): PresentUpgradePlanFn {
       `  targets: ${reviewable.targets.join(', ')}`,
       ...reviewable.operations.map((operation) => `  ${operation.op.padEnd(10)} ${operation.path}`),
       ...reviewable.skipped.map((entry) => `  ${'SKIPPED'.padEnd(10)} ${entry.path} (${entry.reason})`),
+      ...(retainedNote === '' ? [] : [`  note: ${retainedNote}`]),
+      ...(reviewable.ai !== undefined && reviewable.ai.changes.length > 0
+        ? [`  AI bundle ${reviewable.ai.destination} (local edits are replaced):`, ...reviewable.ai.changes.map((c) => `    ${c.kind.padEnd(20)} ${c.path}`)]
+        : []),
+      ...reviewNotes(plan).map((note) => `  note: ${note}`),
     ];
     await writeInteractiveLineOrEscalate(`${lines.join('\n')}\n`);
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -619,7 +768,7 @@ function parseBatchInput(raw: string): { ok: true; batch: UniformApplyBatch } | 
     if (!Array.isArray(targets) || !targets.every((t): t is string => typeof t === 'string')) {
       return { ok: false, message: `Batch entry "${name}" must be an array of target strings.` };
     }
-    templates[name] = targets;
+    setOwn(templates, name, targets);
   }
   return { ok: true, batch: { templates } };
 }
@@ -696,6 +845,446 @@ function rejectUnrecognizedArgs(command: string, extra: string[], jsonMode: bool
 // which is exactly how an `INTERNAL`-coded envelope (`apply`'s staged-but-
 // unregistered guard, `upgrade`'s promotion/bundle-refresh failures) used to
 // report itself at exit 1, indistinguishable from an ordinary refusal.
+function isMutatingCommand(command: KnownCommand, args: string[]): boolean {
+  if (command === 'list' || command === 'validate') return false;
+  if (command === 'ownership') return args.filter((a) => a !== '--json')[0] !== 'list';
+  return true;
+}
+
+// `seed` writes into its `<dir>` argument; every other writer works on the current directory.
+function mutationProjectRoot(command: KnownCommand, args: string[]): string {
+  if (command === 'seed') {
+    const [dir] = extractFlagValue(args, '--input').rest.filter((a) => a !== '--json' && a !== '--adopt-existing');
+    if (dir) return path.resolve(dir);
+  }
+  return process.cwd();
+}
+
+/**
+ * `upgrade <name> --recover` (plan-ai-recovery r9 §6–§7): reconciles the one
+ * interrupted transition of `name` from its receipt and the ACTUAL project state.
+ *
+ * - `preparing`: no effect can have run; released as cancelled while the entry is
+ *   still the pre-transition one.
+ * - `finalizing`: the outcome was already verified; release completes once the
+ *   entry still equals the recorded terminal entry.
+ * - `prepared`, not committed: released as cancelled only when every footprint
+ *   path is back at its pre-commit content; otherwise refused with the changed
+ *   paths (no blind rollback).
+ * - `prepared`, committed: the candidate is re-acquired from the pinned origin
+ *   and must hash to the approved one; the remaining effects (inventory slot,
+ *   AI bundle against the CURRENT destination) are reviewed afresh and run only
+ *   on a fresh approval of that review's digest.
+ * Anything else is refused and every record is kept.
+ */
+interface RecoverUpgradeInput {
+  name: string;
+  scope: MutationScope;
+  jsonMode: boolean;
+  yes: boolean;
+  expectedPlanDigest: string | undefined;
+  repoRoot: string;
+  entryJson: () => Promise<string>;
+  readDiskEntry: ReadDiskEntryFn;
+  resolvePayload: ResolvePayloadFn;
+  promote: (origin: string, expectedCandidateHash: string) => Promise<void>;
+  confirm: ConfirmRecoveryFn;
+  pending: ReturnType<typeof createPendingPostCommitStore>;
+}
+
+async function recoverUpgrade(input: RecoverUpgradeInput): Promise<CommandOutcome> {
+  const { name, scope, jsonMode } = input;
+  type Outcome = 'no-pending' | 'cancelled' | 'recovered' | 'declined';
+  const respond = (outcome: Outcome, text: string): CommandOutcome =>
+    jsonMode ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok({ outcome, name })) } : { exitCode: EXIT_SUCCESS, stdout: text };
+  const refuse = (message: string, details: Record<string, unknown>): CommandOutcome =>
+    jsonMode
+      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('RECOVERY_REQUIRED', message, details)) }
+      : { exitCode: EXIT_USER_ERROR, stderr: message };
+
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-select
+  const mine = scope.pending.filter((t) => t.receipt.intent.name === name);
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-select
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-if-none
+  if (mine.length === 0) {
+    const others = scope.pending.map((t) => t.receipt.intent.name);
+    // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-return-none
+    if (others.length > 0) return refuse(`No interrupted operation for "${name}"; pending: ${others.join(', ')}.`, { pending: others });
+    return respond('no-pending', `No interrupted operation for "${name}"; nothing to recover.`);
+    // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-return-none
+  }
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-if-none
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-if-several
+  if (mine.length > 1) return refuse(`Several interrupted operations for "${name}"; resolve manually.`, { receipts: mine.map((t) => t.receiptPath) });
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-if-several
+  const [t] = mine;
+  const { intent } = t.receipt;
+  const now = await input.entryJson();
+  const unexplained = (why: string) => refuse(`"${name}": ${why}; inspect ${t.receiptPath}.`, { receipt: t.receiptPath, phase: t.receipt.phase });
+  const cancelled = `The interrupted operation on "${name}" left no effect; released it. Run upgrade again to review what is on disk.`;
+
+  const current = await input.pending.read();
+  const stripped = current === undefined ? 'null' : canonicalJson(withoutPending(current));
+  const record = current?.pendingPostCommit;
+  const ownRecord = record !== undefined && record.intentId === t.receipt.id ? record : undefined;
+  const clearOwn = async () => {
+    if (ownRecord !== undefined) await input.pending.clear(t.receipt.id);
+  };
+
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-if-finalizing
+  if (t.receipt.phase === 'finalizing') {
+    // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-complete-finalizing
+    const completion = t.receipt.completion!;
+    // The terminal entry was verified before `finalizing` was written; the
+    // release may have stopped before or after the entry's record was cleared.
+    if (stripped !== completion.entry || (record !== undefined && ownRecord === undefined)) {
+      return unexplained('the entry changed after the operation was verified');
+    }
+    if (ownRecord !== undefined && (ownRecord.inventory === 'pending' || ownRecord.ai === 'pending')) {
+      return unexplained('the entry still records pending post-commit work although the operation was verified');
+    }
+    await t.finalize(completion.result, completion.entry, clearOwn);
+    return respond(completion.result === 'cancelled' ? 'cancelled' : 'recovered', `Finished releasing the operation on "${name}".`);
+    // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-complete-finalizing
+  }
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-if-finalizing
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-if-preparing
+  if (t.receipt.phase === 'preparing') {
+    // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-release-preparing
+    if (now !== intent.fromEntry) return unexplained('the entry changed although the operation never started');
+    await t.finalize('cancelled', now);
+    return respond('cancelled', cancelled);
+    // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-release-preparing
+  }
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-if-preparing
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-if-uncommitted
+  if (now === intent.fromEntry) {
+    // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-release-uncommitted
+    const changedPaths = await changedFootprint(input.repoRoot, intent.footprint, input.readDiskEntry);
+    if (changedPaths.length > 0) {
+      return refuse(
+        `The interrupted operation on "${name}" changed ${changedPaths.length} project path(s) before its state commit; ` +
+          `reconcile them by hand (nothing is rolled back automatically): ${changedPaths.join(', ')}. Inspect ${t.receiptPath}.`,
+        { receipt: t.receiptPath, changedPaths, transitionCommitted: false },
+      );
+    }
+    await t.finalize('cancelled', now);
+    return respond('cancelled', cancelled);
+    // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-release-uncommitted
+  }
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-if-uncommitted
+  // Committed: the commit write carries this transition's own post-commit
+  // record, and the authoritative task status is read from it alone.
+  type Pair = { origin?: string; version?: string };
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-if-unexplained
+  const after = JSON.parse(stripped) as (Pair & { previous?: Pair }) | null;
+  if (
+    ownRecord === undefined || after === null || after.origin !== intent.to.origin || after.version !== intent.to.version ||
+    after.previous?.origin !== intent.from.origin || after.previous.version !== intent.from.version
+  ) {
+    return unexplained('the entry changed in a way its interrupted operation cannot explain');
+  }
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-if-unexplained
+  const pendingTasks = (['inventory', 'ai'] as const).filter((k) => ownRecord[k] === 'pending');
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-if-nothing-pending
+  if (pendingTasks.length === 0) {
+    await t.finalize('committed', stripped, clearOwn);
+    return respond('recovered', `Finished the interrupted operation on "${name}".`);
+  }
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-if-nothing-pending
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-if-inventory-root-differs
+  if (pendingTasks.includes('inventory') && t.receipt.inventoryRoot !== scope.inventoryRoot) {
+    return refuse(
+      `The interrupted operation on "${name}" used inventory root ${t.receipt.inventoryRoot}; set FRONTX_INVENTORY_ROOT to it and retry.`,
+      { inventoryRoot: t.receipt.inventoryRoot },
+    );
+  }
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-if-inventory-root-differs
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-reacquire-candidate
+  const reacquired = await input.resolvePayload(intent.to.origin);
+  if (!reacquired.ok) {
+    return refuse(`The approved candidate "${intent.to.origin}" could not be re-acquired: ${reacquired.message}`, { cause: reacquired.code, receipt: t.receiptPath });
+  }
+  if (candidateHash(reacquired.payload) !== intent.candidateHash) {
+    return refuse(`The candidate "${intent.to.origin}" no longer has the bytes that were approved; it is not substituted.`, { receipt: t.receiptPath });
+  }
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-reacquire-candidate
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-review-remaining
+  const ai = pendingTasks.includes('ai') ? reviewFsAiCandidate(input.repoRoot, name, reacquired.payload.aiFiles) : undefined;
+  const plan = {
+    name,
+    intent: t.receipt.id,
+    from: intent.from,
+    to: intent.to,
+    remaining: {
+      ...(pendingTasks.includes('inventory') ? { inventory: { slot: name, origin: intent.to.origin } } : {}),
+      ...(ai !== undefined
+        ? { ai: { destination: ai.destination.path, changes: ai.changes.filter((c) => c.kind !== 'unchanged'), files: ai.files } }
+        : {}),
+    },
+  };
+  const planDigest = createHash('sha256').update(canonicalJson({ plan, aiDigest: ai?.digest ?? null })).digest('hex');
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-review-remaining
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-confirm
+  if (jsonMode) {
+    if (!input.yes || input.expectedPlanDigest !== planDigest) {
+      return {
+        exitCode: EXIT_USER_ERROR,
+        stdout: JSON.stringify(
+          err(
+            'CONFIRMATION_REQUIRED',
+            input.yes
+              ? `"${name}"'s recovery plan is not the plan that was reviewed; nothing has been written. Review this plan and confirm it with its own planDigest.`
+              : `"${name}"'s recovery requires confirmation: re-issue with --yes --plan-digest=<details.planDigest>; nothing has been written.`,
+            { name, plan, planDigest },
+          ),
+        ),
+      };
+    }
+  } else {
+    const lines = [
+      `Recover the interrupted operation on "${name}" (${intent.from.origin} -> ${intent.to.origin}):`,
+      ...(plan.remaining.inventory ? [`  replace local inventory slot "${name}" with ${intent.to.origin}`] : []),
+      ...(plan.remaining.ai
+        ? [`  AI bundle ${plan.remaining.ai.destination}:`, ...plan.remaining.ai.changes.map((c) => `    ${c.kind.padEnd(20)} ${c.path}`)]
+        : []),
+    ];
+    if (!(await input.confirm(lines.join('\n')))) return respond('declined', `Recovery of "${name}" declined; nothing was written.`);
+  }
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-confirm
+  try {
+    // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-run-tasks
+    if (pendingTasks.includes('inventory')) {
+      await input.promote(intent.to.origin, intent.candidateHash);
+      await input.pending.markDone(t.receipt.id, 'inventory', intent.candidateHash);
+    }
+    if (ai !== undefined) {
+      await input.pending.markDone(t.receipt.id, 'ai', applyFsAiReview(ai, input.repoRoot, name));
+    }
+    // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-run-tasks
+  } catch (caught) {
+    // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-catch-task-failure
+    // A task that failed again leaves its record pending and the receipt in place,
+    // so the same confirmed --recover can be retried; report it as the upgrade does.
+    const escaped = caught instanceof PathContainmentError || caught instanceof AiNamespaceAliasError;
+    return refuse(
+      `The interrupted operation on "${name}" could not be finished: ${caught instanceof Error ? caught.message : String(caught)} ` +
+        `Recovery required: run "frontx upgrade ${name} --recover" in ${scope.projectRoot}.`,
+      { cause: escaped ? 'INVALID_PATH' : 'INTERNAL', transitionCommitted: true, receipt: t.receiptPath },
+    );
+    // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-catch-task-failure
+  }
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-return-recovered
+  await t.finalize('committed', stripped, clearOwn);
+  return respond('recovered', `Finished the interrupted operation on "${name}".`);
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-return-recovered
+}
+
+/** One acquisition per URL per command: a later install/probe replays the reviewed bytes. */
+function memoizeFetch(fetchFn: FetchFn): FetchFn {
+  const cache = new Map<string, ReturnType<FetchFn>>();
+  return (url) => {
+    let pending = cache.get(url);
+    if (pending === undefined) {
+      pending = fetchFn(url);
+      cache.set(url, pending);
+    }
+    return pending;
+  };
+}
+
+/**
+ * `apply`/`seed`'s AI-bundle replacement decision (plan-ai-recovery r9 §5), made
+ * before any effect of the command: reviews every first-target name whose
+ * `.frontx/ai/<name>` already exists against its candidate — a `path:` folder,
+ * the installed slot, or a remote candidate acquired IN MEMORY through the
+ * command's memoized fetch (nothing installed; the later install replays the
+ * same bytes) — then requires approval of that review, bound to the whole
+ * command (`scope`): `--json --yes --plan-digest=<digest>` or the interactive
+ * prompt. Approved replacements write only the reviewed snapshot bytes.
+ */
+export async function decideAiReplacements(input: {
+  command: 'apply' | 'seed';
+  names: string[];
+  projectRoot: string;
+  document: ProjectStateDocument | null;
+  originOf: (name: string) => string | undefined;
+  jsonMode: boolean;
+  yes: boolean;
+  expectedPlanDigest: string | undefined;
+  deps: Pick<CliDeps, 'inventory' | 'resolveInstalledContentPathFn' | 'confirmAiReplacement' | 'listFolderFilesFn' | 'readFolderFileBinaryFn'>;
+  fetchFn: FetchFn;
+  canonicalizeFn: CanonicalizeTargetFn;
+  scope: unknown;
+}): Promise<{ ok: true; replacements: Map<string, () => void>; captured: CapturedCandidates } | { ok: false; outcome: CommandOutcome }> {
+  const { projectRoot, jsonMode, deps } = input;
+  // Every folder candidate (a `path:` origin or an installed slot) under review is
+  // read ONCE into immutable bytes; the review, its digest, the pipeline's payload
+  // and manifest reads (`withCapturedCandidates`) and the AI effect all use them.
+  const captured: CapturedCandidates = new Map();
+  const captureFolder = async (root: string): Promise<{ kind: 'bytes'; files: Map<string, Buffer>; identity: string }> => {
+    const files = new Map<string, Buffer>();
+    for (const relative of (await deps.listFolderFilesFn(root)).sort()) {
+      files.set(relative, Buffer.from(await deps.readFolderFileBinaryFn(path.join(root, relative))));
+    }
+    captured.set(path.resolve(root), files);
+    const identity = createHash('sha256')
+      .update(canonicalJson([...files].map(([file, bytes]) => [file, createHash('sha256').update(bytes).digest('hex')])))
+      .digest('hex');
+    return { kind: 'bytes', files, identity };
+  };
+  const aiOf = (files: ReadonlyMap<string, Buffer>, name: string): Map<string, Buffer> => {
+    const prefix = `.frontx/ai/${name}/`;
+    return new Map([...files].filter(([file]) => file.startsWith(prefix)).map(([file, bytes]) => [file.slice(prefix.length), bytes]));
+  };
+  const review = await reviewApplyAiReplacements({
+    projectRoot,
+    names: input.names,
+    document: input.document,
+    // A blocker at or above `.frontx/ai/<name>` cannot be represented in a review:
+    // both commands fail closed rather than let the bundle step reclaim it.
+    blocked: 'refuse',
+    scope: input.scope,
+    sourceOf: async (name) => {
+      const origin = input.originOf(name);
+      if (origin === undefined) return { kind: 'unknown' };
+      let root: string | undefined;
+      if (origin.startsWith('path:')) {
+        const canonical = input.canonicalizeFn(origin.slice('path:'.length));
+        if (canonical === null) return { kind: 'unknown' };
+        root = path.join(projectRoot, canonical);
+      } else if (deps.inventory.lookup(name) !== undefined) {
+        root = deps.resolveInstalledContentPathFn(name);
+      }
+      if (root !== undefined) {
+        const folder = await captureFolder(root);
+        // An installed slot's manifest is read by the resolver from the index entry,
+        // while payload and AI come from the captured slot files: the two must be
+        // the same manifest, or the review would bind one and apply the other.
+        const indexed = origin.startsWith('path:') ? undefined : deps.inventory.lookup(name);
+        if (indexed !== undefined && !sameManifest(indexed.content, folder.files.get(MANIFEST_FILENAME))) {
+          return {
+            kind: 'refused',
+            message:
+              `The installed slot of "${name}" holds a manifest that differs from its inventory index entry; ` +
+              'nothing was written. Inspect the local inventory before retrying.',
+          };
+        }
+        return { kind: 'bytes', files: aiOf(folder.files, name), identity: folder.identity };
+      }
+      // Not installed: acquire the candidate without adopting it (no inventory write).
+      const spec = parseSourceSpec(origin);
+      if (!spec.ok) return { kind: 'unknown' };
+      const resolved = await resolveToInventory({ kind: 'remote', ref: spec.value }, { fetchFn: input.fetchFn });
+      if (!resolved.ok) {
+        return { kind: 'refused', message: `The candidate "${origin}" for "${name}" could not be acquired for review: ${resolved.error.message}; nothing was written.` };
+      }
+      const payload = payloadFromStoredContent(resolved.value.content, resolved.value.source);
+      if (!payload.ok) return { kind: 'refused', message: `${payload.message} Nothing was written.` };
+      return {
+        kind: 'bytes',
+        files: payload.payload.aiFiles,
+        identity: createHash('sha256').update(resolved.value.content).digest('hex'),
+      };
+    },
+    capture: captureFsAiReview,
+    captureBytes: reviewFsAiCandidate,
+    hashSource: hashCandidateTree,
+  });
+  const refuse = (code: ErrorCode, message: string, details: Record<string, unknown>): { ok: false; outcome: CommandOutcome } => ({
+    ok: false,
+    outcome: jsonMode
+      ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(code, message, details)) }
+      : { exitCode: EXIT_USER_ERROR, stderr: message },
+  });
+  if (!review.ok) return refuse('CONTENT_CONFLICT', review.message, review.details);
+  // At effect time the candidate folder must still be exactly the approved one
+  // (whole tree, not only its AI files); an in-memory candidate is the same
+  // bytes the command's memoized fetch replays to the install.
+  // The AI effect writes only the reviewed snapshot bytes (taken from the
+  // captured candidate); the payload comes from the same capture.
+  const replacements = new Map<string, () => void>(
+    [...review.snapshots].map(([name, snapshot]) => [name, () => void applyFsAiReview(snapshot, projectRoot, name)]),
+  );
+  if (!review.needsApproval) return { ok: true, replacements, captured };
+  const details = { aiReplacements: review.reviewable, planDigest: review.planDigest };
+  const isRemoval = (kind: string) => kind === 'local-only' || kind === 'local-only-directory';
+  const removals = review.reviewable.flatMap((r) => r.changes).filter((c) => isRemoval(c.kind)).length;
+  if (jsonMode) {
+    if (input.yes && input.expectedPlanDigest === review.planDigest) return { ok: true, replacements, captured };
+    return refuse(
+      'CONFIRMATION_REQUIRED',
+      input.yes
+        ? 'The AI bundle replacement or the command it belongs to is not the one that was reviewed; nothing has been written. Review it and confirm with its own planDigest.'
+        : `${input.command} would replace existing AI-extension bundle files (local edits included)${removals > 0 ? ` and delete ${removals} file(s)/folder(s) present only in the local bundle (kind local-only / local-only-directory in details.aiReplacements)` : ''}; nothing has been written. Re-issue the same command with --yes --plan-digest=<details.planDigest> to approve exactly this replacement.`,
+      details,
+    );
+  }
+  const lines = review.reviewable.flatMap((r) => [
+    `AI bundle ${r.destination} would be replaced${r.changes.some((c) => isRemoval(c.kind)) ? ' (local-only entries will be deleted)' : ''}:`,
+    ...r.changes.map((c) => `  ${c.kind.padEnd(20)} ${c.path}${isRemoval(c.kind) ? '  (will be deleted)' : ''}`),
+  ]);
+  if (!(await deps.confirmAiReplacement(lines.join('\n')))) {
+    return { ok: false, outcome: { exitCode: EXIT_SUCCESS, stdout: `${input.command === 'seed' ? 'Seed' : 'Apply'} declined; nothing was written.` } };
+  }
+  return { ok: true, replacements, captured };
+}
+
+/** Whether an index entry's content (a bundle envelope or a bare manifest) carries exactly these manifest bytes. */
+function sameManifest(indexContent: string, slotManifest: Buffer | undefined): boolean {
+  if (slotManifest === undefined) return false;
+  const files = readBundleFiles(indexContent);
+  if (files === undefined) return Buffer.from(indexContent, 'utf-8').equals(slotManifest);
+  const value = files === null ? undefined : files[MANIFEST_FILENAME];
+  const bytes = typeof value === 'string' ? Buffer.from(value, 'utf-8') : isBinaryBundleValue(value) ? decodeBundleValue(value) : null;
+  return bytes !== null && bytes.equals(slotManifest);
+}
+
+/** Captured folder candidates: absolute root -> relative path -> bytes. */
+export type CapturedCandidates = Map<string, Map<string, Buffer>>;
+
+/**
+ * Serves every read of a captured candidate folder — the resolver's local
+ * enumeration and file reads, and the installed-content reader the payload is
+ * built from — from the captured bytes, so the applied payload and manifest are
+ * exactly what was reviewed. A file outside the capture is refused, never read.
+ */
+export function withCapturedCandidates(deps: ApplyPipelineDeps, captured: CapturedCandidates): ApplyPipelineDeps {
+  if (captured.size === 0) return deps;
+  const owner = (absolute: string): { files: Map<string, Buffer>; relative: string } | undefined => {
+    const resolved = path.resolve(absolute);
+    for (const [root, files] of captured) {
+      const relative = path.relative(root, resolved);
+      // Escaping means a `..` SEGMENT; a file whose name merely starts with `..`
+      // (e.g. `..runtime.json`) belongs to the capture.
+      if (relative === '' || (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))) {
+        return { files, relative: relative.split(path.sep).join('/') };
+      }
+    }
+    return undefined;
+  };
+  return {
+    ...deps,
+    listFolderFilesFn: async (dir) => {
+      const files = captured.get(path.resolve(dir));
+      return files !== undefined ? [...files.keys()] : deps.listFolderFilesFn(dir);
+    },
+    readFolderFileBinaryFn: async (file) => {
+      const hit = owner(file);
+      if (hit === undefined) return deps.readFolderFileBinaryFn(file);
+      const bytes = hit.files.get(hit.relative);
+      if (bytes === undefined) throw new Error(`"${file}" is not part of the reviewed candidate.`);
+      return Buffer.from(bytes);
+    },
+    readInstalledContentFn: async (installedContentPath) => {
+      const files = captured.get(path.resolve(installedContentPath));
+      return files !== undefined
+        ? [...files].map(([file, bytes]) => ({ path: file, content: Buffer.from(bytes) }))
+        : deps.readInstalledContentFn(installedContentPath);
+    },
+  };
+}
+
 function exitCodeForError(code: ErrorCode): ExitCode {
   return code === 'INTERNAL' ? EXIT_INTERNAL_ERROR : EXIT_USER_ERROR;
 }
@@ -910,6 +1499,10 @@ function renderOwnershipListOutcome(result: OwnershipListOutcome, jsonMode: bool
 function renderValidateProjectOutcome(result: ValidateProjectOutcome, jsonMode: boolean): CommandOutcome {
   if (!result.ok) {
     switch (result.code) {
+      case 'RECOVERY_REQUIRED':
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err(result.code, result.message, result.details)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: result.message };
       case 'PROJECT_INVALID':
         // @cpt-begin:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-if-invalid
         // @cpt-begin:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-return-invalid
@@ -1016,6 +1609,8 @@ function renderDeleteOutcome(result: DeleteOutcome, jsonMode: boolean): CommandO
       toDelete: result.toDelete,
       toPreserve: result.toPreserve,
       ...(result.exclusionsDrift ? { exclusionsDrift: result.exclusionsDrift } : {}),
+      ...(result.relinquishedGround ? { relinquishedGround: result.relinquishedGround } : {}),
+      aiBundle: result.aiBundle,
     };
     const text =
       `Dry run for "${result.target}"\n${listText('Would delete', result.toDelete)}\n${listText('Would preserve', result.toPreserve)}` +
@@ -1028,6 +1623,8 @@ function renderDeleteOutcome(result: DeleteOutcome, jsonMode: boolean): CommandO
       toDelete: result.toDelete,
       toPreserve: result.toPreserve,
       ...(result.exclusionsDrift ? { exclusionsDrift: result.exclusionsDrift } : {}),
+      ...(result.relinquishedGround ? { relinquishedGround: result.relinquishedGround } : {}),
+      aiBundle: result.aiBundle,
     };
     return jsonMode
       ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
@@ -1044,6 +1641,9 @@ function renderDeleteOutcome(result: DeleteOutcome, jsonMode: boolean): CommandO
     toDelete: result.toDelete,
     toPreserve: result.toPreserve,
     ...(result.exclusionsDrift ? { exclusionsDrift: result.exclusionsDrift } : {}),
+    ...(result.relinquishedGround ? { relinquishedGround: result.relinquishedGround } : {}),
+    aiBundle: result.aiBundle,
+    ...(result.boundToReviewedPlan ? { boundToReviewedPlan: true, planDigest: result.planDigest } : {}),
     templateName: result.templateName,
     wasLastTarget: result.wasLastTarget,
     ...(result.aiBundleResidue !== undefined ? { aiBundleResidue: result.aiBundleResidue } : {}),
@@ -1095,16 +1695,26 @@ function renderUpgradeOutcome(result: UpgradeCommandOutcome, jsonMode: boolean):
       ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
       : { exitCode: EXIT_SUCCESS, stdout: `Upgrade of "${result.plan.name}" declined; nothing was written.` };
   }
-  const data = { outcome: result.outcome, plan: renderReviewablePlan(result.plan), reclaimedTempPaths: result.reclaimedTempPaths };
+  const skipNote = protectedSkipNote(result.plan);
+  const data = {
+    outcome: result.outcome,
+    plan: renderReviewablePlan(result.plan),
+    reclaimedTempPaths: result.reclaimedTempPaths,
+    ...(skipNote !== undefined ? { notes: [skipNote] } : {}),
+  };
   const reclaimedNote =
     result.reclaimedTempPaths.length > 0
       ? ` Reclaimed ${result.reclaimedTempPaths.length} stale scratch file(s) left by a prior interrupted attempt.`
       : '';
+  const retainedNote = retainedGroundResultNote(data.plan.skipped, data.plan.to, data.plan.retainedGround);
   return jsonMode
     ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
     : {
         exitCode: EXIT_SUCCESS,
-        stdout: `Upgraded "${result.plan.name}" to "${result.plan.to.origin}" (version ${result.plan.to.version}).${reclaimedNote}`,
+        stdout:
+          `Upgraded "${result.plan.name}" to "${result.plan.to.origin}" (version ${result.plan.to.version}).${reclaimedNote}` +
+          (retainedNote === '' ? '' : ` ${retainedNote}`) +
+          (skipNote === undefined ? '' : ` ${skipNote}`),
       };
 }
 // @cpt-end:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-render
@@ -1116,7 +1726,39 @@ function renderUpgradeOutcome(result: UpgradeCommandOutcome, jsonMode: boolean):
  * its behavior, by canonical flow ID, and maps the outcome to an exit code.
  * Adds no second dispatch path; redefines no command behavior.
  */
-export async function runCommand(command: KnownCommand, args: string[], deps: CliDeps): Promise<CommandOutcome> {
+export async function runCommand(
+  command: KnownCommand,
+  args: string[],
+  deps: CliDeps,
+  scope?: MutationScope,
+): Promise<CommandOutcome> {
+  // Every writer enters the shared mutation boundary before its first read-to-write check.
+  if (scope === undefined && isMutatingCommand(command, args)) {
+    // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
+    const mode = command === 'upgrade' && args.includes('--recover') ? 'recover' : 'normal';
+    return deps.withMutationScope(mutationProjectRoot(command, args), mode, async (acquired) => {
+      const repoRoot = mutationProjectRoot(command, args);
+      const state = await readProjectState(repoRoot, deps.readProjectStateFn);
+      if (!state.ok) {
+        const message = `Cannot inspect project state before writing: ${state.message}`;
+        return parseJsonMode(args)
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('PROJECT_INVALID', message, state.details)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
+      }
+      const receiptIds = new Set(acquired.pending.map((transition) => transition.receipt.id));
+      const pending = Object.entries(state.document.templates).find(([, entry]) =>
+        entry.pendingPostCommit !== undefined && !receiptIds.has(entry.pendingPostCommit.intentId),
+      );
+      if (pending) {
+        const message = `Template "${pending[0]}" has unfinished post-commit work without a coordination receipt. Writers are blocked; manual recovery is required before retrying. The CLI cannot repair this orphaned state automatically.`;
+        return parseJsonMode(args)
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('RECOVERY_REQUIRED', message, { template: pending[0], pendingPostCommit: pending[1].pendingPostCommit })) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
+      }
+      return runCommand(command, args, deps, acquired);
+    });
+    // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
+  }
   // Each case below both dispatches (inst-pd-dispatch) and, in the same
   // return statement, maps the dispatched behavior's outcome to an exit
   // code (inst-pd-map-outcome) and returns it (inst-pd-return-exit) — the
@@ -1197,7 +1839,7 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
       if (!projectState.ok) {
         // @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-project-invalid-return
         return jsonMode
-          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('PROJECT_INVALID', projectState.message)) }
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('PROJECT_INVALID', projectState.message, projectState.details)) }
           : { exitCode: EXIT_USER_ERROR, stderr: projectState.message };
         // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-project-invalid-return
       }
@@ -1214,6 +1856,7 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         existsFn: deps.existsFn,
         listFolderFilesFn: deps.listFolderFilesFn,
         readFileFn: deps.readFileFn,
+        readFolderFileBinaryFn: deps.readFolderFileBinaryFn,
         repoRoot,
       });
       // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
@@ -1304,6 +1947,7 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
           existsFn: deps.existsFn,
           listFolderFilesFn: deps.listFolderFilesFn,
           readFileFn: deps.readFileFn,
+          readFolderFileBinaryFn: deps.readFolderFileBinaryFn,
           fetchFn: deps.fetchFn,
         });
         // @cpt-end:cpt-frontx-flow-composed-provenance-validate-project:p1:inst-valp-run-algorithm
@@ -1364,6 +2008,7 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
           inventory: deps.inventory,
           fetchFn: deps.fetchFn,
           readFileFn: deps.readFileFn,
+          readFolderFileBinaryFn: deps.readFolderFileBinaryFn,
           canonicalizeFn,
           existsFn: deps.existsFn,
           listFolderFilesFn: deps.listFolderFilesFn,
@@ -1379,7 +2024,11 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
       const jsonMode = parseJsonMode(args);
       const adoptExisting = args.includes('--adopt-existing');
       const { value: inputRaw, rest: afterInput } = extractFlagValue(args, '--input');
-      const [dir, ...extra] = afterInput.filter((a) => a !== '--json' && a !== '--adopt-existing');
+      const seedYes = afterInput.includes('--yes');
+      const seedDigest = afterInput.find((a) => a.startsWith('--plan-digest='))?.slice('--plan-digest='.length);
+      const [dir, ...extra] = afterInput.filter(
+        (a) => a !== '--json' && a !== '--adopt-existing' && a !== '--yes' && !a.startsWith('--plan-digest='),
+      );
       if (!dir) {
         const message = 'seed requires a <dir> argument.';
         return jsonMode
@@ -1396,9 +2045,17 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         'seed',
         extra,
         jsonMode,
-        'frontx seed <dir> --input <batch-json> [--adopt-existing] [--json]',
+        'frontx seed <dir> --input <batch-json> [--adopt-existing] [--json [--yes --plan-digest=<digest>]]',
       );
       if (extraArgsOutcome) return extraArgsOutcome;
+      const seedYesOutcome = rejectYesWithoutJson('seed', jsonMode, seedYes);
+      if (seedYesOutcome) return seedYesOutcome;
+      if (seedDigest !== undefined && (!seedYes || !/^[0-9a-f]{64}$/.test(seedDigest))) {
+        const message = '--plan-digest=<64 hex digits> belongs to the confirming call: pass the planDigest of the CONFIRMATION_REQUIRED review together with --json --yes.';
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
+      }
       const parsedBatch = parseBatchInput(inputRaw);
       if (!parsedBatch.ok) {
         return jsonMode
@@ -1429,16 +2086,46 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-return-invalid-dir
       }
       // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-invalid-dir
+      // Step 3 precedes the AI decision below, as it precedes every later step.
+      const alreadySeeded = await alreadySeededRefusal(targetDir, deps.readProjectStateFn);
+      if (alreadySeeded !== undefined) return renderSeedOutcome(alreadySeeded, jsonMode);
       const canonicalizeFn = deps.createCanonicalizeTargetFn(targetDir);
-      const result = await seedRepository(targetDir, parsedBatch.batch, adoptExisting, {
-        inventory: deps.inventory,
-        fetchFn: deps.fetchFn,
+      // AI bundle decision before ANY seed effect (registration probe/install,
+      // state document, default registrations, payload): a blocker on the
+      // destination path fails closed; an existing bundle is reviewed against the
+      // official default's candidate, acquired in memory through the same
+      // memoized fetch the later registration replays.
+      const seedFetchFn = memoizeFetch(deps.fetchFn);
+      const seedDecision = await decideAiReplacements({
+        command: 'seed',
+        names: Object.keys(parsedBatch.batch.templates),
+        projectRoot: targetDir,
+        document: null,
+        originOf: officialDefaultOrigin,
+        jsonMode,
+        yes: seedYes,
+        expectedPlanDigest: seedDigest,
+        deps,
+        fetchFn: seedFetchFn,
+        canonicalizeFn,
+        scope: { command: 'seed', dir: targetDir, batch: parsedBatch.batch, adoptExisting },
+      });
+      if (!seedDecision.ok) return seedDecision.outcome;
+      // Registration probes and auto-installs are staged in memory until every
+      // item passed its checks (seed's own state writes are rolled back on refusal).
+      const seedStaged = createStagedInventory(deps.inventory, deps.resolveInstalledContentPathFn);
+      const result = await seedRepository(targetDir, parsedBatch.batch, adoptExisting, withCapturedCandidates({
+        aiReplacements: seedDecision.replacements,
+        beforeFirstWrite: seedStaged.commit,
+        inventory: seedStaged.inventory,
+        fetchFn: seedFetchFn,
         readFileFn: deps.readFileFn,
+        readFolderFileBinaryFn: deps.readFolderFileBinaryFn,
         canonicalizeFn,
         existsFn: deps.existsFn,
         listFolderFilesFn: deps.listFolderFilesFn,
         resolveInstalledContentPathFn: deps.resolveInstalledContentPathFn,
-        readInstalledContentFn: deps.createReadInstalledContentFn(targetDir),
+        readInstalledContentFn: seedStaged.readInstalledContent(deps.createReadInstalledContentFn(targetDir)),
         readExistingContentFn: deps.createReadExistingContentFn(targetDir),
         writeFileFn: deps.writeFileFn,
         readProjectStateFn: deps.readProjectStateFn,
@@ -1449,7 +2136,7 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         assertPathWithinRootFn: deps.createAssertPathWithinRootFn(targetDir),
         removeProjectFileFn: deps.removeProjectFile,
         removeEmptyDirFn: deps.removeEmptyDirFn,
-      });
+      }, seedDecision.captured));
       return renderSeedOutcome(result, jsonMode);
     }
 
@@ -1464,14 +2151,24 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
           ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
           : { exitCode: EXIT_USER_ERROR, stderr: message };
       }
-      const extra = rest.filter((a) => a !== '--json' && a !== '--adopt-existing');
+      const yes = rest.includes('--yes');
+      const applyDigest = rest.find((a) => a.startsWith('--plan-digest='))?.slice('--plan-digest='.length);
+      const extra = rest.filter((a) => a !== '--json' && a !== '--adopt-existing' && a !== '--yes' && !a.startsWith('--plan-digest='));
       const extraArgsOutcome = rejectUnrecognizedArgs(
         'apply',
         extra,
         jsonMode,
-        'frontx apply --input <batch-json> [--adopt-existing] [--json]',
+        'frontx apply --input <batch-json> [--adopt-existing] [--json [--yes --plan-digest=<digest>]]',
       );
       if (extraArgsOutcome) return extraArgsOutcome;
+      const applyYesOutcome = rejectYesWithoutJson('apply', jsonMode, yes);
+      if (applyYesOutcome) return applyYesOutcome;
+      if (applyDigest !== undefined && (!yes || !/^[0-9a-f]{64}$/.test(applyDigest))) {
+        const message = '--plan-digest=<64 hex digits> belongs to the confirming call: pass the planDigest of the CONFIRMATION_REQUIRED review together with --json --yes.';
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
+      }
       const parsedBatch = parseBatchInput(inputRaw);
       if (!parsedBatch.ok) {
         return jsonMode
@@ -1484,15 +2181,43 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
       // `delete` already do.
       const repoRoot = process.cwd();
       const canonicalizeFn = deps.createCanonicalizeTargetFn(repoRoot);
+      // The AI bundle decision comes BEFORE any effect of this command (r9 §5);
+      // one memoized fetch serves both the review's acquisition and auto-install.
+      const fetchFn = memoizeFetch(deps.fetchFn);
+      // The refusals the FEATURE orders before anything resolves (state read,
+      // aliased root, canonicalisation, bundle overlap) come first; the
+      // pipeline repeats them on the same state.
+      const applyState = await checkBatchBeforeResolution(parsedBatch.batch, repoRoot, canonicalizeFn, deps.readProjectStateFn);
+      if (!applyState.ok) return renderApplyOutcome(applyState, jsonMode);
+      const aiDecision = await decideAiReplacements({
+        command: 'apply',
+        names: Object.keys(parsedBatch.batch.templates),
+        projectRoot: repoRoot,
+        document: applyState.document,
+        originOf: (name) => getOwn(applyState.document.templates, name)?.origin,
+        jsonMode,
+        yes,
+        expectedPlanDigest: applyDigest,
+        deps,
+        fetchFn,
+        canonicalizeFn,
+        scope: { command: 'apply', batch: parsedBatch.batch, adoptExisting },
+      });
+      if (!aiDecision.ok) return aiDecision.outcome;
+      // Auto-installs are staged in memory until every item passed its checks.
+      const staged = createStagedInventory(deps.inventory, deps.resolveInstalledContentPathFn);
       const pipelineDeps: ApplyPipelineDeps = {
-        inventory: deps.inventory,
-        fetchFn: deps.fetchFn,
+        aiReplacements: aiDecision.replacements,
+        beforeFirstWrite: staged.commit,
+        inventory: staged.inventory,
+        fetchFn,
         readFileFn: deps.readFileFn,
+        readFolderFileBinaryFn: deps.readFolderFileBinaryFn,
         canonicalizeFn,
         existsFn: deps.existsFn,
         listFolderFilesFn: deps.listFolderFilesFn,
         resolveInstalledContentPathFn: deps.resolveInstalledContentPathFn,
-        readInstalledContentFn: deps.createReadInstalledContentFn(repoRoot),
+        readInstalledContentFn: staged.readInstalledContent(deps.createReadInstalledContentFn(repoRoot)),
         readExistingContentFn: deps.createReadExistingContentFn(repoRoot),
         writeFileFn: deps.writeFileFn,
         readProjectStateFn: deps.readProjectStateFn,
@@ -1512,7 +2237,7 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         removeProjectFileFn: deps.removeProjectFile,
         removeEmptyDirFn: deps.removeEmptyDirFn,
       };
-      const result = await runApplyPipeline(parsedBatch.batch, repoRoot, adoptExisting, pipelineDeps);
+      const result = await runApplyPipeline(parsedBatch.batch, repoRoot, adoptExisting, withCapturedCandidates(pipelineDeps, aiDecision.captured));
       return renderApplyOutcome(result, jsonMode);
     }
 
@@ -1547,7 +2272,7 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         repoRoot,
         deps.inventory,
         deps.fetchFn,
-        deps.readFileFn,
+        deps.readFolderFileBinaryFn,
         deps.createCanonicalizeTargetFn(repoRoot),
         deps.readProjectStateFn,
         deps.writeProjectStateFn,
@@ -1720,7 +2445,11 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
       const jsonMode = parseJsonMode(args);
       const dryRun = args.includes('--dry-run');
       const yes = args.includes('--yes');
-      const [target, ...extra] = args.filter((a) => a !== '--json' && a !== '--dry-run' && a !== '--yes');
+      const digestFlag = args.find((a) => a.startsWith('--plan-digest='));
+      const expectedPlanDigest = digestFlag?.slice('--plan-digest='.length);
+      const [target, ...extra] = args.filter(
+        (a) => a !== '--json' && a !== '--dry-run' && a !== '--yes' && !a.startsWith('--plan-digest='),
+      );
       if (!target) {
         const message = 'delete requires a <target> argument.';
         return jsonMode
@@ -1731,11 +2460,20 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         'delete',
         extra,
         jsonMode,
-        'frontx delete <target> [--dry-run] [--json [--yes]]',
+        'frontx delete <target> [--dry-run] [--json [--yes --plan-digest=<digest>]]',
       );
       if (extraArgsOutcome) return extraArgsOutcome;
       const deleteYesOutcome = rejectYesWithoutJson('delete', jsonMode, yes, !dryRun);
       if (deleteYesOutcome) return deleteYesOutcome;
+      // The digest names the reviewed plan and belongs to the confirming call
+      // only: `--json --yes`, never a dry run (a preview issues no digest).
+      if (expectedPlanDigest !== undefined && (dryRun || !jsonMode || !yes || !/^[0-9a-f]{64}$/.test(expectedPlanDigest))) {
+        const message =
+          '--plan-digest=<64 hex digits> belongs to the confirming call: pass the planDigest of the CONFIRMATION_REQUIRED review together with --json --yes (never --dry-run).';
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
+      }
       // No explicit project-root argument on this command's own FEATURE
       // flow signature (`delete <target>`) — operates on the project the
       // developer is standing in, exactly as `register`/`unregister`/
@@ -1749,20 +2487,41 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
       // `materializeOrRemoveAiBundle` algorithm down to `delete.ts`'s own
       // simple `RemoveAiBundleFn` shape, fixed to the `LAST_TARGET_LOST`
       // transition — the only one `delete` ever triggers.
-      const removeAiBundleFn: RemoveAiBundleFn = async (manifestName) => {
-        await materializeOrRemoveAiBundle({
-          manifestName,
-          transition: { kind: 'LAST_TARGET_LOST' },
-          projectRoot: repoRoot,
-          bundleExists: createFsBundleExistsFn(),
-          copyBundle: createFsCopyBundleFn(),
-          removeBundle: createFsRemoveBundleFn(),
-        });
-      };
+      // The bundle's tree is captured into the deletion review (so the plan
+      // digest binds the bytes it removes, local edits included), and the
+      // removal refuses if the tree is no longer exactly the captured one.
+      const reviewedBundles = new Map<string, string>();
+      const removeAiBundleFn: RemoveAiBundleFn = Object.assign(
+        async (manifestName: string) => {
+          const reviewed = reviewedBundles.get(manifestName);
+          if (reviewed === undefined || reviewFsAiCandidate(repoRoot, manifestName, undefined).digest !== reviewed) {
+            throw new AiReviewDriftError(`The AI bundle at .frontx/ai/${manifestName} changed since it was reviewed; it was left in place.`);
+          }
+          await materializeOrRemoveAiBundle({
+            manifestName,
+            transition: { kind: 'LAST_TARGET_LOST' },
+            projectRoot: repoRoot,
+            bundleExists: createFsBundleExistsFn(),
+            copyBundle: createFsCopyBundleFn(),
+            removeBundle: createFsRemoveBundleFn(),
+          });
+        },
+        {
+          describe: (manifestName: string) => {
+            const snapshot = reviewFsAiCandidate(repoRoot, manifestName, undefined);
+            reviewedBundles.set(manifestName, snapshot.digest);
+            return {
+              files: snapshot.existing.map(({ path: file, length, sha256 }) => ({ path: file, length, sha256 })),
+              directories: [...snapshot.existingDirectories],
+              digest: snapshot.digest,
+            };
+          },
+        },
+      );
       const result = await deleteTarget(
         target,
         repoRoot,
-        { jsonMode, dryRun, yes },
+        { jsonMode, dryRun, yes, ...(expectedPlanDigest !== undefined ? { expectedPlanDigest } : {}) },
         deps.inventory,
         canonicalizeFn,
         deps.listTargetFilesFn,
@@ -1778,6 +2537,8 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         deps.writeProjectStateFn,
         deps.confirmDeletion,
         removeAiBundleFn,
+        createFsClassifyPathStrictFn(repoRoot),
+        createFsEntryKindFn(repoRoot),
       );
       return renderDeleteOutcome(result, jsonMode);
     }
@@ -1789,7 +2550,12 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
       const jsonMode = parseJsonMode(args);
       const yes = args.includes('--yes');
       const restore = args.includes('--restore');
-      const [templateName, newOrigin, ...extra] = args.filter((a) => a !== '--json' && a !== '--yes' && a !== '--restore');
+      const recover = args.includes('--recover');
+      const digestFlag = args.find((a) => a.startsWith('--plan-digest='));
+      const expectedPlanDigest = digestFlag?.slice('--plan-digest='.length);
+      const [templateName, newOrigin, ...extra] = args.filter(
+        (a) => a !== '--json' && a !== '--yes' && a !== '--restore' && a !== '--recover' && !a.startsWith('--plan-digest='),
+      );
       if (!templateName) {
         const message = 'upgrade requires a <templateName> argument.';
         return jsonMode
@@ -1800,17 +2566,31 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         'upgrade',
         extra,
         jsonMode,
-        'frontx upgrade <templateName> <new-origin>|--restore [--json [--yes]]',
+        'frontx upgrade <templateName> <new-origin>|--restore|--recover [--json [--yes --plan-digest=<digest>]]',
       );
       if (extraArgsOutcome) return extraArgsOutcome;
+      if (recover && (restore || newOrigin !== undefined)) {
+        const message = 'upgrade --recover takes only <templateName> [--json [--yes --plan-digest=<digest>]].';
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
+      }
       const upgradeYesOutcome = rejectYesWithoutJson('upgrade', jsonMode, yes);
       if (upgradeYesOutcome) return upgradeYesOutcome;
+      if (expectedPlanDigest !== undefined && (!yes || !/^[0-9a-f]{64}$/.test(expectedPlanDigest))) {
+        const message = '--plan-digest=<64 hex digits> belongs to the confirming call: pass the planDigest of the CONFIRMATION_REQUIRED review together with --json --yes.';
+        return jsonMode
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
+          : { exitCode: EXIT_USER_ERROR, stderr: message };
+      }
       // Argument shape CHANGED from the retired engine's own `<projectRoot>
       // <targetVersion>`: this is `<templateName> <new-origin>` XOR
       // `<templateName> --restore`, with NO origin argument for restore
       // (`cpt-frontx-dod-upgrade-changeset-rollback`'s own text).
       let direction: UpgradeDirection;
-      if (restore) {
+      if (recover) {
+        direction = { kind: 'restore' }; // unused: recovery never plans a new transition
+      } else if (restore) {
         if (newOrigin !== undefined) {
           const message = 'upgrade --restore takes no <new-origin> argument.';
           return jsonMode
@@ -1837,14 +2617,20 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
       // @cpt-end:cpt-frontx-flow-upgrade-changeset-restore:p1:inst-rst-invoke
       // @cpt-end:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-invoke-upgrade
 
-      const resolvePayload = createResolvePayloadFn({
-        repoRoot,
-        fetchFn: deps.fetchFn,
-        readFileFn: deps.readFileFn,
-        listDiskFiles: createFsListDiskFilesFn(),
-        existsFn: deps.existsFn,
-        canonicalizeFn,
-      });
+      // One acquisition of each candidate per command: its payload and AI bytes
+      // are what is reviewed, and its fetch is replayed to the inventory promotion.
+      const acquisition = createCandidateAcquisition(deps.fetchFn, (fetchFn) =>
+        createResolvePayloadFn({
+          repoRoot,
+          fetchFn,
+          readFileFn: deps.readFileFn,
+          readFolderFileBinaryFn: deps.readFolderFileBinaryFn,
+          listDiskFiles: createFsListDiskFilesFn(),
+          existsFn: deps.existsFn,
+          canonicalizeFn,
+        }),
+      );
+      const resolvePayload = acquisition.resolve;
 
       // Manifest-only resolution of ANOTHER registered template's declared
       // exclusions (`upgrade/validate.ts`'s own `ValidateInput.
@@ -1867,131 +2653,68 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         return resolution.known ? resolution.excludedSubtrees : [];
       };
 
-      // `inst-com-replace-inventory` — promotes the committed transition's
-      // candidate content into `name`'s own local-inventory slot, through
-      // the SAME bounded-update mechanism `update-local` already drives
-      // (`TemplateInventory.updateLocal`), never a second "write into the
-      // inventory" formulation. A LOCAL `path:` origin has no inventory slot
-      // at all — its payload is read live from its own folder on every
-      // resolution (`upgrade/payload.ts`'s own header) — and a name never
-      // installed into the inventory in the first place (every real
-      // template in this ecosystem today is `path:`-registered, per that
-      // same header) has nothing cached there either; both are correct
-      // no-ops, never a promotion failure.
-      const promoteInventory = async (name: string): Promise<void> => {
-        const stateResult = await readProjectState(repoRoot, deps.readProjectStateFn);
-        if (!stateResult.ok) {
-          throw new Error(`"${name}"'s committed entry could not be re-read for inventory promotion: ${stateResult.message}`);
-        }
-        const entry = stateResult.document.templates[name];
-        if (entry === undefined) {
-          throw new Error(`"${name}" has no entry in the project state store immediately after its own commit.`);
-        }
-        if (entry.origin.startsWith('path:')) return; // local origin: no inventory slot to promote into
-        if (deps.inventory.lookup(name) === undefined) return; // never installed into the inventory either
-        const updated = await deps.inventory.updateLocal(name, entry.origin, deps.fetchFn);
+      /* c8 ignore next -- runCommand always enters the boundary for upgrade */
+      if (scope === undefined) throw new Error('upgrade must run inside the mutation scope');
+      const readDiskEntry = createFsReadDiskEntryFn(repoRoot);
+      const entryJson = async (): Promise<string> => {
+        const state = await readProjectState(repoRoot, deps.readProjectStateFn);
+        if (!state.ok) throw new Error(`The project state store could not be read: ${state.message}`);
+        return canonicalJson(getOwn(state.document.templates, templateName) ?? null);
+      };
+      // `inst-com-replace-inventory` — a LOCAL `path:` origin has no inventory
+      // slot, and a name never installed into the inventory has nothing cached:
+      // both are `not-required`, decided before approval and recorded in the intent.
+      const inventoryRequired = (origin: string): boolean =>
+        !origin.startsWith('path:') && deps.inventory.lookup(templateName) !== undefined;
+      // Promotes the reviewed candidate's own fetched bytes into the slot through
+      // the SAME bounded-update mechanism `update-local` drives — never a second fetch.
+      const promote = async (origin: string, expectedCandidateHash: string): Promise<void> => {
+        const updated = await deps.inventory.updateLocal(templateName, origin, acquisition.adoptFetch(origin));
         if (!updated.ok) {
-          throw new Error(`"${name}"'s local inventory slot could not be replaced: ${updated.error.message}`);
+          throw new Error(`"${templateName}"'s local inventory slot could not be replaced: ${updated.error.message}`);
+        }
+        // Read back the slot and its index entry: promotion is done only when they
+        // hold exactly the approved candidate (r9 §6.4), never on the adapter's word.
+        const entry = deps.inventory.lookup(templateName);
+        const stored = deps.inventory.readInstalled(templateName);
+        const rebuilt = stored === undefined ? undefined : payloadFromStoredContent(stored, origin);
+        if (entry?.source !== origin || rebuilt === undefined || !rebuilt.ok || candidateHash(rebuilt.payload) !== expectedCandidateHash) {
+          throw new Error(`"${templateName}"'s local inventory slot does not hold the approved candidate after promotion.`);
         }
       };
 
-      // `inst-com-refresh-bundle` — refreshes `name`'s CLI-owned
-      // `.frontx/ai/<manifestName>/` bundle through the SAME step
-      // `apply`/`delete` already use (`cpt-frontx-algo-cli-scaffolding-ai-
-      // bundle`), never a second bundle mechanism.
-      // `materializeOrRemoveAiBundle`'s transition union has no dedicated
-      // "refresh" kind, so this reuses `FIRST_TARGET_GAINED`, which
-      // `createFsCopyBundleFn`'s `fs.cpSync(recursive)` satisfies because it
-      // OVERWRITES an existing destination file for every file it copies.
-      //
-      // ONE KNOWN LIMITATION remains, and it is spec-permitted: if the new
-      // payload carries NO bundle at all, the remove-then-materialize below
-      // clears the project bundle and then no-ops, so the name ends up with no
-      // AI surface rather than the previous version's. That is the honest
-      // reading of a version that declares none — and the FEATURE scopes the
-      // refresh requirement to an upgrade "whose payload carries a new
-      // bundle", saying nothing about preserving an older one a new version
-      // dropped. Recorded so the next reader inherits the analysis rather than
-      // the surprise.
-      const refreshAiBundle = async (name: string): Promise<void> => {
-        const stateResult = await readProjectState(repoRoot, deps.readProjectStateFn);
-        if (!stateResult.ok) {
-          throw new Error(`"${name}"'s committed entry could not be re-read for the AI-bundle refresh: ${stateResult.message}`);
-        }
-        const entry = stateResult.document.templates[name];
-        if (entry === undefined) {
-          throw new Error(`"${name}" has no entry in the project state store immediately after its own commit.`);
-        }
-        // A `canonicalizeFn` failure THROWS rather than degrading: `?? ''`
-        // silently collapsed `installedContentPath` to `repoRoot`, which turns
-        // the bundle refresh into a self-copy of the project root onto itself
-        // — a nonsensical operation reported as success. A throw here is
-        // caught by `commitUpgrade`'s own post-commit bundle handler and
-        // reported as `INTERNAL` naming the bundle, with the transition
-        // standing, which is exactly the outcome the FEATURE defines for a
-        // refresh that could not land (`inst-com-if-bundle-refresh-fails`).
-        let installedContentPath: string;
-        if (entry.origin.startsWith('path:')) {
-          const canonical = canonicalizeFn(entry.origin.slice('path:'.length));
-          if (canonical === null) {
-            throw new Error(
-              `"${name}"'s local origin "${entry.origin}" could not be proven to stay inside the project root, ` +
-                'so its AI-extension bundle could not be refreshed.',
-            );
-          }
-          installedContentPath = path.join(repoRoot, canonical);
-        } else {
-          installedContentPath = deps.resolveInstalledContentPathFn(name);
-        }
-        const bundleExists = createFsBundleExistsFn();
-        const copyBundle = createFsCopyBundleFn();
-        const removeBundle = createFsRemoveBundleFn();
+      const pending = createPendingPostCommitStore(repoRoot, templateName, deps.readProjectStateFn, deps.writeProjectStateFn);
+      if (recover) {
+        return recoverUpgrade({
+          name: templateName,
+          scope,
+          jsonMode,
+          yes,
+          expectedPlanDigest,
+          repoRoot,
+          entryJson,
+          readDiskEntry,
+          resolvePayload,
+          promote,
+          confirm: deps.confirmRecovery,
+          pending,
+        });
+      }
 
-        // A refresh is REMOVE-then-materialize, composed from the two
-        // transitions `cpt-frontx-algo-cli-scaffolding-ai-bundle` already
-        // owns, rather than a copy alone.
-        //
-        // `createFsCopyBundleFn` uses `fs.cpSync(recursive)`, which overwrites
-        // and adds but never REMOVES — so a copy alone left behind every file
-        // the previous bundle carried and the new one dropped, which is a
-        // PARTIAL refresh, not the refresh this name's DoD requires
-        // (`cpt-frontx-dod-cli-scaffolding-ai-bundle`: the system "MUST
-        // refresh it when `upgrade` commits a new version of the name whose
-        // payload carries a new bundle"). Clearing first makes the result
-        // exactly the new payload's bundle, which is what "refresh" means.
-        //
-        // Deliberately composed HERE, at the wiring layer, rather than by
-        // adding a transition kind to that algorithm: the FEATURE requires an
-        // upgrade refresh go "through the same CLI-owned step `apply` and
-        // `delete` use", and both halves of this are that step. The ordering
-        // cost is stated rather than hidden — if the materialize half fails
-        // after the remove half landed, the bundle is absent rather than
-        // stale, which `commitUpgrade`'s post-commit handler reports as
-        // `INTERNAL` naming the bundle while the transition itself stands.
-        // That is the right trade: the FEATURE states the bundle is
-        // re-derivable from the installed content path whenever something next
-        // refreshes it, so an absent bundle is recoverable, while a silently
-        // stale one misreports the version's AI surface indefinitely.
-        //
-        // The remove half is a no-op when no project bundle exists yet (the
-        // ordinary first-refresh case), so this costs nothing in the common
-        // path.
-        await materializeOrRemoveAiBundle({
-          manifestName: name,
-          transition: { kind: 'LAST_TARGET_LOST' },
-          projectRoot: repoRoot,
-          bundleExists,
-          copyBundle,
-          removeBundle,
-        });
-        await materializeOrRemoveAiBundle({
-          manifestName: name,
-          transition: { kind: 'FIRST_TARGET_GAINED', installedContentPath },
-          projectRoot: repoRoot,
-          bundleExists,
-          copyBundle,
-          removeBundle,
-        });
+      // The receipt is written once the plan is approved and before the first
+      // effect (`onApproved`); every effect seam below refuses to run without it,
+      // so preview/decline/superseded paths write no record at all.
+      let transition: Transition | undefined;
+      let approved: UpgradePlan | undefined;
+      const requireTransition = (): { transition: Transition; plan: UpgradePlan } => {
+        if (transition === undefined || approved === undefined) {
+          throw new Error('An upgrade effect was attempted before its approved transition was recorded.');
+        }
+        return { transition, plan: approved };
+      };
+      const gated = <A extends unknown[]>(effect: (...a: A) => Promise<void>) => async (...a: A): Promise<void> => {
+        requireTransition();
+        await effect(...a);
       };
 
       const engineDeps: Omit<UpgradeEngineDeps, 'presentPlan'> = {
@@ -2000,24 +2723,112 @@ export async function runCommand(command: KnownCommand, args: string[], deps: Cl
         writeProjectStateFn: deps.writeProjectStateFn,
         resolvePayload,
         resolveRegisteredExclusions,
-        readDiskEntry: createFsReadDiskEntryFn(repoRoot),
-        writeDiskFile: createFsWriteDiskFileFn(repoRoot),
-        renameDiskFile: createFsRenameDiskFileFn(repoRoot),
-        unlinkDiskFile: createFsUnlinkDiskFileFn(repoRoot),
+        readDiskEntry,
+        writeDiskFile: gated(createFsWriteDiskFileFn(repoRoot)),
+        renameDiskFile: gated(createFsRenameDiskFileFn(repoRoot)),
+        unlinkDiskFile: gated(createFsUnlinkDiskFileFn(repoRoot)),
         listDiskFiles: createFsListDiskFilesFn(),
         canonicalizeFn,
-        promoteInventory,
-        refreshAiBundle,
+        // The AI bundle replacement is reviewed as part of the plan: computed from
+        // the candidate's acquired bytes against the current destination.
+        reviewAi: async (plan) => reviewFsAiCandidate(repoRoot, plan.name, acquisition.payload(plan.to.origin)?.aiFiles),
+        onApproved: async (plan) => {
+          const payload = acquisition.payload(plan.to.origin);
+          if (payload === undefined) throw new Error(`The candidate "${plan.to.origin}" was not acquired by this command.`);
+          const aiChanges = plan.ai?.changes.some((c) => c.kind !== 'unchanged') ?? false;
+          // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-begin-transition
+          transition = scope.beginTransition({
+            kind: direction.kind === 'forward' ? 'upgrade' : 'restore',
+            name: templateName,
+            from: { origin: plan.from.origin, version: plan.from.version },
+            to: { origin: plan.to.origin, version: plan.to.version },
+            fromEntry: await entryJson(),
+            planDigest: computePlanDigest(plan),
+            candidateHash: candidateHash(payload),
+            footprint: footprintOf(plan),
+            tasks: {
+              inventory: inventoryRequired(plan.to.origin) ? 'pending' : 'not-required',
+              ai: aiChanges ? 'pending' : 'not-required',
+            },
+          });
+          // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-begin-transition
+          approved = plan;
+        },
+        // Written IN the commit write: the transition's post-commit record.
+        pendingPostCommit: () =>
+          transition === undefined
+            ? undefined
+            : { intentId: transition.receipt.id, inventory: transition.receipt.intent.tasks.inventory, ai: transition.receipt.intent.tasks.ai },
+        promoteInventory: async () => {
+          const { transition: t, plan } = requireTransition();
+          if ((await pending.read())?.pendingPostCommit?.inventory !== 'pending') return;
+          await promote(plan.to.origin, t.receipt.intent.candidateHash);
+          await pending.markDone(t.receipt.id, 'inventory', t.receipt.intent.candidateHash);
+        },
+        // `inst-com-refresh-bundle` — the destination becomes exactly the reviewed
+        // candidate bundle, written from the snapshot's bytes, and only while the
+        // destination is still exactly what was reviewed.
+        refreshAiBundle: async () => {
+          const { transition: t, plan } = requireTransition();
+          if ((await pending.read())?.pendingPostCommit?.ai !== 'pending') return;
+          if (plan.ai === undefined) throw new Error('The approved plan carries no AI review.');
+          await pending.markDone(t.receipt.id, 'ai', applyFsAiReview(plan.ai, repoRoot, templateName));
+        },
       };
 
       const result = await upgradeCommand(
         templateName,
         direction,
-        { jsonMode, yes },
+        { jsonMode, yes, ...(expectedPlanDigest !== undefined ? { expectedPlanDigest } : {}) },
         engineDeps,
         deps.presentUpgradePlan,
       );
-      return renderUpgradeOutcome(result, jsonMode);
+      const begun = transition as Transition | undefined;
+      if (begun === undefined) return renderUpgradeOutcome(result, jsonMode);
+      const now = await entryJson();
+      // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-if-verified-commit
+      // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-release-committed
+      if (result.ok) {
+        // Verified terminal state: this transition's record with no pending task.
+        const entry = await pending.read();
+        const record = entry?.pendingPostCommit;
+        if (entry === undefined || record?.intentId !== begun.receipt.id || record.inventory === 'pending' || record.ai === 'pending') {
+          throw new Error(`"${templateName}"'s committed entry does not record its post-commit work as verified; run "frontx upgrade ${templateName} --recover".`);
+        }
+        await begun.finalize('committed', canonicalJson(withoutPending(entry)), () => pending.clear(begun.receipt.id));
+        return renderUpgradeOutcome(result, jsonMode);
+      }
+      // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-release-committed
+      // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-if-verified-commit
+      // Not committed and every footprint path back at its pre-commit content:
+      // provably no surviving effect, so the receipt is released as cancelled.
+      // Anything else stays guarded for `--recover`.
+      // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-if-no-effect
+      // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-release-cancelled
+      const committed = now !== begun.receipt.intent.fromEntry;
+      const changedPaths = committed ? [] : await changedFootprint(repoRoot, begun.receipt.intent.footprint, readDiskEntry);
+      if (!committed && changedPaths.length === 0) {
+        await begun.finalize('cancelled', now);
+        return renderUpgradeOutcome(result, jsonMode);
+      }
+      // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-release-cancelled
+      // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-if-no-effect
+      // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-else-guarded
+      // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-return-guarded
+      const message =
+        `${result.message} Recovery required: run "frontx upgrade ${templateName} --recover" in ${scope.projectRoot}.`;
+      const details = {
+        ...result.details,
+        cause: result.code,
+        transitionCommitted: committed,
+        receipt: begun.receiptPath,
+        ...(committed ? {} : { changedPaths }),
+      };
+      return jsonMode
+        ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('RECOVERY_REQUIRED', message, details)) }
+        : { exitCode: EXIT_USER_ERROR, stderr: message };
+      // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-return-guarded
+      // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-else-guarded
     }
   }
   // @cpt-end:cpt-frontx-algo-cli-invocation-parse-dispatch:p1:inst-pd-return-exit
@@ -2201,6 +3012,18 @@ export async function run(argv: string[], deps: CliDeps): Promise<CommandOutcome
     // @cpt-end:cpt-frontx-state-cli-invocation-run:p1:inst-st-dispatched-user-error
     // @cpt-end:cpt-frontx-state-cli-invocation-run:p1:inst-st-dispatched-success
   } catch (error) {
+    if (error instanceof UnindexedSlotResidueError) {
+      const envelope = err('CONTENT_CONFLICT', error.message, { contentPath: error.installedPath, slot: 'residue' });
+      return parseJsonMode(parsed.args)
+        ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(envelope) }
+        : { exitCode: EXIT_USER_ERROR, stderr: error.message };
+    }
+    if (error instanceof CoordinationError) {
+      const envelope = err(error.code, error.message, error.details);
+      return parseJsonMode(parsed.args)
+        ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(envelope) }
+        : { exitCode: EXIT_USER_ERROR, stderr: error.message };
+    }
     if (error instanceof InvalidBundleKeyError) {
       const envelope = err('INVALID_PATH', error.message, { path: error.key });
       return parseJsonMode(parsed.args)

@@ -29,7 +29,7 @@ import { computeExclusionRoots, isWithinEffectiveOwnership } from '../scaffold/e
 import { checkTargetConflicts } from '../scaffold/conflict-check';
 import type { TargetClaim } from '../scaffold/conflict-check';
 import { isReservedTempName } from '../paths/reserved-temp-name';
-import { joinUnderTarget, nonCanonicalProjectPathReason } from '../paths/relative-path';
+import { joinUnderTarget, pathWithinSubtree, unaddressableProjectPathReason, withoutTrailingSlash } from '../paths/relative-path';
 import type {
   DiskEntry,
   ReadDiskEntryFn,
@@ -49,16 +49,18 @@ function stripTarget(target: string, projectRelativePath: string): string {
   return target === '.' ? projectRelativePath : projectRelativePath.slice(target.length + 1);
 }
 
-// The one comparison helper the FEATURE requires ("implement one small
-// comparison helper so this rule lives in exactly one place"): absence is
-// modelled as `null`, an absent path is unequal to any content, and two
-// absences are equal. Plain `===` already expresses exactly that for a
-// `string | null` pair — no special-casing needed, which is itself the
-// point of writing it as its own named function: every one of the seven
-// branches below reads the rule from here, so the rule can never drift
-// between them.
-function contentEquals(a: string | null, b: string | null): boolean {
-  return a === b;
+// The one comparison helper the FEATURE requires: absence is modelled as
+// `null`, an absent path is unequal to any content, and two absences are
+// equal. Buffer content is compared by bytes; string content by value;
+// cross-type comparison converts the string to UTF-8 bytes.
+function contentEquals(a: Buffer | string | null, b: Buffer | string | null): boolean {
+  if (a === null) return b === null;
+  if (b === null) return false;
+  if (Buffer.isBuffer(a) && Buffer.isBuffer(b)) return a.equals(b);
+  if (typeof a === 'string' && typeof b === 'string') return a === b;
+  const bufA = Buffer.isBuffer(a) ? a : Buffer.from(a, 'utf-8');
+  const bufB = Buffer.isBuffer(b) ? b : Buffer.from(b, 'utf-8');
+  return bufA.equals(bufB);
 }
 
 // What `readDiskEntry` reports, collapsed to the one shape every comparison
@@ -67,7 +69,7 @@ function contentEquals(a: string | null, b: string | null): boolean {
 // `inst-cls-if-not-regular` (a directory, a symlink, or a special file —
 // a FIFO, socket, or device — where a payload declares the path is refused
 // before this ever runs).
-function diskContentOf(entry: DiskEntry): string | null {
+function diskContentOf(entry: DiskEntry): Buffer | string | null {
   return entry.kind === 'file' ? entry.content : null;
 }
 
@@ -228,6 +230,13 @@ export interface ClassifyInput {
   // as live-confirmed, and which ADR 0021's "Ownership subtraction still
   // applies" driver forbids.
   additionalExclusionRoots: string[];
+  // What the entry's own record says this template declared when it WROTE its
+  // files (`TemplateEntry.excludedSubtrees`, read as empty once marked
+  // `exclusionsBackfilled`). The re-resolved BASELINE payload is not that
+  // evidence: an origin edited in place (a `path:` folder) no longer lists what
+  // it once wrote, so a declaration the candidate adds beyond this record is
+  // judged on the DISK (`unprovenGroundPaths`), not on the baseline's file list.
+  recordedExcludedSubtrees?: readonly string[];
   readDiskEntry: ReadDiskEntryFn;
   // No `ListDiskFilesFn` here on purpose: classification enumerates only
   // payload-declared paths (see `inst-cls-enumerate` below on why the
@@ -292,15 +301,32 @@ export interface ClassifyResult {
   // None of them was ever read from disk, compared, or planned; the caller
   // refuses the whole upgrade with `INVALID_PATH` when this is non-empty.
   unaddressablePaths: { path: string; reason: string }[];
+  // The SUBSET of `skipped` whose path lay INSIDE the baseline boundary and now
+  // lies outside the candidate boundary: ground the baseline template wrote
+  // under its own recorded declaration and the candidate's declared
+  // `excludedSubtrees` relinquishes. Every other `OUTSIDE_BOUNDARY` skip is
+  // outside the baseline boundary as well - project-owned, `.frontx`, the local
+  // origin folder, another origin's folder, or a path inside the template's own
+  // declared exclusion that `apply` never wrote - so the template never wrote it
+  // and its skip says nothing about what declaration history is proven.
+  relinquishedPaths: string[];
+  // Candidate-declared exclusion roots under this target that the recorded
+  // declaration (`ClassifyInput.recordedExcludedSubtrees`) did not already
+  // cover AND where the disk holds something (or cannot be probed safely).
+  // Independent of the baseline payload's file list, which an origin edited in
+  // place no longer reflects: the template may have written there under an
+  // older declaration and the engine cannot prove it did not. Presence is a
+  // conservative signal, not proof the template wrote the entry.
+  unprovenGroundPaths: string[];
 }
 
 function makeOperation(
   target: string,
   path_: string,
   op: UpgradeOpKind,
-  expectedDisk: string | null,
-  newContent: string | undefined,
-  baselineContent: string | null,
+  expectedDisk: Buffer | string | null,
+  newContent: Buffer | string | undefined,
+  baselineContent: Buffer | string | null,
 ): UpgradeOperation {
   return { target, path: path_, op, expectedDisk, newContent, baselineContent };
 }
@@ -314,6 +340,7 @@ function makeOperation(
 export async function classifyTarget(input: ClassifyInput): Promise<ClassifyResult> {
   const { target, repoRoot, baseline, candidate, projectOwnedRoots, localOriginFolder, otherTemplateTargets, additionalExclusionRoots, readDiskEntry, canonicalizeFn } =
     input;
+  const recordedExcludedSubtrees = input.recordedExcludedSubtrees ?? [];
 
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-judge-spelling
   // Every ownership predicate below compares SEGMENTS OF THE STRING it is handed,
@@ -332,7 +359,7 @@ export async function classifyTarget(input: ClassifyInput): Promise<ClassifyResu
   // `path:` origin's keys and the recorded target reach here by other roads, and
   // the engine's own containment must hold with that guard removed.
   const unaddressablePaths: { path: string; reason: string }[] = [];
-  const targetReason = nonCanonicalProjectPathReason(target);
+  const targetReason = unaddressableProjectPathReason(target);
   if (targetReason !== undefined) {
     return {
       exclusionRoots: [],
@@ -344,6 +371,8 @@ export async function classifyTarget(input: ClassifyInput): Promise<ClassifyResu
       uncomparableCauses: [],
       nestedConflicts: [],
       unaddressablePaths: [{ path: target, reason: `the target ${targetReason}` }],
+      relinquishedPaths: [],
+      unprovenGroundPaths: [],
     };
   }
   // @cpt-end:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-judge-spelling
@@ -386,6 +415,11 @@ export async function classifyTarget(input: ClassifyInput): Promise<ClassifyResu
 
   const skipped: UpgradeSkippedPath[] = [];
   const skippedPaths = new Set<string>();
+  const relinquishedPaths: string[] = [];
+  // The paths the BASELINE payload alone declares, re-rooted under `target`
+  // exactly as the union below spells them.
+  const baselinePayloadPaths = new Set<string>();
+  for (const relativePath of baseline.files.keys()) baselinePayloadPaths.add(joinUnderTarget(target, relativePath));
 
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-skip-excluded
   // Every path either payload declares, re-rooted under `target`. Read
@@ -396,13 +430,34 @@ export async function classifyTarget(input: ClassifyInput): Promise<ClassifyResu
   const unaddressableSeen = new Set<string>();
   for (const relativePath of [...baseline.files.keys(), ...candidate.files.keys()]) {
     const projectPath = joinUnderTarget(target, relativePath);
-    const reason = nonCanonicalProjectPathReason(projectPath);
+    // A content path is a strict descendant of its target: one that lands ON the
+    // target (key `.` under target `.`) names the directory, not a file in it.
+    const reason =
+      projectPath === target ? 'names the target itself, not a file inside it' : unaddressableProjectPathReason(projectPath);
     if (reason === undefined) {
       payloadPaths.add(projectPath);
     } else if (!unaddressableSeen.has(projectPath)) {
       unaddressableSeen.add(projectPath);
       unaddressablePaths.push({ path: projectPath, reason: `the payload path ${reason}` });
     }
+  }
+  // The same early return the target branch above takes: a payload carrying even
+  // one path that cannot be addressed is refused as a whole, so nothing is
+  // compared, boundary-checked or read for its siblings either.
+  if (unaddressablePaths.length > 0) {
+    return {
+      exclusionRoots: [],
+      operations: [],
+      skipped: [],
+      conflictPaths: [],
+      uncomparablePaths: [],
+      escapingPaths: [],
+      uncomparableCauses: [],
+      nestedConflicts: [],
+      unaddressablePaths,
+      relinquishedPaths: [],
+      unprovenGroundPaths: [],
+    };
   }
 
   for (const payloadPath of payloadPaths) {
@@ -415,6 +470,13 @@ export async function classifyTarget(input: ClassifyInput): Promise<ClassifyResu
       // between the two manifests.
       skipped.push({ target, path: payloadPath, reason: 'OUTSIDE_BOUNDARY' });
       skippedPaths.add(payloadPath);
+      // Inside the baseline BOUNDARY is not evidence the template wrote the path:
+      // a path only the CANDIDATE ships (a file under a newly declared exclusion)
+      // lies in the old boundary too, yet nothing was ever written there. Only a
+      // path the BASELINE payload itself declares counts as written ground.
+      if (baselinePayloadPaths.has(payloadPath) && isWithinEffectiveOwnership(payloadPath, target, baselineExclusionRoots)) {
+        relinquishedPaths.push(payloadPath);
+      }
     }
   }
   // @cpt-end:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-skip-excluded
@@ -731,6 +793,31 @@ export async function classifyTarget(input: ClassifyInput): Promise<ClassifyResu
   }
   // @cpt-end:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-foreach-path
 
+  // Declarations the candidate adds beyond what this template RECORDED when it
+  // wrote its files. Whether the template ever wrote under one cannot be read
+  // from the baseline payload (an edited-in-place origin has forgotten it), so
+  // the disk is the only remaining witness: an exclusion root that exists is
+  // treated as possibly the template's relinquished ground. An address that
+  // cannot be probed safely (a symlink, file or special entry above it) is
+  // treated the same way, without being read.
+  const unprovenGroundPaths: string[] = [];
+  for (const declared of candidate.excludedSubtrees) {
+    const root = withoutTrailingSlash(joinUnderTarget(target, declared));
+    if (unaddressableProjectPathReason(root) !== undefined) continue;
+    if (recordedExcludedSubtrees.some((recorded) => pathWithinSubtree(root, joinUnderTarget(target, recorded)))) continue;
+    const blocked = await findBadAncestor(root, repoRoot, ancestorEntryCache, readDiskEntry, canonicalizeFn);
+    if (blocked !== null) {
+      unprovenGroundPaths.push(root);
+      continue;
+    }
+    let entry = ancestorEntryCache.get(root);
+    if (entry === undefined) {
+      entry = await readDiskEntry(path.join(repoRoot, root));
+      ancestorEntryCache.set(root, entry);
+    }
+    if (entry.kind !== 'absent') unprovenGroundPaths.push(root);
+  }
+
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-if-any-conflict
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-return-conflict
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-return-ops
@@ -746,7 +833,8 @@ export async function classifyTarget(input: ClassifyInput): Promise<ClassifyResu
   // operations together with its `SKIPPED` paths.
   return {
     exclusionRoots: candidateExclusionRoots,
-    operations, skipped, conflictPaths, uncomparablePaths, escapingPaths, uncomparableCauses, nestedConflicts, unaddressablePaths };
+    operations, skipped, conflictPaths, uncomparablePaths, escapingPaths, uncomparableCauses, nestedConflicts, unaddressablePaths,
+    relinquishedPaths, unprovenGroundPaths };
   // @cpt-end:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-return-ops
   // @cpt-end:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-return-conflict
   // @cpt-end:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-if-any-conflict

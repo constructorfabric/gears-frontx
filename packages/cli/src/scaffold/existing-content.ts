@@ -20,6 +20,15 @@ import { isTemplatePayloadPath } from '../manifest/types';
 import { joinUnderTarget } from '../paths/relative-path';
 import type { ContentItem } from './types';
 
+// Byte-aware content equality for ContentItem.content values.
+function contentItemBytesEqual(a: Buffer | string, b: Buffer | string): boolean {
+  if (Buffer.isBuffer(a) && Buffer.isBuffer(b)) return a.equals(b);
+  if (typeof a === 'string' && typeof b === 'string') return a === b;
+  const ba = Buffer.isBuffer(a) ? a : Buffer.from(a, 'utf-8');
+  const bb = Buffer.isBuffer(b) ? b : Buffer.from(b, 'utf-8');
+  return ba.equals(bb);
+}
+
 // Declared here, not in `adapters/fs-existing-content.ts`: a value only the
 // WRITER (the adapter) and the READER (this module) agree on has exactly
 // one honest home — the module that reads it and acts on it, with the
@@ -147,8 +156,8 @@ function computePayloadSet(
   target: string,
   exclusionRoots: string[],
   rawContent: ContentItem[],
-): Map<string, string> {
-  const payload = new Map<string, string>();
+): Map<string, Buffer | string> {
+  const payload = new Map<string, Buffer | string>();
   for (const item of rawContent) {
     // `item.path` is still template-relative here — `isTemplatePayloadPath`
     // (`../manifest/types.ts`, the ONE shared formulation of the payload
@@ -171,8 +180,8 @@ function filterExistingWithinOwnership(
   target: string,
   exclusionRoots: string[],
   rawExisting: ContentItem[],
-): Map<string, string> {
-  const existing = new Map<string, string>();
+): Map<string, Buffer | string> {
+  const existing = new Map<string, Buffer | string>();
   for (const item of rawExisting) {
     // A directory-marker entry is structure, not content: the per-payload-path
     // loop below decides whether a directory standing at a payload path is
@@ -443,7 +452,7 @@ export async function reconcileExistingContent(
     // @cpt-end:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-if-exists
 
     // @cpt-begin:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-if-match
-    if (existingContent === payloadContent) {
+    if (contentItemBytesEqual(existingContent, payloadContent)) {
       // @cpt-end:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-if-match
       // @cpt-begin:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-add-identical
       identicalFiles.push(payloadPath);

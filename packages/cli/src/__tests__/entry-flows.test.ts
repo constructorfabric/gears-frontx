@@ -56,7 +56,7 @@ function manifest(name: string, excludedSubtrees: string[] = []): Record<string,
 // filesystem or network access anywhere in this suite, per this package's
 // dependency-injection test convention.
 function makeHarness() {
-  const files = new Map<string, string>();
+  const files = new Map<string, Buffer | string>();
   const templateContent = new Map<string, ContentItem[]>();
   const installedEntries = new Map<string, InventoryEntry>();
   const templateHasBundle = new Set<string>();
@@ -162,6 +162,8 @@ function makeHarness() {
   const deps: SeedRepositoryDeps = {
     inventory,
     fetchFn: vi.fn(async () => ''),
+    // Late-bound so a test's `h.deps.readFileFn = ...` fixture also feeds the local-origin resolver.
+    readFolderFileBinaryFn: async (p) => Buffer.from(await deps.readFileFn(p)),
     readFileFn,
     canonicalizeFn,
     existsFn,
@@ -630,7 +632,7 @@ describe('runApplyPipeline — materializing a batch (cpt-frontx-flow-cli-scaffo
   // failure to copy the bundle, never itself proof the destination escapes
   // the project root — that narrower diagnosis belongs only to the
   // `PathContainmentError` case covered by the sibling test below.
-  it('rolls back the payload, and reports INTERNAL with it removed, when the AI-bundle step throws an ordinary error', async () => {
+  it('refuses before any write when the first target would replace an AI bundle already in the project (unreviewed replacement gate)', async () => {
     const h = makeHarness();
     h.registerInstalled('template-a', manifest('template-a'), [{ path: 'src/index.ts', content: 'hello' }]);
     h.seedProjectState({
@@ -639,6 +641,119 @@ describe('runApplyPipeline — materializing a batch (cpt-frontx-flow-cli-scaffo
       projectOwnedRoots: [],
     });
     h.deps.bundleExistsFn = vi.fn(async () => true);
+    h.deps.copyBundleFn = vi.fn(async () => undefined);
+
+    const result = await runApplyPipeline({ templates: { 'template-a': ['apps/foo'] } }, REPO_ROOT, false, h.deps);
+
+    expect(result).toMatchObject({ ok: false, code: 'CONTENT_CONFLICT', details: { aiBundle: '.frontx/ai/template-a' } });
+    expect(h.deps.copyBundleFn).not.toHaveBeenCalled();
+    expect(h.files.get('/repo/apps/foo/src/index.ts')).toBeUndefined();
+    expect(h.readProjectStateDocument().templates['template-a'].targets).toEqual([]);
+  });
+
+  it('commits staged installs only after every check passed, and a failed commit writes nothing to the project', async () => {
+    const h = makeHarness();
+    h.registerInstalled('template-a', manifest('template-a'), [{ path: 'src/index.ts', content: 'hello' }]);
+    h.seedProjectState({
+      formatVersion: 1,
+      templates: { 'template-a': registeredEntry('github:acme/template-a@v1') },
+      projectOwnedRoots: [],
+    });
+    h.deps.beforeFirstWrite = vi.fn(async () => ({ ok: false as const, code: 'ORIGIN_UNAVAILABLE' as const, message: 'install failed' }));
+
+    const result = await runApplyPipeline({ templates: { 'template-a': ['apps/foo'] } }, REPO_ROOT, false, h.deps);
+
+    expect(result).toMatchObject({ ok: false, code: 'ORIGIN_UNAVAILABLE' });
+    expect(h.deps.beforeFirstWrite).toHaveBeenCalledTimes(1);
+    expect(h.files.get('/repo/apps/foo/src/index.ts')).toBeUndefined();
+    expect(h.readProjectStateDocument().templates['template-a'].targets).toEqual([]);
+  });
+
+  it('a throwing staged commit is reported, with nothing written to the project', async () => {
+    const h = makeHarness();
+    h.registerInstalled('template-a', manifest('template-a'), [{ path: 'src/index.ts', content: 'hello' }]);
+    h.seedProjectState({
+      formatVersion: 1,
+      templates: { 'template-a': registeredEntry('github:acme/template-a@v1') },
+      projectOwnedRoots: [],
+    });
+    h.deps.beforeFirstWrite = vi.fn(async () => { throw new Error('adapter exploded'); });
+
+    const result = await runApplyPipeline({ templates: { 'template-a': ['apps/foo'] } }, REPO_ROOT, false, h.deps);
+
+    expect(result).toMatchObject({ ok: false, code: 'INTERNAL', message: expect.stringContaining('Nothing was written to the project') });
+    expect(h.files.get('/repo/apps/foo/src/index.ts')).toBeUndefined();
+    expect(h.readProjectStateDocument().templates['template-a'].targets).toEqual([]);
+  });
+
+  it('does not commit staged installs when a check refuses the batch', async () => {
+    const h = makeHarness();
+    h.registerInstalled('template-a', manifest('template-a'), [{ path: 'src/index.ts', content: 'hello' }]);
+    h.seedProjectState({
+      formatVersion: 1,
+      templates: { 'template-a': registeredEntry('github:acme/template-a@v1') },
+      projectOwnedRoots: [],
+    });
+    h.deps.bundleExistsFn = vi.fn(async () => true); // an unapproved AI replacement: refused by the gate
+    h.deps.beforeFirstWrite = vi.fn(async () => ({ ok: true as const }));
+
+    const result = await runApplyPipeline({ templates: { 'template-a': ['apps/foo'] } }, REPO_ROOT, false, h.deps);
+
+    expect(result).toMatchObject({ ok: false, code: 'CONTENT_CONFLICT' });
+    expect(h.deps.beforeFirstWrite).not.toHaveBeenCalled();
+  });
+
+  it('runs an approved, reviewed AI bundle replacement instead of the copy, and never rolls it back as created', async () => {
+    const h = makeHarness();
+    h.registerInstalled('template-a', manifest('template-a'), [{ path: 'src/index.ts', content: 'hello' }]);
+    h.seedProjectState({
+      formatVersion: 1,
+      templates: { 'template-a': registeredEntry('github:acme/template-a@v1') },
+      projectOwnedRoots: [],
+    });
+    h.deps.bundleExistsFn = vi.fn(async () => true);
+    h.deps.copyBundleFn = vi.fn(async () => undefined);
+    const replaced: string[] = [];
+    h.deps.aiReplacements = new Map([['template-a', () => { replaced.push('template-a'); }]]);
+
+    const result = await runApplyPipeline({ templates: { 'template-a': ['apps/foo'] } }, REPO_ROOT, false, h.deps);
+
+    expect(result).toMatchObject({ ok: true });
+    expect(replaced).toEqual(['template-a']);
+    expect(h.deps.copyBundleFn).not.toHaveBeenCalled();
+    expect(h.readProjectStateDocument().templates['template-a'].targets).toEqual(['apps/foo']);
+  });
+
+  it('a failed reviewed replacement rolls the payload back but never removes the existing bundle', async () => {
+    const h = makeHarness();
+    h.registerInstalled('template-a', manifest('template-a'), [{ path: 'src/index.ts', content: 'hello' }]);
+    h.seedProjectState({
+      formatVersion: 1,
+      templates: { 'template-a': registeredEntry('github:acme/template-a@v1') },
+      projectOwnedRoots: [],
+    });
+    h.deps.bundleExistsFn = vi.fn(async () => true);
+    h.deps.removeBundleFn = vi.fn(async () => undefined);
+    h.deps.aiReplacements = new Map([['template-a', () => { throw new Error('changed since review'); }]]);
+
+    const result = await runApplyPipeline({ templates: { 'template-a': ['apps/foo'] } }, REPO_ROOT, false, h.deps);
+
+    expect(result).toMatchObject({ ok: false, code: 'CONTENT_CONFLICT', details: { aiBundle: '.frontx/ai/template-a' } });
+    expect(h.deps.removeBundleFn).not.toHaveBeenCalled();
+    expect(h.files.get('/repo/apps/foo/src/index.ts')).toBeUndefined();
+    expect(h.readProjectStateDocument().templates['template-a'].targets).toEqual([]);
+  });
+
+  it('rolls back the payload, and reports INTERNAL with it removed, when the AI-bundle step throws an ordinary error', async () => {
+    const h = makeHarness();
+    h.registerInstalled('template-a', manifest('template-a'), [{ path: 'src/index.ts', content: 'hello' }]);
+    h.seedProjectState({
+      formatVersion: 1,
+      templates: { 'template-a': registeredEntry('github:acme/template-a@v1') },
+      projectOwnedRoots: [],
+    });
+    // The template ships a bundle; the project has none yet (a first creation, not a replacement).
+    h.deps.bundleExistsFn = vi.fn(async (root: string) => root !== REPO_ROOT);
     h.deps.copyBundleFn = vi.fn(async () => {
       throw new Error('simulated bundle copy failure');
     });
@@ -672,7 +787,8 @@ describe('runApplyPipeline — materializing a batch (cpt-frontx-flow-cli-scaffo
       templates: { 'template-a': registeredEntry('github:acme/template-a@v1') },
       projectOwnedRoots: [],
     });
-    h.deps.bundleExistsFn = vi.fn(async () => true);
+    // The template ships a bundle; the project has none yet (a first creation, not a replacement).
+    h.deps.bundleExistsFn = vi.fn(async (root: string) => root !== REPO_ROOT);
     h.deps.copyBundleFn = vi.fn(async () => {
       throw new PathContainmentError('/repo/.frontx/ai/template-a', '/repo');
     });
@@ -1159,7 +1275,8 @@ describe('seedRepository — bootstrap a fresh project (cpt-frontx-flow-cli-scaf
     const h = makeHarness();
     h.deps.readFileFn = vi.fn(async () => JSON.stringify(manifest('@example/template-alpha')));
     h.templateContent.set(`${REPO_ROOT}/template-alpha`, [{ path: 'package.json', content: '{}' }]);
-    h.deps.bundleExistsFn = vi.fn(async () => true);
+    // The template ships a bundle; the project has none yet (a first creation, not a replacement).
+    h.deps.bundleExistsFn = vi.fn(async (root: string) => root !== REPO_ROOT);
     h.deps.copyBundleFn = vi.fn(async () => {
       throw new Error('simulated bundle copy failure');
     });

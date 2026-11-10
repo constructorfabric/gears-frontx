@@ -6,13 +6,10 @@
 // test drives the same acquisition a production `register` does and not a
 // hand-built envelope that skips it.
 //
-// This stays a second tar builder beside `makeGithubTarball` in
-// `adapters/__tests__/github-fetch.test.ts` on purpose: that one is private to
-// an unrelated test file, wraps every entry in one fixed directory name, writes
-// no checksum and cannot hold a name over 100 bytes — and an absolute key built
-// from a temporary directory is longer than that. This one carries the pin in
-// its wrapper directory, the ustar prefix field, and a refusal for a name it
-// cannot encode.
+// Every archive it builds is one the strict unpacker accepts as GitHub-shaped:
+// a global PAX header stating the commit, a root directory entry, valid header
+// checksums and the end-of-archive marker. The low-level `tarHeader`,
+// `paxBody` and `tarEntry` let a test break exactly one of those rules.
 import zlib from 'node:zlib';
 
 const BLOCK = 512;
@@ -32,7 +29,8 @@ function splitUstarName(name: string): { prefix: string; rawName: string } {
   throw new Error(`crafted-tarball: ustar cannot hold the entry name ${JSON.stringify(name)}`);
 }
 
-function header(name: string, size: number): Buffer {
+/** One 512-byte ustar header with a valid checksum. */
+export function tarHeader(name: string, size: number, typeflag = '0'): Buffer {
   const block = Buffer.alloc(BLOCK);
   const { prefix, rawName } = splitUstarName(name);
   block.write(rawName, 0, 100);
@@ -41,16 +39,41 @@ function header(name: string, size: number): Buffer {
   block.write('0000000\0', 116);
   block.write(`${size.toString(8).padStart(11, '0')}\0`, 124);
   block.write('00000000000\0', 136);
-  block.write('        ', 148);
-  block.write('0', 156);
+  block.write(typeflag, 156, 1, 'latin1');
   block.write('ustar\0', 257);
   block.write('00', 263);
   block.write(prefix, 345, 155);
+  return withChecksum(block);
+}
+
+/** Rewrites the checksum field of `block` (in place) to match its bytes. */
+export function withChecksum(block: Buffer): Buffer {
+  block.write('        ', 148);
   let checksum = 0;
   for (const byte of block) checksum += byte;
   block.write(`${checksum.toString(8).padStart(6, '0')}\0 `, 148);
   return block;
 }
+
+/** PAX records with correct byte-counted lengths. */
+export function paxBody(records: Array<[string, string]>): Buffer {
+  return Buffer.concat(
+    records.map(([key, value]) => {
+      const rest = ` ${key}=${value}\n`;
+      let length = Buffer.byteLength(rest) + 1;
+      while (String(length).length + Buffer.byteLength(rest) !== length) length++;
+      return Buffer.from(`${length}${rest}`);
+    }),
+  );
+}
+
+/** Header plus body padded to the block size. */
+export function tarEntry(name: string, body: Buffer | string = '', typeflag = '0'): Buffer {
+  const bytes = Buffer.from(body);
+  return Buffer.concat([tarHeader(name, bytes.length, typeflag), bytes, Buffer.alloc((BLOCK - (bytes.length % BLOCK)) % BLOCK)]);
+}
+
+export const END_OF_ARCHIVE = Buffer.alloc(2 * BLOCK);
 
 export interface CraftedTarball {
   sha: string;
@@ -58,18 +81,20 @@ export interface CraftedTarball {
 }
 
 /**
- * A gzipped tar whose entries are `<acme-tpl-sha>/<key>` for each key of
- * `files`, in insertion order. `sha` becomes the pin the resolver records, so
- * it must be a 7-to-40 character hex string.
+ * A gzipped GitHub-shaped tar: a global PAX header stating `sha`, the root
+ * directory `acme-tpl-<sha[0..7]>/`, then `<root>/<key>` for each key of
+ * `files`, in insertion order. `sha` is the pin the resolver records, so it
+ * must be a lowercase 40-hex commit.
  */
 export function craftTarball(files: Record<string, string>, sha: string): CraftedTarball {
-  const wrapper = `acme-tpl-${sha}`;
-  const chunks: Buffer[] = [];
-  for (const [key, text] of Object.entries(files)) {
-    const body = Buffer.from(text);
-    chunks.push(header(`${wrapper}/${key}`, body.length), body, Buffer.alloc((BLOCK - (body.length % BLOCK)) % BLOCK));
-  }
-  chunks.push(Buffer.alloc(2 * BLOCK));
+  if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error(`crafted-tarball: ${JSON.stringify(sha)} is not a 40-hex commit`);
+  const wrapper = `acme-tpl-${sha.slice(0, 7)}`;
+  const chunks: Buffer[] = [
+    tarEntry('pax_global_header', paxBody([['comment', sha]]), 'g'),
+    tarEntry(`${wrapper}/`, '', '5'),
+  ];
+  for (const [key, text] of Object.entries(files)) chunks.push(tarEntry(`${wrapper}/${key}`, text));
+  chunks.push(END_OF_ARCHIVE);
   return { sha, bytes: zlib.gzipSync(Buffer.concat(chunks)) };
 }
 

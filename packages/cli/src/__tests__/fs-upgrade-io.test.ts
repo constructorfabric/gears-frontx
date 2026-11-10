@@ -70,7 +70,9 @@ describe('createFsReadDiskEntryFn — a real special file (FIFO)', () => {
 
     const readDiskEntry = createFsReadDiskEntryFn(root);
     expect(await readDiskEntry(path.join(root, 'dir'))).toEqual({ kind: 'directory' });
-    expect(await readDiskEntry(path.join(root, 'file.txt'))).toEqual({ kind: 'file', content: 'content' });
+    const fileEntry = await readDiskEntry(path.join(root, 'file.txt'));
+    expect(fileEntry.kind).toBe('file');
+    if (fileEntry.kind === 'file') expect(Buffer.isBuffer(fileEntry.content) ? fileEntry.content.toString('utf-8') : fileEntry.content).toBe('content');
     expect(await readDiskEntry(path.join(root, 'does-not-exist.txt'))).toEqual({ kind: 'absent' });
   });
 });

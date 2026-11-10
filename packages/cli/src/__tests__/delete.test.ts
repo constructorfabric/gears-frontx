@@ -2,7 +2,7 @@
 // @cpt-state:cpt-frontx-state-cli-scaffolding-delete-op:p1
 import { describe, expect, it, vi } from 'vitest';
 import { deleteTarget } from '../commands/delete';
-import type { ConfirmDeletionFn } from '../commands/delete';
+import type { ConfirmDeletionFn, DeleteCommandFlags, DeleteOutcome } from '../commands/delete';
 import type { DeletePlanInventoryPort, ListTargetFilesFn, ListUnenumerableTargetEntriesFn } from '../scaffold/delete-plan';
 import { InventoryState } from '../inventory/types';
 import type { InventoryEntry } from '../inventory/types';
@@ -119,6 +119,15 @@ function entry(targets: string[], overrides: Partial<TemplateEntry> = {}): Templ
   return { origin: 'github:acme/tmpl@v1', version: '1.0.0', targets, ...overrides };
 }
 
+// The `--json` protocol's two calls: a review (`CONFIRMATION_REQUIRED`, which
+// writes nothing), then the confirming `--yes` call stating that review's
+// `planDigest`. `invoke` builds the same `deleteTarget` call for either flags.
+async function confirmed(invoke: (flags: DeleteCommandFlags) => Promise<DeleteOutcome>): Promise<DeleteOutcome> {
+  const review = await invoke({ jsonMode: true, dryRun: false, yes: false });
+  if (review.ok || review.code !== 'CONFIRMATION_REQUIRED') return review;
+  return invoke({ jsonMode: true, dryRun: false, yes: true, expectedPlanDigest: review.details?.planDigest as string });
+}
+
 describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
   it('refuses TARGET_NOT_APPLIED and deletes/reads nothing', async () => {
     const { read, write } = fakeProjectState({ formatVersion: 1, templates: {}, projectOwnedRoots: [] });
@@ -196,6 +205,43 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
     expect(removed()).toEqual([]);
     expect(write).not.toHaveBeenCalled();
   });
+
+  // 2b round 2 (Q10): a recorded `projectOwnedRoots` entry spelled as an alias of
+  // the real root (`x/../app/own`, `./app/own`, `app//own`) read, as a string, as
+  // ground other than the one it names, so a dry run listed the project-owned
+  // files for deletion. The state load refuses the document for every engine.
+  it.each(['x/../app/own', './app/own', 'app//own', 'app/own/'])(
+    'refuses a recorded project-owned root spelled %s at state load, listing nothing for deletion',
+    async (alias) => {
+      const initialDocument: ProjectStateDocument = {
+        formatVersion: 1,
+        templates: { appTemplate: entry(['app']) },
+        projectOwnedRoots: [alias],
+      };
+      const { read, write } = fakeProjectState(initialDocument);
+      const { remove, removed } = fakeRemoveFile();
+
+      const result = await deleteTarget(
+        'app',
+        '/repo',
+        { jsonMode: true, dryRun: true, yes: false },
+        fakeInventory({ appTemplate: { excludedSubtrees: [] } }),
+        identityCanonicalize,
+        fakeListTargetFiles({ '/repo/app': ['own/file.ts', 'other.ts'] }),
+        noUnenumerableEntries,
+        neverCalledReadFileFn,
+        remove,
+        noopAssertPathWithinRoot,
+        read,
+        write,
+        neverConfirm(),
+      );
+
+      expect(result).toMatchObject({ ok: false, code: 'PROJECT_INVALID' });
+      expect(removed()).toEqual([]);
+      expect(write).not.toHaveBeenCalled();
+    },
+  );
 
   // `--dry-run` reaches the identical `computePlan()` helper, and a shape
   // drift must be caught there too, before this flow ever reports the
@@ -415,10 +461,11 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
     const { read, write, written } = fakeProjectState(initialDocument);
     const { remove, removed } = fakeRemoveFile();
 
-    const result = await deleteTarget(
+    const result = await confirmed((flags) =>
+      deleteTarget(
       'packages/app',
       '/repo',
-      { jsonMode: true, dryRun: false, yes: true },
+      flags,
       fakeInventory({ appTemplate: { excludedSubtrees: [] } }),
       identityCanonicalize,
       fakeListTargetFiles({ '/repo/packages/app': ['src/index.ts'] }),
@@ -429,7 +476,7 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
       read,
       write,
       neverConfirm(),
-    );
+    ));
 
     expect(result).toMatchObject({
       ok: true,
@@ -452,10 +499,11 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
     const { remove } = fakeRemoveFile();
     const removeAiBundle = vi.fn(async () => {});
 
-    const result = await deleteTarget(
+    const result = await confirmed((flags) =>
+      deleteTarget(
       'packages/app',
       '/repo',
-      { jsonMode: true, dryRun: false, yes: true },
+      flags,
       fakeInventory({ appTemplate: { excludedSubtrees: [] } }),
       identityCanonicalize,
       fakeListTargetFiles({ '/repo/packages/app': [] }),
@@ -467,7 +515,7 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
       write,
       neverConfirm(),
       removeAiBundle,
-    );
+    ));
 
     expect(result).toMatchObject({ ok: true, outcome: 'deleted', wasLastTarget: true });
     expect(written().templates.appTemplate.targets).toEqual([]);
@@ -486,10 +534,11 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
       throw new Error('".frontx/ai/appTemplate" could not be proven to stay inside the project root.');
     });
 
-    const result = await deleteTarget(
+    const result = await confirmed((flags) =>
+      deleteTarget(
       'packages/app',
       '/repo',
-      { jsonMode: true, dryRun: false, yes: true },
+      flags,
       fakeInventory({ appTemplate: { excludedSubtrees: [] } }),
       identityCanonicalize,
       fakeListTargetFiles({ '/repo/packages/app': ['src/index.ts'] }),
@@ -501,7 +550,7 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
       write,
       neverConfirm(),
       removeAiBundle,
-    );
+    ));
 
     // The envelope reports success: the deletion this call was asked to
     // perform genuinely happened and is genuinely recorded — asserted
@@ -533,10 +582,11 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
     const { remove } = fakeRemoveFile();
     const removeAiBundle = vi.fn(async () => {});
 
-    await deleteTarget(
+    await confirmed((flags) =>
+      deleteTarget(
       'packages/app',
       '/repo',
-      { jsonMode: true, dryRun: false, yes: true },
+      flags,
       fakeInventory({ appTemplate: { excludedSubtrees: [] } }),
       identityCanonicalize,
       fakeListTargetFiles({ '/repo/packages/app': [] }),
@@ -548,7 +598,7 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
       write,
       neverConfirm(),
       removeAiBundle,
-    );
+    ));
 
     expect(removeAiBundle).not.toHaveBeenCalled();
   });
@@ -626,10 +676,11 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
     const { read, write, written } = fakeProjectState(initialDocument);
     const { remove, removed } = fakeRemoveFile();
 
-    const result = await deleteTarget(
+    const result = await confirmed((flags) =>
+      deleteTarget(
       '.',
       '/repo',
-      { jsonMode: true, dryRun: false, yes: true },
+      flags,
       fakeInventory({ appTemplate: { excludedSubtrees: [] }, adminTemplate: { excludedSubtrees: [] } }),
       identityCanonicalize,
       fakeListTargetFiles({
@@ -642,7 +693,7 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
       read,
       write,
       neverConfirm(),
-    );
+    ));
 
     expect(result.ok).toBe(true);
     if (!result.ok || result.outcome !== 'deleted') throw new Error('expected a deleted outcome');
@@ -674,10 +725,11 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
       }
     };
 
-    const result = await deleteTarget(
+    const result = await confirmed((flags) =>
+      deleteTarget(
       'packages/app',
       '/repo',
-      { jsonMode: true, dryRun: false, yes: true },
+      flags,
       fakeInventory({ appTemplate: { excludedSubtrees: [] } }),
       identityCanonicalize,
       fakeListTargetFiles({ '/repo/packages/app': ['src/index.ts', 'escaped-symlink/data.ts'] }),
@@ -688,7 +740,7 @@ describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
       read,
       write,
       neverConfirm(),
-    );
+    ));
 
     expect(result).toMatchObject({ ok: false, code: 'INVALID_PATH' });
     // Fail-closed for the WHOLE plan, not just the offending path: the

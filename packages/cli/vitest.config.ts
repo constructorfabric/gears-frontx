@@ -15,5 +15,6 @@ export default defineConfig({
     ],
     exclude: ['**/node_modules/**', '**/dist/**'],
     passWithNoTests: false,
+    setupFiles: ['src/__tests__/support/sandbox-home.ts'],
   },
 });

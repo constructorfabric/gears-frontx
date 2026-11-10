@@ -15,6 +15,7 @@ import {
   PathContainmentError,
   NotRegularFileError,
 } from './fs-project-io';
+import { getOwn, setOwn } from '../own-record';
 
 const INDEX_FILENAME = 'index.json';
 
@@ -34,7 +35,7 @@ export class FsInventoryIndex implements InventoryIndexPort {
   // @cpt-begin:cpt-frontx-state-template-resolution-inventory-lifecycle:p1:inst-state-to-installed
   record(entry: InventoryEntry): void {
     const entries = this.readAll();
-    entries[entry.name] = entry;
+    setOwn(entries, entry.name, entry);
     this.writeAll(entries);
   }
   // @cpt-end:cpt-frontx-state-template-resolution-inventory-lifecycle:p1:inst-state-to-installed
@@ -42,7 +43,7 @@ export class FsInventoryIndex implements InventoryIndexPort {
 
   // @cpt-begin:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-lookup
   lookup(name: string): InventoryEntry | undefined {
-    return this.readAll()[name];
+    return getOwn(this.readAll(), name);
   }
   // @cpt-end:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-lookup
 
@@ -50,9 +51,9 @@ export class FsInventoryIndex implements InventoryIndexPort {
   // @cpt-begin:cpt-frontx-state-template-resolution-inventory-lifecycle:p1:inst-state-to-updated
   update(name: string, patch: Partial<InventoryEntry>): void {
     const entries = this.readAll();
-    const existing = entries[name];
+    const existing = getOwn(entries, name);
     if (existing) {
-      entries[name] = { ...existing, ...patch };
+      setOwn(entries, name, { ...existing, ...patch });
       this.writeAll(entries);
     }
   }
@@ -64,7 +65,7 @@ export class FsInventoryIndex implements InventoryIndexPort {
   }
 
   getState(name: string): InventoryState {
-    const entry = this.readAll()[name];
+    const entry = getOwn(this.readAll(), name);
     return entry?.status ?? InventoryState.UNRESOLVED;
   }
 

@@ -1,3 +1,4 @@
+import type { AiReviewSnapshot } from '../operations/ai-review';
 // @cpt-FEATURE:cpt-frontx-feature-upgrade-changeset:p1
 //
 // REWRITE (checkpoint 5): the prior shapes here described the retired
@@ -47,16 +48,16 @@ export interface UpgradeOperation {
   op: UpgradeOpKind;
   // What classification saw on disk: the file's content, or `null` for an
   // absence. The pre-rename verification compares against this.
-  expectedDisk: string | null;
+  expectedDisk: Buffer | string | null;
   // The content to land, for `ADD`/`REPLACE` only. `undefined` for
   // `REMOVE` (nothing to write), `KEEP_LOCAL`, and `UNCHANGED` (never
   // opened for writing at all).
-  newContent?: string;
+  newContent?: Buffer | string;
   // The baseline's content for this path, or `null` when the baseline does
   // not carry it. Recovery (`inst-com-restore-on-error`) needs exactly this
   // to return a landed destination to its baseline state: write the content
   // where the baseline carries the path, unlink where it does not.
-  baselineContent: string | null;
+  baselineContent: Buffer | string | null;
 }
 
 // Why a payload path was left untouched. Both reasons are reported
@@ -64,12 +65,29 @@ export interface UpgradeOperation {
 // tell "the boundary excludes this" from "this collides with the CLI's own
 // reserved temporary-file convention" — the FEATURE requires the latter be
 // reported "naming that collision, never silently dropped from the plan".
-export type SkipReason = 'OUTSIDE_BOUNDARY' | 'RESERVED_TEMP_NAME';
+//
+// `RETAINED_GROUND` is a REMOVE or REPLACE that would have landed on ground a
+// registered template recorded as `relinquishedGround`: the file may be an old
+// one no payload wrote, and `delete` preserves it, so the upgrade leaves it too.
+export type SkipReason = 'OUTSIDE_BOUNDARY' | 'RESERVED_TEMP_NAME' | 'RETAINED_GROUND';
 
 export interface UpgradeSkippedPath {
   target: string;
   path: string;
   reason: SkipReason;
+}
+
+// A registered template that records ground (`relinquishedGround`) holding at
+// least one path of a plan's `RETAINED_GROUND` skips: `template` is the entry
+// (it may be the template being upgraded) and `ground` its recorded root. Kept
+// beside `skipped` rather than inside each record so a skip stays exactly
+// `{target, path, reason}`. What to do about it is a human decision: the ground
+// is released by `frontx delete` of every target of that template followed by
+// `frontx unregister`, or by deliberately editing `.frontx/project.json`;
+// nothing is done on the caller's behalf.
+export interface RetainedGroundHolder {
+  template: string;
+  ground: string;
 }
 
 // An origin plus the version it reports — the pair the project state store
@@ -88,6 +106,8 @@ export interface UpgradePlan {
   targets: string[];
   operations: UpgradeOperation[];
   skipped: UpgradeSkippedPath[];
+  // The recorded ground behind the `RETAINED_GROUND` skips; absent when none.
+  retainedGroundHolders?: RetainedGroundHolder[];
   // Per target, the effective-ownership exclusion roots the classification was
   // computed against. Carried on the plan because the commit algorithm's own
   // stale-temporary-file reclaim (`inst-com-reclaim-stale-temp`) is scoped to
@@ -106,6 +126,32 @@ export interface UpgradePlan {
   // `exclusionRootsByTarget`: stripped by `renderReviewablePlan` before any
   // plan reaches a reviewer.
   toExcludedSubtrees: string[];
+  // True when some target's candidate boundary relinquishes a file the BASELINE
+  // boundary contained (`ClassifyResult.relinquishedPaths`), i.e. a file the
+  // template wrote that now stays on disk under a declaration that never
+  // governed its writing. An `OUTSIDE_BOUNDARY` skip for any independent
+  // reason (project-owned, `.frontx`, another origin's folder, the template's
+  // own declared exclusion) does not set it. It is also set by a candidate
+  // declaration the entry did not record at apply over ground the disk holds
+  // (`ClassifyResult.unprovenGroundPaths`). Internal, like the two above.
+  relinquishesWrittenGround?: true;
+  // True when the entry being upgraded is already marked `exclusionsBackfilled`
+  // (`TemplateEntry`): its recorded declaration is not evidence of what wrote its
+  // files, and a later upgrade whose own skip list is empty cannot show that the
+  // ground the mark guards was reconciled, so the commit carries the mark forward.
+  priorHistoryUnproven?: true;
+  // The entry's `relinquishedGround` (`TemplateEntry`), carried forward by the
+  // commit: the rebuilt entry would otherwise drop what `delete` recorded.
+  priorRelinquishedGround?: string[];
+  // The entry's durable proven-exclusion evidence after this upgrade
+  // (`TemplateEntry.provenExcludedSubtrees`), already narrowed to what the
+  // candidate also excludes; absent when nothing is proven. Internal.
+  provenExcludedSubtrees?: string[];
+  // The snapshot-bound review of the AI bundle replacement this transition
+  // performs (`operations/ai-review.ts`): candidate and destination hashes,
+  // destination identity and every add/replace/removal. Part of the plan, so the
+  // plan digest binds it; its bytes are the only ones the effect may write.
+  ai?: AiReviewSnapshot;
 }
 
 // A resolved payload: the manifest text plus every regular file the payload
@@ -135,8 +181,12 @@ export interface ResolvedPayload {
   origin: string;
   // Template-relative path -> file content. Regular files only; the manifest
   // file itself is NOT part of the payload (a template's own manifest is not
-  // content it applies onto a target).
-  files: Map<string, string>;
+  // content it applies onto a target). Buffer for binary files, string for
+  // legacy plain-text entries.
+  files: Map<string, Buffer | string>;
+  // The candidate's AI bundle bytes, relative to `.frontx/ai/<name>/`; absent or
+  // empty when the payload ships none. Optional only for hand-built payloads.
+  aiFiles?: Map<string, Buffer>;
   // The manifest's declared `excludedSubtrees`, which the boundary
   // computation consumes. Read here so no caller re-parses the manifest.
   excludedSubtrees: string[];
@@ -176,7 +226,7 @@ export type ResolvePayloadFn = (origin: string) => Promise<ResolvePayloadResult>
 // to `scaffold/existing-content.ts`'s own `kind: 'special'` for the same
 // fact on the apply side — one name for one shape, never a second.
 export type DiskEntry =
-  | { kind: 'file'; content: string }
+  | { kind: 'file'; content: Buffer | string }
   | { kind: 'absent' }
   | { kind: 'directory' }
   | { kind: 'symlink' }
@@ -207,7 +257,7 @@ export type ListDiskFilesFn = (absoluteDir: string) => Promise<string[]>;
 // Writes `content` to `absolutePath`, creating parent directories as needed.
 // Used for the temporary files of `inst-com-materialize-temp` and for
 // recovery's baseline restoration (`inst-com-restore-on-error`).
-export type WriteDiskFileFn = (absolutePath: string, content: string) => Promise<void>;
+export type WriteDiskFileFn = (absolutePath: string, content: Buffer | string) => Promise<void>;
 
 // Atomically renames `from` over `to`, creating any parent directory the
 // rename needs (`inst-com-apply-within-boundary`).
@@ -256,6 +306,7 @@ export type UpgradeRefusalCode = Extract<
   | 'INVALID_PATH'
   | 'PROJECT_INVALID'
   | 'INVALID_MANIFEST'
+  | 'RECOVERY_REQUIRED'
   | 'INTERNAL'
 >;
 

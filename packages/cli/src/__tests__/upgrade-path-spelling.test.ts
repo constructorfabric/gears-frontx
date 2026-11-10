@@ -88,6 +88,31 @@ describe('the upgrade engine judges a payload path on its normalised project-rel
     expect(h.reads).toEqual([]);
   });
 
+  // 2b quality M-Q2: one unaddressable path refuses the payload as a whole, so
+  // nothing is read for its siblings either.
+  it('reads nothing for the siblings of an unaddressable path', async () => {
+    const h = harness({
+      target: 'app',
+      baselineFiles: {},
+      candidateFiles: { '../other/x': 'PWNED', 'src/a.ts': 'NEW' },
+    });
+
+    const result = await validateUpgrade(h.input);
+
+    expect(result).toMatchObject({ ok: false, code: 'INVALID_PATH' });
+    expect(h.reads).toEqual([]);
+  });
+
+  // 2b quality L-Q3: a key that lands ON the target names the directory.
+  it.each(['.', ''])('refuses the key %j under the root target, which names the target itself', async (key) => {
+    const h = harness({ target: '.', baselineFiles: {}, candidateFiles: { [key]: 'NEW' } });
+
+    const result = await validateUpgrade(h.input);
+
+    expect(result).toMatchObject({ ok: false, code: 'INVALID_PATH' });
+    expect(h.reads).toEqual([]);
+  });
+
   it('names every unaddressable path once, however many payloads carry it', async () => {
     const h = harness({
       target: 'app',
@@ -142,6 +167,9 @@ describe('the upgrade engine judges a recorded target on its normalised spelling
     { label: 'a target that climbs out of the project root', target: '../outside' },
     { label: 'an absolute target', target: '/etc' },
     { label: 'a target with a trailing separator', target: 'app/' },
+    { label: 'a target carrying a NUL', target: 'app\u0000' },
+    { label: 'a target with trailing whitespace', target: 'app ' },
+    { label: 'a home-directory target the shell never expanded', target: '~' },
   ])('refuses $label with INVALID_PATH, reading nothing from disk', async ({ target }) => {
     const h = harness({ target, baselineFiles: { 'src/index.ts': 'v1' }, candidateFiles: { 'src/index.ts': 'v2' } });
 

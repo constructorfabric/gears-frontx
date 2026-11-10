@@ -1,3 +1,4 @@
+import { createFsReadFolderFileBinaryFn } from '../adapters/fs-project-io';
 // @cpt-flow:cpt-frontx-flow-upgrade-changeset-review-approval:p1
 //
 // Real-filesystem coverage for the other half of defect-3: `upgrade
@@ -57,6 +58,7 @@ function realDeps(repoRoot: string): UpgradeEngineDeps {
     resolvePayload: createResolvePayloadFn({
       repoRoot,
       fetchFn: vi.fn(async () => ''),
+      readFolderFileBinaryFn: createFsReadFolderFileBinaryFn(),
       readFileFn: createFsReadFileFn(),
       listDiskFiles: createFsListDiskFilesFn(),
       existsFn: createFsPathExistsFn(),

@@ -224,6 +224,122 @@ describe('narrowBundleToSubtree (inst-resolve-subtree)', () => {
     }
     expect(narrowed.path).toBe('shell/../../evil.txt');
   });
+
+  // H2 regression: unrecognised selected value types must be rejected, not silently dropped.
+  it('refuses with invalid-entry when a retained path has an unrecognised value type, not silently skips it', () => {
+    // Bundle built directly — bypasses bundleOf which only accepts strings.
+    const badBundle = JSON.stringify({
+      $frontxTemplateFiles: {
+        'shell/frontx-template.json': 'shell-manifest',
+        'shell/sub/bad.txt': 42,
+      },
+    });
+
+    const narrowed = narrowBundleToSubtree(badBundle, 'shell');
+
+    expect(narrowed.ok).toBe(false);
+    if (narrowed.ok || narrowed.reason !== 'invalid-entry') {
+      expect.unreachable('narrowing must refuse an unrecognised value type, not skip it');
+    }
+    expect(narrowed.path).toBe('shell/sub/bad.txt');
+  });
+
+  // H2 r3: non-canonical base64 in a selected entry must be rejected (escapesSubtree checked first).
+  it('refuses with invalid-entry when a retained BinaryBundleValue carries non-canonical base64', () => {
+    // 'YQ====' has extra padding — Buffer decodes it but it fails the canonical round-trip.
+    const badBase64Bundle = JSON.stringify({
+      $frontxTemplateFiles: {
+        'shell/frontx-template.json': 'shell-manifest',
+        'shell/binary.bin': { encoding: 'base64', data: 'YQ====' },
+      },
+    });
+
+    const narrowed = narrowBundleToSubtree(badBase64Bundle, 'shell');
+
+    expect(narrowed.ok).toBe(false);
+    if (narrowed.ok || narrowed.reason !== 'invalid-entry') {
+      expect.unreachable('narrowing must refuse non-canonical base64, not install a silently corrupted file');
+    }
+    expect(narrowed.path).toBe('shell/binary.bin');
+  });
+
+  // escapesSubtree check runs BEFORE the base64 canonical check (precedence).
+  it('reports escaping-path rather than invalid-entry when a non-canonical entry also escapes the subtree', () => {
+    const escapingAndBadBase64 = JSON.stringify({
+      $frontxTemplateFiles: {
+        'shell/frontx-template.json': 'shell-manifest',
+        'shell/../../evil.bin': { encoding: 'base64', data: 'YQ====' },
+      },
+    });
+
+    const narrowed = narrowBundleToSubtree(escapingAndBadBase64, 'shell');
+
+    expect(narrowed.ok).toBe(false);
+    if (narrowed.ok || narrowed.reason !== 'escaping-path') {
+      expect.unreachable('escaping-path must take precedence over invalid-entry');
+    }
+  });
+
+  // WATCH: escape priority must be global — independent of entry order.
+  // When one entry has invalid base64 AND another entry escapes the subtree,
+  // escaping-path must win regardless of which entry appears first.
+  it('reports escaping-path when an earlier entry has invalid base64 and a later entry escapes (order A)', () => {
+    // Order A: invalid-base64 entry comes first, escaping entry comes later.
+    // Without the two-pass approach the single-pass loop would return
+    // invalid-entry before it ever reaches the escaping entry.
+    const bundle = JSON.stringify({
+      $frontxTemplateFiles: {
+        'shell/frontx-template.json': 'shell-manifest',
+        'shell/bad.bin': { encoding: 'base64', data: 'YQ====' }, // invalid base64, iterated first
+        'shell/../../evil.txt': 'payload',                        // escaping, iterated later
+      },
+    });
+
+    const narrowed = narrowBundleToSubtree(bundle, 'shell');
+
+    expect(narrowed.ok).toBe(false);
+    if (narrowed.ok || narrowed.reason !== 'escaping-path') {
+      expect.unreachable('escaping-path must win over invalid-entry regardless of entry order');
+    }
+  });
+
+  it('reports escaping-path when the escaping entry appears before the invalid base64 entry (order B — control)', () => {
+    // Order B: escaping entry first. Both the old single-pass and the new
+    // two-pass code produce escaping-path here; this is the control that
+    // confirms order B already worked and continues to work.
+    const bundle = JSON.stringify({
+      $frontxTemplateFiles: {
+        'shell/frontx-template.json': 'shell-manifest',
+        'shell/../../evil.txt': 'payload',                        // escaping, iterated first
+        'shell/bad.bin': { encoding: 'base64', data: 'YQ====' }, // invalid base64, iterated later
+      },
+    });
+
+    const narrowed = narrowBundleToSubtree(bundle, 'shell');
+
+    expect(narrowed.ok).toBe(false);
+    if (narrowed.ok || narrowed.reason !== 'escaping-path') {
+      expect.unreachable('escaping-path must win over invalid-entry');
+    }
+  });
+
+  it('reports invalid-entry (not escaping-path) when all entries are within the subtree but one has bad base64 (safe control)', () => {
+    // No escape present — only bad value. After the two-pass refactor this
+    // must still reach pass 2 and report invalid-entry, not silently succeed.
+    const bundle = JSON.stringify({
+      $frontxTemplateFiles: {
+        'shell/frontx-template.json': 'shell-manifest',
+        'shell/bad.bin': { encoding: 'base64', data: 'YQ====' },
+      },
+    });
+
+    const narrowed = narrowBundleToSubtree(bundle, 'shell');
+
+    expect(narrowed.ok).toBe(false);
+    if (narrowed.ok || narrowed.reason !== 'invalid-entry') {
+      expect.unreachable('invalid-entry must still be reported when no escape is present');
+    }
+  });
 });
 
 describe('resolveToInventory — subtree-addressed references (inst-resolve-addr, inst-resolve-subtree, inst-resolve-subtree-empty)', () => {

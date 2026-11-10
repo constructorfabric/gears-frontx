@@ -13,6 +13,7 @@ import type { CanonicalizeTargetFn } from '../scaffold/conflict-check';
 import type { ReadFileFn } from '../manifest/types';
 import type { ReadProjectStateFn, WriteProjectStateFn, TemplateEntry } from '../project-state/types';
 import type { ErrorCode } from '../envelope';
+import { getOwn } from '../own-record';
 
 export type UnregisterOutcome =
   | { ok: true; name: string }
@@ -95,10 +96,10 @@ export async function unregisterTemplate(
   const stateResult = await readProjectState(repoRoot, readProjectStateFn);
   // @cpt-end:cpt-frontx-algo-composed-provenance-unregister:p1:inst-cpunreg-read-state
   if (!stateResult.ok) {
-    return { ok: false, code: 'PROJECT_INVALID', message: stateResult.message };
+    return { ok: false, code: 'PROJECT_INVALID', message: stateResult.message, ...(stateResult.details ? { details: stateResult.details } : {}) };
   }
 
-  const entry = stateResult.document.templates[name];
+  const entry = getOwn(stateResult.document.templates, name);
 
   // @cpt-begin:cpt-frontx-algo-composed-provenance-unregister:p1:inst-cpunreg-if-absent
   if (entry === undefined) {
@@ -116,7 +117,7 @@ export async function unregisterTemplate(
       // @cpt-begin:cpt-frontx-algo-composed-provenance-unregister:p1:inst-cpunreg-write-orphan-removed
       const writtenOrphan = await mutateProjectState(repoRoot, { kind: 'remove-template', name }, readProjectStateFn, writeProjectStateFn);
       // @cpt-end:cpt-frontx-algo-composed-provenance-unregister:p1:inst-cpunreg-write-orphan-removed
-      if (!writtenOrphan.ok) return { ok: false, code: 'PROJECT_INVALID', message: writtenOrphan.message };
+      if (!writtenOrphan.ok) return { ok: false, code: 'PROJECT_INVALID', message: writtenOrphan.message, ...(writtenOrphan.details ? { details: writtenOrphan.details } : {}) };
       // @cpt-begin:cpt-frontx-algo-composed-provenance-unregister:p1:inst-cpunreg-return-orphan-dropped
       // @cpt-begin:cpt-frontx-state-composed-provenance-registration-lifecycle:p1:inst-rl-applied-orphan-unregistered
       return { ok: true, name, outcome: 'orphan-dropped', orphanedTargets: entry.targets };
@@ -144,7 +145,7 @@ export async function unregisterTemplate(
   // @cpt-begin:cpt-frontx-algo-composed-provenance-unregister:p1:inst-cpunreg-write-removed
   const written = await mutateProjectState(repoRoot, { kind: 'remove-template', name }, readProjectStateFn, writeProjectStateFn);
   // @cpt-end:cpt-frontx-algo-composed-provenance-unregister:p1:inst-cpunreg-write-removed
-  if (!written.ok) return { ok: false, code: 'PROJECT_INVALID', message: written.message };
+  if (!written.ok) return { ok: false, code: 'PROJECT_INVALID', message: written.message, ...(written.details ? { details: written.details } : {}) };
   // @cpt-begin:cpt-frontx-algo-composed-provenance-unregister:p1:inst-cpunreg-return-success
   // @cpt-begin:cpt-frontx-state-composed-provenance-registration-lifecycle:p1:inst-rl-empty-to-unreg
   return { ok: true, name };

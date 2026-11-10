@@ -1,3 +1,4 @@
+import { createFsReadFolderFileBinaryFn } from '../adapters/fs-project-io';
 // Real-fs coverage for containment across the whole payload, not only the
 // target: a symlink somewhere under an already-canonicalized project root,
 // or an already-computed deletion/upgrade plan, that resolves OUTSIDE the
@@ -659,6 +660,7 @@ describe('apply end-to-end containment (runApplyPipeline with the real project-f
     const deps: ApplyPipelineDeps = {
       inventory,
       fetchFn: vi.fn(async () => ''),
+      readFolderFileBinaryFn: createFsReadFolderFileBinaryFn(),
       readFileFn,
       canonicalizeFn,
       // REAL, not a `vi.fn(async () => true)` stub: the pipeline's pre-write
@@ -753,6 +755,7 @@ describe('apply end-to-end containment (runApplyPipeline with the real project-f
     const deps: ApplyPipelineDeps = {
       inventory,
       fetchFn: vi.fn(async () => ''),
+      readFolderFileBinaryFn: createFsReadFolderFileBinaryFn(),
       readFileFn,
       canonicalizeFn,
       // REAL, not a `vi.fn(async () => true)` stub: the pipeline's pre-write
@@ -864,6 +867,7 @@ describe('apply --adopt-existing end-to-end: a declared payload path aliasing an
     const deps: ApplyPipelineDeps = {
       inventory,
       fetchFn: vi.fn(async () => ''),
+      readFolderFileBinaryFn: createFsReadFolderFileBinaryFn(),
       readFileFn,
       canonicalizeFn,
       // REAL, not a `vi.fn(async () => true)` stub: the pipeline's pre-write
@@ -953,6 +957,7 @@ describe('apply --adopt-existing end-to-end: a symlinked DIRECTORY standing over
     return {
       inventory,
       fetchFn: vi.fn(async () => ''),
+      readFolderFileBinaryFn: createFsReadFolderFileBinaryFn(),
       readFileFn: vi.fn(async () => {
         throw new Error('readFileFn not stubbed for this test');
       }),
@@ -1157,6 +1162,7 @@ describe('apply end-to-end: PathContainmentError from the record step is reporte
     const deps: ApplyPipelineDeps = {
       inventory,
       fetchFn: vi.fn(async () => ''),
+      readFolderFileBinaryFn: createFsReadFolderFileBinaryFn(),
       readFileFn: vi.fn(async () => {
         throw new Error('readFileFn not stubbed for this test');
       }),
@@ -1249,6 +1255,7 @@ describe('rollbackWrittenPaths (real fs): removes written files and prunes the d
       // BUNDLE-ROLLBACK FIX arguments are covered on their own below.
       vi.fn(async () => {}),
       new Set(),
+      [],
     );
 
     // The written files are gone.
@@ -1276,6 +1283,7 @@ describe('rollbackWrittenPaths (real fs): removes written files and prunes the d
         new Set(),
         vi.fn(async () => {}),
         new Set(),
+        [],
       ),
     ).resolves.toBeUndefined();
     expect(existsSync(repoRoot)).toBe(true);
@@ -1302,6 +1310,7 @@ describe('rollbackWrittenPaths (real fs): removes written files and prunes the d
       new Set([path.join(repoRoot, 'app', 'dir')]),
       vi.fn(async () => {}),
       new Set(),
+      [],
     );
 
     expect(existsSync(path.join(repoRoot, 'app', 'dir', 'file.txt'))).toBe(false);
@@ -1325,6 +1334,7 @@ describe('rollbackWrittenPaths (real fs): removes written files and prunes the d
       new Set(),
       vi.fn(async () => {}),
       new Set(),
+      [],
     );
 
     expect(existsSync(path.join(repoRoot, 'a', 'b', 'f.txt'))).toBe(false);
@@ -1356,6 +1366,7 @@ describe('rollbackWrittenPaths (real fs): removes written files and prunes the d
       new Set(),
       removeBundleFn,
       new Set(['@scratch/a', '@scratch/b']),
+      [],
     );
 
     expect(removeBundleFn).toHaveBeenCalledTimes(2);
@@ -1379,6 +1390,7 @@ describe('rollbackWrittenPaths (real fs): removes written files and prunes the d
       new Set(),
       removeBundleFn,
       new Set(),
+      [],
     );
 
     expect(removeBundleFn).not.toHaveBeenCalled();

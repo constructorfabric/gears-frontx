@@ -32,7 +32,9 @@
 // `inst-present-changeset` step enumerates: the `from` and `to` origin/version
 // pairs, every target the plan covers, one `{target, path, op}` per classified
 // path, and every `SKIPPED` path with the reason it was skipped. Nothing else.
+import { createHash } from 'node:crypto';
 import type { SkipReason, UpgradeOpKind, UpgradePlan } from './types';
+import { canonicalJson } from '../canonical-json';
 
 // One classified path as a reviewer sees it: which target, which path, which
 // of the five whole-file operations. No content, by construction rather than
@@ -56,6 +58,19 @@ export interface ReviewablePlan {
   targets: string[];
   operations: ReviewableOperation[];
   skipped: ReviewableSkippedPath[];
+  // Who records the ground behind the `RETAINED_GROUND` skips (`RetainedGroundHolder`).
+  retainedGround?: { template: string; ground: string }[];
+  // The AI bundle replacement: every add/replace/removal against the current
+  // destination (including local edits, shown as `replace`/`local-only`). Hashes
+  // and lengths only, never bytes.
+  ai?: {
+    destination: string;
+    changes: { path: string; kind: string }[];
+    files: { path: string; length: number; sha256: string }[];
+    // What the destination holds now (lengths and hashes), so a reviewer can tell
+    // which local files a `replace`/`local-only` change discards.
+    existing: { path: string; length: number; sha256: string }[];
+  };
 }
 
 /**
@@ -85,5 +100,74 @@ export function renderReviewablePlan(plan: UpgradePlan): ReviewablePlan {
       path: entry.path,
       reason: entry.reason,
     })),
+    // Names and project-relative roots only, no content; present only when a skip
+    // was held back by recorded ground.
+    ...(plan.retainedGroundHolders !== undefined && plan.retainedGroundHolders.length > 0
+      ? { retainedGround: plan.retainedGroundHolders.map(({ template, ground }) => ({ template, ground })) }
+      : {}),
+    ...(plan.ai !== undefined
+      ? {
+          ai: {
+            destination: plan.ai.destination.path,
+            changes: plan.ai.changes.filter((c) => c.kind !== 'unchanged').map(({ path, kind }) => ({ path, kind })),
+            files: plan.ai.files.map(({ path, length, sha256 }) => ({ path, length, sha256 })),
+            existing: plan.ai.existing.map(({ path, length, sha256 }) => ({ path, length, sha256 })),
+          },
+        }
+      : {}),
   };
+}
+
+/**
+ * Plain-language consequences a reviewer must see next to the file lists, each
+ * already settled by a human ruling: the AI bundle is replaced as a whole, so
+ * local edits in it are overwritten and files only the destination has are
+ * removed (r9 §1, ruling 2026-11-08); protected paths are skipped and reported
+ * while the recorded version still advances, so a later upgrade may conflict on
+ * them (ruling 2026-11-06, option 2).
+ */
+export function reviewNotes(plan: UpgradePlan): string[] {
+  const notes: string[] = [];
+  if (plan.ai !== undefined) {
+    const identity = plan.ai.destination.identity as { ancestors?: { type?: string; target?: string }[] };
+    const link = identity.ancestors?.find((entry) => entry.type === 'symlink');
+    if (link) notes.push(`AI bundle ${plan.ai.destination.path} is a symbolic link to ${JSON.stringify(link.target)}; the link itself will be replaced and its target will be left untouched.`);
+    const replaced = plan.ai.changes.filter((c) => c.kind === 'replace').length;
+    const removed = plan.ai.changes.filter((c) => c.kind === 'local-only' || c.kind === 'local-only-directory').length;
+    if (replaced > 0 || removed > 0) {
+      notes.push(
+        `AI bundle ${plan.ai.destination.path}: ${replaced} file(s) will be overwritten and ${removed} file(s)/folder(s) ` +
+          'that only the project has will be removed; local edits there are not kept.',
+      );
+    }
+  }
+  const skipNote = protectedSkipNote(plan);
+  if (skipNote !== undefined) notes.push(skipNote);
+  return notes;
+}
+
+/** The disclosed risk of skipping protected paths (ruling 2026-11-06, option 2); reported before and after. */
+export function protectedSkipNote(plan: UpgradePlan): string | undefined {
+  const protectedSkips = plan.skipped.filter((entry) => entry.reason === 'OUTSIDE_BOUNDARY').length;
+  return protectedSkips > 0
+    ? `${protectedSkips} path(s) are skipped as protected and keep their current bytes; the recorded version still ` +
+        'advances, so a later upgrade may conflict on them.'
+    : undefined;
+}
+
+/**
+ * Identity of the WHOLE internal plan — every operation's `newContent`,
+ * `expectedDisk` and `baselineContent` included, not just the
+ * `{target, path, op}` projection a reviewer sees. The reviewed list of files
+ * and actions cannot tell two plans apart whose bytes differ (a candidate
+ * file edited, or a destination changed, after the review), so approval is
+ * bound to this digest instead: the review envelope carries it
+ * (`details.planDigest`), and the confirming `--yes` call states it
+ * (`--plan-digest=<hex>`); the confirming call recomputes its own plan and
+ * commits only when the two digests are equal. A digest is a one-way hash, so
+ * carrying it puts no file content into the envelope — the leak
+ * `renderReviewablePlan` exists to prevent stays closed.
+ */
+export function computePlanDigest(plan: UpgradePlan): string {
+  return createHash('sha256').update(canonicalJson(plan)).digest('hex');
 }

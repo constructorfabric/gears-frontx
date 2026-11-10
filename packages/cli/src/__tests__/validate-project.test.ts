@@ -68,6 +68,7 @@ function buildDeps(overrides: Partial<ValidateProjectDeps> = {}): ValidateProjec
     canonicalizeFn: overrides.canonicalizeFn ?? identityCanonicalize,
     existsFn: overrides.existsFn ?? alwaysExists,
     listFolderFilesFn: overrides.listFolderFilesFn ?? noFolderFiles,
+    readFolderFileBinaryFn: overrides.readFolderFileBinaryFn ?? (async (p) => Buffer.from(await (overrides.readFileFn ?? throwingReadFileFn)(p))),
     readFileFn: overrides.readFileFn ?? throwingReadFileFn,
     fetchFn: overrides.fetchFn ?? throwingFetchFn,
   };
@@ -126,12 +127,14 @@ describe('validateProject (cpt-frontx-algo-composed-provenance-validate-project)
     });
 
     it('for a non-canonical target entry', async () => {
+      // Lexically canonical (the state load accepts it), but the filesystem names
+      // it differently — the disk-aware layer this check owns.
       const document: ProjectStateDocument = {
         formatVersion: 1,
-        templates: { app: { origin: 'path:vendor/app', version: '1.0.0', targets: ['./packages/app'] } },
+        templates: { app: { origin: 'path:vendor/app', version: '1.0.0', targets: ['Packages/App'] } },
         projectOwnedRoots: [],
       };
-      const canonicalizeFn: CanonicalizeTargetFn = (rawTarget) => (rawTarget === './packages/app' ? 'packages/app' : rawTarget);
+      const canonicalizeFn: CanonicalizeTargetFn = (rawTarget) => (rawTarget === 'Packages/App' ? 'packages/app' : rawTarget);
       const deps = buildDeps({ readProjectStateFn: fakeReadProjectStateFn(document), canonicalizeFn });
 
       const result = await validateProject(REPO_ROOT, deps);
@@ -139,7 +142,7 @@ describe('validateProject (cpt-frontx-algo-composed-provenance-validate-project)
       expect(result).toMatchObject({
         ok: false,
         code: 'PROJECT_INVALID',
-        details: { name: 'app', target: './packages/app' },
+        details: { name: 'app', target: 'Packages/App' },
       });
     });
   });

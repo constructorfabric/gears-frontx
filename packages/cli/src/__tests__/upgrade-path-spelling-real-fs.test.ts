@@ -11,6 +11,7 @@
 // and after and requires the two to be identical, and requires that the plan was
 // never presented: a refusal that still wrote, or that still asked a developer
 // to approve a plan, is not one.
+import fs from 'node:fs';
 import path from 'node:path';
 import { lstat, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -84,7 +85,10 @@ function deps(repoRoot: string, resolvePayload: ResolvePayloadFn): UpgradeEngine
 // `other/src/index.ts` and `.frontx/src/index.ts` that equal the BASELINE's (so a
 // REPLACE of either would be classified, were the spelling taken at face value),
 // and a sibling directory outside the project whose file does the same.
-async function makeSandbox(target: string): Promise<{ project: string; outside: string }> {
+async function makeSandbox(
+  target: string,
+  recorded: { projectOwnedRoots?: string[]; otherTargets?: string[] } = {},
+): Promise<{ project: string; outside: string }> {
   sandbox = await mkdtemp(path.join(tmpdir(), 'frontx-upgrade-spelling-'));
   const project = path.join(sandbox, 'project');
   const outside = path.join(sandbox, 'outside');
@@ -97,8 +101,13 @@ async function makeSandbox(target: string): Promise<{ project: string; outside: 
   await writeFile(path.join(project, 'other', 'user.txt'), 'USER FILE', 'utf-8');
   const document: ProjectStateDocument = {
     formatVersion: 1,
-    templates: { '@x/a': { origin: 'origin-a', version: '1.0.0', targets: [target], excludedSubtrees: [] } },
-    projectOwnedRoots: [],
+    templates: {
+      '@x/a': { origin: 'origin-a', version: '1.0.0', targets: [target], excludedSubtrees: [] },
+      ...(recorded.otherTargets === undefined
+        ? {}
+        : { '@x/b': { origin: 'origin-b2', version: '1.0.0', targets: recorded.otherTargets, excludedSubtrees: [] } }),
+    },
+    projectOwnedRoots: recorded.projectOwnedRoots ?? [],
   };
   await writeFile(path.join(project, '.frontx', 'project.json'), JSON.stringify(document), 'utf-8');
   return { project, outside };
@@ -125,11 +134,14 @@ describe('the upgrade engine refuses a location that is not spelled as the one i
     expect(await snapshot(sandbox!)).toEqual(before);
   });
 
+  // A recorded path is judged ONCE, when the state document is loaded, for every
+  // engine (`inst-psio-if-noncanonical`): the upgrade never reaches its own
+  // classification for a document carrying one, so these are PROJECT_INVALID.
   it.each([
     { label: 'a target that climbs and comes back into the CLI namespace', target: 'app/../.frontx', replaced: '.frontx/src/index.ts' },
     { label: 'a target that climbs into a sibling', target: 'app/../other', replaced: 'other/src/index.ts' },
     { label: 'a target that climbs out of the project, onto a file that matches the baseline', target: '../outside', replaced: '../outside/src/index.ts' },
-  ])('refuses $label, so the file it would have replaced is untouched', async ({ target, replaced }) => {
+  ])('refuses $label at state load, so the file it would have replaced is untouched', async ({ target, replaced }) => {
     const { project } = await makeSandbox(target);
     const before = await snapshot(sandbox!);
     const candidate = payload('origin-b', '2.0.0', { 'src/index.ts': 'v2' });
@@ -137,10 +149,65 @@ describe('the upgrade engine refuses a location that is not spelled as the one i
 
     const result = await upgradeToOrigin('@x/a', 'origin-b', engine);
 
-    expect(result).toMatchObject({ ok: false, code: 'INVALID_PATH' });
+    expect(result).toMatchObject({ ok: false, code: 'PROJECT_INVALID' });
     expect(engine.presentPlan).not.toHaveBeenCalled();
     expect(await readFile(path.join(project, replaced), 'utf-8')).toBe('v1');
     expect(await snapshot(sandbox!)).toEqual(before);
+  });
+
+  // 2b review H1: the recorded `projectOwnedRoots` entry `x/../app/src` read, as
+  // a string, as ground outside `app/src`, so the upgrade REPLACED the project-
+  // owned `app/src/index.ts`. Judged at load now, for every engine.
+  it.each([
+    { label: 'a project-owned root that climbs and comes back', recorded: { projectOwnedRoots: ['x/../app/src'] } },
+    { label: 'a project-owned root with a trailing separator', recorded: { projectOwnedRoots: ['app/src/'] } },
+    { label: 'another template\'s target that climbs and comes back', recorded: { otherTargets: ['app/../other'] } },
+  ])('refuses $label at state load and leaves the project-owned file alone', async ({ recorded }) => {
+    const { project } = await makeSandbox('app', recorded);
+    const before = await snapshot(sandbox!);
+    const candidate = payload('origin-b', '2.0.0', { 'src/index.ts': 'v2' });
+    const engine = deps(project, async (origin) => ({ ok: true, payload: origin === 'origin-a' ? baseline : candidate }));
+
+    const result = await upgradeToOrigin('@x/a', 'origin-b', engine);
+
+    expect(result).toMatchObject({ ok: false, code: 'PROJECT_INVALID' });
+    expect(engine.presentPlan).not.toHaveBeenCalled();
+    expect(await readFile(path.join(project, 'app', 'src', 'index.ts'), 'utf-8')).toBe('v1');
+    expect(await snapshot(sandbox!)).toEqual(before);
+  });
+
+  it('never touches the filesystem outside the project for a target that climbs out of it, and the spy sees an inside read (control)', async () => {
+    const lstat = vi.spyOn(fs, 'lstatSync');
+    const readdirSpy = vi.spyOn(fs, 'readdirSync');
+    const readFileSpy = vi.spyOn(fs, 'readFileSync');
+    const outsideCalls = (outside: string) =>
+      [lstat, readdirSpy, readFileSpy].flatMap((spy) => spy.mock.calls.map((call) => String(call[0]))).filter((p) => p.startsWith(outside));
+    try {
+      const refused = await makeSandbox('../outside');
+      const outsideDir = path.join(sandbox!, 'outside');
+      const candidate = payload('origin-b', '2.0.0', { 'src/index.ts': 'v2' });
+      const engine = deps(refused.project, async (origin) => ({ ok: true, payload: origin === 'origin-a' ? baseline : candidate }));
+      lstat.mockClear();
+      readdirSpy.mockClear();
+      readFileSpy.mockClear();
+
+      const result = await upgradeToOrigin('@x/a', 'origin-b', engine);
+
+      expect(result).toMatchObject({ ok: false });
+      expect(outsideCalls(outsideDir)).toEqual([]);
+
+      // Control: a canonical upgrade DOES reach the same spies for a path inside the project.
+      await rm(sandbox!, { recursive: true, force: true });
+      const accepted = await makeSandbox('app');
+      const acceptedEngine = deps(accepted.project, async (origin) => ({ ok: true, payload: origin === 'origin-a' ? baseline : candidate }));
+      lstat.mockClear();
+      await upgradeToOrigin('@x/a', 'origin-b', acceptedEngine);
+      expect(lstat.mock.calls.some((call) => String(call[0]).startsWith(path.join(accepted.project, 'app')))).toBe(true);
+    } finally {
+      lstat.mockRestore();
+      readdirSpy.mockRestore();
+      readFileSpy.mockRestore();
+    }
   });
 
   it('still upgrades a canonical target with a canonical payload (control)', async () => {

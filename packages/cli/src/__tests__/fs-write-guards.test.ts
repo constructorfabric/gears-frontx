@@ -240,7 +240,12 @@ const WRITE_ALLOW_LIST: Record<string, FileAllowList> = {
       {
         guard: 'readWritableBundle',
         note:
-          '`writeBundle` bundle-loop branch: `write()`/`replace()` call `readWritableBundle` before any mutation; it applies `findInvalidBundleKey` to the complete map in this adapter as the executable last line of defence.',
+          '`writeBundle` bundle-loop branch (Buffer path): `write()`/`replace()` call `readWritableBundle` before any mutation.',
+      },
+      {
+        guard: 'readWritableBundle',
+        note:
+          '`writeBundle` bundle-loop branch (string path): same `readWritableBundle` guard as the Buffer path above.',
       },
     ],
   },
@@ -267,7 +272,11 @@ const WRITE_ALLOW_LIST: Record<string, FileAllowList> = {
     'fs.writeFileSync': [
       {
         guard: 'refuseIfDestinationIsSymlink',
-        note: '`createFsWriteFileFn`: called immediately above this line, refusing an existing symlink at `destPath` before this write.',
+        note: '`createFsWriteFileFn` Buffer branch: called immediately above, refusing an existing symlink at `destPath` before this write.',
+      },
+      {
+        guard: 'refuseIfDestinationIsSymlink',
+        note: '`createFsWriteFileFn` string branch: same symlink refusal guard above, UTF-8 string write.',
       },
       {
         guard: 'resolveWriteParentDir',
@@ -283,6 +292,11 @@ const WRITE_ALLOW_LIST: Record<string, FileAllowList> = {
         guard: 'createFsAssertPathWithinRootFn',
         note: '`createFsRemoveProjectFileFn`: the CALLER (`commands/delete.ts`) invokes `assertPathWithinRootFn` on the same path before calling this seam.',
       },
+      {
+        guard: 'assertPathWithinProjectRoot + resolveNearestExistingAncestor',
+        note:
+          '`createFsWriteProjectStateFn` caught-error cleanup: removes only this call\'s OWN `tempPath` — a fresh-UUID name beside the RESOLVED `writeDestination` that the containment check and ancestor resolution above already placed inside the project — never `absolutePath`, the destination, or any other file; `force` makes absence a no-op and a cleanup failure never replaces the original error. Pinned by `adapters/__tests__/fs-project-io.test.ts` (own temp removed, stranger temp untouched, original error kept).',
+      },
     ],
     'fs.renameSync': [
       {
@@ -297,7 +311,10 @@ const WRITE_ALLOW_LIST: Record<string, FileAllowList> = {
       { guard: 'assertPathWithinProjectRoot', note: '`createFsWriteDiskFileFn`: called immediately above.' },
       { guard: 'assertPathWithinProjectRoot', note: '`createFsRenameDiskFileFn`: called immediately above, against `to`.' },
     ],
-    'fs.writeFileSync': [{ guard: 'assertPathWithinProjectRoot', note: '`createFsWriteDiskFileFn`: same containment call, above.' }],
+    'fs.writeFileSync': [
+      { guard: 'assertPathWithinProjectRoot', note: '`createFsWriteDiskFileFn` Buffer branch: same containment call, above.' },
+      { guard: 'assertPathWithinProjectRoot', note: '`createFsWriteDiskFileFn` string branch: same containment guard, UTF-8 write.' },
+    ],
     'fs.renameSync': [{ guard: 'assertPathWithinProjectRoot', note: '`createFsRenameDiskFileFn`: same containment call, above, against `to`.' }],
     'fs.unlinkSync': [{ guard: 'assertPathWithinProjectRoot', note: '`createFsUnlinkDiskFileFn`: same containment call, above; the removal is a no-op on `ENOENT`.' }],
     'fs.openSync': [
@@ -317,6 +334,30 @@ const WRITE_ALLOW_LIST: Record<string, FileAllowList> = {
         note: "Removes ONLY a directory it has just read as empty, never forcing and never recursing, and swallows a failure rather than escalating; `commands/apply.ts` calls it solely for directories that call itself created (`dirsThisCallCreated`), so a developer's pre-existing directory is never a candidate.",
       },
     ],
+  },
+  'operations/namespace-lock.ts': {
+    'fs.mkdirSync': [
+      { guard: 'acquireNamespaceLockIn + assertDirectory', note: 'Non-recursive mode-0700 create of the per-user `.frontx` dir; only `EEXIST` is tolerated, then `assertDirectory` refuses a symlink, non-directory or foreign-owned entry.' },
+      { guard: 'acquireNamespaceLockIn + assertDirectory', note: 'Same pattern for `.frontx/operations`; `assertDirectory(..., true)` additionally refuses any group/other permission bit.' },
+    ],
+  },
+  'adapters/fs-ai-review-materialize.ts': {
+    'fs.mkdirSync': [{ guard: 'ensurePlainDirectory', note: 'Non-recursive create of one missing component under the real project root, after every existing ancestor was proven a plain directory; re-proven by `lstat` right after.' }],
+    'fs.openSync': [{ guard: 'writeRegular', note: "Exclusive `'wx'` create of a fresh uniquely-named temp beside the destination file; never opens an existing name." }],
+    'fs.writeSync': [{ guard: 'writeRegular', note: 'Writes the reviewed snapshot bytes only to the descriptor the exclusive create returned.' }],
+    'fs.renameSync': [{ guard: 'writeRegular', note: 'Renames its own temp over the destination after re-proving the parent chain; only reached once `applyFsAiReview` re-captured the reviewed digest.' }],
+    'fs.unlinkSync': [
+      { guard: 'unlinkRegular', note: 'Removes a reviewed `local-only` file only after `lstat` proves a regular file under a plain-directory chain.' },
+      { guard: 'applyFsAiReview', note: 'Removes only the approved destination root symlink itself, after the fresh review reproduces its recorded lstat/readlink identity; never follows it.' },
+    ],
+    'fs.rmdirSync': [{ guard: 'removeEmptyDirectory', note: 'Non-recursive removal of a reviewed `local-only-directory` (or the absent-candidate destination); fails on a non-empty directory.' }],
+  },
+  'operations/coordination.ts': {
+    'fs.mkdirSync': [{ guard: 'writeRecord', note: 'Creates only `<project>/.frontx/operations` (its `.frontx` already proven a plain directory by the scope scan) or the reservations dir under the lock-verified private `~/.frontx/operations`; runs under the namespace mutex.' }],
+    'fs.openSync': [{ guard: 'writeRecord', note: "Exclusive `'wx'` create of a fresh `<uuid>.json.tmp`: never opens or follows an existing name." }],
+    'fs.writeSync': [{ guard: 'writeRecord', note: 'Writes only to the descriptor the exclusive create above just returned.' }],
+    'fs.renameSync': [{ guard: 'writeRecord', note: 'Renames this call\'s own temp record onto its `<uuid>.json` name inside the same coordination directory.' }],
+    'fs.unlinkSync': [{ guard: 'unlinkRecord', note: 'Unlinks one named record only after `lstat` proves it a regular file; never recursive, never a directory.' }],
   },
   'paths/volume-case.ts': {
     'fs.writeFileSync': [
@@ -353,10 +394,55 @@ const READ_ALLOW_LIST: Record<string, FileAllowList> = {
       },
     ],
   },
+  'adapters/fs-ai-review-capture.ts': {
+    'fs.readdirSync': [{ guard: 'readTree', note: 'Dirent-typed walk; recurses only into `isDirectory()` entries and throws on a symlink or special entry.' }],
+    'fs.readFileSync': [{ guard: 'readTree', note: 'Only reached for a dirent that is `entry.isFile()` — never a symlink, FIFO, socket, or device.' }],
+    'fs.lstatSync': [
+      { guard: 'treeState', note: 'Read-only shape probe; `ENOENT` means absent, a non-directory throws before any walk.' },
+      { guard: 'identity', note: 'Read-only ancestor walk recording dev/ino; never follows a symlink and throws on a non-directory ancestor.' },
+      { guard: 'assertPlainChain', note: 'Read-only walk of the source `.frontx/ai` ancestors before any tree read; throws on a symlink or non-directory component.' },
+    ],
+    'fs.realpathSync': [
+      { guard: 'captureFsAiReview', note: 'Canonicalizes the caller-supplied source root; read-only, a failure propagates.' },
+      { guard: 'captureFsAiReview', note: 'Canonicalizes the caller-supplied project root; identical reasoning.' },
+      { guard: 'reviewFsAiCandidate', note: 'Canonicalizes the project root before the destination identity walk; read-only.' },
+    ],
+  },
+  'commands/apply-ai-review.ts': {
+    'fs.realpathSync': [{ guard: 'classifyAiDestination', note: 'Canonicalizes the project root the destination chain probe is anchored at; read-only.' }],
+    'fs.lstatSync': [
+      { guard: 'classifyAiDestination', note: 'Read-only probe of each `.frontx/ai/<name>` component; a non-directory or link classifies as blocked, never followed.' },
+      { guard: 'hashCandidateTree', note: 'Read-only walk of a candidate folder; never follows a link (its text is hashed instead).' },
+      { guard: 'candidateShipsBundle', note: 'Read-only probe of the candidate `.frontx/ai/<name>` directory.' },
+    ],
+    'fs.readdirSync': [{ guard: 'hashCandidateTree', note: 'Lists one directory the walk proved a real directory with `lstat`.' }],
+    'fs.readFileSync': [{ guard: 'hashCandidateTree', note: 'Only reached for an entry `lstat` proved a regular file.' }],
+  },
+  'adapters/fs-ai-review-materialize.ts': {
+    'fs.lstatSync': [
+      { guard: 'ensurePlainDirectory', note: 'Per-component probe of the destination chain; a symlink or non-directory refuses.' },
+      { guard: 'ensurePlainDirectory', note: 'Re-proves a component it just created.' },
+      { guard: 'unlinkRegular', note: 'Proves a regular file before unlinking it.' },
+      { guard: 'applyFsAiReview', note: 'Rechecks the approved destination root entry without following it; only a matching reviewed root symlink may be unlinked.' },
+    ],
+    'fs.realpathSync': [{ guard: 'applyFsAiReview', note: 'Canonicalizes the project root the chain checks are anchored at.' }],
+  },
+  'commands/staged-inventory.ts': {
+    'fs.lstatSync': [{ guard: 'pathOccupied', note: 'Read-only presence probe of an unindexed slot path before any install; unreadable counts as occupied.' }],
+  },
+  'operations/coordination.ts': {
+    'fs.realpathSync': [{ guard: 'physicalPath', note: 'Canonicalizes the nearest existing ancestor of a project/inventory root; read-only.' }],
+    'fs.lstatSync': [
+      { guard: 'assertPlainChain', note: 'Proves every existing coordination path component a plain directory before any list, read or write below it.' },
+      { guard: 'parseReceipt', note: 'Refuses anything but a regular file before `readFileSync`, so a FIFO or symlink is never opened.' },
+      { guard: 'unlinkRecord', note: 'Proves a regular file before unlinking it.' },
+    ],
+    'fs.readdirSync': [{ guard: 'listRecords', note: 'Lists one coordination directory already proven a plain directory; never recurses.' }],
+    'fs.readFileSync': [{ guard: 'parseReceipt', note: 'Only reached after `lstat` proved a regular file.' }],
+  },
   'adapters/fs-content-store.ts': {
     'fs.readFileSync': [
-      { guard: 'readBundle', note: 'Reads only a path `listFilesRecursive` already found via `entry.isFile()`.' },
-      { guard: 'readBundle', note: 'Same guard, the multi-file bundle loop.' },
+      { guard: 'readBundle', note: 'Reads only a path `listFilesRecursive` already found via `entry.isFile()`; single loop handles both manifest-only and multi-file cases.' },
     ],
     'fs.existsSync': [
       { guard: 'replace', note: 'Containment already proven earlier in the same method.' },
@@ -367,6 +453,7 @@ const READ_ALLOW_LIST: Record<string, FileAllowList> = {
       { guard: 'has', note: 'Metadata-only listing on the CLI\'s own local inventory store path.' },
       { guard: 'listFilesRecursive', note: 'Dirent-typed walk; never follows a symlink for recursion or reading.' },
     ],
+    'fs.lstatSync': [{ guard: 'assertSlotPathAbsent', note: '`write()`: presence probe of a first-install slot path; anything there refuses before any write.' }],
   },
   'adapters/fs-existing-content.ts': {
     'fs.readdirSync': [{ guard: 'listFilesRecursive', note: 'Dirent-typed; a symlink is reported, never descended into or opened.' }],
@@ -387,6 +474,9 @@ const READ_ALLOW_LIST: Record<string, FileAllowList> = {
       { guard: 'createFsResolveDeclaredExclusionFn', note: 'A broken symlink is distinguished from absence without ever being opened.' },
       { guard: 'resolveNearestExistingAncestor', note: 'The core symlink-resolving walk; read-only throughout.' },
       { guard: 'firstNonDirectoryComponentOf', note: 'Walk-up probe; read-only throughout.' },
+      { guard: 'createFsClassifyPathStrictFn', note: 'Per-component read-only walk; classifies each entry before any further step, fails closed on any error.' },
+      { guard: 'resolvePhysicalName', note: 'Per-entry inode comparison inside `createFsClassifyPathStrictFn`; read-only, fails closed on any error.' },
+      { guard: 'createFsEntryKindFn', note: 'Read-only probe; never follows the final symlink, used only to determine footprint kind.' },
     ],
     'fs.statSync': [
       { guard: 'resolvePathKind', note: 'Only reached once a symlink is already confirmed by `lstatSync`.' },
@@ -394,7 +484,10 @@ const READ_ALLOW_LIST: Record<string, FileAllowList> = {
       { guard: 'createFsListTargetFilesFn', note: '`root` is already `realPathOrNull`-resolved.' },
       { guard: 'createFsListUnenumerableTargetEntriesFn', note: 'Same pattern as its sibling enumerator.' },
     ],
-    'fs.readFileSync': [{ guard: 'resolvePathKind', note: 'Only reached once the `\'file\'` kind is confirmed.' }],
+    'fs.readFileSync': [
+      { guard: 'resolvePathKind', note: 'Only reached once the `\'file\'` kind is confirmed.' },
+      { guard: 'createFsReadFolderFileBinaryFn', note: 'Only reached once `resolvePathKind` confirms `\'file\'`; returns raw Buffer for byte-preserving reads.' },
+    ],
     'fs.existsSync': [
       { guard: 'createFsCanonicalizeTargetFn', note: 'Containment already proven by canonicalization.' },
       { guard: 'createFsAssertPathWithinRootFn', note: 'Caller-side guard, `commands/delete.ts`.' },
@@ -406,7 +499,10 @@ const READ_ALLOW_LIST: Record<string, FileAllowList> = {
           'Wrapped: a broken symlink or vanished path returns `null`. Calls the platform-native `.realpathSync.native` form so an existing path\'s ON-DISK spelling is returned on a case-insensitive volume, never the caller\'s own spelling.',
       },
     ],
-    'fs.readdirSync': [{ guard: 'walkFiles', note: 'Dirent-typed; a symlink is resolved only afterward, explicitly.' }],
+    'fs.readdirSync': [
+      { guard: 'walkFiles', note: 'Dirent-typed; a symlink is resolved only afterward, explicitly.' },
+      { guard: 'resolvePhysicalName', note: 'Lists parent directory entries to find the physical stored name by inode; read-only, fails closed on any error.' },
+    ],
   },
   'adapters/fs-upgrade-io.ts': {
     'fs.lstatSync': [{ guard: 'createFsReadDiskEntryFn', note: 'Classifies the entry before ever reading content; a special entry never reaches `readFileSync`.' }],
@@ -427,6 +523,13 @@ const READ_ALLOW_LIST: Record<string, FileAllowList> = {
     'fs.realpathSync': [
       { guard: 'isMainModule', note: "Resolves `process.argv[1]` to decide whether this module was started as the executable; touches no project path, and a failure is caught into `isMainModule = false`." },
       { guard: 'isMainModule', note: "The other half of the same comparison, resolving this module's own URL; identical reasoning." },
+    ],
+  },
+  'operations/namespace-lock.ts': {
+    'fs.lstatSync': [
+      { guard: 'assertDirectory', note: 'Read-only shape/owner/mode probe that refuses a symlink or non-directory before the lock file is touched.' },
+      { guard: 'acquireNamespaceLockIn', note: 'Pre-open probe of the lock file; refuses a symlink, non-file, foreign owner or loose mode; only `ENOENT` is tolerated.' },
+      { guard: 'acquireNamespaceLockIn', note: 'Post-open re-check of the same lock file after `chmodSync`; identical refusal, closes the database on failure.' },
     ],
   },
   'paths/volume-case.ts': {

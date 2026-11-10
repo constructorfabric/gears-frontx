@@ -57,7 +57,15 @@ import type {
   UpgradeSkippedPath,
 } from './types';
 import type { ProjectStateDocument, TemplateEntry } from '../project-state/types';
-import { joinUnderTarget } from '../paths/relative-path';
+import { joinUnderTarget, pathWithinSubtree, pathWithinTarget } from '../paths/relative-path';
+import { foldForIdentity } from '../paths/volume-case';
+import {
+  changedDeclarations,
+  declarationCovered,
+  exclusionGroundRoots,
+  narrowedProvenExclusions,
+  unionGroundRoots,
+} from '../project-state/retained-ground';
 import { parseLocalOrigin } from '../resolver/types';
 
 // Derives the project-relative folder a `path:`-installed name's own origin
@@ -446,11 +454,100 @@ export async function validateUpgrade(input: ValidateInput): Promise<ValidateOut
     }
   }
 
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-judge-resolved-other-targets
+  // Another template's recorded target may since have become a symlink
+  // (`mv dst real && ln -s real dst`): its files then live at the RESOLVED
+  // location, which the classification — comparing the spelling of each path —
+  // would judge as this name's own ground and REPLACE. Ground resolved strictly
+  // inside one of this name's targets is reserved exactly as another template's
+  // origin folder is, but ONLY where this name declares that ground an excluded
+  // subtree; a resolved location that IS, contains, or sits undeclared inside one
+  // of this name's targets leaves nothing that can be told apart, so it is
+  // refused as a target conflict before any target is classified.
+  const aliasConflicts: { target: string; contestingTarget: string; contestingTemplateName: string }[] = [];
+  // What this name declared when it wrote its files. A backfilled value is the
+  // current manifest copied in by a no-op repair, so it proves nothing: absent.
+  const recordedAtApply = entry.exclusionsBackfilled === true ? [] : (entry.excludedSubtrees ?? []);
+  for (const [otherName, otherEntry] of Object.entries(document.templates)) {
+    if (otherName === name) continue;
+    for (const otherTarget of otherEntry.targets) {
+      const resolvedOther = canonicalizeFn(otherTarget);
+      if (resolvedOther === null || foldForIdentity(resolvedOther) === foldForIdentity(otherTarget)) continue;
+      for (const target of entry.targets) {
+        if (pathWithinTarget(target, resolvedOther)) {
+          aliasConflicts.push({ target, contestingTarget: resolvedOther, contestingTemplateName: otherName });
+        } else if (pathWithinTarget(resolvedOther, target)) {
+          // Strictly inside this target. Reserving it is right only when this
+          // name's own declarations carve that ground out of the target — in
+          // BOTH the baseline and the candidate, the two a transition spans,
+          // and in what this name RECORDED when it was applied (the baseline
+          // is re-resolved from the current manifest, so a declaration added
+          // there after `apply` proves nothing about files already written);
+          // otherwise the ground is this name's payload, and quietly handing
+          // it to the alias would skip its files with a success.
+          const declaredByAll = [recordedAtApply, baseline.excludedSubtrees, candidate.excludedSubtrees].every((declared) =>
+            declared.some((entryDeclared) => pathWithinSubtree(resolvedOther, joinUnderTarget(target, entryDeclared))),
+          );
+          if (!declaredByAll) {
+            aliasConflicts.push({ target, contestingTarget: resolvedOther, contestingTemplateName: otherName });
+          } else if (!additionalExclusionRoots.includes(resolvedOther)) {
+            additionalExclusionRoots.push(resolvedOther);
+          }
+        }
+      }
+    }
+  }
+  if (aliasConflicts.length > 0) {
+    // @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-return-resolved-other-conflict
+    return {
+      ok: false,
+      code: 'TARGET_CONFLICT',
+      message:
+        `"${name}"'s upgrade was refused: ${aliasConflicts.length} of its target(s) coincide with, or sit inside, the ` +
+        "resolved location of another registered template's recorded target, which is a symlink.",
+      details: { conflicts: aliasConflicts },
+    };
+    // @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-return-resolved-other-conflict
+  }
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-judge-resolved-other-targets
+
+  // @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-protect-retained-ground
+  // Ground any registered template (this one included) recorded as
+  // `relinquishedGround`: an old file may sit there that no payload wrote. The
+  // classification compares bytes only, so a file that happens to equal the
+  // baseline copy of THIS template's payload reads as its own and would be
+  // REMOVEd or REPLACEd, although `delete` keeps the same file. Roots are kept
+  // as spelled AND resolved, so an alias of the ground is protected as well.
+  const retainedRoots: { root: string; template: string; ground: string }[] = [];
+  for (const [holder, recorded] of Object.entries(document.templates)) {
+    for (const ground of recorded.relinquishedGround ?? []) {
+      retainedRoots.push({ root: ground, template: holder, ground });
+      const resolvedGround = canonicalizeFn(ground);
+      if (resolvedGround !== null) retainedRoots.push({ root: resolvedGround, template: holder, ground });
+    }
+  }
+  // EVERY recorded ground holding `projectPath` (several entries may overlap), empty when none does.
+  const retainedGroundHolding = (projectPath: string): { template: string; ground: string }[] => {
+    if (retainedRoots.length === 0) return [];
+    // A location that cannot be resolved inside the project is never judged
+    // safe to rewrite.
+    const resolvedPath = canonicalizeFn(projectPath);
+    const held: { template: string; ground: string }[] = [];
+    for (const { root, template, ground } of retainedRoots) {
+      const holds = pathWithinTarget(projectPath, root) || (resolvedPath === null ? true : pathWithinTarget(resolvedPath, root));
+      if (holds && !held.some((known) => known.template === template && known.ground === ground)) held.push({ template, ground });
+    }
+    return held;
+  };
+  // @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-protect-retained-ground
+
   const operations: UpgradeOperation[] = [];
   // Per-target boundary, carried onto the plan for the commit algorithm's own
   // boundary-scoped stale-temp reclaim — see `UpgradePlan.exclusionRootsByTarget`.
   const exclusionRootsByTarget: Record<string, string[]> = {};
   const skipped: UpgradeSkippedPath[] = [];
+  const retainedHolders: { template: string; ground: string }[] = [];
+  let relinquishesWrittenGround = false;
   const contentConflicts: { target: string; path: string }[] = [];
   // The SUBSET of `contentConflicts` refused because the disk shape at (or
   // above) the path is uncomparable — see `ClassifyResult.uncomparablePaths`
@@ -489,13 +586,32 @@ export async function validateUpgrade(input: ValidateInput): Promise<ValidateOut
       localOriginFolder,
       otherTemplateTargets,
       additionalExclusionRoots,
+      recordedExcludedSubtrees: recordedAtApply,
       readDiskEntry,
       canonicalizeFn,
     };
     const result = await classifyTarget(classifyInput);
     exclusionRootsByTarget[target] = result.exclusionRoots;
-    operations.push(...result.operations);
+    // @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-skip-retained-ground
+    // Only the two operations that destroy what is on disk are held back; an
+    // ADD, an UNCHANGED or a KEEP_LOCAL never loses an old file, and a
+    // conflict is refused below as before.
+    for (const operation of result.operations) {
+      const holders = operation.op === 'REMOVE' || operation.op === 'REPLACE' ? retainedGroundHolding(operation.path) : [];
+      if (holders.length > 0) {
+        skipped.push({ target, path: operation.path, reason: 'RETAINED_GROUND' });
+        for (const holder of holders) {
+          if (!retainedHolders.some((known) => known.template === holder.template && known.ground === holder.ground)) {
+            retainedHolders.push(holder);
+          }
+        }
+      } else {
+        operations.push(operation);
+      }
+    }
+    // @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-skip-retained-ground
     skipped.push(...result.skipped);
+    if (result.relinquishedPaths.length > 0 || result.unprovenGroundPaths.length > 0) relinquishesWrittenGround = true;
     const uncomparableForTarget = new Set(result.uncomparablePaths);
     const escapingForTarget = new Set(result.escapingPaths);
     const causeForTarget = new Map(result.uncomparableCauses.map((cause) => [cause.path, cause]));
@@ -608,6 +724,43 @@ export async function validateUpgrade(input: ValidateInput): Promise<ValidateOut
 
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-return-pass
   // @cpt-begin:cpt-frontx-state-upgrade-changeset-lifecycle:p1:inst-st-read-to-validated
+  // The entry this upgrade writes is marked when it relinquishes written ground
+  // or already was. The marked entry keeps the LOCATION of every exclusion in
+  // play, the one it recorded and the candidate's, under each of its targets:
+  // the recorded declaration is overwritten below, and a later upgrade that
+  // narrows it again must not take the location with it.
+  const willBeMarked = relinquishesWrittenGround === true || entry.exclusionsBackfilled === true;
+  // The durable evidence the rebuilt entry carries. A marked entry only
+  // narrows what it had (none stays none: no write creates evidence from
+  // nothing). An unmarked entry becoming marked here proves what it recorded at
+  // apply AND the candidate both exclude; the candidate's own declaration is
+  // never evidence by itself.
+  const provenAfter = !willBeMarked
+    ? undefined
+    : entry.exclusionsBackfilled === true
+      ? narrowedProvenExclusions(entry.provenExcludedSubtrees, candidate.excludedSubtrees)
+      : entry.excludedSubtrees === undefined
+        ? undefined
+        : narrowedProvenExclusions(entry.excludedSubtrees, candidate.excludedSubtrees);
+  const retainedGround = unionGroundRoots(
+    entry.relinquishedGround,
+    willBeMarked
+      ? exclusionGroundRoots(
+          entry.targets,
+          // An entry that is not yet marked recorded its declaration when it
+          // wrote its files: only what CHANGED is ground it may have written to.
+          // An already-marked entry's recorded declaration proves nothing; only
+          // the regions its durable evidence covers are not kept.
+          entry.exclusionsBackfilled === true
+            ? // A region the entry's durable evidence covers was excluded in
+              // every write it made, so it was never the entry's ground.
+              [...(entry.excludedSubtrees ?? []), ...candidate.excludedSubtrees].filter(
+                (declared) => !declarationCovered(declared, provenAfter ?? []),
+              )
+            : changedDeclarations(entry.excludedSubtrees, candidate.excludedSubtrees),
+        )
+      : undefined,
+  );
   const plan: UpgradePlan = {
     name,
     from: { origin: entry.origin, version: entry.version },
@@ -615,8 +768,13 @@ export async function validateUpgrade(input: ValidateInput): Promise<ValidateOut
     targets: entry.targets,
     operations,
     skipped,
+    ...(retainedHolders.length > 0 ? { retainedGroundHolders: retainedHolders } : {}),
     exclusionRootsByTarget,
     toExcludedSubtrees: candidate.excludedSubtrees,
+    ...(relinquishesWrittenGround ? { relinquishesWrittenGround: true as const } : {}),
+    ...(entry.exclusionsBackfilled === true ? { priorHistoryUnproven: true as const } : {}),
+    ...(retainedGround !== undefined ? { priorRelinquishedGround: retainedGround } : {}),
+    ...(provenAfter !== undefined ? { provenExcludedSubtrees: provenAfter } : {}),
   };
   return { ok: true, kind: 'plan', plan };
   // @cpt-end:cpt-frontx-state-upgrade-changeset-lifecycle:p1:inst-st-read-to-validated

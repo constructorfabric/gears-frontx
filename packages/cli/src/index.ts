@@ -9,13 +9,15 @@ export type { StructuredRef, ParseError, ParseResult } from './spec-parser/types
 export { resolveToInventory } from './resolver/resolve';
 export type { FetchFn, InventoryReadyRecord, ResolutionError, ResolveResult } from './resolver/types';
 
-export { TemplateInventory } from './inventory/TemplateInventory';
-export { InventoryIndex } from './inventory/InventoryIndex';
-export { InventoryStore } from './inventory/InventoryStore';
+// Writers are executable-only (plan-ai-recovery r9 §4): every operation that
+// writes project, inventory or AI state is reachable only through the `frontx`
+// executable, which enters the shared mutation boundary
+// (`operations/coordination.ts`) before dispatch. This barrel exports read,
+// resolve and plan functions and types — never a raw writer, a writable
+// inventory, or a filesystem write adapter (`public-api-writers.test.ts`).
 export { InventoryState } from './inventory/types';
 export type { InventoryEntry, InventoryError, InventoryResult } from './inventory/types';
 
-export { installCommand } from './commands/install';
 export type { InstallCommandResult } from './commands/install';
 
 // F16 cross-package edge (F16 <- F10): install-time extension discovery hook
@@ -32,7 +34,6 @@ export type {
   CatalogResolveDeps,
 } from './commands/list';
 
-export { updateLocalCommand } from './commands/update-local';
 export type { UpdateLocalResult } from './commands/update-local';
 
 export { validateManifestContract, readManifestFromContent } from './manifest/validate-contract';
@@ -76,7 +77,6 @@ export { MANIFEST_FILENAME } from './manifest/types';
 // cpt-frontx-state-cli-scaffolding-assembly-op) — the ONE apply path both
 // seed-a-repository and add-a-template invoke. The pre-flight conflict
 // checker (P29) and the entry flows (P30) build on this surface.
-export { uniformApply } from './scaffold/assembler';
 export type { UniformApplyResult } from './scaffold/assembler';
 // `scaffold/state.ts`'s `runAssemblyOp` driver and its input/verdict types
 // are no longer re-exported: that driver has zero real callers, and the
@@ -105,11 +105,8 @@ export type {
 // (cpt-frontx-flow-cli-scaffolding-seed-repository, which wraps `apply`'s
 // own pipeline rather than duplicating it). These three retire the OLD
 // `seedRepository`/`addTemplate` command surface.
-export { resolveAndCheckBatch, runApplyPipeline } from './commands/apply';
 export type { ApplyBatchOutcome, ApplyBatchTargetRef, ApplyPipelineDeps, ResolveAndCheckDeps, ResolveAndCheckOutcome } from './commands/apply';
-export { assembleBatch } from './commands/assemble';
 export type { AssembleOutcome, AssemblePreviewEntry } from './commands/assemble';
-export { seedRepository } from './commands/seed-repository';
 export type { SeedRepositoryDeps, SeedRepositoryOutcome } from './commands/seed-repository';
 export { OFFICIAL_DEFAULT_TEMPLATES, officialDefaultOrigin } from './commands/official-defaults';
 export { createFsReadInstalledContentFn, createFsReadExistingContentFn } from './adapters/fs-existing-content';
@@ -130,13 +127,11 @@ export { createFsReadTargetPathStateFn } from './adapters/fs-target-path';
 // ./commands/upgrade.js), per DESIGN §3.4 ("... through its command surface
 // ... NOT by linking its engine") — never by importing these modules
 // directly for its own second implementation.
-export { upgradeToOrigin, restorePreceding } from './upgrade/flow';
 export type { UpgradeEngineDeps, UpgradeFlowOutcome } from './upgrade/flow';
 export { validateUpgrade } from './upgrade/validate';
 export type { ValidateInput, ValidateOutcome } from './upgrade/validate';
 export { classifyTarget } from './upgrade/classify';
 export type { ClassifyInput, ClassifyResult } from './upgrade/classify';
-export { commitUpgrade } from './upgrade/commit';
 export type { CommitDeps, CommitOutcome } from './upgrade/commit';
 export { createResolvePayloadFn, versionMatchesRecorded } from './upgrade/payload';
 export type { ResolvePayloadDeps } from './upgrade/payload';
@@ -163,28 +158,19 @@ export type {
   WriteProjectFileFn,
   RemoveProjectFileFn,
 } from './upgrade/types';
-export {
-  createFsReadDiskEntryFn,
-  createFsListDiskFilesFn,
-  createFsWriteDiskFileFn,
-  createFsRenameDiskFileFn,
-  createFsUnlinkDiskFileFn,
-} from './adapters/fs-upgrade-io';
+export { createFsReadDiskEntryFn, createFsListDiskFilesFn } from './adapters/fs-upgrade-io';
 
 // F14 command/invocation surface — the ONLY integration path F17 (and any
 // other external artifact) should use to drive the change-set engine.
-export { upgradeCommand } from './commands/upgrade';
 export type { UpgradeCommandFlags, UpgradeCommandOutcome, UpgradeDirection } from './commands/upgrade';
 
 // F19 project state, registration & ownership management
 // (cpt-frontx-feature-composed-provenance) — `register`/`unregister` own
 // the manifest-keyed `templates[name]` entries of `.frontx/project.json`,
 // and `ownership add|remove|list` own its `projectOwnedRoots` exceptions.
-export { registerTemplate } from './commands/register';
 export type { RegisterOutcome, RegisterInventoryPort } from './commands/register';
-export { unregisterTemplate } from './commands/unregister';
 export type { UnregisterOutcome } from './commands/unregister';
-export { ownershipAdd, ownershipRemove, ownershipList } from './commands/ownership';
+export { ownershipList } from './commands/ownership';
 export type {
   OwnershipAddOutcome,
   OwnershipRemoveOutcome,
@@ -199,7 +185,6 @@ export type {
 export { computeDeletionPlan } from './scaffold/delete-plan';
 export type { DeletionPlanResult, DeletePlanInventoryPort, ListTargetFilesFn } from './scaffold/delete-plan';
 export { createFsListTargetFilesFn } from './adapters/fs-project-io';
-export { deleteTarget } from './commands/delete';
 export type {
   DeleteOutcome,
   DeleteCommandFlags,

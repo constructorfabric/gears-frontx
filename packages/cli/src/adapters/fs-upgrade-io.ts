@@ -109,7 +109,7 @@ export function createFsReadDiskEntryFn(repoRoot: string): ReadDiskEntryFn {
     if (stat.isSymbolicLink()) return { kind: 'symlink' };
     if (stat.isDirectory()) return { kind: 'directory' };
     if (!stat.isFile()) return { kind: 'special' };
-    return { kind: 'file', content: fs.readFileSync(absolutePath, 'utf-8') };
+    return { kind: 'file', content: fs.readFileSync(absolutePath) };
   };
 }
 
@@ -248,7 +248,7 @@ export class ReservedTempPathOccupiedError extends Error {
 }
 
 export function createFsWriteDiskFileFn(repoRoot: string): WriteDiskFileFn {
-  return async function writeDiskFile(absolutePath: string, content: string): Promise<void> {
+  return async function writeDiskFile(absolutePath: string, content: Buffer | string): Promise<void> {
     assertPathWithinProjectRoot(repoRoot, absolutePath);
     // `resolveWriteParentDir`, not a literal `path.dirname(absolutePath)`:
     // see `fs-project-io.ts`'s DANGLING-SYMLINK-INSIDE FIX comment. An
@@ -258,14 +258,7 @@ export function createFsWriteDiskFileFn(repoRoot: string): WriteDiskFileFn {
     fs.mkdirSync(resolveWriteParentDir(absolutePath), { recursive: true });
     // EXCLUSIVE-CREATE BACKSTOP: a reserved-suffix path is written ONLY here,
     // through `'wx'` (`O_CREAT|O_EXCL`) rather than the plain truncate-or-
-    // create `writeFileSync` an ordinary destination write below still uses —
-    // a `REPLACE` legitimately overwrites its destination, but nothing may
-    // ever legitimately already occupy this engine's own scratch path.
-    // `commitUpgrade`'s own `verifyTempOccupancy` already checked this exact
-    // path moments earlier; this is the backstop for the residual window
-    // between that check and this write, closing it by failing with `EEXIST`
-    // on anything already there — a symlink included, and never followed —
-    // instead of writing through it or silently overwriting it.
+    // create `writeFileSync` an ordinary destination write below still uses.
     if (isReservedTempName(absolutePath)) {
       let fd: number;
       try {
@@ -277,13 +270,26 @@ export function createFsWriteDiskFileFn(repoRoot: string): WriteDiskFileFn {
         throw error;
       }
       try {
-        fs.writeSync(fd, content, null, 'utf-8');
+        // Loop over writeSync return value to ensure all bytes are written
+        // (plan r4 §5); zero-progress counts as failure.
+        const bytes = Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf-8');
+        let written = 0;
+        while (written < bytes.length) {
+          const n = fs.writeSync(fd, bytes, written);
+          if (n === 0) throw new Error(`writeSync made no progress at offset ${written} of "${absolutePath}"`);
+          written += n;
+        }
       } finally {
         fs.closeSync(fd);
       }
       return;
     }
-    fs.writeFileSync(absolutePath, content, 'utf-8');
+    // Buffer writes exact bytes; string writes UTF-8 (backward compat).
+    if (Buffer.isBuffer(content)) {
+      fs.writeFileSync(absolutePath, content);
+    } else {
+      fs.writeFileSync(absolutePath, content, 'utf-8');
+    }
   };
 }
 

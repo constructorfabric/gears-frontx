@@ -24,9 +24,10 @@ import type { ReadFileFn } from '../manifest/types';
 import type { ProjectStateDocument } from '../project-state/types';
 import { resolveToInventory } from '../resolver/resolve';
 import { parseLocalOrigin } from '../resolver/types';
-import type { FetchFn, ListFolderFilesFn, PathExistsFn } from '../resolver/types';
+import type { FetchFn, ReadFolderFileBinaryFn, ListFolderFilesFn, PathExistsFn } from '../resolver/types';
 import type { ErrorCode } from '../envelope';
 import type { ContributionEntry, StagedAssembly } from './types';
+import { getOwn } from '../own-record';
 
 // An explicit batch naming, for each registered template, the target or
 // targets to apply it to — the exact JSON shape
@@ -70,11 +71,12 @@ export interface UniformApplyDeps {
   // A local `path:` origin is resolved through the shared resolver
   // (`cpt-frontx-algo-template-resolution-resolve-to-inventory`), never
   // through the inventory — a local origin was never installed there at
-  // register time either. `readFileFn` and `existsFn`/`listFolderFilesFn`
+  // register time either. `readFolderFileBinaryFn` and `existsFn`/`listFolderFilesFn`
   // below are the resolver's own local-origin seams
   // (`resolver/types.ts`'s `LocalOriginDeps`), reused here under this
   // package's existing names rather than renamed.
   readFileFn: ReadFileFn;
+  readFolderFileBinaryFn: ReadFolderFileBinaryFn;
   // Validates a local `path:` origin's relative path stays inside the
   // project root — the SAME `CanonicalizeTargetFn` the pre-flight conflict
   // check canonicalizes batch TARGETS with (`conflict-check.ts`), reused
@@ -189,7 +191,7 @@ async function resolveRegisteredTemplate(
           canonicalizeFn: deps.canonicalizeFn,
           existsFn: deps.existsFn,
           listFolderFilesFn: deps.listFolderFilesFn,
-          readFolderFileFn: deps.readFileFn,
+          readFolderFileBinaryFn: deps.readFolderFileBinaryFn,
         },
       },
     );
@@ -306,7 +308,7 @@ export async function uniformApply(
   // @cpt-begin:cpt-frontx-algo-cli-scaffolding-uniform-apply:p1:inst-ua-foreach-name
   for (const [name, targets] of Object.entries(batch.templates)) {
     // @cpt-begin:cpt-frontx-algo-cli-scaffolding-uniform-apply:p1:inst-ua-if-not-registered
-    const registered = document.templates[name];
+    const registered = getOwn(document.templates, name);
     if (registered === undefined) {
       // @cpt-begin:cpt-frontx-algo-cli-scaffolding-uniform-apply:p1:inst-ua-return-not-registered
       return {

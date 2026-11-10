@@ -36,6 +36,7 @@
 // resolves unambiguously to the same identity `list`/`register` would report
 // for it once installed.
 import { OFFICIAL_DEFAULT_TEMPLATES } from '../generated/official-defaults';
+import { getOwn } from '../own-record';
 
 export { OFFICIAL_DEFAULT_TEMPLATES };
 
@@ -47,5 +48,5 @@ export { OFFICIAL_DEFAULT_TEMPLATES };
  * default" and refuses with `TEMPLATE_NOT_REGISTERED`.
  */
 export function officialDefaultOrigin(name: string): string | undefined {
-  return OFFICIAL_DEFAULT_TEMPLATES[name];
+  return getOwn(OFFICIAL_DEFAULT_TEMPLATES, name);
 }

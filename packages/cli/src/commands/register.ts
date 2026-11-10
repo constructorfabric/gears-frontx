@@ -10,16 +10,16 @@
 // A remote origin's pin is supposed to be the exact immutable commit SHA the
 // fetch settled on (`inst-cpreg-install`). The shared resolver
 // (`resolver/resolve.ts`'s `inst-resolve-pin`) now settles that pin from the
-// GitHub tarball's own top-level `<owner>-<repo>-<sha>/` directory segment
+// full 40-hex commit the GitHub archive's global PAX header states
 // (`adapters/github-fetch.ts`) and records it as `source` before this
 // command ever sees the result, so `TemplateInventory.install`/`lookup`'s
 // `source` this command writes as `origin` below already carries the
 // immutable SHA end to end for a GitHub origin — this command performs no
 // pinning of its own; it simply passes through what the resolver settled.
-// The residual, honestly-unpinned case is a fetch adapter that reports no
-// pin at all (a non-GitHub host with no adapter support, or a candidate that
-// failed the resolver's own hex-SHA validation): `origin` there is still the
-// typed, possibly-moving reference.
+// The GitHub adapter refuses an archive that states no commit. The residual,
+// honestly-unpinned case is an injected fetch adapter that reports no pin (the
+// test-only local-source hook, or a library caller's own): `origin` there is
+// still the typed, possibly-moving reference.
 //
 // A `path:<relative-path>` origin is resolved through the SAME shared
 // resolver a remote origin goes through
@@ -31,14 +31,17 @@
 // external to pin against.
 import { readManifestFromContent } from '../manifest/validate-contract';
 import { readProjectState, mutateProjectState } from '../project-state/io';
+import { bundleOverlapMessage, overlappingBundleNames } from '../project-state/bundle-identity';
+import { exclusionGroundRoots, withRetainedGround } from '../project-state/retained-ground';
 import type { ReadProjectStateFn, WriteProjectStateFn, TemplateEntry } from '../project-state/types';
 import { resolveToInventory } from '../resolver/resolve';
 import { parseLocalOrigin } from '../resolver/types';
 import type { FetchFn, ListFolderFilesFn, PathExistsFn } from '../resolver/types';
-import type { ReadFileFn } from '../manifest/types';
+import type { ReadFolderFileBinaryFn } from '../resolver/types';
 import type { InventoryEntry, InventoryResult } from '../inventory/types';
 import type { CanonicalizeTargetFn } from '../scaffold/conflict-check';
 import type { ErrorCode } from '../envelope';
+import { getOwn } from '../own-record';
 
 // Narrow port over `TemplateInventory` — register needs only these two
 // methods, injected so a test double can exercise `INVALID_MANIFEST`
@@ -70,7 +73,7 @@ async function resolveOrigin(
   repoRoot: string,
   inventory: RegisterInventoryPort,
   fetchFn: FetchFn,
-  readFileFn: ReadFileFn,
+  readFolderFileBinaryFn: ReadFolderFileBinaryFn,
   canonicalizeFn: CanonicalizeTargetFn,
   existsFn: PathExistsFn,
   listFolderFilesFn: ListFolderFilesFn,
@@ -91,7 +94,7 @@ async function resolveOrigin(
           canonicalizeFn,
           existsFn,
           listFolderFilesFn,
-          readFolderFileFn: readFileFn,
+          readFolderFileBinaryFn,
         },
       },
     );
@@ -150,7 +153,7 @@ export async function registerTemplate(
   repoRoot: string,
   inventory: RegisterInventoryPort,
   fetchFn: FetchFn,
-  readFileFn: ReadFileFn,
+  readFolderFileBinaryFn: ReadFolderFileBinaryFn,
   canonicalizeFn: CanonicalizeTargetFn,
   readProjectStateFn: ReadProjectStateFn,
   writeProjectStateFn: WriteProjectStateFn,
@@ -184,7 +187,7 @@ export async function registerTemplate(
     repoRoot,
     inventory,
     fetchFn,
-    readFileFn,
+    readFolderFileBinaryFn,
     canonicalizeFn,
     existsFn,
     listFolderFilesFn,
@@ -254,13 +257,19 @@ export async function registerTemplate(
   const stateResult = await readProjectState(repoRoot, readProjectStateFn);
   // @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-read-state
   if (!stateResult.ok) {
-    return { ok: false, code: 'PROJECT_INVALID', message: stateResult.message };
+    return { ok: false, code: 'PROJECT_INVALID', message: stateResult.message, ...(stateResult.details ? { details: stateResult.details } : {}) };
   }
 
-  const existing = stateResult.document.templates[name];
+  const existing = getOwn(stateResult.document.templates, name);
 
   // @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-if-new
   if (existing === undefined) {
+    // @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-if-bundle-overlap
+    const overlap = bundleOverlapRefusal(stateResult.document.templates, name);
+    // @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-return-bundle-overlap
+    if (overlap !== undefined) return overlap;
+    // @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-return-bundle-overlap
+    // @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-if-bundle-overlap
     const entry: TemplateEntry = { origin: resolved.value.storedOrigin, version, targets: [], excludedSubtrees };
     // @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-write-new
     const written = await mutateProjectState(
@@ -270,7 +279,7 @@ export async function registerTemplate(
       writeProjectStateFn,
     );
     // @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-write-new
-    if (!written.ok) return { ok: false, code: 'PROJECT_INVALID', message: written.message };
+    if (!written.ok) return { ok: false, code: 'PROJECT_INVALID', message: written.message, ...(written.details ? { details: written.details } : {}) };
     // @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-return-created
     // @cpt-begin:cpt-frontx-state-composed-provenance-registration-lifecycle:p1:inst-rl-unreg-to-empty
     return { ok: true, outcome: 'created', name, entry };
@@ -295,7 +304,16 @@ export async function registerTemplate(
     // absent. Recording it here — from the SAME already-resolved manifest
     // read above, never a second parse — closes that loop.
     if (existing.excludedSubtrees === undefined) {
-      const repaired: TemplateEntry = { ...existing, excludedSubtrees };
+      // With applied targets the value is the CURRENT declaration, not what
+      // was in force when those files were written: mark it so no consumer
+      // reads it as history (`TemplateEntry.exclusionsBackfilled`).
+      const repaired: TemplateEntry =
+        existing.targets.length > 0
+          ? withRetainedGround(
+              { ...existing, excludedSubtrees, exclusionsBackfilled: true as const },
+              exclusionGroundRoots(existing.targets, excludedSubtrees),
+            )
+          : { ...existing, excludedSubtrees };
       // @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-write-noop-exclusions
       const writtenNoop = await mutateProjectState(
         repoRoot,
@@ -304,7 +322,7 @@ export async function registerTemplate(
         writeProjectStateFn,
       );
       // @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-write-noop-exclusions
-      if (!writtenNoop.ok) return { ok: false, code: 'PROJECT_INVALID', message: writtenNoop.message };
+      if (!writtenNoop.ok) return { ok: false, code: 'PROJECT_INVALID', message: writtenNoop.message, ...(writtenNoop.details ? { details: writtenNoop.details } : {}) };
       // @cpt-begin:cpt-frontx-state-composed-provenance-registration-lifecycle:p1:inst-rl-empty-to-empty
       // Reported as its own outcome, never as `noop`: the document was
       // written, and an envelope that says nothing happened after a write
@@ -356,7 +374,23 @@ export async function registerTemplate(
   // the whole point of `--replace`: it starts a new lineage for the name, so
   // any `previous: {origin, version}` pair the entry carried from an
   // earlier upgrade/restore must not survive it.
-  const replacedEntry: TemplateEntry = { origin: resolved.value.storedOrigin, version, targets: existing.targets, excludedSubtrees };
+  // Ground the entry relinquished (`relinquishedGround`) is about what lies on
+  // disk, not about origin lineage, so it is carried: replace is the route the
+  // CLI itself names once the last target is deleted, and dropping it would let
+  // a later nested template's delete remove the old file.
+  // @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-if-bundle-overlap-replace
+  const replaceOverlap = bundleOverlapRefusal(stateResult.document.templates, name);
+  // @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-return-bundle-overlap-replace
+  if (replaceOverlap !== undefined) return replaceOverlap;
+  // @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-return-bundle-overlap-replace
+  // @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-if-bundle-overlap-replace
+  const replacedEntry: TemplateEntry = {
+    origin: resolved.value.storedOrigin,
+    version,
+    targets: existing.targets,
+    excludedSubtrees,
+    ...(existing.relinquishedGround !== undefined ? { relinquishedGround: existing.relinquishedGround } : {}),
+  };
   // @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-write-replace
   const writtenReplace = await mutateProjectState(
     repoRoot,
@@ -365,7 +399,7 @@ export async function registerTemplate(
     writeProjectStateFn,
   );
   // @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-write-replace
-  if (!writtenReplace.ok) return { ok: false, code: 'PROJECT_INVALID', message: writtenReplace.message };
+  if (!writtenReplace.ok) return { ok: false, code: 'PROJECT_INVALID', message: writtenReplace.message, ...(writtenReplace.details ? { details: writtenReplace.details } : {}) };
   // @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-return-replaced
   // @cpt-begin:cpt-frontx-state-composed-provenance-registration-lifecycle:p1:inst-rl-empty-to-empty
   return { ok: true, outcome: 'replaced', name, entry: replacedEntry };
@@ -373,6 +407,25 @@ export async function registerTemplate(
   // @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-return-replaced
   // @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-else-replace-ok
   // @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-else-exists
+}
+
+// A registration whose AI-bundle directory (`.frontx/ai/<name>/`) equals,
+// contains, or is contained by another registered name's is refused before
+// anything is written: the bundle step clears and removes that directory
+// recursively and by name, so one template's refresh or delete would take the
+// other's materialized bundle with it (`project-state/bundle-identity.ts`).
+function bundleOverlapRefusal(
+  templates: Readonly<Record<string, TemplateEntry>>,
+  name: string,
+): { ok: false; code: ErrorCode; message: string; details: Record<string, unknown> } | undefined {
+  const overlapping = overlappingBundleNames(templates, name);
+  if (overlapping.length === 0) return undefined;
+  return {
+    ok: false,
+    code: 'REGISTRATION_CONFLICT',
+    message: bundleOverlapMessage(name, overlapping, `Template "${name}" was not registered`),
+    details: { name, overlapping },
+  };
 }
 
 type ManifestFieldsOutcome =
@@ -466,7 +519,7 @@ export async function probeRegistration(
   repoRoot: string,
   inventory: RegisterInventoryPort,
   fetchFn: FetchFn,
-  readFileFn: ReadFileFn,
+  readFolderFileBinaryFn: ReadFolderFileBinaryFn,
   canonicalizeFn: CanonicalizeTargetFn,
   existsFn: PathExistsFn,
   listFolderFilesFn: ListFolderFilesFn,
@@ -479,7 +532,7 @@ export async function probeRegistration(
     repoRoot,
     inventory,
     fetchFn,
-    readFileFn,
+    readFolderFileBinaryFn,
     canonicalizeFn,
     existsFn,
     listFolderFilesFn,

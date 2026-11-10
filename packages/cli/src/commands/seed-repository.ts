@@ -12,14 +12,16 @@
 // IDENTICAL mechanism `apply` uses (`./apply.ts`'s `runApplyPipeline`) —
 // never a second, independently duplicated materialize/reconcile/record
 // sequence.
+import { classifyAiDestination } from './apply-ai-review';
 import path from 'node:path';
 import { registerTemplate, probeRegistration } from './register';
 import { officialDefaultOrigin } from './official-defaults';
-import { runApplyPipeline, rollbackWrittenPaths, describeWrittenPaths, describeBundleRollback } from './apply';
+import type { TargetConflictEntry } from '../scaffold/conflict-check';
+import { runApplyPipeline, rollbackWrittenPaths, describeWrittenPaths, describeBundleRollback, describeUnremoved, targetConflictMessage } from './apply';
 import type { ApplyBatchOutcome, ApplyBatchTargetRef, ApplyPipelineDeps, RemoveEmptyDirFn } from './apply';
 import type { UniformApplyBatch } from '../scaffold/assembler';
 import { projectStatePath } from '../project-state/io';
-import type { ProjectStateDocument } from '../project-state/types';
+import type { ProjectStateDocument, ReadProjectStateFn } from '../project-state/types';
 import type { ErrorCode } from '../envelope';
 
 // `RemoveEmptyDirFn` is declared in `./apply.ts`, not here: `apply`'s own
@@ -58,6 +60,28 @@ function initialProjectStateDocument(): ProjectStateDocument {
   return { formatVersion: 1, templates: {}, projectOwnedRoots: [] };
 }
 
+/** Step 3's refusal of an already-seeded `dir`; `seed` runs it ahead of the AI replacement review too. */
+export async function alreadySeededRefusal(
+  dir: string,
+  readProjectStateFn: ReadProjectStateFn,
+): Promise<Extract<SeedRepositoryOutcome, { ok: false }> | undefined> {
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-already-seeded
+  const existingRaw = await readProjectStateFn(projectStatePath(dir));
+  if (existingRaw !== null) {
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-return-already-seeded
+    return {
+      ok: false,
+      code: 'INVALID_INPUT',
+      message: `"${dir}" already carries a project state document; a project once seeded is extended through ` +
+        '"apply", never re-seeded.',
+      details: { dir },
+    };
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-return-already-seeded
+  }
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-already-seeded
+  return undefined;
+}
+
 // @cpt-dod:cpt-frontx-dod-cli-scaffolding-uniform-apply:p1
 // @cpt-dod:cpt-frontx-dod-cli-scaffolding-ai-bundle:p1
 /**
@@ -72,25 +96,30 @@ export async function seedRepository(
   adoptExisting: boolean,
   deps: SeedRepositoryDeps,
 ): Promise<SeedRepositoryOutcome> {
+  const unremoved: string[] = [];
+  const outcome = await seedRepositorySteps(dir, batch, adoptExisting, deps, unremoved);
+  if (outcome.ok || unremoved.length === 0) return outcome;
+  return {
+    ...outcome,
+    message: outcome.message + describeUnremoved(unremoved),
+    details: { ...outcome.details, unremovedPaths: unremoved },
+  };
+}
+
+async function seedRepositorySteps(
+  dir: string,
+  batch: UniformApplyBatch,
+  adoptExisting: boolean,
+  deps: SeedRepositoryDeps,
+  unremoved: string[],
+): Promise<SeedRepositoryOutcome> {
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-invoke
   // `dir`/`batch` are accepted as this function's own parameters, naming in
   // the batch the official default templates to apply.
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-invoke
 
-  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-already-seeded
-  const existingRaw = await deps.readProjectStateFn(projectStatePath(dir));
-  if (existingRaw !== null) {
-    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-return-already-seeded
-    return {
-      ok: false,
-      code: 'INVALID_INPUT',
-      message: `"${dir}" already carries a project state document; a project once seeded is extended through ` +
-        '"apply", never re-seeded.',
-      details: { dir },
-    };
-    // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-return-already-seeded
-  }
-  // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-already-seeded
+  const seeded = await alreadySeededRefusal(dir, deps.readProjectStateFn);
+  if (seeded !== undefined) return seeded;
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-preflight-defaults
   // Resolve and validate every batch entry named against the CLI's official
@@ -103,6 +132,23 @@ export async function seedRepository(
   // failure here leaves no state to undo, which is why this runs first
   // rather than as a rollback after `inst-seed-create-project-state`/
   // `inst-seed-register-default` below have already run.
+  // Defence in depth for callers that skip the CLI's reviewed decision
+  // (`cli.ts decideAiReplacements`): an existing or blocked `.frontx/ai/<name>`
+  // without an approved replacement fails closed before any probe or write.
+  for (const name of Object.keys(batch.templates)) {
+    if (deps.aiReplacements?.has(name)) continue;
+    if (classifyAiDestination(dir, name) !== 'absent') {
+      return {
+        ok: false,
+        code: 'CONTENT_CONFLICT',
+        message:
+          `Seed aborted — .frontx/ai/${name} already exists (or is blocked) in "${dir}" and no reviewed replacement was ` +
+          'approved; nothing written.',
+        details: { name, aiBundle: `.frontx/ai/${name}` },
+      };
+    }
+  }
+
   for (const name of Object.keys(batch.templates)) {
     const origin = officialDefaultOrigin(name);
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-preflight-fail
@@ -126,7 +172,7 @@ export async function seedRepository(
       dir,
       deps.inventory,
       deps.fetchFn,
-      deps.readFileFn,
+      deps.readFolderFileBinaryFn,
       deps.canonicalizeFn,
       deps.existsFn,
       deps.listFolderFilesFn,
@@ -227,10 +273,15 @@ export async function seedRepository(
       new Set(),
       deps.removeBundleFn,
       new Set(bundledNames),
+      unremoved,
     );
-    await deps.removeProjectFileFn(projectStatePath(dir));
+    try {
+      await deps.removeProjectFileFn(projectStatePath(dir));
+    } catch {
+      unremoved.push(path.relative(dir, projectStatePath(dir)));
+    }
     if (!frontxDirPreexisted) {
-      await deps.removeEmptyDirFn(frontxDir);
+      await deps.removeEmptyDirFn(frontxDir).catch(() => undefined);
     }
   }
 
@@ -269,7 +320,13 @@ export async function seedRepository(
   // rather than load-bearing: every `ApplyBatchOutcome` failure that ever
   // carries a non-empty `details.writtenPaths`/`details.bundledNames`
   // composes its message through this exact function.
-  function stripWrittenPathsClause(message: string, writtenPaths: readonly string[], bundledNames: readonly string[]): string {
+  function stripWrittenPathsClause(message: string, writtenPaths: readonly string[], bundledNames: readonly string[], applyUnremoved: readonly string[]): string {
+    // Apply's own "could not remove" clause comes last; seed re-attempts those
+    // removals and reports what is still left itself.
+    const unremovedClause = applyUnremoved.length > 0 ? describeUnremoved(applyUnremoved) : '';
+    if (unremovedClause.length > 0 && message.endsWith(unremovedClause)) {
+      message = message.slice(0, message.length - unremovedClause.length);
+    }
     const bundledNamesSet = new Set(bundledNames);
     const removedBundleClause = describeBundleRollback(bundledNamesSet, true);
     const remainingBundleClause = describeBundleRollback(bundledNamesSet, false);
@@ -322,7 +379,7 @@ export async function seedRepository(
       dir,
       deps.inventory,
       deps.fetchFn,
-      deps.readFileFn,
+      deps.readFolderFileBinaryFn,
       deps.canonicalizeFn,
       deps.readProjectStateFn,
       deps.writeProjectStateFn,
@@ -402,6 +459,13 @@ export async function seedRepository(
     const bundledNames = extractBundledNames(applyResult.details);
     await rollbackSeedWrites(writtenPaths, bundledNames);
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
+    if (applyResult.code === 'TARGET_CONFLICT' && Array.isArray(applyResult.details?.conflicts)) {
+      // Same refusal, with seed's own next action (see `targetConflictMessage`).
+      return {
+        ...applyResult,
+        message: targetConflictMessage(applyResult.details.conflicts as TargetConflictEntry[], 'seed'),
+      };
+    }
     if (writtenPaths.length === 0 && bundledNames.length === 0) return applyResult;
     // `applyResult.message` narrates apply's own refusal AT THE MOMENT apply
     // returned it — for a refusal that names `writtenPaths`/`bundledNames`,
@@ -423,8 +487,13 @@ export async function seedRepository(
     // did around that reason. `details.writtenPaths`/`details.bundledNames`
     // are dropped entirely for the identical reason: nothing they name is
     // still true.
-    const { writtenPaths: _rolledBackFiles, bundledNames: _rolledBackBundles, ...remainingDetails } = applyResult.details ?? {};
-    const reason = stripWrittenPathsClause(applyResult.message, writtenPaths, bundledNames);
+    const { writtenPaths: _rolledBackFiles, bundledNames: _rolledBackBundles, unremovedPaths: applyUnremoved, ...remainingDetails } = applyResult.details ?? {};
+    const reason = stripWrittenPathsClause(
+      applyResult.message,
+      writtenPaths,
+      bundledNames,
+      Array.isArray(applyUnremoved) ? applyUnremoved.filter((entry): entry is string => typeof entry === 'string') : [],
+    );
     const removedParts = [
       writtenPaths.length > 0 ? `${writtenPaths.length} file(s)` : undefined,
       bundledNames.length > 0 ? `${bundledNames.length} AI-extension bundle(s)` : undefined,

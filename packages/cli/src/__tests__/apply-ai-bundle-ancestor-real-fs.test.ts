@@ -1,3 +1,4 @@
+import { createFsReadFolderFileBinaryFn } from '../adapters/fs-project-io';
 // @cpt-flow:cpt-frontx-flow-cli-scaffolding-add-template:p1
 // @cpt-algo:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1
 //
@@ -99,6 +100,7 @@ async function realDeps(repoRoot: string): Promise<ApplyPipelineDeps> {
   return {
     inventory: noInventory,
     fetchFn: vi.fn(async () => ''),
+    readFolderFileBinaryFn: createFsReadFolderFileBinaryFn(),
     readFileFn: createFsReadFileFn(),
     canonicalizeFn: createFsCanonicalizeTargetFn(repoRoot),
     existsFn: createFsPathExistsFn(),
@@ -133,7 +135,10 @@ async function setupTemplate(repoRoot: string): Promise<void> {
 }
 
 describe('apply — AI-extension bundle materialization over a blocked scope component (real filesystem)', () => {
-  it('reclaims a REGULAR FILE standing at the scope component and still materializes the bundle', async () => {
+  // plan-ai-recovery r9 §5/§246: a blocker at or above `.frontx/ai/<name>` cannot be
+  // represented in the reviewed snapshot, so it is never reclaimed unreviewed — the
+  // apply is refused before any write and the blocker's bytes survive.
+  it('refuses, before any write, a REGULAR FILE standing at the scope component, keeping its bytes', async () => {
     root = await mkdtemp(path.join(tmpdir(), 'frontx-aib-ancestor-file-'));
     await setupTemplate(root);
     await mkdir(path.join(root, 'app'), { recursive: true });
@@ -143,14 +148,12 @@ describe('apply — AI-extension bundle materialization over a blocked scope com
     const deps = await realDeps(root);
     const result = await runApplyPipeline({ templates: { '@x/a': ['app'] } }, root, false, deps);
 
-    expect(result.ok).toBe(true);
-    const bundled = await readFile(path.join(root, '.frontx', 'ai', '@x', 'a', 'SKILL.md'), 'utf-8');
-    expect(bundled).toBe('bundle content for @x/a');
-    const scopeStat = await lstat(path.join(root, '.frontx', 'ai', '@x'));
-    expect(scopeStat.isDirectory()).toBe(true);
+    expect(result).toMatchObject({ ok: false, code: 'CONTENT_CONFLICT' });
+    expect(await readFile(path.join(root, '.frontx', 'ai', '@x'), 'utf-8')).toBe('a stray file, not a directory');
+    expect(await readdir(path.join(root, 'app'))).toEqual([]);
   });
 
-  it.skipIf(!fifosAvailable())('reclaims a FIFO standing at the scope component and still materializes the bundle', async () => {
+  it.skipIf(!fifosAvailable())('refuses, before any write, a FIFO standing at the scope component', async () => {
     root = await mkdtemp(path.join(tmpdir(), 'frontx-aib-ancestor-fifo-'));
     await setupTemplate(root);
     await mkdir(path.join(root, 'app'), { recursive: true });
@@ -160,11 +163,9 @@ describe('apply — AI-extension bundle materialization over a blocked scope com
     const deps = await realDeps(root);
     const result = await runApplyPipeline({ templates: { '@x/a': ['app'] } }, root, false, deps);
 
-    expect(result.ok).toBe(true);
-    const bundled = await readFile(path.join(root, '.frontx', 'ai', '@x', 'a', 'SKILL.md'), 'utf-8');
-    expect(bundled).toBe('bundle content for @x/a');
+    expect(result).toMatchObject({ ok: false, code: 'CONTENT_CONFLICT' });
     const scopeStat = await lstat(path.join(root, '.frontx', 'ai', '@x'));
-    expect(scopeStat.isDirectory()).toBe(true);
+    expect(scopeStat.isFIFO()).toBe(true);
   });
 
   it('control: a DIRECTORY at the scope component holding another name\'s bundle is kept intact, and the new bundle lands beside it', async () => {
@@ -229,7 +230,7 @@ describe('apply — AI-extension bundle materialization over a blocked scope com
     const result = await runApplyPipeline({ templates: { '@x/a': ['app'] } }, root, false, deps);
 
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.code).toBe('INVALID_PATH');
+    if (!result.ok) expect(result.code).toBe('CONTENT_CONFLICT');
     // The link survives, and so does everything it aliases.
     const scopeStat = await lstat(path.join(root, '.frontx', 'ai', '@x'));
     expect(scopeStat.isSymbolicLink()).toBe(true);
@@ -242,7 +243,7 @@ describe('apply — AI-extension bundle materialization over a blocked scope com
   // that resolves back INSIDE the CLI-owned namespace is ordinary ground and
   // is traversed, exactly as a link inside the project root is for
   // `.frontx/project.json`.
-  it('traverses a scope component that aliases another location INSIDE the CLI-owned .frontx/ai/ namespace', async () => {
+  it('refuses a scope component that is a link, even one aliasing a location INSIDE .frontx/ai/ (no unreviewed write through a link)', async () => {
     root = await mkdtemp(path.join(tmpdir(), 'frontx-aib-ancestor-symlink-in-ns-'));
     await setupTemplate(root);
     await mkdir(path.join(root, 'app'), { recursive: true });
@@ -253,10 +254,10 @@ describe('apply — AI-extension bundle materialization over a blocked scope com
     const deps = await realDeps(root);
     const result = await runApplyPipeline({ templates: { '@x/a': ['app'] } }, root, false, deps);
 
-    expect(result.ok).toBe(true);
+    expect(result).toMatchObject({ ok: false, code: 'CONTENT_CONFLICT' });
     const scopeStat = await lstat(path.join(root, '.frontx', 'ai', '@x'));
     expect(scopeStat.isSymbolicLink()).toBe(true);
-    expect(await readFile(path.join(realScope, 'a', 'SKILL.md'), 'utf-8')).toBe('bundle content for @x/a');
+    expect(await readdir(realScope)).toEqual([]);
   });
 
   // DEFECT 2 (containment, unchanged): a symlinked ancestor resolving
@@ -276,7 +277,7 @@ describe('apply — AI-extension bundle materialization over a blocked scope com
       const result = await runApplyPipeline({ templates: { '@x/a': ['app'] } }, root, false, deps);
 
       expect(result.ok).toBe(false);
-      if (!result.ok) expect(result.code).toBe('INVALID_PATH');
+      if (!result.ok) expect(result.code).toBe('CONTENT_CONFLICT');
       const outsideEntries = await readdir(outsideDir);
       expect(outsideEntries).toEqual([]); // nothing written through the escaping link
     } finally {
@@ -288,7 +289,7 @@ describe('apply — AI-extension bundle materialization over a blocked scope com
   // it) standing as a symlink into the project was already reclaimed
   // correctly before this fix (`clearBundleDestination`) — proven here so it
   // cannot regress alongside the new ancestor-reclaim behaviour above.
-  it('pin: a symlink standing exactly at the bundle destination is reclaimed, and the file it pointed at survives', async () => {
+  it('pin: a symlink standing exactly at the bundle destination is refused, not reclaimed, and the file it pointed at survives', async () => {
     root = await mkdtemp(path.join(tmpdir(), 'frontx-aib-destination-symlink-'));
     await setupTemplate(root);
     await mkdir(path.join(root, 'app'), { recursive: true });
@@ -299,12 +300,9 @@ describe('apply — AI-extension bundle materialization over a blocked scope com
     const deps = await realDeps(root);
     const result = await runApplyPipeline({ templates: { '@x/a': ['app'] } }, root, false, deps);
 
-    expect(result.ok).toBe(true);
+    expect(result).toMatchObject({ ok: false, code: 'CONTENT_CONFLICT' });
     const destStat = await lstat(path.join(root, '.frontx', 'ai', '@x', 'a'));
-    expect(destStat.isSymbolicLink()).toBe(false);
-    expect(destStat.isDirectory()).toBe(true);
-    const bundled = await readFile(path.join(root, '.frontx', 'ai', '@x', 'a', 'SKILL.md'), 'utf-8');
-    expect(bundled).toBe('bundle content for @x/a');
+    expect(destStat.isSymbolicLink()).toBe(true);
     const survived = await readFile(path.join(root, 'elsewhere-target.txt'), 'utf-8');
     expect(survived).toBe('PRECIOUS — must survive');
   });

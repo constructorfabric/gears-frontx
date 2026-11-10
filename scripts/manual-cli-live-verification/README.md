@@ -106,10 +106,16 @@ hygiene, not a CLI defect — but know which it is before reporting it.
 
 ```bash
 node "$CLI" upgrade "<registered-name>" path:template-v2 --json > /tmp/plan.json
-node "$CLI" upgrade "<registered-name>" path:template-v2 --json --yes
+# review plan.json, then take its digest (details.planDigest), e.g. with jq:
+PLAN_DIGEST=$(jq -r '.error.details.planDigest' /tmp/plan.json)
+node "$CLI" upgrade "<registered-name>" path:template-v2 --json --yes --plan-digest="$PLAN_DIGEST"
 ```
 
-The first call must return `CONFIRMATION_REQUIRED` and write nothing. Check the plan carries exactly
+The first call must return `CONFIRMATION_REQUIRED` and write nothing. Passing `--plan-digest` is what
+binds the second call to the plan you reviewed: if the plan changed meanwhile you get a fresh
+`CONFIRMATION_REQUIRED` with a new plan and digest, not an apply; if nothing is left to change you get
+`CONFIRMATION_REQUIRED` with `details.reviewSuperseded` and no plan or digest. Omitting it is accepted by the CLI but
+then applies whatever the recomputed plan is. Check the plan carries exactly
 the four operation kinds you staged, that `from` shows the **pinned** origin (this is where pinning
 proves it reaches the upgrade baseline), and that the plan contains no file **contents** — only paths
 and actions.
@@ -131,10 +137,18 @@ you delete anything.
 ## 8. Delete: refusal, plan, then execute
 
 ```bash
-node "$CLI" delete . --json            # must refuse: CONFIRMATION_REQUIRED, nothing touched
-node "$CLI" delete . --dry-run --json > /tmp/plan.json
-node "$CLI" delete . --json --yes
+node "$CLI" delete . --json > /tmp/review.json   # must refuse: CONFIRMATION_REQUIRED, nothing touched
+node "$CLI" delete . --dry-run --json > /tmp/plan.json   # preview only: issues no planDigest
+# after approving exactly the plan in review.json:
+PLAN_DIGEST=$(jq -r '.error.details.planDigest' /tmp/review.json)
+node "$CLI" delete . --json --yes --plan-digest="$PLAN_DIGEST"
 ```
+
+The confirming call needs the digest of the `CONFIRMATION_REQUIRED` review, not of the dry run (which
+issues none). `--yes` without `--plan-digest` must delete nothing and return the current plan. If the
+project changed since the review, the answer is a fresh `CONFIRMATION_REQUIRED` with
+`details.planChangedSinceReview: true`: nothing was deleted, review the new plan and confirm with its
+own digest.
 
 Count entries before and after the refusing call to confirm it wrote nothing. In the plan, check
 `toPreserve` holds the reserved environment entries and the excluded subtrees, and that nothing

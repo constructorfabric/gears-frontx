@@ -55,6 +55,7 @@ function makeDeps(overrides: Partial<UniformApplyDeps> = {}): UniformApplyDeps {
     repoRoot: '/repo',
     inventory,
     fetchFn: vi.fn(async () => ''),
+    readFolderFileBinaryFn: async (p) => Buffer.from(await overrides.readFileFn!(p)),
     readFileFn: vi.fn(async () => {
       throw new Error('readFileFn not stubbed for this test');
     }),

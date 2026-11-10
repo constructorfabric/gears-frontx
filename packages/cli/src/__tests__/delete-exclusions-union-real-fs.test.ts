@@ -151,10 +151,27 @@ describe('delete-plan\'s union of RECORDED and CURRENT excludedSubtrees (real fi
 
     // `--yes` actually deletes: the developer's file, protected by the union,
     // survives.
+    const reviewed = await deleteTarget(
+      '.',
+      root,
+      { jsonMode: true, dryRun: false, yes: false },
+      noInventory,
+      deps.canonicalizeFn,
+      deps.listTargetFilesFn,
+      deps.listUnenumerableTargetEntriesFn,
+      deps.readFileFn,
+      deps.removeFileFn,
+      deps.assertPathWithinRootFn,
+      deps.readProjectStateFn,
+      deps.writeProjectStateFn,
+      neverConfirm,
+    );
+    expect(reviewed).toMatchObject({ ok: false, code: 'CONFIRMATION_REQUIRED' });
+    const planDigest = String(!reviewed.ok ? reviewed.details?.planDigest : undefined);
     const deleted = await deleteTarget(
       '.',
       root,
-      { jsonMode: true, dryRun: false, yes: true },
+      { jsonMode: true, dryRun: false, yes: true, expectedPlanDigest: planDigest },
       noInventory,
       deps.canonicalizeFn,
       deps.listTargetFilesFn,

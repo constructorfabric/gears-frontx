@@ -41,17 +41,21 @@ export interface ReferencedTemplate {
 // rather than imported so this temporary module has no dependency on the
 // current-shape read path - it reads raw manifest content on its own terms,
 // exactly as a legacy reader would have before the cutover.
-function unwrapBundleEnvelope(content: string): string {
+function unwrapBundleEnvelope(content: string): string | null {
   const files = readBundleFiles(content);
-  if (files === undefined) return content;
+  if (files === null) return null; // marker present but map invalid
+  if (files === undefined) return content; // marker absent → bare manifest (only legitimate fallback)
+  // Marker present and valid map: must find a valid manifest entry.
   const manifestText = files[MANIFEST_FILENAME];
-  return typeof manifestText === 'string' ? manifestText : content;
+  return typeof manifestText === 'string' ? manifestText : null;
 }
 
 function parseLegacyContent(content: string): Record<string, unknown> | undefined {
+  const unwrapped = unwrapBundleEnvelope(content);
+  if (unwrapped === null) return undefined; // marker present but invalid
   let parsed: unknown;
   try {
-    parsed = JSON.parse(unwrapBundleEnvelope(content));
+    parsed = JSON.parse(unwrapped);
   } catch {
     return undefined;
   }

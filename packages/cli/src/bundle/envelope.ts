@@ -1,6 +1,37 @@
 import { unsafeRelativePathReason } from '../paths/relative-path';
 import { foldForIdentity } from '../paths/volume-case';
 
+// Binary-safe bundle value: a base64-encoded file payload. All newly acquired
+// files (remote fetch, local store read) are encoded as this shape; plain
+// string entries are accepted on read for backward compatibility only.
+export interface BinaryBundleValue {
+  encoding: 'base64';
+  data: string; // canonical base64 (re-encode round-trip must match)
+}
+
+export function isBinaryBundleValue(v: unknown): v is BinaryBundleValue {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    !Array.isArray(v) &&
+    // Exact field set: exactly {encoding, data} — no extra fields permitted.
+    Object.keys(v as object).length === 2 &&
+    (v as Record<string, unknown>).encoding === 'base64' &&
+    typeof (v as Record<string, unknown>).data === 'string'
+  );
+}
+
+export function encodeBundleValue(buf: Buffer): BinaryBundleValue {
+  return { encoding: 'base64', data: buf.toString('base64') };
+}
+
+// Returns null for non-canonical base64 (round-trip validation required by r4 §1).
+// Empty file (data === '') is valid.
+export function decodeBundleValue(v: BinaryBundleValue): Buffer | null {
+  const decoded = Buffer.from(v.data, 'base64');
+  return decoded.toString('base64') === v.data ? decoded : null;
+}
+
 // The multi-file bundle envelope every fetch adapter returns and every core
 // reader consumes: `{ "$frontxTemplateFiles": { <relative path>: <file text> } }`.
 //
@@ -106,11 +137,19 @@ export function findInvalidBundleKey(keys: readonly string[]): InvalidBundleKey 
   return undefined;
 }
 
-// The file map inside the envelope, or `undefined` when `content` is not an
-// envelope at all — the resolver seam also admits a bare manifest string, and
-// callers must be able to tell the two apart rather than treat a missing map
-// as an empty one.
-export function readBundleFiles(content: string): Record<string, unknown> | undefined {
+// Three-state file map reader:
+//   undefined — BUNDLE_MARKER is absent as an own property (bare manifest or
+//               non-JSON — the resolver seam also admits bare strings, and
+//               callers must distinguish "no marker" from "invalid marker")
+//   null      — BUNDLE_MARKER is present as an own property but its value is
+//               not a plain object map (null, array, number, string, …); the
+//               envelope is recognised as an attempt but structurally invalid
+//   Record    — BUNDLE_MARKER is present and its value is a plain object map
+//               (possibly empty — consumers decide whether empty is valid)
+//
+// Using Object.hasOwn for the own-property check prevents prototype-injected
+// marker keys from being mistaken for a real envelope.
+export function readBundleFiles(content: string): Record<string, unknown> | null | undefined {
   let parsed: unknown;
   try {
     parsed = JSON.parse(content);
@@ -119,9 +158,12 @@ export function readBundleFiles(content: string): Record<string, unknown> | unde
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return undefined;
 
-  const filesValue = (parsed as Record<string, unknown>)[BUNDLE_MARKER];
+  const obj = parsed as Record<string, unknown>;
+  if (!Object.prototype.hasOwnProperty.call(obj, BUNDLE_MARKER)) return undefined;
+
+  const filesValue = obj[BUNDLE_MARKER];
   if (typeof filesValue !== 'object' || filesValue === null || Array.isArray(filesValue)) {
-    return undefined;
+    return null; // marker present but its value is not a plain object map
   }
   return filesValue as Record<string, unknown>;
 }

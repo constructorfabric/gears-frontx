@@ -10,6 +10,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import { joinWithinRoot } from '@gears-frontx/test-support/path-guard';
 import { createLocalFetchFn } from '../local-fetch';
+import { isBinaryBundleValue, decodeBundleValue, readBundleFiles } from '../../bundle/envelope';
 
 function makeTmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -26,7 +27,7 @@ describe('createLocalFetchFn — TEST-ONLY local content adapter', () => {
     fs.rmSync(localDir, { recursive: true, force: true });
   });
 
-  it('walks a local directory and returns the $frontxTemplateFiles bundle envelope, ignoring the url argument', async () => {
+  it('walks a local directory and returns the $frontxTemplateFiles bundle envelope with BinaryBundleValue entries, ignoring the url argument', async () => {
     fs.writeFileSync(joinWithinRoot(localDir, 'frontx-template.json'), '{"name":"fixture","version":"1.0.0"}');
     fs.mkdirSync(joinWithinRoot(localDir, 'src'));
     fs.writeFileSync(joinWithinRoot(localDir, 'src', 'index.ts'), 'export {};');
@@ -34,12 +35,31 @@ describe('createLocalFetchFn — TEST-ONLY local content adapter', () => {
     const fetchFn = createLocalFetchFn(localDir);
     const content = await fetchFn('https://this-url-is-ignored.example/anything');
 
-    expect(JSON.parse(content)).toEqual({
-      $frontxTemplateFiles: {
-        'frontx-template.json': '{"name":"fixture","version":"1.0.0"}',
-        [path.join('src', 'index.ts')]: 'export {};',
-      },
-    });
+    const files = readBundleFiles(content);
+    expect(files).toBeDefined();
+    const keys = Object.keys(files!).sort();
+    expect(keys).toEqual(['frontx-template.json', path.join('src', 'index.ts')].sort());
+    for (const v of Object.values(files!)) {
+      expect(isBinaryBundleValue(v)).toBe(true);
+    }
+    expect(decodeBundleValue(files!['frontx-template.json'] as never)?.toString('utf-8')).toBe('{"name":"fixture","version":"1.0.0"}');
+    expect(decodeBundleValue(files![path.join('src', 'index.ts')] as never)?.toString('utf-8')).toBe('export {};');
+  });
+
+  it('preserves exact bytes for a file containing invalid UTF-8 sequences', async () => {
+    const binaryBytes = Buffer.from([0xff, 0xfe, 0x00, 0x01, 0x80, 0x81]);
+    fs.writeFileSync(joinWithinRoot(localDir, 'binary.bin'), binaryBytes);
+    fs.writeFileSync(joinWithinRoot(localDir, 'frontx-template.json'), '{"name":"bin-fixture","version":"1.0.0"}');
+
+    const fetchFn = createLocalFetchFn(localDir);
+    const content = await fetchFn('unused://url');
+    const files = readBundleFiles(content);
+    expect(files).toBeDefined();
+    const v = files!['binary.bin'];
+    expect(isBinaryBundleValue(v)).toBe(true);
+    const decoded = decodeBundleValue(v as never);
+    expect(decoded).not.toBeNull();
+    expect(decoded!.equals(binaryBytes)).toBe(true);
   });
 
   it('skips node_modules/dist/dist-lib and other build/dependency artifact directories', async () => {

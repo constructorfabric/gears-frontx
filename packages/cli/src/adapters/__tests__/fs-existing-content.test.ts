@@ -119,7 +119,8 @@ describe('createFsReadExistingContentFn (symlinks)', () => {
     const items = await readExistingContent('app');
 
     const ordinary = items.find((item) => item.path === 'app/ordinary.txt');
-    expect(ordinary?.content).toBe('ordinary');
+    const ordinaryContent = ordinary?.content;
+    expect(Buffer.isBuffer(ordinaryContent) ? ordinaryContent.toString('utf-8') : ordinaryContent).toBe('ordinary');
     expect(items.map((item) => item.path).sort()).toEqual(['app/aliased.txt', 'app/ordinary.txt']);
   });
 
@@ -180,7 +181,9 @@ describe('createFsReadExistingContentFn (symlinks)', () => {
     const items = await readExistingContent('app');
 
     expect(items).toContainEqual({ path: 'app/README.md', content: DIRECTORY_CONTENT_MARKER });
-    expect(items).toContainEqual({ path: 'app/README.md/inner.txt', content: 'nested' });
+    const inner = items.find((i) => i.path === 'app/README.md/inner.txt');
+    expect(inner).toBeDefined();
+    if (inner) expect(Buffer.isBuffer(inner.content) ? inner.content.toString('utf-8') : inner.content).toBe('nested');
   });
 
   it('reports an EMPTY directory too, at its own path, producing no other entry beneath it', async () => {
@@ -235,7 +238,9 @@ describe('createFsReadInstalledContentFn (symlinks — unchanged by the fix)', (
 
     const items = await readInstalledContent('.');
 
-    expect(items).toEqual([{ path: 'sub/a.txt', content: 'a' }]);
+    expect(items).toHaveLength(1);
+    expect(items[0].path).toBe('sub/a.txt');
+    expect(Buffer.isBuffer(items[0].content) ? items[0].content.toString('utf-8') : items[0].content).toBe('a');
   });
 });
 

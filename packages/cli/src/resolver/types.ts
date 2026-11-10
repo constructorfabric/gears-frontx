@@ -20,6 +20,9 @@ import type { StructuredRef } from '../spec-parser/types';
 export interface FetchResult {
   content: string;
   pinnedRef?: string;
+  // Root-relative paths of symlinks the archive carried but the adapter did
+  // not materialize. The resolver refuses any inside the scope it keeps.
+  symlinks?: string[];
 }
 
 export type FetchFn = (url: string) => Promise<string | FetchResult>;
@@ -97,6 +100,9 @@ export type ListFolderFilesFn = (absoluteDir: string) => Promise<string[]>;
 // reason.
 export type ReadFolderFileFn = (absolutePath: string) => Promise<string>;
 
+// Reads original bytes for every local file, including the manifest.
+export type ReadFolderFileBinaryFn = (absolutePath: string) => Promise<Buffer>;
+
 // A local origin's own dependencies. Present only when a caller resolves at
 // least one local origin through this module — `TemplateInventory`'s own
 // `install`/`update-local` calls never populate this, since a `StructuredRef`
@@ -106,7 +112,7 @@ export interface LocalOriginDeps {
   canonicalizeFn: ContainmentCheckFn;
   existsFn: PathExistsFn;
   listFolderFilesFn: ListFolderFilesFn;
-  readFolderFileFn: ReadFolderFileFn;
+  readFolderFileBinaryFn: ReadFolderFileBinaryFn;
 }
 
 export interface ResolveDeps {

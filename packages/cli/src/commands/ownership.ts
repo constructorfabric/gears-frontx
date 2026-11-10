@@ -14,9 +14,9 @@ import path from 'node:path';
 import { resolveRegisteredExcludedSubtrees } from '../scaffold/registered-manifest';
 import { readProjectState, mutateProjectState } from '../project-state/io';
 import type { ReadProjectStateFn, WriteProjectStateFn, TemplateEntry } from '../project-state/types';
-import { checkTargetConflicts } from '../scaffold/conflict-check';
+import { checkTargetConflicts, classifyConflict } from '../scaffold/conflict-check';
 import type { CanonicalizeTargetFn, TargetClaim, TargetConflictEntry } from '../scaffold/conflict-check';
-import { pathWithinTarget, joinUnderTarget } from '../paths/relative-path';
+import { canonicalizeForRecording, hasControlChar, joinUnderTarget, pathWithinTarget, recordingRefusalReason } from '../paths/relative-path';
 import { foldForIdentity } from '../paths/volume-case';
 import type { ReadTargetPathStateFn } from './add-template';
 import type { InventoryEntry } from '../inventory/types';
@@ -164,6 +164,16 @@ export async function ownershipAdd(
   // through, rather than adding a second one: its `'absent'` branch is
   // exactly the answer this check needs, and no other outcome
   // (`'directory'`/`'file'`) is treated differently here.
+  // A control character (NUL among them) makes the platform's stat throw past
+  // this result union; refused here, before the first filesystem question.
+  if (hasControlChar(rawPath)) {
+    return {
+      ok: false,
+      code: 'INVALID_PATH',
+      message: `Path "${rawPath}" contains a control character.`,
+      details: { path: rawPath },
+    };
+  }
   const absolutePath = path.resolve(repoRoot, rawPath);
   const targetState = await readTargetPathStateFn(absolutePath);
   if (targetState === 'absent') {
@@ -186,12 +196,16 @@ export async function ownershipAdd(
   // correctly conflicts with any existing target and correctly succeeds
   // when there is none — the FEATURE's own error scenarios name no third
   // refusal for the root, so none is added here.
-  const canonical = canonicalizeFn(rawPath);
+  const canonical = canonicalizeForRecording(rawPath, canonicalizeFn);
   if (canonical === null) {
+    const reason = recordingRefusalReason(rawPath, canonicalizeFn);
     return {
       ok: false,
       code: 'INVALID_PATH',
-      message: `Path "${rawPath}" could not be proven to stay inside the project root.`,
+      message:
+        reason === undefined
+          ? `Path "${rawPath}" could not be proven to stay inside the project root.`
+          : `Path "${rawPath}" cannot be recorded: it ${reason}.`,
       details: { path: rawPath },
     };
   }
@@ -200,7 +214,7 @@ export async function ownershipAdd(
   // @cpt-begin:cpt-frontx-algo-composed-provenance-ownership-add:p1:inst-cpoadd-read-targets
   const stateResult = await readProjectState(repoRoot, readProjectStateFn);
   if (!stateResult.ok) {
-    return { ok: false, code: 'PROJECT_INVALID', message: stateResult.message };
+    return { ok: false, code: 'PROJECT_INVALID', message: stateResult.message, ...(stateResult.details ? { details: stateResult.details } : {}) };
   }
   const recordedTargets = await buildRecordedTargets(
     stateResult.document.templates,
@@ -262,12 +276,27 @@ export async function ownershipAdd(
           ),
         ),
       ];
+      // A conflict naming no template is the checker's reserved-ground record
+      // (only the path under check is named), not an applied-target clash.
+      const reserved = realConflicts.filter((c) => classifyConflict(c) === 'reserved');
+      const parts: string[] = [];
+      if (realConflicts.some((c) => classifyConflict(c) !== 'reserved')) {
+        parts.push(
+          `Path "${rawPath}" coincides with, or is an ancestor of, an applied target (${contestingTemplates.join(', ')}). ` +
+            'Choose an existing path that neither equals nor contains any applied target; a path strictly inside ' +
+            'one target is accepted only if it also avoids the other targets.',
+        );
+      }
+      if (reserved.length > 0) {
+        parts.push(
+          `Path "${rawPath}" is or lies inside reserved ground (${reserved.map((c) => c.ground).join(', ')}), ` +
+            'which no template or project-owned root may claim. Choose an existing project path outside it.',
+        );
+      }
       return {
         ok: false,
         code: 'TARGET_CONFLICT',
-        message:
-          `Path "${rawPath}" coincides with, or is an ancestor of, an applied ` +
-          `target (${contestingTemplates.join(', ') || 'unknown'}).`,
+        message: `${parts.join(' ')} Nothing was changed.`,
         details: { path: rawPath, conflicts: realConflicts },
       };
     }
@@ -299,7 +328,7 @@ export async function ownershipAdd(
     writeProjectStateFn,
   );
   // @cpt-end:cpt-frontx-algo-composed-provenance-ownership-add:p1:inst-cpoadd-write
-  if (!written.ok) return { ok: false, code: 'PROJECT_INVALID', message: written.message };
+  if (!written.ok) return { ok: false, code: 'PROJECT_INVALID', message: written.message, ...(written.details ? { details: written.details } : {}) };
   // @cpt-begin:cpt-frontx-algo-composed-provenance-ownership-add:p1:inst-cpoadd-return-success
   // @cpt-begin:cpt-frontx-state-composed-provenance-ownership-root-lifecycle:p1:inst-orl-unmarked-to-marked
   return { ok: true, outcome: 'added', path: canonical, projectOwnedRoots: written.document.projectOwnedRoots };
@@ -335,6 +364,13 @@ export async function ownershipRemove(
   // string rather than refusing outright — `remove` has no error scenario
   // in the FEATURE spec at all, and a stale entry for ground that no longer
   // exists is exactly the case this fallback exists to still clear.
+  // An entry recorded VERBATIM as the typed spelling is removed first: a state
+  // the CLI did not write (a hand edit, or a symlink that appeared over a
+  // recorded root since) can hold `link/src`, which the canonical form `app/src`
+  // never matches — and the refusal of every engine tells the developer to run
+  // exactly `ownership remove link/src`. The preference is decided inside the
+  // mutation, on the document that mutation loads, never on a separate earlier
+  // read.
   const resolved = canonicalizeFn(rawPath);
   const removalTarget = resolved === null ? rawPath : resolved;
 
@@ -346,17 +382,17 @@ export async function ownershipRemove(
   // separate read step to perform first.
   const written = await mutateProjectState(
     repoRoot,
-    { kind: 'remove-owned-root', path: removalTarget },
+    { kind: 'remove-owned-root', path: removalTarget, verbatim: rawPath },
     readProjectStateFn,
     writeProjectStateFn,
   );
   // @cpt-end:cpt-frontx-algo-composed-provenance-ownership-remove:p1:inst-cporem-write
   // @cpt-end:cpt-frontx-algo-composed-provenance-ownership-remove:p1:inst-cporem-remove
   // @cpt-end:cpt-frontx-algo-composed-provenance-ownership-remove:p1:inst-cporem-read-state
-  if (!written.ok) return { ok: false, code: 'PROJECT_INVALID', message: written.message };
+  if (!written.ok) return { ok: false, code: 'PROJECT_INVALID', message: written.message, ...(written.details ? { details: written.details } : {}) };
   // @cpt-begin:cpt-frontx-algo-composed-provenance-ownership-remove:p1:inst-cporem-return-success
   // @cpt-begin:cpt-frontx-state-composed-provenance-ownership-root-lifecycle:p1:inst-orl-marked-to-unmarked
-  return { ok: true, path: removalTarget, projectOwnedRoots: written.document.projectOwnedRoots };
+  return { ok: true, path: written.removedPath ?? removalTarget, projectOwnedRoots: written.document.projectOwnedRoots };
   // @cpt-end:cpt-frontx-state-composed-provenance-ownership-root-lifecycle:p1:inst-orl-marked-to-unmarked
   // @cpt-end:cpt-frontx-algo-composed-provenance-ownership-remove:p1:inst-cporem-return-success
 }
@@ -380,7 +416,7 @@ export async function ownershipList(
   // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-list:p1:inst-olist-if-invalid
   if (!stateResult.ok) {
     // @cpt-begin:cpt-frontx-flow-composed-provenance-ownership-list:p1:inst-olist-return-invalid
-    return { ok: false, code: 'PROJECT_INVALID', message: stateResult.message };
+    return { ok: false, code: 'PROJECT_INVALID', message: stateResult.message, ...(stateResult.details ? { details: stateResult.details } : {}) };
     // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-list:p1:inst-olist-return-invalid
   }
   // @cpt-end:cpt-frontx-flow-composed-provenance-ownership-list:p1:inst-olist-if-invalid

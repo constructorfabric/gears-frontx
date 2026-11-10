@@ -255,50 +255,109 @@ describe('ownership add — both spellings of one path (real filesystem)', () =>
 });
 
 describe('a `path:` origin folder spelled differently than its own registration (real filesystem)', () => {
-  it('is excluded from a computed deletion plan under its actual on-disk spelling, never swept into toDelete', async () => {
-    root = await mkdtemp(path.join(tmpdir(), 'frontx-case-origin-folder-'));
-    const insensitive = isVolumeCaseInsensitive(root);
-    // The origin folder ("tpl") sits INSIDE its own target ("myapp") — the
-    // ordinary vendored-`path:` shape (`QUICK_START` §4).
+  // The origin folder ("tpl") sits INSIDE its own target ("myapp") — the
+  // ordinary vendored-`path:` shape (`QUICK_START` §4) — but the entry is
+  // registered as `path:myapp/TPL`, a different spelling of it. Whether that
+  // spelling names the SAME ground depends on the running volume, so the
+  // expectation is derived from the volume, and the planner's fail-closed
+  // `CONTENT_CONFLICT` (no origin manifest AND no recorded declaration) is
+  // asserted explicitly where the origin cannot be resolved, never assumed away.
+  async function buildFixture(prefix: string): Promise<void> {
+    root = await mkdtemp(path.join(tmpdir(), prefix));
     await mkdir(path.join(root, 'myapp', 'tpl'), { recursive: true });
+    await mkdir(path.join(root, 'myapp', 'keep'), { recursive: true });
     await writeFile(path.join(root, 'myapp', 'tpl', 'frontx-template.json'), JSON.stringify(manifest('@x/t4')), 'utf-8');
     await writeFile(path.join(root, 'myapp', 'tpl', 'payload.txt'), 'template source, never delete', 'utf-8');
+    await writeFile(path.join(root, 'myapp', 'keep', 'user.txt'), 'developer file, never delete', 'utf-8');
     await writeFile(path.join(root, 'myapp', 'app.txt'), 'applied payload', 'utf-8');
+  }
 
-    const document: ProjectStateDocument = {
-      formatVersion: 1,
-      // Registered as `path:myapp/TPL` — a different spelling of the
-      // actual `myapp/tpl` folder on disk.
-      templates: { '@x/t4': { origin: 'path:myapp/TPL', version: '1.0.0', targets: ['myapp'] } },
-      projectOwnedRoots: [],
-    };
-    await writeProjectState(root, document);
-    const canonicalizeFn = createFsCanonicalizeTargetFn(root);
+  async function exists(relative: string): Promise<boolean> {
+    return stat(path.join(root as string, relative)).then(
+      () => true,
+      () => false,
+    );
+  }
 
-    const plan = await computeDeletionPlan(
+  async function plan(document: ProjectStateDocument) {
+    const repoRoot = root as string;
+    await writeProjectState(repoRoot, document);
+    return computeDeletionPlan(
       'myapp',
-      root,
+      repoRoot,
       document,
       noInventory,
-      canonicalizeFn,
+      createFsCanonicalizeTargetFn(repoRoot),
       createFsListTargetFilesFn(),
       createFsReadFileFn(),
       createFsListUnenumerableTargetEntriesFn(),
     );
-    expect(plan.ok).toBe(true);
-    if (!plan.ok) return;
+  }
+
+  const protectedSourcePaths = ['myapp/tpl/frontx-template.json', 'myapp/tpl/payload.txt', 'myapp/keep/user.txt', 'myapp/app.txt'];
+
+  it('with no recorded declaration: resolves the origin on a case-insensitive volume, and refuses fail-closed as CONTENT_CONFLICT on a case-sensitive one', async () => {
+    await buildFixture('frontx-case-origin-folder-');
+    const insensitive = isVolumeCaseInsensitive(root as string);
+    const result = await plan({
+      formatVersion: 1,
+      templates: { '@x/t4': { origin: 'path:myapp/TPL', version: '1.0.0', targets: ['myapp'] } },
+      projectOwnedRoots: [],
+    });
 
     if (insensitive) {
-      // `path:myapp/TPL` and the real `myapp/tpl` name the SAME ground —
-      // none of the origin folder's own content is ever a delete candidate.
-      expect(plan.toDelete).toEqual(['myapp/app.txt']);
-      expect(plan.toDelete.some((entry) => entry.startsWith('myapp/tpl/'))).toBe(false);
+      // `path:myapp/TPL` and the real `myapp/tpl` name the SAME ground — its
+      // manifest resolves, and none of the origin folder's content is ever a
+      // delete candidate.
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.toDelete).toContain('myapp/app.txt');
+      expect(result.toDelete.some((entry) => entry.startsWith('myapp/tpl/'))).toBe(false);
     } else {
-      // `myapp/TPL` genuinely does not exist on this volume — the origin
-      // folder derivation resolves nothing to exclude, so the REAL `tpl`
-      // folder (a different, unregistered location the owning template
-      // knows nothing about) is ordinary applied ground.
-      expect(plan.toDelete).toContain('myapp/app.txt');
+      // `myapp/TPL` genuinely does not exist: the origin manifest cannot be
+      // read and no declaration was recorded, so no exclusion set can be
+      // established — the planner refuses rather than guess.
+      expect(result.ok).toBe(false);
+      if (result.ok) return;
+      expect(result.code).toBe('CONTENT_CONFLICT');
+      expect(result.details).toMatchObject({ target: 'myapp', templateName: '@x/t4', origin: 'path:myapp/TPL' });
+    }
+
+    // Planning never touches the disk: every source path survives either way.
+    for (const protectedPath of protectedSourcePaths) {
+      expect(await exists(protectedPath)).toBe(true);
+    }
+  });
+
+  it('with a valid recorded declaration: plans successfully on either volume and keeps the declared and origin ground out of toDelete', async () => {
+    await buildFixture('frontx-case-origin-folder-recorded-');
+    const insensitive = isVolumeCaseInsensitive(root as string);
+    const result = await plan({
+      formatVersion: 1,
+      templates: {
+        '@x/t4': { origin: 'path:myapp/TPL', version: '1.0.0', targets: ['myapp'], excludedSubtrees: ['keep/'] },
+      },
+      projectOwnedRoots: [],
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // The RECORDED exclusion is honoured whether or not the origin resolves.
+    expect(result.toDelete.some((entry) => entry.startsWith('myapp/keep/'))).toBe(false);
+    expect(result.toPreserve).toContain('myapp/keep/');
+    expect(result.toDelete).toContain('myapp/app.txt');
+
+    if (insensitive) {
+      // The origin resolves to the real `tpl` folder — protected as the origin.
+      expect(result.toDelete.some((entry) => entry.startsWith('myapp/tpl/'))).toBe(false);
+    } else {
+      // `myapp/TPL` does not exist, so the real `tpl` folder is a different,
+      // unregistered location: ordinary applied ground of this target.
+      expect(result.toDelete).toContain('myapp/tpl/payload.txt');
+    }
+
+    for (const protectedPath of protectedSourcePaths) {
+      expect(await exists(protectedPath)).toBe(true);
     }
   });
 });

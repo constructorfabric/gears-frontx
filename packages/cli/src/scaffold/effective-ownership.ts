@@ -34,7 +34,7 @@
 // `joinUnderTarget` (`../paths/relative-path.ts`) is the one shared place
 // that decides how a declaration is re-rooted, so this module and every
 // other caller never have to agree on that spelling twice.
-import { pathWithinTarget, joinUnderTarget } from '../paths/relative-path';
+import { pathWithinTarget, joinUnderTarget, withoutTrailingSlash } from '../paths/relative-path';
 import { RESERVED_ENVIRONMENT_ENTRIES } from '../manifest/validate-contract';
 import { FRONTX_NAMESPACE_ROOT } from '../manifest/types';
 
@@ -89,7 +89,44 @@ export function computeExclusionRoots(terms: EffectiveOwnershipTerms): string[] 
  */
 export function isWithinEffectiveOwnership(path: string, target: string, exclusionRoots: string[]): boolean {
   if (!pathWithinTarget(path, target)) return false;
+  // Environment-owned entries are subtracted at ANY depth within the target
+  // (DESIGN: "at any depth within the target"), not only at their project-root
+  // spelling that `exclusionRoots` names.
+  if (reservedEnvironmentPrefix(path) !== undefined) return false;
   return !exclusionRoots.some((root) => pathWithinTarget(path, root));
+}
+
+// ASCII-only lowercasing (A-Z -> a-z): the ruling protects every ASCII case
+// variant of the reserved names on every volume, and deliberately does NOT
+// apply Unicode case folding or normalisation.
+function asciiLower(value: string): string {
+  return value.replace(/[A-Z]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 32));
+}
+
+const RESERVED_ENVIRONMENT_LOWER: ReadonlySet<string> = new Set(RESERVED_ENVIRONMENT_ENTRIES.map(asciiLower));
+
+/**
+ * Whether one path segment is a reserved environment entry in ANY ASCII case
+ * (`.git`, `.GIT`, `.Git`, `.ds_store`, `THUMBS.DB`, ...). Human ruling
+ * 2026-11-09: protect all ASCII case variants on every volume, including
+ * case-sensitive ones; over-protection of a distinct `.GIT` there is accepted.
+ */
+export function isReservedEnvironmentName(segment: string): boolean {
+  return RESERVED_ENVIRONMENT_LOWER.has(asciiLower(segment));
+}
+
+/**
+ * The project-relative prefix of `path` ending at its first segment that is a
+ * reserved environment entry (`.git`, `.DS_Store`, `Thumbs.db`) in any ASCII
+ * case, or `undefined` when no segment is. No Unicode folding or
+ * normalisation is applied, so a Unicode-equivalent spelling is NOT matched.
+ * `.frontx` is deliberately not part of this rule — it stays a project-root-only
+ * exclusion.
+ */
+export function reservedEnvironmentPrefix(path: string): string | undefined {
+  const segments = withoutTrailingSlash(path).split('/');
+  const i = segments.findIndex(isReservedEnvironmentName);
+  return i < 0 ? undefined : segments.slice(0, i + 1).join('/');
 }
 // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-compute-ownership
 // @cpt-end:cpt-frontx-algo-cli-scaffolding-uniform-apply:p1:inst-ua-compute-ownership

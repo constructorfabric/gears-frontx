@@ -20,7 +20,8 @@
 // pure-logic resolver built from the parsed source-spec.
 import fs from 'node:fs';
 import path from 'node:path';
-import { BUNDLE_MARKER } from '../bundle/envelope';
+import { BUNDLE_MARKER, encodeBundleValue, BinaryBundleValue } from '../bundle/envelope';
+import { setOwn } from '../own-record';
 
 /** Directory names never included in the local bundle: build and dependency
  * artifacts, plus the agent session-state directories (`.omc/`, `.omo/`) that
@@ -74,9 +75,9 @@ export function createLocalFetchFn(
       throw new Error(`Local fetch source directory does not exist or is not a directory: "${localDir}"`);
     }
     const files = walkDirectory(localDir, excludedDirs);
-    const bundle: Record<string, string> = {};
+    const bundle: Record<string, BinaryBundleValue> = {};
     for (const relativePath of files.sort()) {
-      bundle[relativePath] = fs.readFileSync(path.join(localDir, relativePath), 'utf-8');
+      setOwn(bundle, relativePath, encodeBundleValue(fs.readFileSync(path.join(localDir, relativePath))));
     }
     return JSON.stringify({ [BUNDLE_MARKER]: bundle });
   };

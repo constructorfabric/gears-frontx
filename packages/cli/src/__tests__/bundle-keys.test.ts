@@ -12,7 +12,7 @@ vi.mock('../paths/volume-case', () => ({
   foldForIdentity: (value: string): string => (volume.caseInsensitive ? value.toLowerCase() : value),
 }));
 
-import { findInvalidBundleKey } from '../bundle/envelope';
+import { findInvalidBundleKey, encodeBundleValue, decodeBundleValue, isBinaryBundleValue, readBundleFiles } from '../bundle/envelope';
 
 beforeEach(() => {
   volume.caseInsensitive = true;
@@ -102,5 +102,90 @@ describe('findInvalidBundleKey', () => {
 
       expect(findInvalidBundleKey(['README.md', 'readme.md'])).toBeUndefined();
     });
+  });
+});
+
+describe('BinaryBundleValue encode/decode', () => {
+  it('encodeBundleValue produces canonical base64 that decodeBundleValue round-trips', () => {
+    const original = Buffer.from('\x00\x01\x02\xFF binary \n\t', 'binary');
+    const encoded = encodeBundleValue(original);
+    expect(isBinaryBundleValue(encoded)).toBe(true);
+    expect(encoded.encoding).toBe('base64');
+    const decoded = decodeBundleValue(encoded);
+    expect(decoded).not.toBeNull();
+    expect(decoded!.equals(original)).toBe(true);
+  });
+
+  it('decodeBundleValue returns null for non-canonical base64 (extra padding, whitespace)', () => {
+    // Padding-corrupted base64 is non-canonical
+    expect(decodeBundleValue({ encoding: 'base64', data: 'YQ==' })).not.toBeNull(); // canonical 'a'
+    expect(decodeBundleValue({ encoding: 'base64', data: 'YQ====' })).toBeNull();   // extra padding
+    expect(decodeBundleValue({ encoding: 'base64', data: 'YQ== ' })).toBeNull();    // trailing space
+  });
+
+  it('isBinaryBundleValue rejects non-objects and missing fields', () => {
+    expect(isBinaryBundleValue('string')).toBe(false);
+    expect(isBinaryBundleValue(null)).toBe(false);
+    expect(isBinaryBundleValue({ encoding: 'utf-8', data: 'abc' })).toBe(false);
+    expect(isBinaryBundleValue({ encoding: 'base64' })).toBe(false);
+    expect(isBinaryBundleValue({ encoding: 'base64', data: 123 })).toBe(false);
+  });
+
+  // H2a strict form: extra fields are not permitted.
+  it('isBinaryBundleValue rejects an object with extra fields beyond encoding+data', () => {
+    expect(isBinaryBundleValue({ encoding: 'base64', data: 'YQ==', extra: true })).toBe(false);
+    expect(isBinaryBundleValue({ encoding: 'base64', data: 'YQ==', version: 1 })).toBe(false);
+  });
+
+  // Valid empty file: data === '' is canonical (Buffer.alloc(0).toString('base64') === '').
+  it('decodeBundleValue accepts an empty file (data === empty string)', () => {
+    const result = decodeBundleValue({ encoding: 'base64', data: '' });
+    expect(result).not.toBeNull();
+    expect(result!.length).toBe(0);
+  });
+
+  it('UTF-8 text round-trips byte-identically through encode/decode', () => {
+    const text = '{"name":"my-template","version":"1.0.0"}';
+    const buf = Buffer.from(text, 'utf-8');
+    const encoded = encodeBundleValue(buf);
+    const decoded = decodeBundleValue(encoded);
+    expect(decoded!.toString('utf-8')).toBe(text);
+  });
+});
+
+describe('readBundleFiles three-state return', () => {
+  it('returns undefined when the BUNDLE_MARKER own property is absent', () => {
+    expect(readBundleFiles('{"name":"manifest"}')).toBeUndefined();
+    expect(readBundleFiles('not json at all')).toBeUndefined();
+    expect(readBundleFiles('"a string"')).toBeUndefined();
+  });
+
+  it('returns null when BUNDLE_MARKER is present but its value is null', () => {
+    expect(readBundleFiles('{"$frontxTemplateFiles":null}')).toBeNull();
+  });
+
+  it('returns null when BUNDLE_MARKER is present but its value is an array', () => {
+    expect(readBundleFiles('{"$frontxTemplateFiles":[]}')).toBeNull();
+    expect(readBundleFiles('{"$frontxTemplateFiles":["a","b"]}')).toBeNull();
+  });
+
+  it('returns null when BUNDLE_MARKER is present but its value is a number or string', () => {
+    expect(readBundleFiles('{"$frontxTemplateFiles":42}')).toBeNull();
+    expect(readBundleFiles('{"$frontxTemplateFiles":"hello"}')).toBeNull();
+  });
+
+  it('returns an empty Record when BUNDLE_MARKER is present with an empty object', () => {
+    const result = readBundleFiles('{"$frontxTemplateFiles":{}}');
+    expect(result).not.toBeNull();
+    expect(result).not.toBeUndefined();
+    expect(typeof result).toBe('object');
+    expect(Object.keys(result!)).toHaveLength(0);
+  });
+
+  it('returns the file map when BUNDLE_MARKER is present with a valid object', () => {
+    const result = readBundleFiles('{"$frontxTemplateFiles":{"frontx-template.json":"manifest"}}');
+    expect(result).not.toBeNull();
+    expect(result).not.toBeUndefined();
+    expect(result!['frontx-template.json']).toBe('manifest');
   });
 });

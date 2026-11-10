@@ -64,12 +64,14 @@ const CONFIRMATION_PLAN = {
   skipped: [],
 };
 
+const DIGEST = 'a'.repeat(64);
+
 const CONFIRMATION_REQUIRED_ENVELOPE = {
   ok: false,
   error: {
     code: 'CONFIRMATION_REQUIRED',
     message: '"my-template"\'s upgrade requires confirmation.',
-    details: { name: 'my-template', plan: CONFIRMATION_PLAN },
+    details: { name: 'my-template', plan: CONFIRMATION_PLAN, planDigest: DIGEST },
   },
 };
 
@@ -117,7 +119,7 @@ describe('createInvokeUpgradeCommand (cpt-frontx-dod-ai-upgrade-orchestration-si
       // never a stdin write.
       await vi.waitFor(() => expect(spawnFn).toHaveBeenCalledTimes(2));
       expect(spawnFn).toHaveBeenNthCalledWith(1, 'frontx', ['upgrade', 'my-template', '2.0.0', '--json'], { cwd: '/proj' });
-      expect(spawnFn).toHaveBeenNthCalledWith(2, 'frontx', ['upgrade', 'my-template', '2.0.0', '--json', '--yes'], { cwd: '/proj' });
+      expect(spawnFn).toHaveBeenNthCalledWith(2, 'frontx', ['upgrade', 'my-template', '2.0.0', '--json', '--yes', `--plan-digest=${DIGEST}`], { cwd: '/proj' });
 
       respond(secondChild, { ok: true, data: { outcome: 'success', plan: { ...CONFIRMATION_PLAN } } });
 
@@ -141,6 +143,62 @@ describe('createInvokeUpgradeCommand (cpt-frontx-dod-ai-upgrade-orchestration-si
 
       const result = await resultPromise;
       expect(result).toEqual({ ok: false, status: 'apply-failed', code: 'TARGETS_EXIST', message: 'A target vanished mid-flight.' });
+    });
+  });
+
+  describe('approval bound to the reviewed plan', () => {
+    it('reports a plan that changed after review as apply-failed (nothing applied), never as applied', async () => {
+      const firstChild = makeFakeChild();
+      const secondChild = makeFakeChild();
+      const spawnFn: SpawnFn = vi.fn().mockReturnValueOnce(firstChild as never).mockReturnValueOnce(secondChild as never);
+      const invoke = createInvokeUpgradeCommand({ spawnFn });
+
+      const resultPromise = invoke('/proj', 'my-template', '2.0.0', async () => 'approved');
+      respond(firstChild, CONFIRMATION_REQUIRED_ENVELOPE);
+      await vi.waitFor(() => expect(spawnFn).toHaveBeenCalledTimes(2));
+      respond(secondChild, {
+        ok: false,
+        error: { code: 'CONFIRMATION_REQUIRED', message: 'plan differs', details: { name: 'my-template', plan: CONFIRMATION_PLAN, planDigest: 'b'.repeat(64) } },
+      });
+
+      const result = await resultPromise;
+      expect(result).toMatchObject({ ok: false, status: 'apply-failed', code: 'CONFIRMATION_REQUIRED' });
+      expect(result.message).toContain('plan changed after it was reviewed');
+    });
+
+    it('reports a noop from the confirming call as apply-failed, without asserting that nothing was written', async () => {
+      const firstChild = makeFakeChild();
+      const secondChild = makeFakeChild();
+      const spawnFn: SpawnFn = vi.fn().mockReturnValueOnce(firstChild as never).mockReturnValueOnce(secondChild as never);
+      const invoke = createInvokeUpgradeCommand({ spawnFn });
+
+      const resultPromise = invoke('/proj', 'my-template', '2.0.0', async () => 'approved');
+      respond(firstChild, CONFIRMATION_REQUIRED_ENVELOPE);
+      await vi.waitFor(() => expect(spawnFn).toHaveBeenCalledTimes(2));
+      respond(secondChild, { ok: true, data: { outcome: 'noop', at: { origin: 'git:example/tpl@2.0.0', version: '2.0.0' } } });
+
+      const result = await resultPromise;
+      expect(result).toMatchObject({ ok: false, status: 'apply-failed', code: 'CONFIRMATION_REQUIRED' });
+      expect(result.message).toContain('already at the candidate');
+      expect(result.message).toContain('the approved upgrade was not applied');
+      expect(result.message).not.toContain('nothing was applied');
+    });
+
+    it('refuses to confirm unbound when the review envelope carries no planDigest', async () => {
+      const firstChild = makeFakeChild();
+      const spawnFn: SpawnFn = vi.fn(() => firstChild as never);
+      const invoke = createInvokeUpgradeCommand({ spawnFn });
+      const onChangeSet = vi.fn(async (): Promise<ReviewDecision> => 'approved');
+
+      const resultPromise = invoke('/proj', 'my-template', '2.0.0', onChangeSet);
+      respond(firstChild, {
+        ok: false,
+        error: { code: 'CONFIRMATION_REQUIRED', message: 'x', details: { name: 'my-template', plan: CONFIRMATION_PLAN } },
+      });
+
+      await expect(resultPromise).rejects.toThrow(/planDigest/);
+      expect(onChangeSet).not.toHaveBeenCalled();
+      expect(spawnFn).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -275,11 +333,11 @@ describe('pinned against the real CLI contract (packages/cli/src, read as text â
     expect(envelope).toMatch(/'CONTENT_CONFLICT'/);
   });
 
-  it('commands/upgrade.ts still reports CONFIRMATION_REQUIRED as {name, plan: renderReviewablePlan(...)} under details, gated on jsonMode && !yes', () => {
+  it('commands/upgrade.ts still reports CONFIRMATION_REQUIRED as {name, plan: renderReviewablePlan(...), planDigest} under details, gated on jsonMode && (no --yes || plan changed since review)', () => {
     const upgradeCommand = read('commands/upgrade.ts');
     expect(upgradeCommand).toMatch(/code:\s*'CONFIRMATION_REQUIRED'/);
-    expect(upgradeCommand).toMatch(/details:\s*\{\s*name:\s*templateName,\s*plan:\s*renderReviewablePlan\(outcome\.plan\)\s*\}/);
-    expect(upgradeCommand).toMatch(/flags\.jsonMode\s*&&\s*!flags\.yes/);
+    expect(upgradeCommand).toMatch(/details:\s*\{\s*name:\s*templateName,\s*plan:\s*renderReviewablePlan\(outcome\.plan\),\s*planDigest:\s*computePlanDigest\(outcome\.plan\),/);
+    expect(upgradeCommand).toMatch(/flags\.jsonMode\s*&&\s*\(!flags\.yes\s*\|\|\s*planChangedSinceReview\s*\|\|\s*digestMissing\)/);
     // `--json` never blocks on a TTY: the substitution never reads stdin.
     expect(upgradeCommand).toMatch(/never reads stdin/);
   });

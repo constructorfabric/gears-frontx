@@ -130,7 +130,9 @@ template you apply.
 
 ```bash
 # Register a template's origin under the project — creates .frontx/project.json
-# on first use, and pins a remote origin to the exact commit the fetch settled on
+# on first use. The intended contract is to pin a remote origin to the exact commit or
+# version the fetch settled on, but exact pinning is not currently guaranteed
+# (known defect; see QUICK_START.md, step 2)
 frontx register github:acme/starter-repo@v1.0.0
 
 # Apply the registered template to a target, via an explicit batch — the name
@@ -144,15 +146,26 @@ frontx list
 # Later, upgrade a registered template to a newer origin (reviewable, reversible)
 frontx upgrade @acme/starter-repo github:acme/starter-repo@v1.1.0
 
-# ...or roll it back to the origin it just left
+# ...or roll it back to the origin it just left (run again to go back — one generation)
 frontx upgrade @acme/starter-repo --restore
 ```
 
-`acme` above is a placeholder: any repository can publish templates. The FrontX
-templates are published from
-[`constructorfabric/gears-frontx-templates`](https://github.com/constructorfabric/gears-frontx-templates).
-See that repository's README for the templates it publishes and the source-spec
-to install one.
+`acme` above is a placeholder: any repository can publish templates. This
+repository contains none, and no published template source is declared
+compatible with the current CLI here. The repository
+[`constructorfabric/gears-frontx-templates`](https://github.com/constructorfabric/gears-frontx-templates)
+has been the place FrontX templates were published from, but when this was
+checked (2026-11-09) its manifests still used the legacy `schemaVersion` /
+`ownershipBoundaries` form that this CLI refuses with `INVALID_MANIFEST`, and
+its README documents older command forms (`frontx seed … --source`,
+`frontx add … --source`) that this CLI does not accept. Do not follow that
+README for the commands of this CLI, and do not assume its templates install
+or register until they are republished in the current manifest form; this
+documentation promises no release or compatibility between the two.
+
+To use the CLI today, author a template folder in the current four-field
+contract and apply it from a local `path:` origin — see
+[QUICK_START.md](QUICK_START.md#a-minimal-local-template-current-contract).
 
 The CLI tracks every registered template's origin and applied targets in one
 `.frontx/project.json`, and upgrades each registered template independently.
@@ -168,21 +181,32 @@ walkthrough, including `seed`, `delete`, and `ownership`, and AI-tooling usage.
 The `frontx` CLI resolves templates from a source you name and manages them
 within a project. It bundles no templates of its own.
 
+Target paths and template names that differ only by Unicode NFC/NFD
+normalization collide during target conflict checks, batch deduplication, and
+registration. This scoped collision handling does not impose broader portable
+filename restrictions; those apply to AI-bundle names only.
+
 | Command | Purpose |
 |---------|---------|
 | `frontx install <spec>` | Install a template from a source-spec (`host:owner/repo[//subtree]@ref`) into the local inventory, tracked under the identity its manifest declares |
 | `frontx list [--json]` | List the CLI's built-in default templates, this project's registered templates, and the local inventory; `--json` emits `{"ok":true,"data":{"defaults":[...],"registered":[...],"installed":[...]}}` |
-| `frontx register <origin> [--replace]` | Register a template's origin under the current project's `.frontx/project.json`, pinning a remote origin to the immutable value the fetch settled on |
+| `frontx register <origin> [--replace]` | Register a template's origin under the current project's `.frontx/project.json`, intended to pin a remote origin to the immutable value the fetch settled on; exact pinning is not currently guaranteed (known defect, see the pin note in [QUICK_START.md](QUICK_START.md#2-register-a-templates-origin)) |
 | `frontx assemble --input <batch-json>` | Preview an explicit, target-keyed batch against every registered template's declared ownership; writes nothing |
-| `frontx apply --input <batch-json> [--adopt-existing]` | Materialize an explicit batch into the current project — bootstrapping it or extending it further |
-| `frontx seed <dir> --input <batch-json> [--adopt-existing]` | Bootstrap a **new** project directory from the CLI's own built-in default templates only — see [QUICK_START.md](QUICK_START.md) for where this does and does not work |
-| `frontx upgrade <name> <origin>` \| `frontx upgrade <name> --restore` | Upgrade a registered template to a new origin, or reverse its most recent upgrade, as a reviewable change set |
-| `frontx unregister <name>` | Remove a registered template that has no applied targets |
+| `frontx apply --input <batch-json> [--adopt-existing] [--json [--yes --plan-digest=<digest>]]` | Materialize an explicit batch into the current project — bootstrapping it or extending it further; replacing an existing `.frontx/ai/<name>/` bundle is reviewed first and needs the review's `--plan-digest` |
+| `frontx seed <dir> --input <batch-json> [--adopt-existing] [--json [--yes --plan-digest=<digest>]]` | Bootstrap a **new** project directory from the CLI's own built-in default templates only — see [QUICK_START.md](QUICK_START.md) for where this does and does not work |
+| `frontx upgrade <name> <origin> [--json [--yes --plan-digest=<digest>]]` \| `frontx upgrade <name> --restore [--json [--yes --plan-digest=<digest>]]` | Upgrade a registered template to a new origin, or reverse its most recent upgrade, as a reviewable change set (the confirming `--json --yes` call must carry the review's `--plan-digest`, which binds approval to that plan; without it nothing is applied and the current review is returned). `frontx upgrade <name> --recover [--json [--yes --plan-digest=<digest>]]` finishes or cancels an interrupted upgrade/restore after a fresh review; until then every writing command answers `RECOVERY_REQUIRED` |
+| `frontx unregister <name>` | Remove a registered template that has no applied targets; the one exception is an entry whose origin is confirmed absent (a read or permission error does not qualify) and that recorded no `excludedSubtrees` — it is dropped (JSON `outcome: "orphan-dropped"`) and its files are left on disk. This orphan branch is defensive for an unsupported intermediate state, not a supported migration. See [QUICK_START.md](QUICK_START.md) |
 | `frontx ownership add\|remove\|list <path>` | Manage the project's own reserved paths (`projectOwnedRoots`) |
-| `frontx delete <target> [--yes] [--dry-run]` | Delete an applied template target; confirmation-gated |
-| `frontx validate <templateDir>` | Validate a template manifest for publication |
+| `frontx delete <target> [--dry-run] [--json [--yes --plan-digest=<digest>]]` | Delete an applied template target; confirmation-gated and bound to the reviewed plan (`--yes` needs `--json` and the review's `--plan-digest`; a plan that changed after review is shown again, nothing deleted). Lists what it would remove and the protected ground it preserves (exclusions, nested targets, project-owned roots, and others; covering roots may stand in for the paths beneath them). `--dry-run` needs no confirmation |
+| `frontx validate <templateDir> [--json]` | Validate a template manifest for publication |
 | `frontx validate --project` | Validate `.frontx/project.json` against the registry, the local inventory, and the filesystem |
 | `frontx update-local <identity> <spec>` | Refresh a locally installed template from its source |
+
+Every command except `help` also accepts `--json` and then emits one JSON
+envelope on stdout. `--yes` is accepted only together with `--json` (on `delete`
+and `upgrade`): without `--json` those commands ask for confirmation interactively,
+and `--yes` alone is refused with exit code 1. The one exception is
+`delete --dry-run`, which needs no confirmation, issues no `planDigest` and accepts `--yes` as a no-op.
 
 ### AI Tooling
 
@@ -218,8 +242,8 @@ template bundles.
 
 This repository ships the **ecosystem** — the runtime, type system, API layer,
 CLI, and AI kit. What an application *becomes* is defined by templates, which
-live and version outside this repository, in the templates repository linked
-above.
+live and version outside this repository; see the compatibility note above
+before relying on any published source.
 
 ```bash
 FrontX/                              # Ecosystem repository root
