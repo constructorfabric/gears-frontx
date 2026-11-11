@@ -14,6 +14,18 @@ refactoring is not.
 
 ### Changed
 
+- When rollback after a caught upgrade or restore write failure cannot restore
+  every destination or remove every attempt-owned temporary file, the engine
+  returns `INTERNAL` with `details.originalFailure` and
+  `details.unrecovered: [{ target, path }]`; each entry identifies the
+  operation path associated with the failed destination restore or temp-file
+  removal. For a started CLI transition, an
+  uncommitted result with no changed project-footprint paths is returned as
+  `INTERNAL` directly; otherwise it is wrapped as `RECOVERY_REQUIRED`,
+  preserving the engine details and adding `cause`, `transitionCommitted`, and
+  the receipt (plus `changedPaths` when uncommitted). An `unrecovered` entry
+  may reflect temporary-file residue even when `changedPaths` is empty;
+  destination files may remain changed.
 - **Breaking:** `upgrade … --json --yes` (forward, `--restore`, `--recover`)
   applies only with `--plan-digest=<details.planDigest>`; without it nothing is
   applied and the call answers `CONFIRMATION_REQUIRED` with the current review.
