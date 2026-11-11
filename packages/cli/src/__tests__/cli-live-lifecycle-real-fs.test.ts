@@ -1227,3 +1227,66 @@ describe('live CLI seed with an empty official-defaults map', () => {
     expect(await snapshot(work)).toEqual(workBefore);
   });
 });
+
+describe('live CLI nested AI symlink deletion', () => {
+  it('shows nested link type in preview and removes links without touching live or dangling targets', async () => {
+    const project = path.join(sandbox, 'proj-ai-links');
+    const inventory = path.join(sandbox, 'inv-ai-links');
+    const template = path.join(project, 'vendor', 'ai-link-template');
+    await writeTemplate(template, 'ai-link-template', '1.0.0', { 'src/a.ts': 'export {};' });
+    await mkdir(path.join(template, '.frontx/ai/ai-link-template'), { recursive: true });
+    await writeFile(path.join(template, '.frontx/ai/ai-link-template/guide.md'), 'guide');
+    expect(frontx(project, inventory, ['register', 'path:vendor/ai-link-template']).status).toBe(0);
+    expect(frontx(project, inventory, ['apply', '--input', batch({ 'ai-link-template': ['app'] })]).status).toBe(0);
+
+    const bundle = path.join(project, '.frontx/ai/ai-link-template');
+    const liveTarget = path.join(project, 'outside-live.txt');
+    const danglingTarget = path.join(project, 'outside-missing.txt');
+    await writeFile(liveTarget, 'keep this');
+    await symlink(liveTarget, path.join(bundle, 'live.md'));
+    await symlink(danglingTarget, path.join(bundle, 'dangling.md'));
+
+    const review = frontx(project, inventory, ['delete', 'app']);
+    expect(review.status).toBe(1);
+    expect(review.envelope.error?.code).toBe('CONFIRMATION_REQUIRED');
+    const aiFiles = review.envelope.error?.details?.aiBundle as { tree?: { files?: { path: string; linkTarget?: string }[] } };
+    expect(aiFiles.tree?.files).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: 'live.md', linkTarget: liveTarget }),
+      expect.objectContaining({ path: 'dangling.md', linkTarget: danglingTarget }),
+    ]));
+    const confirmed = confirmDelete((args) => frontx(project, inventory, args), 'app');
+    expect(confirmed.status).toBe(0);
+    expect(await readFile(liveTarget, 'utf8')).toBe('keep this');
+    expect(await lstat(path.join(bundle, 'live.md')).catch(() => undefined)).toBeUndefined();
+    expect(await lstat(path.join(bundle, 'dangling.md')).catch(() => undefined)).toBeUndefined();
+  });
+
+  it('returns a JSON conflict envelope when a destination symlink conflicts with a candidate directory', async () => {
+    const project = path.join(sandbox, 'proj-ai-link-conflict');
+    const inventory = path.join(sandbox, 'inv-ai-link-conflict');
+    const v1 = path.join(project, 'vendor', 'ai-conflict-v1');
+    const v2 = path.join(project, 'vendor', 'ai-conflict-v2');
+    await writeTemplate(v1, 'ai-conflict', '1.0.0', { 'src/a.ts': 'export {};' });
+    await writeTemplate(v2, 'ai-conflict', '2.0.0', { 'src/a.ts': 'export {};\n' });
+    await mkdir(path.join(v1, '.frontx/ai/ai-conflict'), { recursive: true });
+    await writeFile(path.join(v1, '.frontx/ai/ai-conflict/guide.md'), 'guide');
+    await mkdir(path.join(v2, '.frontx/ai/ai-conflict/docs'), { recursive: true });
+    await writeFile(path.join(v2, '.frontx/ai/ai-conflict/docs/a.md'), 'candidate');
+    expect(frontx(project, inventory, ['register', 'path:vendor/ai-conflict-v1']).status).toBe(0);
+    expect(frontx(project, inventory, ['apply', '--input', batch({ 'ai-conflict': ['app'] })]).status).toBe(0);
+
+    const bundle = path.join(project, '.frontx/ai/ai-conflict');
+    const target = path.join(project, 'owned-docs');
+    await mkdir(target);
+    await writeFile(path.join(target, 'keep.md'), 'preserve');
+    await rm(path.join(bundle, 'guide.md'));
+    await symlink(target, path.join(bundle, 'docs'), 'dir');
+    const before = await readFile(path.join(target, 'keep.md'), 'utf8');
+
+    const refused = frontx(project, inventory, ['upgrade', 'ai-conflict', 'path:vendor/ai-conflict-v2']);
+    expect(refused.status).toBe(1);
+    expect(refused.envelope).toMatchObject({ ok: false, error: { code: 'CONTENT_CONFLICT' } });
+    expect(refused.stdout.trim().startsWith('{')).toBe(true);
+    expect(await readFile(path.join(target, 'keep.md'), 'utf8')).toBe(before);
+  });
+});

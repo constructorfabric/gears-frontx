@@ -55,8 +55,10 @@ export interface TransitionIntent {
   planDigest: string;
   /** sha256 of the full candidate (payload + AI bytes) the approval was bound to. */
   candidateHash: string;
-  /** Project payload footprint with the pre-commit content hash (null = absent). */
-  footprint: { path: string; before: string | null }[];
+  /** Project payload footprint with the pre-commit content hash (null = absent)
+   * and the hash the approved plan lands there (`after`; absent only in receipts
+   * written before it was recorded, which then cannot prove a partial result). */
+  footprint: { path: string; before: string | null; after?: string | null }[];
   /** Initial post-commit task status. After the state commit the AUTHORITATIVE
    * status lives only in the entry's `pendingPostCommit` (project state, r9 §2.3). */
   tasks: { inventory: TaskStatus; ai: TaskStatus };
@@ -171,7 +173,11 @@ function isIntent(value: unknown): value is TransitionIntent {
     typeof v.name === 'string' && isPair(v.from) && isPair(v.to) && typeof v.fromEntry === 'string' &&
     typeof v.planDigest === 'string' && typeof v.candidateHash === 'string' && isTasks(v.tasks) &&
     Array.isArray(v.footprint) &&
-    v.footprint.every((f) => f !== null && typeof f === 'object' && typeof f.path === 'string' && (f.before === null || typeof f.before === 'string'))
+    v.footprint.every(
+      (f) =>
+        f !== null && typeof f === 'object' && typeof f.path === 'string' && (f.before === null || typeof f.before === 'string') &&
+        (f.after === undefined || f.after === null || typeof f.after === 'string'),
+    )
   );
 }
 

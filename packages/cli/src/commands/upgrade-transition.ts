@@ -27,27 +27,44 @@ export function candidateHash(payload: ResolvedPayload): string {
   return sha(canonicalJson({ origin: payload.origin, version: payload.version, files: entries(payload.files), ai: entries(payload.aiFiles) }));
 }
 
-/** Every project path the commit may touch, with the content it had when classified. */
+/**
+ * Every project path the commit may touch, with the content it had when
+ * classified and the content the approved plan lands there (`ADD`/`REPLACE`
+ * write `newContent`, `REMOVE` leaves an absence, the rest are never written).
+ */
 export function footprintOf(plan: UpgradePlan): TransitionIntent['footprint'] {
-  return plan.operations.map((op) => ({ path: op.path, before: op.expectedDisk === null ? null : sha(op.expectedDisk) }));
+  return plan.operations.map((op) => {
+    const before = op.expectedDisk === null ? null : sha(op.expectedDisk);
+    const after = op.op === 'ADD' || op.op === 'REPLACE' ? sha(op.newContent!) : op.op === 'REMOVE' ? null : before;
+    return { path: op.path, before, after };
+  });
 }
 // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-begin-transition
 
 // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-if-no-effect
 // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-release-uncommitted
-/** Footprint paths whose current content differs from their pre-commit content. */
+/**
+ * Footprint paths whose current content differs from their pre-commit content
+ * (`changed`), and among them those holding something OTHER than what the
+ * approved plan lands there (`foreign`): an outside edit, or a receipt written
+ * before `after` was recorded. `changed` without `foreign` is provably the
+ * approved plan's own partial result.
+ */
 export async function changedFootprint(
   repoRoot: string,
   footprint: TransitionIntent['footprint'],
   readDiskEntry: ReadDiskEntryFn,
-): Promise<string[]> {
+): Promise<{ changed: string[]; foreign: string[] }> {
   const changed: string[] = [];
-  for (const { path: relative, before } of footprint) {
+  const foreign: string[] = [];
+  for (const { path: relative, before, after } of footprint) {
     const entry = await readDiskEntry(path.join(repoRoot, relative));
     const now = entry.kind === 'absent' ? null : entry.kind === 'file' ? sha(entry.content) : `kind:${entry.kind}`;
-    if (now !== before) changed.push(relative);
+    if (now === before) continue;
+    changed.push(relative);
+    if (after === undefined || now !== after) foreign.push(relative);
   }
-  return changed;
+  return { changed, foreign };
 }
 // @cpt-end:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-release-uncommitted
 // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-if-no-effect

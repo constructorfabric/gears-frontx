@@ -69,7 +69,7 @@ export interface ReviewablePlan {
     files: { path: string; length: number; sha256: string }[];
     // What the destination holds now (lengths and hashes), so a reviewer can tell
     // which local files a `replace`/`local-only` change discards.
-    existing: { path: string; length: number; sha256: string }[];
+    existing: { path: string; length: number; sha256: string; linkTarget?: string }[];
   };
 }
 
@@ -110,8 +110,8 @@ export function renderReviewablePlan(plan: UpgradePlan): ReviewablePlan {
           ai: {
             destination: plan.ai.destination.path,
             changes: plan.ai.changes.filter((c) => c.kind !== 'unchanged').map(({ path, kind }) => ({ path, kind })),
-            files: plan.ai.files.map(({ path, length, sha256 }) => ({ path, length, sha256 })),
-            existing: plan.ai.existing.map(({ path, length, sha256 }) => ({ path, length, sha256 })),
+            files: plan.ai.files.map(({ path, length, sha256, linkTarget }) => ({ path, length, sha256, ...(linkTarget === undefined ? {} : { linkTarget }) })),
+            existing: plan.ai.existing.map(({ path, length, sha256, linkTarget }) => ({ path, length, sha256, ...(linkTarget === undefined ? {} : { linkTarget }) })),
           },
         }
       : {}),
@@ -132,6 +132,9 @@ export function reviewNotes(plan: UpgradePlan): string[] {
     const identity = plan.ai.destination.identity as { ancestors?: { type?: string; target?: string }[] };
     const link = identity.ancestors?.find((entry) => entry.type === 'symlink');
     if (link) notes.push(`AI bundle ${plan.ai.destination.path} is a symbolic link to ${JSON.stringify(link.target)}; the link itself will be replaced and its target will be left untouched.`);
+    for (const entry of plan.ai.existing) if (entry.linkTarget !== undefined) {
+      notes.push(`AI bundle entry ${entry.path} is a symbolic link to ${JSON.stringify(entry.linkTarget)}; the link itself will be removed or replaced and its target will be left untouched.`);
+    }
     const replaced = plan.ai.changes.filter((c) => c.kind === 'replace').length;
     const removed = plan.ai.changes.filter((c) => c.kind === 'local-only' || c.kind === 'local-only-directory').length;
     if (replaced > 0 || removed > 0) {

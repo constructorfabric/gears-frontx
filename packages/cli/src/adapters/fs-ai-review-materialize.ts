@@ -35,7 +35,8 @@ function ensurePlainDirectory(root: string, target: string, create: boolean): vo
 
 function unlinkRegular(root: string, file: string): void {
   ensurePlainDirectory(root, path.dirname(file), false);
-  if (!fs.lstatSync(file).isFile()) throw new AiReviewDriftError(`AI destination entry is not a regular file: ${file}`);
+  const entry = fs.lstatSync(file);
+  if (!entry.isFile() && !entry.isSymbolicLink()) throw new AiReviewDriftError(`AI destination entry is not a regular file or symlink: ${file}`);
   fs.unlinkSync(file);
 }
 

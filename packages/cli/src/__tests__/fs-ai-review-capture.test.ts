@@ -7,6 +7,10 @@ import { captureFsAiReview } from '../adapters/fs-ai-review-capture';
 const roots: string[] = [];
 afterEach(() => {
   for (const root of roots.splice(0)) {
+    for (const file of ['target', 'missing']) { try { fs.unlinkSync(path.join(root, file)); } catch { /* already absent */ } }
+    for (const file of ['project/.frontx/ai/demo/live', 'project/.frontx/ai/demo/dangling']) {
+      try { fs.unlinkSync(path.join(root, file)); } catch { /* already absent */ }
+    }
     for (const link of ['project-link', 'project/.frontx', 'source/.frontx']) {
       try { if (fs.lstatSync(path.join(root, link)).isSymbolicLink()) fs.unlinkSync(path.join(root, link)); } catch { /* already absent */ }
     }
@@ -25,6 +29,8 @@ describe('captureFsAiReview', () => {
   it('captures empty directories as empty metadata and reads through symlinked project roots', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'frontx-ai-review-'));
     roots.push(root);
+    fs.mkdirSync(path.join(root, 'source'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'project'), { recursive: true });
     fs.mkdirSync(path.join(root, 'source/.frontx/ai/demo/nested'), { recursive: true });
     fs.writeFileSync(path.join(root, 'source/.frontx/ai/demo/nested/file'), 'candidate');
     fs.mkdirSync(path.join(root, 'project/.frontx/ai/demo'), { recursive: true });
@@ -49,6 +55,26 @@ describe('captureFsAiReview', () => {
     const review = captureFsAiReview(path.join(root, 'source'), path.join(root, 'project'), 'demo');
     expect(review.directories).toEqual(['empty']);
     expect(review.files).toEqual([]);
+  });
+
+  it('reviews nested live and dangling symlinks as leaf entries without reading their targets', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'frontx-ai-review-'));
+    roots.push(root);
+    fs.mkdirSync(path.join(root, 'source'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'project'), { recursive: true });
+    const bundle = path.join(root, 'project/.frontx/ai/demo');
+    fs.mkdirSync(bundle, { recursive: true });
+    fs.writeFileSync(path.join(root, 'target'), 'must not read');
+    fs.symlinkSync(path.join(root, 'target'), path.join(bundle, 'live'));
+    fs.symlinkSync(path.join(root, 'missing'), path.join(bundle, 'dangling'));
+
+    const review = captureFsAiReview(path.join(root, 'source'), path.join(root, 'project'), 'demo');
+    expect(review.existing).toEqual([
+      expect.objectContaining({ path: 'dangling', linkTarget: path.join(root, 'missing') }),
+      expect.objectContaining({ path: 'live', linkTarget: path.join(root, 'target') }),
+    ]);
+    expect(review.existing.every(file => file.length > 0)).toBe(true);
+    expect(review.changes.map(change => change.path)).toEqual(['dangling', 'live']);
   });
 
   it.each(['project', 'source'])('refuses a symlinked %s .frontx ancestor before reading through it', (side) => {

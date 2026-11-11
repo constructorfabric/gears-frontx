@@ -81,7 +81,7 @@ export type RemoveAiBundleFn = ((manifestName: string) => Promise<void>) & {
 
 /** The reviewed content of an AI bundle directory: hashes and lengths only. */
 export interface AiBundleTree {
-  files: { path: string; length: number; sha256: string }[];
+  files: { path: string; length: number; sha256: string; linkTarget?: string }[];
   directories: string[];
   digest: string;
 }

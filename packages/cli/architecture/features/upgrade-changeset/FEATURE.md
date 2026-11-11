@@ -341,7 +341,7 @@ A hard crash — one this algorithm's own `CATCH` never observes — runs no rec
 
 **Input**: `frontx upgrade <name> --recover [--json [--yes --plan-digest=<digest>]]`, run inside the mutation boundary in `recover` mode with the project's transition receipts.
 
-**Output**: `no-pending`, `cancelled`, `recovered` or `declined`; or a refusal (`RECOVERY_REQUIRED`, `CONFIRMATION_REQUIRED`). No path is rolled back automatically.
+**Output**: `no-pending`, `cancelled`, `released`, `recovered` or `declined`; or a refusal (`RECOVERY_REQUIRED`, `CONFIRMATION_REQUIRED`). No path is rolled back automatically.
 
 **Steps**:
 1. [x] - `p1` - Select the receipts of `name` - `inst-rcv-select`
@@ -353,7 +353,7 @@ A hard crash — one this algorithm's own `CATCH` never observes — runs no rec
 5. [x] - `p1` - **IF** the receipt is `preparing` - `inst-rcv-if-preparing`
    1. [x] - `p1` - **IF** the entry differs from the pre-transition entry, **RETURN** `RECOVERY_REQUIRED`; **ELSE** release as `cancelled` and **RETURN** `cancelled` - `inst-rcv-release-preparing`
 6. [x] - `p1` - **IF** the entry is still the pre-transition entry (the state commit never happened) - `inst-rcv-if-uncommitted`
-   1. [x] - `p1` - **IF** any footprint path differs from its pre-commit content, **RETURN** `RECOVERY_REQUIRED` naming every changed path, with `transitionCommitted: false`; **ELSE** release as `cancelled` and **RETURN** `cancelled` - `inst-rcv-release-uncommitted`
+   1. [x] - `p1` - **IF** any footprint path differs from its pre-commit content and does not hold exactly the content the approved plan lands there (recorded in the receipt as `after`; a receipt without it proves nothing), **RETURN** `RECOVERY_REQUIRED` naming every changed path and, among them, every such foreign path, with `transitionCommitted: false`; nothing is released and nothing rolled back. **ELSE IF** any footprint path changed — every one of them then holds exactly what the approved plan writes there, so the partial result is the plan's own — release the transition (the entry still names the baseline) and **RETURN** `released` naming the landed paths, which stay; re-running the identical upgrade converges on the approved candidate through `inst-cls-if-unchanged`. **ELSE** release as `cancelled` and **RETURN** `cancelled` - `inst-rcv-release-uncommitted`
 7. [x] - `p1` - **IF** the committed entry does not carry this transition's own `pendingPostCommit` record or its `origin`/`version` and preceding pair are not this transition's `to`/`from`, **RETURN** `RECOVERY_REQUIRED`; records kept - `inst-rcv-if-unexplained`
 8. [x] - `p1` - **IF** no post-commit task is pending, release as `committed`, clearing the record, and **RETURN** `recovered` - `inst-rcv-if-nothing-pending`
 9. [x] - `p1` - **IF** the inventory task is pending and the current inventory root differs from the receipt's, **RETURN** `RECOVERY_REQUIRED` naming the recorded root - `inst-rcv-if-inventory-root-differs`

@@ -9,6 +9,9 @@ import { AiReviewDriftError, applyFsAiReview } from '../adapters/fs-ai-review-ma
 const roots: string[] = [];
 afterEach(() => {
   for (const root of roots.splice(0)) {
+    for (const file of ['outside-target', 'project/.frontx/ai/demo/alias.md']) {
+      try { fs.unlinkSync(path.join(root, file)); } catch { /* already absent */ }
+    }
     for (const link of ['project/.frontx/ai/demo', 'project/.frontx/ai']) {
       try { if (fs.lstatSync(path.join(root, link)).isSymbolicLink()) fs.unlinkSync(path.join(root, link)); } catch { /* already absent */ }
     }
@@ -88,6 +91,24 @@ describe('applyFsAiReview', () => {
     expect(snapshot.changes.every((c) => c.kind.startsWith('local-only'))).toBe(true);
     applyFsAiReview(snapshot, project, 'demo');
     expect(fs.existsSync(dest)).toBe(false);
+  });
+
+  it.each([false, true])('removes a nested %s local-only symlink without following it', (dangling) => {
+    const { root, project, dest } = world();
+    const target = dangling ? path.join(root, 'missing-target') : path.join(root, 'outside-target');
+    if (!dangling) fs.writeFileSync(target, 'target bytes');
+    fs.symlinkSync(target, path.join(dest, 'alias.md'));
+    const withoutAlias = new Map(candidate);
+    withoutAlias.delete('keep.md');
+    withoutAlias.delete('edited.md');
+    withoutAlias.delete('sub/new.md');
+    const snapshot = reviewFsAiCandidate(project, 'demo', withoutAlias);
+
+    applyFsAiReview(snapshot, project, 'demo');
+
+    expect(fs.existsSync(path.join(dest, 'alias.md'))).toBe(false);
+    expect(fs.lstatSync(target, { throwIfNoEntry: false })?.isFile() ?? false).toBe(!dangling);
+    if (!dangling) expect(fs.readFileSync(target, 'utf8')).toBe('target bytes');
   });
 
   it.each([false, true])('replaces a %s root symlink without following it', (dangling) => {

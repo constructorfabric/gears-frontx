@@ -181,7 +181,7 @@ export async function reviewApplyAiReplacements(input: ApplyAiReviewInput): Prom
     changes: snapshot.changes.filter((c) => c.kind !== 'unchanged').map(({ path: p, kind }) => ({ path: p, kind })),
     files: snapshot.files.map(({ path: p, length, sha256 }) => ({ path: p, length, sha256 })),
     // What the destination holds now, so the reviewer sees which local files are overwritten or removed.
-    existing: snapshot.existing.map(({ path: p, length, sha256 }) => ({ path: p, length, sha256 })),
+    existing: snapshot.existing.map(({ path: p, length, sha256, linkTarget }) => ({ path: p, length, sha256, ...(linkTarget === undefined ? {} : { linkTarget }) })),
   }));
   // The token binds every reviewed AI tree AND the command it belongs to, so it
   // cannot approve a different batch, target set or flag combination.

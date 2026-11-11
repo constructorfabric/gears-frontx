@@ -14,7 +14,12 @@ function readTree(root: string): { files: AiReviewFile[]; directories: string[] 
         visit(absolute, relative);
       }
       else if (entry.isFile()) files.push({ path: relative, bytes: fs.readFileSync(absolute) });
-      else if (entry.isSymbolicLink()) throw new Error(`AI review capture cannot represent symbolic link: ${absolute}`);
+      // Treat links as reviewable leaf entries using their link text; never
+      // follow them (including dangling links or links to directories).
+      else if (entry.isSymbolicLink()) {
+        const linkTarget = fs.readlinkSync(absolute);
+        files.push({ path: relative, bytes: Buffer.from(`symlink:${linkTarget}`), linkTarget });
+      }
       else throw new Error(`AI review capture rejects unsupported filesystem entry: ${absolute}`);
     }
   };

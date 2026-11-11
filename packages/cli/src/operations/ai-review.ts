@@ -6,6 +6,7 @@ import { unsafeRelativePathReason } from '../paths/relative-path';
 export interface AiReviewFile {
   path: string;
   bytes: Uint8Array;
+  linkTarget?: string;
 }
 
 export interface AiDestinationIdentity {
@@ -17,8 +18,8 @@ export interface AiDestinationIdentity {
 
 export interface AiReview {
   destination: AiDestinationIdentity;
-  files: { path: string; length: number; sha256: string }[];
-  existing: { path: string; length: number; sha256: string }[];
+  files: { path: string; length: number; sha256: string; linkTarget?: string }[];
+  existing: { path: string; length: number; sha256: string; linkTarget?: string }[];
   directories: string[];
   existingDirectories: string[];
   changes: { path: string; kind: 'add' | 'replace' | 'unchanged' | 'local-only' | 'add-directory' | 'local-only-directory' }[];
@@ -29,6 +30,8 @@ export interface AiReviewSnapshot extends AiReview {
   /** Returns fresh copies; mutating them cannot change the reviewed bytes. */
   candidateSnapshot: readonly AiReviewFile[];
 }
+
+export class AiReviewConflictError extends Error {}
 
 function foldAiPathIdentity(path: string): string {
   return path.normalize('NFC').toLowerCase().toUpperCase().toLowerCase();
@@ -45,17 +48,17 @@ export function createAiReview(destination: AiDestinationIdentity, candidate: re
     const identities = new Map<string, string>();
     for (const { path } of input) {
     const reason = unsafeRelativePathReason(path);
-    if (reason) throw new TypeError(`Invalid AI bundle path ${JSON.stringify(path)}: ${reason}`);
+    if (reason) throw new AiReviewConflictError(`Invalid AI bundle path ${JSON.stringify(path)}: ${reason}`);
     const identity = foldAiPathIdentity(path);
     const earlier = identities.get(identity);
-    if (earlier !== undefined) throw new TypeError(`AI bundle paths collide: ${JSON.stringify(earlier)} and ${JSON.stringify(path)}`);
+    if (earlier !== undefined) throw new AiReviewConflictError(`AI bundle paths collide: ${JSON.stringify(earlier)} and ${JSON.stringify(path)}`);
     identities.set(identity, path);
     }
     for (const { path } of input) {
     const parts = foldAiPathIdentity(path).split('/');
     for (let i = 1; i < parts.length; i++) {
       const parent = identities.get(parts.slice(0, i).join('/'));
-      if (parent !== undefined) throw new TypeError(`AI bundle path ${JSON.stringify(parent)} conflicts with ${JSON.stringify(path)}`);
+      if (parent !== undefined) throw new AiReviewConflictError(`AI bundle path ${JSON.stringify(parent)} conflicts with ${JSON.stringify(path)}`);
     }
     }
   };
@@ -65,14 +68,14 @@ export function createAiReview(destination: AiDestinationIdentity, candidate: re
     const identities = new Map<string, string>();
     for (const dir of dirs) {
       const reason = unsafeRelativePathReason(dir);
-      if (reason) throw new TypeError(`Invalid AI bundle directory ${JSON.stringify(dir)}: ${reason}`);
+      if (reason) throw new AiReviewConflictError(`Invalid AI bundle directory ${JSON.stringify(dir)}: ${reason}`);
       const key = foldAiPathIdentity(dir);
       const earlier = identities.get(key);
-      if (earlier !== undefined) throw new TypeError(`AI bundle directories collide: ${JSON.stringify(earlier)} and ${JSON.stringify(dir)}`);
+      if (earlier !== undefined) throw new AiReviewConflictError(`AI bundle directories collide: ${JSON.stringify(earlier)} and ${JSON.stringify(dir)}`);
       if (files.some(file => {
         const fileKey = foldAiPathIdentity(file.path);
         return fileKey === key || key.startsWith(`${fileKey}/`);
-      })) throw new TypeError(`AI bundle directory conflicts: ${JSON.stringify(dir)}`);
+      })) throw new AiReviewConflictError(`AI bundle directory conflicts: ${JSON.stringify(dir)}`);
       identities.set(key, dir);
     }
   };
@@ -83,12 +86,12 @@ export function createAiReview(destination: AiDestinationIdentity, candidate: re
     const otherFilePaths = otherFiles.map(file => file.path);
     for (const file of filePaths) for (const other of otherFilePaths) {
       const a = foldAiPathIdentity(file), b = foldAiPathIdentity(other);
-      if (a !== b && (a.startsWith(`${b}/`) || b.startsWith(`${a}/`))) throw new TypeError(`AI bundle path ${JSON.stringify(file)} conflicts with ${JSON.stringify(other)}`);
+      if (a !== b && (a.startsWith(`${b}/`) || b.startsWith(`${a}/`))) throw new AiReviewConflictError(`AI bundle path ${JSON.stringify(file)} conflicts with ${JSON.stringify(other)}`);
     }
-    for (const file of filePaths) for (const dir of otherDirs) if (foldAiPathIdentity(file) === foldAiPathIdentity(dir)) throw new TypeError(`AI bundle path ${JSON.stringify(file)} conflicts with ${JSON.stringify(dir)}`);
+    for (const file of filePaths) for (const dir of otherDirs) if (foldAiPathIdentity(file) === foldAiPathIdentity(dir)) throw new AiReviewConflictError(`AI bundle path ${JSON.stringify(file)} conflicts with ${JSON.stringify(dir)}`);
     for (const dir of dirs) for (const other of otherFilePaths) {
       const a = foldAiPathIdentity(dir), b = foldAiPathIdentity(other);
-      if (a === b || a.startsWith(`${b}/`)) throw new TypeError(`AI bundle directory ${JSON.stringify(dir)} conflicts with ${JSON.stringify(other)}`);
+      if (a === b || a.startsWith(`${b}/`)) throw new AiReviewConflictError(`AI bundle directory ${JSON.stringify(dir)} conflicts with ${JSON.stringify(other)}`);
     }
   };
   crossTreeConflict(candidate, directories, existing, existingDirectories);
@@ -98,18 +101,19 @@ export function createAiReview(destination: AiDestinationIdentity, candidate: re
   for (const [identity, path] of candidateIdentities) {
     for (const [otherIdentity, otherPath] of existingIdentities) {
       if (identity !== otherIdentity && (identity.startsWith(`${otherIdentity}/`) || otherIdentity.startsWith(`${identity}/`))) {
-        throw new TypeError(`AI bundle path ${JSON.stringify(path)} conflicts with ${JSON.stringify(otherPath)}`);
+        throw new AiReviewConflictError(`AI bundle path ${JSON.stringify(path)} conflicts with ${JSON.stringify(otherPath)}`);
       }
     }
   }
-  const snapshot = candidate.map(({ path, bytes }) => ({ path, bytes: Uint8Array.from(bytes) }));
-  const existingSnapshot = existing.map(({ path, bytes }) => ({ path, bytes: Uint8Array.from(bytes) }));
-  const files = snapshot.map(({ path, bytes }) => ({
+  const snapshot = candidate.map(({ path, bytes, linkTarget }) => ({ path, bytes: Uint8Array.from(bytes), ...(linkTarget === undefined ? {} : { linkTarget }) }));
+  const existingSnapshot = existing.map(({ path, bytes, linkTarget }) => ({ path, bytes: Uint8Array.from(bytes), ...(linkTarget === undefined ? {} : { linkTarget }) }));
+  const files = snapshot.map(({ path, bytes, linkTarget }) => ({
     path,
     length: bytes.byteLength,
     sha256: createHash('sha256').update(bytes).digest('hex'),
+    ...(linkTarget === undefined ? {} : { linkTarget }),
   })).sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
-  const existingFiles = existingSnapshot.map(({ path, bytes }) => ({ path, length: bytes.byteLength, sha256: createHash('sha256').update(bytes).digest('hex') }))
+  const existingFiles = existingSnapshot.map(({ path, bytes, linkTarget }) => ({ path, length: bytes.byteLength, sha256: createHash('sha256').update(bytes).digest('hex'), ...(linkTarget === undefined ? {} : { linkTarget }) }))
     .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   const prior = new Map(existingFiles.map(file => [foldAiPathIdentity(file.path), file.sha256]));
   const next = new Set(files.map(file => foldAiPathIdentity(file.path)));

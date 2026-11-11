@@ -238,7 +238,14 @@ candidate, the `CONFIRMATION_REQUIRED` carries `details.reviewSuperseded` and
 `--plan-digest` belongs to the confirming call (`--json --yes`) only. If an
 upgrade is interrupted after it started writing, every writing command refuses
 with `RECOVERY_REQUIRED` until `frontx upgrade <name> --recover` (same review →
-`--yes --plan-digest` protocol) finishes or cancels it.
+`--yes --plan-digest` protocol) finishes, releases or cancels it. For an upgrade
+interrupted before its record was written, `--recover` checks every path the
+approved plan covered: if each changed path holds exactly what the plan writes
+there, it releases the operation (`released`, the landed files stay) and
+re-running the identical upgrade converges; if any changed path holds something
+else, it refuses and names those paths — return each to its pre-upgrade content
+or to the approved candidate's by hand, then run `--recover` again. Nothing is
+rolled back automatically.
 
 If `RECOVERY_REQUIRED` reports a `pendingPostCommit` intent with no matching
 receipt, the CLI refuses before planning or dispatching any writer. This orphaned
@@ -260,8 +267,10 @@ single state-document write (temporary file plus rename), but the file writes
 across targets are not one transaction: the CLI attempts to roll back a write
 failure it catches, and a failed state write leaves the files that already
 landed with the record still naming the old generation. If the process dies or
-the state write fails before that record is written, re-running the identical
-upgrade is the intended remedy and is designed to converge, provided the same
+the state write fails before that record is written, `frontx upgrade <name>
+--recover` releases the operation once it has verified the landed files are the
+approved plan's own (see above), and re-running the identical upgrade is then
+the intended remedy and is designed to converge, provided the same
 origin and baseline still resolve and nothing else, such as another frontx
 process or an outside edit, touched the project in between. The tests behind
 this (an in-memory simulated crash, and a killed child process at selected

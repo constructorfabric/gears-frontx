@@ -52,6 +52,7 @@ import { resolveToInventory } from './resolver/resolve';
 import { officialDefaultOrigin } from './commands/official-defaults';
 import type { ProjectStateDocument } from './project-state/types';
 import { AiReviewDriftError, applyFsAiReview } from './adapters/fs-ai-review-materialize';
+import { AiReviewConflictError } from './operations/ai-review';
 import { createHash } from 'node:crypto';
 import { createResolvePayloadFn, payloadFromStoredContent } from './upgrade/payload';
 import { readProjectState } from './project-state/io';
@@ -597,7 +598,7 @@ function createInteractiveDeletionConfirm(): ConfirmDeletionFn {
     await writeInteractiveLineOrEscalate(
       plan.aiBundle.removed
         ? `AI bundle ${plan.aiBundle.path}/ will be removed with everything in it (last target of ${plan.templateName}).\n` +
-          (plan.aiBundle.tree?.files.map((f) => `  - ${plan.aiBundle.path}/${f.path} (${f.length} bytes)\n`).join('') ?? '')
+          (plan.aiBundle.tree?.files.map((f) => `  - ${plan.aiBundle.path}/${f.path}${f.linkTarget === undefined ? ` (${f.length} bytes)` : ` (symbolic link to ${JSON.stringify(f.linkTarget)})`}\n`).join('') ?? '')
         : `No AI bundle is removed (other targets of ${plan.templateName} remain).\n`,
     );
     await writeInteractiveLineOrEscalate(
@@ -894,9 +895,9 @@ interface RecoverUpgradeInput {
 
 async function recoverUpgrade(input: RecoverUpgradeInput): Promise<CommandOutcome> {
   const { name, scope, jsonMode } = input;
-  type Outcome = 'no-pending' | 'cancelled' | 'recovered' | 'declined';
-  const respond = (outcome: Outcome, text: string): CommandOutcome =>
-    jsonMode ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok({ outcome, name })) } : { exitCode: EXIT_SUCCESS, stdout: text };
+  type Outcome = 'no-pending' | 'cancelled' | 'released' | 'recovered' | 'declined';
+  const respond = (outcome: Outcome, text: string, data: Record<string, unknown> = {}): CommandOutcome =>
+    jsonMode ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok({ outcome, name, ...data })) } : { exitCode: EXIT_SUCCESS, stdout: text };
   const refuse = (message: string, details: Record<string, unknown>): CommandOutcome =>
     jsonMode
       ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('RECOVERY_REQUIRED', message, details)) }
@@ -960,12 +961,28 @@ async function recoverUpgrade(input: RecoverUpgradeInput): Promise<CommandOutcom
   // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-if-uncommitted
   if (now === intent.fromEntry) {
     // @cpt-begin:cpt-frontx-algo-upgrade-changeset-recover:p1:inst-rcv-release-uncommitted
-    const changedPaths = await changedFootprint(input.repoRoot, intent.footprint, input.readDiskEntry);
-    if (changedPaths.length > 0) {
+    const { changed: changedPaths, foreign } = await changedFootprint(input.repoRoot, intent.footprint, input.readDiskEntry);
+    // A changed path holding anything but what the approved plan lands there is
+    // not this operation's result: nothing is released and nothing rolled back.
+    if (foreign.length > 0) {
       return refuse(
-        `The interrupted operation on "${name}" changed ${changedPaths.length} project path(s) before its state commit; ` +
-          `reconcile them by hand (nothing is rolled back automatically): ${changedPaths.join(', ')}. Inspect ${t.receiptPath}.`,
-        { receipt: t.receiptPath, changedPaths, transitionCommitted: false },
+        `The interrupted operation on "${name}" changed ${changedPaths.length} project path(s) before its state commit, and ` +
+          `${foreign.length} of them now hold content the approved plan did not write: ${foreign.join(', ')}. ` +
+          `Return each to its pre-upgrade content or to the approved candidate's (nothing is rolled back automatically), then re-run --recover. ` +
+          `Inspect ${t.receiptPath}.`,
+        { receipt: t.receiptPath, changedPaths, foreignPaths: foreign, transitionCommitted: false },
+      );
+    }
+    // Every changed path holds exactly what the approved plan writes there: the
+    // partial result is the plan's own, the entry still names the baseline, so
+    // re-running the identical upgrade converges (`inst-cls-if-unchanged`).
+    if (changedPaths.length > 0) {
+      await t.finalize('cancelled', now);
+      return respond(
+        'released',
+        `The interrupted operation on "${name}" had landed ${changedPaths.length} path(s) exactly as approved and never committed its state; ` +
+          `released it, keeping them: ${changedPaths.join(', ')}. Re-run the identical upgrade to finish; it converges on the approved candidate.`,
+        { landedPaths: changedPaths },
       );
     }
     await t.finalize('cancelled', now);
@@ -2511,7 +2528,7 @@ export async function runCommand(
             const snapshot = reviewFsAiCandidate(repoRoot, manifestName, undefined);
             reviewedBundles.set(manifestName, snapshot.digest);
             return {
-              files: snapshot.existing.map(({ path: file, length, sha256 }) => ({ path: file, length, sha256 })),
+              files: snapshot.existing.map(({ path: file, length, sha256, linkTarget }) => ({ path: file, length, sha256, ...(linkTarget === undefined ? {} : { linkTarget }) })),
               directories: [...snapshot.existingDirectories],
               digest: snapshot.digest,
             };
@@ -2806,7 +2823,7 @@ export async function runCommand(
       // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-if-no-effect
       // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-release-cancelled
       const committed = now !== begun.receipt.intent.fromEntry;
-      const changedPaths = committed ? [] : await changedFootprint(repoRoot, begun.receipt.intent.footprint, readDiskEntry);
+      const changedPaths = committed ? [] : (await changedFootprint(repoRoot, begun.receipt.intent.footprint, readDiskEntry)).changed;
       if (!committed && changedPaths.length === 0) {
         await begun.finalize('cancelled', now);
         return renderUpgradeOutcome(result, jsonMode);
@@ -3012,6 +3029,12 @@ export async function run(argv: string[], deps: CliDeps): Promise<CommandOutcome
     // @cpt-end:cpt-frontx-state-cli-invocation-run:p1:inst-st-dispatched-user-error
     // @cpt-end:cpt-frontx-state-cli-invocation-run:p1:inst-st-dispatched-success
   } catch (error) {
+    if (error instanceof AiReviewConflictError) {
+      const envelope = err('CONTENT_CONFLICT', error.message);
+      return parseJsonMode(parsed.args)
+        ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(envelope) }
+        : { exitCode: EXIT_USER_ERROR, stderr: error.message };
+    }
     if (error instanceof UnindexedSlotResidueError) {
       const envelope = err('CONTENT_CONFLICT', error.message, { contentPath: error.installedPath, slot: 'residue' });
       return parseJsonMode(parsed.args)
