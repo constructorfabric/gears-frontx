@@ -35,6 +35,30 @@ DO:
 
 ---
 
+## SDLC Artifact State
+
+```pdsl
+UNIT SdlcCurrentStateArtifacts
+
+PURPOSE:
+  Keep every SDLC artifact a description of the project's current state, overriding the kit's accepted-ADR immutability.
+
+WHEN:
+  - REQUIRE authoring, revising, or reviewing a PRD, ADR, DESIGN, DECOMPOSITION, or FEATURE in this repository
+
+DO:
+  - RUN rewrite the affected artifact in place so it states the current decision and behaviour, accepted ADRs included
+
+RULES:
+  - ALWAYS change an existing artifact in place when its decision or content changes; NEVER create a new artifact only to supersede or amend an existing one
+  - NEVER write amendment, supersession, "previously", "formerly", "renamed from", change-log, or other history text in an SDLC artifact
+  - ALWAYS keep artifact IDs, titles, and file names outcome-agnostic: they name the question or concern, never the chosen answer
+  - ALWAYS update every reference in the same change when an artifact ID or file name changes
+  - ALWAYS apply this unit over the kit ADR rule that accepted ADRs are immutable and change only by supersession
+```
+
+---
+
 ## FrontX Architecture Binding
 
 `architecture/` is the authority on what the system is and why: PRD for intent,
