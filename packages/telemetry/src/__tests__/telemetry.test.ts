@@ -516,7 +516,15 @@ describe('Telemetry Client', () => {
   });
 
   test('should send nothing for an event logged after destroy()', () => {
-    const telemetry = createTelemetry(mockAppInfo);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const eventHook = vi.fn();
+    const telemetry = createTelemetry({ ...mockAppInfo, verbose: true });
+    telemetry.plugin({
+      name: 'event-probe',
+      setup: (context) => {
+        context.addHook('event', eventHook);
+      },
+    });
     telemetry.start();
     telemetry.destroy();
     fetchMock.mockClear();
@@ -525,6 +533,12 @@ describe('Telemetry Client', () => {
     vi.advanceTimersByTime(6000);
 
     expect(fetchMock).not.toHaveBeenCalled();
+    // The record is dropped before the plugins' `event` hooks see it, not only before it is queued.
+    expect(eventHook).not.toHaveBeenCalledWith(expect.objectContaining({ name: 'after_destroy' }));
+    expect(consoleError).toHaveBeenCalledWith(
+      'Telemetry has been destroyed; the event was not sent.',
+      'after_destroy',
+    );
   });
 
   test('should run teardown once when destroy() is called twice', () => {
@@ -570,6 +584,34 @@ describe('Telemetry Client', () => {
     vi.advanceTimersByTime(6000);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('should throw the destroy hook error when the final send also throws', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const telemetry = createTelemetry({ ...mockAppInfo, verbose: true });
+    telemetry.plugin({
+      name: 'two-faults',
+      setup: (context) => {
+        // A circular object left in a record makes the final send's JSON.stringify throw.
+        context.addHook('event', (record) => {
+          const loop: Record<string, unknown> = {};
+          loop.self = loop;
+          Object.assign(record, { data: loop });
+        });
+        context.addHook('destroy', () => {
+          throw new Error('teardown failed');
+        });
+      },
+    });
+
+    telemetry.start();
+    telemetry.logEvent('circular');
+
+    expect(() => telemetry.destroy()).toThrow('teardown failed');
+    expect(consoleError).toHaveBeenCalledWith(
+      'Telemetry: the final send failed after a teardown hook threw.',
+      expect.any(TypeError),
+    );
   });
 
   test('should send nothing for an event whose enrichment hook destroys the client', () => {

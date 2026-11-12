@@ -179,7 +179,7 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
 3. [x] - `p1` - Mark the client DESTROYED before teardown runs, so a start or teardown called from a teardown hook is refused rather than run partway through - `inst-set-destroyed`
 4. [x] - `p1` - Detach the session manager's activity listeners - `inst-detach-session`
 5. [x] - `p1` - Invoke the teardown hooks, so a plugin may log a parting event - `inst-call-destroy-hooks`
-6. [x] - `p1` - Tear the events manager down last, so a parting event reaches the queue before the final delivery. It runs even when a teardown hook throws, because the client is already DESTROYED and no later teardown would reach it; the hook's error then reaches the caller - `inst-teardown-events-last`
+6. [x] - `p1` - Tear the events manager down last, so a parting event reaches the queue before the final delivery. It runs even when a teardown hook throws, because the client is already DESTROYED and no later teardown would reach it; the hook's error then reaches the caller. If the final delivery also throws in that case, its failure is logged and the hook's error still reaches the caller - `inst-teardown-events-last`
 7. [x] - `p1` - **RETURN** control; the client stays DESTROYED, so it cannot be restarted - `inst-return-destroyed`
 
 ### Record Construction And Enrichment

@@ -187,23 +187,33 @@ export function createTelemetry(configRaw: TelemetryConfig): TelemetryService {
     sessionManager.destroy();
     // @cpt-end:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-detach-session
     // The events manager goes last because its destroy flushes: a plugin's `destroy` hook may log
-    // a parting event, and it has to reach the queue before the final send. It runs in `finally`
-    // because the client is already DESTROYED: if a hook throws, no later `destroy()` reaches the
+    // a parting event, and it has to reach the queue before the final send. It runs even when a
+    // hook throws, because the client is already DESTROYED: no later `destroy()` would reach the
     // events manager, and its listener and pending send would outlive the teardown. The hook's
-    // error still reaches the caller.
+    // error is rethrown afterwards, so it still reaches the caller.
+    let hookFailure: { error: unknown } | undefined;
     try {
       // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-call-destroy-hooks
       hooks.callHooksSync('destroy');
       // @cpt-end:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-call-destroy-hooks
-    } finally {
-      // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-teardown-events-last
-      // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-return-destroyed
-      // @cpt-begin:cpt-frontx-telemetry-flow-event-collection-instrument:p1:inst-teardown-complete
-      eventsManager.destroy();
-      // @cpt-end:cpt-frontx-telemetry-flow-event-collection-instrument:p1:inst-teardown-complete
-      // @cpt-end:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-return-destroyed
-      // @cpt-end:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-teardown-events-last
+    } catch (error) {
+      hookFailure = { error };
     }
+    // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-teardown-events-last
+    // @cpt-begin:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-return-destroyed
+    // @cpt-begin:cpt-frontx-telemetry-flow-event-collection-instrument:p1:inst-teardown-complete
+    try {
+      eventsManager.destroy();
+    } catch (drainError) {
+      // While a hook's error is on its way to the caller, a failed final send is only logged, so
+      // it cannot replace the hook's error.
+      if (!hookFailure) throw drainError;
+      logger.logError('Telemetry: the final send failed after a teardown hook threw.', drainError);
+    }
+    if (hookFailure) throw hookFailure.error;
+    // @cpt-end:cpt-frontx-telemetry-flow-event-collection-instrument:p1:inst-teardown-complete
+    // @cpt-end:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-return-destroyed
+    // @cpt-end:cpt-frontx-telemetry-algo-event-collection-destroy:p1:inst-teardown-events-last
     // @cpt-end:cpt-frontx-telemetry-flow-event-collection-instrument:p1:inst-teardown-order
   }
   // @cpt-end:cpt-frontx-telemetry-state-event-collection-client-lifecycle:p2:inst-created-to-destroyed
