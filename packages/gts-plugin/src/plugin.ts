@@ -247,8 +247,9 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
    * Lifecycle hook actions: a domain's or an extension's own schema checks
    * each hook action only against the base action type, which accepts a
    * domain or an extension as a target. Each action is then validated against
-   * its own type, in the scratch store while it holds the candidate, so an
-   * action may name the domain or extension being registered. A `mount_ext`
+   * its own type. That check does not ask that the entities an action names
+   * be registered, so an action may name the domain or extension being
+   * registered, or one registered after it. A `mount_ext`
    * action that targets an extension is refused here, at registration, instead
    * of failing only when the mediator dispatches it.
    *

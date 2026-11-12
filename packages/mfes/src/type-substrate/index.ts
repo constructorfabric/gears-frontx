@@ -115,8 +115,9 @@ export interface TypeSystemPlugin<TSchema = unknown> {
    *
    * For a domain or an extension, the provider also validates each action in
    * its lifecycle hooks against the action's own registered type, through
-   * every `next` and `fallback` in each chain, as though the declaration were
-   * already registered, so a hook action may name the declaration itself. If
+   * every `next` and `fallback` in each chain. It does not require the
+   * entities an action names to be registered, so a hook action may name the
+   * declaration itself or an entity registered after it. If
    * any action fails, `register()` throws and persists nothing. The runtime
    * relies on this to refuse a hook at registration that would otherwise fail
    * only when the mediator dispatches it.

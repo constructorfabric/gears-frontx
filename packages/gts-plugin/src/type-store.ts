@@ -24,13 +24,25 @@ import { keyName, type StoreLike, type StorePair, type WriterToken } from './sto
 
 
 /**
- * The reference check every validation asks of the library: a referenced entity
- * only has to be on the store, not valid. Every stored instance was validated
+ * The reference check every validation asks of the library, except a lifecycle
+ * hook action's at registration ({@link HOOK_ACTION_REFERENCE_CHECK}): a referenced
+ * entity only has to be on the store, not valid. Every stored instance was validated
  * when it was written, but a type is not validated when it is registered. A
  * validity check would let one type the library rejects fail every entity that
  * lists it, and would validate a dispatch target's references again on every action.
  */
 export const REFERENCE_CHECK = GtsRefValidationMode.AnyPresent;
+
+/**
+ * The reference check registration asks of a lifecycle hook action: none. The
+ * action's type still decides what kind of entity each reference must name,
+ * for example that a `mount_ext` action targets a domain, but not whether that
+ * entity is on the store yet. A hook may name an entity registered after its
+ * declaration, such as an extension of the domain being registered, since an
+ * extension registers only after its domain. The mediator validates the action
+ * with {@link REFERENCE_CHECK} when it dispatches it.
+ */
+const HOOK_ACTION_REFERENCE_CHECK = GtsRefValidationMode.None;
 
 export function safeStringify(value: unknown): string {
   try {
@@ -225,7 +237,7 @@ function actionFailure(scratch: StoreLike, action: unknown): string | undefined 
   const wrapped = createJsonEntity(action);
   const typeId = wrapped.schemaId;
   if (!typeId) return 'the GTS library found no type identifier in this action';
-  const result = scratch.validateTransientInstance(wrapped.content, typeId, null, REFERENCE_CHECK);
+  const result = scratch.validateTransientInstance(wrapped.content, typeId, null, HOOK_ACTION_REFERENCE_CHECK);
   if (result.ok) return undefined;
   return `its type '${typeId}' refuses it: ${result.error || 'unknown validation error'}`;
 }
@@ -240,8 +252,10 @@ function actionFailure(scratch: StoreLike, action: unknown): string | undefined 
  * check such an action would fail only when the mediator dispatches it, which
  * can leave the hook's chain half done.
  *
- * Runs against the scratch store while it holds the candidate, so an action may
- * name the domain or extension being registered. The library decides whether
+ * Checks each action's type and shape, including the kind of entity each
+ * reference names, but not that the named entity is registered
+ * ({@link HOOK_ACTION_REFERENCE_CHECK}). So an action may name the domain or
+ * extension being registered, or one registered after it. The library decides whether
  * the candidate is a domain or an extension; the walk over the hooks and each
  * chain's `next` and `fallback` links reads no identifier.
  */

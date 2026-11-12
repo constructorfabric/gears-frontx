@@ -9,8 +9,10 @@
  *
  * The base action schema accepts a domain or an extension as a target, so
  * each hook action is also checked against its own type, at every step of its
- * chain, while the store holds the candidate: a `mount_ext` action that
- * targets an extension is refused at registration, not only at dispatch.
+ * chain: a `mount_ext` action that targets an extension is refused at
+ * registration, not only at dispatch. That check covers what kind of entity
+ * each reference names, not whether it is registered yet, so a hook may name
+ * an entity that registers later; the mediator checks that at dispatch.
  *
  * `cpt-frontx-algo-gts-type-provider-infra-registration-v2` (inst-irv2-load),
  * `cpt-frontx-algo-gts-type-provider-instance-write` (inst-iw-hook-actions).
@@ -98,7 +100,6 @@ describe('lifecycle hooks on the real store', () => {
 
   describe('registers hooks whose actions satisfy their own types', () => {
     it('registers a domain whose hooks dispatch actions, a next step included', () => {
-      // `mount_ext` and `unmount_ext` name their subject with `x-gts-instance-ref`, so the extension is on the store.
       plugin.register(extension(EXT_ID));
       const hooked = domain(HOOKED_DOMAIN_ID, [
         {
@@ -141,7 +142,7 @@ describe('lifecycle hooks on the real store', () => {
     });
 
     it('registers an extension whose chain names the extension itself at every step', () => {
-      // The extension is not on the store before this call; the check sees it as already written.
+      // The extension is not on the store before this call, and the check does not ask that it be.
       const hooked = extension(HOOKED_EXT_ID, [
         {
           stage: activated,
@@ -185,6 +186,35 @@ describe('lifecycle hooks on the real store', () => {
 
       expect(() => plugin.register(hooked)).not.toThrow();
       expect(plugin.validateInstance(HOOKED_DOMAIN_ID).valid).toBe(true);
+    });
+
+    it('registers a domain whose hook names its own extensions, which register after it', () => {
+      // The domain's own stage swaps one of its extensions for another. Neither
+      // is on the store yet: an extension registers only after its domain.
+      const hooked = domain(HOOKED_DOMAIN_ID, [
+        {
+          stage: init,
+          actions_chain: {
+            action: { type: unmountExt, target: HOOKED_DOMAIN_ID, payload: { subject: EXT_ID } },
+            next: { action: { type: mountExt, target: HOOKED_DOMAIN_ID, payload: { subject: HOOKED_EXT_ID } } },
+          },
+        },
+      ]);
+
+      expect(() => plugin.register(hooked)).not.toThrow();
+      expect(plugin.validateInstance(HOOKED_DOMAIN_ID).valid).toBe(true);
+      expect(() => plugin.register({ id: EXT_ID, domain: HOOKED_DOMAIN_ID, entry: ENTRY_ID })).not.toThrow();
+      expect(() => plugin.register({ id: HOOKED_EXT_ID, domain: HOOKED_DOMAIN_ID, entry: ENTRY_ID })).not.toThrow();
+    });
+
+    it('registers an extension whose hook names a sibling that registers after it', () => {
+      const hooked = extension(HOOKED_EXT_ID, [
+        { stage: activated, actions_chain: { action: { type: mountExt, target: DOMAIN_ID, payload: { subject: EXT_ID } } } },
+      ]);
+
+      expect(() => plugin.register(hooked)).not.toThrow();
+      expect(plugin.validateInstance(HOOKED_EXT_ID).valid).toBe(true);
+      expect(() => plugin.register(extension(EXT_ID))).not.toThrow();
     });
   });
 
@@ -248,9 +278,10 @@ describe('lifecycle hooks on the real store', () => {
       expectNotStored(HOOKED_DOMAIN_ID);
     });
 
-    it('refuses an action whose subject is not on the store', () => {
+    it('refuses an action whose subject names a domain, not an extension', () => {
+      // The subject need not be on the store yet, but it must be an extension.
       const hooked = domain(HOOKED_DOMAIN_ID, [
-        { stage: init, actions_chain: { action: { type: mountExt, target: DOMAIN_ID, payload: { subject: EXT_ID } } } },
+        { stage: init, actions_chain: { action: { type: mountExt, target: DOMAIN_ID, payload: { subject: DOMAIN_ID } } } },
       ]);
 
       expect(() => plugin.register(hooked)).toThrow(/lifecycle\[0\]\.actions_chain\.action fails/);
@@ -277,5 +308,9 @@ describe('lifecycle hooks on the real store', () => {
       /GTS validation failed for instance '\(anonymous\)'/
     );
     expect(() => plugin.register({ type: mountExt, target: DOMAIN_ID, payload: { subject: EXT_ID } })).not.toThrow();
+    // At dispatch the subject must also be on the store.
+    expect(() => plugin.register({ type: mountExt, target: DOMAIN_ID, payload: { subject: HOOKED_EXT_ID } })).toThrow(
+      /GTS validation failed for instance '\(anonymous\)'/
+    );
   });
 });
