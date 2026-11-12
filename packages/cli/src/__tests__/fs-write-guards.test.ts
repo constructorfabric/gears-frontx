@@ -538,6 +538,9 @@ const READ_ALLOW_LIST: Record<string, FileAllowList> = {
     'fs.readdirSync': [{ guard: 'walkDirectory', note: 'Dirent-typed walk; never follows a symlink.' }],
   },
   'cli.ts': {
+    'fs.readFileSync': [
+      { guard: 'versionOutcome', note: "Reads this package's own `package.json` (resolved from the module URL, never a project path) to print the installed version; read-only." },
+    ],
     'fs.readdirSync': [
       { guard: 'createFsRemoveEmptyDirFn', note: 'Names-only listing used purely to decide emptiness; never opens an entry, so no shape can block it.' },
     ],
