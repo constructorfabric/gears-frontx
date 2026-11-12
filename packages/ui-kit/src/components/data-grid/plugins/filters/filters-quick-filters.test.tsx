@@ -121,6 +121,47 @@ describe('search filter', () => {
     await waitFor(() => expect(screen.getByRole('textbox')).toHaveValue(''));
     expect(lastFilters(second.load)).toBeUndefined();
   });
+
+  it('stays reset when Reset is pressed while an edit waits to apply', async () => {
+    const { user, load } = await renderFiltersGrid({
+      entities: [filterSearch({ id: 'query', label: 'Query' })],
+    });
+    await user.click(chip('Query'));
+    await user.type(await screen.findByRole('textbox'), 'bob');
+    await waitFor(
+      () => expect(lastFilters(load)).toEqual({ query: { value: 'bob' } }),
+      afterSearchDebounce,
+    );
+
+    await user.type(screen.getByRole('textbox'), 'by');
+    await user.click(screen.getByRole('button', { name: messages.filters.reset }));
+    await waitFor(() => expect(screen.getByRole('textbox')).toHaveValue(''));
+
+    // Past the debounce, the edit made before the reset doesn't come back.
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    expect(lastFilters(load)).toBeUndefined();
+    expect(screen.getByRole('textbox')).toHaveValue('');
+  });
+
+  it('still applies an edit made after a search was applied', async () => {
+    const { user, load } = await renderFiltersGrid({
+      entities: [filterSearch({ id: 'query', label: 'Query' })],
+    });
+    await user.click(chip('Query'));
+    await user.type(await screen.findByRole('textbox'), 'bob');
+    await waitFor(
+      () => expect(lastFilters(load)).toEqual({ query: { value: 'bob' } }),
+      afterSearchDebounce,
+    );
+
+    await user.type(screen.getByRole('textbox'), 'by');
+
+    await waitFor(
+      () => expect(lastFilters(load)).toEqual({ query: { value: 'bobby' } }),
+      afterSearchDebounce,
+    );
+    expect(screen.getByRole('textbox')).toHaveValue('bobby');
+  });
 });
 
 describe('checkbox group filter', () => {

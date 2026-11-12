@@ -21,11 +21,6 @@ export function FilterSearch({ filterEntity }: FilterSearchProps) {
     filtersApi.useState<DataGridFilterSearchState>(filterEntity.filterKey)?.value ?? '';
   const [text, setText] = useState(currentValue);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- the field shows what the user is typing, and takes the stored value over whenever that changes (a reset, the panel's apply)
-    setText(currentValue);
-  }, [currentValue]);
-
   const debouncedUpdate = useMemo(
     () =>
       debounce((value: string) => {
@@ -37,6 +32,15 @@ export function FilterSearch({ filterEntity }: FilterSearchProps) {
       }, 1000),
     [filterEntity.filterKey, filtersApi],
   );
+
+  useEffect(() => {
+    // A new stored value (a reset, the panel's apply) also drops an edit still waiting out the
+    // debounce, or that edit would apply over it. When the debounce's own apply lands here, it
+    // has already run, so there is nothing to drop.
+    debouncedUpdate.cancel();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the field shows what the user is typing, and takes the stored value over whenever that changes (a reset, the panel's apply)
+    setText(currentValue);
+  }, [currentValue, debouncedUpdate]);
 
   useEffect(() => {
     return () => debouncedUpdate.cancel();
