@@ -97,7 +97,7 @@ Realizes the collection and delivery requirements of the SDK and the sequence `c
 - Start called after teardown: refused and reported, whether or not the client was started before teardown.
 - Teardown called a second time: does nothing; no teardown hook runs again.
 - Teardown hook throws: the events manager still tears down and delivers the queue, and the hook's error reaches the caller.
-- Event logged after teardown, including from an enrichment hook that called teardown or during the final delivery: reported through the logger, and neither queued nor sent.
+- Event logged after teardown or during the final delivery, or an event whose own enrichment hook called teardown: reported through the logger, and neither queued nor sent.
 - Plugin registered after start: stored and never set up, so its enrichment silently does nothing.
 - Delivery rejected by the network or the collector: the batch is already drained from the queue and is lost; the rejection reaches the console only.
 
@@ -489,7 +489,7 @@ The system **MUST** supply session, device, navigation and application-info enri
 - [x] A second teardown runs no teardown hook again, and an event logged after teardown is never sent.
 - [x] An event logged from a teardown hook appears in the batch delivered by teardown.
 - [x] A teardown hook that throws still leaves no visibility listener installed and the queue delivered, and teardown rethrows its error.
-- [x] An event logged from an enrichment hook that tears the client down, or logged while the final batch is being sent, is never sent.
+- [x] An event whose enrichment hook tears the client down is never sent, and neither is an event logged while the final batch is being sent.
 - [x] A record's identifier and trigger timestamp are SDK-assigned and survive a caller supplying those fields explicitly.
 - [x] A record is fully enriched when it enters the queue, and the events manager contains no reference to any context field by name.
 - [x] Records logged in a burst are delivered as one batch on the debounce; the page becoming hidden and client teardown each force an immediate delivery.
