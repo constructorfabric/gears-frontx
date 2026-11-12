@@ -1,12 +1,14 @@
+// @cpt-flow:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1
 // @cpt-dod:cpt-frontx-dod-ai-upgrade-orchestration-single-engine:p1
 // @cpt-dod:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1
 //
 // `createInvokeUpgradeCommand` spawns the built `frontx upgrade --json`
 // command surface (never importing `@gears-frontx/cli`), gates the engine's
 // apply step on the developer's review decision, and parses the process's
-// final JSON line into the kit-local `UpgradeCommandJsonResult`. This test
-// injects a fake spawned process (EventEmitter + PassThrough streams) — no
-// real process is launched.
+// final JSON line into the kit-local `UpgradeCommandJsonResult`. When the
+// review fails, it tells the process the upgrade is declined and fails with
+// the review's error. This test injects a fake spawned process
+// (EventEmitter + PassThrough streams) — no real process is launched.
 import { describe, it, expect, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
@@ -116,5 +118,123 @@ describe('createInvokeUpgradeCommand (cpt-frontx-dod-ai-upgrade-orchestration-si
     // guard test (`no-cli-import.test.ts`); this test documents the intent
     // alongside the adapter's own behavioral coverage.
     expect(true).toBe(true);
+  });
+});
+
+// Issue #742: a review that fails used to leave the invocation pending, the
+// process waiting on stdin, and the error loose as an unhandled rejection.
+describe('createInvokeUpgradeCommand when the review fails (cpt-frontx-flow-ai-upgrade-orchestration-upgrade)', () => {
+  const changeSetLine = `${JSON.stringify({ changeSet: CHANGE_SET })}\n`;
+
+  it('rejects the invocation when onChangeSet rejects (the repro from issue #742)', async () => {
+    const fakeChild = makeFakeChild();
+    const spawnFn: SpawnFn = () => fakeChild as never;
+    const invoke = createInvokeUpgradeCommand({ spawnFn });
+    const result = invoke('/proj', '2.0.0', async () => {
+      throw new Error('review failed');
+    });
+
+    fakeChild.stdout.write(changeSetLine);
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const outcome = await Promise.race([
+      result.then(
+        () => 'resolved',
+        (error: Error) => `rejected: ${error.message}`,
+      ),
+      new Promise((resolve) => {
+        timer = setTimeout(() => resolve('still pending after 500 ms'), 500);
+      }),
+    ]);
+    clearTimeout(timer);
+
+    expect(outcome).toBe('rejected: review failed');
+    expect(fakeChild.stdin.writtenLines).not.toEqual([]);
+  });
+
+  it('rejects with the review error itself and leaves no unhandled rejection', async () => {
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      const fakeChild = makeFakeChild();
+      const invoke = createInvokeUpgradeCommand({ spawnFn: () => fakeChild as never });
+      const reviewError = new Error('enrichment failed');
+
+      const resultPromise = invoke('/proj', '2.0.0', async () => {
+        throw reviewError;
+      });
+      fakeChild.stdout.write(changeSetLine);
+
+      await expect(resultPromise).rejects.toBe(reviewError);
+      // Node reports unhandled rejections after the microtask queue drains,
+      // so give it a macrotask turn before checking.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
+
+  it('writes "declined" to the process stdin, so the engine exits without writing project files', async () => {
+    const fakeChild = makeFakeChild();
+    const invoke = createInvokeUpgradeCommand({ spawnFn: () => fakeChild as never });
+
+    const resultPromise = invoke('/proj', '2.0.0', async () => {
+      throw new Error('review failed');
+    });
+    fakeChild.stdout.write(changeSetLine);
+
+    await expect(resultPromise).rejects.toThrow('review failed');
+    expect(fakeChild.stdin.writtenLines).toEqual(['declined\n']);
+  });
+
+  it('keeps the review error when the process then reports a result and closes', async () => {
+    const fakeChild = makeFakeChild();
+    const invoke = createInvokeUpgradeCommand({ spawnFn: () => fakeChild as never });
+    const reviewError = new Error('review failed');
+
+    const resultPromise = invoke('/proj', '2.0.0', async () => {
+      throw reviewError;
+    });
+    // Attach the handler now; the assertion runs after the process events below.
+    const outcome = resultPromise.then(
+      () => 'resolved',
+      (error: unknown) => error,
+    );
+
+    fakeChild.stdout.write(changeSetLine);
+    await vi.waitFor(() => expect(fakeChild.stdin.writtenLines).toEqual(['declined\n']));
+
+    // What the real CLI does after reading "declined": report it, then exit.
+    fakeChild.stdout.write(`${JSON.stringify({ ok: true, status: 'declined' })}\n`);
+    fakeChild.emit('close', 0);
+
+    expect(await outcome).toBe(reviewError);
+    expect(fakeChild.stdin.writtenLines).toEqual(['declined\n']);
+  });
+
+  it('treats a review that throws synchronously the same way', async () => {
+    const fakeChild = makeFakeChild();
+    const invoke = createInvokeUpgradeCommand({ spawnFn: () => fakeChild as never });
+    const reviewError = new Error('review threw');
+
+    const resultPromise = invoke('/proj', '2.0.0', () => {
+      throw reviewError;
+    });
+    fakeChild.stdout.write(changeSetLine);
+
+    await expect(resultPromise).rejects.toBe(reviewError);
+    expect(fakeChild.stdin.writtenLines).toEqual(['declined\n']);
+  });
+
+  it('wraps a rejection that is not an Error, keeping its text', async () => {
+    const fakeChild = makeFakeChild();
+    const invoke = createInvokeUpgradeCommand({ spawnFn: () => fakeChild as never });
+
+    const resultPromise = invoke('/proj', '2.0.0', () => Promise.reject('no reviewer available'));
+    fakeChild.stdout.write(changeSetLine);
+
+    await expect(resultPromise).rejects.toThrow(/no reviewer available/);
+    expect(fakeChild.stdin.writtenLines).toEqual(['declined\n']);
   });
 });

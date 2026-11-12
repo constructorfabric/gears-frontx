@@ -77,6 +77,7 @@ Delivers the AI-guided upgrade path defined in `cpt-frontx-seq-ai-driven-templat
 - Engine returns an empty or unresolvable change set; AI presents the finding and halts before the review gate.
 - Developer declines at the review gate; no project files are written and the project remains at its current version.
 - Downstream-effect assessment flags incompatibilities; AI surfaces them before the gate so the developer can decline.
+- Enrichment or review fails before the developer decides; the engine is told the upgrade is declined, so no project files are written, and the developer gets the failure.
 
 **Steps**:
 1. [x] - `p1` - Developer requests an AI-driven template upgrade for the current project, naming the applied template to upgrade (or asking the AI to list the applied templates from provenance so one can be chosen) - `inst-request-upgrade`
@@ -87,11 +88,14 @@ Delivers the AI-guided upgrade path defined in `cpt-frontx-seq-ai-driven-templat
 5. [x] - `p1` - **IF** the engine returns an empty or unresolvable change set - `inst-check-changeset`
    1. [x] - `p1` - **RETURN** finding to developer: no applicable change set; upgrade halted before review gate - `inst-empty-changeset`
 6. [x] - `p1` - AI presents the enriched change set (change-impact analysis + downstream-effect assessment) to the developer for review - `inst-present-review`
-7. [x] - `p1` - **IF** developer approves the change set - `inst-gate-approve`
+7. [x] - `p1` - **IF** enrichment or review fails before the developer decides - `inst-check-review-failure`
+   1. [x] - `p1` - Tell the engine the upgrade is declined, so it writes no project files and the project remains at its current version - `inst-decline-on-review-failure`
+   2. [x] - `p1` - **RETURN** error to developer: the failure itself, which a later engine result or the engine's exit does not replace - `inst-return-review-failure`
+8. [x] - `p1` - **IF** developer approves the change set - `inst-gate-approve`
    1. [x] - `p1` - Trigger engine apply: engine writes the change set to project files non-destructively - `inst-engine-apply`
    2. [x] - `p1` - Engine updates project provenance record to the newer template version - `inst-update-provenance`
    3. [x] - `p1` - **RETURN** upgrade complete with summary of applied changes - `inst-return-applied`
-8. [x] - `p1` - **ELSE** developer declines or incompatibilities are flagged - `inst-gate-decline`
+9. [x] - `p1` - **ELSE** developer declines or incompatibilities are flagged - `inst-gate-decline`
    1. [x] - `p1` - Engine writes no project files; project remains at current version - `inst-no-write`
    2. [x] - `p1` - **RETURN** decline acknowledged; no changes applied - `inst-return-declined`
 
@@ -191,6 +195,7 @@ The system **MUST** invoke only the CLI change-set engine (F14 — `cpt-frontx-f
 - [x] The AI-driven upgrade flow reads the project's provenance record set, selects the named applied template to upgrade, invokes the single CLI change-set engine for that template, enriches the result with change-impact analysis and downstream-effect assessment, and presents it to the developer before any apply.
 - [x] The review gate stands unconditionally before the engine apply step: no project files are written until an explicit developer approval.
 - [x] On developer decline or flagged incompatibilities, the project remains at its current version with no files written.
+- [x] If enrichment or review fails before the developer decides, the engine is told the upgrade is declined and writes no files, and the upgrade fails once, with that failure.
 - [x] The AI orchestration layer contains no second change-set engine implementation; the identical change set is applied by both the AI-orchestrated path and the direct CLI path.
 - [x] Project provenance is updated to the newer template version only after a successful non-destructive apply.
 - [x] The orchestrated-upgrade state machine transitions correctly through PROVENANCE_READ → ANALYZED → REVIEWED → APPLIED on approval and PROVENANCE_READ → ANALYZED → REVIEWED → DECLINED on decline.

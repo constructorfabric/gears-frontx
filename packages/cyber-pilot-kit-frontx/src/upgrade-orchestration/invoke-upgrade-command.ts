@@ -1,3 +1,4 @@
+// @cpt-flow:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1
 // @cpt-dod:cpt-frontx-dod-ai-upgrade-orchestration-single-engine:p1
 // @cpt-dod:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1
 //
@@ -15,6 +16,8 @@
 //      review callback and writes the developer's decision
 //      ("approved"/"declined") back to the process's stdin, gating the
 //      engine's apply step on that decision (cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced).
+//      If the review fails instead, this adapter writes "declined", so the
+//      engine writes no project files, and rejects with the review's error.
 //   3. The process writes a FINAL JSON line `{ ok, status, message? }` (to
 //      stdout on success/decline, to stderr on failure) which this adapter
 //      parses into the kit-local `UpgradeCommandJsonResult`.
@@ -106,15 +109,41 @@ export function createInvokeUpgradeCommand(options: InvokeUpgradeCommandOptions 
           const changeSet = parseChangeSetLine(parsed);
           if (changeSet) {
             changeSetHandled = true;
-            void onChangeSet(changeSet).then((decision: ReviewDecision) => {
-              // @cpt-end:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1:inst-relay-changeset
-              // @cpt-begin:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1:inst-gate-decision
-              // The engine's apply step is gated on this decision: it is
-              // relayed to the command surface's process boundary and the
-              // engine only applies when the process observes "approved".
-              child.stdin.write(`${decision}\n`);
-              // @cpt-end:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1:inst-gate-decision
-            });
+            // Calling the review inside `.then` turns a synchronous throw into
+            // a rejection, so both kinds of failure take the path below.
+            void Promise.resolve()
+              .then(() => onChangeSet(changeSet))
+              .then(
+                (decision: ReviewDecision) => {
+                  // @cpt-end:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1:inst-relay-changeset
+                  // @cpt-begin:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1:inst-gate-decision
+                  // The engine's apply step is gated on this decision: it is
+                  // relayed to the command surface's process boundary and the
+                  // engine only applies when the process observes "approved".
+                  child.stdin.write(`${decision}\n`);
+                  // @cpt-end:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1:inst-gate-decision
+                },
+                // @cpt-begin:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-check-review-failure
+                (error: unknown) => {
+                  // @cpt-begin:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-decline-on-review-failure
+                  // The process is still waiting for a decision on stdin.
+                  // "declined" lets it exit without writing project files. If
+                  // it has already exited, its stdin is closed and there is
+                  // no one left to tell.
+                  if (child.stdin.writable) child.stdin.write('declined\n');
+                  // @cpt-end:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-decline-on-review-failure
+                  // @cpt-begin:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-return-review-failure
+                  // `fail` settles at most once, so the result line and the
+                  // exit that follow the decline cannot replace this error.
+                  fail(
+                    error instanceof Error
+                      ? error
+                      : new Error(`The change-set review failed: ${String(error)}`, { cause: error }),
+                  );
+                  // @cpt-end:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-return-review-failure
+                },
+                // @cpt-end:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-check-review-failure
+              );
             return;
           }
         }
