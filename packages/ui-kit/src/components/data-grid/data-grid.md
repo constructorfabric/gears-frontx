@@ -551,9 +551,9 @@ or as a panel from the bottom edge.
 
 **Active values.** A filter is active unless its value is `undefined`, `null`,
 `''` or an empty array, so `false` and `0` are values like any other. Inactive
-filters are left out of the load context. (The grid's own `hasActiveFilters`,
-which the empty state reads, agrees except for one value: it treats `0` as
-inactive.)
+filters are left out of the load context. The grid's own `hasActiveFilters`,
+which the empty state reads, uses the same rule, so a tree filter on the item
+with the id `0` counts as applied.
 
 **Persistence.** All filters are stored under one key, `dataGrid:${name}:filters`,
 as `{ [filterKey]: { value } }`. A refresh that resets filters clears them. The

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { DataGridItem, InternalContext } from '../../data-grid-types';
+import { isFilterValueActive } from '../../utils/is-filter-value-active';
 import { getItemKeyValue } from './storage-helpers';
 import type {
   DataGridItemId,
@@ -120,13 +121,6 @@ export function createStorageService<TItem extends DataGridItem>(
   function getItemId(item: TItem): DataGridItemId {
     const itemKey = context.config.itemKey ?? 'id';
     return getItemKeyValue(item, itemKey);
-  }
-
-  function isFilterValueActive(value: unknown): boolean {
-    if (value === undefined || value === null) return false;
-    if (typeof value === 'boolean') return true;
-    if (Array.isArray(value)) return value.length > 0;
-    return Boolean(value);
   }
 
   // hasActiveFilters is computed eagerly into the store, so changing the keys has to

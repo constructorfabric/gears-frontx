@@ -8,6 +8,7 @@
 import { create } from 'zustand';
 import type { DataGridItem } from '../../data-grid-types';
 import { createDataGridPlugin } from '../../services/plugins/plugins-helpers';
+import { isFilterValueActive } from '../../utils/is-filter-value-active';
 import type {
   LoadContextFilterKey,
   LoadContextFilters,
@@ -149,13 +150,6 @@ export const DataGridFiltersPlugin = createDataGridPlugin<
     }
 
     return active;
-  }
-
-  function isFilterValueActive(value: unknown): boolean {
-    if (value === undefined || value === null || value === '') return false;
-    if (typeof value === 'boolean') return true;
-    if (Array.isArray(value)) return value.length > 0;
-    return true;
   }
 
   function setStoreFilter(

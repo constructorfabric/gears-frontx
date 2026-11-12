@@ -63,14 +63,15 @@ describe('storageService hasActiveFilters', () => {
 });
 
 describe('storageService hasActiveFilters, by what a filter holds', () => {
-  // Which values count as an applied filter. The filters plugin has a definition of its own (it
-  // counts 0), and data-grid.md states both, so a change to either shows here.
+  // Which values count as an applied filter. The filters plugin uses the same rule
+  // (`utils/is-filter-value-active.ts`), and data-grid.md states it, so a change shows here.
   it.each([
     { label: 'undefined', value: undefined, expected: false },
     { label: 'null', value: null, expected: false },
     { label: 'an empty string', value: '', expected: false },
     { label: 'an empty list', value: [], expected: false },
-    { label: 'zero', value: 0, expected: false },
+    // A tree filter on the item with the id 0 holds 0 (#748).
+    { label: 'zero', value: 0, expected: true },
     { label: 'false', value: false, expected: true },
     { label: 'true', value: true, expected: true },
     { label: 'a non-empty string', value: 'x', expected: true },

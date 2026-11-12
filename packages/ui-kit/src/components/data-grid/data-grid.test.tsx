@@ -368,6 +368,27 @@ describe('DataGrid', () => {
       expect(screen.getByText(messages.emptyState.noResultsFoundDescription)).toBeInTheDocument();
       expect(screen.getByRole('table')).toBeInTheDocument();
     });
+
+    // A tree filter on the item with the id 0 holds 0, which is a value like any other (#748).
+    it('suggests adjusting the filters when the filter holds 0', async () => {
+      const TreeFilterPlugin = createDataGridPlugin('treeFilter', (context) => {
+        context.hook('load:context', () => ({ filters: { department: { value: 0 } } }));
+        return {};
+      });
+      render(
+        <DataGrid
+          name="dg_empty_filtered_zero"
+          load={() => Promise.resolve({ results: [], total: 0 })}
+          columns={columns}
+          persistent="memory"
+        >
+          <TreeFilterPlugin />
+        </DataGrid>,
+      );
+
+      expect(await screen.findByText(messages.emptyState.noResultsFound)).toBeInTheDocument();
+      expect(screen.getByText(messages.emptyState.noResultsFoundDescription)).toBeInTheDocument();
+    });
   });
 
   it('reaches a plugin component rendered as a child through useDataGrid', async () => {
