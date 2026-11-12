@@ -15,6 +15,7 @@ import { narrowBundleToSubtree } from './narrow-subtree';
 import { LOCAL_ORIGIN_PREFIX } from './types';
 import type { FetchFn, ResolveDeps, ResolveOrigin, ResolveResult } from './types';
 import { NotRegularFileError, UnreachablePathError, PathUnreadableError } from '../adapters/fs-project-io';
+import { AiBundleSymlinkError } from '../adapters/fs-upgrade-io';
 
 // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-origin-kind-check
 /**
@@ -162,6 +163,18 @@ async function resolveLocalOrigin(rawOrigin: string, deps: ResolveDeps): Promise
     }
     content = JSON.stringify({ [BUNDLE_MARKER]: files });
   } catch (readError) {
+    // The same refusal a remote archive's symlink gets above: explicit, and
+    // not folded into "could not be read".
+    if (readError instanceof AiBundleSymlinkError) {
+      return {
+        ok: false,
+        error: {
+          message:
+            `Local origin "${rawOrigin}" carries the symlink "${readError.linkPath}" inside its AI bundle, and symlinks ` +
+            'are not supported in a template AI bundle; the template was refused.',
+        },
+      };
+    }
     const detail = readError instanceof Error ? readError.message : String(readError);
     return {
       ok: false,

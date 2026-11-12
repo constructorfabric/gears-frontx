@@ -1,6 +1,6 @@
 // @cpt-algo:cpt-frontx-algo-upgrade-changeset-validate:p1
 //
-// Human ruling V2 across the upgrade engine: ground a registered template
+// The retained-ground ruling of 2026-11-06 across the upgrade engine: ground a registered template
 // recorded as `relinquishedGround` keeps its old files through an upgrade of
 // ANY template, as `delete` already keeps them. A REMOVE or REPLACE that would
 // land there is reported SKIPPED (`RETAINED_GROUND`); everything else about the

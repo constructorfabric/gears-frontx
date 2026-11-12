@@ -4,7 +4,7 @@ import { createFsReadFolderFileBinaryFn } from '../adapters/fs-project-io';
 // @cpt-algo:cpt-frontx-algo-upgrade-changeset-commit:p1
 // @cpt-algo:cpt-frontx-algo-composed-provenance-project-state-io:p1
 //
-// R14-1 (human ruling V2): the SAME template's retained ground must hold even
+// R14-1 (retained-ground ruling of 2026-11-06): the SAME template's retained ground must hold even
 // when a later target of that template has become an in-project symlink into it
 // (equal, descendant or ancestor alias). The resolved location, not the spelling
 // of the target, decides; a symlink to unrelated ground stays deletable.

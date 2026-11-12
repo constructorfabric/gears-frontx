@@ -2,7 +2,7 @@
 // @cpt-flow:cpt-frontx-flow-cli-scaffolding-add-template:p1
 // @cpt-flow:cpt-frontx-flow-cli-scaffolding-seed-repository:p1
 //
-// REWRITE (checkpoint 3): the prior suite exercised the OLD `seedRepository`/
+// The prior suite exercised the OLD `seedRepository`/
 // `addTemplate` (a bare `templateRef` against an empty-target guard, staged
 // through the legacy preset/composition + exclusiveSubtrees/sharedFiles
 // ownership model). The CURRENT flows this suite covers are structurally
@@ -220,6 +220,32 @@ function registeredEntry(origin: string, targets: string[] = []) {
 }
 
 describe('assembleBatch — stateless preview (cpt-frontx-flow-cli-scaffolding-assemble-preview)', () => {
+  it('reports payload files inside the template’s own exclusions as skipped', async () => {
+    const h = makeHarness();
+    h.registerInstalled('template-a', manifest('template-a', ['vendor/']), [
+      { path: 'src/index.ts', content: 'x' },
+      { path: 'vendor/kept.txt', content: 'protected' },
+    ]);
+    h.files.set('/repo/apps/foo/vendor/kept.txt', 'user data');
+    h.seedProjectState({
+      formatVersion: 1,
+      templates: { 'template-a': registeredEntry('github:acme/template-a@v1') },
+      projectOwnedRoots: [],
+    });
+
+    const result = await assembleBatch(
+      { templates: { 'template-a': ['apps/foo'] } },
+      REPO_ROOT,
+      h.deps,
+      h.deps.readProjectStateFn,
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      skipped: [{ templateName: 'template-a', target: 'apps/foo', path: 'apps/foo/vendor/kept.txt', reason: 'OWN_EXCLUDED_SUBTREE' }],
+    });
+    expect(h.files.get('/repo/apps/foo/vendor/kept.txt')).toBe('user data');
+  });
+
   // inst-asm-return-preview
   it('reports a clean pass and leaves the repository and the project state store byte-identical', async () => {
     const h = makeHarness();
@@ -288,6 +314,29 @@ describe('assembleBatch — stateless preview (cpt-frontx-flow-cli-scaffolding-a
 });
 
 describe('runApplyPipeline — materializing a batch (cpt-frontx-flow-cli-scaffolding-add-template)', () => {
+  it('skips and reports payload files inside the template’s own exclusions', async () => {
+    const h = makeHarness();
+    h.registerInstalled('template-a', manifest('template-a', ['vendor/']), [
+      { path: 'src/index.ts', content: 'x' },
+      { path: 'vendor/kept.txt', content: 'protected' },
+    ]);
+    h.files.set('/repo/apps/foo/vendor/kept.txt', 'user data');
+    h.seedProjectState({
+      formatVersion: 1,
+      templates: { 'template-a': registeredEntry('github:acme/template-a@v1') },
+      projectOwnedRoots: [],
+    });
+
+    const result = await runApplyPipeline({ templates: { 'template-a': ['apps/foo'] } }, REPO_ROOT, false, h.deps);
+
+    expect(result).toMatchObject({
+      ok: true,
+      skipped: [{ templateName: 'template-a', target: 'apps/foo', path: 'apps/foo/vendor/kept.txt', reason: 'OWN_EXCLUDED_SUBTREE' }],
+    });
+    expect(h.files.get('/repo/apps/foo/src/index.ts')).toBe('x');
+    expect(h.files.get('/repo/apps/foo/vendor/kept.txt')).toBe('user data');
+  });
+
   // inst-add-materialize / inst-add-record / inst-add-return-done
   it('materializes a fresh target, records it, and reports it as applied (never noop)', async () => {
     const h = makeHarness();

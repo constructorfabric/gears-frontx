@@ -653,8 +653,7 @@ describe('readManifestFromContent — bundle envelope unwrap', () => {
 });
 
 describe('readManifestFromContent — refuseLegacyManifest wiring', () => {
-  // Checkpoint 3+4: `refuseLegacyManifest` (built and tested in an earlier
-  // checkpoint) is now wired into the single read path every manifest-
+  // `refuseLegacyManifest` is wired into the single read path every manifest-
   // reading command shares, so a legacy manifest is refused with the
   // SPECIFIC INVALID_MANIFEST code and every undeclared field named — never
   // the generic four-field-contract violation it would otherwise trip

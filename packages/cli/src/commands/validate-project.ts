@@ -70,7 +70,7 @@ export interface ValidateProjectDeps {
 }
 
 // This algorithm's own closed error vocabulary — a SUBSET of the shared
-// sixteen-code `ErrorCode` (`../envelope.ts`), narrowed to exactly the five
+// eighteen-code `ErrorCode` (`../envelope.ts`), narrowed to exactly the five
 // codes FEATURE §3's Output line names. Kept as its own exported union
 // (rather than the full `ErrorCode`) so the dispatcher's own outcome
 // renderer (`cli.ts`'s `renderValidateProjectOutcome`) gets a compile-time

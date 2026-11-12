@@ -134,7 +134,7 @@ describe('delete walks prune exact reserved names (no third scan, no reads insid
     fs.writeFileSync(path.join(sandbox, 'app', 'ok.txt'), 'ok');
   }
 
-  it('U5: files exclude reserved entries; the sink reports each exactly once; no reserved directory is read', async () => {
+  it('files exclude reserved entries; the sink reports each exactly once; no reserved directory is read', async () => {
     build();
     const readdir = vi.spyOn(fs, 'readdirSync');
     const files = await createFsListTargetFilesFn()(path.join(sandbox, 'app'));
@@ -145,7 +145,7 @@ describe('delete walks prune exact reserved names (no third scan, no reads insid
     expect(readDirs.some((d) => d.endsWith(`${path.sep}.git`) || d.includes(`${path.sep}.git${path.sep}`))).toBe(false);
   });
 
-  it('U5 (ruling): ASCII case-variant spellings are pruned too, and never read', async () => {
+  it('ASCII case-variant spellings are pruned too, and never read', async () => {
     fs.mkdirSync(path.join(sandbox, 'app', '.GIT', 'objects'), { recursive: true });
     fs.writeFileSync(path.join(sandbox, 'app', '.GIT', 'HEAD'), 'ref\n');
     fs.writeFileSync(path.join(sandbox, 'app', '.Ds_Store'), 'ds');

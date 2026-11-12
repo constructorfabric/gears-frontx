@@ -18,7 +18,13 @@
 import { isWithinEffectiveOwnership } from './effective-ownership';
 import { isTemplatePayloadPath } from '../manifest/types';
 import { joinUnderTarget } from '../paths/relative-path';
+import { foldForIdentity } from '../paths/volume-case';
 import type { ContentItem } from './types';
+
+function pathIdentity(value: string): string {
+  // NFC is shared with scaffold target identity; case folding remains volume-aware.
+  return foldForIdentity(value.normalize('NFC'));
+}
 
 // Byte-aware content equality for ContentItem.content values.
 function contentItemBytesEqual(a: Buffer | string, b: Buffer | string): boolean {
@@ -254,7 +260,7 @@ function collectExistingPaths(rawExisting: ContentItem[]): Set<string> {
     // A symlink or a special-file entry stays IN this set: either one blocks
     // descent exactly as a regular file does.
     if (item.content === DIRECTORY_CONTENT_MARKER) continue;
-    existingPaths.add(item.path);
+    existingPaths.add(pathIdentity(item.path));
   }
   return existingPaths;
 }
@@ -262,7 +268,7 @@ function collectExistingPaths(rawExisting: ContentItem[]): Set<string> {
 function collectSymlinkPaths(rawExisting: ContentItem[]): Set<string> {
   const symlinkPaths = new Set<string>();
   for (const item of rawExisting) {
-    if (item.content === SYMLINK_CONTENT_MARKER) symlinkPaths.add(item.path);
+    if (item.content === SYMLINK_CONTENT_MARKER) symlinkPaths.add(pathIdentity(item.path));
   }
   return symlinkPaths;
 }
@@ -272,7 +278,7 @@ function collectSymlinkPaths(rawExisting: ContentItem[]): Set<string> {
 function collectDirectoryPaths(rawExisting: ContentItem[]): Set<string> {
   const directoryPaths = new Set<string>();
   for (const item of rawExisting) {
-    if (item.content === DIRECTORY_CONTENT_MARKER) directoryPaths.add(item.path);
+    if (item.content === DIRECTORY_CONTENT_MARKER) directoryPaths.add(pathIdentity(item.path));
   }
   return directoryPaths;
 }
@@ -283,7 +289,7 @@ function collectDirectoryPaths(rawExisting: ContentItem[]): Set<string> {
 function collectSpecialPaths(rawExisting: ContentItem[]): Set<string> {
   const specialPaths = new Set<string>();
   for (const item of rawExisting) {
-    if (item.content === SPECIAL_CONTENT_MARKER) specialPaths.add(item.path);
+    if (item.content === SPECIAL_CONTENT_MARKER) specialPaths.add(pathIdentity(item.path));
   }
   return specialPaths;
 }
@@ -301,8 +307,9 @@ function findBadAncestorComponent(
   specialPaths: ReadonlySet<string>,
 ): { component: string; kind: 'symlink' | 'file' | 'special' } | null {
   for (const ancestor of ancestorDirsOf(payloadPath)) {
-    if (existingPaths.has(ancestor)) {
-      const kind = symlinkPaths.has(ancestor) ? 'symlink' : specialPaths.has(ancestor) ? 'special' : 'file';
+    const identity = pathIdentity(ancestor);
+    if (existingPaths.has(identity)) {
+      const kind = symlinkPaths.has(identity) ? 'symlink' : specialPaths.has(identity) ? 'special' : 'file';
       return { component: ancestor, kind };
     }
   }
@@ -369,6 +376,9 @@ export async function reconcileExistingContent(
 
   const rawExisting = await input.readExistingContent(input.target);
   const existing = filterExistingWithinOwnership(input.target, input.exclusionRoots, rawExisting);
+  const existingByIdentity = new Map(
+    [...existing].map(([existingPath, content]) => [pathIdentity(existingPath), { path: existingPath, content }]),
+  );
   // Fail-closed, from the RAW read — see `collectSymlinkPaths`'s own doc
   // comment for why this is computed before, not after, the ownership
   // filter above narrows `existing` down to `target`'s own ground.
@@ -410,11 +420,12 @@ export async function reconcileExistingContent(
     // descended into it), so waiting for that lookup to fire would let this
     // exact class of path slip through as "nothing on disk" instead.
     const badAncestor = findBadAncestorComponent(payloadPath, existingPaths, symlinkPaths, specialPaths);
-    const leafKind: 'symlink' | 'directory' | 'special' | undefined = symlinkPaths.has(payloadPath)
+    const payloadIdentity = pathIdentity(payloadPath);
+    const leafKind: 'symlink' | 'directory' | 'special' | undefined = symlinkPaths.has(payloadIdentity)
       ? 'symlink'
-      : directoryPaths.has(payloadPath)
+      : directoryPaths.has(payloadIdentity)
         ? 'directory'
-        : specialPaths.has(payloadPath)
+        : specialPaths.has(payloadIdentity)
           ? 'special'
           : undefined;
     if (leafKind !== undefined || badAncestor !== null) {
@@ -447,8 +458,13 @@ export async function reconcileExistingContent(
     // @cpt-end:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-if-symlink-component
 
     // @cpt-begin:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-if-exists
-    const existingContent = existing.get(payloadPath);
-    if (existingContent === undefined) continue; // nothing on disk at this payload path
+    const existingEntry = existingByIdentity.get(payloadIdentity);
+    if (existingEntry === undefined) continue; // nothing on disk at this payload path
+    if (existingEntry.path !== payloadPath) {
+      contentConflicts.push(payloadPath);
+      continue;
+    }
+    const existingContent = existingEntry.content;
     // @cpt-end:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-if-exists
 
     // @cpt-begin:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-if-match
@@ -470,8 +486,9 @@ export async function reconcileExistingContent(
 
   // @cpt-begin:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-foreach-extra
   const additionalPaths: string[] = [];
+  const payloadIdentities = new Set([...payload.keys()].map(pathIdentity));
   for (const existingPath of existing.keys()) {
-    if (payload.has(existingPath)) continue;
+    if (payloadIdentities.has(pathIdentity(existingPath))) continue;
     // @cpt-begin:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-add-additional
     additionalPaths.push(existingPath);
     // @cpt-end:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-add-additional

@@ -96,6 +96,11 @@ export function isWithinEffectiveOwnership(path: string, target: string, exclusi
   return !exclusionRoots.some((root) => pathWithinTarget(path, root));
 }
 
+/** Whether a project-relative payload path falls inside the template's own declared exclusion. */
+export function isWithinDeclaredExclusion(path: string, target: string, excludedSubtrees: readonly string[]): boolean {
+  return excludedSubtrees.some((declared) => pathWithinTarget(path, joinUnderTarget(target, declared)));
+}
+
 // ASCII-only lowercasing (A-Z -> a-z): the ruling protects every ASCII case
 // variant of the reserved names on every volume, and deliberately does NOT
 // apply Unicode case folding or normalisation.

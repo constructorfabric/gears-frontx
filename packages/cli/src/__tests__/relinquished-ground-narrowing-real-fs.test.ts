@@ -4,7 +4,7 @@ import { createFsReadFolderFileBinaryFn } from '../adapters/fs-project-io';
 // @cpt-algo:cpt-frontx-algo-upgrade-changeset-commit:p1
 // @cpt-algo:cpt-frontx-algo-cli-scaffolding-apply:p1
 //
-// R11-1 (human ruling V2): the LOCATION of an old file left in ground a template
+// R11-1 (retained-ground ruling of 2026-11-06): the LOCATION of an old file left in ground a template
 // relinquished must outlive the declaration that named it. The marker alone does
 // not carry it: an upgrade that narrows the declaration back to `[]` overwrites
 // the only record of `sub/`, and a host deleted afterwards (or a guest deleted

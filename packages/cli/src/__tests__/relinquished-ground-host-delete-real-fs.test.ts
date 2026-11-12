@@ -4,7 +4,7 @@ import { createFsReadFolderFileBinaryFn } from '../adapters/fs-project-io';
 // @cpt-algo:cpt-frontx-algo-upgrade-changeset-commit:p1
 // @cpt-algo:cpt-frontx-algo-composed-provenance-project-state-io:p1
 //
-// R10-1 (human ruling V2): the protection of an old file left in ground a
+// R10-1 (retained-ground ruling of 2026-11-06): the protection of an old file left in ground a
 // template relinquished must not end when that template's TARGET is deleted
 // while the entry is still marked. `delete` records the relinquished roots on
 // the entry (`relinquishedGround`); every other template's delete plan then

@@ -43,6 +43,16 @@ describe('FsContentStore', () => {
     if (isBinaryBundleValue(mv)) expect(decodeBundleValue(mv)?.toString('utf-8')).toBe('{"name":"my-template"}');
   });
 
+  it('replace() unlinks a dangling installed-slot symlink before creating the new directory', () => {
+    const store = new FsContentStore(root);
+    const installedPath = resolveInstalledContentPath(root, 'tpl');
+    fs.symlinkSync(path.join(root, 'missing-target'), installedPath, 'dir');
+
+    expect(() => store.replace('tpl', '{"name":"tpl","version":"2.0.0"}')).not.toThrow();
+    expect(fs.lstatSync(installedPath).isDirectory()).toBe(true);
+    expect(fs.readFileSync(path.join(installedPath, MANIFEST_FILENAME), 'utf-8')).toBe('{"name":"tpl","version":"2.0.0"}');
+  });
+
   // inst-resolve-write — a JSON file-map bundle materializes as the
   // template's ACTUAL multiple on-disk files (not a single manifest blob).
   it('writes a JSON file-map bundle as multiple real files and round-trips on read', () => {

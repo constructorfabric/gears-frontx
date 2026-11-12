@@ -184,8 +184,10 @@ function reviewOf(computed: PlanOutcome & { ok: true }, removeAiBundleFn?: Remov
 /**
  * Identity of the reviewed deletion plan: sha256 of the canonical JSON of the
  * versioned `DeletionReview`, domain-separated (`kind`) from the `upgrade`
- * plan digest. It binds path STRINGS and flags, not file bytes, physical
- * identity (realpath) or the contents of the AI bundle directory.
+ * plan digest. It binds path STRINGS and flags — and, when the owner's last
+ * target goes, the AI bundle tree (`aiBundle.tree`: each entry's path, length
+ * and SHA-256, link targets, directories, the tree digest) — but not the
+ * target files' bytes or physical identity (realpath).
  */
 export function computeDeletionPlanDigest(review: DeletionReview): string {
   return createHash('sha256')
@@ -618,6 +620,14 @@ function detachmentNote(review: DeletionReview): string {
   };
 
   let final: PlanOutcome & { ok: true };
+  // The review the approval was checked against — the ONE AI bundle capture
+  // this deletion executes against. `reviewOf` asks `removeAiBundleFn.describe`
+  // for the bundle tree, and the real seam (`cli.ts`) re-arms its drift
+  // reference on every such call: a second capture after the targets are gone
+  // would compare the bundle against its own current state (always equal) and
+  // report that late digest, so an edit made in that window would be removed
+  // unreviewed. Captured here, reused below, never recomputed.
+  let acceptedReview: DeletionReview;
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-if-json
   if (flags.jsonMode) {
@@ -660,7 +670,8 @@ function detachmentNote(review: DeletionReview): string {
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-if-plan-changed
     // The comparison is against the RECOMPUTED plan, the very object about to
     // be executed, never against the first computation of this process.
-    if (computeDeletionPlanDigest(reviewOf(recomputed, removeAiBundleFn)) !== flags.expectedPlanDigest) {
+    const recomputedReview = reviewOf(recomputed, removeAiBundleFn);
+    if (computeDeletionPlanDigest(recomputedReview) !== flags.expectedPlanDigest) {
       return confirmationRequired(
         recomputed,
         `The plan for "${recomputed.target}" changed since it was reviewed; nothing has been deleted. Show this updated ` +
@@ -670,6 +681,7 @@ function detachmentNote(review: DeletionReview): string {
     }
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-if-plan-changed
     final = recomputed;
+    acceptedReview = recomputedReview;
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-else-json-yes
   } else {
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-else-interactive
@@ -718,8 +730,10 @@ function detachmentNote(review: DeletionReview): string {
       // @cpt-end:cpt-frontx-state-cli-scaffolding-delete-op:p1:inst-do-pending-confirmed
       if (!recomputed.ok) return recomputed;
       // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-interactive-reconfirm
-      if (computeDeletionPlanDigest(reviewOf(recomputed, removeAiBundleFn)) === computeDeletionPlanDigest(shownReview)) {
+      const recomputedReview = reviewOf(recomputed, removeAiBundleFn);
+      if (computeDeletionPlanDigest(recomputedReview) === computeDeletionPlanDigest(shownReview)) {
         final = recomputed;
+        acceptedReview = recomputedReview;
         break;
       }
       shown = recomputed;
@@ -838,7 +852,9 @@ function detachmentNote(review: DeletionReview): string {
 
   // @cpt-begin:cpt-frontx-state-composed-provenance-registration-lifecycle:p1:inst-rl-applied-to-empty
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-if-last-target
-  const finalReview = reviewOf(final, removeAiBundleFn);
+  // Never `reviewOf(final, ...)` here: that would be a second bundle capture
+  // after the targets are gone (see `acceptedReview` above).
+  const finalReview = acceptedReview;
   const wasLastTarget = finalReview.aiBundle.removed;
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-remove-bundle
   let aiBundleResidue: { manifestName: string; path: string; message: string } | undefined;

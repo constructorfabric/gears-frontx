@@ -1,6 +1,6 @@
 // @cpt-FEATURE:cpt-frontx-feature-cli-scaffolding:p1
 //
-// REDUCED (checkpoint 3): the OLD `addTemplate` command function this file
+// The OLD `addTemplate` command function this file
 // used to export is retired. `commands/apply.ts`'s `runApplyPipeline` (the
 // `apply` command's core, also reused by `seed`) replaces it under the new
 // uniform batch model (FEATURE §2 "Apply a Batch into an Already-Assembled

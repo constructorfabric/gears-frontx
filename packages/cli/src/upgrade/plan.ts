@@ -172,5 +172,23 @@ export function protectedSkipNote(plan: UpgradePlan): string | undefined {
  * `renderReviewablePlan` exists to prevent stays closed.
  */
 export function computePlanDigest(plan: UpgradePlan): string {
-  return createHash('sha256').update(canonicalJson(plan)).digest('hex');
+  // Each content field is folded to `{length, sha256}` BEFORE canonical JSON:
+  // `canonicalJson` walks a Buffer as an object with one member per byte, so
+  // a plan carrying tens of MB of changed binaries exceeded V8's string
+  // limit (and heap) in both the review and the confirming call. The fold
+  // keeps the binding exact — one changed byte changes the sha256 — and is
+  // the same shape `commands/apply-ai-review.ts` already hashes AI files to.
+  const operations = plan.operations.map((op) => ({
+    ...op,
+    expectedDisk: contentIdentity(op.expectedDisk),
+    baselineContent: contentIdentity(op.baselineContent),
+    ...(op.newContent === undefined ? {} : { newContent: contentIdentity(op.newContent) }),
+  }));
+  return createHash('sha256').update(canonicalJson({ ...plan, operations })).digest('hex');
+}
+
+function contentIdentity(content: Buffer | string | null): { length: number; sha256: string } | null {
+  if (content === null) return null;
+  const bytes = typeof content === 'string' ? Buffer.from(content, 'utf8') : content;
+  return { length: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
 }

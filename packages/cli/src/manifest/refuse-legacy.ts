@@ -8,11 +8,11 @@
 // manifest-reading command (install, register, apply, assembly) is meant
 // to run before reading a manifest as the primary type; its output is
 // either the manifest unchanged (already current) or an outright refusal —
-// never a translated shape, and never a partial one. This checkpoint
-// implements the function itself only — wiring it into a command surface
-// or into `readManifestFromContent` is a later checkpoint's scope; the
-// `'INVALID_MANIFEST'` code below is typed as a bare string literal for
-// now and will adopt the shared multi-code union once that arrives.
+// never a translated shape, and never a partial one. It is wired into that
+// single read path by `./validate-contract.ts` (`readManifestFromContent`
+// runs it before the four-field contract check); the `'INVALID_MANIFEST'`
+// literal below is one member of the shared `ErrorCode` union
+// (`../envelope.ts`), which is why callers can hand it on unchanged.
 
 // The input/unchanged-output shape: a parsed manifest JSON structure. Kept
 // as a bare `Record<string, unknown>` rather than `TemplateManifest`

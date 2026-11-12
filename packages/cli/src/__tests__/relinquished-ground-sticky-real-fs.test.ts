@@ -3,7 +3,7 @@ import { createFsReadFolderFileBinaryFn } from '../adapters/fs-project-io';
 // @cpt-algo:cpt-frontx-algo-upgrade-changeset-commit:p1
 // @cpt-algo:cpt-frontx-algo-cli-scaffolding-delete-plan:p1
 //
-// Human ruling V2: an old file left in a subtree its original template later
+// The retained-ground ruling of 2026-11-06: an old file left in a subtree its original template later
 // relinquished stays protected through successive upgrades and through the
 // deletion of a different template that occupies that subtree. The
 // `exclusionsBackfilled` mark an upgrade sets is STICKY, and only a file the
@@ -242,7 +242,7 @@ async function expectLexicalGuestDeleteSparesOwner(project: string, target: stri
   expect(await readFile(path.join(project, ownerFile), 'utf-8')).toBe('B2');
 }
 
-describe('the mark an upgrade sets survives every later upgrade (human ruling V2, real filesystem)', () => {
+describe('the mark an upgrade sets survives every later upgrade (retained-ground ruling of 2026-11-06, real filesystem)', () => {
   // v1 `[]` writes real/sub/b2.txt; v2..v4 declare sub/ and never ship that file,
   // so from v3 on neither payload lists it and the skip list is empty.
   async function chain(upTo: number): Promise<string> {

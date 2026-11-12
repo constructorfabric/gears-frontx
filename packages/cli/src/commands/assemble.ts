@@ -17,6 +17,11 @@
 import type { UniformApplyBatch } from '../scaffold/assembler';
 import type { ReadProjectStateFn } from '../project-state/types';
 import type { ErrorCode } from '../envelope';
+import type { ReadInstalledContentFn } from '../scaffold/existing-content';
+import { isWithinDeclaredExclusion } from '../scaffold/effective-ownership';
+import { isTemplatePayloadPath } from '../manifest/types';
+import { joinUnderTarget } from '../paths/relative-path';
+import type { ContentItem, SkippedPayloadPath } from '../scaffold/types';
 import { resolveAndCheckBatch } from './apply';
 import type { ResolveAndCheckDeps } from './apply';
 
@@ -27,8 +32,12 @@ export interface AssemblePreviewEntry {
   exclusionRoots: string[];
 }
 
+export interface AssembleDeps extends ResolveAndCheckDeps {
+  readInstalledContentFn: ReadInstalledContentFn;
+}
+
 export type AssembleOutcome =
-  | { ok: true; entries: AssemblePreviewEntry[] }
+  | { ok: true; entries: AssemblePreviewEntry[]; skipped: SkippedPayloadPath[] }
   | { ok: false; code: ErrorCode; message: string; details?: Record<string, unknown> };
 
 // @cpt-dod:cpt-frontx-dod-cli-scaffolding-uniform-apply:p1
@@ -42,7 +51,7 @@ export type AssembleOutcome =
 export async function assembleBatch(
   rawBatch: UniformApplyBatch,
   repoRoot: string,
-  deps: ResolveAndCheckDeps,
+  deps: AssembleDeps,
   readProjectStateFn: ReadProjectStateFn,
 ): Promise<AssembleOutcome> {
   // `rawBatch`/`repoRoot` are accepted as this function's own parameters —
@@ -53,9 +62,34 @@ export async function assembleBatch(
   const resolved = await resolveAndCheckBatch(rawBatch, repoRoot, deps, readProjectStateFn);
   if (!resolved.ok) return resolved;
 
+  const skipped: SkippedPayloadPath[] = [];
+  for (const entry of resolved.assembly.entries) {
+    if (resolved.document.templates[entry.templateName]?.targets.includes(entry.target)) continue;
+    let content: ContentItem[];
+    try {
+      content = await deps.readInstalledContentFn(entry.installedContentPath);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      return {
+        ok: false,
+        code: 'ORIGIN_UNAVAILABLE',
+        message: `Template "${entry.templateName}"'s content could not be read for its preview: ${detail}`,
+        details: { name: entry.templateName, path: entry.installedContentPath },
+      };
+    }
+    for (const item of content) {
+      if (!isTemplatePayloadPath(item.path)) continue;
+      const projectPath = joinUnderTarget(entry.target, item.path);
+      if (isWithinDeclaredExclusion(projectPath, entry.target, entry.excludedSubtrees)) {
+        skipped.push({ templateName: entry.templateName, target: entry.target, path: projectPath, reason: 'OWN_EXCLUDED_SUBTREE' });
+      }
+    }
+  }
+
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-assemble-preview:p1:inst-asm-return-preview
   return {
     ok: true,
+    skipped,
     entries: resolved.assembly.entries.map((entry) => ({
       templateName: entry.templateName,
       target: entry.target,

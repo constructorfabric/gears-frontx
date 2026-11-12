@@ -1,7 +1,7 @@
 // @cpt-FEATURE:cpt-frontx-feature-cli-scaffolding:p1
 // @cpt-algo:cpt-frontx-algo-cli-scaffolding-uniform-apply:p1
 //
-// REWRITE (checkpoint 3): the prior `uniformApply` resolved a `templateRef[]`
+// The prior `uniformApply` resolved a `templateRef[]`
 // through a preset/composition tree and read content items filtered by the
 // legacy `exclusiveSubtrees`/`sharedFiles` ownership shape
 // (`manifest/legacy-ownership.ts`). The CURRENT algorithm this file
@@ -243,7 +243,7 @@ async function resolveRegisteredTemplate(
 
   // @cpt-begin:cpt-frontx-algo-cli-scaffolding-uniform-apply:p1:inst-ua-if-not-installed
   const existing = deps.inventory.lookup(name);
-  if (existing !== undefined) {
+  if (existing !== undefined && existing.source === origin) {
     return {
       ok: true,
       value: {
@@ -265,7 +265,7 @@ async function resolveRegisteredTemplate(
   // @cpt-end:cpt-frontx-algo-cli-scaffolding-uniform-apply:p1:inst-ua-if-not-installed
 
   const installed = deps.inventory.lookup(installResult.value.name);
-  if (installed === undefined) {
+  if (installed === undefined || installed.source !== origin) {
     return {
       ok: false,
       message: `Template "${name}" was installed but could not be read back from the local inventory.`,

@@ -9,7 +9,7 @@
 // upgrade nor orphaned by `delete`. The evidence is only ever narrowed, comes
 // from recorded state (never from the mutable current origin), and an entry
 // without it (legacy, marked by an older build) keeps the conservative
-// behaviour. What the host newly handed over stays retained (human ruling V2).
+// behaviour. What the host newly handed over stays retained (retained-ground ruling of 2026-11-06).
 // Drives the BUILT executable.
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -28,6 +28,7 @@ beforeAll(async () => {
   execFileSync('npx', ['tsup', '--no-config', 'src/cli.ts', '--format', 'esm', '--out-dir', buildDir, '--silent'], {
     cwd: packageRoot,
     stdio: 'pipe',
+    timeout: 120_000,
   });
 }, 120_000);
 
@@ -106,7 +107,8 @@ async function hostProject(successive: boolean): Promise<string> {
   for (const origin of ['h1', 'g1', 'k1']) expect(cli(project, 'register', `path:${origin}`).envelope.ok).toBe(true);
   expect(cli(project, 'apply', '--input', JSON.stringify({ templates: { '@x/h': ['app'], '@x/g': ['app/plugins'] } })).envelope.ok).toBe(true);
   const first = cli(project, 'upgrade', '@x/h', 'path:h2', '--yes');
-  expect(JSON.stringify(first.envelope)).toContain('"ok":true');
+  expect(first.status).toBe(0);
+  expect(first.envelope.ok).toBe(true);
   if (successive) expect(cli(project, 'upgrade', '@x/h', 'path:h3', '--yes').envelope.ok).toBe(true);
   expect(await read(project, 'app/extra/e.txt')).toBe('E');
   return project;
@@ -124,7 +126,7 @@ function confirmDelete<R extends { envelope: { error?: { code?: string; message?
   return run(project, 'delete', target, '--yes', `--plan-digest=${String((review.envelope.error?.details as { planDigest?: unknown } | undefined)?.planDigest)}`);
 }
 
-describe('proven exclusion evidence survives successive host upgrades (built CLI)', () => {
+describe('proven exclusion evidence survives successive host upgrades (built CLI)', { timeout: 30_000 }, () => {
   it('records the proven region once, and only the handed-over region as retained', async () => {
     const project = await hostProject(false);
     expect(await entry(project, '@x/h')).toMatchObject({
@@ -205,7 +207,7 @@ describe('proven exclusion evidence survives successive host upgrades (built CLI
   });
 });
 
-describe('no evidence means no trust (built CLI)', () => {
+describe('no evidence means no trust (built CLI)', { timeout: 30_000 }, () => {
   it('an entry marked by an older build (no recorded evidence) stays conservative on upgrade and delete', async () => {
     const project = await hostProject(true);
     const state = await readState(project);
@@ -243,18 +245,27 @@ describe('no evidence means no trust (built CLI)', () => {
     expect(await read(project, 'app/plugins/g.txt')).toBe('G1');
   });
 
-  it('a mutable origin edited to declare more excludes does not widen the recorded evidence', async () => {
+  it('a mutable origin and candidate edited to declare more excludes do not widen the recorded evidence', async () => {
     const project = await hostProject(false);
+    const addedExclusion = ['plugins/', 'extra/', 'later/'];
     await writeFile(
       path.join(project, 'h2', 'frontx-template.json'),
-      JSON.stringify({ name: '@x/h', version: '2.0.0', excludedSubtrees: ['plugins/', 'extra/', 'h.txt'], description: 'fixture' }),
+      JSON.stringify({ name: '@x/h', version: '2.0.0', excludedSubtrees: addedExclusion, description: 'fixture' }),
       'utf-8',
     );
+    await writeFile(
+      path.join(project, 'h3', 'frontx-template.json'),
+      JSON.stringify({ name: '@x/h', version: '3.0.0', excludedSubtrees: addedExclusion, description: 'fixture' }),
+      'utf-8',
+    );
+    const upgraded = cli(project, 'upgrade', '@x/h', 'path:h3', '--yes');
+    expect(upgraded.status, JSON.stringify(upgraded.envelope)).toBe(0);
+    expect(upgraded.envelope.ok).toBe(true);
     expect((await entry(project, '@x/h')).provenExcludedSubtrees).toEqual(['plugins/']);
   });
 });
 
-describe('every holder of overlapping retained ground is reported (R24-3)', () => {
+describe('every holder of overlapping retained ground is reported (R24-3)', { timeout: 30_000 }, () => {
   it('names both entries that record the ground, and the human note does not offer a removal', async () => {
     const project = await hostProject(true);
     expect(cli(project, 'apply', '--input', JSON.stringify({ templates: { '@x/k': ['app/extra'] } }), '--adopt-existing').envelope.ok).toBe(true);

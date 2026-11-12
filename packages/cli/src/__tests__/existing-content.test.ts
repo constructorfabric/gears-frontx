@@ -59,6 +59,41 @@ describe('reconcileExistingContent', () => {
     expect(result.additionalPaths).toEqual([]);
   });
 
+  it('refuses an existing NFD spelling that aliases an NFC payload path', async () => {
+    const result = await reconcileExistingContent({
+      target: 'packages/app',
+      exclusionRoots: [],
+      installedContentPath: '/inventory/my-template',
+      readInstalledContent: fakeReadInstalledContent([{ path: 'café.txt', content: 'template bytes' }]),
+      readExistingContent: fakeReadExistingContent([{ path: 'packages/app/café.txt', content: 'user bytes' }]),
+    });
+
+    expect(result.contentConflicts).toEqual(['packages/app/café.txt']);
+    expect(result.additionalPaths).toEqual([]);
+    expect(result.identicalFiles).toEqual([]);
+  });
+
+  it('folds case-only existing spellings only when the volume does', async () => {
+    const { foldForIdentity } = await import('../paths/volume-case');
+    const payloadPath = 'packages/app/Readme.md';
+    const existingPath = 'packages/app/README.md';
+    const result = await reconcileExistingContent({
+      target: 'packages/app',
+      exclusionRoots: [],
+      installedContentPath: '/inventory/my-template',
+      readInstalledContent: fakeReadInstalledContent([{ path: 'Readme.md', content: 'template bytes' }]),
+      readExistingContent: fakeReadExistingContent([{ path: existingPath, content: 'user bytes' }]),
+    });
+
+    if (foldForIdentity(payloadPath) === foldForIdentity(existingPath)) {
+      expect(result.contentConflicts).toEqual([payloadPath]);
+      expect(result.additionalPaths).toEqual([]);
+    } else {
+      expect(result.contentConflicts).toEqual([]);
+      expect(result.additionalPaths).toEqual([existingPath]);
+    }
+  });
+
   it('classifies a payload path whose on-disk content differs as contentConflicts', async () => {
     const roots = computeExclusionRoots({ target: 'packages/app', excludedSubtrees: [], projectOwnedRoots: [] });
 

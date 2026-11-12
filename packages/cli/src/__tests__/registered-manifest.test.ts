@@ -75,6 +75,18 @@ describe('resolveRegisteredExcludedSubtrees (cpt-frontx-algo-cli-scaffolding-del
     expect(result).toEqual({ known: true, excludedSubtrees: ['docs/'] });
   });
 
+  it('marks a different source occupying the shared name slot as unresolved, not empty exclusions', async () => {
+    const readFileFn: ReadFileFn = async () => { throw new Error('unexpected manifest read'); };
+    const entry = installedEntry(['unrelated/']);
+    const result = await resolveRegisteredExcludedSubtrees('tmpl', 'github:acme/tmpl@v1.0.0', {
+      repoRoot: '/repo',
+      inventory: inventoryWith({ tmpl: { ...entry, source: 'github:someone-else/tmpl@v2.0.0' } }),
+      readFileFn,
+      canonicalizeFn: identityCanonicalize,
+    });
+    expect(result.known).toBe(false);
+  });
+
   it('resolves to [] when a remote name has no inventory entry — genuinely ABSENT', async () => {
     const readFileFn: ReadFileFn = async () => {
       throw new Error('readFileFn must not be called for a remote-origin name');

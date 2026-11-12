@@ -75,6 +75,13 @@ export class FsContentStore implements ContentStorePort {
     const bundle = readWritableBundle(content);
     const installedPath = resolveInstalledContentPath(this.root, name);
     assertWithinRoot(this.root, installedPath);
+    let installedEntry: fs.Stats | undefined;
+    try {
+      installedEntry = fs.lstatSync(installedPath);
+    } catch (error) {
+      if (!isMissingPathError(error)) throw error;
+    }
+    if (installedEntry?.isSymbolicLink()) fs.unlinkSync(installedPath);
     // @cpt-begin:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-replace-guard
     // @cpt-begin:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-replace-guard-fail
     assertPathReachableAsDirectory(installedPath);
@@ -134,6 +141,11 @@ export class FsContentStore implements ContentStorePort {
     return fs.existsSync(installedPath) && fs.readdirSync(installedPath).length > 0;
   }
   // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-read-guard
+}
+
+function isMissingPathError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error &&
+    ((error as NodeJS.ErrnoException).code === 'ENOENT' || (error as NodeJS.ErrnoException).code === 'ENOTDIR');
 }
 
 // A regular file (or any other non-directory entry) standing where an

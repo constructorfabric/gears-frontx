@@ -54,7 +54,7 @@ import path from 'node:path';
 import { PathContainmentError } from '../adapters/fs-project-io';
 import { AiNamespaceAliasError } from '../adapters/fs-ai-bundle';
 import { ReservedTempPathOccupiedError } from '../adapters/fs-upgrade-io';
-import { RESERVED_TEMP_SUFFIX, isReservedTempName } from '../paths/reserved-temp-name';
+import { RESERVED_TEMP_SUFFIX } from '../paths/reserved-temp-name';
 import { joinUnderTarget } from '../paths/relative-path';
 import { isWithinEffectiveOwnership } from '../scaffold/effective-ownership';
 import { mutateProjectState } from '../project-state/io';
@@ -189,6 +189,51 @@ function tempPath(destAbsolutePath: string): string {
   return destAbsolutePath + RESERVED_TEMP_SUFFIX;
 }
 
+// The ONE shape `tempPath` above ever produces: the exact, lower-case suffix
+// on the LAST segment. `isReservedTempName` (`../paths/reserved-temp-name`)
+// is deliberately wider — any segment, any case — because it guards what a
+// PAYLOAD may carry; reclaiming by that wider rule deleted files this engine
+// never wrote: a developer's `app/old.frontx-upgrade-tmp/notes.md` (suffix on
+// a directory segment) or `legacy.FRONTX-UPGRADE-TMP` on a case-sensitive
+// volume. Only what this engine itself could have written is its litter.
+function isEngineTempShape(relativeFile: string): boolean {
+  return path.posix.basename(relativeFile.replace(/\\/g, '/')).endsWith(RESERVED_TEMP_SUFFIX);
+}
+
+// Removes every temp file this attempt materialized before an EARLY refusal
+// (nothing renamed yet). A temp that cannot be removed is returned, never
+// swallowed: the refusal then names it, because "Nothing was written" would
+// otherwise be false of the tree. Such a leftover is exactly what the next
+// run's `inst-com-reclaim-stale-temp` reclaims — the developer is told so.
+async function sweepStagedTemps(
+  tempPathByOp: ReadonlyMap<UpgradeOperation, string>,
+  deps: Pick<CommitDeps, 'unlinkDiskFile'>,
+): Promise<{ target: string; path: string; tempPath: string }[]> {
+  const unremoved: { target: string; path: string; tempPath: string }[] = [];
+  for (const [op, temp] of tempPathByOp) {
+    try {
+      await deps.unlinkDiskFile(temp);
+    } catch {
+      unremoved.push({ target: op.target, path: op.path, tempPath: op.path + RESERVED_TEMP_SUFFIX });
+    }
+  }
+  return unremoved;
+}
+
+// The sentence and `details` an early refusal adds when its sweep left litter.
+function stagedResidue(unremoved: { target: string; path: string; tempPath: string }[]): {
+  message: string;
+  details: { unrecovered: typeof unremoved } | Record<string, never>;
+} {
+  if (unremoved.length === 0) return { message: '', details: {} };
+  return {
+    message:
+      ` ${unremoved.length} staged temporary file(s) could not be removed and remain beside their destination(s) ` +
+      `(${unremoved.map((u) => u.tempPath).join(', ')}); no destination was changed, and the next upgrade of this name reclaims them.`,
+    details: { unrecovered: unremoved },
+  };
+}
+
 /**
  * `inst-com-reclaim-stale-temp` - removes any REGULAR FILE matching
  * `RESERVED_TEMP_SUFFIX` already sitting inside any of the plan's targets,
@@ -243,7 +288,7 @@ async function reclaimStaleTempFiles(
     const absoluteTargetDir = path.join(deps.repoRoot, target);
     const relativeFiles = await deps.listDiskFiles(absoluteTargetDir);
     for (const relativeFile of relativeFiles) {
-      if (!isReservedTempName(relativeFile)) continue;
+      if (!isEngineTempShape(relativeFile)) continue;
       const projectRelative = joinUnderTarget(target, relativeFile);
       if (!isWithinEffectiveOwnership(projectRelative, target, exclusionRoots)) continue;
       await deps.unlinkDiskFile(path.join(absoluteTargetDir, relativeFile));
@@ -422,9 +467,7 @@ export async function commitUpgrade(plan: UpgradePlan, deps: CommitDeps): Promis
           // still nothing to restore, only this attempt's own already-
           // materialized temp files (for earlier operations in this same
           // loop) left to sweep before returning.
-          for (const priorTemp of tempPathByOp.values()) {
-            await deps.unlinkDiskFile(priorTemp).catch(() => undefined);
-          }
+          const residue = stagedResidue(await sweepStagedTemps(tempPathByOp, deps));
           // @cpt-begin:cpt-frontx-algo-upgrade-changeset-commit:p1:inst-com-return-temp-occupied-at-write
           return {
             ok: false,
@@ -432,8 +475,9 @@ export async function commitUpgrade(plan: UpgradePlan, deps: CommitDeps): Promis
             message:
               `${plan.name}'s upgrade was refused: the destination "${op.path}" cannot be staged because something ` +
               'other than a regular file now occupies its reserved temporary path, which this engine never creates ' +
-              'there itself. Nothing was written; remove the offending path and re-run the upgrade.',
-            details: { drifted: [{ target: op.target, path: op.path, tempPath: op.path + RESERVED_TEMP_SUFFIX }] },
+              `there itself. ${residue.message === '' ? 'Nothing was written; ' : `No destination was written;${residue.message} `}` +
+              'remove the offending path and re-run the upgrade.',
+            details: { drifted: [{ target: op.target, path: op.path, tempPath: op.path + RESERVED_TEMP_SUFFIX }], ...residue.details },
           };
           // @cpt-end:cpt-frontx-algo-upgrade-changeset-commit:p1:inst-com-return-temp-occupied-at-write
         }
@@ -493,13 +537,19 @@ export async function commitUpgrade(plan: UpgradePlan, deps: CommitDeps): Promis
       // A write that lands during the rename phase itself, after this
       // check, is NOT detectable here; the repository's own version
       // control is the remedy for that residual window (ADR 0021).
+      // Every temp file this attempt materialized above is still beside its
+      // destination; swept here, exactly as `inst-com-return-temp-occupied-
+      // at-write` sweeps before ITS return, so "Nothing was written" is true
+      // of the tree and not only of the destinations.
+      const residue = stagedResidue(await sweepStagedTemps(tempPathByOp, deps));
       return {
         ok: false,
         code: 'CONTENT_CONFLICT',
         message:
           `${plan.name}'s upgrade was refused: ${drifted.length} destination(s) no longer hold what classification saw ` +
-          'for them. Nothing was written; re-run the upgrade to review the current state.',
-        details: { drifted },
+          `for them. ${residue.message === '' ? 'Nothing was written; ' : `No destination was written;${residue.message} `}` +
+          're-run the upgrade to review the current state.',
+        details: { drifted, ...residue.details },
       };
       // @cpt-end:cpt-frontx-algo-upgrade-changeset-commit:p1:inst-com-return-drift-conflict
     }

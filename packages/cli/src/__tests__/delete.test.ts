@@ -44,7 +44,7 @@ function fakeInventory(manifestsByName: Record<string, { excludedSubtrees: strin
       if (!manifest) return undefined;
       return {
         name,
-        source: `github:acme/${name}@v1.0.0`,
+        source: 'github:acme/tmpl@v1.0.0',
         ref: 'v1.0.0',
         status: InventoryState.INSTALLED,
         content: JSON.stringify({
@@ -116,7 +116,7 @@ function fixedConfirm(decision: 'confirmed' | 'declined'): ConfirmDeletionFn {
 }
 
 function entry(targets: string[], overrides: Partial<TemplateEntry> = {}): TemplateEntry {
-  return { origin: 'github:acme/tmpl@v1', version: '1.0.0', targets, ...overrides };
+  return { origin: 'github:acme/tmpl@v1.0.0', version: '1.0.0', targets, ...overrides };
 }
 
 // The `--json` protocol's two calls: a review (`CONFIRMATION_REQUIRED`, which

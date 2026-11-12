@@ -30,7 +30,7 @@ const inventory: DeletePlanInventoryPort = {
   }),
 };
 const entry = (targets: string[], extra: Partial<TemplateEntry> = {}): TemplateEntry => ({
-  origin: 'github:acme/tmpl@v1',
+  origin: 'github:acme/tpl@v1.0.0',
   version: '1.0.0',
   targets,
   ...extra,

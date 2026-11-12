@@ -92,6 +92,13 @@ export interface ContributionEntry {
   exclusionRoots: string[];
 }
 
+export interface SkippedPayloadPath {
+  templateName: string;
+  target: string;
+  path: string;
+  reason: 'OWN_EXCLUDED_SUBTREE';
+}
+
 // The staged assembly produced by the rewritten uniform-apply path — one
 // entry per batch target, ready for the pre-flight conflict check to
 // evaluate before any file is written.

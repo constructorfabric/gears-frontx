@@ -10,7 +10,7 @@
 // it either, matching the seam's own contract that a special file's content
 // is never read.
 import path from 'node:path';
-import { mkdtemp, mkdir, rm, writeFile, readFile, symlink, lstat } from 'node:fs/promises';
+import { chmod, mkdtemp, mkdir, rm, writeFile, readFile, symlink, lstat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -129,5 +129,68 @@ describe('createFsListDiskFilesFn — a FIFO inside the walked directory', () =>
 
     expect(files.sort()).toEqual(['a.txt', 'sub/b.txt']);
     expect(files).not.toContain('pipe');
+  });
+});
+
+// A directory the walk cannot read is a refusal, never an empty subtree: a
+// `path:` template with an unreadable subdirectory used to install WITHOUT
+// that subtree and report success, while the manifest read beside it failed
+// closed. Same typed refusal `fs-project-io.ts`'s own walk raises
+// (`PathUnreadableError`), which `cli.ts` already reports as
+// `CONTENT_CONFLICT` naming the path. Root reads a mode-000 directory anyway.
+describe('createFsListDiskFilesFn — an unreadable subdirectory', () => {
+  it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)('refuses with PathUnreadableError naming the directory, instead of listing the tree without it', async () => {
+    root = await mkdtemp(path.join(tmpdir(), 'frontx-upgrade-unreadable-'));
+    await writeFile(path.join(root, 'a.txt'), 'A', 'utf-8');
+    const locked = path.join(root, 'locked');
+    await mkdir(locked);
+    await writeFile(path.join(locked, 'hidden.txt'), 'H', 'utf-8');
+    await chmod(locked, 0o000);
+    try {
+      await expect(createFsListDiskFilesFn()(root)).rejects.toMatchObject({ name: 'PathUnreadableError', filePath: locked, errnoCode: 'EACCES' });
+    } finally {
+      await chmod(locked, 0o700);
+    }
+  });
+
+  it('still resolves to [] for a directory that does not exist at all', async () => {
+    root = await mkdtemp(path.join(tmpdir(), 'frontx-upgrade-absent-'));
+    expect(await createFsListDiskFilesFn()(path.join(root, 'never-created'))).toEqual([]);
+  });
+});
+
+// A symbolic link inside a TEMPLATE's AI bundle is refused explicitly — the
+// same rule the resolver applies to a remote archive — instead of being
+// skipped (reviewed paths) or copied with a rewritten target (first copy).
+// Only a folder carrying the manifest is a template: a project's own
+// `.frontx/ai/` (a root target the engine walks) keeps a developer's deployed
+// links, which are previewed and unlinked elsewhere, never refused here.
+describe('createFsListDiskFilesFn — a symlink inside a template AI bundle', () => {
+  it('refuses with AiBundleSymlinkError naming the link when the folder carries the manifest', async () => {
+    root = await mkdtemp(path.join(tmpdir(), 'frontx-upgrade-bundle-link-'));
+    await writeFile(path.join(root, 'frontx-template.json'), '{}', 'utf-8');
+    await mkdir(path.join(root, '.frontx', 'ai', '@x', 'a'), { recursive: true });
+    await writeFile(path.join(root, '.frontx', 'ai', '@x', 'a', 'guide.md'), 'g', 'utf-8');
+    await symlink('guide.md', path.join(root, '.frontx', 'ai', '@x', 'a', 'alias.md'));
+
+    await expect(createFsListDiskFilesFn()(root)).rejects.toMatchObject({
+      name: 'AiBundleSymlinkError',
+      templateDir: root,
+      linkPath: '.frontx/ai/@x/a/alias.md',
+    });
+  });
+
+  it('still skips a symlink elsewhere in a template, and any symlink in a folder without a manifest (a project)', async () => {
+    root = await mkdtemp(path.join(tmpdir(), 'frontx-upgrade-bundle-link-ok-'));
+    await writeFile(path.join(root, 'frontx-template.json'), '{}', 'utf-8');
+    await writeFile(path.join(root, 'a.txt'), 'A', 'utf-8');
+    await symlink('a.txt', path.join(root, 'elsewhere.txt'));
+    expect((await createFsListDiskFilesFn()(root)).sort()).toEqual(['a.txt', 'frontx-template.json']);
+
+    const project = path.join(root, 'project');
+    await mkdir(path.join(project, '.frontx', 'ai', '@x', 'a'), { recursive: true });
+    await writeFile(path.join(project, 'index.ts'), 'x', 'utf-8');
+    await symlink('../../../index.ts', path.join(project, '.frontx', 'ai', '@x', 'a', 'deployed-link.md'));
+    expect(await createFsListDiskFilesFn()(project)).toEqual(['index.ts']);
   });
 });

@@ -187,5 +187,8 @@ export async function resolveRegisteredManifestContent(
     }
   }
   const installed = deps.inventory.lookup(name);
+  if (installed !== undefined && installed.source !== origin) {
+    throw new Error(`Inventory entry for "${name}" belongs to "${installed.source}", not registered origin "${origin}".`);
+  }
   return installed?.content;
 }

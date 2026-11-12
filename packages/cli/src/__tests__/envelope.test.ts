@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { err, ok } from '../envelope';
+import { ERROR_CODES, err, ok } from '../envelope';
 import type { Envelope, ErrorCode } from '../envelope';
 
 describe('ok', () => {
@@ -32,27 +32,34 @@ describe('err', () => {
     });
   });
 
-  it('every one of the sixteen ADR-fixed codes constructs a valid envelope', () => {
-    const codes: ErrorCode[] = [
-      'INVALID_MANIFEST',
-      'VERSION_MISMATCH',
-      'TEMPLATE_NOT_REGISTERED',
-      'TARGET_CONFLICT',
-      'CONTENT_CONFLICT',
-      'EXISTING_PATHS_REQUIRE_DECISION',
-      'CONFIRMATION_REQUIRED',
-      'ORIGIN_UNAVAILABLE',
-      'PROJECT_INVALID',
-      'REGISTRATION_CONFLICT',
-      'TARGETS_EXIST',
-      'TARGET_NOT_APPLIED',
-      'INVALID_PATH',
-      'NOTHING_TO_RESTORE',
-      'INVALID_INPUT',
-      'INTERNAL',
-    ];
+  it('every one of the eighteen ADR-fixed codes constructs a valid envelope, and the list is exactly the ADR list', () => {
+    // The ADR's eighteen, spelled here independently of `ERROR_CODES` so a code
+    // dropped from or added to the list without amending the ADR is caught.
+    const adrCodes: Record<ErrorCode, true> = {
+      INVALID_MANIFEST: true,
+      VERSION_MISMATCH: true,
+      TEMPLATE_NOT_REGISTERED: true,
+      TARGET_CONFLICT: true,
+      CONTENT_CONFLICT: true,
+      EXISTING_PATHS_REQUIRE_DECISION: true,
+      CONFIRMATION_REQUIRED: true,
+      ORIGIN_UNAVAILABLE: true,
+      PROJECT_INVALID: true,
+      REGISTRATION_CONFLICT: true,
+      TARGETS_EXIST: true,
+      TARGET_NOT_APPLIED: true,
+      INVALID_PATH: true,
+      NOTHING_TO_RESTORE: true,
+      INVALID_INPUT: true,
+      RECOVERY_REQUIRED: true,
+      RESOURCE_BUSY: true,
+      INTERNAL: true,
+    };
+    expect([...ERROR_CODES].sort()).toEqual(Object.keys(adrCodes).sort());
+    expect(ERROR_CODES).toHaveLength(18);
+    expect(new Set(ERROR_CODES).size).toBe(18);
 
-    for (const code of codes) {
+    for (const code of ERROR_CODES) {
       expect(err(code, 'message')).toEqual({ ok: false, error: { code, message: 'message' } });
     }
   });

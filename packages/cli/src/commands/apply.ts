@@ -40,8 +40,8 @@ import type { ReadExistingContentFn, ReadInstalledContentFn } from '../scaffold/
 import { materializeOrRemoveAiBundle } from '../scaffold/ai-bundle';
 import { classifyAiDestination } from './apply-ai-review';
 import type { BundleExistsFn, CopyBundleFn, RemoveBundleFn } from '../scaffold/ai-bundle';
-import { isWithinEffectiveOwnership } from '../scaffold/effective-ownership';
-import type { AssertPathWithinRootFn, ContributionEntry, StagedAssembly, WriteFileFn } from '../scaffold/types';
+import { isWithinDeclaredExclusion, isWithinEffectiveOwnership } from '../scaffold/effective-ownership';
+import type { AssertPathWithinRootFn, ContributionEntry, SkippedPayloadPath, StagedAssembly, WriteFileFn } from '../scaffold/types';
 import { readProjectState, mutateProjectState } from '../project-state/io';
 import { aliasedOwnedRootRefusal } from '../project-state/alias';
 import {
@@ -83,6 +83,7 @@ import type { ErrorCode } from '../envelope';
 // distinction `PathContainmentError` and `ExistingSymlinkDestinationError`
 // already carry in their own names.
 import { PathContainmentError, ExistingSymlinkDestinationError } from '../adapters/fs-project-io';
+import { AiBundleSymlinkError } from '../adapters/fs-upgrade-io';
 import { AiNamespaceAliasError } from '../adapters/fs-ai-bundle';
 import type { RemoveProjectFileFn } from '../upgrade/types';
 import { setOwn } from '../own-record';
@@ -503,16 +504,22 @@ export async function resolveAndCheckBatch(
 async function computePayloadForTarget(
   entry: ContributionEntry,
   readInstalledContentFn: ReadInstalledContentFn,
-): Promise<Map<string, Buffer | string>> {
+): Promise<{ payload: Map<string, Buffer | string>; skipped: SkippedPayloadPath[] }> {
   const rawContent = await readInstalledContentFn(entry.installedContentPath);
   const payload = new Map<string, Buffer | string>();
+  const skipped: SkippedPayloadPath[] = [];
   for (const item of rawContent) {
     if (!isTemplatePayloadPath(item.path)) continue;
     const projectPath = entry.target === '.' ? item.path : `${entry.target}/${item.path}`;
-    if (!isWithinEffectiveOwnership(projectPath, entry.target, entry.exclusionRoots)) continue;
+    if (!isWithinEffectiveOwnership(projectPath, entry.target, entry.exclusionRoots)) {
+      if (isWithinDeclaredExclusion(projectPath, entry.target, entry.excludedSubtrees)) {
+        skipped.push({ templateName: entry.templateName, target: entry.target, path: projectPath, reason: 'OWN_EXCLUDED_SUBTREE' });
+      }
+      continue;
+    }
     payload.set(projectPath, item.content);
   }
-  return payload;
+  return { payload, skipped };
 }
 
 // The human-readable name for each `uncomparableCauses` `kind` — the one
@@ -851,7 +858,7 @@ export interface ApplyBatchTargetRef {
 }
 
 export type ApplyBatchOutcome =
-  | { ok: true; applied: ApplyBatchTargetRef[]; noop: ApplyBatchTargetRef[] }
+  | { ok: true; applied: ApplyBatchTargetRef[]; noop: ApplyBatchTargetRef[]; skipped: SkippedPayloadPath[] }
   | { ok: false; code: ErrorCode; message: string; details?: Record<string, unknown> };
 
 /**
@@ -1038,6 +1045,7 @@ async function runApplyPipelineSteps(
   // own cause rather than leaving a developer to find it.
   const uncomparableCauses: { path: string; component: string; kind: 'symlink' | 'file' | 'directory' | 'special' }[] = [];
   const undecidedAdditionalPaths: string[] = [];
+  const skipped: SkippedPayloadPath[] = [];
   // `--adopt-existing`'s own contract is to leave an undeclared on-disk path
   // untouched — but the real existing-content walk (`adapters/fs-existing-
   // content.ts`) reports neither `isFile()` nor `isDirectory()` for a
@@ -1056,8 +1064,9 @@ async function runApplyPipelineSteps(
   // reporting success over content it silently corrupted.
   const adoptedSnapshots: { target: string; path: string; content: Buffer | string }[] = [];
   for (const entry of unrecorded) {
-    const payload = await computePayloadForTarget(entry, deps.readInstalledContentFn);
-    payloads.set(entry, payload);
+    const computed = await computePayloadForTarget(entry, deps.readInstalledContentFn);
+    payloads.set(entry, computed.payload);
+    skipped.push(...computed.skipped);
     const partitions = await reconcileExistingContent({
       target: entry.target,
       exclusionRoots: entry.exclusionRoots,
@@ -1451,6 +1460,19 @@ async function runApplyPipelineSteps(
         // project, it simply could not be copied, and reporting it as a
         // containment escape sends whoever reads the refusal chasing a
         // symlink that is not there.
+        // A symbolic link inside the SOURCE bundle: refused by the copy's
+        // preflight before the destination was touched — the template's own
+        // content is the problem, so it is the same user-actionable
+        // `CONTENT_CONFLICT` the resolver's identical refusal lands on.
+        if (error instanceof AiBundleSymlinkError) {
+          return {
+            ok: false,
+            code: 'CONTENT_CONFLICT',
+            message:
+              `Aborted — ${error.message}` + describeWrittenPaths(writtenPaths, true) + describeBundleRollback(bundledNamesThisCall, true),
+            details: { ...bundleFailureDetails, path: error.linkPath },
+          };
+        }
         if (error instanceof PathContainmentError || error instanceof AiNamespaceAliasError) {
           return {
             ok: false,
@@ -1595,7 +1617,7 @@ async function runApplyPipelineSteps(
     // @cpt-end:cpt-frontx-state-cli-scaffolding-assembly-op:p1:inst-as-reconciled-assembled
 
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-done
-    return { ok: true, applied, noop };
+    return { ok: true, applied, noop, skipped };
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-done
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-write-refusal
   } catch (error) {

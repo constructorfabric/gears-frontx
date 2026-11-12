@@ -1,6 +1,6 @@
 // @cpt-algo:cpt-frontx-algo-cli-scaffolding-uniform-apply:p1
 //
-// REWRITE (checkpoint 3): the prior suite exercised the OLD `uniformApply`
+// The prior suite exercised the OLD `uniformApply`
 // (a `templateRef[]` resolved through a preset/composition tree, filtered by
 // the legacy `exclusiveSubtrees`/`sharedFiles` ownership shape) and the
 // `runAssemblyOp` driver built on top of it. The rewritten `uniformApply`
@@ -187,6 +187,23 @@ describe('uniformApply — staging an explicit batch (cpt-frontx-algo-cli-scaffo
 
     expect(result.ok).toBe(true);
     expect(install).not.toHaveBeenCalled();
+  });
+
+  it('reacquires instead of staging a same-name inventory entry from another source', async () => {
+    const origin = 'github:acme/template-a@v1';
+    const document = makeDocument({ 'template-a': { origin, version: '1.0.0', targets: [] } });
+    const wrongEntry = { ...makeInventoryEntry('template-a', manifestContent('template-a')), source: 'github:other/template-a@v2' };
+    const rightEntry = makeInventoryEntry('template-a', manifestContent('template-a'));
+    let installed = false;
+    const install = vi.fn(async () => {
+      installed = true;
+      return { ok: true as const, value: { name: 'template-a', ref: 'v1' } };
+    });
+    const inventory: UniformApplyInventoryPort = { lookup: vi.fn(() => installed ? rightEntry : wrongEntry), install };
+    const result = await uniformApply({ templates: { 'template-a': ['apps/foo'] } }, document, makeDeps({ inventory }));
+
+    expect(install).toHaveBeenCalledWith(origin, expect.any(Function));
+    expect(result.ok).toBe(true);
   });
 
   // inst-ua-auto-install's success branch: not yet available, install succeeds,

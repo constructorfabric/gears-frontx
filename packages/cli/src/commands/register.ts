@@ -12,8 +12,8 @@
 // (`resolver/resolve.ts`'s `inst-resolve-pin`) now settles that pin from the
 // full 40-hex commit the GitHub archive's global PAX header states
 // (`adapters/github-fetch.ts`) and records it as `source` before this
-// command ever sees the result, so `TemplateInventory.install`/`lookup`'s
-// `source` this command writes as `origin` below already carries the
+// command ever sees the result, so the resolver's `source`,
+// which this command writes as `origin` below, already carries the
 // immutable SHA end to end for a GitHub origin — this command performs no
 // pinning of its own; it simply passes through what the resolver settled.
 // The GitHub adapter refuses an archive that states no commit. The residual,
@@ -36,6 +36,7 @@ import { exclusionGroundRoots, withRetainedGround } from '../project-state/retai
 import type { ReadProjectStateFn, WriteProjectStateFn, TemplateEntry } from '../project-state/types';
 import { resolveToInventory } from '../resolver/resolve';
 import { parseLocalOrigin } from '../resolver/types';
+import { parseSourceSpec } from '../spec-parser/parse';
 import type { FetchFn, ListFolderFilesFn, PathExistsFn } from '../resolver/types';
 import type { ReadFolderFileBinaryFn } from '../resolver/types';
 import type { InventoryEntry, InventoryResult } from '../inventory/types';
@@ -44,16 +45,14 @@ import type { ErrorCode } from '../envelope';
 import { getOwn } from '../own-record';
 
 // Narrow port over `TemplateInventory` — register needs only these two
-// methods, injected so a test double can exercise `INVALID_MANIFEST`
-// directly (constructing a `lookup` result whose content already drifted
-// out of contract) without depending on the real resolver pipeline, which
-// enforces the identical four-field contract as its own install-time gate
-// (`resolver/resolve.ts` calls `readManifestFromContent` before an install
-// can ever succeed) and therefore can never itself produce an invalid
-// manifest for a REAL `TemplateInventory` to hand back. The check stays in
-// this algorithm anyway because the FEATURE spec (`inst-cpreg-read-manifest`
-// / `inst-cpreg-if-invalid-manifest`) names it as this algorithm's own step,
-// not the resolver's.
+// methods: `install` is the ONE inventory write, run after every refusal
+// gate passed, and `lookup` reads the slot back to confirm it holds the
+// source the gates checked. The manifest itself comes from the shared
+// resolver's in-memory acquisition (never from `lookup`), which enforces the
+// four-field contract before this command sees the content, so this
+// algorithm's own `inst-cpreg-if-invalid-manifest` step is unreachable in
+// practice; it stays because the FEATURE spec names it as this algorithm's
+// own step, not the resolver's.
 export interface RegisterInventoryPort {
   install(spec: string, fetchFn: FetchFn): Promise<InventoryResult<{ name: string; ref: string }>>;
   lookup(name: string): InventoryEntry | undefined;
@@ -66,6 +65,26 @@ export type RegisterOutcome =
 interface ResolvedOrigin {
   storedOrigin: string;
   manifestContent: string;
+  // The one-shot install of a REMOTE origin, run only after every refusal
+  // gate passed (reviewer finding, PR #614 comment 4540899403: a refused
+  // registration must not touch the shared inventory slot/content/index).
+  // `undefined` for a local origin, which is never installed.
+  commit?: (name: string) => Promise<{ ok: false; code: ErrorCode; message: string } | undefined>;
+}
+
+// Replays the one fetch the in-memory resolution already made, so the later
+// install pins to the very bytes the gates checked (a branch that moved
+// between two fetches would otherwise register one thing and store another).
+function fetchOnce(fetchFn: FetchFn): FetchFn {
+  const seen = new Map<string, ReturnType<FetchFn>>();
+  return (url) => {
+    let hit = seen.get(url);
+    if (hit === undefined) {
+      hit = fetchFn(url);
+      seen.set(url, hit);
+    }
+    return hit;
+  };
 }
 
 async function resolveOrigin(
@@ -77,7 +96,7 @@ async function resolveOrigin(
   canonicalizeFn: CanonicalizeTargetFn,
   existsFn: PathExistsFn,
   listFolderFilesFn: ListFolderFilesFn,
-): Promise<{ ok: true; value: ResolvedOrigin } | { ok: false; message: string; code?: ErrorCode }> {
+): Promise<{ ok: true; value: ResolvedOrigin } | { ok: false; message: string; code?: ErrorCode; details?: Record<string, unknown> }> {
   if (parseLocalOrigin(origin) !== undefined) {
     // The shared resolver now owns containment, existence, and manifest-
     // identity/legacy-manifest checking for a local origin, exactly as it
@@ -114,32 +133,48 @@ async function resolveOrigin(
     return { ok: true, value: { storedOrigin: resolved.value.source, manifestContent: resolved.value.content } };
   }
 
-  // `install` is called UNCONDITIONALLY rather than first checking whether
-  // the origin's content is already available (`inst-cpreg-if-not-
-  // installed`'s literal condition): `TemplateInventory.install` already
-  // treats a repeated install at the same address as a refresh rather than
-  // an error (`TemplateInventory.ts`'s `sameTemplate` branch), so a separate
-  // availability probe here would only re-derive a distinction that method
-  // already makes internally.
-  const installResult = await inventory.install(origin, fetchFn);
-  if (!installResult.ok) {
+  // The remote origin is resolved IN MEMORY first — the same acquisition
+  // `TemplateInventory.install` runs, minus its write — so every project
+  // gate below sees the pinned source and manifest while the shared inventory
+  // is still untouched. `commit` performs the real install (a repeat is a
+  // refresh: `TemplateInventory.ts`'s `sameTemplate` branch) only once the
+  // caller has passed every refusal; the install's own collision guard still
+  // applies there.
+  const parsed = parseSourceSpec(origin);
+  if (!parsed.ok) return { ok: false, code: 'INVALID_INPUT', message: parsed.error.message };
+  const once = fetchOnce(fetchFn);
+  const resolved = await resolveToInventory({ kind: 'remote', ref: parsed.value }, { fetchFn: once });
+  if (!resolved.ok) {
     // The code travels, exactly as the local branch above already propagates
-    // it. Dropping it here downgraded a refusal into a different one: a remote
-    // template whose manifest the resolver refused with `INVALID_MANIFEST`
-    // reached the caller as `ORIGIN_UNAVAILABLE`, saying the origin could not
-    // be reached when it had been reached and read. The two halves of one
-    // command disagreed about the same failure for as long as only one of them
-    // carried the code.
-    return { ok: false, code: installResult.error.code, message: installResult.error.message };
-  }
-  const entry = inventory.lookup(installResult.value.name);
-  if (!entry) {
+    // it: a manifest refused with `INVALID_MANIFEST` must not reach the caller
+    // as `ORIGIN_UNAVAILABLE`, saying the origin could not be reached when it
+    // had been reached and read.
     return {
       ok: false,
-      message: `Installed template "${installResult.value.name}" could not be read back from the local inventory.`,
+      code: resolved.error.code,
+      message: resolved.error.message,
+      ...(resolved.error.undeclaredFields ? { details: { undeclaredFields: resolved.error.undeclaredFields } } : {}),
     };
   }
-  return { ok: true, value: { storedOrigin: entry.source, manifestContent: entry.content } };
+  const { source, content } = resolved.value;
+  const commit = async (name: string): Promise<{ ok: false; code: ErrorCode; message: string } | undefined> => {
+    const installResult = await inventory.install(origin, once);
+    if (!installResult.ok) {
+      return { ok: false, code: installResult.error.code ?? 'ORIGIN_UNAVAILABLE', message: installResult.error.message };
+    }
+    const entry = inventory.lookup(name);
+    if (entry?.source !== source) {
+      return {
+        ok: false,
+        code: 'CONTENT_CONFLICT',
+        message:
+          `Installed template "${name}" reads back from the local inventory as "${entry?.source ?? 'absent'}", ` +
+          `not the resolved "${source}"; the registration was not recorded.`,
+      };
+    }
+    return undefined;
+  };
+  return { ok: true, value: { storedOrigin: source, manifestContent: content, commit } };
 }
 
 /**
@@ -173,15 +208,17 @@ export async function registerTemplate(
   // commit its own tarball settled on, verified end-to-end against a real
   // remote where a branch name came back recorded as a SHA.
   //
-  // This install must run unconditionally — never gated behind an `IF the
-  // origin's content is not already available in the local inventory`
-  // check — because such a conditional cannot stand beside its own pinning
+  // The fetch runs unconditionally — never gated behind an `IF the origin's
+  // content is not already available in the local inventory` check —
+  // because such a conditional cannot stand beside its own pinning
   // requirement: what a project stores is never the typed ref but the value
   // the fetch settled on (`cpt-frontx-adr-source-spec-syntax`), so skipping
   // the fetch because content happens to be present locally would leave
   // nothing to pin, and a branch that had moved would register as a no-op.
-  // Installing unconditionally is what makes the comparison below
-  // meaningful; a repeat is a refresh.
+  // The inventory WRITE, by contrast, is deferred (`ResolvedOrigin.commit`)
+  // until every refusal below has passed: a refused registration leaves the
+  // shared inventory slot, content and index exactly as they were. A repeat
+  // on a success path is a refresh.
   const resolved = await resolveOrigin(
     origin,
     repoRoot,
@@ -197,7 +234,7 @@ export async function registerTemplate(
   // @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-if-install-fail
   if (!resolved.ok) {
     // @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-return-unavailable
-    return { ok: false, code: resolved.code ?? 'ORIGIN_UNAVAILABLE', message: resolved.message };
+    return { ok: false, code: resolved.code ?? 'ORIGIN_UNAVAILABLE', message: resolved.message, ...(resolved.details ? { details: resolved.details } : {}) };
     // @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-return-unavailable
   }
   // @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-if-install-fail
@@ -237,6 +274,9 @@ export async function registerTemplate(
   // @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-if-invalid-manifest
 
   const { name, version } = fields;
+  // Every refusal below precedes this: the shared inventory is written only on
+  // a success path, immediately before the project write it belongs with.
+  const commitInventory = async () => (resolved.value.commit ? resolved.value.commit(name) : undefined);
 
   // The declared `excludedSubtrees` recorded onto the entry — read from the
   // SAME `manifestResult` `inst-cpreg-read-manifest` already produced above,
@@ -271,6 +311,8 @@ export async function registerTemplate(
     // @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-return-bundle-overlap
     // @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-if-bundle-overlap
     const entry: TemplateEntry = { origin: resolved.value.storedOrigin, version, targets: [], excludedSubtrees };
+    const installFailure = await commitInventory();
+    if (installFailure) return installFailure;
     // @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-write-new
     const written = await mutateProjectState(
       repoRoot,
@@ -291,6 +333,8 @@ export async function registerTemplate(
   // @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-else-exists
   // @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-if-same-origin
   if (existing.origin === resolved.value.storedOrigin) {
+    const installFailure = await commitInventory();
+    if (installFailure) return installFailure;
     // @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-if-noop-missing-exclusions
     // A no-op for the pair {origin, version} is not a no-op for a document
     // missing a field this code now writes: a legacy entry registered
@@ -384,6 +428,8 @@ export async function registerTemplate(
   if (replaceOverlap !== undefined) return replaceOverlap;
   // @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-return-bundle-overlap-replace
   // @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-if-bundle-overlap-replace
+  const installFailure = await commitInventory();
+  if (installFailure) return installFailure;
   const replacedEntry: TemplateEntry = {
     origin: resolved.value.storedOrigin,
     version,
@@ -538,7 +584,7 @@ export async function probeRegistration(
     listFolderFilesFn,
   );
   if (!resolved.ok) {
-    return { ok: false, code: resolved.code ?? 'ORIGIN_UNAVAILABLE', message: resolved.message };
+    return { ok: false, code: resolved.code ?? 'ORIGIN_UNAVAILABLE', message: resolved.message, ...(resolved.details ? { details: resolved.details } : {}) };
   }
 
   const fields = readManifestFields(readManifestFromContent(resolved.value.manifestContent), resolved.value.manifestContent);

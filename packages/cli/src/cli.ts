@@ -63,6 +63,7 @@ import {
   createFsWriteDiskFileFn,
   createFsRenameDiskFileFn,
   createFsUnlinkDiskFileFn,
+  AiBundleSymlinkError,
 } from './adapters/fs-upgrade-io';
 import { registerTemplate } from './commands/register';
 import type { RegisterOutcome } from './commands/register';
@@ -78,7 +79,7 @@ import type { DeleteOutcome, ConfirmDeletionFn } from './commands/delete';
 
 import { TemplateInventory } from './inventory/TemplateInventory';
 import type { FetchFn } from './resolver/types';
-import type { AssertPathWithinRootFn, WriteFileFn } from './scaffold/types';
+import type { AssertPathWithinRootFn, SkippedPayloadPath, WriteFileFn } from './scaffold/types';
 import type { CanonicalizeTargetFn } from './scaffold/conflict-check';
 import type { ResolveInstalledContentPathFn, UniformApplyBatch } from './scaffold/assembler';
 import type { ReadExistingContentFn, ReadInstalledContentFn } from './scaffold/existing-content';
@@ -855,7 +856,9 @@ function isMutatingCommand(command: KnownCommand, args: string[]): boolean {
 // `seed` writes into its `<dir>` argument; every other writer works on the current directory.
 function mutationProjectRoot(command: KnownCommand, args: string[]): string {
   if (command === 'seed') {
-    const [dir] = extractFlagValue(args, '--input').rest.filter((a) => a !== '--json' && a !== '--adopt-existing');
+    const [dir] = extractFlagValue(args, '--input').rest.filter(
+      (a) => a !== '--json' && a !== '--adopt-existing' && a !== '--yes' && !a.startsWith('--plan-digest='),
+    );
     if (dir) return path.resolve(dir);
   }
   return process.cwd();
@@ -1329,11 +1332,13 @@ function renderAssembleOutcome(result: AssembleOutcome, jsonMode: boolean): Comm
       ? { exitCode: exitCodeForError(result.code), stdout: JSON.stringify(err(result.code, result.message, result.details)) }
       : { exitCode: exitCodeForError(result.code), stderr: result.message };
   }
-  const data = { entries: result.entries };
-  const text =
+  const data = { entries: result.entries, skipped: result.skipped };
+  const preview =
     result.entries.length === 0
       ? 'Preview: nothing to apply.'
       : result.entries.map((e) => `${e.templateName} -> ${e.target}`).join('\n');
+  const skipped = formatSkippedPayloadPaths(result.skipped);
+  const text = [preview, skipped].filter(Boolean).join('\n');
   return jsonMode
     ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
     : { exitCode: EXIT_SUCCESS, stdout: text };
@@ -1345,11 +1350,20 @@ function renderApplyOutcome(result: ApplyBatchOutcome, jsonMode: boolean): Comma
       ? { exitCode: exitCodeForError(result.code), stdout: JSON.stringify(err(result.code, result.message, result.details)) }
       : { exitCode: exitCodeForError(result.code), stderr: result.message };
   }
-  const data = { applied: result.applied, noop: result.noop };
-  const text = `Applied ${result.applied.length} target(s); ${result.noop.length} already recorded (no-op).`;
+  const data = { applied: result.applied, noop: result.noop, skipped: result.skipped };
+  const text = [
+    `Applied ${result.applied.length} target(s); ${result.noop.length} already recorded (no-op).`,
+    formatSkippedPayloadPaths(result.skipped),
+  ].filter(Boolean).join('\n');
   return jsonMode
     ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
     : { exitCode: EXIT_SUCCESS, stdout: text };
+}
+
+function formatSkippedPayloadPaths(paths: readonly SkippedPayloadPath[]): string {
+  return paths
+    .map(({ templateName, target, path }) => `SKIPPED ${path} (${templateName} -> ${target}; declared excludedSubtrees)`)
+    .join('\n');
 }
 
 function renderSeedOutcome(result: SeedRepositoryOutcome, jsonMode: boolean): CommandOutcome {
@@ -2026,6 +2040,7 @@ export async function runCommand(
           fetchFn: deps.fetchFn,
           readFileFn: deps.readFileFn,
           readFolderFileBinaryFn: deps.readFolderFileBinaryFn,
+          readInstalledContentFn: deps.createReadInstalledContentFn(repoRoot),
           canonicalizeFn,
           existsFn: deps.existsFn,
           listFolderFilesFn: deps.listFolderFilesFn,
@@ -3103,6 +3118,16 @@ export async function run(argv: string[], deps: CliDeps): Promise<CommandOutcome
     // operation cannot work with": an ordinary, actionable problem with the
     // tree, never an internal failure, and never — under `--json` — an empty
     // stdout where the caller is owed exactly one envelope.
+    // A symbolic link inside a template's AI bundle, met while a command read
+    // the template's folder outside the resolver (the bundle review's own
+    // capture): the same explicit `CONTENT_CONFLICT` the resolver and `apply`
+    // report for it, never an internal failure.
+    if (error instanceof AiBundleSymlinkError) {
+      const envelope = err('CONTENT_CONFLICT', error.message, { path: error.linkPath, templateDir: describePathForReport(error.templateDir) });
+      return parseJsonMode(parsed.args)
+        ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(envelope) }
+        : { exitCode: EXIT_USER_ERROR, stderr: error.message };
+    }
     // @cpt-begin:cpt-frontx-flow-cli-invocation-run-command:p1:inst-run-if-content-unreadable
     if (error instanceof NotRegularFileError) {
       // Spelled project-relative when the path lies under the directory the

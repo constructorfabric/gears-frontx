@@ -33,8 +33,38 @@ import type {
   UnlinkDiskFileFn,
   WriteDiskFileFn,
 } from '../upgrade/types';
-import { PathContainmentError, assertPathWithinProjectRoot, isInside, resolveWriteParentDir } from './fs-project-io';
+import { PathContainmentError, PathUnreadableError, assertPathWithinProjectRoot, isInside, resolveWriteParentDir } from './fs-project-io';
 import { isReservedTempName } from '../paths/reserved-temp-name';
+import { FRONTX_NAMESPACE_ROOT, MANIFEST_FILENAME } from '../manifest/types';
+
+/**
+ * A template's AI bundle (`.frontx/ai/<name>/`) carries a symbolic link.
+ * Symlinks are not template content: a remote archive's links are never
+ * materialized and the resolver refuses any in scope (`resolver/resolve.ts`),
+ * and a local `path:` template is held to the same rule here, where its
+ * folder is enumerated — so the refusal is explicit instead of a link being
+ * copied with a rewritten target on one path and dropped without a word on
+ * another. Only a folder that carries the manifest is judged a template:
+ * a project's own `.frontx/ai/` (reached when the engine walks a root
+ * target) may hold a developer's links, which are previewed and unlinked by
+ * `delete`/review, never refused.
+ */
+export class AiBundleSymlinkError extends Error {
+  readonly templateDir: string;
+  readonly linkPath: string;
+
+  constructor(templateDir: string, linkPath: string) {
+    super(
+      `The template at "${templateDir}" carries the symbolic link "${linkPath}" inside its AI bundle (.frontx/ai/); ` +
+        'symbolic links are not supported in a template AI bundle — replace it with a regular file. The template was refused.',
+    );
+    this.name = 'AiBundleSymlinkError';
+    this.templateDir = templateDir;
+    this.linkPath = linkPath;
+  }
+}
+
+const AI_BUNDLE_PREFIX = `${FRONTX_NAMESPACE_ROOT}/ai/`;
 
 // Install-time output, never committed template content
 // (`cpt-frontx-algo-template-manifest-validate-content-self-containment`'s own
@@ -118,7 +148,9 @@ export function createFsReadDiskEntryFn(repoRoot: string): ReadDiskEntryFn {
  * POSIX-relative to it, never following a symlink and never reporting one.
  * Resolves to `[]` when the directory does not exist: an applied target
  * ordinarily does exist, but a target whose ground was removed by hand is not
- * this seam's error to raise — it simply has fewer candidates.
+ * this seam's error to raise — it simply has fewer candidates. A directory
+ * that EXISTS but cannot be read anywhere in the walk is a
+ * `PathUnreadableError`, never a shorter list.
  *
  * Skips `node_modules`, which is NOT a seventh term of the effective-ownership
  * subtraction but the payload definition itself. `cpt-frontx-feature-template-
@@ -150,17 +182,27 @@ export function createFsReadDiskEntryFn(repoRoot: string): ReadDiskEntryFn {
 export function createFsListDiskFilesFn(): ListDiskFilesFn {
   return async function listDiskFiles(absoluteDir: string): Promise<string[]> {
     if (!fs.existsSync(absoluteDir)) return [];
-    return walkRegularFiles(absoluteDir, '');
+    // A folder carrying the manifest is a template: a symlink inside its AI
+    // bundle is refused (`AiBundleSymlinkError`), never skipped.
+    const isTemplate = fs.existsSync(path.join(absoluteDir, MANIFEST_FILENAME));
+    return walkRegularFiles(absoluteDir, '', isTemplate);
   };
 }
 
-function walkRegularFiles(root: string, relativeDir: string): string[] {
+function walkRegularFiles(root: string, relativeDir: string, isTemplate: boolean): string[] {
   const absoluteDir = path.join(root, relativeDir);
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(absoluteDir, { withFileTypes: true });
-  } catch {
-    return [];
+  } catch (error) {
+    // A directory this walk cannot read is a REFUSAL, never an empty subtree:
+    // returning `[]` here installed a `path:` template without the subtree and
+    // reported success, while the manifest read beside it failed closed. The
+    // same typed refusal `fs-project-io.ts`'s own walk raises, which `cli.ts`
+    // reports as `CONTENT_CONFLICT` naming the path; the commit algorithm's
+    // reclaim sees it as an ordinary caught failure (nothing landed yet).
+    // Only the ROOT's absence resolves to `[]`, decided above, never here.
+    throw new PathUnreadableError(absoluteDir, (error as NodeJS.ErrnoException).code ?? 'UNKNOWN');
   }
   const files: string[] = [];
   for (const entry of entries) {
@@ -171,12 +213,17 @@ function walkRegularFiles(root: string, relativeDir: string): string[] {
     // walk cycle-free by construction rather than by a visited-set guard
     // (`createFsListTargetFilesFn` needs one precisely because it does
     // follow links).
-    if (entry.isSymbolicLink()) continue;
+    if (entry.isSymbolicLink()) {
+      if (isTemplate && toPosixPath(relativePath).startsWith(AI_BUNDLE_PREFIX)) {
+        throw new AiBundleSymlinkError(root, toPosixPath(relativePath));
+      }
+      continue;
+    }
     if (entry.isDirectory()) {
       // Payload definition, not an ownership term — see this function's own
       // doc comment for the measurement that forced it.
       if (entry.name === PAYLOAD_SKIP_DIR) continue;
-      files.push(...walkRegularFiles(root, relativePath));
+      files.push(...walkRegularFiles(root, relativePath, isTemplate));
       continue;
     }
     if (entry.isFile()) files.push(toPosixPath(relativePath));

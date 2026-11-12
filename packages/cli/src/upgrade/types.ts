@@ -1,7 +1,7 @@
 import type { AiReviewSnapshot } from '../operations/ai-review';
 // @cpt-FEATURE:cpt-frontx-feature-upgrade-changeset:p1
 //
-// REWRITE (checkpoint 5): the prior shapes here described the retired
+// The prior shapes here described the retired
 // region-union engine — `ChangeSet` with `clean`/`conflicts` entries carrying
 // a `regionKey`, a `ProjectSnapshot` rollback carrier, and a
 // provenance-record baseline. `cpt-frontx-adr-project-upgrade-mechanism`

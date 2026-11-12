@@ -1,10 +1,10 @@
 // @cpt-FEATURE:cpt-frontx-feature-cli-scaffolding:p1
 // @cpt-constraint:cpt-frontx-constraint-cli-template-independence:p1
 //
-// SCOPE DECISION (checkpoint 3, made by the developer, not the architect):
+// SCOPE DECISION (implementation-side; the architecture does not fix it):
 // `seed`'s own FEATURE text ("Seed a New or Empty Repository") assumes a
 // concept — "the CLI's built-in official default origins" — that no module
-// in this codebase declared anywhere before this checkpoint. `seed` accepts
+// in this codebase declares anywhere else. `seed` accepts
 // ONLY these defaults (nothing else can be registered against yet, by the
 // flow's own error scenario), so SOME concrete list has to exist for `seed`
 // to be implementable at all.

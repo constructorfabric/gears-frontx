@@ -278,8 +278,10 @@ points before the record is written, with inventory promotion and the AI bundle
 refresh stubbed) do not cover every crash point, the built CLI, or a crash after
 the record is written: there the project already names the new generation, an
 identical re-run reports nothing to do, and an interrupted inventory promotion or
-AI bundle refresh is not completed by it. Concurrent runs (there is no lock) and
-power loss are not covered either; the repository's own version control is the
+AI bundle refresh is not completed by it. A concurrent frontx writer of the same
+user is refused with `RESOURCE_BUSY` by the per-user mutation lock, but a writer
+that is not a cooperating frontx process, and power loss, are not covered; the
+repository's own version control is the
 fallback for anything outside those conditions. `.frontx/project.json` records the origin
 a name is upgrading (or restoring) away from, so exactly one generation is
 reversible with `--restore`; running `--restore` a second time in a row records
@@ -343,9 +345,11 @@ equals the stated one. If it differs, nothing is deleted and the answer is
 `planChangedSinceReview: true` — review that whole plan and confirm with its
 digest only if it is approved. `--yes` without `--plan-digest` deletes nothing
 and returns the current plan. The digest binds the listed paths, the preserved
-set, recorded-ground changes and whether the AI bundle directory is removed; it
-does not bind file bytes, the bundle's contents (removed recursively) or what a
-symlink points at, and the check is not atomic with the removals after it.
+set, recorded-ground changes, whether the AI bundle directory is removed and,
+when it is, the bundle's reviewed tree (each file's length and SHA-256, link
+targets); an edit to the bundle after the review is refused at removal and
+reported as `aiBundleResidue`. It does not bind the target files' bytes or what
+a symlink points at, and the check is not atomic with the removals after it.
 `--dry-run` is the exception: it returns the plan as a successful result
 before the confirmation gate, so it needs no `--yes`, and that result is a
 report, not a completed deletion. `--yes` without `--json` is refused (exit

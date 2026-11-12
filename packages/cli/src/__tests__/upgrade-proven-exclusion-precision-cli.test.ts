@@ -7,7 +7,7 @@
 // when it wrote its files and still declares was never the entry's ground, so a
 // guest nested there legitimately must not be frozen because a DIFFERENT region
 // was relinquished in the same upgrade. What the entry newly handed over stays
-// retained (human ruling V2, 2026-11-06). Drives the BUILT executable.
+// retained (retained-ground ruling of 2026-11-06). Drives the BUILT executable.
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';

@@ -10,7 +10,10 @@
 // convention folder the CLI copies verbatim or deletes outright, never a
 // document a partial write could corrupt into an unparseable state. So
 // `fs.cpSync`/`fs.rmSync` are used directly rather than through a
-// temp-then-rename step.
+// temp-then-rename step. What IS upheld: a copy that fails midway never
+// leaves a half-written bundle behind (see `createFsCopyBundleFn`), and no
+// removal here ever decides by following a symlink (see
+// `removeEntryWithoutFollowing`).
 import fs from 'node:fs';
 import path from 'node:path';
 import type { BundleExistsFn, CopyBundleFn, RemoveBundleFn } from '../scaffold/ai-bundle';
@@ -22,6 +25,7 @@ import {
   resolveWriteParentDir,
 } from './fs-project-io';
 import { FRONTX_NAMESPACE_ROOT } from '../manifest/types';
+import { createFsListDiskFilesFn } from './fs-upgrade-io';
 
 // The one place `.frontx/ai/<manifestName>/` is spelled, from either a
 // template's installed content path (source) or the project root (dest) —
@@ -174,7 +178,7 @@ function reclaimNonDirectoryAiAncestor(destRoot: string, dest: string): void {
   const blocker = firstNonDirectoryComponentOf(dest);
   if (blocker === null || blocker === dest) return; // no blocker, or the destination's own ground — `clearBundleDestination` reclaims that
   if (!isInside(aiNamespaceRoot(destRoot), blocker)) return; // outside `.frontx/ai/`: not this namespace's ground to reclaim
-  fs.rmSync(blocker, { force: true }); // a regular file, FIFO, socket, device, or a symlink resolving to one of those (or dangling) — `firstNonDirectoryComponentOf` never returns a directory, nor a symlink resolving to one
+  removeEntryWithoutFollowing(blocker); // a regular file, FIFO, socket, device, or a symlink resolving to one of those (or dangling) — `firstNonDirectoryComponentOf` never returns a directory, nor a symlink resolving to one
 }
 // @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-reclaim-ancestor-blocker
 
@@ -189,6 +193,31 @@ function isEnoent(error: unknown): boolean {
 // treats this the same way, below.
 function isEnotdir(error: unknown): boolean {
   return typeof error === 'object' && error !== null && (error as NodeJS.ErrnoException).code === 'ENOTDIR';
+}
+
+// NODE-24-DANGLING-SYMLINK: on macOS with Node 24 before 24.14, `fs.rmSync`
+// on a DANGLING symlink is a silent no-op (confirmed on 24.11.1: the entry
+// survives, and the `fs.cpSync` that follows dereferences it and aborts the
+// whole process with a native `filesystem_error` — exit 134, no envelope).
+// So no removal in this file hands a symlink to `rmSync`: `lstat` decides
+// WITHOUT following, a symlink of any kind (live or dangling) is `unlink`ed
+// as a directory entry — never walked into, never touching what it points
+// at — and everything else goes through `rmSync` exactly as before.
+// "Nothing there" (`ENOENT`, or `ENOTDIR` from a non-directory ancestor) is
+// a no-op, matching `force: true`.
+function removeEntryWithoutFollowing(entryPath: string): void {
+  let entry: fs.Stats;
+  try {
+    entry = fs.lstatSync(entryPath);
+  } catch (error) {
+    if (isEnoent(error) || isEnotdir(error)) return;
+    throw error;
+  }
+  if (entry.isSymbolicLink()) {
+    fs.unlinkSync(entryPath);
+    return;
+  }
+  fs.rmSync(entryPath, { recursive: true, force: true });
 }
 
 /** Real `BundleExistsFn` — true when something stands at the bundle path,
@@ -266,8 +295,8 @@ export function createFsBundleExistsFn(): BundleExistsFn {
 // next apply to merge into — the result would be a bundle that is neither
 // the old one nor the new one, with nothing in any report saying so.
 //
-// So the whole entry is removed, whatever it is. `fs.rmSync` decides what to
-// remove by `lstat`, so a symlink is unlinked as a directory ENTRY — never
+// So the whole entry is removed, whatever it is. `removeEntryWithoutFollowing`
+// decides by `lstat`, so a symlink is unlinked as a directory ENTRY — never
 // walked into, never deleting whatever it points at — and a LIVE symlink's
 // real target, reachable from elsewhere in the project, is left untouched;
 // only the stale reference at this one path is cleared. The containment
@@ -279,7 +308,7 @@ export function createFsBundleExistsFn(): BundleExistsFn {
 // `createFsRemoveBundleFn` below, which reclaims the identical ground the
 // identical way.
 function clearBundleDestination(dest: string): void {
-  fs.rmSync(dest, { recursive: true, force: true });
+  removeEntryWithoutFollowing(dest);
 }
 
 /** Real `CopyBundleFn` — copies the source's bundle folder into the
@@ -318,6 +347,12 @@ export function createFsCopyBundleFn(): CopyBundleFn {
   return async function copyBundle(sourceRoot: string, destRoot: string, manifestName: string): Promise<void> {
     const source = bundlePath(sourceRoot, manifestName);
     const dest = bundlePath(destRoot, manifestName);
+    // PREFLIGHT, before any destination is cleared or written: a symlink
+    // inside the SOURCE bundle is refused (`AiBundleSymlinkError`, raised by
+    // the same template-folder walk every acquisition uses) rather than
+    // copied by `cpSync` with its target rewritten. A `path:` template's
+    // folder can change after `register`, so this is checked at copy time.
+    await createFsListDiskFilesFn()(sourceRoot);
     assertPathWithinProjectRoot(destRoot, dest);
     // A scope component (or `dest` itself) that resolves outside the REAL
     // `.frontx/ai/` directory — a developer's own alias, not this
@@ -333,7 +368,30 @@ export function createFsCopyBundleFn(): CopyBundleFn {
     reclaimNonDirectoryAiAncestor(destRoot, dest);
     fs.mkdirSync(resolveWriteParentDir(dest), { recursive: true });
     clearBundleDestination(dest);
-    fs.cpSync(source, dest, { recursive: true });
+    // HALF-TREE: a `cpSync` that fails midway (an unreadable source file,
+    // for one) leaves `dest` with some of its files — a bundle neither
+    // absent nor complete, which the next apply's existing-bundle gate then
+    // refuses. So the directory is created HERE, exclusively (a plain
+    // `mkdirSync`: anything that appeared at `dest` since the clearing above
+    // is an `EEXIST` refusal, never merged into), its identity is recorded,
+    // and `cpSync` only fills it. On failure the half tree is reclaimed ONLY
+    // while `dest` is still that very directory (same dev/ino): a directory
+    // someone else put there in the meantime is not this call's write, and
+    // is left standing. The original failure stays the one reported: a
+    // cleanup error never masks it.
+    fs.mkdirSync(dest);
+    const own = fs.lstatSync(dest);
+    try {
+      fs.cpSync(source, dest, { recursive: true });
+    } catch (error) {
+      try {
+        const now = fs.lstatSync(dest);
+        if (now.isDirectory() && now.dev === own.dev && now.ino === own.ino) removeEntryWithoutFollowing(dest);
+      } catch {
+        // the copy failure is the one worth reporting
+      }
+      throw error;
+    }
   };
 }
 
@@ -349,10 +407,10 @@ export function createFsRemoveBundleFn(): RemoveBundleFn {
     const dest = bundlePath(root, manifestName);
     assertPathWithinProjectRoot(root, dest);
     // Same alias refusal `createFsCopyBundleFn` above applies before ITS OWN
-    // clear — `removeBundle`'s `fs.rmSync` below is exactly the same
+    // clear — `removeBundle`'s removal below is exactly the same
     // destructive step `clearBundleDestination` performs, over the SAME
     // ground, so it needs the identical guard.
     assertDestinationInsideAiNamespace(root, dest);
-    fs.rmSync(dest, { recursive: true, force: true });
+    removeEntryWithoutFollowing(dest);
   };
 }

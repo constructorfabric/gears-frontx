@@ -9,13 +9,6 @@
 // (`cpt-frontx-dod-composed-provenance-contract-ownership`); every other
 // feature that reads or writes `.frontx/project.json` cites these types
 // rather than declaring its own.
-//
-// Deliberately a NEW directory, not `src/provenance/` — that directory holds
-// the OLD per-template `.frontx/provenance.json` model (a SET of records,
-// one per applied template, `provenance/types.ts`'s `ProvenanceRecord`),
-// slated for deletion once callers migrate to this single-document model.
-// The two are unrelated shapes that happen to share a similar name; keeping
-// them in separate directories keeps that migration from confusing the two.
 
 /** One generation a name's most recent upgrade or restore moved it away
  * from — absent until the name's first upgrade, never a longer history.

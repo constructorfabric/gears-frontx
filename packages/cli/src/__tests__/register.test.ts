@@ -60,7 +60,11 @@ function fakeInventory(overrides: Partial<RegisterInventoryPort> = {}): Register
   };
 }
 
-const noopFetch: FetchFn = vi.fn(async () => '');
+// The remote-origin fixtures resolve their manifest through the fetch seam
+// (register resolves in memory before it ever installs); a local `path:`
+// fixture never reaches it.
+const noopFetch: FetchFn = vi.fn(async () => manifestContent());
+const fetching = (content: string): FetchFn => vi.fn(async () => content);
 // Identity: none of these fixtures exercise an escaping or root-resolving
 // path, so canonicalization is a pass-through here.
 const identityCanonicalize: CanonicalizeTargetFn = (rawTarget) => rawTarget;
@@ -210,13 +214,12 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
     const { read, write } = fakeProjectState();
     const drifted = JSON.parse(manifestContent()) as Record<string, unknown>;
     delete drifted.name;
-    const inventory = fakeInventory({
-      lookup: () => ({ name: 'foo', source: 'github:acme/foo@v1.0.0', ref: 'v1.0.0', status: InventoryState.INSTALLED, content: JSON.stringify(drifted) }),
-    });
+    const inventory = fakeInventory();
+    const fetchFn = fetching(JSON.stringify(drifted));
 
-    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
+    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, fetchFn, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
 
-    expect(result).toMatchObject({ ok: false, code: 'INVALID_MANIFEST', details: { field: 'name' } });
+    expect(result).toMatchObject({ ok: false, code: 'INVALID_MANIFEST', message: expect.stringContaining('"name"') });
     expect(write).not.toHaveBeenCalled();
   });
 
@@ -224,29 +227,27 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
     const { read, write } = fakeProjectState();
     const drifted = JSON.parse(manifestContent()) as Record<string, unknown>;
     delete drifted.version;
-    const inventory = fakeInventory({
-      lookup: () => ({ name: 'foo', source: 'github:acme/foo@v1.0.0', ref: 'v1.0.0', status: InventoryState.INSTALLED, content: JSON.stringify(drifted) }),
-    });
+    const inventory = fakeInventory();
+    const fetchFn = fetching(JSON.stringify(drifted));
 
-    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
+    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, fetchFn, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
 
-    expect(result).toMatchObject({ ok: false, code: 'INVALID_MANIFEST', details: { field: 'version' } });
+    expect(result).toMatchObject({ ok: false, code: 'INVALID_MANIFEST', message: expect.stringContaining('version') });
   });
 
   it('reports INVALID_MANIFEST naming "description" when the resolved manifest declares it empty', async () => {
     const { read, write } = fakeProjectState();
     const drifted = JSON.parse(manifestContent()) as Record<string, unknown>;
     drifted.description = '   ';
-    const inventory = fakeInventory({
-      lookup: () => ({ name: 'foo', source: 'github:acme/foo@v1.0.0', ref: 'v1.0.0', status: InventoryState.INSTALLED, content: JSON.stringify(drifted) }),
-    });
+    const inventory = fakeInventory();
+    const fetchFn = fetching(JSON.stringify(drifted));
 
-    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
+    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, fetchFn, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
 
-    expect(result).toMatchObject({ ok: false, code: 'INVALID_MANIFEST', details: { field: 'description' } });
+    expect(result).toMatchObject({ ok: false, code: 'INVALID_MANIFEST', message: expect.stringContaining('description') });
   });
 
-  // Checkpoint 3+4: `readManifestFromContent` now runs `refuseLegacyManifest`
+  // `readManifestFromContent` runs `refuseLegacyManifest`
   // before the four-field contract check, so a resolved manifest carrying an
   // undeclared field is refused here too — naming the undeclared fields
   // rather than the generic "missing name/version/description" message, per
@@ -254,11 +255,10 @@ describe('registerTemplate (cpt-frontx-algo-composed-provenance-register)', () =
   it('reports INVALID_MANIFEST naming the undeclared field(s) when the resolved manifest is legacy-shaped', async () => {
     const { read, write } = fakeProjectState();
     const legacy = manifestContent({ schemaVersion: '1.0', ownershipBoundaries: { exclusiveSubtrees: ['src/'], sharedFiles: [] } });
-    const inventory = fakeInventory({
-      lookup: () => ({ name: 'foo', source: 'github:acme/foo@v1.0.0', ref: 'v1.0.0', status: InventoryState.INSTALLED, content: legacy }),
-    });
+    const inventory = fakeInventory();
+    const fetchFn = fetching(legacy);
 
-    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, noopFetch, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
+    const result = await registerTemplate('github:acme/foo@v1.0.0', false, '/repo', inventory, fetchFn, async (p) => Buffer.from(await (throwingReadFileFn)(p)), identityCanonicalize, read, write, existsFn, listFolderFilesFn);
 
     expect(result).toMatchObject({
       ok: false,
@@ -491,6 +491,54 @@ describe('registerTemplate — end-to-end pinning through the REAL inventory', (
     // The FETCH still addressed the typed ref — pinning records, it does not
     // redirect what was fetched.
     expect(pinningFetch.mock.calls[0]?.[0]).toContain('main');
+  });
+
+  // Reviewer finding (PR #614, comment 4540899403): a refused registration
+  // used to install first and refuse afterwards, so the shared inventory slot
+  // (`~/.frontx/...`), its content and the index already carried the refused
+  // candidate. Every refusal raised after the fetch must leave all three
+  // byte-for-byte as they were.
+  describe('a refused registration leaves the shared inventory slot untouched', () => {
+    const SHA2 = 'b'.repeat(40);
+    const v1 = { origin: `github:acme/foo@${SHA}`, version: '1.0.0', targets: ['packages/foo'], excludedSubtrees: [] };
+    const cases: Array<[string, boolean, ProjectStateDocument | string, string]> = [
+      ['TARGETS_EXIST', true, { formatVersion: 1, templates: { foo: v1 }, projectOwnedRoots: [] }, 'TARGETS_EXIST'],
+      ['REGISTRATION_CONFLICT', false, { formatVersion: 1, templates: { foo: v1 }, projectOwnedRoots: [] }, 'REGISTRATION_CONFLICT'],
+      ['PROJECT_INVALID', false, '{not json', 'PROJECT_INVALID'],
+    ];
+
+    it.each(cases)('%s', async (_label, replace, state, code) => {
+      const inventory = new TemplateInventory(new InventoryIndex(), new InventoryStore());
+      const installedV1 = await inventory.install('github:acme/foo@v1.0.0', async () => ({ content: manifestFor('foo'), pinnedRef: SHA }));
+      expect(installedV1.ok).toBe(true);
+      const slotBefore = structuredClone(inventory.lookup('foo'));
+      const contentBefore = inventory.readInstalled('foo');
+      const listBefore = structuredClone(await inventory.list());
+      const stored = typeof state === 'string' ? state : JSON.stringify(state);
+      const write: WriteProjectStateFn = vi.fn(async () => {});
+      const v2 = JSON.stringify({ ...(JSON.parse(manifestFor('foo')) as object), version: '2.0.0' });
+      const fetchV2 = vi.fn(async () => ({ content: v2, pinnedRef: SHA2 }));
+
+      const result = await registerTemplate(
+        'github:acme/foo@main',
+        replace,
+        '/repo',
+        inventory,
+        fetchV2,
+        async (p) => Buffer.from(await (throwingReadFileFn)(p)),
+        identityCanonicalize,
+        async () => stored,
+        write,
+        existsFn,
+        listFolderFilesFn,
+      );
+
+      expect(result).toMatchObject({ ok: false, code });
+      expect(write).not.toHaveBeenCalled();
+      expect(inventory.lookup('foo')).toEqual(slotBefore);
+      expect(inventory.readInstalled('foo')).toBe(contentBefore);
+      expect(await inventory.list()).toEqual(listBefore);
+    });
   });
 
   it('falls back to the typed ref when the fetch reports no pin, rather than inventing one', async () => {

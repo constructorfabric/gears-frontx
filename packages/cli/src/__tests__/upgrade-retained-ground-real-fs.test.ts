@@ -2,7 +2,7 @@ import { createFsReadFolderFileBinaryFn } from '../adapters/fs-project-io';
 // @cpt-flow:cpt-frontx-flow-upgrade-changeset-review-approval:p1
 // @cpt-algo:cpt-frontx-algo-upgrade-changeset-validate:p1
 //
-// Human ruling V2 through the REAL upgrade engine (real filesystem, real state
+// The retained-ground ruling of 2026-11-06 through the REAL upgrade engine (real filesystem, real state
 // store): an old file left in ground a template relinquished survives the
 // upgrade of the guest that now occupies that ground and the host's own
 // reclaim, exactly as it survives `delete` (review r16, R16-1). The state is

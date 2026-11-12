@@ -4,7 +4,7 @@ import { createFsReadFolderFileBinaryFn } from '../adapters/fs-project-io';
 // @cpt-algo:cpt-frontx-algo-upgrade-changeset-commit:p1
 // @cpt-algo:cpt-frontx-algo-cli-scaffolding-delete-plan:p1
 //
-// U5 (human ruling V2): a `path:` origin edited in place forgets what it once
+// Retained-ground ruling of 2026-11-06: a `path:` origin edited in place forgets what it once
 // wrote, so the re-resolved BASELINE payload cannot be the witness that an
 // upgrade relinquishes written ground. A declaration the candidate adds beyond
 // what the entry RECORDED at apply, over a location where the disk holds
@@ -262,7 +262,7 @@ async function appliedHost(declared: string[] = []): Promise<string> {
   return project;
 }
 
-describe('U5: an origin edited in place no longer vouches for what it wrote (real filesystem)', () => {
+describe('an origin edited in place no longer vouches for what it wrote (real filesystem)', () => {
   it('file removed from the origin, candidate excludes its folder: marked, and alias + lexical guest deletes spare it', async () => {
     const project = await appliedHost();
     await editOriginInPlace(project, []);

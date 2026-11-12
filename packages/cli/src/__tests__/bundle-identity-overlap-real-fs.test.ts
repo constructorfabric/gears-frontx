@@ -55,7 +55,7 @@ beforeAll(async () => {
   execFileSync(
     'npx',
     ['tsup', '--no-config', 'src/cli.ts', '--format', 'esm', '--out-dir', buildDir, '--silent'],
-    { cwd: packageRoot, stdio: 'pipe' },
+    { cwd: packageRoot, stdio: 'pipe', timeout: 180_000 },
   );
 }, 180_000);
 
@@ -223,7 +223,7 @@ async function overlappedProject(
   return f;
 }
 
-describe('NFC/NFD template identity collision', () => {
+describe('NFC/NFD template identity collision', { timeout: 30_000 }, () => {
   it('refuses second registration without changing state or the first AI bundle; distinct names remain valid', async () => {
     const f = await fixture();
     await writeTemplate(path.join(f.project, 'vendor', 'one'), 'caf\u00e9', '1.0.0');
@@ -241,7 +241,7 @@ describe('NFC/NFD template identity collision', () => {
   });
 });
 
-describe('registration refuses overlapping bundle identities, in both orders', () => {
+describe('registration refuses overlapping bundle identities, in both orders', { timeout: 30_000 }, () => {
   for (const [first, second] of [
     ['@x/a', '@x/a/b'],
     ['@x/a/b', '@x/a'],
@@ -297,7 +297,7 @@ describe('registration refuses overlapping bundle identities, in both orders', (
   });
 });
 
-describe('an already-overlapping state fails closed before any destructive step', () => {
+describe('an already-overlapping state fails closed before any destructive step', { timeout: 30_000 }, () => {
   it('delete of the parent is refused; both bundles and the unrelated one are untouched', async () => {
     const f = await overlappedProject();
     const before = await tree(path.join(f.project, '.frontx', 'ai'));
@@ -447,7 +447,7 @@ async function unappliedPair(options: { bundle: boolean }): Promise<Fixture> {
   return f;
 }
 
-describe('the same batch is judged over the prospective state', () => {
+describe('the same batch is judged over the prospective state', { timeout: 30_000 }, () => {
   for (const bundle of [true, false]) {
     const orders: Array<[string, Record<string, string[]>]> = [
       ['child then parent', { '@x/a/b': ['pb'], '@x/a': ['pa'] }],
@@ -485,7 +485,7 @@ describe('the same batch is judged over the prospective state', () => {
   });
 });
 
-describe('NFC/NFD target collision', () => {
+describe('NFC/NFD target collision', { timeout: 30_000 }, () => {
   it('refuses batch before writes while allowing distinct target names', async () => {
     const f = await fixture();
     await writeTemplate(path.join(f.project, 'vendor', 'one'), '@x/one', '1.0.0');
@@ -493,8 +493,9 @@ describe('NFC/NFD target collision', () => {
     for (const origin of ['one', 'two']) expect(f.run(['register', `path:vendor/${origin}`]).envelope.ok).toBe(true);
     const refused = f.run(['apply', '--input', batch({ '@x/one': ['café'], '@x/two': ['cafe\u0301'] })]);
     expect(refused.envelope.error?.code).toBe('TARGET_CONFLICT');
-    expect(await tree(f.project)).not.toContain('café/t.txt');
-    expect(await tree(f.project)).not.toContain('café/t.txt');
+    const paths = (await tree(f.project)).map((entry) => entry.slice(0, entry.indexOf('=')));
+    expect(paths).not.toContain('café/t.txt');
+    expect(paths).not.toContain('cafe\u0301/t.txt');
     const ok = f.run(['apply', '--input', batch({ '@x/one': ['cafe'], '@x/two': ['cafes'] })]);
     expect(ok.envelope.ok).toBe(true);
     expect(await readFile(path.join(f.project, 'cafe', 't.txt'), 'utf-8')).toContain('@x/one');

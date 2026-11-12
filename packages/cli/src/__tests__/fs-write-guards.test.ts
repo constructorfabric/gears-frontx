@@ -185,24 +185,26 @@ const WRITE_ALLOW_LIST: Record<string, FileAllowList> = {
   'adapters/fs-ai-bundle.ts': {
     'fs.rmSync': [
       {
-        guard: 'reclaimNonDirectoryAiAncestor',
+        guard: 'removeEntryWithoutFollowing',
         note:
-          'TASK 1: reclaims a non-directory ancestor strictly inside `.frontx/ai/`, proven by `isInside(aiNamespaceRoot(...), blocker)` — a directory is never returned by `firstNonDirectoryComponentOf`, so never reached here.',
+          'The one removal primitive of this file, reached only for a NON-symlink entry (`lstat` decided first). Its three callers each stand behind their own proof: `reclaimNonDirectoryAiAncestor` (TASK 1: a non-directory ancestor strictly inside `.frontx/ai/`, proven by `isInside(aiNamespaceRoot(...), blocker)`), `clearBundleDestination` and the half-tree reclaim in `createFsCopyBundleFn` (after `assertPathWithinProjectRoot` + `assertDestinationInsideAiNamespace` on `dest`), and `createFsRemoveBundleFn` (same two guards immediately before).',
       },
+    ],
+    'fs.unlinkSync': [
       {
-        guard: 'clearBundleDestination',
+        guard: 'removeEntryWithoutFollowing',
         note:
-          'Removes whatever stands exactly at the bundle destination — reached only after `createFsCopyBundleFn`\'s own `assertPathWithinProjectRoot` call has already proven `dest` stays inside the project root.',
-      },
-      {
-        guard: 'assertPathWithinProjectRoot',
-        note: '`createFsRemoveBundleFn` calls it immediately before this removal.',
+          'Reached only for an entry `lstat` reported as a symlink: removes that directory entry alone, never what it points at. Node 24 before 24.14 on macOS leaves a dangling symlink in place under `rmSync`, so the `cpSync` that follows aborts the process — this is the one way a link is ever removed here. Same caller proofs as `fs.rmSync` above.',
       },
     ],
     'fs.mkdirSync': [
       {
         guard: 'assertPathWithinProjectRoot',
         note: '`createFsCopyBundleFn` calls it on `dest` before this, and `reclaimNonDirectoryAiAncestor` (TASK 1) has already cleared any non-directory ancestor blocking the parent chain.',
+      },
+      {
+        guard: 'clearBundleDestination',
+        note: 'Exclusive (non-recursive) create of `dest` itself right after it was cleared: `EEXIST` refuses anything that appeared in between, and the identity recorded here bounds the half-tree reclaim on a failed copy to this very directory.',
       },
     ],
     'fs.cpSync': [
@@ -213,6 +215,7 @@ const WRITE_ALLOW_LIST: Record<string, FileAllowList> = {
     ],
   },
   'adapters/fs-content-store.ts': {
+    'fs.unlinkSync': [{ guard: 'assertWithinRoot', note: '`replace()`: containment is checked before lstat identifies and unlinks the final symlink entry.' }],
     'fs.mkdirSync': [
       {
         guard: 'assertWithinRoot + assertPathReachableAsDirectory',
@@ -389,6 +392,18 @@ const READ_ALLOW_LIST: Record<string, FileAllowList> = {
   'adapters/fs-ai-bundle.ts': {
     'fs.lstatSync': [
       {
+        guard: 'removeEntryWithoutFollowing',
+        note: 'Read-only kind probe that never follows: decides `unlinkSync` (symlink) versus `rmSync` (anything else); `ENOENT`/`ENOTDIR` mean nothing stands there.',
+      },
+      {
+        guard: 'createFsCopyBundleFn',
+        note: 'Read-only identity (dev/ino) of the `dest` directory this call just created exclusively.',
+      },
+      {
+        guard: 'createFsCopyBundleFn',
+        note: 'Read-only re-probe of `dest` after a failed copy: the half tree is reclaimed only if it is still that same directory, never a directory someone else put there.',
+      },
+      {
         guard: 'createFsBundleExistsFn',
         note: 'Read-only existence probe on the bundle path; only `ENOENT` is treated as absence, every other failure propagates.',
       },
@@ -453,7 +468,10 @@ const READ_ALLOW_LIST: Record<string, FileAllowList> = {
       { guard: 'has', note: 'Metadata-only listing on the CLI\'s own local inventory store path.' },
       { guard: 'listFilesRecursive', note: 'Dirent-typed walk; never follows a symlink for recursion or reading.' },
     ],
-    'fs.lstatSync': [{ guard: 'assertSlotPathAbsent', note: '`write()`: presence probe of a first-install slot path; anything there refuses before any write.' }],
+    'fs.lstatSync': [
+      { guard: 'replace', note: '`replace()`: `assertWithinRoot` runs first; only after containment is proved can a final symlink be unlinked, including a dangling one.' },
+      { guard: 'assertSlotPathAbsent', note: '`write()`: presence probe of a first-install slot path; anything there refuses before any write.' },
+    ],
   },
   'adapters/fs-existing-content.ts': {
     'fs.readdirSync': [{ guard: 'listFilesRecursive', note: 'Dirent-typed; a symlink is reported, never descended into or opened.' }],
@@ -507,8 +525,11 @@ const READ_ALLOW_LIST: Record<string, FileAllowList> = {
   'adapters/fs-upgrade-io.ts': {
     'fs.lstatSync': [{ guard: 'createFsReadDiskEntryFn', note: 'Classifies the entry before ever reading content; a special entry never reaches `readFileSync`.' }],
     'fs.readFileSync': [{ guard: 'createFsReadDiskEntryFn', note: 'Only reached once `stat.isFile()` is confirmed.' }],
-    'fs.existsSync': [{ guard: 'createFsListDiskFilesFn', note: 'Metadata-only probe before the walk.' }],
-    'fs.readdirSync': [{ guard: 'walkRegularFiles', note: 'Dirent-typed; `entry.isSymbolicLink()` is checked first and never descended into.' }],
+    'fs.existsSync': [
+      { guard: 'createFsListDiskFilesFn', note: 'Metadata-only probe before the walk.' },
+      { guard: 'createFsListDiskFilesFn', note: 'Metadata-only probe for the manifest at the walk root: a folder carrying it is a template, whose AI bundle may not hold a symlink (`AiBundleSymlinkError`).' },
+    ],
+    'fs.readdirSync': [{ guard: 'walkRegularFiles', note: 'Dirent-typed; `entry.isSymbolicLink()` is checked first and never descended into. A readdir failure is a `PathUnreadableError`, never an empty subtree.' }],
   },
   'adapters/local-fetch.ts': {
     'fs.existsSync': [{ guard: 'createLocalFetchFn', note: 'Metadata-only probe on the configured local fetch source directory.' }],

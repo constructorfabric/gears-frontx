@@ -83,17 +83,12 @@ export type UpgradeFlowOutcome =
   | UpgradeRefusal;
 
 // Every seam both `commitUpgrade` and `validateUpgrade` need, gathered in one
-// place so the two exported entry points share one dependency shape. Note
-// what is DELIBERATELY ABSENT: no `refreshAiBundle` implementation is wired
-// to a concrete function here — `promoteInventory`/`refreshAiBundle` are
+// place so the two exported entry points share one dependency shape. No
+// `promoteInventory`/`refreshAiBundle` implementation is bound here: both are
 // passed straight through to `commitUpgrade` exactly as the caller supplies
-// them. `commit.ts`'s own header names `refreshAiBundle` a seam this
-// feature's wiring layer (this file) closes over `../scaffold/ai-bundle.ts`'s
-// `materializeOrRemoveAiBundle` and the resolved candidate payload to build —
-// that wiring is NOT done in this checkpoint: `materializeOrRemoveAiBundle`'s
-// transition union has no dedicated "refresh" kind today (a known nuance for
-// whoever wires it, not resolved here), so inventing a mapping now would be
-// guessing at a shape the next pass may need to change anyway.
+// them, and the dispatcher (`cli.ts`) is the one place that builds them — the
+// bundle refresh over the reviewed AI snapshot, the promotion over the
+// inventory — so the engine itself stays free of any filesystem seam.
 export interface UpgradeEngineDeps {
   repoRoot: string;
   readProjectStateFn: ReadProjectStateFn;

@@ -3,7 +3,7 @@
 // JSON value on stdout, `{"ok": true, "data": {...}}` on success or
 // `{"ok": false, "error": {"code", "message", "details"}}` on failure or a
 // decision the caller must make. This module fixes only the outer shape and
-// the shared sixteen-code vocabulary; a command's own `data` payload shape
+// the shared eighteen-code vocabulary; a command's own `data` payload shape
 // remains owned by that command's FEATURE (ADR "More Information"). Every
 // command's `--json` mode now renders through this shape: `cli.ts`'s
 // `render*Outcome` functions all build their output with this module's `ok`/
@@ -26,30 +26,35 @@
 // constructors" themselves, so none is invented here.
 
 /**
- * The v1 vocabulary of stable `error.code` values — sixteen codes, exactly
- * as `cpt-frontx-adr-cli-machine-readable-output` names them. A genuinely
- * new failure mode is added by amending that ADR's list, never invented
- * locally by a command.
+ * The v1 vocabulary of stable `error.code` values — eighteen codes, exactly
+ * as `cpt-frontx-adr-cli-machine-readable-output` names them, held ONCE as a
+ * typed list so the `ErrorCode` union, every comment that counts them and the
+ * test that constructs each one cannot drift apart. A genuinely new failure
+ * mode is added by amending that ADR's list, never invented locally by a
+ * command.
  */
-export type ErrorCode =
-  | 'INVALID_MANIFEST'
-  | 'VERSION_MISMATCH'
-  | 'TEMPLATE_NOT_REGISTERED'
-  | 'TARGET_CONFLICT'
-  | 'CONTENT_CONFLICT'
-  | 'EXISTING_PATHS_REQUIRE_DECISION'
-  | 'CONFIRMATION_REQUIRED'
-  | 'ORIGIN_UNAVAILABLE'
-  | 'PROJECT_INVALID'
-  | 'REGISTRATION_CONFLICT'
-  | 'TARGETS_EXIST'
-  | 'TARGET_NOT_APPLIED'
-  | 'INVALID_PATH'
-  | 'NOTHING_TO_RESTORE'
-  | 'INVALID_INPUT'
-  | 'RECOVERY_REQUIRED'
-  | 'RESOURCE_BUSY'
-  | 'INTERNAL';
+export const ERROR_CODES = [
+  'INVALID_MANIFEST',
+  'VERSION_MISMATCH',
+  'TEMPLATE_NOT_REGISTERED',
+  'TARGET_CONFLICT',
+  'CONTENT_CONFLICT',
+  'EXISTING_PATHS_REQUIRE_DECISION',
+  'CONFIRMATION_REQUIRED',
+  'ORIGIN_UNAVAILABLE',
+  'PROJECT_INVALID',
+  'REGISTRATION_CONFLICT',
+  'TARGETS_EXIST',
+  'TARGET_NOT_APPLIED',
+  'INVALID_PATH',
+  'NOTHING_TO_RESTORE',
+  'INVALID_INPUT',
+  'RECOVERY_REQUIRED',
+  'RESOURCE_BUSY',
+  'INTERNAL',
+] as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[number];
 
 export interface EnvelopeError {
   code: ErrorCode;

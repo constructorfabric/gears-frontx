@@ -79,8 +79,8 @@ function withSyntheticDefaults(): void {
 // still read straight off raw content (`cpt-frontx-adr-template-manifest-
 // contract`). Returned as a plain object rather than `TemplateManifest`,
 // since that type no longer declares the legacy field.
-// Plain four-field manifest by default — `readManifestFromContent` now wires
-// `refuseLegacyManifest` (checkpoint 3+4), so a manifest carrying
+// Plain four-field manifest by default — `readManifestFromContent` wires
+// `refuseLegacyManifest`, so a manifest carrying
 // `ownershipBoundaries`/`referencedTemplates` unconditionally, as this
 // helper used to build by default, is refused with `INVALID_MANIFEST`
 // before any of these dispatch tests reach the behavior they actually mean
@@ -1399,6 +1399,40 @@ describe('dispatch: assemble (cpt-frontx-flow-cli-scaffolding-assemble-preview)'
     expect(readProjectStateDocument()?.templates.foo.targets).toEqual([]);
   });
 
+  it('includes own-exclusion SKIPPED paths in the JSON preview', async () => {
+    const { deps, registerManifest, registerContent } = makeDeps();
+    registerManifest('github:acme/foo@v1.0.0', { ...cleanManifest('foo'), excludedSubtrees: ['vendor/'] });
+    registerContent('foo', [{ path: 'src/index.ts', content: 'hello' }, { path: 'vendor/user.txt', content: 'keep' }]);
+    await run(['register', 'github:acme/foo@v1.0.0'], deps);
+
+    const outcome = await run(
+      ['assemble', '--input', JSON.stringify({ templates: { foo: ['apps/foo'] } }), '--json'],
+      deps,
+    );
+
+    expect(outcome.exitCode).toBe(EXIT_SUCCESS);
+    const parsed = JSON.parse(outcome.stdout!) as {
+      ok: true;
+      data: { skipped: Array<{ templateName: string; target: string; path: string; reason: string }> };
+    };
+    expect(parsed.data.skipped).toEqual([
+      { templateName: 'foo', target: 'apps/foo', path: 'apps/foo/vendor/user.txt', reason: 'OWN_EXCLUDED_SUBTREE' },
+    ]);
+  });
+
+  it('reports own-exclusion SKIPPED paths in human-readable preview output', async () => {
+    const { deps, registerManifest, registerContent } = makeDeps();
+    registerManifest('github:acme/foo@v1.0.0', { ...cleanManifest('foo'), excludedSubtrees: ['vendor/'] });
+    registerContent('foo', [{ path: 'vendor/user.txt', content: 'keep' }]);
+    await run(['register', 'github:acme/foo@v1.0.0'], deps);
+
+    const outcome = await run(['assemble', '--input', JSON.stringify({ templates: { foo: ['apps/foo'] } })], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_SUCCESS);
+    expect(outcome.stdout).toContain('SKIPPED apps/foo/vendor/user.txt');
+    expect(outcome.stdout).toContain('declared excludedSubtrees');
+  });
+
   it('exits user-error naming TARGET_CONFLICT when two batch entries claim the same target', async () => {
     const { deps, registerManifest, registerContent } = makeDeps();
     registerManifest('github:acme/clash-a@v1.0.0', cleanManifest('clash-a'));
@@ -1468,6 +1502,37 @@ describe('dispatch: apply (cpt-frontx-flow-cli-scaffolding-add-template)', () =>
     expect(readProjectStateDocument()?.templates.bar.targets).toEqual(['apps/bar']);
   });
 
+  it('reports own-exclusion SKIPPED paths in human-readable apply output', async () => {
+    const { deps, registerManifest, registerContent } = makeDeps();
+    registerManifest('github:acme/bar@v1.0.0', { ...cleanManifest('bar'), excludedSubtrees: ['vendor/'] });
+    registerContent('bar', [{ path: 'src/index.ts', content: 'hello' }, { path: 'vendor/user.txt', content: 'keep' }]);
+    await run(['register', 'github:acme/bar@v1.0.0'], deps);
+
+    const outcome = await run(['apply', '--input', JSON.stringify({ templates: { bar: ['apps/bar'] } })], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_SUCCESS);
+    expect(outcome.stdout).toContain('SKIPPED apps/bar/vendor/user.txt');
+    expect(outcome.stdout).toContain('declared excludedSubtrees');
+  });
+
+  it('includes own-exclusion SKIPPED paths in JSON apply output', async () => {
+    const { deps, registerManifest, registerContent } = makeDeps();
+    registerManifest('github:acme/bar@v1.0.0', { ...cleanManifest('bar'), excludedSubtrees: ['vendor/'] });
+    registerContent('bar', [{ path: 'src/index.ts', content: 'hello' }, { path: 'vendor/user.txt', content: 'keep' }]);
+    await run(['register', 'github:acme/bar@v1.0.0'], deps);
+
+    const outcome = await run(['apply', '--input', JSON.stringify({ templates: { bar: ['apps/bar'] } }), '--json'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_SUCCESS);
+    const parsed = JSON.parse(outcome.stdout!) as {
+      ok: true;
+      data: { skipped: Array<{ templateName: string; target: string; path: string; reason: string }> };
+    };
+    expect(parsed.data.skipped).toEqual([
+      { templateName: 'bar', target: 'apps/bar', path: 'apps/bar/vendor/user.txt', reason: 'OWN_EXCLUDED_SUBTREE' },
+    ]);
+  });
+
   it('exits user-error naming TEMPLATE_NOT_REGISTERED when the template has no project-state entry', async () => {
     const { deps } = makeDeps();
     const outcome = await run(
@@ -1525,6 +1590,24 @@ describe('dispatch: apply (cpt-frontx-flow-cli-scaffolding-add-template)', () =>
 
 describe('dispatch: seed (cpt-frontx-flow-cli-scaffolding-seed-repository)', () => {
   withSyntheticDefaults();
+
+  it('acquires the seed mutation boundary for <dir> when confirmation flags precede it', async () => {
+    const { deps } = makeDeps();
+    const roots: string[] = [];
+    const withMutationScope = deps.withMutationScope;
+    vi.spyOn(deps, 'withMutationScope').mockImplementation(async (root, mode, body) => {
+      roots.push(root);
+      return withMutationScope(root, mode, body);
+    });
+
+    const outcome = await run([
+      'seed', '--json', '--yes', '/tmp/seed-confirmed-repo', `--plan-digest=${'a'.repeat(64)}`,
+      '--input', JSON.stringify({ templates: {} }),
+    ], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_SUCCESS);
+    expect(roots).toEqual(['/tmp/seed-confirmed-repo']);
+  });
 
   it('exits user-error when the <dir> argument is missing', async () => {
     const { deps } = makeDeps();

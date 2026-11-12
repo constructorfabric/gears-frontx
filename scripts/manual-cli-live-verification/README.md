@@ -114,8 +114,8 @@ node "$CLI" upgrade "<registered-name>" path:template-v2 --json --yes --plan-dig
 The first call must return `CONFIRMATION_REQUIRED` and write nothing. Passing `--plan-digest` is what
 binds the second call to the plan you reviewed: if the plan changed meanwhile you get a fresh
 `CONFIRMATION_REQUIRED` with a new plan and digest, not an apply; if nothing is left to change you get
-`CONFIRMATION_REQUIRED` with `details.reviewSuperseded` and no plan or digest. Omitting it is accepted by the CLI but
-then applies whatever the recomputed plan is. Check the plan carries exactly
+`CONFIRMATION_REQUIRED` with `details.reviewSuperseded` and no plan or digest. Omitting it is refused: a
+`--json --yes` without `--plan-digest` is answered with the current review and applies nothing. Check the plan carries exactly
 the four operation kinds you staged, that `from` shows the **pinned** origin (this is where pinning
 proves it reaches the upgrade baseline), and that the plan contains no file **contents** — only paths
 and actions.
@@ -126,11 +126,16 @@ Then verify on disk: the REPLACE landed, the ADD appeared, the REMOVE is gone, *
 ## 7. Restore, twice
 
 ```bash
-node "$CLI" upgrade "<registered-name>" --restore --json --yes
-node "$CLI" upgrade "<registered-name>" --restore --json --yes
+# each restore is reviewed and confirmed like an upgrade: a digestless --json --yes applies nothing
+node "$CLI" upgrade "<registered-name>" --restore --json > /tmp/restore.json
+PLAN_DIGEST=$(jq -r '.error.details.planDigest' /tmp/restore.json)
+node "$CLI" upgrade "<registered-name>" --restore --json --yes --plan-digest="$PLAN_DIGEST"
+node "$CLI" upgrade "<registered-name>" --restore --json > /tmp/restore.json
+PLAN_DIGEST=$(jq -r '.error.details.planDigest' /tmp/restore.json)
+node "$CLI" upgrade "<registered-name>" --restore --json --yes --plan-digest="$PLAN_DIGEST"
 ```
 
-The second call must toggle back rather than refuse: reversal is one generation, and `previous`
+The second restore must toggle back rather than refuse: reversal is one generation, and `previous`
 rotates. A `path:` origin whose folder no longer exists cannot be restored from — worth knowing before
 you delete anything.
 

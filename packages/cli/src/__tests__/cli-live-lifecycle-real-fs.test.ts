@@ -261,7 +261,7 @@ describe('live CLI lifecycle: register → assemble → apply → upgrade → re
   let inventory: string;
   const run = (args: string[]) => frontx(project, inventory, args);
 
-  it('runs the whole lifecycle in one sequential test (steps share state by design)', async () => {
+  it('runs the whole lifecycle in one sequential test (steps share state by design)', { timeout: 10_000 }, async () => {
     const step = async (title: string, fn: () => unknown): Promise<void> => {
       try {
         await fn();
@@ -364,6 +364,7 @@ describe('live CLI lifecycle: register → assemble → apply → upgrade → re
           { templateName: '@acme/beta', target: 'lib' },
         ],
         noop: [],
+        skipped: [],
       });
 
       expect(await read(project, 'app/README.md')).toBe(ALPHA_V1['README.md']);
@@ -396,6 +397,7 @@ describe('live CLI lifecycle: register → assemble → apply → upgrade → re
           { templateName: '@acme/alpha', target: 'app' },
           { templateName: '@acme/beta', target: 'lib' },
         ],
+        skipped: [],
       });
       expect({ state: await stateText(project), app: await snapshot(path.join(project, 'app')), lib: await snapshot(path.join(project, 'lib')) }).toEqual(before);
     });
@@ -714,6 +716,7 @@ describe('live CLI nested lifecycle A: installed host, path guest', () => {
             { templateName: '@acme/guest', target: 'app/src/plugins' },
           ],
           noop: [],
+          skipped: [],
         },
       });
       expect(await read(project, 'app/README.md')).toBe(HOST_V1['README.md']);
@@ -742,6 +745,7 @@ describe('live CLI nested lifecycle A: installed host, path guest', () => {
             { templateName: '@acme/host', target: 'app' },
             { templateName: '@acme/guest', target: 'app/src/plugins' },
           ],
+          skipped: [],
         },
       });
       expect({ state: await stateText(project), app: await snapshot(path.join(project, 'app')) }).toEqual(before);

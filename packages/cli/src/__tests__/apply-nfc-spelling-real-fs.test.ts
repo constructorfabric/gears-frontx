@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { existsSync, writeFileSync, unlinkSync } from 'node:fs';
+import { existsSync, writeFileSync, unlinkSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runApplyPipeline } from '../commands/apply';
@@ -33,6 +33,21 @@ const unicodeNormalizingFs = (() => {
     try { unlinkSync(nfc); } catch { /* probe cleanup */ }
   }
 })();
+
+function isCaseInsensitiveDirectory(dir: string): boolean {
+  const lower = path.join(dir, `_frontx_case_probe_${Date.now()}_a`);
+  const upper = lower.toUpperCase();
+  try {
+    writeFileSync(lower, '');
+    const a = statSync(lower);
+    const b = statSync(upper);
+    return a.dev === b.dev && a.ino === b.ino;
+  } catch {
+    return false;
+  } finally {
+    try { unlinkSync(lower); } catch { /* probe cleanup */ }
+  }
+}
 
 let sandbox: string | undefined;
 
@@ -102,6 +117,38 @@ async function validate(project: string) {
 }
 
 describe('apply records canonical filesystem spelling for Unicode-equivalent targets', () => {
+  it.skipIf(!unicodeNormalizingFs)('refuses an existing NFD spelling that aliases an NFC payload and preserves user bytes', async () => {
+    const project = await makeProject();
+    const target = path.join(project, 'app');
+    await mkdir(target);
+    await writeFile(path.join(project, 'vendor-a', 'café.txt'), 'template bytes\n', 'utf-8');
+    await writeFile(path.join(target, 'café.txt'), 'user bytes\n', 'utf-8');
+
+    const result = await runApplyPipeline({ templates: { '@x/a': ['app'] } }, project, true, deps(project));
+
+    expect(result).toMatchObject({ ok: false, code: 'CONTENT_CONFLICT' });
+    expect(await readFile(path.join(target, 'café.txt'), 'utf-8')).toBe('user bytes\n');
+  });
+
+  it('refuses case-only existing-file aliases on folding volumes and preserves user bytes', async () => {
+    const project = await makeProject();
+    const target = path.join(project, 'app');
+    await mkdir(target);
+    await writeFile(path.join(target, 'PAYLOAD.TXT'), 'user bytes\n', 'utf-8');
+    const caseInsensitive = isCaseInsensitiveDirectory(target);
+
+    const result = await runApplyPipeline({ templates: { '@x/a': ['app'] } }, project, true, deps(project));
+
+    if (caseInsensitive) {
+      expect(result).toMatchObject({ ok: false, code: 'CONTENT_CONFLICT' });
+      expect(await readFile(path.join(target, 'PAYLOAD.TXT'), 'utf-8')).toBe('user bytes\n');
+    } else {
+      expect(result).toMatchObject({ ok: true });
+      expect(await readFile(path.join(target, 'PAYLOAD.TXT'), 'utf-8')).toBe('user bytes\n');
+      expect(await readFile(path.join(target, 'payload.txt'), 'utf-8')).toBe('template bytes\n');
+    }
+  });
+
   it.skipIf(!unicodeNormalizingFs)('adopting an existing NFD target preserves its spelling and bytes', async () => {
     const project = await makeProject();
     const nfc = 'café';

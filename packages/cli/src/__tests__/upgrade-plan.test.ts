@@ -13,7 +13,7 @@
 // a developer reviews before anything is written must be reviewable as a list
 // of files and actions, not as textual deltas inside them".
 import { describe, expect, it } from 'vitest';
-import { renderReviewablePlan } from '../upgrade/plan';
+import { computePlanDigest, renderReviewablePlan } from '../upgrade/plan';
 import type { UpgradePlan } from '../upgrade/types';
 
 const SECRET = 'THE-FILE-CONTENT-THAT-MUST-NOT-BE-PUBLISHED';
@@ -108,5 +108,42 @@ describe('renderReviewablePlan', () => {
     reviewable.targets.push('mutated');
     expect(plan.targets).toEqual(['app', 'admin']);
     expect(plan.operations[0].newContent).toBe(SECRET);
+  });
+});
+
+// Regression: `canonicalJson` walks a Buffer as an object with one member per
+// byte, so a plan whose operations carried a few tens of MB of binary content
+// blew V8's string limit (RangeError) or the heap in both the review and the
+// confirming `--yes` call. The digest now folds each content field to
+// `{length, sha256}` first; the binding stays exact.
+describe('computePlanDigest (content folded to length + sha256)', () => {
+  function withContent(newContent: Buffer | string, expectedDisk: Buffer | string | null = null): UpgradePlan {
+    const plan = internalPlan();
+    plan.operations = [{ target: 'app', path: 'app/blob.bin', op: 'ADD', expectedDisk, baselineContent: null, newContent }];
+    return plan;
+  }
+
+  it('digests a plan carrying a 48 MB binary operation without exhausting the string limit or the heap', () => {
+    const digest = computePlanDigest(withContent(Buffer.alloc(48 * 1024 * 1024, 7)));
+    expect(digest).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('still binds the approval to every byte: one changed byte, or a changed length, changes the digest', () => {
+    const base = Buffer.alloc(1024, 1);
+    const oneByteOff = Buffer.from(base);
+    oneByteOff[512] = 2;
+    const digest = computePlanDigest(withContent(base));
+    expect(computePlanDigest(withContent(base))).toBe(digest);
+    expect(computePlanDigest(withContent(oneByteOff))).not.toBe(digest);
+    expect(computePlanDigest(withContent(Buffer.alloc(1025, 1)))).not.toBe(digest);
+    expect(computePlanDigest(withContent(base, Buffer.alloc(3)))).not.toBe(digest);
+  });
+
+  it('does not mutate the plan it digests', () => {
+    const plan = withContent(Buffer.from('bytes'));
+    const before = JSON.stringify(plan);
+    computePlanDigest(plan);
+    expect(JSON.stringify(plan)).toBe(before);
+    expect(Buffer.isBuffer(plan.operations[0]?.newContent)).toBe(true);
   });
 });

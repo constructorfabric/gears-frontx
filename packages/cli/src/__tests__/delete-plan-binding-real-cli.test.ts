@@ -34,6 +34,7 @@ beforeAll(async () => {
   execFileSync('npx', ['tsup', '--no-config', 'src/cli.ts', '--format', 'esm', '--out-dir', buildDir, '--silent'], {
     cwd: packageRoot,
     stdio: 'pipe',
+    timeout: 180_000,
   });
 }, 180_000);
 
@@ -143,9 +144,10 @@ const digestOf = (r: Run): string => String(r.envelope.error?.details?.planDiges
 const confirm = (f: Fixture, digest: string, target = 'app'): Run => f.run(['delete', target, '--yes', `--plan-digest=${digest}`]);
 const toDelete = (r: Run): string[] => ((r.envelope.error?.details?.toDelete ?? r.envelope.data?.toDelete) as string[]).slice().sort();
 
-describe('delete: approval is bound to the reviewed plan (built binary, real filesystem)', () => {
+describe('delete: approval is bound to the reviewed plan (built binary, real filesystem)', { timeout: 30_000 }, () => {
   it('control: with nothing changed, the reviewed digest deletes the target and its AI bundle', async () => {
     const f = await makeProject();
+    const before = await f.everything();
     const r1 = review(f);
     expect(r1.envelope.error?.details).toMatchObject({
       target: 'app',
@@ -155,7 +157,6 @@ describe('delete: approval is bound to the reviewed plan (built binary, real fil
     });
     expect(digestOf(r1)).toMatch(/^[0-9a-f]{64}$/);
     // The review itself writes nothing.
-    const before = await f.everything();
     expect(await f.everything()).toEqual(before);
 
     const done = confirm(f, digestOf(r1));
@@ -402,7 +403,7 @@ async function interactiveDelete(
   return { status, prompts, stdout };
 }
 
-describe('delete: the interactive prompt shows the whole reviewed projection, owner included (built binary, piped stdin)', () => {
+describe('delete: the interactive prompt shows the whole reviewed projection, owner included (built binary, piped stdin)', { timeout: 30_000 }, () => {
   it('non-last target: the first prompt names the owning template next to the "no bundle removed" line', async () => {
     const f = await makeProject(['app', 'second']);
     const out = await interactiveDelete(f, 'app', [{ answer: 'n' }]);

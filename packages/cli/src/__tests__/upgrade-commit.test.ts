@@ -14,6 +14,7 @@ import type { DiskEntry, UpgradeOperation, UpgradePlan } from '../upgrade/types'
 import type { ProjectStateDocument, ReadProjectStateFn, WriteProjectStateFn } from '../project-state/types';
 import { RESERVED_TEMP_SUFFIX } from '../paths/reserved-temp-name';
 import { PathContainmentError } from '../adapters/fs-project-io';
+import { ReservedTempPathOccupiedError } from '../adapters/fs-upgrade-io';
 
 const REPO_ROOT = '/repo';
 
@@ -851,5 +852,127 @@ describe('commitUpgrade (cpt-frontx-algo-upgrade-changeset-commit)', () => {
     expect(outcome.ok).toBe(true);
     expect(h.disk.has(insideBoundary)).toBe(false);
     expect(h.disk.get(inExcludedGround)).toBe("developer's own file");
+  });
+
+  // Regression: reclaim decided by `isReservedTempName`, which matches the
+  // suffix on ANY segment, in ANY case — the rule for what a PAYLOAD may
+  // carry, not for what this engine writes. The engine only ever writes the
+  // exact lower-case suffix on a file's LAST segment, so a developer's
+  // `old.frontx-upgrade-tmp/notes.md` (a directory of theirs) and
+  // `legacy.FRONTX-UPGRADE-TMP` (a different file on a case-sensitive
+  // volume) were deleted by any approved upgrade, outside the reviewed plan.
+  it('reclaims only the exact shape the engine writes: never a file under a developer directory carrying the suffix, nor a differently-cased name', async () => {
+    const h = makeHarness();
+    const engineLitter = `/repo/app/src/leftover.ts${RESERVED_TEMP_SUFFIX}`;
+    const underDevDirectory = `/repo/app/src/old${RESERVED_TEMP_SUFFIX}/notes.md`;
+    const differentCase = `/repo/app/src/legacy${RESERVED_TEMP_SUFFIX.toUpperCase()}`;
+    h.disk.set(engineLitter, 'stale engine temp');
+    h.disk.set(underDevDirectory, "developer's notes");
+    h.disk.set(differentCase, "developer's legacy file");
+
+    const plan = makePlan({ operations: [op({ target: 'app', path: 'app/src/a.ts', op: 'ADD', newContent: 'x' })] });
+
+    const outcome = await commitUpgrade(plan, h.deps);
+
+    expect(outcome).toMatchObject({ ok: true, reclaimedTempPaths: [`app/src/leftover.ts${RESERVED_TEMP_SUFFIX}`] });
+    expect(h.disk.has(engineLitter)).toBe(false);
+    expect(h.disk.get(underDevDirectory)).toBe("developer's notes");
+    expect(h.disk.get(differentCase)).toBe("developer's legacy file");
+  });
+
+  // Regression: the drift refusal returned after every temp file had been
+  // materialized, skipping the sweep the CATCH performs — so each
+  // `.frontx-upgrade-tmp` this attempt wrote stayed in the tree while the
+  // message said "Nothing was written".
+  it('sweeps every temp file this attempt materialized before returning the drift refusal', async () => {
+    const h = makeHarness({ '/repo/app/b.ts': 'DRIFTED' });
+    const plan = makePlan({
+      operations: [
+        op({ target: 'app', path: 'app/a.ts', op: 'ADD', newContent: 'fresh a' }),
+        op({ target: 'app', path: 'app/b.ts', op: 'REPLACE', expectedDisk: 'what review saw', baselineContent: 'what review saw', newContent: 'fresh b' }),
+      ],
+    });
+
+    const result = await commitUpgrade(plan, h.deps);
+
+    expect(result).toMatchObject({ ok: false, code: 'CONTENT_CONFLICT', details: { drifted: [{ target: 'app', path: 'app/b.ts' }] } });
+    // both temps were staged before the verify step, and neither survives the refusal
+    expect(h.callLog.flatMap((e) => (e.kind === 'write' ? [e.path] : []))).toEqual([
+      `/repo/app/a.ts${RESERVED_TEMP_SUFFIX}`,
+      `/repo/app/b.ts${RESERVED_TEMP_SUFFIX}`,
+    ]);
+    expect([...h.disk.keys()].filter((key) => key.endsWith(RESERVED_TEMP_SUFFIX))).toEqual([]);
+    expect(h.disk.has('/repo/app/a.ts')).toBe(false);
+    expect(h.disk.get('/repo/app/b.ts')).toBe('DRIFTED');
+  });
+
+  // Both early refusals sweep this attempt's own temps; a temp the sweep
+  // cannot remove is NAMED on the refusal (`details.unrecovered`, the message
+  // no longer claims nothing was written), never swallowed into a
+  // "Nothing was written" that is false of the tree.
+  it('names a staged temp the drift refusal could not remove, instead of claiming nothing was written', async () => {
+    const h = makeHarness({ '/repo/app/b.ts': 'DRIFTED' });
+    const stuckTemp = `/repo/app/a.ts${RESERVED_TEMP_SUFFIX}`;
+    h.failNextCall('unlink', stuckTemp);
+    const plan = makePlan({
+      operations: [
+        op({ target: 'app', path: 'app/a.ts', op: 'ADD', newContent: 'fresh a' }),
+        op({ target: 'app', path: 'app/b.ts', op: 'REPLACE', expectedDisk: 'what review saw', baselineContent: 'what review saw', newContent: 'fresh b' }),
+      ],
+    });
+
+    const result = await commitUpgrade(plan, h.deps);
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'CONTENT_CONFLICT',
+      details: { drifted: [{ target: 'app', path: 'app/b.ts' }], unrecovered: [{ target: 'app', path: 'app/a.ts', tempPath: `app/a.ts${RESERVED_TEMP_SUFFIX}` }] },
+    });
+    if (result.ok) throw new Error('unreachable');
+    expect(result.message).not.toContain('Nothing was written');
+    expect(result.message).toContain(`app/a.ts${RESERVED_TEMP_SUFFIX}`);
+    expect(h.disk.has(stuckTemp)).toBe(true); // the litter really is still there
+    expect(h.disk.has(`/repo/app/b.ts${RESERVED_TEMP_SUFFIX}`)).toBe(false); // the other temp was still swept
+    expect(h.disk.get('/repo/app/b.ts')).toBe('DRIFTED');
+    expect(h.wasProjectStateWritten()).toBe(false);
+  });
+
+  it('names a staged temp the occupied-at-write refusal could not remove, and still refuses as before when the sweep succeeds', async () => {
+    const plan = makePlan({
+      operations: [
+        op({ target: 'app', path: 'app/a.ts', op: 'ADD', newContent: 'fresh a' }),
+        op({ target: 'app', path: 'app/b.ts', op: 'ADD', newContent: 'fresh b' }),
+      ],
+    });
+    const occupy = (h: ReturnType<typeof makeHarness>) => {
+      const originalWrite = h.deps.writeDiskFile;
+      h.deps.writeDiskFile = async (absolutePath, content) => {
+        if (absolutePath === `/repo/app/b.ts${RESERVED_TEMP_SUFFIX}`) throw new ReservedTempPathOccupiedError(absolutePath);
+        await originalWrite(absolutePath, content);
+      };
+    };
+
+    const clean = makeHarness();
+    occupy(clean);
+    const refused = await commitUpgrade(plan, clean.deps);
+    expect(refused).toMatchObject({ ok: false, code: 'CONTENT_CONFLICT', details: { drifted: [{ path: 'app/b.ts' }] } });
+    if (refused.ok) throw new Error('unreachable');
+    expect(refused.details).not.toHaveProperty('unrecovered');
+    expect(refused.message).toContain('Nothing was written');
+    expect([...clean.disk.keys()].filter((key) => key.endsWith(RESERVED_TEMP_SUFFIX))).toEqual([]);
+
+    const stuck = makeHarness();
+    occupy(stuck);
+    stuck.failNextCall('unlink', `/repo/app/a.ts${RESERVED_TEMP_SUFFIX}`);
+    const residue = await commitUpgrade(plan, stuck.deps);
+    expect(residue).toMatchObject({
+      ok: false,
+      code: 'CONTENT_CONFLICT',
+      details: { drifted: [{ path: 'app/b.ts' }], unrecovered: [{ target: 'app', path: 'app/a.ts', tempPath: `app/a.ts${RESERVED_TEMP_SUFFIX}` }] },
+    });
+    if (residue.ok) throw new Error('unreachable');
+    expect(residue.message).not.toContain('Nothing was written');
+    expect(stuck.disk.has(`/repo/app/a.ts${RESERVED_TEMP_SUFFIX}`)).toBe(true);
+    expect(stuck.wasProjectStateWritten()).toBe(false);
   });
 });

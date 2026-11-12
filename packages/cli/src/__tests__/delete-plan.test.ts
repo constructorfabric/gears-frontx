@@ -15,14 +15,14 @@ import type { ClassifyPathStrictFn } from '../scaffold/strict-path';
 // same reason.
 const identityCanonicalize: CanonicalizeTargetFn = (rawTarget) => rawTarget;
 
-function fakeInventory(manifestsByName: Record<string, { excludedSubtrees: string[] }> = {}): DeletePlanInventoryPort {
+function fakeInventory(manifestsByName: Record<string, { excludedSubtrees: string[]; source?: string }> = {}): DeletePlanInventoryPort {
   return {
     lookup: (name: string): InventoryEntry | undefined => {
       const manifest = manifestsByName[name];
       if (!manifest) return undefined;
       return {
         name,
-        source: `github:acme/${name}@v1.0.0`,
+        source: manifest.source ?? 'github:acme/tmpl@v1.0.0',
         ref: 'v1.0.0',
         status: InventoryState.INSTALLED,
         content: JSON.stringify({
@@ -94,7 +94,7 @@ function unreadableManifestReadFileFn(unreadablePath: string): ReadFileFn {
 }
 
 function entry(targets: string[], overrides: Partial<TemplateEntry> = {}): TemplateEntry {
-  return { origin: 'github:acme/tmpl@v1', version: '1.0.0', targets, ...overrides };
+  return { origin: 'github:acme/tmpl@v1.0.0', version: '1.0.0', targets, ...overrides };
 }
 
 function doc(templates: Record<string, TemplateEntry>, projectOwnedRoots: string[] = []): ProjectStateDocument {
@@ -171,6 +171,26 @@ describe('computeDeletionPlan (cpt-frontx-algo-cli-scaffolding-delete-plan)', ()
     expect(result.toDelete).toEqual(['packages/app/src/index.ts']);
     expect(result.toPreserve).toContain('packages/app/docs/');
     expect(result.toDelete).not.toContain('packages/app/docs/readme.md');
+  });
+
+  it('uses recorded exclusions when a different source occupies the registered inventory slot', async () => {
+    const document = doc({
+      appTemplate: entry(['packages/app'], { excludedSubtrees: ['docs/'] }),
+    });
+    const result = await computeDeletionPlan(
+      'packages/app',
+      '/repo',
+      document,
+      fakeInventory({ appTemplate: { excludedSubtrees: [], source: 'github:other/app@v2.0.0' } }),
+      identityCanonicalize,
+      fakeListTargetFiles({ '/repo/packages/app': ['src/index.ts', 'docs/keep.md'] }),
+      neverCalledReadFileFn,
+      noUnenumerableEntries,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.toDelete).toEqual(['packages/app/src/index.ts']);
+    expect(result.toPreserve).toContain('packages/app/docs/');
   });
 
   it('preserves a different template\'s nested target even with no matching excludedSubtrees declaration', async () => {

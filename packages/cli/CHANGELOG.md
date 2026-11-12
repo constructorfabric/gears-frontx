@@ -14,6 +14,13 @@ refactoring is not.
 
 ### Changed
 
+- `apply` now skips payload paths inside a template's own declared
+  `excludedSubtrees` and reports them in the successful result: text output
+  prints `SKIPPED <path> (...; declared excludedSubtrees)`, while JSON adds
+  `data.skipped` entries with `reason: "OWN_EXCLUDED_SUBTREE"`. `assemble`
+  previews the same skipped paths in text output and `data.skipped`; already-
+  recorded no-op targets do not read or report payload paths.
+
 - When rollback after a caught upgrade or restore write failure cannot restore
   every destination or remove every attempt-owned temporary file, the engine
   returns `INTERNAL` with `details.originalFailure` and
@@ -83,8 +90,10 @@ refactoring is not.
   `planChangedSinceReview: true` and writes nothing; `--yes` without a digest
   deletes nothing; `--dry-run` issues no digest. Interactively, an updated plan is
   shown in full and asked about again. The digest covers path strings and flags,
-  not file bytes, the AI bundle directory's contents or symlink identity, and the
-  comparison is not atomic with the removals after it. `delete` is absent from the
+  not file bytes or symlink identity, and the comparison is not atomic with the
+  removals after it. (Since the AI bundle review entry above, the review also
+  carries the bundle tree — each file's length and SHA-256 — so the digest binds
+  the bundle's contents too.) `delete` is absent from the
   published packages that were checked (0.3.0, 0.3.1, 0.3.0-alpha.7; a string search of their
   `dist/`), not from every version ever published.
 
@@ -113,7 +122,8 @@ refactoring is not.
   or removal would destroy. The guard is partial: applying one name of a
   registered pair while the other has no target and is outside the batch is not
   refused, and deleting a non-last target is not covered. Each check is made
-  per call with no lock; concurrent invocations are not supported.
+  per call (superseded as to locking by the mutation-boundary entry above: a
+  concurrent frontx writer is now refused with `RESOURCE_BUSY`).
   `validate --project` reports `PROJECT_INVALID` naming both names and the
   available remedy: a name with no applied target can be unregistered; once
   both have applied targets the CLI has no command that repairs the pair, and
@@ -139,8 +149,9 @@ refactoring is not.
   reviewed plan no longer exists) fails closed with `CONFIRMATION_REQUIRED`
   (`details.reviewSuperseded`) before the no-op branch can write anything, so
   the exclusions backfill never runs under a stale approval; the orchestrator
-  reports `apply-failed`, not `declined`. The AI bundle's bytes are still
-  outside the digest (open policy question).
+  reports `apply-failed`, not `declined`. (The AI bundle's bytes were outside
+  the digest at the time; since the AI bundle review entry above, the plan
+  carries the bundle review and the digest binds it.)
 - A failed write of `.frontx/project.json` now attempts to remove the store's own
   temporary file (`.project.json.<uuid>.tmp`) and reports the original error. If
   that removal fails, or a process is killed mid-write (SIGKILL), the file can
@@ -149,7 +160,8 @@ refactoring is not.
 - `.frontx/project.json` is stamped `formatVersion` 2 exactly when an entry
   carries `exclusionsBackfilled`, `relinquishedGround` or
   `provenExcludedSubtrees`, and stays 1 otherwise (derived on every write).
-  This build reads 1 and 2, refuses any other value, and refuses
+  This build reads 1 and 2 (and 3, since the `pendingPostCommit` entry
+  above), refuses any other value, and refuses
   (`PROJECT_INVALID`, naming the entry and field, writing nothing) a document
   stamped 1 that carries one of those fields, since it never writes one. No
   released CLI has written this file, so only a document written by this build
@@ -164,9 +176,10 @@ refactoring is not.
   commands (including inventory and `seed`), other builds and effects outside
   the project were not checked, and the accompanying test uses the current
   source with the accepted-version guard changed, not an earlier release. The
-  CLI takes no lock: operate a project with one frontx process at a time, since
-  concurrent processes can lose each other's update and a process already
-  running keeps what it read. A failed or interrupted run can leave project
+  CLI took no lock when this was written (superseded by the mutation-boundary
+  entry above: every writer now takes the per-user lock and a concurrent frontx
+  writer gets `RESOURCE_BUSY`); a non-frontx process editing the project at the
+  same time is still not noticed. A failed or interrupted run can leave project
   files changed with the document unchanged, and the state file is replaced by
   rename without a durability guarantee for power loss.
 - A marked template entry (one that handed over ground in an upgrade) now keeps
@@ -241,6 +254,15 @@ refactoring is not.
 
 ### Added
 
+- A symbolic link inside a template's AI bundle (`.frontx/ai/<name>/`) is
+  refused explicitly for both origin kinds: a remote archive's link was already
+  refused at acquisition; a local `path:` template's link is now refused the
+  same way when its folder is read (`register`, `apply`/`seed`, the bundle
+  review, `upgrade`) and again by the bundle copy itself, with the link named
+  and `CONTENT_CONFLICT` (resolution reports it as the origin's refusal). A
+  link already deployed in a project's own `.frontx/ai/` is unchanged: it is
+  previewed with its target and removed as a link, never followed.
+
 - `.frontx/project.json` entries carry the template's declared
   `excludedSubtrees`, and `list --json` reports the recorded value. A deletion
   plan no longer depends on a `path:` origin folder still being on disk —
@@ -258,6 +280,44 @@ refactoring is not.
 
 ### Fixed
 
+- `delete` captures the AI bundle review once, at the plan-digest check it
+  accepts, and executes against exactly that capture. It used to capture the
+  bundle a second time after the target files were gone, which re-armed the
+  drift check against the bundle's own current state (an edit made in that
+  window was removed unreviewed) and reported that late digest in the
+  envelope. Such an edit is now refused by the removal and reported as
+  `aiBundleResidue`; `aiBundle.tree` is the checked tree.
+- A `path:` template whose folder holds a directory the CLI cannot read is
+  refused with `CONTENT_CONFLICT` naming that directory, instead of being
+  installed without the unreadable subtree under a successful envelope. The
+  same holds for the upgrade engine's stale-temp reclaim walk, which now fails
+  closed and is recovered like any other caught failure.
+- `upgrade`/`restore` reclaim only the litter this engine can have written:
+  a regular file whose LAST segment carries the exact lower-case
+  `.frontx-upgrade-tmp` suffix. A developer's own `old.frontx-upgrade-tmp/`
+  directory (and everything under it) or a `legacy.FRONTX-UPGRADE-TMP` file on
+  a case-sensitive volume is no longer deleted by an approved upgrade.
+- A drift refusal (`CONTENT_CONFLICT`, "destination(s) no longer hold what
+  classification saw") now removes every `.frontx-upgrade-tmp` file the attempt
+  had staged before refusing, so "Nothing was written" holds for the tree. When
+  that sweep (or the occupied-at-write refusal's) cannot remove a staged file,
+  the refusal names it in `details.unrecovered` and its message says the file
+  remains and that the next upgrade of the name reclaims it, instead of
+  claiming nothing was written.
+- `planDigest` folds each operation's content to its length and SHA-256 before
+  hashing, so a plan carrying tens of MB of changed binaries no longer fails
+  with `RangeError` (or exhausts the heap) in the review and the confirming
+  `--yes` call. The digest for the same plan differs from the one earlier
+  builds computed; re-review and confirm with the new value.
+- A symlink standing where the CLI clears its own `.frontx/ai/` ground — at
+  the bundle destination, at a scope component below `.frontx/ai/`, or at the
+  bundle `delete` removes — is now removed as a directory entry (`unlink`),
+  never through `rm`. On macOS with Node 24 before 24.14, `rm` left a dangling
+  link in place and the copy that followed aborted the process with no
+  envelope (exit 134). A bundle copy that fails midway now reclaims the
+  half-written `.frontx/ai/<name>/` before the failure is reported, so the next
+  `apply` is not refused with `CONTENT_CONFLICT` over a bundle nobody finished
+  writing.
 - Environment-owned entries (`.git`, `.DS_Store`, `Thumbs.db`) are now protected
   **at any depth within a target**, in **any ASCII case** (`.GIT`, `.ds_store`,
   `THUMBS.DB`) on every volume — also on a case-sensitive one, where a distinct
@@ -370,9 +430,10 @@ refactoring is not.
   marker for either case; no released CLI writes `.frontx/project.json`, so
   such a document is outside the supported boundary and is neither trusted nor
   migrated by design. These
-  judgements, like the alias check, are made at one point in time: the CLI holds
-  no lock, so a symlink or `.frontx/project.json` changed by another process
-  between a plan and the writes that follow it is not noticed. `delete` removes
+  judgements, like the alias check, are made at one point in time: the lock
+  only excludes other cooperating frontx writers, so a symlink or
+  `.frontx/project.json` changed by any other process between a plan and the
+  writes that follow it is not noticed. `delete` removes
   files one at a time before it updates the state document, so a document that
   can no longer be loaded at that point is reported as `PROJECT_INVALID` after the
   files are already gone; nothing is rolled back.
