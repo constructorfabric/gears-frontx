@@ -138,7 +138,7 @@ export function createInvokeUpgradeCommand(options: InvokeUpgradeCommandOptions 
                   fail(
                     error instanceof Error
                       ? error
-                      : new Error(`The change-set review failed: ${String(error)}`, { cause: error }),
+                      : new Error(`The change-set review failed: ${String(error)}`),
                   );
                   // @cpt-end:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-return-review-failure
                 },
