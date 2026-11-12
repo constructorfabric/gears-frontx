@@ -14,12 +14,12 @@
     "actions": {
       "type": "array",
       "items": { "x-gts-type-ref": "gts.frontx.mfes.comm.action.v1~*" },
-      "$comment": "Action type IDs that can target extensions in this domain"
+      "$comment": "Action type IDs this extension domain is capable of receiving and executing. The domain implementation must register a handler for each of them and for no other action. Every action in an entry's domainActions, apart from the infrastructure lifecycle actions (load_ext, mount_ext, unmount_ext), must appear here."
     },
     "extensionsActions": {
       "type": "array",
       "items": { "x-gts-type-ref": "gts.frontx.mfes.comm.action.v1~*" },
-      "$comment": "Action type IDs extensions can send when targeting this domain"
+      "$comment": "Action type IDs an extension's entry must support to be injectable into this domain. Each one must appear in the entry's actions."
     },
     "extensionsTypeId": {
       "type": "string",

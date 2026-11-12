@@ -18,12 +18,12 @@
     "actions": {
       "type": "array",
       "items": { "x-gts-type-ref": "gts.frontx.mfes.comm.action.v1~*" },
-      "$comment": "Actions MFE can send to its domain"
+      "$comment": "Action type IDs this entry is capable of receiving and executing. Must include every action in the target domain's extensionsActions."
     },
     "domainActions": {
       "type": "array",
       "items": { "x-gts-type-ref": "gts.frontx.mfes.comm.action.v1~*" },
-      "$comment": "Actions MFE can receive"
+      "$comment": "Action type IDs the parent extension domain must support for this entry to be injectable. Each one, apart from the infrastructure lifecycle actions (load_ext, mount_ext, unmount_ext), must appear in the domain's actions."
     }
   },
   "required": ["id", "requiredProperties", "actions", "domainActions"]
