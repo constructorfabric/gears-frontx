@@ -1036,8 +1036,8 @@ export class DefaultMfeRegistry extends MfeRegistry {
       // @cpt-begin:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-algo-ra-domain-hook-actions
       // This call also checks each lifecycle hook action against its own
       // type. That check does not ask that the entities an action names be
-      // registered, so a hook may name the domain itself or the domain's own
-      // extensions, which register after it. A hook action that fails takes the rollback
+      // registered, so a hook's payload may name the domain's own extensions,
+      // which register after it. A hook action that fails takes the rollback
       // below like any other invalid declaration.
       this.typeSystem.register(declaration);
       // @cpt-end:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-algo-ra-domain-hook-actions

@@ -37,10 +37,12 @@ export const REFERENCE_CHECK = GtsRefValidationMode.AnyPresent;
  * The reference check registration asks of a lifecycle hook action: none. The
  * action's type still decides what kind of entity each reference must name,
  * for example that a `mount_ext` action targets a domain, but not whether that
- * entity is on the store yet. A hook may name an entity registered after its
- * declaration, such as an extension of the domain being registered, since an
- * extension registers only after its domain. The mediator validates the action
- * with {@link REFERENCE_CHECK} when it dispatches it.
+ * entity is on the store yet. The declaration's own validation still checks
+ * each action against the base action type, so an action's `target` must be
+ * on the store or be the declaration itself. Its payload may name an entity
+ * registered after the declaration, such as an extension of the domain being
+ * registered, since an extension registers only after its domain. The mediator
+ * validates the action with {@link REFERENCE_CHECK} when it dispatches it.
  */
 const HOOK_ACTION_REFERENCE_CHECK = GtsRefValidationMode.None;
 
@@ -254,8 +256,10 @@ function actionFailure(scratch: StoreLike, action: unknown): string | undefined 
  *
  * Checks each action's type and shape, including the kind of entity each
  * reference names, but not that the named entity is registered
- * ({@link HOOK_ACTION_REFERENCE_CHECK}). So an action may name the domain or
- * extension being registered, or one registered after it. The library decides whether
+ * ({@link HOOK_ACTION_REFERENCE_CHECK}), so an action's payload may name an
+ * entity registered after the candidate. The candidate's own schema still
+ * requires each action's `target` to be on the store or to be the candidate
+ * itself. The library decides whether
  * the candidate is a domain or an extension; the walk over the hooks and each
  * chain's `next` and `fallback` links reads no identifier.
  */

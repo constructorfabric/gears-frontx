@@ -11,8 +11,10 @@
  * each hook action is also checked against its own type, at every step of its
  * chain: a `mount_ext` action that targets an extension is refused at
  * registration, not only at dispatch. That check covers what kind of entity
- * each reference names, not whether it is registered yet, so a hook may name
- * an entity that registers later; the mediator checks that at dispatch.
+ * each reference names, not whether it is registered yet, so an action's
+ * payload may name an entity that registers later; the mediator checks that at
+ * dispatch. Its `target` must still be registered, or be the declaration
+ * itself, because the declaration's own schema checks the base action type.
  *
  * `cpt-frontx-algo-gts-type-provider-infra-registration-v2` (inst-irv2-load),
  * `cpt-frontx-algo-gts-type-provider-instance-write` (inst-iw-hook-actions).
@@ -24,6 +26,7 @@ import { GtsPlugin } from '../plugin';
 
 const DOMAIN_ID = 'gts.frontx.mfes.ext.domain.v1~test.lifecyclehooks.fixture.domain.v1';
 const HOOKED_DOMAIN_ID = 'gts.frontx.mfes.ext.domain.v1~test.lifecyclehooks.fixture.hooked.v1';
+const MISSING_DOMAIN_ID = 'gts.frontx.mfes.ext.domain.v1~test.lifecyclehooks.fixture.missing.v1';
 const ENTRY_ID = 'gts.frontx.mfes.mfe.entry.v1~test.lifecyclehooks.fixture.entry.v1';
 const EXT_ID = 'gts.frontx.mfes.ext.extension.v1~test.lifecyclehooks.fixture.ext.v1';
 const HOOKED_EXT_ID = 'gts.frontx.mfes.ext.extension.v1~test.lifecyclehooks.fixture.hooked.v1';
@@ -285,6 +288,17 @@ describe('lifecycle hooks on the real store', () => {
       ]);
 
       expect(() => plugin.register(hooked)).toThrow(/lifecycle\[0\]\.actions_chain\.action fails/);
+      expectNotStored(HOOKED_DOMAIN_ID);
+    });
+
+    it('refuses a hook whose target is not registered', () => {
+      // The declaration's own schema checks each action against the base action
+      // type, whose `target` must be on the store or be the declaration itself.
+      const hooked = domain(HOOKED_DOMAIN_ID, [
+        { stage: init, actions_chain: { action: { type: mountExt, target: MISSING_DOMAIN_ID, payload: { subject: EXT_ID } } } },
+      ]);
+
+      expect(() => plugin.register(hooked)).toThrow(/GTS validation failed/);
       expectNotStored(HOOKED_DOMAIN_ID);
     });
 

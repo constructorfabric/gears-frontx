@@ -248,8 +248,9 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
    * each hook action only against the base action type, which accepts a
    * domain or an extension as a target. Each action is then validated against
    * its own type. That check does not ask that the entities an action names
-   * be registered, so an action may name the domain or extension being
-   * registered, or one registered after it. A `mount_ext`
+   * be registered, so an action's payload may name an entity registered after
+   * the declaration; its `target` must still be registered or be the
+   * declaration itself. A `mount_ext`
    * action that targets an extension is refused here, at registration, instead
    * of failing only when the mediator dispatches it.
    *
