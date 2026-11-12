@@ -74,6 +74,14 @@ export function createInvokeUpgradeCommand(options: InvokeUpgradeCommandOptions 
       const child = spawnFn(frontxBin, ['upgrade', projectRoot, targetVersion, '--json']);
       // @cpt-end:cpt-frontx-dod-ai-upgrade-orchestration-single-engine:p1:inst-spawn-command-surface
 
+      // If the process closes its stdin or dies before Node has handled its
+      // exit, `stdin.writable` is still true, so the decision write and the
+      // "declined" write below go ahead and then fail with EPIPE. That failure
+      // arrives as an 'error' event, and with no listener Node throws it and
+      // crashes the host. The outcome does not depend on it: the result line
+      // or the 'close' handler settles the invocation.
+      child.stdin.on('error', () => {});
+
       let stdoutBuffer = '';
       let stderrBuffer = '';
       let changeSetHandled = false;

@@ -237,4 +237,41 @@ describe('createInvokeUpgradeCommand when the review fails (cpt-frontx-flow-ai-u
     await expect(resultPromise).rejects.toThrow(/no reviewer available/);
     expect(fakeChild.stdin.writtenLines).toEqual(['declined\n']);
   });
+
+  it('does not write "declined" when the process has already closed its stdin', async () => {
+    const fakeChild = makeFakeChild();
+    const invoke = createInvokeUpgradeCommand({ spawnFn: () => fakeChild as never });
+
+    const resultPromise = invoke('/proj', '2.0.0', async () => {
+      throw new Error('review failed');
+    });
+    // The process closed its stdin before the review failed, so there is no
+    // one left to tell.
+    fakeChild.stdin.end();
+    fakeChild.stdout.write(changeSetLine);
+
+    await expect(resultPromise).rejects.toThrow('review failed');
+    expect(fakeChild.stdin.writtenLines).toEqual([]);
+  });
+
+  it('does not crash the host when a write to stdin fails with EPIPE', async () => {
+    const fakeChild = makeFakeChild();
+    const invoke = createInvokeUpgradeCommand({ spawnFn: () => fakeChild as never });
+    const reviewError = new Error('review failed');
+
+    const resultPromise = invoke('/proj', '2.0.0', async () => {
+      throw reviewError;
+    });
+    fakeChild.stdout.write(changeSetLine);
+
+    await expect(resultPromise).rejects.toBe(reviewError);
+    expect(fakeChild.stdin.writtenLines).toEqual(['declined\n']);
+
+    // The process closed its stdin or died, but Node had not handled the exit
+    // yet, so stdin was still writable and the write went ahead. The pipe's
+    // failure arrives afterwards as an 'error' event; with no listener, Node
+    // throws it and the host process crashes.
+    const epipe = Object.assign(new Error('write EPIPE'), { code: 'EPIPE' });
+    expect(() => fakeChild.stdin.emit('error', epipe)).not.toThrow();
+  });
 });
