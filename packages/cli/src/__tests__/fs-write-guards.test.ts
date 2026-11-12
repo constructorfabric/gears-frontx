@@ -213,6 +213,12 @@ const WRITE_ALLOW_LIST: Record<string, FileAllowList> = {
         note: 'Called on `dest` at the top of `createFsCopyBundleFn`, before any write.',
       },
     ],
+    'fs.openSync': [
+      {
+        guard: 'createFsCopyBundleFn',
+        note: 'Read-only `O_DIRECTORY` descriptor on the directory this call just created exclusively; held only to pin its inode for the identity check on a failed copy, closed in `finally`.',
+      },
+    ],
   },
   'adapters/fs-content-store.ts': {
     'fs.unlinkSync': [{ guard: 'assertWithinRoot', note: '`replace()`: containment is checked before lstat identifies and unlinks the final symlink entry.' }],
@@ -396,12 +402,8 @@ const READ_ALLOW_LIST: Record<string, FileAllowList> = {
         note: 'Read-only kind probe that never follows: decides `unlinkSync` (symlink) versus `rmSync` (anything else); `ENOENT`/`ENOTDIR` mean nothing stands there.',
       },
       {
-        guard: 'createFsCopyBundleFn',
-        note: 'Read-only identity (dev/ino) of the `dest` directory this call just created exclusively.',
-      },
-      {
-        guard: 'createFsCopyBundleFn',
-        note: 'Read-only re-probe of `dest` after a failed copy: the half tree is reclaimed only if it is still that same directory, never a directory someone else put there.',
+        guard: 'isStillOwnDirectory',
+        note: 'Read-only re-probe of `dest` after a failed copy, compared against the pinned descriptor\'s `fstat` (same dev/ino, still linked): the half tree is reclaimed only if it is still that same directory, never one someone else put there.',
       },
       {
         guard: 'createFsBundleExistsFn',

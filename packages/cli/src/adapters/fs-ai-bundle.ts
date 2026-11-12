@@ -311,6 +311,16 @@ function clearBundleDestination(dest: string): void {
   removeEntryWithoutFollowing(dest);
 }
 
+// Whether the entry now standing at `dest` is the directory this call
+// created — the pinned descriptor's own inode, still linked — rather than one
+// someone else put there after removing ours. See the INODE REUSE note in
+// `createFsCopyBundleFn`.
+function isStillOwnDirectory(dest: string, ownFd: number): boolean {
+  const now = fs.lstatSync(dest);
+  const own = fs.fstatSync(ownFd);
+  return now.isDirectory() && own.nlink > 0 && now.dev === own.dev && now.ino === own.ino;
+}
+
 /** Real `CopyBundleFn` — copies the source's bundle folder into the
  * destination verbatim, creating every parent directory the destination
  * needs. `fs.cpSync`'s own `recursive: true` walks the whole convention
@@ -375,22 +385,44 @@ export function createFsCopyBundleFn(): CopyBundleFn {
     // `mkdirSync`: anything that appeared at `dest` since the clearing above
     // is an `EEXIST` refusal, never merged into), its identity is recorded,
     // and `cpSync` only fills it. On failure the half tree is reclaimed ONLY
-    // while `dest` is still that very directory (same dev/ino): a directory
-    // someone else put there in the meantime is not this call's write, and
-    // is left standing. The original failure stays the one reported: a
-    // cleanup error never masks it.
+    // while `dest` is still that very directory: a directory someone else put
+    // there in the meantime is not this call's write, and is left standing.
+    //
+    // INODE REUSE: "that very directory" is judged by dev/ino, and a dev/ino
+    // pair is only unique while the inode is allocated — a filesystem may
+    // hand the number of a just-removed directory straight to the next one
+    // created (observed on Node 25 CI: remove ours, create theirs, same ino).
+    // So this call keeps a descriptor on its own directory open for the
+    // whole copy: an open descriptor pins the inode, so no directory created
+    // meanwhile can carry the same number, and `fstat` on that descriptor is
+    // the identity to compare against — never an `lstat` taken earlier,
+    // which cannot tell a reused number from the original. A removed-and-
+    // replaced directory also shows `nlink === 0` on the pinned descriptor,
+    // which is checked too, so neither signal is trusted alone. Where the
+    // directory cannot be opened (not every platform allows it), no identity
+    // can be proven, so NOTHING is reclaimed: a half tree left behind is the
+    // next apply's existing-bundle refusal (`CONTENT_CONFLICT`, reviewable and
+    // replaceable through the frontx command), never a deleted directory that
+    // might have been someone else's. The original failure stays the one
+    // reported: a cleanup error never masks it.
     fs.mkdirSync(dest);
-    const own = fs.lstatSync(dest);
+    let ownFd: number | undefined;
+    try {
+      ownFd = fs.openSync(dest, fs.constants.O_RDONLY | fs.constants.O_DIRECTORY);
+    } catch {
+      ownFd = undefined;
+    }
     try {
       fs.cpSync(source, dest, { recursive: true });
     } catch (error) {
       try {
-        const now = fs.lstatSync(dest);
-        if (now.isDirectory() && now.dev === own.dev && now.ino === own.ino) removeEntryWithoutFollowing(dest);
+        if (ownFd !== undefined && isStillOwnDirectory(dest, ownFd)) removeEntryWithoutFollowing(dest);
       } catch {
         // the copy failure is the one worth reporting
       }
       throw error;
+    } finally {
+      if (ownFd !== undefined) fs.closeSync(ownFd);
     }
   };
 }

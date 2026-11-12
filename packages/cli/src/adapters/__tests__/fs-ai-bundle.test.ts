@@ -473,3 +473,91 @@ describe('fs-ai-bundle real adapters (source bundle symlink refusal)', () => {
     expect(existsSync(path.join(dest, 'extension.json'))).toBe(false);
   });
 });
+
+// The pin is the only identity this call trusts: when the directory cannot
+// be opened, nothing is reclaimed (a half tree is the next apply's
+// CONTENT_CONFLICT, never a deleted directory of unknown ownership), and the
+// descriptor is closed on success and on failure alike.
+describe('fs-ai-bundle real adapters (pin failure and descriptor lifecycle)', () => {
+  let sourceRoot: string;
+  let destRoot: string;
+  const bundleDir = (root: string) => path.join(root, '.frontx', 'ai', MANIFEST_NAME);
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    if (sourceRoot) await rm(sourceRoot, { recursive: true, force: true });
+    if (destRoot) await rm(destRoot, { recursive: true, force: true });
+    sourceRoot = '';
+    destRoot = '';
+  });
+
+  async function makeRoots(): Promise<void> {
+    sourceRoot = await mkdtemp(path.join(tmpdir(), 'frontx-ai-bundle-pin-src-'));
+    destRoot = await mkdtemp(path.join(tmpdir(), 'frontx-ai-bundle-pin-dest-'));
+    const src = bundleDir(sourceRoot);
+    await mkdir(src, { recursive: true });
+    await writeFile(path.join(src, 'extension.json'), JSON.stringify({ name: MANIFEST_NAME }));
+  }
+
+  it('when the directory cannot be opened, a failed copy reclaims nothing: a replacement directory and its file survive', async () => {
+    await makeRoots();
+    const dest = bundleDir(destRoot);
+    vi.spyOn(fs, 'openSync').mockImplementation(() => {
+      throw Object.assign(new Error('directories cannot be opened here'), { code: 'EISDIR' });
+    });
+    const rmSpy = vi.spyOn(fs, 'rmSync');
+    vi.spyOn(fs, 'cpSync').mockImplementation(() => {
+      // someone else swaps in their own directory mid-copy, then the copy fails;
+      // without the pin its inode may even equal ours, so nothing may be judged
+      fs.rmSync(dest, { recursive: true, force: true });
+      fs.mkdirSync(dest);
+      fs.writeFileSync(path.join(dest, 'theirs.txt'), 'not ours');
+      throw Object.assign(new Error('copy failed'), { code: 'EIO' });
+    });
+
+    await expect(createFsCopyBundleFn()(sourceRoot, destRoot, MANIFEST_NAME)).rejects.toMatchObject({ code: 'EIO' });
+
+    expect(await readFile(path.join(dest, 'theirs.txt'), 'utf-8')).toBe('not ours');
+    // the only rmSync of dest was the impostor's own, inside the mocked copy
+    expect(rmSpy.mock.calls.filter(([p]) => p === dest)).toHaveLength(1);
+  });
+
+  it('when the directory cannot be opened, a failed copy leaves even its own half tree in place (no identity, no reclaim)', async () => {
+    await makeRoots();
+    const dest = bundleDir(destRoot);
+    vi.spyOn(fs, 'openSync').mockImplementation(() => {
+      throw Object.assign(new Error('directories cannot be opened here'), { code: 'EISDIR' });
+    });
+    vi.spyOn(fs, 'cpSync').mockImplementation(() => {
+      fs.writeFileSync(path.join(dest, 'half.json'), '{');
+      throw Object.assign(new Error('copy failed'), { code: 'EIO' });
+    });
+
+    await expect(createFsCopyBundleFn()(sourceRoot, destRoot, MANIFEST_NAME)).rejects.toMatchObject({ code: 'EIO' });
+
+    expect(lstatSync(dest).isDirectory()).toBe(true);
+    expect(await readFile(path.join(dest, 'half.json'), 'utf-8')).toBe('{');
+  });
+
+  it('closes the pinned descriptor on success and on failure', async () => {
+    await makeRoots();
+    const openSpy = vi.spyOn(fs, 'openSync');
+    const closeSpy = vi.spyOn(fs, 'closeSync');
+
+    await createFsCopyBundleFn()(sourceRoot, destRoot, MANIFEST_NAME);
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    const fd = openSpy.mock.results[0]?.value as number;
+    expect(closeSpy).toHaveBeenCalledWith(fd);
+
+    openSpy.mockClear();
+    closeSpy.mockClear();
+    vi.spyOn(fs, 'cpSync').mockImplementation(() => {
+      throw Object.assign(new Error('copy failed'), { code: 'EIO' });
+    });
+    await rm(bundleDir(destRoot), { recursive: true, force: true });
+    await expect(createFsCopyBundleFn()(sourceRoot, destRoot, MANIFEST_NAME)).rejects.toMatchObject({ code: 'EIO' });
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(closeSpy).toHaveBeenCalledWith(openSpy.mock.results[0]?.value as number);
+    expect(() => lstatSync(bundleDir(destRoot))).toThrow(/ENOENT/); // own empty tree reclaimed under a working pin
+  });
+});
