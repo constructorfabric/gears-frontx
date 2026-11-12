@@ -13,6 +13,7 @@ import { joinUnderTarget, withoutTrailingSlash } from '../paths/relative-path';
 import type { TemplateEntry } from './types';
 
 /** Project-relative directory roots (canonical, no trailing separator) of every declared exclusion beneath every target. */
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-protect-retained-ground
 export function exclusionGroundRoots(targets: readonly string[], declarations: readonly string[]): string[] {
   const roots = new Set<string>();
   for (const target of targets) {
@@ -20,6 +21,7 @@ export function exclusionGroundRoots(targets: readonly string[], declarations: r
   }
   return [...roots];
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-protect-retained-ground
 
 /**
  * The declarations whose ground an upgrade or apply is NEWLY handing over (or
@@ -97,13 +99,17 @@ export function withProvenExclusions(entry: TemplateEntry, proven: readonly stri
 }
 
 /** The union of two root lists, sorted and de-duplicated; `undefined` when both are empty. */
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-protect-retained-ground
 export function unionGroundRoots(...lists: ReadonlyArray<readonly string[] | undefined>): string[] | undefined {
   const merged = [...new Set(lists.flatMap((list) => list ?? []))].sort();
   return merged.length > 0 ? merged : undefined;
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-protect-retained-ground
 
 /** `entry` with `roots` added to its `relinquishedGround` (unchanged when there is nothing to add). */
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-protect-retained-ground
 export function withRetainedGround(entry: TemplateEntry, roots: readonly string[]): TemplateEntry {
   const merged = unionGroundRoots(entry.relinquishedGround, roots);
   return merged === undefined ? entry : { ...entry, relinquishedGround: merged };
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-protect-retained-ground

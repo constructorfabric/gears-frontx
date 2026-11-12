@@ -33,11 +33,14 @@ export interface AiReviewSnapshot extends AiReview {
 
 export class AiReviewConflictError extends Error {}
 
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 function foldAiPathIdentity(path: string): string {
   return path.normalize('NFC').toLowerCase().toUpperCase().toLowerCase();
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 
 /** Snapshot metadata for a candidate and destination. This function performs no IO or writes. */
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 export function createAiReview(destination: AiDestinationIdentity, candidate: readonly AiReviewFile[], existing: readonly AiReviewFile[] = [], directories: readonly string[] = [], existingDirectories: readonly string[] = []): AiReviewSnapshot {
   if (!destination.path || destination.identity === undefined || destination.identity === null) {
     throw new TypeError('AI review requires a destination path and known identity');
@@ -129,7 +132,9 @@ export function createAiReview(destination: AiDestinationIdentity, candidate: re
   Object.defineProperty(result, 'candidateSnapshot', { get: () => snapshot.map(({ path, bytes }) => Object.freeze({ path, bytes: Uint8Array.from(bytes) })) });
   return freezeReview(result);
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 function assertCanonicalValue(value: unknown): void {
   if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
   if (typeof value === 'number' && Number.isFinite(value)) return;
@@ -140,8 +145,10 @@ function assertCanonicalValue(value: unknown): void {
   }
   throw new TypeError('AI destination identity must be complete canonical JSON data');
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 
 
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 function freezeReview<T extends AiReviewSnapshot>(review: T): T {
   freezeIdentity(review.destination.identity);
   Object.freeze(review.destination);
@@ -151,9 +158,12 @@ function freezeReview<T extends AiReviewSnapshot>(review: T): T {
   }
   return Object.freeze(review);
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 function freezeIdentity(value: unknown): void {
   if (value === null || typeof value !== 'object' || Object.isFrozen(value)) return;
   for (const member of Object.values(value)) freezeIdentity(member);
   Object.freeze(value);
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy

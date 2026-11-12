@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createAiReview, type AiReviewSnapshot, type AiReviewFile } from '../operations/ai-review';
 
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 function readTree(root: string): { files: AiReviewFile[]; directories: string[] } {
   const files: AiReviewFile[] = [];
   const directories: string[] = [];
@@ -26,7 +27,9 @@ function readTree(root: string): { files: AiReviewFile[]; directories: string[] 
   visit(root);
   return { files, directories };
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 function treeState(root: string): 'present' | 'absent' | 'symlink' {
   try {
     const stat = fs.lstatSync(root);
@@ -38,7 +41,9 @@ function treeState(root: string): 'present' | 'absent' | 'symlink' {
     throw error;
   }
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 function identity(destination: string, sourceState: 'present' | 'absent'): object {
   const chain: { path: string; dev: number; ino: number }[] = [];
   let current = destination;
@@ -64,8 +69,10 @@ function identity(destination: string, sourceState: 'present' | 'absent'): objec
   }
   return { state, sourceState, ancestors: chain };
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 
 /** Each existing component from `directory` up to (excluding) `root` must be a real directory, not a link. */
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 function assertPlainChain(directory: string, root: string): void {
   for (let current = directory; current !== root && current !== path.dirname(current); current = path.dirname(current)) {
     let stat;
@@ -76,8 +83,10 @@ function assertPlainChain(directory: string, root: string): void {
     if (!stat.isDirectory()) throw new Error(`AI review capture cannot verify source ancestor: ${current}`);
   }
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 
 /** Read-only filesystem capture; does not authorize or perform materialization. */
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 export function captureFsAiReview(sourceRoot: string, projectRoot: string, manifestName: string): AiReviewSnapshot {
   const realSourceRoot = fs.realpathSync(sourceRoot);
   const source = path.join(realSourceRoot, '.frontx', 'ai', manifestName);
@@ -92,8 +101,10 @@ export function captureFsAiReview(sourceRoot: string, projectRoot: string, manif
   const existing = destinationState === 'present' ? readTree(destination) : { files: [], directories: [] };
   return createAiReview({ path: destination, identity: destinationIdentity }, candidate.files, existing.files, candidate.directories, existing.directories);
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 
 /** Every directory implied by a set of relative file paths. */
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 function impliedDirectories(paths: Iterable<string>): string[] {
   const dirs = new Set<string>();
   for (const file of paths) {
@@ -102,6 +113,7 @@ function impliedDirectories(paths: Iterable<string>): string[] {
   }
   return [...dirs].sort();
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 
 /**
  * Read-only review of replacing `<project>/.frontx/ai/<name>/` with exactly the
@@ -109,6 +121,7 @@ function impliedDirectories(paths: Iterable<string>): string[] {
  * destination is to be absent). The destination's ancestor identity is proven
  * before its tree is read; the candidate bytes are copied into the snapshot.
  */
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 export function reviewFsAiCandidate(
   projectRoot: string,
   manifestName: string,
@@ -127,3 +140,4 @@ export function reviewFsAiCandidate(
     existing.directories,
   );
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy

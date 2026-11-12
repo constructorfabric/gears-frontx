@@ -112,6 +112,7 @@ const TEMP = new RegExp(`^${UUID}\\.${UUID}\\.tmp$`);
 const STATUS = new Set<unknown>(['pending', 'done', 'not-required']);
 
 /** Physical spelling: realpath of the nearest existing ancestor plus the missing remainder. */
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
 function physicalPath(target: string): string {
   const absolute = path.resolve(target);
   const missing: string[] = [];
@@ -128,8 +129,10 @@ function physicalPath(target: string): string {
     }
   }
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
 
 /** Every existing component from `directory` up to (excluding) `root` must be a plain directory. */
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
 function assertPlainChain(directory: string, root: string): void {
   for (let current = directory; current !== root && current !== path.dirname(current); current = path.dirname(current)) {
     let stat: fs.Stats;
@@ -144,8 +147,10 @@ function assertPlainChain(directory: string, root: string): void {
     }
   }
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
 
 /** Lists a coordination directory whose chain below `root` was proven plain; absent = empty. */
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
 function listRecords(directory: string, root: string): string[] {
   assertPlainChain(directory, root);
   try {
@@ -155,17 +160,23 @@ function listRecords(directory: string, root: string): string[] {
     throw error;
   }
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
 
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
 function isPair(value: unknown): value is { origin: string; version: string } {
   const v = value as { origin?: unknown; version?: unknown } | null;
   return v !== null && typeof v === 'object' && typeof v.origin === 'string' && typeof v.version === 'string';
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
 
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
 function isTasks(value: unknown): value is { inventory: TaskStatus; ai: TaskStatus } {
   const v = value as { inventory?: unknown; ai?: unknown } | null;
   return v !== null && typeof v === 'object' && STATUS.has(v.inventory) && STATUS.has(v.ai);
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
 
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
 function isIntent(value: unknown): value is TransitionIntent {
   const v = value as Partial<TransitionIntent> | null;
   return (
@@ -180,7 +191,9 @@ function isIntent(value: unknown): value is TransitionIntent {
     )
   );
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
 
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
 function parseReceipt(file: string): TransitionReceipt {
   const stat = fs.lstatSync(file);
   if (!stat.isFile()) throw new CoordinationError('RECOVERY_REQUIRED', `Unverifiable recovery record: ${file}`, { path: file });
@@ -205,8 +218,10 @@ function parseReceipt(file: string): TransitionReceipt {
   }
   return r as TransitionReceipt;
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
 
 /** temp + rename of a fresh regular file; never opens or follows an existing name. */
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-begin-transition
 function writeRecord(directory: string, root: string, receipt: TransitionReceipt): string {
   assertPlainChain(directory, root);
   fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
@@ -223,8 +238,10 @@ function writeRecord(directory: string, root: string, receipt: TransitionReceipt
   fs.renameSync(temp, target);
   return target;
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-begin-transition
 
 /** Unlinks one named regular record; refuses anything else. */
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-finalize
 function unlinkRecord(file: string): void {
   let stat: fs.Stats;
   try {
@@ -236,6 +253,7 @@ function unlinkRecord(file: string): void {
   if (!stat.isFile()) throw new CoordinationError('RECOVERY_REQUIRED', `Unverifiable recovery record: ${file}`, { path: file });
   fs.unlinkSync(file);
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-finalize
 
 const recoverHint = (projectRoot: string) =>
   `Run "frontx upgrade <name> --recover" in ${projectRoot} with the inventory root the interrupted operation used.`;

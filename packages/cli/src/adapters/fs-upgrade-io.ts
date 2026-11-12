@@ -49,6 +49,7 @@ import { FRONTX_NAMESPACE_ROOT, MANIFEST_FILENAME } from '../manifest/types';
  * target) may hold a developer's links, which are previewed and unlinked by
  * `delete`/review, never refused.
  */
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 export class AiBundleSymlinkError extends Error {
   readonly templateDir: string;
   readonly linkPath: string;
@@ -63,6 +64,7 @@ export class AiBundleSymlinkError extends Error {
     this.linkPath = linkPath;
   }
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 
 const AI_BUNDLE_PREFIX = `${FRONTX_NAMESPACE_ROOT}/ai/`;
 
@@ -110,6 +112,7 @@ function toPosixPath(value: string): string {
  * this fail-closed instead of attempted is the only way this seam can name
  * the fact without risking exactly that hang.
  */
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-read-three
 export function createFsReadDiskEntryFn(repoRoot: string): ReadDiskEntryFn {
   return async function readDiskEntry(absolutePath: string): Promise<DiskEntry> {
     // A read is a side channel too: the kind of a path (file, directory,
@@ -142,6 +145,7 @@ export function createFsReadDiskEntryFn(repoRoot: string): ReadDiskEntryFn {
     return { kind: 'file', content: fs.readFileSync(absolutePath) };
   };
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-classify:p1:inst-cls-read-three
 
 /**
  * Real `ListDiskFilesFn` — every REGULAR file reachable under `absoluteDir`,
@@ -179,6 +183,7 @@ export function createFsReadDiskEntryFn(repoRoot: string): ReadDiskEntryFn {
  * subtraction genuinely names no `node_modules` exclusion for ground a template
  * owns, and adding one there WOULD be an undeclared seventh term.
  */
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-local-path-read
 export function createFsListDiskFilesFn(): ListDiskFilesFn {
   return async function listDiskFiles(absoluteDir: string): Promise<string[]> {
     if (!fs.existsSync(absoluteDir)) return [];
@@ -188,7 +193,9 @@ export function createFsListDiskFilesFn(): ListDiskFilesFn {
     return walkRegularFiles(absoluteDir, '', isTemplate);
   };
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-local-path-read
 
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-local-path-read
 function walkRegularFiles(root: string, relativeDir: string, isTemplate: boolean): string[] {
   const absoluteDir = path.join(root, relativeDir);
   let entries: fs.Dirent[];
@@ -246,6 +253,7 @@ function walkRegularFiles(root: string, relativeDir: string, isTemplate: boolean
   }
   return files;
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-local-path-read
 
 /**
  * Real `WriteDiskFileFn` — writes `content`, creating parent directories as
@@ -284,6 +292,7 @@ function walkRegularFiles(root: string, relativeDir: string, isTemplate: boolean
  * and reports as its ordinary `CONTENT_CONFLICT` temp-occupancy refusal,
  * never as an internal failure.
  */
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-commit:p1:inst-com-materialize-temp
 export class ReservedTempPathOccupiedError extends Error {
   readonly filePath: string;
 
@@ -293,7 +302,9 @@ export class ReservedTempPathOccupiedError extends Error {
     this.filePath = filePath;
   }
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-commit:p1:inst-com-materialize-temp
 
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-commit:p1:inst-com-materialize-temp
 export function createFsWriteDiskFileFn(repoRoot: string): WriteDiskFileFn {
   return async function writeDiskFile(absolutePath: string, content: Buffer | string): Promise<void> {
     assertPathWithinProjectRoot(repoRoot, absolutePath);
@@ -339,6 +350,7 @@ export function createFsWriteDiskFileFn(repoRoot: string): WriteDiskFileFn {
     }
   };
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-commit:p1:inst-com-materialize-temp
 
 /**
  * Real `RenameDiskFileFn` — the atomic rename that lands one `ADD`/`REPLACE`,
@@ -352,6 +364,7 @@ export function createFsWriteDiskFileFn(repoRoot: string): WriteDiskFileFn {
  * root, symlinks resolved, before the rename — see `createFsWriteDiskFileFn`
  * above for why this check exists and how a violation is reported.
  */
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-commit:p1:inst-com-apply-within-boundary
 export function createFsRenameDiskFileFn(repoRoot: string): RenameDiskFileFn {
   return async function renameDiskFile(from: string, to: string): Promise<void> {
     assertPathWithinProjectRoot(repoRoot, to);
@@ -363,6 +376,7 @@ export function createFsRenameDiskFileFn(repoRoot: string): RenameDiskFileFn {
     fs.renameSync(from, to);
   };
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-commit:p1:inst-com-apply-within-boundary
 
 /**
  * Real `UnlinkDiskFileFn` — removes one path, a no-op when already absent.
@@ -374,6 +388,7 @@ export function createFsRenameDiskFileFn(repoRoot: string): RenameDiskFileFn {
  * Proven to stay inside the project root, symlinks resolved, before the
  * unlink — see `createFsWriteDiskFileFn` above for why this check exists.
  */
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-commit:p1:inst-com-apply-within-boundary
 export function createFsUnlinkDiskFileFn(repoRoot: string): UnlinkDiskFileFn {
   return async function unlinkDiskFile(absolutePath: string): Promise<void> {
     assertPathWithinProjectRoot(repoRoot, absolutePath);
@@ -386,3 +401,4 @@ export function createFsUnlinkDiskFileFn(repoRoot: string): UnlinkDiskFileFn {
     }
   };
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-commit:p1:inst-com-apply-within-boundary

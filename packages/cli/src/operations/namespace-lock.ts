@@ -7,6 +7,7 @@ let databaseSync: DatabaseSyncCtor | undefined;
 
 // node:sqlite prints an ExperimentalWarning on first load; that line would pollute
 // every mutating command's stderr, so only that one warning is dropped.
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
 function loadDatabaseSync(): DatabaseSyncCtor {
   if (databaseSync) return databaseSync;
   const emitWarning = process.emitWarning;
@@ -22,23 +23,31 @@ function loadDatabaseSync(): DatabaseSyncCtor {
   }
   return databaseSync;
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
 
 /** Another cooperating writer holds the namespace mutex past the busy timeout. */
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-if-busy
 export class NamespaceLockBusyError extends Error {}
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-if-busy
 
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
 function assertDirectory(directory: string, privateMode: boolean): void {
   const stat = fs.lstatSync(directory);
   if (!stat.isDirectory() || stat.isSymbolicLink() || (typeof process.getuid === 'function' && stat.uid !== process.getuid()) || (privateMode && (stat.mode & 0o077) !== 0)) {
     throw new Error(`Unsafe namespace lock directory: ${directory}`);
   }
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
 
 /** Acquires the per-user SQLite namespace mutex. Caller must release it. */
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
 export function acquireNamespaceLock(timeoutMs = 5_000): () => void {
   return acquireNamespaceLockIn(path.join(os.homedir(), '.frontx'), timeoutMs);
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
 
 // Internal test seam; the package does not expose this module as a public API.
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
 export function acquireNamespaceLockIn(frontxDirectory: string, timeoutMs = 5_000): () => void {
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0) {
     throw new RangeError('timeoutMs must be a non-negative safe integer');
@@ -77,3 +86,4 @@ export function acquireNamespaceLockIn(frontxDirectory: string, timeoutMs = 5_00
     try { db.exec('COMMIT'); } finally { db.close(); }
   };
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire

@@ -22,6 +22,7 @@ import type { ProjectStateDocument } from '../project-state/types';
  * present one a plain directory), `plain` (the whole chain is plain directories)
  * or `blocked` (a file, link, special entry, or unreadable component on the way).
  */
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 export function classifyAiDestination(projectRoot: string, manifestName: string): 'absent' | 'plain' | 'blocked' {
   let current: string;
   try {
@@ -41,17 +42,21 @@ export function classifyAiDestination(projectRoot: string, manifestName: string)
   }
   return 'plain';
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 
 /** Every component of `.frontx/ai/<name>` exists and is a plain directory (not a link). */
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 export function aiDestinationIsPlainDirectory(projectRoot: string, manifestName: string): boolean {
   return classifyAiDestination(projectRoot, manifestName) === 'plain';
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 
 /**
  * Identity of a whole candidate folder (plan-ai-recovery r9 §130): every entry's
  * relative path and type, regular-file bytes and link text, never followed.
  * `node_modules` is skipped exactly as the installed-content reader skips it.
  */
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize-bundle
 export function hashCandidateTree(root: string): string {
   const hash = createHash('sha256');
   const visit = (relative: string) => {
@@ -75,7 +80,9 @@ export function hashCandidateTree(root: string): string {
   visit('');
   return hash.digest('hex');
 }
+// @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize-bundle
 
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize-bundle
 function candidateShipsBundle(root: string, name: string): boolean {
   try {
     return fs.lstatSync(path.join(root, '.frontx', 'ai', name)).isDirectory();
@@ -83,6 +90,7 @@ function candidateShipsBundle(root: string, name: string): boolean {
     return false;
   }
 }
+// @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize-bundle
 
 export type ApplyAiSource =
   | { kind: 'source'; root: string }
@@ -131,6 +139,7 @@ export interface ReviewableAiReplacement {
 }
 
 /** Side-effect free: reads the project and the candidate sources only. */
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize-bundle
 export async function reviewApplyAiReplacements(input: ApplyAiReviewInput): Promise<ApplyAiReview> {
   const snapshots = new Map<string, AiReviewSnapshot>();
   const candidates = new Map<string, { identity: string; root?: string }>();
@@ -197,3 +206,4 @@ export async function reviewApplyAiReplacements(input: ApplyAiReviewInput): Prom
     .digest('hex');
   return { ok: true, snapshots, candidates, needsApproval: reviewable.some((r) => r.changes.length > 0), planDigest, reviewable };
 }
+// @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize-bundle

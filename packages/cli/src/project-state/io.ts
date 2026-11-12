@@ -45,24 +45,32 @@ export function projectStatePath(repoRoot: string): string {
 // combination ADR-0019 ("More Information") requires be refused rather than
 // silently treated as an empty project: this legacy file present with no
 // `.frontx/project.json` alongside it.
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-locate
 function legacyProvenancePath(repoRoot: string): string {
   return path.join(repoRoot, FRONTX_NAMESPACE_ROOT, 'provenance.json');
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-locate
 
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-absent-default
 function initialProjectStateDocument(): ProjectStateDocument {
   return { formatVersion: 1, templates: {}, projectOwnedRoots: [] };
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-absent-default
 
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 function isRecordShaped(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 function isPreviousOriginShaped(value: unknown): boolean {
   return (
     value === undefined ||
     (isRecordShaped(value) && typeof value.origin === 'string' && typeof value.version === 'string')
   );
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 
 // Guards a RECORDED `TemplateEntry.excludedSubtrees` value the IDENTICAL way
 // a manifest's own `excludedSubtrees` declaration is guarded
@@ -83,6 +91,7 @@ function isPreviousOriginShaped(value: unknown): boolean {
 // iterable`, and an empty-string entry silently failed to protect anything,
 // letting `delete` remove a developer's own file it was declared to
 // preserve.
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 function isExcludedSubtreesShaped(value: unknown): boolean {
   return (
     value === undefined ||
@@ -90,19 +99,24 @@ function isExcludedSubtreesShaped(value: unknown): boolean {
       value.every((entry) => isWellFormedExcludedSubtree(entry) && isStrictDescendantOfTarget(entry)))
   );
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 
 // `exclusionsBackfilled` is `true` or absent; any other value is malformed
 // rather than coerced, since it decides whether a recorded declaration is
 // trusted as history.
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 function isBackfillMarkerShaped(value: unknown): boolean {
   return value === undefined || value === true;
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 
 // `relinquishedGround` is a list of strings or absent; each entry's spelling is
 // judged separately with the other recorded paths (`recordedPathSpellingViolation`).
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 function isRelinquishedGroundShaped(value: unknown): boolean {
   return value === undefined || (Array.isArray(value) && value.every((entry) => typeof entry === 'string'));
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 
 /**
  * The entry fields a build that predates them would IGNORE and DROP on its next
@@ -113,7 +127,9 @@ function isRelinquishedGroundShaped(value: unknown): boolean {
  * cannot keep them. Optional-and-additive alone is therefore not a safe
  * downgrade, only a version the older build REFUSES is.
  */
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 const PROTECTION_FIELDS = ['exclusionsBackfilled', 'relinquishedGround', 'provenExcludedSubtrees'] as const;
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 
 /**
  * The `formatVersion` a document must be written with: `2` exactly when some
@@ -123,6 +139,8 @@ const PROTECTION_FIELDS = ['exclusionsBackfilled', 'relinquishedGround', 'proven
  * does is refused by a build that would have dropped it (`its formatVersion is
  * not 1`) before that build writes anything.
  */
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-construct-copy
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 export function requiredFormatVersion(document: ProjectStateDocument): 1 | 2 | 3 {
   // A recovery-bearing document is never lowered again (plan-ai-recovery r9 §2).
   if (document.formatVersion === 3 || Object.values(document.templates).some((entry) => entry.pendingPostCommit !== undefined)) {
@@ -133,7 +151,10 @@ export function requiredFormatVersion(document: ProjectStateDocument): 1 | 2 | 3
   );
   return guarded ? 2 : 1;
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-construct-copy
 
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 function isTemplateEntryShaped(value: unknown): value is TemplateEntry {
   return (
     isRecordShaped(value) &&
@@ -149,10 +170,16 @@ function isTemplateEntryShaped(value: unknown): value is TemplateEntry {
     isPendingPostCommitShaped(value.pendingPostCommit)
   );
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 const TASK_STATUS = new Set<unknown>(['pending', 'done', 'not-required']);
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 const INTENT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 function isPendingPostCommitShaped(value: unknown): boolean {
   if (value === undefined) return true;
   if (!isRecordShaped(value) || typeof value.intentId !== 'string' || !INTENT_ID.test(value.intentId)) return false;
@@ -163,6 +190,7 @@ function isPendingPostCommitShaped(value: unknown): boolean {
   if (!isRecordShaped(value.effects)) return false;
   return Object.entries(value.effects).every(([key, hash]) => (key === 'inventory' || key === 'ai') && typeof hash === 'string' && /^[0-9a-f]{64}$/.test(hash));
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-malformed
 
 /**
  * Guards the top-level shape `{ formatVersion, templates, projectOwnedRoots
@@ -177,6 +205,7 @@ type ParsedProjectState =
   | { ok: true; document: ProjectStateDocument }
   | { ok: false; reason: string; details?: Record<string, string> };
 
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-read
 function parseProjectStateDocument(raw: string): ParsedProjectState {
   let parsed: unknown;
   try {
@@ -264,6 +293,7 @@ function parseProjectStateDocument(raw: string): ParsedProjectState {
   // @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-noncanonical
   return { ok: true, document };
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-read
 
 // The recorded paths — every `templates[name].targets[]` entry and every
 // `projectOwnedRoots[]` entry — are the one input every engine (apply, delete,
@@ -285,6 +315,7 @@ function parseProjectStateDocument(raw: string): ParsedProjectState {
 // itself. Where the normalised spelling is a location inside the project it is
 // named, with the caveat that normalising is lexical and does not resolve
 // symlinks, so the person confirms it names the location they meant.
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-noncanonical
 function spellingRepair(value: string): { hint: string; suggested?: string } {
   const normalized = hasOnlySpellingProblem(value) ? normalizeProjectRelativePath(value) : null;
   const where = '.frontx/project.json';
@@ -302,11 +333,15 @@ function spellingRepair(value: string): { hint: string; suggested?: string } {
           `Edit ${where} by hand so the entry names a location inside the project, or remove it.`,
       };
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-noncanonical
 
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-noncanonical
 function hasOnlySpellingProblem(value: string): boolean {
   return value.trim() === value && !hasControlChar(value);
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-noncanonical
 
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-noncanonical
 function recordedPathSpellingViolation(
   document: ProjectStateDocument,
 ): { clause: string; details: Record<string, string> } | undefined {
@@ -344,6 +379,7 @@ function recordedPathSpellingViolation(
   }
   return undefined;
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-if-noncanonical
 
 /**
  * Loads the current document, or the initial empty shape when none exists
@@ -436,6 +472,7 @@ export async function readProjectState(
  * current document and nothing else (`inst-psio-construct-copy`) — a pure
  * data transform, never a raw JSON patch.
  */
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-construct-copy
 function applyMutation(document: ProjectStateDocument, mutation: ProjectStateMutation): ProjectStateDocument {
   switch (mutation.kind) {
     case 'set-template':
@@ -470,6 +507,7 @@ function applyMutation(document: ProjectStateDocument, mutation: ProjectStateMut
     }
   }
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-construct-copy
 
 /**
  * A described mutation (`inst-psio-if-mutate`): reads the current document,

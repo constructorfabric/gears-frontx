@@ -92,6 +92,7 @@ export interface ResolvePayloadDeps {
  * Builds the one `ResolvePayloadFn` the upgrade engine uses for both the
  * baseline and the candidate.
  */
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-resolve-new-origin
 export function createResolvePayloadFn(deps: ResolvePayloadDeps): ResolvePayloadFn {
   return async function resolvePayload(origin: string): Promise<ResolvePayloadResult> {
     return parseLocalOrigin(origin) !== undefined
@@ -99,6 +100,7 @@ export function createResolvePayloadFn(deps: ResolvePayloadDeps): ResolvePayload
       : resolveRemotePayload(origin, deps);
   };
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-resolve-new-origin
 
 // Reads a manifest's four declared fields, or fails with the refusal the
 // contract check produced. Shared by both branches so a legacy-shaped
@@ -135,6 +137,7 @@ type DeclaredResult =
   | { ok: true; declared: { name: string; version: string; excludedSubtrees: string[] } }
   | { ok: false; failure: ResolvePayloadResult };
 
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-read-name
 function readDeclared(manifestContent: string, origin: string): DeclaredResult {
   const result = readManifestFromContent(manifestContent);
   if (!result.ok) {
@@ -156,6 +159,7 @@ function readDeclared(manifestContent: string, origin: string): DeclaredResult {
     },
   };
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-read-name
 
 // Both origin kinds converge here once the shared resolver has acquired
 // their content: extract the manifest text from the acquired bundle, read
@@ -165,6 +169,7 @@ function readDeclared(manifestContent: string, origin: string): DeclaredResult {
 // the identical bundle-unwrap-and-filter logic) is a direct consequence of
 // routing a local origin through the same resolver a remote one already
 // used: both now hand back the identical `InventoryReadyRecord` shape.
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-read-name
 function buildPayloadFromResolved(record: InventoryReadyRecord, origin: string): ResolvePayloadResult {
   // The resolver hands back ONE string. It is either the bundle envelope
   // (multi-file payload) or a bare manifest — `readBundleFiles` returns
@@ -248,16 +253,20 @@ function buildPayloadFromResolved(record: InventoryReadyRecord, origin: string):
     },
   };
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-read-name
 
 /**
  * Rebuilds the payload a stored inventory content string carries, through the
  * SAME unwrap this module applies to a fresh resolution — so a promoted slot can
  * be compared with the approved candidate by `candidateHash`.
  */
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-read-name
 export function payloadFromStoredContent(content: string, origin: string): ResolvePayloadResult {
   return buildPayloadFromResolved({ name: '', content, ref: '', source: origin }, origin);
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-read-name
 
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-stage-candidate
 async function resolveLocalPayload(origin: string, deps: ResolvePayloadDeps): Promise<ResolvePayloadResult> {
   // Every local-origin acquisition failure folds to `ORIGIN_UNAVAILABLE`,
   // whatever the resolver's own code — this module's own header explains
@@ -290,7 +299,9 @@ async function resolveLocalPayload(origin: string, deps: ResolvePayloadDeps): Pr
   }
   return buildPayloadFromResolved(resolved.value, origin);
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-stage-candidate
 
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-stage-candidate
 async function resolveRemotePayload(origin: string, deps: ResolvePayloadDeps): Promise<ResolvePayloadResult> {
   const parsed = parseSourceSpec(origin);
   if (!parsed.ok) {
@@ -325,6 +336,7 @@ async function resolveRemotePayload(origin: string, deps: ResolvePayloadDeps): P
   }
   return buildPayloadFromResolved(resolved.value, origin);
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-stage-candidate
 
 /**
  * A payload's declared version, compared against a version the project state
@@ -335,6 +347,8 @@ async function resolveRemotePayload(origin: string, deps: ResolvePayloadDeps): P
  * two callers, one rule, so the two can never drift into disagreeing about
  * what "the recorded version still matches" means.
  */
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-if-candidate-version-mismatch
 export function versionMatchesRecorded(resolved: ResolvedPayload, recordedVersion: string): boolean {
   return resolved.version === recordedVersion;
 }
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-validate:p1:inst-val-if-candidate-version-mismatch

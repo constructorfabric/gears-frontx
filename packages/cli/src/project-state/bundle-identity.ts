@@ -20,11 +20,13 @@ import type { TemplateEntry } from './types';
  * contains, or is contained by `name`'s — i.e. names that cannot be
  * registered next to `name` without one's bundle operations reaching the
  * other's ground. Sorted, so a refusal is deterministic. */
+// @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-if-bundle-overlap
 export function overlappingBundleNames(templates: Readonly<Record<string, TemplateEntry>>, name: string): string[] {
   return Object.keys(templates)
     .filter((other) => other !== name && pathsNest(other.normalize("NFC"), name.normalize("NFC")))
     .sort();
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-if-bundle-overlap
 
 /** Registered names a bundle operation on `name` could damage, or that could
  * damage `name`'s bundle, judged over the PROSPECTIVE state: another
@@ -43,6 +45,7 @@ export function overlappingBundleNames(templates: Readonly<Record<string, Templa
  * those ancestor bytes. Which files an ancestor holds there is decided by its
  * source bundle, not by the names, so the names alone cannot prove the
  * ancestor safe and no direction is exempt. */
+// @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-if-bundle-overlap
 export function bundleConflictsOf(
   templates: Readonly<Record<string, TemplateEntry>>,
   name: string,
@@ -58,8 +61,10 @@ export function bundleConflictsOf(
     .map(([other]) => other)
     .sort();
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-if-bundle-overlap
 
 /** Every registered pair whose bundle identities overlap, each pair once. */
+// @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-if-bundle-overlap
 export function overlappingBundlePairs(templates: Readonly<Record<string, TemplateEntry>>): Array<[string, string]> {
   const names = Object.keys(templates).sort();
   const pairs: Array<[string, string]> = [];
@@ -70,10 +75,12 @@ export function overlappingBundlePairs(templates: Readonly<Record<string, Templa
   }
   return pairs;
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-if-bundle-overlap
 
 /** The refusal text shared by every command that stops on an overlap. The
  * conflicting name may have no bundle at all (the bundle step acts by name),
  * so the text says what COULD be cleared rather than what is. */
+// @cpt-begin:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-return-bundle-overlap
 export function bundleOverlapMessage(name: string, others: readonly string[], action: string): string {
   return (
     `${action}: the AI-bundle directory of "${name}" (.frontx/ai/${name}) overlaps the template(s) ` +
@@ -81,3 +88,4 @@ export function bundleOverlapMessage(name: string, others: readonly string[], ac
     "recursively, so it could clear bytes the other template has materialized there. Nothing was changed."
   );
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-register:p1:inst-cpreg-return-bundle-overlap

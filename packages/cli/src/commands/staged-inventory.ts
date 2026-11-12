@@ -40,7 +40,10 @@ export function createStagedInventory(real: TemplateInventory, resolveInstalledC
   const staged = new Map<string, { spec: string; fetchFn: FetchFn; entry: InventoryEntry }>();
 
   const inventory: UniformApplyInventoryPort = {
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve
     lookup: (name) => real.lookup(name) ?? staged.get(name)?.entry,
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve
     install: async (spec, fetchFn) => {
       const parsed = parseSourceSpec(spec);
       if (!parsed.ok) return { ok: false, error: { code: 'INVALID_INPUT', message: parsed.error.message } };
@@ -54,9 +57,11 @@ export function createStagedInventory(real: TemplateInventory, resolveInstalledC
       });
       return { ok: true, value: { name: record.name, ref: record.ref } };
     },
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve
   };
 
   /** The files a staged slot will hold, exactly as the fs reader reports an installed slot. */
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve
   const itemsOf = (content: string): ContentItem[] => {
     const files = readBundleFiles(content);
     if (files === undefined || files === null) return [{ path: MANIFEST_FILENAME, content: Buffer.from(content, 'utf-8') }];
@@ -69,7 +74,9 @@ export function createStagedInventory(real: TemplateInventory, resolveInstalledC
     }
     return items;
   };
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve
 
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve
   const readInstalledContent = (base: ReadInstalledContentFn): ReadInstalledContentFn => async (installedContentPath) => {
     for (const [name, { entry }] of staged) {
       if (real.lookup(name) !== undefined) continue;
@@ -77,12 +84,15 @@ export function createStagedInventory(real: TemplateInventory, resolveInstalledC
     }
     return base(installedContentPath);
   };
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve
 
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve
   const sameCandidate = (a: string, b: string, origin: string): boolean => {
     const left = payloadFromStoredContent(a, origin);
     const right = payloadFromStoredContent(b, origin);
     return left.ok && right.ok && candidateHash(left.payload) === candidateHash(right.payload);
   };
+  // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve
 
   /**
    * Installs the staged candidates one by one. The inventory has no transactional
@@ -101,6 +111,7 @@ export function createStagedInventory(real: TemplateInventory, resolveInstalledC
    * Before installing anything, a slot path already occupied without an index
    * entry refuses the whole commit, so that case installs nothing at all.
    */
+  // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-write
   const commit = async (): Promise<
     { ok: true } | { ok: false; code: ErrorCode; message: string; details: Record<string, unknown> }
   > => {
@@ -177,6 +188,7 @@ export function createStagedInventory(real: TemplateInventory, resolveInstalledC
     }
     return { ok: true };
   };
+  // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-write
 
   return { inventory, readInstalledContent, commit, stagedNames: () => [...staged.keys()] };
 }

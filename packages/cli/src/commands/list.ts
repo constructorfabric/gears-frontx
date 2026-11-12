@@ -58,6 +58,7 @@ export interface ListEntry {
  * with `defaults`/`registered`; this function stays the smaller, reusable
  * primitive both it and any other caller needing the bare inventory read from.
  */
+// @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
 export async function listCommand(inventory: TemplateInventory): Promise<ListEntry[]> {
   const entries = await inventory.list();
   return entries.map((e) => {
@@ -80,6 +81,7 @@ export async function listCommand(inventory: TemplateInventory): Promise<ListEnt
     // @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-format-machine
   });
 }
+// @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
 
 type StoredManifestFieldsResult =
   | { ok: true; version: string; description?: string }
@@ -106,11 +108,13 @@ type StoredManifestFieldsResult =
 // Enumerating rather than refusing is the deliberate choice: `list` reports the
 // inventory, and failing the whole enumeration over one bad record would hide
 // every other installed template from a caller that came to enumerate them.
+// @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
 function storedManifestFields(content: string): StoredManifestFieldsResult {
   const result = readManifestFromContent(content);
   if (!result.ok) return { ok: false, reason: 'manifest-unreadable' };
   return { ok: true, version: result.manifest.version, description: result.manifest.description };
 }
+// @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
 
 // ---------------------------------------------------------------------------
 // §1.5 Machine-Readable Catalog Envelope — the three-set `data` payload every
@@ -198,6 +202,7 @@ export interface CatalogResolveDeps {
   repoRoot: string;
 }
 
+// @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
 async function resolveLocalManifest(
   origin: string,
   deps: CatalogResolveDeps,
@@ -220,6 +225,7 @@ async function resolveLocalManifest(
   if (!manifest.ok) return undefined;
   return { version: manifest.manifest.version, description: manifest.manifest.description };
 }
+// @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
 
 // `data.defaults` — the platform's default templates, sourced from the CLI's
 // own built-in list (`OFFICIAL_DEFAULT_TEMPLATES`) and NEVER from the current
@@ -231,6 +237,7 @@ async function resolveLocalManifest(
 // left OUT of the set rather than reported with a guessed version/description
 // — there is no per-entry slot in this set's shape to flag a resolution
 // failure the way `installed`'s `manifestUnreadable` does.
+// @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
 async function buildDefaults(deps: CatalogResolveDeps): Promise<DefaultTemplateEntry[]> {
   const entries: DefaultTemplateEntry[] = [];
   for (const name of Object.keys(OFFICIAL_DEFAULT_TEMPLATES)) {
@@ -242,6 +249,7 @@ async function buildDefaults(deps: CatalogResolveDeps): Promise<DefaultTemplateE
   }
   return entries;
 }
+// @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
 
 // A registered entry's description is read back from wherever its content
 // actually lives, never re-fetched over the network — `list` enumerates local
@@ -249,6 +257,7 @@ async function buildDefaults(deps: CatalogResolveDeps): Promise<DefaultTemplateE
 // local origin into the inventory, so there is nowhere else to read it from);
 // a remote origin's content was already materialized into the local inventory
 // at register/install time, so it is read back from there.
+// @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
 async function resolveRegisteredDescription(
   name: string,
   origin: string,
@@ -263,9 +272,11 @@ async function resolveRegisteredDescription(
   const manifest = readManifestFromContent(installed.content);
   return manifest.ok ? manifest.manifest.description : undefined;
 }
+// @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
 
 // `data.registered` — one record per entry in the current project's own
 // `templates` map (`inst-list-read`'s `target`).
+// @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
 async function buildRegistered(
   templates: Record<string, TemplateEntry>,
   inventory: TemplateInventory,
@@ -288,14 +299,17 @@ async function buildRegistered(
   }
   return entries;
 }
+// @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
 
 // `data.installed` — templates the local inventory tracks that are NOT
 // (yet) registered to this project; a name already present in `registered`
 // is excluded here rather than double-reported under two sets.
+// @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
 async function buildInstalled(inventory: TemplateInventory, registeredNames: ReadonlySet<string>): Promise<ListEntry[]> {
   const all = await listCommand(inventory);
   return all.filter((e) => !registeredNames.has(e.name));
 }
+// @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
 
 /**
  * cpt-frontx-algo-template-resolution-resolve-to-inventory's own reads,
@@ -304,6 +318,7 @@ async function buildInstalled(inventory: TemplateInventory, registeredNames: Rea
  * project's `templates` map (`{}` when no project state document exists —
  * `readProjectState`'s own absence handling), never read by `buildDefaults`.
  */
+// @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
 export async function buildListCatalog(
   templates: Record<string, TemplateEntry>,
   inventory: TemplateInventory,
@@ -314,6 +329,7 @@ export async function buildListCatalog(
   const defaults = await buildDefaults(deps);
   return { defaults, registered, installed };
 }
+// @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-read
 
 /** Wraps the catalog in the shared `{ok: true, data}` envelope every command's
  * `--json` mode emits (`cpt-frontx-adr-cli-machine-readable-output`). */
@@ -329,6 +345,7 @@ export function listCatalogEnvelope(catalog: ListCatalog): OkEnvelope<ListCatalo
 // (§1.5 governs only the machine-readable form, so this human-form spelling
 // is not part of that contract), and such an entry is rendered with an
 // explicit marker rather than fabricating a version or printing `@undefined`.
+// @cpt-begin:cpt-frontx-flow-template-resolution-list:p1:inst-list-format
 export function formatListHuman(catalog: ListCatalog): string {
   const { defaults, registered, installed } = catalog;
   if (defaults.length === 0 && registered.length === 0 && installed.length === 0) {
@@ -348,3 +365,4 @@ export function formatListHuman(catalog: ListCatalog): string {
     ['Installed:', ...installedLines].join('\n'),
   ].join('\n\n');
 }
+// @cpt-end:cpt-frontx-flow-template-resolution-list:p1:inst-list-format

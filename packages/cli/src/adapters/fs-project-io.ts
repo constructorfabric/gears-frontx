@@ -81,6 +81,7 @@ import { RESERVED_ENVIRONMENT_ENTRIES } from '../manifest/validate-contract';
 // behaviour, recorded in the FEATURE's own acceptance criteria, because the
 // alternative is data loss: writing through a link the CLI cannot compare
 // against, into content it never named.
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-write-refusal
 function refuseIfDestinationIsSymlink(destPath: string): void {
   let stat: fs.Stats;
   try {
@@ -93,12 +94,14 @@ function refuseIfDestinationIsSymlink(destPath: string): void {
     throw new ExistingSymlinkDestinationError(destPath);
   }
 }
+// @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-write-refusal
 
 /**
  * `destPath` already exists as a symlink, and a write was refused rather
  * than following it — see `refuseIfDestinationIsSymlink`'s own doc comment
  * for the full defect this guards against.
  */
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-write-refusal
 export class ExistingSymlinkDestinationError extends Error {
   readonly destPath: string;
 
@@ -111,6 +114,7 @@ export class ExistingSymlinkDestinationError extends Error {
     this.destPath = destPath;
   }
 }
+// @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-write-refusal
 
 /**
  * Real `WriteFileFn` — writes a destination file, creating parent dirs.
@@ -160,6 +164,7 @@ export class ExistingSymlinkDestinationError extends Error {
  * would be strictly more conservative than this package's settled position
  * that a project may legitimately contain its own (non-aliasing) symlinks.
  */
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize
 export function createFsWriteFileFn(): WriteFileFn {
   return async function writeFile(destPath: string, content: Buffer | string): Promise<void> {
     fs.mkdirSync(resolveWriteParentDir(destPath), { recursive: true });
@@ -171,6 +176,7 @@ export function createFsWriteFileFn(): WriteFileFn {
     }
   };
 }
+// @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize
 
 // Shared by every read seam below (`createFsReadFileFn`/
 // `createFsReadProjectFileFn`/`createFsReadProjectStateFn`) — a manifest
@@ -189,6 +195,7 @@ export function createFsWriteFileFn(): WriteFileFn {
 // the four kinds `fs.Stats` itself can report.
 export type NonRegularKind = 'directory' | 'fifo' | 'socket' | 'device' | 'dangling-symlink';
 
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-identity-missing
 export function describeNonRegularKind(kind: NonRegularKind): string {
   switch (kind) {
     case 'directory':
@@ -203,6 +210,7 @@ export function describeNonRegularKind(kind: NonRegularKind): string {
       return 'a symlink whose target does not exist';
   }
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-identity-missing
 
 /**
  * A read was refused because `filePath` — once every symlink is resolved —
@@ -213,6 +221,7 @@ export function describeNonRegularKind(kind: NonRegularKind): string {
  * discipline `PathContainmentError`/`ExistingSymlinkDestinationError` above
  * already establish for their own classes of honest, expected refusal.
  */
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-identity-missing
 export class NotRegularFileError extends Error {
   readonly filePath: string;
   readonly kind: NonRegularKind;
@@ -224,6 +233,7 @@ export class NotRegularFileError extends Error {
     this.kind = kind;
   }
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-identity-missing
 
 /**
  * A read was refused because `filePath` itself could never be reached at
@@ -239,6 +249,7 @@ export class NotRegularFileError extends Error {
  * actionable: it is the one entry a caller has to resolve, and nothing below
  * it can be inspected regardless of what `filePath` itself would have been.
  */
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-identity-missing
 export class UnreachablePathError extends Error {
   readonly filePath: string;
   readonly blockingAncestor: string;
@@ -250,6 +261,7 @@ export class UnreachablePathError extends Error {
     this.blockingAncestor = blockingAncestor;
   }
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-identity-missing
 
 /**
  * A read was refused because `filePath` could not actually be opened, for a
@@ -262,6 +274,7 @@ export class UnreachablePathError extends Error {
  * carried for diagnostics only — this class exists so a caller never has to
  * branch on it to decide what happened.
  */
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-identity-missing
 export class PathUnreadableError extends Error {
   readonly filePath: string;
   readonly errnoCode: string;
@@ -273,6 +286,7 @@ export class PathUnreadableError extends Error {
     this.errnoCode = errnoCode;
   }
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-identity-missing
 
 /**
  * The single project state document (`.frontx/project.json`) could not be
@@ -292,6 +306,7 @@ export class PathUnreadableError extends Error {
  * document is unusable" is one fact with one code, whatever broke it —
  * instead of the code depending on which layer happened to notice the break.
  */
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-return-invalid
 export class ProjectStateUnreadableError extends Error {
   readonly filePath: string;
   readonly underlying: NotRegularFileError | UnreachablePathError | PathUnreadableError;
@@ -303,7 +318,9 @@ export class ProjectStateUnreadableError extends Error {
     this.underlying = underlying;
   }
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-return-invalid
 
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-identity-missing
 function kindFromStat(stat: fs.Stats): Exclude<NonRegularKind, 'dangling-symlink'> | 'file' {
   if (stat.isFile()) return 'file';
   if (stat.isDirectory()) return 'directory';
@@ -311,6 +328,7 @@ function kindFromStat(stat: fs.Stats): Exclude<NonRegularKind, 'dangling-symlink
   if (stat.isSocket()) return 'socket';
   return 'device'; // a block or character device, or any other special entry `fs.Stats` can name
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-identity-missing
 
 /**
  * Resolves what actually stands at `filePath` — following every symlink the
@@ -343,12 +361,14 @@ function kindFromStat(stat: fs.Stats): Exclude<NonRegularKind, 'dangling-symlink
 // on a directory somewhere along the path) means the probe itself could not
 // even determine what stands at `filePath` — a third fact, distinct from
 // both absence and a wrong-but-known shape.
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-identity-missing
 function throwForLstatFailure(filePath: string, error: unknown): never {
   if (isErrnoCode(error, 'ENOTDIR')) {
     throw new UnreachablePathError(filePath, firstNonDirectoryComponentOf(filePath) ?? filePath);
   }
   throw new PathUnreadableError(filePath, errnoCodeOf(error));
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-identity-missing
 
 // Exported (in addition to `readFileIfRegular`'s own use of it below) so a
 // write-side seam outside this module — the local inventory store's own
@@ -356,6 +376,7 @@ function throwForLstatFailure(filePath: string, error: unknown): never {
 // FIFO-safe shape probe before ITS OWN write, rather than restating this
 // exact `lstat`/`statSync` sequence a second time. See that module's own
 // call site for why a write needs the same probe a read already has.
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-identity-missing
 export function resolvePathKind(filePath: string): 'absent' | 'file' | NonRegularKind {
   let lst: fs.Stats;
   try {
@@ -374,6 +395,7 @@ export function resolvePathKind(filePath: string): 'absent' | 'file' | NonRegula
   }
   return kindFromStat(target);
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-identity-missing
 
 /**
  * Reads `filePath` once `resolvePathKind` has already confirmed it names a
@@ -382,6 +404,7 @@ export function resolvePathKind(filePath: string): 'absent' | 'file' | NonRegula
  * perfectly ordinary file; only the OPEN itself is refused) is guarded here
  * rather than duplicated at each call site.
  */
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-name
 function readRegularFileOrThrow(filePath: string): string {
   try {
     return fs.readFileSync(filePath, 'utf-8');
@@ -390,6 +413,7 @@ function readRegularFileOrThrow(filePath: string): string {
     throw new PathUnreadableError(filePath, errnoCodeOf(error));
   }
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-name
 
 /**
  * Reads `filePath` if (and only if) it resolves to a regular file:
@@ -404,23 +428,27 @@ function readRegularFileOrThrow(filePath: string): string {
  * three seams below once did) — never a fourth, independently written copy
  * of the same guard.
  */
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-name
 export function readFileIfRegular(filePath: string): string | null {
   const kind = resolvePathKind(filePath);
   if (kind === 'absent') return null;
   if (kind !== 'file') throw new NotRegularFileError(filePath, kind);
   return readRegularFileOrThrow(filePath);
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-name
 
 /** An `ENOENT`-shaped error matching what `fs.readFileSync` itself throws for
  * an absent path — used to preserve a read seam's existing "throws on
  * absence" contract once its own `fs.readFileSync` call is guarded by
  * `resolvePathKind` above rather than reached unconditionally. */
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-name
 function enoentError(filePath: string): NodeJS.ErrnoException {
   const error = new Error(`ENOENT: no such file or directory, open '${filePath}'`) as NodeJS.ErrnoException;
   error.code = 'ENOENT';
   error.path = filePath;
   return error;
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-name
 
 /** Real `ReadFileFn` — reads a manifest file; throws the plain `ENOENT`-shaped
  * error the seam's own contract has always thrown for absence, and one of
@@ -438,6 +466,7 @@ function enoentError(filePath: string): NodeJS.ErrnoException {
  * own honest reason or fold it beside absence, rather than every caller being
  * forced to agree on one answer for what is, from a caller's own vantage,
  * sometimes a genuinely different fact. */
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-name
 export function createFsReadFileFn(): ReadFileFn {
   return async function readFile(filePath: string): Promise<string> {
     const content = readFileIfRegular(filePath);
@@ -445,6 +474,7 @@ export function createFsReadFileFn(): ReadFileFn {
     return content;
   };
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-name
 
 // @cpt-algo:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1
 /**
@@ -453,6 +483,7 @@ export function createFsReadFileFn(): ReadFileFn {
  * UTF-8 sequences are not corrupted when the bundle is later compared to disk
  * content (`resolver/types.ts`'s `ReadFolderFileBinaryFn`).
  */
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-local-path-read
 export function createFsReadFolderFileBinaryFn(): (absolutePath: string) => Promise<Buffer> {
   return async function readFolderFileBinary(filePath: string): Promise<Buffer> {
     const kind = resolvePathKind(filePath);
@@ -466,6 +497,7 @@ export function createFsReadFolderFileBinaryFn(): (absolutePath: string) => Prom
     }
   };
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-local-path-read
 
 /**
  * Real `PathExistsFn` (`../resolver/types.ts`) — the resolver's own
@@ -479,11 +511,13 @@ export function createFsReadFolderFileBinaryFn(): (absolutePath: string) => Prom
  * `canonicalizeFn` has already proven the whole chain resolves inside the
  * project root before this is ever called.
  */
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-local-path-check
 export function createFsPathExistsFn(): PathExistsFn {
   return async function pathExists(absolutePath: string): Promise<boolean> {
     return fs.existsSync(absolutePath);
   };
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-local-path-check
 
 /** Real `ReadProjectFileFn` — returns `null` (never throws) when the file is
  * absent, and ALSO when a directory now stands where the file is expected:
@@ -523,6 +557,7 @@ export function createFsWriteProjectFileFn(): WriteProjectFileFn {
 }
 
 /** Real `RemoveProjectFileFn` — removes an absolute project file; no-op when absent. */
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-remove
 export function createFsRemoveProjectFileFn(): RemoveProjectFileFn {
   return async function removeProjectFile(absolutePath: string): Promise<void> {
     if (fs.existsSync(absolutePath)) {
@@ -530,6 +565,7 @@ export function createFsRemoveProjectFileFn(): RemoveProjectFileFn {
     }
   };
 }
+// @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-remove
 
 // @cpt-algo:cpt-frontx-algo-composed-provenance-project-state-io:p1
 /** Real `ReadProjectStateFn` — returns `null` (never throws) when the
@@ -547,6 +583,7 @@ export function createFsRemoveProjectFileFn(): RemoveProjectFileFn {
 // non-regular kind (a FIFO, a socket, a device, a dangling symlink) is
 // refused for the identical reason a directory now is. A genuinely absent
 // document is the only case this seam still answers with `null`.
+// @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-read
 export function createFsReadProjectStateFn(): ReadProjectStateFn {
   return async function readProjectState(absolutePath: string): Promise<string | null> {
     try {
@@ -571,6 +608,7 @@ export function createFsReadProjectStateFn(): ReadProjectStateFn {
     }
   };
 }
+// @cpt-end:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-read
 
 // @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-write-atomic
 /**
@@ -719,6 +757,7 @@ export function createFsWriteProjectStateFn(): WriteProjectStateFn {
  * (`commands/validate.ts`), which is where the manifest read's own failure
  * is already turned into one.
  */
+// @cpt-begin:cpt-frontx-algo-template-manifest-validate-content-self-containment:p2:inst-csc-enumerate-files
 export function createFsListPayloadFilesFn(): ListPayloadFilesFn {
   return async function listPayloadFiles(templateDir: string): Promise<string[]> {
     const root = realPathOrNull(templateDir);
@@ -740,6 +779,7 @@ export function createFsListPayloadFilesFn(): ListPayloadFilesFn {
     }
   };
 }
+// @cpt-end:cpt-frontx-algo-template-manifest-validate-content-self-containment:p2:inst-csc-enumerate-files
 
 /**
  * Real `ResolveDeclaredExclusionFn` - confirms a single declared
@@ -761,6 +801,7 @@ export function createFsListPayloadFilesFn(): ListPayloadFilesFn {
  * of bug an escaping carrier reference is, and is refused the same way,
  * never silently treated as if nothing were there.
  */
+// @cpt-begin:cpt-frontx-algo-template-manifest-validate-content-self-containment:p2:inst-csc-resolve-specifier
 export function createFsResolveDeclaredExclusionFn(): ResolveDeclaredExclusionFn {
   return async function resolveDeclaredExclusion(
     templateDir: string,
@@ -820,6 +861,7 @@ export function createFsResolveDeclaredExclusionFn(): ResolveDeclaredExclusionFn
     return 'RESOLVED';
   };
 }
+// @cpt-end:cpt-frontx-algo-template-manifest-validate-content-self-containment:p2:inst-csc-resolve-specifier
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -879,12 +921,14 @@ function realPathOrNull(absolutePath: string): string | null {
 // than restating it, once it has resolved a candidate through
 // `resolveNearestExistingAncestor` below the same way this module's own
 // callers do.
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-conflict-check:p1:inst-cc-canonicalize
 export function isInside(root: string, candidate: string): boolean {
   const foldedRoot = foldForIdentity(root);
   const foldedCandidate = foldForIdentity(candidate);
   if (foldedCandidate === foldedRoot) return true;
   return foldedCandidate.startsWith(foldedRoot + path.sep);
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-conflict-check:p1:inst-cc-canonicalize
 
 // @cpt-algo:cpt-frontx-algo-cli-scaffolding-conflict-check:p1
 /**
@@ -916,6 +960,7 @@ export function isInside(root: string, candidate: string): boolean {
  * call is made, so a plain `../escape` is caught even when every component
  * along the way is on the same filesystem and fully readable.
  */
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-conflict-check:p1:inst-cc-canonicalize
 export function createFsCanonicalizeTargetFn(projectRoot: string): CanonicalizeTargetFn {
   const realRoot = realPathOrNull(projectRoot);
   if (realRoot === null) {
@@ -959,6 +1004,7 @@ export function createFsCanonicalizeTargetFn(projectRoot: string): CanonicalizeT
     return canonical;
   };
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-conflict-check:p1:inst-cc-canonicalize
 
 // `createFsCanonicalizeTargetFn` above proves a batch's own TARGET resolves
 // inside the project root, symlinks resolved — but that says nothing about
@@ -1022,6 +1068,7 @@ export function createFsCanonicalizeTargetFn(projectRoot: string): CanonicalizeT
  * a caller cannot act on an internal-error exit for what is an ordinary,
  * actionable problem with the tree it pointed the CLI at.
  */
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-escape
 export class PathContainmentError extends Error {
   readonly offendingPath: string;
 
@@ -1031,6 +1078,7 @@ export class PathContainmentError extends Error {
     this.offendingPath = offendingPath;
   }
 }
+// @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-escape
 
 /**
  * The ONE wording for WHY a read refused, given the typed error that refused
@@ -1040,6 +1088,7 @@ export class PathContainmentError extends Error {
  * `UnreachablePathError`'s blocking ancestor) the way that caller spells
  * paths; both entrypoints pass their own.
  */
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-escape
 export function describeUnreadableCause(
   underlying: NotRegularFileError | UnreachablePathError | PathUnreadableError,
   describePath: (absolutePath: string) => string,
@@ -1052,7 +1101,9 @@ export function describeUnreadableCause(
   }
   return `is ${describeNonRegularKind(underlying.kind)}, not a regular file — refusing to read it.`;
 }
+// @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-escape
 
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-escape
 export function assertPathWithinProjectRoot(root: string, absolutePath: string): void {
   const realRoot = realPathOrNull(root);
   if (realRoot === null) {
@@ -1063,6 +1114,7 @@ export function assertPathWithinProjectRoot(root: string, absolutePath: string):
     throw new PathContainmentError(absolutePath, root);
   }
 }
+// @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-escape
 
 // `assertPathWithinProjectRoot` above deliberately ALLOWS a dangling
 // symlink whose (lexical, for a dangling one) target still resolves inside
@@ -1099,10 +1151,12 @@ export function assertPathWithinProjectRoot(root: string, absolutePath: string):
  * `path.dirname` is defensive, not load-bearing, for a state this function
  * is never actually reached in.
  */
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize
 export function resolveWriteParentDir(absolutePath: string): string {
   const resolved = resolveNearestExistingAncestor(path.resolve(absolutePath));
   return path.dirname(resolved ?? absolutePath);
 }
+// @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-materialize
 
 /**
  * Real `AssertPathWithinRootFn` (`../scaffold/types.ts`) — curries
@@ -1115,11 +1169,13 @@ export function resolveWriteParentDir(absolutePath: string): string {
  * fresh per command, at the `cli.ts` dispatch site, never once at process
  * start.
  */
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-escape
 export function createFsAssertPathWithinRootFn(projectRoot: string): AssertPathWithinRootFn {
   return function assertPathWithinRoot(absolutePath: string): void {
     assertPathWithinProjectRoot(projectRoot, absolutePath);
   };
 }
+// @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-if-escape
 
 // This function must resolve symlinks the same way the OS does — left to
 // right, one component at a time, from the filesystem root down — rather
@@ -1174,6 +1230,7 @@ const MAX_SYMLINK_RESOLUTIONS = 40;
 // ordinary shape of the inventory store before its first write), which is
 // exactly why the inventory store's own checks call this directly instead of
 // that assertion.
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-conflict-check:p1:inst-cc-canonicalize
 export function resolveNearestExistingAncestor(lexicalCandidate: string): string | null {
   const parsed = path.parse(lexicalCandidate);
   const relative = lexicalCandidate.slice(parsed.root.length);
@@ -1218,14 +1275,17 @@ export function resolveNearestExistingAncestor(lexicalCandidate: string): string
   }
   return resolvedPrefix;
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-conflict-check:p1:inst-cc-canonicalize
 
 // `relativeDir === ''` addresses `templateDir` itself (the payload-root
 // enumeration's starting point) - joining a child name onto an empty
 // relative dir must yield a bare `entry.name`, never a leading-slash
 // `/entry.name`. Every other depth behaves exactly as a plain `/`-join did.
+// @cpt-begin:cpt-frontx-algo-template-manifest-validate-content-self-containment:p2:inst-csc-enumerate-files
 function joinRelative(relativeDir: string, name: string): string {
   return relativeDir === '' ? name : `${relativeDir}/${name}`;
 }
+// @cpt-end:cpt-frontx-algo-template-manifest-validate-content-self-containment:p2:inst-csc-enumerate-files
 
 /**
  * @param visitedRealDirs real paths of directories already entered. Only a
@@ -1261,6 +1321,7 @@ const RESERVED_ENV_PRUNE_NAMES: ReadonlySet<string> = new Set(
 // (`createFsListUnenumerableTargetEntriesFn` below) ever observes it. One
 // walk, one cycle guard, for both questions — never a second, independently
 // maintained traversal asking the FIFO/socket/device question by itself.
+// @cpt-begin:cpt-frontx-algo-template-manifest-validate-content-self-containment:p2:inst-csc-enumerate-files
 function walkFiles(
   templateDir: string,
   relativeDir: string,
@@ -1338,6 +1399,7 @@ function walkFiles(
   }
   return files;
 }
+// @cpt-end:cpt-frontx-algo-template-manifest-validate-content-self-containment:p2:inst-csc-enumerate-files
 
 // Enters one directory for the duration of its own subtree walk only:
 // resolves its real path (or reuses `knownRealPath` when the caller - the
@@ -1345,6 +1407,7 @@ function walkFiles(
 // that real path is already open on the current ancestor chain, otherwise
 // marks it open, walks it, and unmarks it again before returning - so the
 // mark reflects "currently being descended into", never "ever visited".
+// @cpt-begin:cpt-frontx-algo-template-manifest-validate-content-self-containment:p2:inst-csc-enumerate-files
 function descendDirectory(
   templateDir: string,
   relativeDir: string,
@@ -1365,6 +1428,7 @@ function descendDirectory(
     if (resolvedDir !== null) visitedRealDirs.delete(resolvedDir);
   }
 }
+// @cpt-end:cpt-frontx-algo-template-manifest-validate-content-self-containment:p2:inst-csc-enumerate-files
 
 // @cpt-algo:cpt-frontx-algo-cli-scaffolding-delete-plan:p1
 /**
@@ -1405,6 +1469,7 @@ function descendDirectory(
 // a non-directory entry stands where an installed content path's own
 // ancestor directory belongs, rather than letting `fs.mkdirSync` fail with a
 // bare, unstructured `ENOTDIR`.
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-reclaim-ancestor-blocker
 export function firstNonDirectoryComponentOf(absolutePath: string): string | null {
   let candidate = path.resolve(absolutePath);
   let reportPath = candidate; // the entry actually standing at the blocked position; never overwritten by symlink resolution below
@@ -1432,6 +1497,7 @@ export function firstNonDirectoryComponentOf(absolutePath: string): string | nul
     candidate = resolvedTarget;
   }
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-reclaim-ancestor-blocker
 
 /**
  * Real `ListTargetFilesFn` (`../scaffold/delete-plan.ts`) — enumerates every
@@ -1465,6 +1531,7 @@ export function firstNonDirectoryComponentOf(absolutePath: string): string | nul
  * `ENOTDIR` reaching the CLI's own top-level catch as an internal error with
  * no JSON envelope at all.
  */
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-read-existing
 export function createFsListTargetFilesFn(): ListTargetFilesFn {
   return async function listTargetFiles(absoluteDir: string): Promise<string[]> {
     const root = realPathOrNull(absoluteDir);
@@ -1501,6 +1568,7 @@ export function createFsListTargetFilesFn(): ListTargetFilesFn {
     }
   };
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-read-existing
 
 /**
  * `ListTargetFilesFn` (`createFsListTargetFilesFn` above) was asked to
@@ -1511,6 +1579,7 @@ export function createFsListTargetFilesFn(): ListTargetFilesFn {
  * the offending path, never an internal failure with no envelope at all
  * under `--json`.
  */
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-read-existing
 export class TargetNotDirectoryError extends Error {
   readonly targetPath: string;
 
@@ -1520,6 +1589,7 @@ export class TargetNotDirectoryError extends Error {
     this.targetPath = targetPath;
   }
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-read-existing
 
 // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-find-unenumerable
 /**
@@ -1607,6 +1677,7 @@ const MAX_STRICT_SYMLINK_RESOLUTIONS = 40;
 // TOCTOU boundary: the stable-tree contract is the caller's responsibility. Concurrent mutation
 // outside that contract may produce incorrect results (false `unknown` or wrong identity);
 // no atomicity guarantee exists between the initial lstat and the per-name enumeration lstats.
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-protect-registered-origins
 function resolvePhysicalName(parent: string, seg: string, st: fs.Stats): string | null {
   let names: string[];
   try {
@@ -1634,7 +1705,9 @@ function resolvePhysicalName(parent: string, seg: string, st: fs.Stats): string 
   if (ci.length === 1) return ci[0];
   return null; // ambiguous hard links — fail closed
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-protect-registered-origins
 
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-protect-registered-origins
 export function createFsClassifyPathStrictFn(projectRoot: string): ClassifyPathStrictFn {
   const realRoot = realPathOrNull(projectRoot);
   if (realRoot === null) throw new Error(`project root could not be resolved: ${projectRoot}`);
@@ -1703,6 +1776,7 @@ export function createFsClassifyPathStrictFn(projectRoot: string): ClassifyPathS
     return { kind: absentRest === undefined ? 'present' : 'absent', canonical, entries };
   };
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-protect-registered-origins
 
 export function createFsEntryKindFn(projectRoot: string): EntryKindFn {
   const realRoot = realPathOrNull(projectRoot);

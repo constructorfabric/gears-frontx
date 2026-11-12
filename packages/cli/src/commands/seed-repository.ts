@@ -441,6 +441,7 @@ async function seedRepositorySteps(
   try {
     applyResult = await runApplyPipeline(batch, dir, adoptExisting, deps);
   } catch (error) {
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-failure
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
     await rollbackSeedWrites();
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
@@ -452,8 +453,10 @@ async function seedRepositorySteps(
         `${error instanceof Error ? error.message : String(error)}; the project state document (and any ` +
         'directory it created) has been rolled back — nothing from this batch remains.',
     };
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-failure
   }
   if (!applyResult.ok) {
+    // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-failure
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-rollback
     const writtenPaths = extractWrittenPaths(applyResult.details);
     const bundledNames = extractBundledNames(applyResult.details);
@@ -507,6 +510,7 @@ async function seedRepositorySteps(
         `The apply phase's own reason for refusing: ${reason}`,
       details: Object.keys(remainingDetails).length > 0 ? remainingDetails : undefined,
     };
+    // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-if-failure
   }
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-record
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-seed-repository:p1:inst-seed-materialize-bundle

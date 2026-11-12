@@ -80,6 +80,7 @@ export interface ReviewablePlan {
  * the internal plan directly, which is exactly the defect this module was
  * added to close.
  */
+// @cpt-begin:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-present-changeset
 export function renderReviewablePlan(plan: UpgradePlan): ReviewablePlan {
   return {
     name: plan.name,
@@ -117,6 +118,7 @@ export function renderReviewablePlan(plan: UpgradePlan): ReviewablePlan {
       : {}),
   };
 }
+// @cpt-end:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-present-changeset
 
 /**
  * Plain-language consequences a reviewer must see next to the file lists, each
@@ -126,6 +128,7 @@ export function renderReviewablePlan(plan: UpgradePlan): ReviewablePlan {
  * while the recorded version still advances, so a later upgrade may conflict on
  * them (ruling 2026-11-06, option 2).
  */
+// @cpt-begin:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-present-changeset
 export function reviewNotes(plan: UpgradePlan): string[] {
   const notes: string[] = [];
   if (plan.ai !== undefined) {
@@ -148,8 +151,10 @@ export function reviewNotes(plan: UpgradePlan): string[] {
   if (skipNote !== undefined) notes.push(skipNote);
   return notes;
 }
+// @cpt-end:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-present-changeset
 
 /** The disclosed risk of skipping protected paths (ruling 2026-11-06, option 2); reported before and after. */
+// @cpt-begin:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-present-changeset
 export function protectedSkipNote(plan: UpgradePlan): string | undefined {
   const protectedSkips = plan.skipped.filter((entry) => entry.reason === 'OUTSIDE_BOUNDARY').length;
   return protectedSkips > 0
@@ -157,6 +162,7 @@ export function protectedSkipNote(plan: UpgradePlan): string | undefined {
         'advances, so a later upgrade may conflict on them.'
     : undefined;
 }
+// @cpt-end:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-present-changeset
 
 /**
  * Identity of the WHOLE internal plan — every operation's `newContent`,

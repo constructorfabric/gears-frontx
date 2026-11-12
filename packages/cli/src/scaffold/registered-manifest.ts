@@ -118,6 +118,7 @@ export type RegisteredExclusionsResolution = { known: true; excludedSubtrees: st
 // ownership.ts`, `cli.ts`'s upgrade wiring) all resolve an OTHER template's
 // exclusions, a plain implementation join none of their own FEATUREs
 // specify at this granularity.
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-resolve-current-manifest
 export async function resolveRegisteredExcludedSubtrees(
   name: string,
   origin: string,
@@ -133,6 +134,7 @@ export async function resolveRegisteredExcludedSubtrees(
   const manifestResult = readManifestFromContent(content);
   return { known: true, excludedSubtrees: manifestResult.ok ? manifestResult.manifest.excludedSubtrees : [] };
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-resolve-current-manifest
 
 // `error.code === 'ENOENT'` is the one shape every read seam in this package
 // throws for a path that is genuinely absent (`adapters/fs-project-io.ts`'s
@@ -145,9 +147,11 @@ export async function resolveRegisteredExcludedSubtrees(
 // but genuinely any other failure this function was not written to expect
 // — is NOT this shape, and is left to propagate rather than being
 // classified here as "absent" too.
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-resolve-current-manifest
 function isAbsentError(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 'ENOENT';
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-resolve-current-manifest
 
 // Exported for `scaffold/delete-plan.ts`'s own use alone: that algorithm
 // calls this directly, as its PRIMARY source for the owning template's
@@ -170,6 +174,7 @@ function isAbsentError(error: unknown): boolean {
 // `resolveRegisteredExcludedSubtrees` itself calls, not a second
 // formulation of it — one read, two callers each making their own decision
 // about what an inconclusive answer means for them.
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-resolve-current-manifest
 export async function resolveRegisteredManifestContent(
   name: string,
   origin: string,
@@ -192,3 +197,4 @@ export async function resolveRegisteredManifestContent(
   }
   return installed?.content;
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-resolve-current-manifest

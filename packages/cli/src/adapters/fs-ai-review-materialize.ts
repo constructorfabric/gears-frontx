@@ -15,6 +15,7 @@ export class AiReviewDriftError extends Error {}
  * race between this lstat and the following syscall is not excluded; upgrade to
  * descriptor-bound operations if hostile same-user replacement must be resisted.
  */
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 function ensurePlainDirectory(root: string, target: string, create: boolean): void {
   const relative = path.relative(root, target);
   if (relative.startsWith('..') || path.isAbsolute(relative)) throw new AiReviewDriftError(`AI destination escapes the project: ${target}`);
@@ -32,14 +33,18 @@ function ensurePlainDirectory(root: string, target: string, create: boolean): vo
     if (!stat.isDirectory()) throw new AiReviewDriftError(`AI destination ancestor is not a plain directory: ${current}`);
   }
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 function unlinkRegular(root: string, file: string): void {
   ensurePlainDirectory(root, path.dirname(file), false);
   const entry = fs.lstatSync(file);
   if (!entry.isFile() && !entry.isSymbolicLink()) throw new AiReviewDriftError(`AI destination entry is not a regular file or symlink: ${file}`);
   fs.unlinkSync(file);
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 function writeRegular(root: string, file: string, bytes: Uint8Array): void {
   ensurePlainDirectory(root, path.dirname(file), true);
   const temp = path.join(path.dirname(file), `.${path.basename(file)}.${randomUUID()}.frontx-tmp`);
@@ -53,11 +58,14 @@ function writeRegular(root: string, file: string, bytes: Uint8Array): void {
   ensurePlainDirectory(root, path.dirname(file), false);
   fs.renameSync(temp, file);
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 function removeEmptyDirectory(root: string, directory: string): void {
   ensurePlainDirectory(root, directory, false);
   fs.rmdirSync(directory);
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 
 /**
  * Makes `<project>/.frontx/ai/<name>/` exactly the reviewed candidate, and only
@@ -67,6 +75,7 @@ function removeEmptyDirectory(root: string, directory: string): void {
  * the snapshot's bytes. The result is re-captured and verified before returning.
  */
 /** Returns the digest of the verified result (the effect hash recorded as `done`). */
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 export function applyFsAiReview(snapshot: AiReviewSnapshot, projectRoot: string, manifestName: string): string {
   const candidate = new Map(snapshot.candidateSnapshot.map(({ path: file, bytes }) => [file, bytes]));
   const current = reviewFsAiCandidate(projectRoot, manifestName, candidate);
@@ -117,3 +126,4 @@ export function applyFsAiReview(snapshot: AiReviewSnapshot, projectRoot: string,
   if (!exact) throw new AiReviewDriftError(`The AI bundle at ${destination} does not match the reviewed candidate after writing.`);
   return after.digest;
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
