@@ -130,6 +130,7 @@ On top of the library's readings the plugin applies write rules of its own. They
 - The first definition registered under a type identifier stands. A later definition is compared with the held one by plain structural equality, which reads no GTS (GTS-PLUGIN-4).
 - The last valid write of an instance stands, and replacing content another copy wrote is reported (GTS-PLUGIN-4).
 - A definition is refused when the library classifies it as an instance, rejects its identifier or does not report its identifier as a type, or when its content is not representable as JSON; an instance is refused when the library reports its identifier as a type or the store holds a type under it. `cpt-frontx-gts-plugin-adr-type-store-scope` states each refusal.
+- A domain or an extension is refused when an action in one of its lifecycle hooks fails validation against the action's own type. The candidate's own schema checks a hook action only against the base action type. The library matches the candidate's identifier against the domain and extension patterns, names each action's type and validates the action. The plugin only walks the hook list and each chain's `next` and `fallback` links to find the actions.
 
 So the plugin does not accept everything the library accepts. It accepts nothing the library rejects, and each refusal of its own rests on the library's answer or on the need to store a copy.
 

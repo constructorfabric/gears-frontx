@@ -109,6 +109,7 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 - Domain registration fails because the router injected into the registry rejects it, for example because its route collides with the route of another routed domain live in the page.
 - Extension admission fails because the extension's required properties are not provided by the domain, or the entry does not support all capabilities the domain requires, or the entry requires domain capabilities the domain does not provide.
 - Extension registration fails because the router injected into the registry rejects it.
+- Domain or extension registration fails because an action in one of its lifecycle hooks does not satisfy the action's own type, for example a `mount_ext` action that targets an extension instead of a domain. The type system refuses the declaration, and the registration is rolled back as for any other type-system rejection.
 
 **Steps**:
 1. [x] - `p1` - Developer composes a domain implementation factory by selecting one of the three named mount strategies (Concurrent, Optional, or Exclusive) and declaring the domain's lifecycle actions - `inst-compose-domain`

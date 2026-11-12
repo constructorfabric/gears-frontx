@@ -113,6 +113,14 @@ export interface TypeSystemPlugin<TSchema = unknown> {
    * The instance is validated against its schema as part of registration;
    * on validation failure `register()` throws before returning.
    *
+   * For a domain or an extension, the provider also validates each action in
+   * its lifecycle hooks against the action's own registered type, through
+   * every `next` and `fallback` in each chain, as though the declaration were
+   * already registered, so a hook action may name the declaration itself. If
+   * any action fails, `register()` throws and persists nothing. The runtime
+   * relies on this to refuse a hook at registration that would otherwise fail
+   * only when the mediator dispatches it.
+   *
    * @param entity - The instance to register
    * @throws Error if schema validation fails
    */
