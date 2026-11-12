@@ -270,6 +270,85 @@ describe('Tree', () => {
 
       expect(item('Operations')).toHaveFocus();
     });
+
+    // The id 0 is falsy, and a check for "nothing focused" must not read it as no id (#748).
+    describe('on an item whose id is 0', () => {
+      interface Row extends DataGridTreeItem {
+        id: number;
+        parent_id: number | null;
+        name: string;
+      }
+
+      function NumericTree({ items }: { items: Row[] }) {
+        const treeStructure = useDataGridTreeStructure<Row>({
+          items,
+          parentKey: 'parent_id',
+          isLeaf: (row) => !items.some((other) => other.parent_id === row.id),
+        });
+        return <Tree name="numeric" treeStructure={treeStructure} label="name" />;
+      }
+
+      const flatRows: Row[] = [
+        { id: 0, parent_id: null, name: 'Zero' },
+        { id: 1, parent_id: null, name: 'One' },
+        { id: 2, parent_id: null, name: 'Two' },
+      ];
+
+      // One
+      // Zero
+      // └── Three
+      // Two
+      const nestedRows: Row[] = [
+        { id: 1, parent_id: null, name: 'One' },
+        { id: 0, parent_id: null, name: 'Zero' },
+        { id: 3, parent_id: 0, name: 'Three' },
+        { id: 2, parent_id: null, name: 'Two' },
+      ];
+
+      it('moves down from it', async () => {
+        const { user } = render(<NumericTree items={flatRows} />);
+        await user.tab();
+        expect(item('Zero')).toHaveFocus();
+
+        await user.keyboard('{ArrowDown}');
+        expect(item('One')).toHaveFocus();
+      });
+
+      it('moves up from it, and to the ends with Home and End', async () => {
+        const { user } = render(<NumericTree items={nestedRows} />);
+        await user.tab();
+        await user.keyboard('{ArrowDown}');
+        expect(item('Zero')).toHaveFocus();
+
+        await user.keyboard('{ArrowUp}');
+        expect(item('One')).toHaveFocus();
+
+        await user.keyboard('{ArrowDown}{End}');
+        expect(item('Two')).toHaveFocus();
+
+        await user.keyboard('{ArrowUp}{Home}');
+        expect(item('One')).toHaveFocus();
+      });
+
+      it('opens it, steps into it and closes it with the arrows, and toggles it with Enter', async () => {
+        const { user } = render(<NumericTree items={nestedRows} />);
+        await user.tab();
+        await user.keyboard('{ArrowDown}');
+
+        await user.keyboard('{ArrowRight}');
+        expect(item('Zero')).toHaveAttribute('aria-expanded', 'true');
+        await user.keyboard('{ArrowRight}');
+        expect(item('Three')).toHaveFocus();
+
+        await user.keyboard('{ArrowLeft}');
+        expect(item('Zero')).toHaveFocus();
+        await user.keyboard('{ArrowLeft}');
+        expect(item('Zero')).toHaveAttribute('aria-expanded', 'false');
+
+        await user.keyboard('{Enter}');
+        expect(item('Zero')).toHaveAttribute('aria-expanded', 'true');
+      });
+    });
   });
 
   describe('slots and settings a plugin can use', () => {

@@ -40,7 +40,7 @@ export function createFocusService<TItem extends DataGridTreeItem>(
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const { focusedNodeId } = useFocusStore.getState();
-    if (!focusedNodeId) return;
+    if (focusedNodeId === null) return;
 
     const { key } = event;
     let handled = false;
@@ -68,7 +68,7 @@ export function createFocusService<TItem extends DataGridTreeItem>(
 
   function handleArrowDown() {
     const { treeStructure, expandedIds, focusedNodeId } = getNavigationContext();
-    if (!focusedNodeId) return false;
+    if (focusedNodeId === null) return false;
 
     const visibleNodes = getVisibleNodes(treeStructure, expandedIds);
     const nextNode = getNextVisibleNode(visibleNodes, focusedNodeId);
@@ -81,7 +81,7 @@ export function createFocusService<TItem extends DataGridTreeItem>(
 
   function handleArrowUp() {
     const { treeStructure, expandedIds, focusedNodeId } = getNavigationContext();
-    if (!focusedNodeId) return false;
+    if (focusedNodeId === null) return false;
 
     const visibleNodes = getVisibleNodes(treeStructure, expandedIds);
     const prevNode = getPreviousVisibleNode(visibleNodes, focusedNodeId);
@@ -94,7 +94,7 @@ export function createFocusService<TItem extends DataGridTreeItem>(
 
   function handleArrowRight() {
     const { treeStructure, expandedIds, focusedNodeId } = getNavigationContext();
-    if (!focusedNodeId) return false;
+    if (focusedNodeId === null) return false;
 
     const focusedNode = treeStructure.getNode(focusedNodeId);
     if (!focusedNode) return false;
@@ -123,7 +123,7 @@ export function createFocusService<TItem extends DataGridTreeItem>(
 
   function handleArrowLeft() {
     const { treeStructure, expandedIds, focusedNodeId } = getNavigationContext();
-    if (!focusedNodeId) return false;
+    if (focusedNodeId === null) return false;
 
     const focusedNode = treeStructure.getNode(focusedNodeId);
     if (!focusedNode) return false;
@@ -167,7 +167,7 @@ export function createFocusService<TItem extends DataGridTreeItem>(
 
   function handleEnter() {
     const { treeStructure, focusedNodeId } = getNavigationContext();
-    if (!focusedNodeId) return false;
+    if (focusedNodeId === null) return false;
 
     const focusedNode = treeStructure.getNode(focusedNodeId);
     if (!focusedNode) return false;
