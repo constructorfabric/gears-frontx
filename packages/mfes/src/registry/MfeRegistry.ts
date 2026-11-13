@@ -63,11 +63,11 @@ export abstract class MfeRegistry {
    * `registerDomain` is synchronous; the `init` lifecycle is fired
    * fire-and-forget after handler registration completes.
    *
-   * @param declaration - Domain to register (GTS-validated declaration).
+   * @param declaration - Domain to register (validated by the registry's type system).
    * @param factory - Concrete `ExtensionDomainImplementationFactory` subclass
    *   whose `build(ctx)` is called synchronously by the registry to construct
    *   the domain implementation and register per-action-type handlers.
-   * @throws {Error} if GTS validation fails (from `typeSystem.register`)
+   * @throws {Error} if the registry's type system rejects the declaration (from `typeSystem.register`)
    * @throws {UnsupportedLifecycleStageError} if lifecycle hooks reference unsupported stages
    * @throws {Error} on cross-validation failure (strategy/action matrix or handler coverage)
    */
@@ -116,13 +116,13 @@ export abstract class MfeRegistry {
 
   /**
    * Broadcast a shared property value to all registered domains that declare the property.
-   * The value is validated against the property's GTS-derived schema before propagation.
+   * The value is validated against the property's schema in the registry's type system before propagation.
    * Domains that do not include propertyId in their sharedProperties array are not updated.
    * If no registered domains declare the property, this is a silent no-op.
    *
-   * @param propertyId - Type ID of the shared property (e.g. FRONTX_SHARED_PROPERTY_THEME)
+   * @param propertyId - Type ID of the shared property, as registered with the registry's type system
    * @param value - New property value
-   * @throws if GTS validation fails — no domain receives the value in that case
+   * @throws if the registry's type system rejects the value — no domain receives the value in that case
    */
   abstract updateSharedProperty(propertyId: string, value: unknown): void;
 

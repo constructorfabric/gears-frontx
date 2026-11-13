@@ -38,7 +38,7 @@ Route Ownership Signal resolves, for each domain, every URL entry whose own doma
 ## Considered Options
 
 * **Occupant as a structural parameter contract, adapted by the router** — the routing core resolves against `Occupant`: a structural type carrying a stable identity plus an opaque parameter bag, with no knowledge of `mfes`'s `Extension` shape, passed as a plain argument at each resolution call rather than injected; the FrontX router maps the ids and routes the runtime registers with it into that structural shape.
-* **Direct import of the concrete extension type** — the routing core imports `@gears-frontx/mfes` and resolves directly against `Extension`/`ScreenExtension`, skipping an adapter layer.
+* **Direct import of the concrete extension type** — the routing core imports `@gears-frontx/mfes` and resolves directly against the runtime's `Extension` type and its declared `route`, skipping an adapter layer.
 
 ## Decision Outcome
 
@@ -79,7 +79,7 @@ The routing core declares `Occupant` as a stable identity plus an opaque paramet
 
 ### Direct import of the concrete extension type
 
-The routing core imports `@gears-frontx/mfes` and resolves against `Extension`/`ScreenExtension` directly, with no intermediate abstraction.
+The routing core imports `@gears-frontx/mfes` and resolves against the runtime's `Extension` type and its declared `route` directly, with no intermediate abstraction.
 
 * Good, because there is one fewer layer between a declared route owner and the code that resolves it, and no separate mapping to keep in sync.
 * Bad, because it adds an intra-ecosystem edge this package's own NFR (`cpt-frontx-routing-nfr-standalone`) forbids, breaking a property the boundary guards check.

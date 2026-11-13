@@ -28,8 +28,6 @@ export type {
   LifecycleHook,
   ExtensionDomain,
   Extension,
-  ScreenExtension,
-  ExtensionPresentation,
   MfeEntry,
   SharedProperty,
   LoadExtPayload,
