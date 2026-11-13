@@ -40,8 +40,9 @@ import lifecycleDestroyedInstance from './frontx.mfes/instances/lifecycle/destro
  * Load all core MFE schema JSON files.
  * Returns 13 schemas: 8 core + 2 MF-specific + 3 extension action schemas.
  *
- * Application-specific derived schemas (theme, language, extension_screen) are
- * registered at the application layer via @gears-frontx/framework.
+ * Application-specific derived schemas (e.g. theme, language, extension_screen)
+ * are not part of this set; the application registers them with its own type
+ * system instance.
  *
  * @returns Array of JSON schemas for core MFE types
  */
