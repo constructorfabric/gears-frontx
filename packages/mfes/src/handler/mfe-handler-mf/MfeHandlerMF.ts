@@ -1410,12 +1410,24 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-unit-fields
     const resolveAssetUrl = (location: string): string =>
       SharedAssetUrlResolver.resolve(location, assetBase, entryId);
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-reachable-units
+    // The entry's list document opens the critical path to the extension's
+    // mount: it is requested with high priority, so the lists of every
+    // extension loading at startup go out together and first. The items it
+    // names keep the default priority.
+    const listDocumentUrl = resolveAssetUrl(entryListRef.location);
     const loader = new SharedDepListLoader(
-      (url: string) => this.fetchSourceText(url, ledger),
+      (url: string) =>
+        this.fetchSourceText(
+          url,
+          ledger,
+          url === listDocumentUrl ? 'high' : undefined
+        ),
       entryId,
       this.sharedDepTextCache,
       ledger
     );
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-reachable-units
     const ctx = loader.createContext();
     const listDocBytesBefore = loader.bytesFetched;
     const list = await loader.fetchListDocument(entryListRef, resolveAssetUrl);
@@ -2589,11 +2601,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 
   /**
    * Fetch the source text of a chunk. Uses an in-memory cache so each URL
-   * is fetched at most once across all loads.
+   * is fetched at most once across all loads. `priority` is the request's
+   * fetch priority; absent leaves the browser's default.
    */
   private fetchSourceText(
     absoluteChunkUrl: string,
-    ledger?: AttemptSourceTextLedger
+    ledger?: AttemptSourceTextLedger,
+    priority?: 'high'
   ): Promise<string> {
     const cached = this.sourceTextCache.get(absoluteChunkUrl);
     if (cached !== undefined) {
@@ -2603,7 +2617,10 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       return cached;
     }
 
-    const fetchPromise = fetch(absoluteChunkUrl)
+    const fetchPromise = (priority === undefined
+      ? fetch(absoluteChunkUrl)
+      : fetch(absoluteChunkUrl, { priority })
+    )
       .then((response) => {
         if (!response.ok) {
           throw new MfeLoadError(
