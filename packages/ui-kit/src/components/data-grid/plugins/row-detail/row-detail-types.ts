@@ -11,7 +11,7 @@ export type DataGridRenderDetail<TItem extends DataGridItem = DataGridItem> = (
   item: TItem,
 ) => ReactNode;
 
-/** Names one row's toggle and its detail region, given the row's item. */
+/** Names one row's toggle and its detail group, given the row's item. */
 export type DataGridToggleLabel<TItem extends DataGridItem = DataGridItem> = (item: TItem) => string;
 
 export interface DataGridRowDetailPluginProps<TItem extends DataGridItem = DataGridItem>
@@ -23,7 +23,7 @@ export interface DataGridRowDetailPluginProps<TItem extends DataGridItem = DataG
    */
   render: DataGridRenderDetail<TItem>;
   /**
-   * Names the toggle and the detail region of each row, over the `rowDetail.toggle` message. Keep
+   * Names the toggle and the detail group of each row, over the `rowDetail.toggle` message. Keep
    * its identity stable, like `render`.
    */
   toggleLabel?: DataGridToggleLabel<TItem>;
@@ -40,8 +40,9 @@ export interface DataGridRowDetailPluginApi<TItem extends DataGridItem = DataGri
   /** The toggle name of one row: `toggleLabel(item)` when given, the message otherwise. */
   useName: (item: TItem) => string;
   /**
-   * The DOM id of the record's detail region, per plugin instance, so two grids never name the
-   * same region and a record id that is odd in an id cannot break the reference.
+   * The DOM id of the record's detail group, per plugin instance and per id type, so two grids,
+   * or a record 1 and a record "1", never name the same element, and a record id that is odd in an
+   * id cannot break the reference.
    */
   regionId: (itemId: DataGridItemId) => string;
 }

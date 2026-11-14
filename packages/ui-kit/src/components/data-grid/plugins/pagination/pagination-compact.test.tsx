@@ -1,5 +1,4 @@
-import { screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { render } from '../../../../__test-utils__/render-with-user';
@@ -60,19 +59,6 @@ describe('DataGridPaginationPlugin -- compact', () => {
     localStorage.clear();
   });
 
-  it('keeps the default pager on page numbers and the full page text', async () => {
-    renderGrid('pgc_default', createLoad());
-
-    await screen.findByText('Item 1');
-
-    expect(screen.getByText(messages.pagination.pageInfo(1, 3, TOTAL))).toBeInTheDocument();
-    expect(pager()).not.toHaveAttribute('aria-live');
-    expect(screen.getByRole('button', { name: messages.pagination.goToPage(2) })).toBeInTheDocument();
-    const previous = screen.getByRole('button', { name: messages.pagination.previousPage });
-    expect(previous).toBeDisabled();
-    expect(previous).toHaveAttribute('disabled');
-  });
-
   it('swaps the page text for the compact one and drops the numbered buttons', async () => {
     renderGrid('pgc_compact', createLoad(), { compact: true });
 
@@ -107,14 +93,23 @@ describe('DataGridPaginationPlugin -- compact', () => {
     expect(screen.getByRole('button', { name: messages.pagination.goToPage(2) })).toBeInTheDocument();
   });
 
-  it('turns the pager into one non-wrapping line that clips the text instead of spilling', async () => {
-    renderGrid('pgc_css', createLoad(), { compact: true });
-
+  it('puts the compact style on the compact pager only', async () => {
+    const load = createLoad();
+    const view = renderGrid('pgc_css', load);
     await screen.findByText('Item 1');
 
     // The rules live in pager.module.css and are read at the source level in
-    // pager.module.css.test.ts; here the wiring is what a render can see: the compact pager
-    // carries the extra class the rules hang off.
+    // pager.module.css.test.ts; here the wiring is what a render can see: the class the rules
+    // hang off, on the compact pager and not on the default one.
+    expect(pager().className).not.toContain('compact');
+
+    view.rerender(
+      <DataGrid name="pgc_css" load={load} columns={columns} persistent="memory">
+        <DataGridPaginationPlugin compact />
+      </DataGrid>,
+    );
+    await screen.findByText(messages.pagination.pageInfoCompact(1, 3));
+
     expect(pager().className).toContain('compact');
   });
 
@@ -139,33 +134,44 @@ describe('DataGridPaginationPlugin -- compact', () => {
   });
 
   it('keeps Previous and Next focusable while disabled in the compact pager', async () => {
-    renderGrid('pgc_focus', createLoad(), { compact: true });
+    const { user } = renderGrid('pgc_focus', createLoad(), { compact: true });
 
     await screen.findByText('Item 1');
 
     const previous = screen.getByRole('button', { name: messages.pagination.previousPage });
     expect(previous).toHaveAttribute('aria-disabled', 'true');
     expect(previous).not.toHaveAttribute('disabled');
-    expect(previous).not.toBeDisabled();
 
-    const next = screen.getByRole('button', { name: messages.pagination.nextPage });
-    // Enabled here: the primitive reports the state through the attribute either way.
-    expect(next.getAttribute('aria-disabled')).not.toBe('true');
-    await goToLastPage(next);
-    expect(screen.getByRole('button', { name: messages.pagination.nextPage })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    await goToLastPage(user);
+
+    await waitFor(() => {
+      const next = screen.getByRole('button', { name: messages.pagination.nextPage });
+      expect(next).toHaveAttribute('aria-disabled', 'true');
+      expect(next).not.toHaveAttribute('disabled');
+      expect(next).toHaveFocus();
+    });
+  });
+
+  it('leaves the page where it is on a press of the disabled Previous', async () => {
+    const load = createLoad();
+    const { user } = renderGrid('pgc_disabled_press', load, { compact: true });
+
+    await screen.findByText('Item 1');
+    const loads = load.mock.calls.length;
+
+    await user.click(screen.getByRole('button', { name: messages.pagination.previousPage }));
+
+    expect(screen.getByText(messages.pagination.pageInfoCompact(1, 3))).toBeInTheDocument();
+    expect(screen.getByText('Item 1')).toBeInTheDocument();
+    expect(load).toHaveBeenCalledTimes(loads);
   });
 });
 
-// Walks to the last page by pressing Next until it reports disabled, the way a keyboard user pages.
-async function goToLastPage(next: HTMLElement) {
-  const user = userEvent.setup();
-  for (let i = 0; i < 5; i += 1) {
-    if (next.getAttribute('aria-disabled') === 'true') {
-      return;
-    }
-    await user.click(next);
+// Walks to the last page by pressing Next, the way a keyboard user pages, and fails at once when
+// the walk does not get there.
+async function goToLastPage(user: ReturnType<typeof render>['user']) {
+  for (let page = 2; page <= 3; page += 1) {
+    await user.click(screen.getByRole('button', { name: messages.pagination.nextPage }));
+    await screen.findByText(messages.pagination.pageInfoCompact(page, 3));
   }
 }

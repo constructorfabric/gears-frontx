@@ -11,6 +11,7 @@ import type { DataGridItem } from '../../data-grid-types.js';
 import { useDataGridMessages } from '../../services/core/data-grid-messages-context';
 import { createDataGridPlugin } from '../../services/plugins/plugins-helpers';
 import type { DataGridItemId } from '../../services/storage/storage-types.js';
+import { DataGridRowDetailHeader } from './components/data-grid-row-detail-header';
 import { DataGridRowDetailRow } from './components/data-grid-row-detail-row';
 import { DataGridRowDetailToggle } from './components/data-grid-row-detail-toggle';
 import type {
@@ -42,7 +43,7 @@ const DataGridRowDetailPluginRaw = createDataGridPlugin<
   }));
 
   // Per instance, so two grids (or two plugins on one grid) never point a toggle at the other's
-  // region, and an id whose characters are odd in a DOM id cannot break the reference.
+  // detail, and an id whose characters are odd in a DOM id cannot break the reference.
   const idPrefix = `data-grid-row-detail-${Math.random().toString(36).slice(2)}`;
 
   context.registerExtraColumn({
@@ -50,6 +51,7 @@ const DataGridRowDetailPluginRaw = createDataGridPlugin<
     position: 'start',
     order: rowDetailColumnOrder,
     width: rowDetailColumnWidth,
+    header: DataGridRowDetailHeader,
     body: DataGridRowDetailToggle,
     // Toggling the detail must never also fire the row-click callback. Marking the whole cell
     // (not just the toggle) covers the button and the cell padding, a press on either included.
@@ -92,7 +94,9 @@ const DataGridRowDetailPluginRaw = createDataGridPlugin<
   }
 
   function regionId(itemId: DataGridItemId): string {
-    return `${idPrefix}-${encodeURIComponent(String(itemId))}`;
+    // The type is part of the id: the open set tells 1 from "1", so their details are two
+    // elements, and two elements cannot share an id.
+    return `${idPrefix}-${typeof itemId === 'number' ? 'n' : 's'}-${encodeURIComponent(String(itemId))}`;
   }
 
   function onPropsChange(props: DataGridRowDetailPluginProps) {

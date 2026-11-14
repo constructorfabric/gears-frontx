@@ -103,6 +103,8 @@ export const messages = {
     // The toggle has no visible text either: the name says what the press offers and
     // `aria-expanded` says whether the row's detail is open.
     toggle: 'Details',
+    // The name of the toggle column's header, which shows no text of its own.
+    column: 'Details',
   },
 };
 

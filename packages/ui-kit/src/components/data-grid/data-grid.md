@@ -462,12 +462,17 @@ With `compact` the pager keeps to one line that never wraps: the page buttons
 and the ellipses are gone, the page text drops the item count and reads
 "Page 2 of 3", and Previous and Next are the only way to move. The selector and
 the text stay where they were. The line takes `flex-wrap: nowrap`, so the parts
-no longer drop to a second line; when the container is narrower than the parts,
-the text clips with an ellipsis instead of spilling past the grid, and a
-container narrower than the selector can clip the selector too. The compact
-form suits grids that already sit in a tight column, where the default pager's
-wrapped second line costs more vertical space than the clipped text does.
-Changing the prop takes hold on the next render of the plugin.
+no longer drop to a second line. The text is the only part that gives way: when
+the container is narrower than the parts, it clips with an ellipsis, while the
+selector and the Previous and Next buttons keep their full width and their one
+line. Below the combined width of the selector and the two buttons the line
+overflows the grid, so a very narrow grid should pass a single `limits` value,
+which draws no selector. The compact form suits grids that already sit in a
+tight column, where the default pager's wrapped second line costs more vertical
+space than the clipped text does. Changing the prop to `true` or `false` takes
+hold on the next render of the plugin; removing the prop keeps the last value,
+the same as the other config props, so pass `compact={false}` to turn the
+compact form off.
 
 ### `DataGridTextSearchPlugin`
 
@@ -1196,11 +1201,12 @@ drag and drop as they are.
 ```tsx
 import { DataGridRowDetailPlugin } from '@gears-frontx/ui-kit/data-grid/row-detail';
 
+// Module-level, so their identity holds between renders and the open details do not re-render.
+const renderTaskNotes = (task: Task) => <TaskNotes id={task.id} />;
+const taskNotesLabel = (task: Task) => `Notes for ${task.name}`;
+
 <DataGrid<Task> name="tasks" load={loadTasks} columns={columns}>
-  <DataGridRowDetailPlugin<Task>
-    render={(task) => <TaskNotes id={task.id} />}
-    toggleLabel={(task) => `Notes for ${task.name}`}
-  />
+  <DataGridRowDetailPlugin<Task> render={renderTaskNotes} toggleLabel={taskNotesLabel} />
 </DataGrid>;
 ```
 
@@ -1208,19 +1214,26 @@ Each toggle acts on its own row, and opening one leaves the other open details w
 The detail row spans every column the grid draws, the data columns and the extra ones at both
 edges, and the span moves when the table configuration panel hides a column or another plugin
 adds one. It takes the row hover tint off itself, so an open detail never reads as a hovered
-row. The open set is kept in memory by record id: a reload that brings the same ids back shows
-them open again, and nothing survives a browser reload. While any row is dragged the open
-details are hidden, so a drop always lands on a record row; they come back when the drag ends.
+row. Its text wraps inside the row, and content wider than the row scrolls inside the detail.
+The open set is kept in memory by record id: a reload that brings the same ids back shows them
+open again, and nothing survives a browser reload. The set is not pruned when records leave the
+grid, so a record that comes back later with the same id, after a filter, a page change or a
+server-side change, shows its detail open again. While any row is dragged the open details stay
+mounted but hidden, so a drop always lands on a record row and what a detail holds (a draft, a
+loaded request) survives the drag; they show again when the drag ends.
 
 The toggle is a button named by `toggleLabel`, or by the `rowDetail.toggle` message without it
-(see `messages`), and carries `aria-expanded`; the open detail is a region with the same name,
-and the toggle points at it with `aria-controls` while it is open. Space or Enter on the toggle
-opens and closes the detail like a click does, and neither fires the row click.
+(see `messages`), and carries `aria-expanded`; the open detail is a `group` with the same name,
+not a landmark, so several open details do not fill the landmark list, and the toggle points at
+it with `aria-controls` while it is open. Space or Enter on the toggle opens and closes the
+detail like a click does, and neither fires the row click. The toggle column's header shows no
+text but is named by the `rowDetail.column` message ("Details"), so the toggle cells sit under a
+named column.
 
 The plugin's API (`getPlugin<DataGridRowDetailPluginApi<TItem>>('rowDetail')`) has `useIsOpen(id)`
 and `toggle(id)` for the open state, `useRender()` and `useName(item)` for the configured render
-and label, and `regionId(id)`, the DOM id of a record's detail region, so your own controls can
-point at the same region.
+and label, and `regionId(id)`, the DOM id of a record's detail group, so your own controls can
+point at the same group.
 
 ## Custom plugins
 

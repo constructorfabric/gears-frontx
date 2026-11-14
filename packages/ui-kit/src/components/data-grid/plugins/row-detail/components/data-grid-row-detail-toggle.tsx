@@ -13,7 +13,7 @@ export function DataGridRowDetailToggle<TItem extends DataGridItem>() {
   const isOpen = rowDetail.useIsOpen(record.id);
 
   // The name says what the press offers and `aria-expanded` says whether the row's detail is open;
-  // the same name labels the region the press reveals.
+  // the same name labels the group the press reveals.
   const name = rowDetail.useName(record.item);
 
   return (
@@ -29,7 +29,7 @@ export function DataGridRowDetailToggle<TItem extends DataGridItem>() {
         }
         aria-label={name}
         aria-expanded={isOpen}
-        // Closed means nowhere to point: the region exists only while the detail is open.
+        // Closed means nowhere to point: the group exists only while the detail is open.
         aria-controls={isOpen ? rowDetail.regionId(record.id) : undefined}
         onClick={() => rowDetail.toggle(record.id)}
       />

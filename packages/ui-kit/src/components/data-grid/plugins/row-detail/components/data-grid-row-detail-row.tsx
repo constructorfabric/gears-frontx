@@ -50,18 +50,22 @@ export function DataGridRowDetailRow<TItem extends DataGridItem>() {
   const startColumns = tableService.useExtraColumns('start');
   const endColumns = tableService.useExtraColumns('end');
 
-  if (!isOpen || !render || isDragging) {
+  if (!isOpen || !render) {
     return null;
   }
 
   const colSpan = visibleColumns.length + startColumns.length + endColumns.length;
 
+  // A drag hides the open details rather than unmounting them, so a drop always lands on a record
+  // row while what a detail holds (a draft, a loaded request) survives the drag, and the toggle's
+  // `aria-controls` still points at an element that exists. `hidden` takes the row out of layout
+  // and hit testing alike.
   return (
-    <TableRow className={styles.detailRow}>
+    <TableRow className={styles.detailRow} hidden={isDragging}>
       <TableCell colSpan={colSpan}>
         <div
           id={rowDetail.regionId(record.id)}
-          role="region"
+          role="group"
           aria-label={name}
           className={styles.detailContent}
         >
