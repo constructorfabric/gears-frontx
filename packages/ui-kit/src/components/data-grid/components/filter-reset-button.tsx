@@ -1,6 +1,6 @@
 import { RotateCwIcon } from 'lucide-react';
 import { Button } from '../../button/public.js';
-import { messages } from '../messages';
+import { useDataGridMessages } from '../services/core/data-grid-messages-context';
 import styles from './filter-reset-button.module.css';
 
 interface FilterResetButtonProps {
@@ -9,6 +9,8 @@ interface FilterResetButtonProps {
 }
 
 export function FilterResetButton({ disabled, onClick }: FilterResetButtonProps) {
+  const messages = useDataGridMessages();
+
   return (
     <>
       <hr className={styles.divider} />

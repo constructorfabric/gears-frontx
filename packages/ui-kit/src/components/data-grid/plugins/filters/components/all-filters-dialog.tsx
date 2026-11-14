@@ -1,8 +1,8 @@
 import { Accordion } from '../../../../accordion/public.js';
 import { Button } from '../../../../button/public.js';
 import { SheetFooter, SheetHeader, SheetTitle } from '../../../../sheet/public.js';
-import { messages } from '../../../messages';
 import { useDataGrid } from '../../../services/core/data-grid-context';
+import { useDataGridMessages } from '../../../services/core/data-grid-messages-context';
 import type { DataGridFiltersPluginApi } from '../filters-types';
 
 interface AllFiltersDialogProps {
@@ -12,6 +12,7 @@ interface AllFiltersDialogProps {
 export function AllFiltersDialog({ onApply }: AllFiltersDialogProps) {
   const grid = useDataGrid();
   const filtersApi = grid.getPlugin<DataGridFiltersPluginApi>('filters')!;
+  const messages = useDataGridMessages();
 
   const entities = filtersApi.useFilterEntities();
 

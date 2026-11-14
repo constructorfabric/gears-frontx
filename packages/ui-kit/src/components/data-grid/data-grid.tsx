@@ -4,7 +4,7 @@
 // three) - keep them in sync if this ever changes.
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 
 import { DataGridContent } from './components/data-grid-content';
 import { DataGridSpinner } from './components/data-grid-spinner';
@@ -12,6 +12,10 @@ import { createDataGrid } from './create-data-grid';
 import type { DataGridItem, DataGridProps } from './data-grid-types';
 import { DataGridProvider } from './services/core/data-grid-context';
 import { DataGridLabelProvider } from './services/core/data-grid-label-context';
+import {
+  DataGridMessagesProvider,
+  resolveDataGridMessages,
+} from './services/core/data-grid-messages-context';
 import { DataGridPortalContainerProvider } from './services/core/data-grid-portal-container-context';
 import { internalContextKey } from './services/internal/internal-helpers';
 import { useLatest } from './utils/use-latest';
@@ -31,6 +35,7 @@ export function DataGrid<TItem extends DataGridItem = DataGridItem>({
   implicitFilterKeys,
   label,
   portalContainer,
+  messages: messagesOverride,
 }: DataGridProps<TItem>) {
   const loadRef = useLatest(load);
   const [grid] = useState(() =>
@@ -70,6 +75,10 @@ export function DataGrid<TItem extends DataGridItem = DataGridItem>({
     );
   }, [grid, implicitFilterKeys]);
 
+  // Merged once per prop identity: an omitted prop resolves to the shared defaults object, so
+  // the context value stays reference-equal across renders and notifies nobody.
+  const messages = useMemo(() => resolveDataGridMessages(messagesOverride), [messagesOverride]);
+
   return (
     <DataGridProvider value={grid}>
       {/* A blank label is not a name: passed through, it would name the pager " pagination" and
@@ -79,10 +88,12 @@ export function DataGrid<TItem extends DataGridItem = DataGridItem>({
        * them without its padding. */}
       <DataGridLabelProvider value={label?.trim() || undefined}>
         <DataGridPortalContainerProvider value={portalContainer}>
-          {children}
-          <Suspense fallback={<DataGridSpinner />}>
-            <DataGridContent />
-          </Suspense>
+          <DataGridMessagesProvider value={messages}>
+            {children}
+            <Suspense fallback={<DataGridSpinner />}>
+              <DataGridContent />
+            </Suspense>
+          </DataGridMessagesProvider>
         </DataGridPortalContainerProvider>
       </DataGridLabelProvider>
     </DataGridProvider>

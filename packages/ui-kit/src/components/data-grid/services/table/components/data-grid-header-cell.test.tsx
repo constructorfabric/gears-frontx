@@ -124,6 +124,12 @@ function findHeader(scope: HTMLElement, label: string) {
   return cells.find((cell) => cell.textContent?.includes(label));
 }
 
+// The order plugin renders two buttons named after the column, the label and the direction icon,
+// so the name alone is ambiguous; the label is the one inside the header cell.
+function sortLabel(header: HTMLElement) {
+  return within(header).getAllByRole('button').find((button) => button.closest('th') === header)!;
+}
+
 describe('DataGridHeaderCell — overflow', () => {
 
   it('defaults data-overflow to "nowrap" when headerOverflow is omitted, truncating with a title fallback', async () => {
@@ -563,5 +569,134 @@ describe('DataGridHeaderCell — min-content sizing measurement', () => {
     // directly, and DataGridHeaderCell never attaches an observer for it.
     fireResizeOn(getContentRow(nameHeader), 999);
     expect(nameHeader.style.width).toBe('100px');
+  });
+});
+
+describe('DataGridHeaderCell aria-sort', () => {
+  // The order plugin persists its order per grid name, so a name from an earlier run of this
+  // block would seed an order into a grid that declares none.
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  it('leaves every header without aria-sort on a grid with no order plugin', async () => {
+    const columns: DataGridTableColumn<TestItem>[] = [
+      { id: 'name', label: 'Name' },
+      { id: 'email', label: 'Email Address' },
+    ];
+    render(<DataGrid name="aria_sort_no_plugin_grid" load={loadData} columns={columns} />);
+
+    const table = await screen.findByRole('table');
+    for (const header of within(table).getAllByRole('columnheader')) {
+      expect(header).not.toHaveAttribute('aria-sort');
+    }
+  });
+
+  it('marks a column excluded from sorting without aria-sort and the rest with aria-sort="none"', async () => {
+    const columns: DataGridTableColumn<TestItem>[] = [
+      { id: 'name', label: 'Name' },
+      { id: 'email', label: 'Email Address' },
+    ];
+    render(
+      <DataGrid name="aria_sort_excluded_grid" load={loadData} columns={columns}>
+        <DataGridOrderPlugin excludedColumns={['email']} />
+      </DataGrid>,
+    );
+
+    const table = await screen.findByRole('table');
+    expect(findHeader(table, 'Name')).toHaveAttribute('aria-sort', 'none');
+    expect(findHeader(table, 'Email Address')).not.toHaveAttribute('aria-sort');
+  });
+
+  it('follows the sort cycle: descending on the first press, ascending on the second, none on the third', async () => {
+    const columns: DataGridTableColumn<TestItem>[] = [
+      { id: 'name', label: 'Name' },
+      { id: 'email', label: 'Email Address' },
+    ];
+    const { user } = render(
+      <DataGrid name="aria_sort_cycle_grid" load={loadData} columns={columns}>
+        <DataGridOrderPlugin />
+      </DataGrid>,
+    );
+
+    const table = await screen.findByRole('table');
+    const nameHeader = findHeader(table, 'Name')!;
+    const emailHeader = findHeader(table, 'Email Address')!;
+    expect(nameHeader).toHaveAttribute('aria-sort', 'none');
+    expect(emailHeader).toHaveAttribute('aria-sort', 'none');
+
+    // The header's sort control sorts descending first.
+    await user.click(sortLabel(nameHeader));
+    expect(nameHeader).toHaveAttribute('aria-sort', 'descending');
+    expect(emailHeader).toHaveAttribute('aria-sort', 'none');
+
+    await user.click(sortLabel(nameHeader));
+    expect(nameHeader).toHaveAttribute('aria-sort', 'ascending');
+    expect(emailHeader).toHaveAttribute('aria-sort', 'none');
+
+    // The third press clears the sort, so the header reads as unsorted again.
+    await user.click(sortLabel(nameHeader));
+    expect(nameHeader).toHaveAttribute('aria-sort', 'none');
+    expect(emailHeader).toHaveAttribute('aria-sort', 'none');
+  });
+
+  it('keeps one sorted header at a time when another column takes the sort', async () => {
+    const columns: DataGridTableColumn<TestItem>[] = [
+      { id: 'name', label: 'Name' },
+      { id: 'email', label: 'Email Address' },
+    ];
+    const { user } = render(
+      <DataGrid name="aria_sort_single_grid" load={loadData} columns={columns}>
+        <DataGridOrderPlugin />
+      </DataGrid>,
+    );
+
+    const table = await screen.findByRole('table');
+    const nameHeader = findHeader(table, 'Name')!;
+    const emailHeader = findHeader(table, 'Email Address')!;
+
+    await user.click(sortLabel(nameHeader));
+    expect(nameHeader).toHaveAttribute('aria-sort', 'descending');
+
+    await user.click(sortLabel(emailHeader));
+
+    expect(emailHeader).toHaveAttribute('aria-sort', 'descending');
+    expect(nameHeader).toHaveAttribute('aria-sort', 'none');
+  });
+
+  it('carries the aria-sort of a default order into the sorted column', async () => {
+    const columns: DataGridTableColumn<TestItem>[] = [
+      { id: 'name', label: 'Name' },
+      { id: 'email', label: 'Email Address' },
+    ];
+    await renderGridWithOrderPlugin(columns, 'aria_sort_default_order_grid');
+
+    const table = await screen.findByRole('table');
+    expect(findHeader(table, 'Name')).toHaveAttribute('aria-sort', 'ascending');
+    expect(findHeader(table, 'Email Address')).toHaveAttribute('aria-sort', 'none');
+  });
+
+  it('starts announcing the sort when the order plugin mounts after the first render', async () => {
+    const columns: DataGridTableColumn<TestItem>[] = [
+      { id: 'name', label: 'Name' },
+      { id: 'email', label: 'Email Address' },
+    ];
+    function Grid({ sortable }: { sortable: boolean }) {
+      return (
+        <DataGrid name="aria_sort_late_plugin_grid" load={loadData} columns={columns}>
+          {sortable ? <DataGridOrderPlugin /> : null}
+        </DataGrid>
+      );
+    }
+    const { rerender } = render(<Grid sortable={false} />);
+
+    const table = await screen.findByRole('table');
+    expect(findHeader(table, 'Name')).not.toHaveAttribute('aria-sort');
+
+    rerender(<Grid sortable />);
+
+    expect(await screen.findByRole('table')).toBeInTheDocument();
+    expect(findHeader(screen.getByRole('table'), 'Name')).toHaveAttribute('aria-sort', 'none');
   });
 });

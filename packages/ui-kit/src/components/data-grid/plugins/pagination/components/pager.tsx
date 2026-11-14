@@ -11,7 +11,7 @@ import {
 } from '../../../../pagination/public.js';
 import { ToggleGroupItem } from '../../../../toggle-group/public.js';
 import { Segment } from '../../../components/segment';
-import { messages } from '../../../messages';
+import { useDataGridMessages } from '../../../services/core/data-grid-messages-context';
 import { usePaginationItems } from '../services/pagination-items';
 import styles from './pager.module.css';
 
@@ -50,6 +50,7 @@ export const Pager = memo(function Pager({
   onPageChange,
   onLimitChange,
 }: PagerProps) {
+  const messages = useDataGridMessages();
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const limitOptions = limits.length > 0 ? limits : [limit];
 
@@ -70,12 +71,9 @@ export const Pager = memo(function Pager({
       return;
     }
 
-    // A new page size restarts at the first page, which the owner learns about before the new
-    // limit, as two separate changes.
-    if (page !== 1) {
-      onPageChange(1);
-    }
-
+    // Only the limit is announced here: a page size change starts at the first page, and the
+    // owner's `onLimitChange` is the one change that carries both (the pagination plugin's
+    // `setLimit` resets the page itself), so announcing the page first would load twice.
     onLimitChange(newLimit);
   }
 

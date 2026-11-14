@@ -168,4 +168,21 @@ describe('DataGridTextSearchPlugin', () => {
     expect(localStorage.getItem('dataGrid:ts_reset:textSearch')).toBeNull();
     expect(searchOf(load)).toBeUndefined();
   });
+
+  it('names the box from the strings, since it has no visible label', async () => {
+    const load = createLoad();
+    renderGrid('ts_label_default', load);
+
+    expect(
+      await screen.findByRole('searchbox', { name: messages.textSearch.label }),
+    ).toBeInTheDocument();
+  });
+
+  it('names the box from the label prop when one is given', async () => {
+    const load = createLoad();
+    renderGrid('ts_label_prop', load, { label: 'Filter users' });
+
+    const box = await screen.findByRole('searchbox', { name: 'Filter users' });
+    expect(box).not.toHaveAccessibleName(messages.textSearch.label);
+  });
 });

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { cx } from 'class-variance-authority';
 import type { DataGridItem } from '../../../data-grid-types';
 import { resolveColumnStyle } from '../resolve-column-style';
+import { useColumnAriaSort } from '../column-sort-state';
 import { useTableService } from '../table-context';
 import { resolveLabel } from '../table-helpers';
 import { measureMinContentWidth } from '../table-min-content-width';
@@ -24,6 +25,10 @@ export function DataGridHeaderCell<TItem extends DataGridItem>({
 }: DataGridHeaderCellProps<TItem>) {
   const tableService = useTableService<TItem>();
   const contentRowRef = useRef<HTMLSpanElement>(null);
+  // The grid's own sorting, as the assistive tech reads it: the sorted column announces its
+  // direction, the other sortable ones announce that they are not sorted, and a column with no
+  // sort control announces nothing.
+  const ariaSort = useColumnAriaSort(column.id);
 
   const LabelComponent = tableService.useComponent<{ column: DataGridTableColumn<TItem> }>('header-cell-label');
   const tableLayout = tableService.useTableLayout();
@@ -115,6 +120,7 @@ export function DataGridHeaderCell<TItem extends DataGridItem>({
       style={{ ...headerStyle, ...contentVars }}
       rowspan={rowspan}
       overflow={cellOverflow}
+      ariaSort={ariaSort}
       // Same measurement rationale as `cellOverflow` above: `[data-capped] .contentRow` also
       // clamps to `max-inline-size: 100%`, which would re-clamp the measurement target to the
       // `<th>`'s current (possibly stale/narrow) width -- suppressing it here keeps the

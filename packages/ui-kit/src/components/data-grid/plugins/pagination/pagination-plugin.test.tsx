@@ -155,6 +155,23 @@ describe('DataGridPaginationPlugin', () => {
     expect(localStorage.getItem('dataGrid:pg_limit:pagination')).toBe('{"limit":24}');
   });
 
+  it('loads the data source once when the page size changes from a later page', async () => {
+    const load = createLoad();
+    const { user } = renderGrid('pg_limit_once', load, { limits: [12, 24, 48] });
+    await screen.findByText('Item 1');
+    await user.click(screen.getByRole('button', { name: messages.pagination.goToPage(3) }));
+    await screen.findByText('Item 25');
+
+    const loadsBefore = load.mock.calls.length;
+    await user.click(screen.getByRole('button', { name: '24' }));
+
+    // One change to the page size is one load: page 1 at the new size, not two loads on the
+    // separate page and limit changes.
+    expect(await screen.findByText(messages.pagination.pageInfo(1, 3, TOTAL))).toBeInTheDocument();
+    expect(load).toHaveBeenCalledTimes(loadsBefore + 1);
+    expect(lastPagination(load)).toEqual({ page: 1, limit: 24 });
+  });
+
   it('draws no page-size selector for a single size', async () => {
     const load = createLoad();
     renderGrid('pg_one_limit', load, { limits: [12] });

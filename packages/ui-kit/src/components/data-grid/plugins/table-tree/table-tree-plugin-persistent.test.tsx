@@ -82,9 +82,8 @@ describe('DataGridTableTreePlugin persistent expand state', () => {
     sessionStorage.clear();
   });
 
-  // The expand control is an icon-only button with no accessible name, so it is
-  // located through its row. These fixtures register no other per-row button; a
-  // plugin that adds one would need a name-based query instead.
+  // Every row's expand control carries the same name, so it is located through its
+  // row. These fixtures register no other per-row button.
   function getExpandButton(rowText: string) {
     const row = screen.getByText(rowText).closest('tr')!;
     return within(row).getByRole('button');

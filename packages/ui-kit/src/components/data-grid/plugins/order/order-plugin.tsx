@@ -9,6 +9,7 @@ import { isDeepEqual } from '../../utils/deep-equal';
 import { create } from 'zustand';
 import type { DataGridItem } from '../../data-grid-types';
 import { createDataGridPlugin } from '../../services/plugins/plugins-helpers';
+import type { ColumnSortSource } from '../../services/table/table-types';
 import type {
   LoadContextOrderItem,
   OrderDirection,
@@ -108,7 +109,9 @@ export const DataGridOrderPlugin = createDataGridPlugin<
       context.refresh({ resetFilters: false });
     }
 
-    const api: DataGridOrderPluginApi = {
+    // The header cells read `aria-sort` through the `ColumnSortSource` members, which stay off the
+    // public api type.
+    const api: DataGridOrderPluginApi & ColumnSortSource = {
       useOrder,
       useColumnId,
       useDirection,
@@ -120,6 +123,16 @@ export const DataGridOrderPlugin = createDataGridPlugin<
         return useConfigStore.getState().popover;
       },
       onPropsChange,
+      subscribeColumnSort(listener) {
+        const unsubscribeOrder = useOrderStore.subscribe(listener);
+        const unsubscribeConfig = useConfigStore.subscribe(listener);
+        return () => {
+          unsubscribeOrder();
+          unsubscribeConfig();
+        };
+      },
+      getColumnSortOrder: () => useOrderStore.getState().order,
+      getSortExcludedColumns: () => useConfigStore.getState().excludedColumns,
     };
 
     return api;

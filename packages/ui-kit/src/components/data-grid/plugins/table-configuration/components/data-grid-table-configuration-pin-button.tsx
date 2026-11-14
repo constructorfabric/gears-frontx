@@ -2,7 +2,7 @@ import { cx } from 'class-variance-authority';
 import { PinIcon } from 'lucide-react';
 
 import { Toggle } from '../../../../toggle/public.js';
-import { messages } from '../../../messages';
+import { useDataGridMessages } from '../../../services/core/data-grid-messages-context';
 import styles from './data-grid-table-configuration.module.css';
 
 interface DataGridTableConfigurationPinButtonProps {
@@ -14,6 +14,8 @@ export function DataGridTableConfigurationPinButton({
   sticky,
   onToggle,
 }: DataGridTableConfigurationPinButtonProps) {
+  const messages = useDataGridMessages();
+
   return (
     <div className={cx(styles.pinButton, sticky && styles.pinButtonVisible)}>
       <Toggle

@@ -233,7 +233,7 @@ const DataGridTableTreePluginRaw = createDataGridPlugin<
 
   function onLoadStore(instance: LoadInstance<DataGridItem>) {
     const { parentKey } = useConfigStore.getState();
-    const pageChanged = isPageChanged(instance.loadContext.pagination?.page);
+    const pageChanged = isPageChanged(instance.loadContext.pagination);
 
     if (instance.refresh || pageChanged) {
       context.clearSections();
@@ -297,11 +297,19 @@ const DataGridTableTreePluginRaw = createDataGridPlugin<
     return true;
   }
 
-  function isPageChanged(newPage?: number) {
+  // Whether this load shows a different page of the grid than the stored root
+  // section: another page number, another page size, or no root section yet (the
+  // very first load). The limit counts beside the page, or a page-size change
+  // would store its rows next to the previous size's and each row would appear
+  // twice.
+  function isPageChanged(pagination?: { page?: number; limit?: number }) {
     const sections = context.getSectionsByParentId(null);
-    return sections.length === 0
-      ? true
-      : (newPage ?? 1) !== (sections[0].loadContext.pagination?.page ?? 1);
+    if (sections.length === 0) {
+      return true;
+    }
+
+    const stored = sections[0].loadContext.pagination;
+    return (pagination?.page ?? 1) !== (stored?.page ?? 1) || pagination?.limit !== stored?.limit;
   }
 
   function isExpandable(record: DataGridRecord): boolean {

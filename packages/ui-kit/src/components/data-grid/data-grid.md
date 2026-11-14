@@ -290,6 +290,35 @@ sharing one still leave their landmarks indistinguishable. The label is a spoken
 (which identifies a grid's persisted state, and is not readable text), and it
 is never persisted.
 
+### `messages`
+
+Every user-facing string the grid renders - the empty state, the pager, the
+search box, the filter and selection banners, the order labels - lives in the
+grid's messages module, and every component reads it through the grid rather
+than importing the module. `messages` replaces entries of that object: give it
+the groups and entries to change, and everything else keeps its English default.
+A string entry takes a string; a function entry (like the pager's
+`pageInfo(page, totalPages, total)`) takes a function with the same signature.
+The object is merged group by group, so an entry you omit inside a group you
+mention keeps its default.
+
+```tsx
+<DataGrid
+  name="users"
+  load={loadUsers}
+  columns={columns}
+  messages={{
+    textSearch: { label: 'Suche' },
+    pagination: { pageInfo: (page, totalPages, total) => `Seite ${page} von ${totalPages}` },
+  }}
+/>
+```
+
+The type is derived from the English defaults (`DataGridMessagesOverride`,
+exported beside `DataGridMessages`), so an entry renamed or removed in the kit
+is a type error in the consumer. Like `columns`, pass a stable object: a new
+identity merges again and re-renders every string.
+
 ### `portalContainer`
 
 The popups the grid and its plugins open render in a portal: the filter
@@ -436,14 +465,15 @@ Draws a search box in `top-start` and contributes the query to the load as
 |------|------|---------|
 | `filterKey` | `string` | `'textSearch'` |
 | `placeholder` | `string` | `Search...` |
+| `label` | `string` | `Search`; the box's accessible name, since it has no visible label |
 | `fullWidth` | `boolean` | `false`; stretches across the free `top-start` space |
 
 Typing shows at once and reloads 300 ms after the user stops. The clear button
 cancels a pending reload, reloads immediately with no query, and keeps focus in
 the field. A refresh that resets filters empties the box. Its API
 (`getPlugin<DataGridTextSearchPluginApi>('textSearch')`) offers `useQuery`,
-`usePlaceholder`, `useFullWidth`, `setSearch` (immediate) and `updateSearch`
-(debounced).
+`usePlaceholder`, `useLabel`, `useFullWidth`, `setSearch` (immediate) and
+`updateSearch` (debounced).
 
 ### `DataGridOrderPlugin`
 
@@ -459,7 +489,8 @@ Header sorting plus an optional toolbar button; fills `DataGridLoadContext.order
 A header label is a button: the first click sorts descending, the second
 ascending, the third clears the sort (and keeps `defaultOrder` suppressed on
 later visits). The sorted column shows a direction icon that advances the same
-cycle. The toolbar button changes the column and the direction, and never clears.
+cycle. The header cells follow the same state as `aria-sort` (see Accessibility).
+The toolbar button changes the column and the direction, and never clears.
 The order is stored; one whose column is orderable nowhere (excluded and not
 offered) is withheld rather than deleted, so it returns if the column is offered
 again.
@@ -979,7 +1010,8 @@ box does not call a row click plugin's `click`. Nothing to configure.
 
 Shows hierarchical rows as a tree: a row that has children gets a toggle button in the first
 visible column, and its children appear under it, each level indented one step further. It
-replaces the `row` and `body-cell-content` renderers, so it takes the whole row.
+replaces the `row` and `body-cell-content` renderers, so it takes the whole row. The toggle is
+named "Expand row" or "Collapse row" and carries `aria-expanded` (see Accessibility).
 
 | Prop | Type | Notes |
 |------|------|-------|
@@ -1206,6 +1238,18 @@ export const StatusPlugin = createDataGridPlugin<DataGridItem, 'status', Record<
 | `load:success`, `load:error` | The load settled |
 | `refresh` | `refresh()` was called; the options say whether filters reset |
 
+The grid calls a hook's handlers in registration order. The list is copied at
+the call, so a handler may unsubscribe itself or register another handler while
+the hook runs without changing that run. How the calls run them:
+
+- `callHook(name, ...)` starts handlers one after another, each only after the
+  previous one settled, and resolves to their return values in registration
+  order.
+- `callHookParallel(name, ...)` starts them all in one synchronous pass, so a
+  handler that throws synchronously throws out of the call instead of rejecting
+  its promise.
+- `callHookSync(name, ...)` runs them synchronously and returns their results.
+
 ### Conventions
 
 - `registerSlot`, `registerTableSlot` and `registerExtraColumn` append: call them
@@ -1252,7 +1296,11 @@ columns' minimum content widths.
 ## Accessibility
 
 - The header label of an orderable column is a native `button` named "Change
-  sorting of '<column>' column"; Enter and Space sort. There is no `aria-sort`.
+  sorting of '<column>' column"; Enter and Space sort. Each header cell carries
+  `aria-sort`: `descending` while the grid sorts by that column descending,
+  `ascending` while ascending (the second press on the same column), `none` on
+  the sortable columns that are not sorted, and no attribute on a column excluded
+  from sorting or a grid with no order plugin.
 - The table's scroll container is a tab stop (it holds `tabIndex=0` so a keyboard
   can scroll it).
 - The pager is a `nav` named "Pagination"; the page buttons are named "Go to page
@@ -1283,21 +1331,24 @@ columns' minimum content widths.
 - Drag and drop is pointer-only: there is no keyboard way to move a row. The handle is a `div`
   with the label "Drag to reorder row" and no role, so it is not reached with Tab and a screen
   reader does not announce it as a control.
-- The table tree's toggle is a native `button` with no accessible name and no `aria-expanded`,
-  so a screen reader announces an unnamed button and not whether the row is open.
+- The table tree's toggle is a native `button` named "Expand row" while the row
+  is closed and "Collapse row" while it is open, with `aria-expanded` matching,
+  so a screen reader announces both the press the button offers and whether the
+  row is open.
 - The row select checkboxes, the select-all one included, have no accessible name. "Select all
   N" and "Clear selection" in the banner are buttons, and the banner is an `alert`, so it is
   announced when it appears.
-- Strings are English and live in one module; the kit has no i18n layer yet.
+- Every user-facing string is English by default and lives in one module; the
+  grid's `messages` prop replaces entries of it (see `messages`), so a consumer
+  can translate the grid without touching the kit.
 
 ## Known limitations
 
 - Data loading has no stale-response guard: `triggerLoad` neither aborts the load
   in flight nor ignores a late result, so when two loads overlap (two quick page
-  clicks, a page-size change, a refresh over a page change, two `refresh()` calls
-  in the same tick) the older result can replace the newer one. A `load` that
+  clicks, a refresh over a page change, two `refresh()` calls in the same tick)
+  the older result can replace the newer one. A `load` that
   ignores `signal` is not protected even by the abort `refresh()` sends. `refresh()` also defaults to `resetFilters: true`.
-- Changing the page size from a later page fires two loads.
 - `abort()` counts as the grid's own abort. Called during the first load, or during
   the refresh the first load waits on, it ends the first load with nothing loaded:
   the grid shows "No results found" and loads nothing more. A superseded
@@ -1307,7 +1358,7 @@ columns' minimum content widths.
 - A search still waiting out its debounce when the grid unmounts is flushed: its
   refresh runs after the grid is gone, and its load's `signal` is not aborted.
 - The loading overlay blocks the pointer only, not the keyboard.
-- No `aria-sort`; Previous and Next drop keyboard focus at the ends of the range.
+- Previous and Next drop keyboard focus at the ends of the range.
 - With the row click plugin, activating an item of a menu that a row action opens fires the row
   click, and fires it twice: with the mouse, and with Enter on the item (Space does not, a row
   ignores it). The menu renders in a portal, so the item is not inside the element marked to

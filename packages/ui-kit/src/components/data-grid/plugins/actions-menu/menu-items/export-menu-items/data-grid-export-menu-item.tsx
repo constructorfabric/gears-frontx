@@ -1,8 +1,8 @@
 import { ArrowDownToLineIcon } from 'lucide-react';
 import { useState } from 'react';
 import { DropdownMenuItem } from '../../../../../dropdown-menu/public.js';
-import { messages } from '../../../../messages';
 import { useDataGridPluginContext } from '../../../../services/core/data-grid-context';
+import { useDataGridMessages } from '../../../../services/core/data-grid-messages-context';
 import { resolveLabel } from '../../../../services/table/table-helpers';
 import { useTableService } from '../../../../services/table/table-context';
 import { isRecord } from '../../../../utils/is-record';
@@ -46,6 +46,7 @@ export function DataGridExportMenuItem({ params: rawParams }: DataGridExportMenu
   const pluginContext = useDataGridPluginContext();
   // useTableService is needed for useVisibleColumns which isn't exposed in the public API
   const tableService = useTableService();
+  const messages = useDataGridMessages();
   const [isExporting, setIsExporting] = useState(false);
 
   const visibleColumns = tableService.useVisibleColumns();

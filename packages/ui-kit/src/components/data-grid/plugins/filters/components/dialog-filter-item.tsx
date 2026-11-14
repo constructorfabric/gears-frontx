@@ -3,8 +3,8 @@ import { XIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AccordionContent, AccordionItem, AccordionTrigger } from '../../../../accordion/public.js';
 import { Badge } from '../../../../badge/public.js';
-import { messages } from '../../../messages';
 import { useDataGrid } from '../../../services/core/data-grid-context';
+import { useDataGridMessages } from '../../../services/core/data-grid-messages-context';
 import type { DataGridFilterEntity, DataGridFiltersPluginApi } from '../filters-types';
 import styles from './dialog-filter-item.module.css';
 import { FilterLabel } from './filter-label';
@@ -17,6 +17,7 @@ interface DialogFilterItemProps {
 export function DialogFilterItem({ filterEntity, children }: DialogFilterItemProps) {
   const grid = useDataGrid();
   const filtersApi = grid.getPlugin<DataGridFiltersPluginApi>('filters')!;
+  const messages = useDataGridMessages();
 
   const draftState = filtersApi.useDraftState(filterEntity.filterKey);
   const count = getDraftActiveCount(draftState?.value, filtersApi.isFilterValueActive);

@@ -4,8 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from '../../../../__test-utils__/render-with-user';
 import { DataGrid } from '../../data-grid';
 import type { DataGridLoadContext, DataGridLoadResult } from '../../data-grid-types';
+import { messages } from '../../messages';
 import { useDataGrid } from '../../services/core/data-grid-context';
 import type { DataGridTableColumn } from '../../services/table/table-types';
+import { DataGridPaginationPlugin } from '../pagination/pagination-plugin';
 import { DataGridRowClickPlugin } from '../row-click/row-click-plugin';
 import styles from './components/data-grid-table-tree.module.css';
 import { DataGridTableTreePlugin } from './table-tree-plugin';
@@ -103,6 +105,30 @@ describe('DataGridTableTreePlugin', () => {
 
       expect(screen.getByText('Electronics')).toBeInTheDocument();
       expect(screen.getByText('Books')).toBeInTheDocument();
+    });
+
+    it('names the row toggle for the press it offers and says whether the row is open', async () => {
+      const { user } = renderFlatTree();
+      await screen.findByRole('table');
+
+      // A closed row offers expanding it.
+      const toggle = screen.getByRole('button', { name: messages.tableTree.expand });
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+      await user.click(toggle);
+      expect(await screen.findByText('Phones')).toBeInTheDocument();
+
+      // The same control names expanding no more: the row is open and offers collapsing it.
+      const opened = screen.getByRole('button', { name: messages.tableTree.collapse });
+      expect(opened).toHaveAttribute('aria-expanded', 'true');
+
+      await user.click(opened);
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: messages.tableTree.expand })).toHaveAttribute(
+          'aria-expanded',
+          'false',
+        ),
+      );
     });
 
     it('hides child rows initially', async () => {
@@ -506,6 +532,68 @@ describe('DataGridTableTreePlugin', () => {
       await user.click(within(rowOf('Electronics')).getByRole('button'));
 
       expect(screen.queryByText('Phones')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('with the pagination plugin', () => {
+    // Two roots, one per page at a limit of 1, so both a page and a page-size change put
+    // different roots on screen; each load returns the root and its child, the shape a
+    // paginated parentKey grid has.
+    const paginatedRoots = [
+      { id: 1, name: 'Electronics', parent_id: null, has_children: true },
+      { id: 2, name: 'Books', parent_id: null, has_children: false },
+    ];
+
+    function paginatedLoad(context: DataGridLoadContext): Promise<DataGridLoadResult<TreeItem>> {
+      const page = context.pagination?.page ?? 1;
+      const limit = context.pagination?.limit ?? 1;
+      const start = (page - 1) * limit;
+      const pageRoots = paginatedRoots.slice(start, start + limit);
+      const children = flatTreeData.filter(({ parent_id }) =>
+        pageRoots.some((root) => root.id === parent_id),
+      );
+
+      return Promise.resolve({ results: [...pageRoots, ...children], total: 2 });
+    }
+
+    function renderPaginatedTree(name: string) {
+      return render(
+        <DataGrid name={name} persistent="memory" load={paginatedLoad} columns={columns}>
+          {/* The default limit of 1 is what makes the size change a real one below: `limits` only
+              names the sizes on offer, it does not set the size the grid starts at. */}
+          <DataGridPaginationPlugin defaultLimit={1} limits={[1, 2]} />
+          <DataGridTableTreePlugin<TreeItem> parentKey="parent_id" />
+        </DataGrid>,
+      );
+    }
+
+    it('shows each row once after a page-size change on the first page', async () => {
+      const { user } = renderPaginatedTree('tree_limit_first_page');
+      await screen.findByText('Electronics');
+      expect(screen.queryByText('Books')).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: '2' }));
+
+      // The limit of 2 pulls Electronics and Books onto the page; the section the limit of 1
+      // stored must be gone, or Electronics would appear twice.
+      expect(await screen.findByText('Books')).toBeInTheDocument();
+      expect(screen.getAllByText('Electronics')).toHaveLength(1);
+      expect(screen.getAllByText('Books')).toHaveLength(1);
+    });
+
+    it('shows each row once after a page-size change from a later page', async () => {
+      const { user } = renderPaginatedTree('tree_limit_later_page');
+      await screen.findByText('Electronics');
+      // Go to page 2 with the same single-row limit: Books replaces Electronics.
+      await user.click(screen.getByRole('button', { name: messages.pagination.goToPage(2) }));
+      expect(await screen.findByText('Books')).toBeInTheDocument();
+      expect(screen.queryByText('Electronics')).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: '2' }));
+
+      expect(await screen.findByText('Electronics')).toBeInTheDocument();
+      expect(screen.getAllByText('Electronics')).toHaveLength(1);
+      expect(screen.getAllByText('Books')).toHaveLength(1);
     });
   });
 });

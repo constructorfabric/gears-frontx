@@ -1,5 +1,5 @@
-import { messages } from '../../../messages';
 import { useDataGrid } from '../../../services/core/data-grid-context';
+import { useDataGridMessages } from '../../../services/core/data-grid-messages-context';
 import type { DataGridRowSelectPluginApi } from '../row-select-types';
 import { DataGridRowSelectBanner } from './data-grid-row-select-banner';
 import styles from './data-grid-row-select-top.module.css';
@@ -7,6 +7,7 @@ import styles from './data-grid-row-select-top.module.css';
 export function DataGridRowSelectTop() {
   const grid = useDataGrid();
   const rowSelect = grid.getPlugin<DataGridRowSelectPluginApi>('rowSelect')!;
+  const messages = useDataGridMessages();
 
   const ActionComponent = rowSelect.useComponent();
   const StatusComponent = rowSelect.useStatusComponent();

@@ -185,9 +185,9 @@ rows when reactions are present (e.g. a larger `gap` on the surrounding
 
 Bubble is intentionally standalone — it does not compose
 Collapsible/Tooltip/Popover itself. Wrap long bubble content in
-[`Collapsible`](../collapsible/collapsible.md) for a show-more
-interaction, or wrap a `Bubble` in [`Tooltip`](../tooltip/tooltip.md) or
-[`Popover`](../popover/popover.md) to surface metadata on hover or demand
+[`Collapsible`](collapsible.md) for a show-more
+interaction, or wrap a `Bubble` in [`Tooltip`](tooltip.md) or
+[`Popover`](popover.md) to surface metadata on hover or demand
 — see each of those components' own docs for the composition pattern; none
 of it lives inside bubble.tsx/bubble.module.css.
 

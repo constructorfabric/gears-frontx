@@ -1,13 +1,14 @@
 import { Alert, AlertDescription } from '../../../../alert/public.js';
 import { Link } from '../../../../link/public.js';
-import { messages } from '../../../messages';
 import { useDataGrid } from '../../../services/core/data-grid-context';
+import { useDataGridMessages } from '../../../services/core/data-grid-messages-context';
 import type { DataGridRowSelectPluginApi } from '../row-select-types';
 import styles from './data-grid-row-select-banner.module.css';
 
 export function DataGridRowSelectBanner() {
   const grid = useDataGrid();
   const rowSelect = grid.getPlugin<DataGridRowSelectPluginApi>('rowSelect')!;
+  const messages = useDataGridMessages();
 
   const multiple = rowSelect.useMultiple();
   const showSelectAllMatching = rowSelect.useShowSelectAllMatching();

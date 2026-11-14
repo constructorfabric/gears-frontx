@@ -11,8 +11,8 @@ import {
 } from '../../../../dropdown-menu/public.js';
 import { Popover, PopoverContent, PopoverTrigger } from '../../../../popover/public.js';
 import type { DataGridItem } from '../../../data-grid-types';
-import { messages } from '../../../messages';
 import { useDataGrid } from '../../../services/core/data-grid-context';
+import { useDataGridMessages } from '../../../services/core/data-grid-messages-context';
 import { useDataGridPortalContainer } from '../../../services/core/data-grid-portal-container-context';
 import type { OrderDirection } from '../../../services/plugins/plugins-types';
 import type { DataGridOrderPluginApi } from '../order-types';
@@ -24,13 +24,14 @@ export function DataGridOrderButton() {
   const orderApi = grid.getPlugin<DataGridOrderPluginApi>('order')!;
   const [open, setOpen] = useState(false);
   const portalContainer = useDataGridPortalContainer();
+  const messages = useDataGridMessages();
 
   const order = orderApi.useOrder();
   const options = orderApi.useOptions();
 
   const selectedOption = order ? (options.find((opt) => opt.id === order.columnId) ?? null) : null;
   const columnType = selectedOption?.type ?? 'string';
-  const orderLabels = getOrderLabels(columnType);
+  const orderLabels = getOrderLabels(columnType, messages.order);
 
   const buttonLabel = selectedOption ? selectedOption.label : messages.order.sort;
 
