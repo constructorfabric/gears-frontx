@@ -160,6 +160,16 @@ The system **MUST** make the mandatory ecosystem-knowledge baseline available to
 
 **Actors**: `cpt-frontx-actor-template-developer`, `cpt-frontx-actor-project-developer`
 
+#### Telemetry instrumentation knowledge
+
+- [ ] `p1` - **ID**: `cpt-frontx-fr-ai-telemetry-instrumentation`
+
+The ecosystem-knowledge baseline **MUST** tell an AI agent working in a project that has telemetry, or in a microfrontend package that declares an event namespace whether or not its project has telemetry, to instrument, in the same change that adds or alters it, every flow (a form included), every dialog, and every primary or destructive action under a stable identity. The baseline **MUST** present lists and tabs as optional to instrument. The baseline **MUST** tell the agent to keep user-typed content out of telemetry, and to name an analytics backend nowhere but in the connector the application supplies. Anywhere else, the baseline **MUST NOT** lead an agent to add telemetry. How a construct is instrumented with a particular UI framework **MUST** arrive via template bundles.
+
+**Rationale**: Instrumentation left for later is missing when the funnel is needed; an agent that adds it together with the construct keeps it complete without a separate pass. A microfrontend package cannot know whether the shell it runs in has telemetry and sends nothing in a shell without it, so the condition for it is its own declared namespace, not the project. The UI-framework-specific part stays with templates, so the framework remains template-agnostic.
+
+**Actors**: `cpt-frontx-actor-project-developer`, `cpt-frontx-actor-template-developer`
+
 #### AI Tooling Framework is template-agnostic
 
 - [x] `p1` - **ID**: `cpt-frontx-fr-ai-tooling-template-agnostic`
@@ -384,6 +394,7 @@ The root PRD's §6.2 exclusions (safety, privacy, accessibility, internationaliz
 - [ ] An AI-driven upgrade runs analysis, prepares a reviewable change set, and gates application on developer approval — verifiable via `cpt-frontx-usecase-ai-driven-template-upgrade`.
 - [ ] FrontX-specific skills cover scaffolding a project from a stated intent, creating microfrontends, validating templates, generating type definitions, and orchestrating template upgrades — verifiable via `cpt-frontx-fr-ai-frontx-skills`.
 - [ ] Ecosystem-knowledge artifacts are available at session start with no training step — verifiable via `cpt-frontx-fr-ai-session-start-knowledge`.
+- [ ] The ecosystem-knowledge baseline tells an agent working in a project that has telemetry, or in a microfrontend package that declares an event namespace, to instrument a flow, a dialog or a primary or destructive action in the same change that adds or alters it, with no user-typed content and no analytics backend named outside the connector, and contains nothing that leads an agent to add telemetry anywhere else — verifiable via `cpt-frontx-fr-ai-telemetry-instrumentation`.
 - [ ] Every agent-facing capability delivered into a project is declared with identity and applicability — verifiable via `cpt-frontx-fr-ai-agent-skill-resources`.
 - [ ] Host discovery or activation failure is surfaced with the affected resource and obligation, with no silent success claim — verifiable via `cpt-frontx-contract-kit-installation`.
 - [ ] The framework ships zero template-specific content — verifiable via `cpt-frontx-fr-ai-tooling-template-agnostic`.
