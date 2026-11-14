@@ -71,6 +71,9 @@ export const messages = {
     goToPage: (page: number) => `Go to page ${page}`,
     pageInfo: (page: number, totalPages: number, total: number) =>
       `Page ${page} of ${totalPages} (${total} items)`,
+    // The compact pager draws no page buttons, so the item count is what it drops to stay one
+    // line: the position is what a page change moves, and that is all this line says.
+    pageInfoCompact: (page: number, totalPages: number) => `Page ${page} of ${totalPages}`,
   },
   filters: {
     allFilters: 'All filters',
@@ -95,6 +98,11 @@ export const messages = {
     // press does and `aria-expanded` says whether the row is open.
     expand: 'Expand row',
     collapse: 'Collapse row',
+  },
+  rowDetail: {
+    // The toggle has no visible text either: the name says what the press offers and
+    // `aria-expanded` says whether the row's detail is open.
+    toggle: 'Details',
   },
 };
 

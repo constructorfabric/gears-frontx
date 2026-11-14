@@ -157,6 +157,7 @@ DATA_GRID_TABLE_CONFIGURATION_CLASS="$(extract_hashed_class "$UIKIT_DIR/dist/dat
 DATA_GRID_ROW_SELECT_CLASS="$(extract_hashed_class "$UIKIT_DIR/dist/data-grid/row-select.js" 'rowSelectTop')"
 DATA_GRID_TABLE_TREE_CLASS="$(extract_hashed_class "$UIKIT_DIR/dist/data-grid/table-tree.js" 'treeCellContent')"
 DATA_GRID_DRAG_DROP_CLASS="$(extract_hashed_class "$UIKIT_DIR/dist/data-grid/drag-drop.js" 'dragHandler')"
+DATA_GRID_ROW_DETAIL_CLASS="$(extract_hashed_class "$UIKIT_DIR/dist/data-grid/row-detail.js" 'detailContent')"
 # The drag library (`@atlaskit/pragmatic-drag-and-drop`) is a dependency of the kit, so it is not in
 # dist/ but in whatever a consumer's bundler resolves it to, and only the drag-drop entry may bring
 # it. A consumer's minifier renames its bindings, so the probe is a string literal from its code:
@@ -172,7 +173,7 @@ DATA_GRID_EXPORT_PROBE='Export failed:'
 # actions-menu has no stylesheet of its own, so there is no hashed class to probe; the name its
 # entry registers the plugin under stands in for one, and is checked to be in that entry's file.
 DATA_GRID_ACTIONS_MENU_PROBE='"actionsMenu"'
-for probe_name in BUTTON_CLASS TABLE_CLASS DIALOG_CLASS DATA_GRID_CLASS DATA_GRID_PAGINATION_CLASS DATA_GRID_ORDER_CLASS DATA_GRID_TEXT_SEARCH_CLASS DATA_GRID_FILTERS_CLASS DATA_GRID_ROW_NUMBER_CLASS DATA_GRID_ROW_CLICK_CLASS DATA_GRID_ACTIONS_CLASS DATA_GRID_ROW_ACTIONS_CLASS DATA_GRID_TABLE_CONFIGURATION_CLASS DATA_GRID_ROW_SELECT_CLASS DATA_GRID_TABLE_TREE_CLASS DATA_GRID_DRAG_DROP_CLASS; do
+for probe_name in BUTTON_CLASS TABLE_CLASS DIALOG_CLASS DATA_GRID_CLASS DATA_GRID_PAGINATION_CLASS DATA_GRID_ORDER_CLASS DATA_GRID_TEXT_SEARCH_CLASS DATA_GRID_FILTERS_CLASS DATA_GRID_ROW_NUMBER_CLASS DATA_GRID_ROW_CLICK_CLASS DATA_GRID_ACTIONS_CLASS DATA_GRID_ROW_ACTIONS_CLASS DATA_GRID_TABLE_CONFIGURATION_CLASS DATA_GRID_ROW_SELECT_CLASS DATA_GRID_TABLE_TREE_CLASS DATA_GRID_DRAG_DROP_CLASS DATA_GRID_ROW_DETAIL_CLASS; do
   if [ -z "${!probe_name}" ]; then
     echo "FAIL: could not extract a hashed class probe ($probe_name) from dist/ — did a component's local class names change?"
     exit 1
@@ -725,6 +726,8 @@ assert_absent_from_glob "[esbuild-data-grid] table-tree styles"  "$DATA_GRID_TAB
 assert_absent_from_glob "[esbuild-data-grid] table-tree JS"      "$DATA_GRID_TABLE_TREE_CLASS"  'dist/out.js'
 assert_absent_from_glob "[esbuild-data-grid] drag-drop styles"   "$DATA_GRID_DRAG_DROP_CLASS"  'dist/out.css'
 assert_absent_from_glob "[esbuild-data-grid] drag-drop JS"       "$DATA_GRID_DRAG_DROP_CLASS"  'dist/out.js'
+assert_absent_from_glob "[esbuild-data-grid] row-detail styles"  "$DATA_GRID_ROW_DETAIL_CLASS" 'dist/out.css'
+assert_absent_from_glob "[esbuild-data-grid] row-detail JS"      "$DATA_GRID_ROW_DETAIL_CLASS" 'dist/out.js'
 assert_absent_from_glob "[esbuild-data-grid] drag library"       "$DATA_GRID_DRAG_LIBRARY_PROBE" 'dist/out.js'
 assert_absent_from_glob "[esbuild-data-grid] export code"        "$DATA_GRID_EXPORT_PROBE"       'dist/out.js'
 
@@ -911,7 +914,7 @@ npx webpack --config webpack.config.cjs --entry-reset --entry ./src/drag-drop.js
 assert_present_in_glob "[webpack] drag library (drag-drop entry)" "$DATA_GRID_DRAG_LIBRARY_PROBE" 'dist-drag-drop/out.js'
 
 echo
-echo "==> [types] Type-checking the barrel and its subpaths (a data-grid core and five plugin entries among them) under both moduleResolution settings"
+echo "==> [types] Type-checking the barrel and its subpaths (a data-grid core and six plugin entries among them) under both moduleResolution settings"
 TYPES_CHECK="$WORKDIR/types-check"
 mkdir -p "$TYPES_CHECK/src"
 cd "$TYPES_CHECK"
@@ -941,6 +944,7 @@ import {
   type DataGridTreeStructure,
 } from '@gears-frontx/ui-kit/data-grid/filters';
 import { createDataGridDragDropPlugin, type DataGridDropEdge } from '@gears-frontx/ui-kit/data-grid/drag-drop';
+import { DataGridRowDetailPlugin } from '@gears-frontx/ui-kit/data-grid/row-detail';
 import { exportMenuItems } from '@gears-frontx/ui-kit/data-grid/actions-menu';
 import { DataGridTableTreePlugin } from '@gears-frontx/ui-kit/data-grid/table-tree';
 
@@ -983,6 +987,7 @@ export {
   DataGrid,
   DataGridPaginationPlugin,
   DataGridFiltersPlugin,
+  DataGridRowDetailPlugin,
   DragDrop,
   treePlugin,
   edge,

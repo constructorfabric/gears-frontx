@@ -16,6 +16,7 @@ interface PaginationConfig {
   defaultLimit: number;
   limits: number[];
   autoHide: boolean;
+  compact: boolean;
 }
 
 interface PaginationStore {
@@ -30,6 +31,7 @@ export interface DataGridPaginationPluginProps {
   defaultLimit?: number;
   limits?: number[];
   autoHide?: boolean;
+  compact?: boolean;
 }
 
 export interface PaginationPluginApi {
@@ -63,6 +65,7 @@ export const DataGridPaginationPlugin = createDataGridPlugin<
       defaultLimit: 12,
       limits: [12, 24, 48, 96],
       autoHide: false,
+      compact: false,
     }));
 
     const persistent = context.registerPersistentState<{
@@ -162,6 +165,9 @@ export const DataGridPaginationPlugin = createDataGridPlugin<
       if (props.autoHide !== undefined) {
         updates.autoHide = props.autoHide;
       }
+      if (props.compact !== undefined) {
+        updates.compact = props.compact;
+      }
 
       if (Object.keys(updates).length > 0) {
         useConfigStore.setState(updates);
@@ -176,5 +182,6 @@ export const DataGridPaginationPlugin = createDataGridPlugin<
   (prevProps, nextProps) =>
     prevProps.defaultLimit === nextProps.defaultLimit &&
     prevProps.autoHide === nextProps.autoHide &&
+    prevProps.compact === nextProps.compact &&
     isDeepEqual(prevProps.limits, nextProps.limits),
 );

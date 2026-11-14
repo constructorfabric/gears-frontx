@@ -13,6 +13,7 @@ export function DataGridPagination() {
   // Reactive selectors
   const limits = paginationPlugin.useConfigStore((s) => s.limits);
   const autoHide = paginationPlugin.useConfigStore((s) => s.autoHide);
+  const compact = paginationPlugin.useConfigStore((s) => s.compact);
   const page = paginationPlugin.usePaginationStore((s) => s.page);
   const limit = paginationPlugin.usePaginationStore((s) => s.limit);
   const total = paginationPlugin.usePaginationStore((s) => s.total);
@@ -27,6 +28,7 @@ export function DataGridPagination() {
         total={total}
         limits={limits}
         autoHide={autoHide}
+        compact={compact}
         label={label}
         onPageChange={setPage}
         onLimitChange={setLimit}

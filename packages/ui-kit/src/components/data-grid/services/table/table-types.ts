@@ -87,7 +87,7 @@ export function isTableGroup<TItem extends DataGridItem>(
   return 'columns' in item && Array.isArray(item.columns);
 }
 
-export type TableSlotName = 'subheader' | 'footer' | 'header-cell-end';
+export type TableSlotName = 'subheader' | 'footer' | 'header-cell-end' | 'row-after';
 
 /**
  * The slice of the grid's own sorting that a header cell needs for `aria-sort`, offered by the
@@ -122,6 +122,13 @@ export interface TableSlotOptions {
   subheader: TableSlotOption;
   footer: TableSlotOption;
   'header-cell-end': TableSlotOption;
+  /**
+   * Drawn inside every row component, right after its `<TableRow>` and before that row's own
+   * children (a tree branch), so a record's own extra rows read as belonging to it and not to the
+   * whole branch under it. The row component wraps the slot in `DataGridRecordProvider`, so the
+   * slot component reads the record with `useDataGridRecord`.
+   */
+  'row-after': TableSlotOption;
 }
 
 export type ExtraColumnPosition = 'start' | 'end';

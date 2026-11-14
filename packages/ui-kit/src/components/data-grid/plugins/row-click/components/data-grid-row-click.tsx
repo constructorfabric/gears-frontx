@@ -5,6 +5,7 @@ import { useDataGridContext } from '../../../services/core/data-grid-context';
 import type { DataGridRecord } from '../../../services/storage/storage-types';
 import { DataGridCell } from '../../../services/table/components/data-grid-cell';
 import { DataGridExtraBodyColumns } from '../../../services/table/components/data-grid-extra-body-columns';
+import { DataGridTableSlot } from '../../../services/table/components/data-grid-table-slot';
 import { DataGridRecordProvider } from '../../../services/table/data-grid-record-context';
 import { resolveBodyCellProps } from '../../../services/table/resolve-body-cell-props';
 import type { DataGridTableColumn } from '../../../services/table/table-types';
@@ -24,6 +25,7 @@ export function DataGridRowClick<TItem extends DataGridItem>({
   const tableService = context.table;
   const columns = tableService.useVisibleColumns();
   const tableLayout = tableService.useTableLayout();
+  const rowAfterSlots = tableService.useSlots('row-after');
   const rowClickApi = context.plugins.getPlugin<DataGridRowClickPluginApi<TItem>>('rowClick');
 
   const onClick = getClickListener(record.item, () => rowClickApi?.click);
@@ -65,6 +67,7 @@ export function DataGridRowClick<TItem extends DataGridItem>({
         })}
         <DataGridExtraBodyColumns position="end" />
       </TableRow>
+      <DataGridTableSlot slots={rowAfterSlots} />
     </DataGridRecordProvider>
   );
 }

@@ -6,6 +6,7 @@ import type { DataGridRecord } from '../../../services/storage/storage-types';
 import { DataGridCell } from '../../../services/table/components/data-grid-cell';
 import { DataGridExtraBodyColumns } from '../../../services/table/components/data-grid-extra-body-columns';
 import { DataGridTableRecords } from '../../../services/table/components/data-grid-table-records';
+import { DataGridTableSlot } from '../../../services/table/components/data-grid-table-slot';
 import { DataGridRecordProvider } from '../../../services/table/data-grid-record-context';
 import { resolveBodyCellProps } from '../../../services/table/resolve-body-cell-props';
 import type { DataGridTableColumn } from '../../../services/table/table-types';
@@ -25,6 +26,7 @@ export function DataGridTableTreeRow<TItem extends DataGridItem>({
   const tableService = context.table;
   const columns = tableService.useVisibleColumns();
   const tableLayout = tableService.useTableLayout();
+  const rowAfterSlots = tableService.useSlots('row-after');
   const treePlugin = context.plugins.getPlugin<DataGridTableTreePluginApi<TItem>>('tableTree')!;
   const rowClickApi = context.plugins.getPlugin<DataGridRowClickPluginApi<TItem>>('rowClick');
   const isExpanded = treePlugin.useIsExpanded(record.id);
@@ -77,6 +79,8 @@ export function DataGridTableTreeRow<TItem extends DataGridItem>({
         })}
         <DataGridExtraBodyColumns position="end" />
       </TableRow>
+      {/* The record's own detail belongs between it and its children, not under the whole branch. */}
+      <DataGridTableSlot slots={rowAfterSlots} />
       {isExpanded && childRecords.length > 0 && (
         <DataGridTableRecords<TItem> records={childRecords} />
       )}
