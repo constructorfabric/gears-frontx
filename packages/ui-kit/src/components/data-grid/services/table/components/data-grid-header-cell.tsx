@@ -27,8 +27,10 @@ export function DataGridHeaderCell<TItem extends DataGridItem>({
   const contentRowRef = useRef<HTMLSpanElement>(null);
   // The grid's own sorting, as the assistive tech reads it: the sorted column announces its
   // direction, the other sortable ones announce that they are not sorted, and a column with no
-  // sort control announces nothing.
-  const ariaSort = useColumnAriaSort(column.id);
+  // sort control announces nothing. A `headerComponent` replaces the order plugin's sort label,
+  // so such a column has no control and only announces a sort it carries.
+  const columnAriaSort = useColumnAriaSort(column.id);
+  const ariaSort = column.headerComponent && columnAriaSort === 'none' ? undefined : columnAriaSort;
 
   const LabelComponent = tableService.useComponent<{ column: DataGridTableColumn<TItem> }>('header-cell-label');
   const tableLayout = tableService.useTableLayout();

@@ -17,9 +17,10 @@ export function useDataGridMessages(): DataGridMessages {
 }
 
 /*
- * Merges the prop over the defaults into a new object, group by group: an entry the prop omits
- * keeps its default, and a function entry replaces the default function whole. The defaults are
- * shared by every grid on the page, so they are never mutated.
+ * Merges the prop over the defaults into a new object, group by group: an entry the prop omits or
+ * sets to `undefined` keeps its default (an override built conditionally yields those), a key the
+ * defaults do not have is dropped, and a function entry replaces the default function whole. The
+ * defaults are shared by every grid on the page, so they are never mutated.
  */
 export function resolveDataGridMessages(
   override: DataGridMessagesOverride | undefined,
@@ -35,6 +36,10 @@ function mergeGroup(base: object, override: object): object {
   const merged: Record<string, unknown> = { ...base };
 
   for (const [key, value] of Object.entries(override)) {
+    if (value === undefined || !Object.prototype.hasOwnProperty.call(base, key)) {
+      continue;
+    }
+
     const defaultValue = (base as Record<string, unknown>)[key];
     const bothPlainObjects =
       value !== null &&

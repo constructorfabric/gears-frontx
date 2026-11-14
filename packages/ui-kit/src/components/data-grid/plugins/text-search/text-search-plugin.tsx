@@ -162,9 +162,9 @@ export const DataGridTextSearchPlugin = createDataGridPlugin<
     if (props.placeholder !== undefined) {
       configUpdates.placeholder = props.placeholder;
     }
-    if (props.label !== undefined) {
-      configUpdates.label = props.label;
-    }
+    // Unlike the props above, an absent label is written through: the box's accessible name falls
+    // back to the strings once a label is taken away, instead of announcing the stale one.
+    configUpdates.label = props.label ?? '';
     if (props.fullWidth !== undefined) {
       configUpdates.fullWidth = props.fullWidth;
     }
