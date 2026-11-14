@@ -2,7 +2,7 @@ import { OctagonAlertIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '../../empty/public.js';
-import { messages } from '../messages';
+import { useDataGridMessages } from '../services/core/data-grid-messages-context';
 import type { LoadState } from '../utils/load-state';
 import { DataGridSpinner } from './data-grid-spinner';
 import styles from './load-controlled.module.css';
@@ -19,6 +19,8 @@ interface LoadControlledProps {
  * occupies. The error view has no retry: a failed first load stays failed.
  */
 export function LoadControlled({ loadState, children }: LoadControlledProps) {
+  const messages = useDataGridMessages();
+
   if (loadState === 'loaded') {
     return <>{children}</>;
   }

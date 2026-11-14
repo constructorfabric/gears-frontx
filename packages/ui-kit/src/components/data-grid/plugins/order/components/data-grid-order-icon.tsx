@@ -1,8 +1,8 @@
 import { ArrowDownIcon, ArrowUpIcon } from 'lucide-react';
 
 import { Button } from '../../../../button/public.js';
-import { messages } from '../../../messages';
 import { useDataGrid } from '../../../services/core/data-grid-context';
+import { useDataGridMessages } from '../../../services/core/data-grid-messages-context';
 import type { DataGridTableColumn } from '../../../services/table/table-types';
 import type { DataGridOrderPluginApi } from '../order-types';
 
@@ -13,6 +13,7 @@ interface DataGridOrderIconProps {
 export function DataGridOrderIcon({ column }: DataGridOrderIconProps) {
   const grid = useDataGrid();
   const orderApi = grid.getPlugin<DataGridOrderPluginApi>('order')!;
+  const messages = useDataGridMessages();
 
   const order = orderApi.useOrder();
   const isOrderable = !orderApi.useIsColumnExcluded(column.id);

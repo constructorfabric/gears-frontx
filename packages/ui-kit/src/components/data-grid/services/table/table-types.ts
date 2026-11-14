@@ -89,6 +89,21 @@ export function isTableGroup<TItem extends DataGridItem>(
 
 export type TableSlotName = 'subheader' | 'footer' | 'header-cell-end';
 
+/**
+ * The slice of the grid's own sorting that a header cell needs for `aria-sort`, offered by the
+ * order plugin beside its public api. It is read through `subscribe` and plain getters, not hooks:
+ * the plugin can mount after the header cells did, and a hook that only exists once it is there
+ * would change the cells' hook order.
+ */
+export interface ColumnSortSource {
+  /** Calls `listener` when the order or the excluded columns change; returns the unsubscribe. */
+  subscribeColumnSort: (listener: () => void) => () => void;
+  /** The one order the grid sorts by, or `undefined` when nothing is sorted. */
+  getColumnSortOrder: () => { columnId: string; direction: 'asc' | 'desc' } | undefined;
+  /** The columns excluded from sorting in the header. */
+  getSortExcludedColumns: () => readonly string[];
+}
+
 export interface TableSlot {
   id: string;
   name: TableSlotName;

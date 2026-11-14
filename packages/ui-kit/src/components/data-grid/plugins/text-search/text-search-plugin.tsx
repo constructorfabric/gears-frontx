@@ -17,6 +17,7 @@ interface TextSearchStore {
 
 interface TextSearchConfigStore {
   placeholder: string;
+  label: string;
   filterKey: string;
   fullWidth: boolean;
 }
@@ -38,12 +39,19 @@ export interface DataGridTextSearchPluginProps {
    */
   filterKey?: string;
   placeholder?: string;
+  /**
+   * Accessible name of the search box. The box has no visible label, so without it the name is
+   * the grid's `textSearch.label` string ("Search"); a box beside other inputs on a page wants
+   * the name that tells them apart.
+   */
+  label?: string;
   fullWidth?: boolean;
 }
 
 export interface DataGridTextSearchPluginApi {
   useQuery: () => string;
   usePlaceholder: () => string;
+  useLabel: () => string;
   useFullWidth: () => boolean;
   onPropsChange: (props: DataGridTextSearchPluginProps) => void;
   setSearch: (value: string) => void;
@@ -69,6 +77,7 @@ export const DataGridTextSearchPlugin = createDataGridPlugin<
 >('textSearch', (context) => {
   const useConfigStore = create<TextSearchConfigStore>(() => ({
     placeholder: '',
+    label: '',
     filterKey: defaultFilterKey,
     fullWidth: false,
   }));
@@ -113,11 +122,13 @@ export const DataGridTextSearchPlugin = createDataGridPlugin<
 
   const useQuery = () => useTextSearchStore((s) => s.query);
   const usePlaceholder = () => useConfigStore((s) => s.placeholder);
+  const useLabel = () => useConfigStore((s) => s.label);
   const useFullWidth = () => useConfigStore((s) => s.fullWidth);
 
   return {
     useQuery,
     usePlaceholder,
+    useLabel,
     useFullWidth,
     onPropsChange,
     setSearch,
@@ -150,6 +161,9 @@ export const DataGridTextSearchPlugin = createDataGridPlugin<
     }
     if (props.placeholder !== undefined) {
       configUpdates.placeholder = props.placeholder;
+    }
+    if (props.label !== undefined) {
+      configUpdates.label = props.label;
     }
     if (props.fullWidth !== undefined) {
       configUpdates.fullWidth = props.fullWidth;

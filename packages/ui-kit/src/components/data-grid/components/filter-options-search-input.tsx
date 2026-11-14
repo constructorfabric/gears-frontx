@@ -1,6 +1,6 @@
 import { SearchIcon } from 'lucide-react';
 import { Input } from '../../input/public.js';
-import { messages } from '../messages';
+import { useDataGridMessages } from '../services/core/data-grid-messages-context';
 
 interface FilterOptionsSearchInputProps {
   value: string;
@@ -17,6 +17,8 @@ export function FilterOptionsSearchInput({
   autoFocus,
   disabled,
 }: FilterOptionsSearchInputProps) {
+  const messages = useDataGridMessages();
+
   return (
     <Input
       value={value}

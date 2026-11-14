@@ -1,6 +1,6 @@
 import { ChevronRightIcon } from 'lucide-react';
 import { Button } from '../../../button/public.js';
-import { messages } from '../../messages';
+import { useDataGridMessages } from '../../services/core/data-grid-messages-context';
 import type { DataGridTreeItem, DataGridTreeNode } from '../../tree-structure/tree-structure-types';
 import { useTreeContext } from '../services/core/tree-context';
 import type { TreeListItemProps } from './tree-list-item';
@@ -16,6 +16,7 @@ export function TreeNodeDirectoryItem<TItem extends DataGridTreeItem = DataGridT
   node,
 }: TreeNodeDirectoryItemProps<TItem>) {
   const { settings, layout } = useTreeContext<TItem>();
+  const messages = useDataGridMessages();
   const DirectoryComponent = layout.useComponent<TreeListItemProps<TItem>>('directory');
 
   const isExpanded = layout.useLayoutStore((state) => state.expandedIds.has(node.id));

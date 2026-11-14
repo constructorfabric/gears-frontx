@@ -1,7 +1,9 @@
 /*
- * Every user-facing string the grid renders, in one place. The kit has no i18n layer, so these are
- * English literals; one module keeps them findable and lets the tests assert against `messages.*`
- * instead of repeating the text. A string that embeds a count or a name is a function of it.
+ * Every user-facing string the grid renders, in one place: the English defaults. Components read
+ * them through the grid's messages context, and a grid's `messages` prop merges a consumer's
+ * strings over these, so one module still keeps them findable and lets the tests assert against
+ * `messages.*` instead of repeating the text. A string that embeds a count or a name is a function
+ * of it.
  */
 export const messages = {
   emptyState: {
@@ -17,6 +19,9 @@ export const messages = {
     cards: 'Cards view',
   },
   textSearch: {
+    // The input has no visible label, so this names it for assistive tech; the plugin's `label`
+    // prop overrides it.
+    label: 'Search',
     placeholder: 'Search...',
     clear: 'Clear input',
   },
@@ -85,4 +90,26 @@ export const messages = {
     collapse: 'Collapse',
     expand: 'Expand',
   },
+  tableTree: {
+    // The row toggle has no visible text, so its state is spoken twice: the name says what the
+    // press does and `aria-expanded` says whether the row is open.
+    expand: 'Expand row',
+    collapse: 'Collapse row',
+  },
 };
+
+/*
+ * The shape of the English defaults. The grid's `messages` prop takes the partial override below,
+ * mapped from this type so a new entry here widens the prop without a second hand-written list:
+ * a group may be replaced entry by entry, and a function entry stays a function of the same
+ * signature.
+ */
+export type DataGridMessages = typeof messages;
+
+type MessagesOverride<T> = T extends (...args: never[]) => unknown
+  ? T
+  : T extends string | number | boolean
+    ? T
+    : { [K in keyof T]?: MessagesOverride<T[K]> };
+
+export type DataGridMessagesOverride = MessagesOverride<DataGridMessages>;

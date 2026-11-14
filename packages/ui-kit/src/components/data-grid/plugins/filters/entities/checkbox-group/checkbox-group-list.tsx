@@ -1,10 +1,10 @@
 import { Checkbox } from '../../../../../checkbox/public.js';
 import { Label } from '../../../../../label/public.js';
 import { Spinner } from '../../../../../spinner/public.js';
-import { messages } from '../../../../messages';
 import { FilterControlArea } from '../../../../components/filter-control-area';
 import { FilterOptionsSearchInput } from '../../../../components/filter-options-search-input';
 import { FilterScrollableWrapper } from '../../../../components/filter-scrollable-wrapper';
+import { useDataGridMessages } from '../../../../services/core/data-grid-messages-context';
 import type {
   DataGridFilterCheckboxGroupEntity,
   DataGridFilterCheckboxGroupOption,
@@ -97,6 +97,7 @@ function AsyncCheckboxGroupList({
     searchOptions,
     searchDebounce,
   );
+  const messages = useDataGridMessages();
   // Only show the spinner while there is nothing to display yet, so re-searching
   // with results already on screen does not blank the list.
   const showLoader = isLoading && options.length === 0;

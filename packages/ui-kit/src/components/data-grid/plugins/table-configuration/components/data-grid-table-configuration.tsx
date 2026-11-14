@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 
 import { DropdownMenu, DropdownMenuSeparator } from '../../../../dropdown-menu/public.js';
-import { messages } from '../../../messages';
+import { useDataGridMessages } from '../../../services/core/data-grid-messages-context';
 import { useTableService } from '../../../services/table/table-context';
 import { isConfigurationGroup } from '../../../services/table/table-types';
 import styles from './data-grid-table-configuration.module.css';
@@ -10,6 +10,7 @@ import { DataGridTableConfigurationItem } from './data-grid-table-configuration-
 
 export function DataGridTableConfiguration() {
   const tableService = useTableService();
+  const messages = useDataGridMessages();
   const columns = tableService.useConfigurationColumns();
 
   function handleVisibilityToggle(columnId: string, visible: boolean) {

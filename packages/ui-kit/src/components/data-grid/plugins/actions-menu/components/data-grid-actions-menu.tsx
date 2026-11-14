@@ -6,8 +6,8 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '../../../../dropdown-menu/public.js';
-import { messages } from '../../../messages';
 import { useDataGrid } from '../../../services/core/data-grid-context';
+import { useDataGridMessages } from '../../../services/core/data-grid-messages-context';
 import { useDataGridPortalContainer } from '../../../services/core/data-grid-portal-container-context';
 import type { DataGridActionsMenuPluginApi } from '../actions-menu-types';
 
@@ -16,6 +16,7 @@ export function DataGridActionsMenu() {
   const actionsMenu = grid.getPlugin<DataGridActionsMenuPluginApi>('actionsMenu')!;
   const menuItems = actionsMenu.useMenuItems();
   const portalContainer = useDataGridPortalContainer();
+  const messages = useDataGridMessages();
 
   return (
     <DropdownMenu>

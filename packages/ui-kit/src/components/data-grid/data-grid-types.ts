@@ -1,5 +1,6 @@
 import type { ReactNode, RefObject } from 'react';
 import type { PopoverContentProps } from '../popover/public.js';
+import type { DataGridMessagesOverride } from './messages';
 import type { CoreService } from './services/core/core-types';
 import type { DataGridHooked } from './services/hooked/hooked-types';
 import type { internalContextKey } from './services/internal/internal-helpers';
@@ -157,6 +158,28 @@ export interface DataGridProps<TItem extends DataGridItem> extends Pick<
    * as a row actions menu, takes its own `container`.
    */
   portalContainer?: PopoverContentProps['container'];
+  /**
+   * Replaces the grid's user-facing strings, group by group, over the English defaults the kit
+   * ships: the pager, the sort controls, the order menu, the empty and error states, the text
+   * search box, the tree toggle and the rest (every entry lives in the grid's `messages` module).
+   * Give only the groups and entries to change; the others keep their defaults. A function entry
+   * (`changeSorting`, `pageInfo`, ...) is replaced by a function of the same signature. It is
+   * plain strings, not an i18n layer: formatting, plurals beyond what the defaults already do and
+   * locale choice stay with the consumer.
+   *
+   * Keep the object's identity stable between renders (a module-level constant, or `useMemo`),
+   * same as `columns`.
+   *
+   * ```tsx
+   * const strings = {
+   *   textSearch: { label: 'Suche' },
+   *   pagination: { pageInfo: (page, totalPages, total) => `Seite ${page} von ${totalPages} (${total})` },
+   * };
+   *
+   * <DataGrid name="users" load={loadUsers} columns={columns} messages={strings} />
+   * ```
+   */
+  messages?: DataGridMessagesOverride;
   children?: ReactNode;
 }
 

@@ -2,13 +2,14 @@ import { SettingsIcon } from 'lucide-react';
 
 import { Button } from '../../../../button/public.js';
 import { Popover, PopoverContent, PopoverTrigger } from '../../../../popover/public.js';
-import { messages } from '../../../messages';
+import { useDataGridMessages } from '../../../services/core/data-grid-messages-context';
 import { useDataGridPortalContainer } from '../../../services/core/data-grid-portal-container-context';
 import styles from './data-grid-table-configuration.module.css';
 import { DataGridTableConfiguration } from './data-grid-table-configuration';
 
 export function DataGridTableConfigurationTrigger() {
   const portalContainer = useDataGridPortalContainer();
+  const messages = useDataGridMessages();
 
   return (
     <Popover>

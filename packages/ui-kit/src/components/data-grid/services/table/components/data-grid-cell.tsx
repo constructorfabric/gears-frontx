@@ -17,6 +17,12 @@ interface DataGridCellProps {
   /** Renders a column header (`<th>`) instead of a body cell (`<td>`). */
   header?: boolean;
   /**
+   * The `aria-sort` value for a header cell, from the grid's own sorting. Rendered only on a
+   * header, and only when given: a column with no sort control carries no `aria-sort` at all
+   * rather than a constant `none`.
+   */
+  ariaSort?: 'ascending' | 'descending' | 'none';
+  /**
    * Rendered after the overflow-controlled content, outside its clipping contract — used by
    * header cells for the sort-icon / header-cell-end slot, which must stay visible even when the
    * label ellipsizes. Body cells don't pass this.
@@ -75,6 +81,7 @@ export function DataGridCell<TItem extends DataGridItem = DataGridItem>({
   width,
   children,
   header,
+  ariaSort,
   endSlot,
   overflow,
   capped,
@@ -116,6 +123,7 @@ export function DataGridCell<TItem extends DataGridItem = DataGridItem>({
       }}
       scope={header ? 'col' : undefined}
       rowSpan={rowspan}
+      aria-sort={header ? ariaSort : undefined}
     >
       {endSlot ? (
         <span className={styles.contentRow} ref={contentRowRef}>
