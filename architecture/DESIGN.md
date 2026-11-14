@@ -108,6 +108,7 @@ Published libraries:
 * Navigation's Role In Post-Boot Mounting (`packages/routing/architecture/ADR/0002-mount-trigger-ownership.md`) — Limits the routing surface to resolving, reporting and writing: the signal and the helper mount nothing, and the FrontX router acts only through actions chains.
 * Domain Occupancy Addressing Granularity (`packages/routing/architecture/ADR/0003-domain-occupancy-addressing-granularity.md`) — Addresses every domain through one uniform query-string entry grammar, with the pathname as the shell's subroute.
 * Occupant Identity Stability (`packages/routing/architecture/ADR/0004-occupant-identity-stability.md`) — Takes an entry's extension token from the extension's route, so a redeploy keeps bookmarked links.
+* Declared Capture Delivered Through Application-Supplied Connectors (`packages/telemetry/architecture/ADR/0001-declared-capture-connector-delivery.md`) — Moves telemetry to declared capture delivered through connectors the application supplies, with no analytics backend known to the package, and retires each shipped behaviour this reverses in the same change that delivers its replacement.
 
 CLI (projects orchestration):
 
