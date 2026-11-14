@@ -961,6 +961,13 @@ const treePlugin = DataGridTableTreePlugin<{ id: number; name: string }>({
   expandable: (item) => item.id > 0,
 });
 
+// The detail's `render` and `toggleLabel` are typed by the consumer's item only if the plugin's
+// declaration file resolves its props type: otherwise `item` goes implicit-any (TS7006).
+const rowDetailPlugin = DataGridRowDetailPlugin<{ id: number; name: string }>({
+  render: (item) => item.name,
+  toggleLabel: (item) => `Details for ${item.name}`,
+});
+
 // The export's loader is typed by the few members of exceljs it uses, so a consumer's own object of
 // that shape type-checks with exceljs not installed here, and `row` in a transformer is typed.
 class StubWorkbook {
@@ -987,9 +994,9 @@ export {
   DataGrid,
   DataGridPaginationPlugin,
   DataGridFiltersPlugin,
-  DataGridRowDetailPlugin,
   DragDrop,
   treePlugin,
+  rowDetailPlugin,
   edge,
   entity,
   exportItems,

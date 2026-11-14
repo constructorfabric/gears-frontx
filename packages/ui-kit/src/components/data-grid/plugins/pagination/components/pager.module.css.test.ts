@@ -18,4 +18,9 @@ describe('pager.module.css', () => {
     expect(declared('.compact .info', 'text-overflow')).toBe('ellipsis');
     expect(declared('.compact .info', 'white-space')).toBe('nowrap');
   });
+
+  it('keeps the compact Previous and Next on one line at their own width', () => {
+    expect(declared('.compact .pages', 'flex-shrink')).toBe('0');
+    expect(declared('.compact .pages', 'white-space')).toBe('nowrap');
+  });
 });

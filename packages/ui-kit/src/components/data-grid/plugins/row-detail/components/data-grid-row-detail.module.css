@@ -49,8 +49,15 @@
  * the way a colspan cell is held to its columns' width in the kit's own table. Under
  * `tableLayout="fixed"` the columns' widths are already fixed and the min-inline-size keeps the
  * content full-bleed the same way.
+ *
+ * The table cell keeps its text on one line (`white-space: nowrap`), which a record's value wants
+ * and a detail's prose does not, so the detail takes wrapping back. Content that still cannot fit
+ * the cell (a nested table, a long unbroken string) scrolls inside the detail instead of drawing
+ * past the table's edge.
  */
 .detailContent {
   inline-size: 0;
   min-inline-size: 100%;
+  overflow-x: auto;
+  white-space: normal;
 }

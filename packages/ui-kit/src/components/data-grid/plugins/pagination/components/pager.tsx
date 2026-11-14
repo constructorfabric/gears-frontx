@@ -63,9 +63,8 @@ export const Pager = memo(function Pager({
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const limitOptions = limits.length > 0 ? limits : [limit];
 
-  // Read in both forms: the compact pager hides the numbered buttons but its Previous and Next
-  // still page through the same range, and skipping the call in compact would change the hook
-  // order between the forms.
+  // Called in both forms only to keep the hook order stable: the compact pager does not render
+  // the numbered items (Previous and Next work from `page` and `totalPages` alone).
   const items = usePaginationItems(page, totalPages);
 
   function handlePageChange(newPage: number) {

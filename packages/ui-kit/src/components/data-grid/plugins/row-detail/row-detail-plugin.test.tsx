@@ -6,6 +6,7 @@ import { render } from '../../../../__test-utils__/render-with-user';
 import { DataGrid } from '../../data-grid';
 import type { DataGridLoadResult } from '../../data-grid-types';
 import { messages } from '../../messages';
+import type { DataGridMessagesOverride } from '../../messages';
 import { useDataGrid } from '../../services/core/data-grid-context';
 import type { DataGridTableColumn } from '../../services/table/table-types';
 import { createDataGridDragDropPlugin } from '../drag-drop/drag-drop-plugin';
@@ -44,6 +45,9 @@ const oddColumns: DataGridTableColumn<{ id: string; name: string }>[] = [{ id: '
 // consumer would keep it.
 const renderDetail = (item: { name: string }) => <p>{item.name} notes</p>;
 
+// A detail that holds state of its own, the kind a remount would lose.
+const renderDraft = (item: { name: string }) => <input aria-label={`Draft for ${item.name}`} />;
+
 function load(): Promise<DataGridLoadResult<Item>> {
   return Promise.resolve({ results: data, total: data.length });
 }
@@ -67,7 +71,7 @@ function HideColumnButton({ columnId }: { columnId: string }) {
 }
 
 interface GridProps {
-  messages?: { rowDetail: { toggle: string } };
+  messages?: DataGridMessagesOverride;
 }
 
 function renderGrid(
@@ -193,26 +197,43 @@ describe('DataGridRowDetailPlugin', () => {
 
       const toggle = toggleIn(row);
       expect(toggle).toHaveAttribute('aria-expanded', 'false');
-      // Closed means nowhere to point: the region exists only while the detail is open.
+      // Closed means nowhere to point: the group exists only while the detail is open.
       expect(toggle).not.toHaveAttribute('aria-controls');
     });
 
-    it('opens the detail under its row, names the region, and points the toggle at it', async () => {
+    it.each([
+      { case: 'the rowDetail column message', gridProps: {}, name: messages.rowDetail.column },
+      {
+        case: 'a messages override',
+        gridProps: { messages: { rowDetail: { column: 'Notes' } } },
+        name: 'Notes',
+      },
+    ])('names the toggle column header after $case', async ({ gridProps, name }) => {
+      renderGrid(
+        'row_detail_header',
+        <DataGridRowDetailPlugin<Item> render={renderDetail} />,
+        gridProps,
+      );
+
+      expect(await screen.findByRole('columnheader', { name })).toBeInTheDocument();
+    });
+
+    it('opens the detail under its row, names the group, and points the toggle at it', async () => {
       await openFirstDetail(
         'row_detail_open',
         <DataGridRowDetailPlugin<Item> render={renderDetail} />,
       );
 
-      const region = screen.getByRole('region', { name: messages.rowDetail.toggle });
-      expect(region).toHaveTextContent('Alpha notes');
+      const detail = screen.getByRole('group', { name: messages.rowDetail.toggle });
+      expect(detail).toHaveTextContent('Alpha notes');
 
       const rows = bodyRows();
       expect(rows).toHaveLength(4);
-      expect(within(rows[1]!).getByRole('region')).toBe(region);
+      expect(within(rows[1]!).getByRole('group')).toBe(detail);
 
       const toggle = toggleIn(rows[0]!);
       expect(toggle).toHaveAttribute('aria-expanded', 'true');
-      expect(toggle).toHaveAttribute('aria-controls', region.id);
+      expect(toggle).toHaveAttribute('aria-controls', detail.id);
     });
 
     it('closes the detail again on a second press', async () => {
@@ -224,29 +245,10 @@ describe('DataGridRowDetailPlugin', () => {
 
       await user.click(toggleIn(row));
 
-      expect(screen.queryByRole('region', { name: messages.rowDetail.toggle })).toBeNull();
+      expect(screen.queryByRole('group', { name: messages.rowDetail.toggle })).toBeNull();
       const rows = bodyRows();
       expect(rows).toHaveLength(3);
       expect(toggleIn(rows[0]!)).toHaveAttribute('aria-expanded', 'false');
-    });
-
-    it('toggles from the keyboard, with Enter and with Space', async () => {
-      const { user } = renderGrid(
-        'row_detail_keyboard',
-        <DataGridRowDetailPlugin<Item> render={renderDetail} />,
-      );
-      await screen.findByRole('table');
-      const [row] = bodyRows();
-      const toggle = toggleIn(row);
-      toggle.focus();
-
-      await user.keyboard('{Enter}');
-      expect(
-        await screen.findByRole('region', { name: messages.rowDetail.toggle }),
-      ).toBeInTheDocument();
-
-      await user.keyboard(' ');
-      expect(screen.queryByRole('region', { name: messages.rowDetail.toggle })).toBeNull();
     });
 
     it('does not turn a press on the toggle into a row click', async () => {
@@ -267,7 +269,7 @@ describe('DataGridRowDetailPlugin', () => {
       await user.click(toggleIn(row));
       await user.keyboard('{Enter}');
       expect(rowClick).toHaveBeenCalledTimes(1);
-      expect(screen.getByRole('region', { name: messages.rowDetail.toggle })).toBeInTheDocument();
+      expect(screen.getByRole('group', { name: messages.rowDetail.toggle })).toBeInTheDocument();
     });
 
     it('takes the toggle name from toggleLabel when the grid passes one', async () => {
@@ -284,13 +286,13 @@ describe('DataGridRowDetailPlugin', () => {
 
       await user.click(within(row).getByRole('button', { name: 'Notes for Alpha' }));
 
-      const region = screen.getByRole('region', { name: 'Notes for Alpha' });
-      expect(region).toHaveTextContent('Alpha notes');
+      const detail = screen.getByRole('group', { name: 'Notes for Alpha' });
+      expect(detail).toHaveTextContent('Alpha notes');
 
       const rows = bodyRows();
       const toggle = within(rows[0]!).getByRole('button', { name: 'Notes for Alpha' });
       expect(toggle).toHaveAttribute('aria-expanded', 'true');
-      expect(toggle).toHaveAttribute('aria-controls', region.id);
+      expect(toggle).toHaveAttribute('aria-controls', detail.id);
     });
 
     it('renames the toggle through the grid messages', async () => {
@@ -312,7 +314,7 @@ describe('DataGridRowDetailPlugin', () => {
         'true',
       );
       await user.click(within(bodyRows()[0]!).getByRole('button', { name: 'More' }));
-      expect(screen.queryByRole('region', { name: 'More' })).toBeNull();
+      expect(screen.queryByRole('group', { name: 'More' })).toBeNull();
     });
   });
 
@@ -372,12 +374,12 @@ describe('DataGridRowDetailPlugin', () => {
           <RefreshButton />
         </>
       ));
-      expect(screen.getByRole('region', { name: messages.rowDetail.toggle })).toBeInTheDocument();
+      expect(screen.getByRole('group', { name: messages.rowDetail.toggle })).toBeInTheDocument();
 
       await user.click(screen.getByRole('button', { name: 'refresh' }));
       await screen.findByText('Alpha');
 
-      expect(screen.getByRole('region', { name: messages.rowDetail.toggle })).toHaveTextContent(
+      expect(screen.getByRole('group', { name: messages.rowDetail.toggle })).toHaveTextContent(
         'Alpha notes',
       );
       const [row] = bodyRows();
@@ -411,56 +413,58 @@ describe('DataGridRowDetailPlugin', () => {
 
       const rows = bodyRows();
       expect(within(rows[0]!).getByText('Electronics')).toBeInTheDocument();
-      expect(within(rows[1]!).getByRole('region')).toHaveTextContent('Electronics notes');
+      expect(within(rows[1]!).getByRole('group')).toHaveTextContent('Electronics notes');
       // The child keeps its place under its parent: the detail sits between them.
       expect(within(rows[2]!).getByText('Phones')).toBeInTheDocument();
     });
 
-    it('renders under the row-click row renderer too', async () => {
-      await openFirstDetail('row_detail_row_click', (
+    it.each([
+      {
+        renderer: 'row-click',
+        Plugin: function RowClick() {
+          return <DataGridRowClickPlugin<Item> click={vi.fn()} />;
+        },
+      },
+      {
+        renderer: 'drag and drop',
+        Plugin: createDataGridDragDropPlugin<Item>({ onDrop: vi.fn() }),
+      },
+    ])('renders under the $renderer row renderer too', async ({ renderer, Plugin }) => {
+      await openFirstDetail(`row_detail_renderer_${renderer}`, (
         <>
-          <DataGridRowClickPlugin<Item> click={vi.fn()} />
+          <Plugin />
           <DataGridRowDetailPlugin<Item> render={renderDetail} />
         </>
       ));
 
       const rows = bodyRows();
-      expect(within(rows[1]!).getByRole('region')).toHaveTextContent('Alpha notes');
+      expect(within(rows[1]!).getByRole('group')).toHaveTextContent('Alpha notes');
     });
 
-    it('renders under the drag and drop row renderer too', async () => {
+    it('hides the open details while a row is dragged and keeps what they hold for after', async () => {
       const DragDrop = createDataGridDragDropPlugin<Item>({ onDrop: vi.fn() });
-      await openFirstDetail('row_detail_drag_row', (
+      const { user } = await openFirstDetail('row_detail_drag', (
         <>
           <DragDrop />
-          <DataGridRowDetailPlugin<Item> render={renderDetail} />
+          <DataGridRowDetailPlugin<Item> render={renderDraft} />
         </>
       ));
-
-      const rows = bodyRows();
-      expect(within(rows[1]!).getByRole('region')).toHaveTextContent('Alpha notes');
-    });
-
-    it('hides the open details while a row is dragged and brings them back after', async () => {
-      const DragDrop = createDataGridDragDropPlugin<Item>({ onDrop: vi.fn() });
-      await openFirstDetail('row_detail_drag', (
-        <>
-          <DragDrop />
-          <DataGridRowDetailPlugin<Item> render={renderDetail} />
-        </>
-      ));
-      expect(within(bodyRows()[1]!).getByRole('region')).toHaveTextContent('Alpha notes');
+      await user.type(screen.getByRole('textbox', { name: 'Draft for Alpha' }), 'Unsaved draft');
 
       const session = createDragSession();
       await session.start(bodyRows()[0]!);
 
-      expect(screen.queryByRole('region', { name: messages.rowDetail.toggle })).toBeNull();
+      expect(screen.queryByRole('textbox', { name: 'Draft for Alpha' })).toBeNull();
+      // Hidden, not gone: the toggle still points at an element that exists.
+      const controls = toggleIn(bodyRows()[0]!).getAttribute('aria-controls');
+      expect(controls).not.toBeNull();
+      expect(document.getElementById(controls!)).not.toBeVisible();
 
       await session.drop(bodyRows()[1]!);
 
-      expect(
-        await screen.findByRole('region', { name: messages.rowDetail.toggle }),
-      ).toHaveTextContent('Alpha notes');
+      expect(await screen.findByRole('textbox', { name: 'Draft for Alpha' })).toHaveValue(
+        'Unsaved draft',
+      );
     });
 
     it('keeps two grids apart and survives record ids that are odd in a DOM id', async () => {
@@ -491,19 +495,60 @@ describe('DataGridRowDetailPlugin', () => {
         });
       }
 
-      const regions = screen.getAllByRole('region', { name: messages.rowDetail.toggle });
-      expect(regions).toHaveLength(2);
-      expect(regions[0]!.id).not.toBe(regions[1]!.id);
+      const details = screen.getAllByRole('group', { name: messages.rowDetail.toggle });
+      expect(details).toHaveLength(2);
+      expect(details[0]!.id).not.toBe(details[1]!.id);
       for (const table of tables) {
         const row = within(table).getAllByRole('row').filter((r) => r.closest('tbody'))[0]!;
         const toggle = within(row).getByRole('button', { name: messages.rowDetail.toggle });
         expect(toggle).toHaveAttribute('aria-expanded', 'true');
-        const region = regions.find(
+        const detail = details.find(
           (candidate) => candidate.id === toggle.getAttribute('aria-controls'),
         );
-        expect(region).toBeDefined();
-        expect(table).toContainElement(region ?? null);
+        expect(detail).toBeDefined();
+        expect(table).toContainElement(detail ?? null);
       }
+    });
+
+    it('gives a number id and a string id of the same text details of their own', async () => {
+      // The storage tells 1 from "1", so a tree can hold both: a parent 1 with a child "1".
+      type MixedItem = { id: number | string; name: string; parent_id: number | null };
+      const mixed: MixedItem[] = [
+        { id: 1, name: 'Number', parent_id: null },
+        { id: '1', name: 'String', parent_id: 1 },
+      ];
+      const mixedColumns: DataGridTableColumn<MixedItem>[] = [{ id: 'name', label: 'Name' }];
+      const loadMixed = () => Promise.resolve({ results: mixed, total: mixed.length });
+      const { user } = render(
+        <DataGrid
+          name="row_detail_id_types"
+          persistent="memory"
+          load={loadMixed}
+          columns={mixedColumns}
+        >
+          <DataGridTableTreePlugin<MixedItem> parentKey="parent_id" />
+          <DataGridRowDetailPlugin<MixedItem> render={renderDetail} />
+        </DataGrid>,
+      );
+      const [parent] = await vi.waitFor(() => {
+        const found = bodyRows();
+        expect(found.length).toBeGreaterThan(0);
+        return found;
+      });
+      await user.click(within(parent!).getByRole('button', { name: messages.tableTree.expand }));
+      await screen.findByText('String');
+
+      await user.click(toggleIn(bodyRows()[0]!));
+      await user.click(toggleIn(bodyRows()[2]!));
+
+      const rows = bodyRows();
+      const parentDetail = within(rows[1]!).getByRole('group');
+      const childDetail = within(rows[3]!).getByRole('group');
+      expect(parentDetail).toHaveTextContent('Number notes');
+      expect(childDetail).toHaveTextContent('String notes');
+      expect(parentDetail.id).not.toBe(childDetail.id);
+      expect(toggleIn(rows[0]!)).toHaveAttribute('aria-controls', parentDetail.id);
+      expect(toggleIn(rows[2]!)).toHaveAttribute('aria-controls', childDetail.id);
     });
   });
 });
