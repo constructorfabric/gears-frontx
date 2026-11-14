@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode, Ref } from 'react';
 import { cx } from 'class-variance-authority';
 import { TableCell, TableHead } from '../../../../table/public.js';
 import type { DataGridItem } from '../../../data-grid-types';
+import type { ColumnAriaSort } from '../column-sort-state';
 import { IGNORE_CLICK_ATTRIBUTE } from '../ignore-row-click';
 import { useTableService } from '../table-context';
 import type { DataGridTableColumnOverflow } from '../table-types';
@@ -21,7 +22,7 @@ interface DataGridCellProps {
    * header, and only when given: a column with no sort control carries no `aria-sort` at all
    * rather than a constant `none`.
    */
-  ariaSort?: 'ascending' | 'descending' | 'none';
+  ariaSort?: ColumnAriaSort;
   /**
    * Rendered after the overflow-controlled content, outside its clipping contract — used by
    * header cells for the sort-icon / header-cell-end slot, which must stay visible even when the

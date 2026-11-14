@@ -68,7 +68,7 @@ describe('DataGrid messages prop', () => {
 
     // The function message keeps feeding the pager after another load: page 2 with the same
     // one-row limit shows the second item through the German template.
-    await user.click(screen.getByRole('button', { name: 'Go to page 2' }));
+    await user.click(screen.getByRole('button', { name: messages.pagination.goToPage(2) }));
     expect(await screen.findByText('Seite 2 von 2 (2)')).toBeInTheDocument();
   });
 
@@ -109,5 +109,25 @@ describe('DataGrid messages prop', () => {
     );
 
     expect(await screen.findByText('Nichts gefunden')).toBeInTheDocument();
+  });
+
+  it('keeps the English entry for a group or an entry the prop sets to undefined', async () => {
+    render(
+      <DataGrid
+        name="messages_undefined_grid"
+        persistent="memory"
+        load={createLoad()}
+        columns={columns}
+        messages={{ textSearch: { label: undefined }, pagination: undefined }}
+      >
+        <DataGridTextSearchPlugin />
+        <DataGridPaginationPlugin defaultLimit={1} limits={[1, 2]} />
+      </DataGrid>,
+    );
+
+    expect(
+      await screen.findByRole('searchbox', { name: messages.textSearch.label }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(messages.pagination.pageInfo(1, 2, 2))).toBeInTheDocument();
   });
 });

@@ -1299,8 +1299,10 @@ columns' minimum content widths.
   sorting of '<column>' column"; Enter and Space sort. Each header cell carries
   `aria-sort`: `descending` while the grid sorts by that column descending,
   `ascending` while ascending (the second press on the same column), `none` on
-  the sortable columns that are not sorted, and no attribute on a column excluded
-  from sorting or a grid with no order plugin.
+  the sortable columns that are not sorted, and no attribute on an unsorted column
+  that has no sort label (excluded from header sorting, or drawn by its own
+  `headerComponent`) or on a grid with no order plugin. A column the toolbar
+  sorted carries its direction even when its header has no sort label.
 - The table's scroll container is a tab stop (it holds `tabIndex=0` so a keyboard
   can scroll it).
 - The pager is a `nav` named "Pagination"; the page buttons are named "Go to page

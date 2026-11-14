@@ -15,10 +15,12 @@ function getNothing() {
 
 /**
  * The value of `aria-sort` for one header column, from the grid's own sorting: `ascending` or
- * `descending` while the grid sorts by it, `none` on the other sortable columns, and `undefined`
- * for a column excluded from header sorting or a grid with no order plugin, which render no
- * attribute. The plugin is looked up on every render, so one that mounts after the header is read
- * from the next render on; the subscription changes with it, and the hooks called stay the same.
+ * `descending` while the grid sorts by it (also a column excluded from header sorting that the
+ * toolbar sorted, since `aria-sort` states the order of the rows, not the presence of a control),
+ * `none` on the other sortable columns, and `undefined` for an unsorted excluded column or a grid
+ * with no order plugin, which render no attribute. The plugin is looked up on every render, so
+ * one that mounts after the header is read from the next render on; the subscription changes
+ * with it, and the hooks called stay the same.
  */
 export function useColumnAriaSort(columnId: string): ColumnAriaSort | undefined {
   const context = useDataGridContext();
@@ -34,13 +36,13 @@ export function useColumnAriaSort(columnId: string): ColumnAriaSort | undefined 
     sortable?.getSortExcludedColumns ?? getNothing,
   );
 
-  if (!sortable || excludedColumns?.includes(columnId)) {
+  if (!sortable) {
     return undefined;
   }
 
-  if (order?.columnId !== columnId) {
-    return 'none';
+  if (order?.columnId === columnId) {
+    return order.direction === 'asc' ? 'ascending' : 'descending';
   }
 
-  return order.direction === 'asc' ? 'ascending' : 'descending';
+  return excludedColumns?.includes(columnId) ? undefined : 'none';
 }

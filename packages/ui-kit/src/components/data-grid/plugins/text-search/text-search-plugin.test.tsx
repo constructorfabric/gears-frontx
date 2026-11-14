@@ -182,7 +182,22 @@ describe('DataGridTextSearchPlugin', () => {
     const load = createLoad();
     renderGrid('ts_label_prop', load, { label: 'Filter users' });
 
-    const box = await screen.findByRole('searchbox', { name: 'Filter users' });
-    expect(box).not.toHaveAccessibleName(messages.textSearch.label);
+    expect(await screen.findByRole('searchbox', { name: 'Filter users' })).toBeInTheDocument();
+  });
+
+  it('falls back to the strings when the label prop is taken away', async () => {
+    const load = createLoad();
+    const { rerender } = renderGrid('ts_label_removed', load, { label: 'Filter users' });
+    await screen.findByRole('searchbox', { name: 'Filter users' });
+
+    rerender(
+      <DataGrid name="ts_label_removed" load={load} columns={columns} persistent="localStorage">
+        <DataGridTextSearchPlugin />
+      </DataGrid>,
+    );
+
+    expect(
+      await screen.findByRole('searchbox', { name: messages.textSearch.label }),
+    ).toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
 import { act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { render } from '../../../../../__test-utils__/render-with-user';
 import { Checkbox } from '../../../../checkbox/public.js';
 import { DataGrid } from '../../../data-grid';
@@ -124,10 +124,11 @@ function findHeader(scope: HTMLElement, label: string) {
   return cells.find((cell) => cell.textContent?.includes(label));
 }
 
-// The order plugin renders two buttons named after the column, the label and the direction icon,
-// so the name alone is ambiguous; the label is the one inside the header cell.
+// The order plugin renders two buttons named after the column once it is sorted, the label and
+// the direction icon, so the name alone is ambiguous. The label comes first: the icon sits in the
+// cell's end slot, after the content.
 function sortLabel(header: HTMLElement) {
-  return within(header).getAllByRole('button').find((button) => button.closest('th') === header)!;
+  return within(header).getAllByRole('button')[0];
 }
 
 describe('DataGridHeaderCell — overflow', () => {
@@ -696,7 +697,48 @@ describe('DataGridHeaderCell aria-sort', () => {
 
     rerender(<Grid sortable />);
 
-    expect(await screen.findByRole('table')).toBeInTheDocument();
-    expect(findHeader(screen.getByRole('table'), 'Name')).toHaveAttribute('aria-sort', 'none');
+    await waitFor(() =>
+      expect(findHeader(screen.getByRole('table'), 'Name')).toHaveAttribute('aria-sort', 'none'),
+    );
+  });
+
+  it('announces the sort of a column excluded from header sorting but sorted from the toolbar', async () => {
+    const columns: DataGridTableColumn<TestItem>[] = [
+      { id: 'name', label: 'Name' },
+      { id: 'email', label: 'Email Address' },
+    ];
+    render(
+      <DataGrid name="aria_sort_toolbar_only_grid" load={loadData} columns={columns}>
+        <DataGridOrderPlugin
+          excludedColumns={['email']}
+          options={[{ id: 'email', label: 'Email Address' }]}
+          defaultOrder={{ id: 'email', direction: 'desc' }}
+        />
+      </DataGrid>,
+    );
+
+    const table = await screen.findByRole('table');
+    await waitFor(() =>
+      expect(findHeader(table, 'Email Address')).toHaveAttribute('aria-sort', 'descending'),
+    );
+  });
+
+  it('marks an unsorted column with its own headerComponent without aria-sort, since it has no sort control', async () => {
+    const columns: DataGridTableColumn<TestItem>[] = [
+      { id: 'select', label: 'Select', headerComponent: SelectAllHeader },
+      { id: 'name', label: 'Name' },
+    ];
+    render(
+      <DataGrid name="aria_sort_header_component_grid" load={loadData} columns={columns}>
+        <DataGridOrderPlugin />
+      </DataGrid>,
+    );
+
+    const table = await screen.findByRole('table');
+    expect(findHeader(table, 'Name')).toHaveAttribute('aria-sort', 'none');
+    const selectHeader = within(table)
+      .getAllByRole('columnheader')
+      .find((cell) => within(cell).queryByRole('checkbox', { name: 'Select all' }));
+    expect(selectHeader).not.toHaveAttribute('aria-sort');
   });
 });
