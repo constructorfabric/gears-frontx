@@ -51,13 +51,13 @@
  * content full-bleed the same way.
  *
  * The table cell keeps its text on one line (`white-space: nowrap`), which a record's value wants
- * and a detail's prose does not, so the detail takes wrapping back. Content that still cannot fit
- * the cell (a nested table, a long unbroken string) scrolls inside the detail instead of drawing
- * past the table's edge.
+ * and a detail's prose does not, so the detail takes wrapping back, breaking a long unbroken
+ * string too. It does not scroll on its own: a scroll area needs a keyboard focus stop, so content
+ * that is wide by design (a nested table) brings its own, the kit's `Table` among them.
  */
 .detailContent {
   inline-size: 0;
   min-inline-size: 100%;
-  overflow-x: auto;
   white-space: normal;
+  overflow-wrap: anywhere;
 }

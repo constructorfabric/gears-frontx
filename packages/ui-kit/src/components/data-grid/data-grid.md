@@ -1214,7 +1214,9 @@ Each toggle acts on its own row, and opening one leaves the other open details w
 The detail row spans every column the grid draws, the data columns and the extra ones at both
 edges, and the span moves when the table configuration panel hides a column or another plugin
 adds one. It takes the row hover tint off itself, so an open detail never reads as a hovered
-row. Its text wraps inside the row, and content wider than the row scrolls inside the detail.
+row. Its text wraps inside the row, long unbroken strings included. The detail does not scroll
+on its own, so content that is wide by design, such as a nested table, brings its own scroll
+area with a focus stop, as the kit's `Table` does.
 The open set is kept in memory by record id: a reload that brings the same ids back shows them
 open again, and nothing survives a browser reload. The set is not pruned when records leave the
 grid, so a record that comes back later with the same id, after a filter, a page change or a
