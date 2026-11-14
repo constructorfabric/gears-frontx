@@ -47,6 +47,7 @@ code or CSS:
 | `@gears-frontx/ui-kit/data-grid/row-select` | `DataGridRowSelectPlugin` |
 | `@gears-frontx/ui-kit/data-grid/table-tree` | `DataGridTableTreePlugin` |
 | `@gears-frontx/ui-kit/data-grid/drag-drop` | `createDataGridDragDropPlugin` and the types |
+| `@gears-frontx/ui-kit/data-grid/row-detail` | `DataGridRowDetailPlugin` and the types |
 
 The package root re-exports all of them, so
 `import { DataGrid, DataGridPaginationPlugin } from '@gears-frontx/ui-kit'`
@@ -445,6 +446,7 @@ Draws a pager in the `bottom` slot and fills `DataGridLoadContext.pagination`.
 | `defaultLimit` | `number` | `12` |
 | `limits` | `number[]` | `[12, 24, 48, 96]`; the page-size selector appears with more than one |
 | `autoHide` | `boolean` | `false`; hides the pager when everything fits the smallest limit |
+| `compact` | `boolean` | `false`; the narrow form of the pager, see below |
 
 A page change updates the page, stores it and reloads. A limit change goes back to
 page 1, stores the limit and reloads. A refresh resets the page to 1. The page
@@ -455,6 +457,17 @@ Previous and Next words collapse to their chevrons. The pager is a size
 container, so a parent that shrinks to fit its content collapses it to zero
 width (see the containment note in `pagination.md`). A grid with a `label`
 names the pager `<label> pagination` (see `label`).
+
+With `compact` the pager keeps to one line that never wraps: the page buttons
+and the ellipses are gone, the page text drops the item count and reads
+"Page 2 of 3", and Previous and Next are the only way to move. The selector and
+the text stay where they were. The line takes `flex-wrap: nowrap`, so the parts
+no longer drop to a second line; when the container is narrower than the parts,
+the text clips with an ellipsis instead of spilling past the grid, and a
+container narrower than the selector can clip the selector too. The compact
+form suits grids that already sit in a tight column, where the default pager's
+wrapped second line costs more vertical space than the clipped text does.
+Changing the prop takes hold on the next render of the plugin.
 
 ### `DataGridTextSearchPlugin`
 
@@ -1161,8 +1174,53 @@ registered wins, so declaration order decides what a grid with two of them does:
 | Row click, after drag and drop | Rows click; the handle column is drawn but nothing drags |
 | Drag and drop, after the table tree | Rows drag, and the tree's toggle and indentation are drawn, but opening a row shows no children |
 | The table tree, after drag and drop | The tree's rows show their children; the handle column is drawn but nothing drags |
+| Row detail, after any of the above | The detail row draws under whichever row renderer wins; the toggles stay in their own column |
 
 With row select the handle column comes first, ahead of the checkboxes.
+
+The row detail plugin below replaces no renderer at all: it hangs its detail row off the
+`row-after` table slot, so it composes with every renderer in the table.
+
+### `DataGridRowDetailPlugin`
+
+Adds a toggle column at the start of the grid. Opening a record's toggle draws a detail row under
+it, between the record's row and whatever follows it (its children under the table tree, the next
+record otherwise). It replaces no row renderer, so it works with row click, the table tree and
+drag and drop as they are.
+
+| Prop | Type | Notes |
+|------|------|-------|
+| `render` | `(item) => ReactNode` | What the detail row shows; keep its identity stable (a module-level function or `useCallback`), since a new one re-renders every open detail |
+| `toggleLabel` | `(item) => string` | The toggle's accessible name; by default it comes from the grid messages ("Details") |
+
+```tsx
+import { DataGridRowDetailPlugin } from '@gears-frontx/ui-kit/data-grid/row-detail';
+
+<DataGrid<Task> name="tasks" load={loadTasks} columns={columns}>
+  <DataGridRowDetailPlugin<Task>
+    render={(task) => <TaskNotes id={task.id} />}
+    toggleLabel={(task) => `Notes for ${task.name}`}
+  />
+</DataGrid>;
+```
+
+Each toggle acts on its own row, and opening one leaves the other open details where they are.
+The detail row spans every column the grid draws, the data columns and the extra ones at both
+edges, and the span moves when the table configuration panel hides a column or another plugin
+adds one. It takes the row hover tint off itself, so an open detail never reads as a hovered
+row. The open set is kept in memory by record id: a reload that brings the same ids back shows
+them open again, and nothing survives a browser reload. While any row is dragged the open
+details are hidden, so a drop always lands on a record row; they come back when the drag ends.
+
+The toggle is a button named by `toggleLabel`, or by the `rowDetail.toggle` message without it
+(see `messages`), and carries `aria-expanded`; the open detail is a region with the same name,
+and the toggle points at it with `aria-controls` while it is open. Space or Enter on the toggle
+opens and closes the detail like a click does, and neither fires the row click.
+
+The plugin's API (`getPlugin<DataGridRowDetailPluginApi<TItem>>('rowDetail')`) has `useIsOpen(id)`
+and `toggle(id)` for the open state, `useRender()` and `useName(item)` for the configured render
+and label, and `regionId(id)`, the DOM id of a record's detail region, so your own controls can
+point at the same region.
 
 ## Custom plugins
 
@@ -1221,7 +1279,7 @@ export const StatusPlugin = createDataGridPlugin<DataGridItem, 'status', Record<
 |------|---------|
 | Plugins | `hook(name, handler)`, `getPlugin<Api>(name)` |
 | Layout | `registerSlot(name, options)`, `setActiveSlotId(name, id)`, `getActiveSlotId(name)` |
-| Table | `registerTableSlot(name, options)` (`subheader`, `footer`, `header-cell-end`), `registerExtraColumn(options)`, `updateExtraColumnWidth` / `Order` / `Sticky`, `registerComponent(name, component)` (override `row`, `header-cell-label`, `body-cell-content` or `content`), `updateColumns`, `updateColumnVisibility`, `updateColumnSticky`, `updateTableLayout`, `updateStickyHeader` |
+| Table | `registerTableSlot(name, options)` (`subheader`, `footer`, `header-cell-end`, `row-after`), `registerExtraColumn(options)`, `updateExtraColumnWidth` / `Order` / `Sticky`, `registerComponent(name, component)` (override `row`, `header-cell-label`, `body-cell-content` or `content`), `updateColumns`, `updateColumnVisibility`, `updateColumnSticky`, `updateTableLayout`, `updateStickyHeader` |
 | Persistent state | `registerPersistentState(key, options?)` |
 | Storage | `useStore(selector)` (`visibleRecords`, `rootSections`, `hasActiveFilters`, ...), `createSection`, `clearSections`, `getRecord`, `getItemId`, ... |
 | Load | `triggerLoad(config?)`, `refresh(options?)`, `abort()`, `getLoadInstances()`, `useLoadStateStore` |
@@ -1309,7 +1367,10 @@ columns' minimum content widths.
   N" and carry `aria-current="page"` on the current one. A grid with a `label`
   names its pager `<label> pagination` and its table's scroll container a
   `region` named `<label>` - pass a distinct `label` per grid when a page
-  holds more than one grid, so their landmarks do not collide.
+  holds more than one grid, so their landmarks do not collide. In the compact
+  pager the page text is a polite live region (`aria-live="polite"`,
+  `aria-atomic="true"`), so a page change is announced with "Page N of M" and
+  nothing else; the default pager has no live region.
 - `aria-busy` is set on the content region while a loader is on screen.
 - The order popover's items are menu items without a menu popup, so they take
   focus and Enter and Space, but arrow keys do not move between them.
@@ -1360,7 +1421,10 @@ columns' minimum content widths.
 - A search still waiting out its debounce when the grid unmounts is flushed: its
   refresh runs after the grid is gone, and its load's `signal` is not aborted.
 - The loading overlay blocks the pointer only, not the keyboard.
-- Previous and Next drop keyboard focus at the ends of the range.
+- In the default pager, Previous and Next drop keyboard focus at the ends of the
+  range. The compact pager keeps them in the tab order there instead: they are
+  drawn with the kit's `focusableWhenDisabled`, so they hold focus and report
+  `aria-disabled="true"`.
 - With the row click plugin, activating an item of a menu that a row action opens fires the row
   click, and fires it twice: with the mouse, and with Enter on the item (Space does not, a row
   ignores it). The menu renders in a portal, so the item is not inside the element marked to

@@ -55,3 +55,21 @@
   letter-spacing: var(--text-body-tracking);
   font-variant-numeric: tabular-nums;
 }
+
+/*
+ * The compact pager is the narrow form: without the page buttons its three parts fit a phone-width
+ * container, so the wrap the default form needs would read as broken layout instead, and the row
+ * stays one line. The text keeps the auto margin that pushes it to the end edge but gives up its
+ * minimum width, so when the line still does not fit the text clips with an ellipsis rather than
+ * spilling past the grid.
+ */
+.compact {
+  flex-wrap: nowrap;
+}
+
+.compact .info {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

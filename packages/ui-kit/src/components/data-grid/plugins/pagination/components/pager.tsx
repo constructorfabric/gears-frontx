@@ -1,5 +1,6 @@
 import { memo } from 'react';
 
+import { cx } from 'class-variance-authority';
 import {
   Pagination,
   PaginationButton,
@@ -27,6 +28,13 @@ interface PagerProps {
   /** Hides the whole pager while everything fits on one page of the smallest size. */
   autoHide?: boolean;
   /**
+   * The narrow form: one line that never wraps, the compact page text without the item count, and
+   * no page buttons, so the Previous and Next buttons are the only way to move. Their disabled
+   * state stays focusable (`focusableWhenDisabled`), because with the numbered buttons gone a
+   * button that dropped focus at the ends of the range would take the tab stop with it.
+   */
+  compact?: boolean;
+  /**
    * The grid's `label`, when it has one: it names the pager's `nav` "<label> pagination", so two
    * labelled grids on one page do not share the landmark name. Absent keeps the plain
    * "Pagination" name.
@@ -46,6 +54,7 @@ export const Pager = memo(function Pager({
   limit,
   limits,
   autoHide,
+  compact,
   label,
   onPageChange,
   onLimitChange,
@@ -54,6 +63,9 @@ export const Pager = memo(function Pager({
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const limitOptions = limits.length > 0 ? limits : [limit];
 
+  // Read in both forms: the compact pager hides the numbered buttons but its Previous and Next
+  // still page through the same range, and skipping the call in compact would change the hook
+  // order between the forms.
   const items = usePaginationItems(page, totalPages);
 
   function handlePageChange(newPage: number) {
@@ -89,7 +101,7 @@ export const Pager = memo(function Pager({
   return (
     <Pagination
       aria-label={label === undefined ? messages.pagination.ariaLabel : messages.pagination.ariaLabelFor(label)}
-      className={styles.pager}
+      className={cx(styles.pager, compact && styles.compact)}
     >
       {showLimitSelector && (
         <Segment
@@ -111,37 +123,48 @@ export const Pager = memo(function Pager({
         </Segment>
       )}
 
-      <span className={styles.info}>{messages.pagination.pageInfo(page, totalPages, total)}</span>
+      <span
+        className={styles.info}
+        aria-live={compact ? 'polite' : undefined}
+        aria-atomic={compact ? 'true' : undefined}
+      >
+        {compact
+          ? messages.pagination.pageInfoCompact(page, totalPages)
+          : messages.pagination.pageInfo(page, totalPages, total)}
+      </span>
 
       <PaginationContent className={styles.pages}>
         <PaginationItem>
           <PaginationPreviousButton
             aria-label={messages.pagination.previousPage}
             disabled={page <= 1}
+            focusableWhenDisabled={compact}
             onClick={() => handlePageChange(page - 1)}
           />
         </PaginationItem>
 
-        {items.map((item, index) => (
-          <PaginationItem key={item.type === 'page' ? item.page : `ellipsis-${index}`}>
-            {item.type === 'page' ? (
-              <PaginationButton
-                isActive={item.page === page}
-                aria-label={messages.pagination.goToPage(item.page)}
-                onClick={() => handlePageChange(item.page)}
-              >
-                {item.page}
-              </PaginationButton>
-            ) : (
-              <PaginationEllipsis />
-            )}
-          </PaginationItem>
-        ))}
+        {!compact &&
+          items.map((item, index) => (
+            <PaginationItem key={item.type === 'page' ? item.page : `ellipsis-${index}`}>
+              {item.type === 'page' ? (
+                <PaginationButton
+                  isActive={item.page === page}
+                  aria-label={messages.pagination.goToPage(item.page)}
+                  onClick={() => handlePageChange(item.page)}
+                >
+                  {item.page}
+                </PaginationButton>
+              ) : (
+                <PaginationEllipsis />
+              )}
+            </PaginationItem>
+          ))}
 
         <PaginationItem>
           <PaginationNextButton
             aria-label={messages.pagination.nextPage}
             disabled={page >= totalPages}
+            focusableWhenDisabled={compact}
             onClick={() => handlePageChange(page + 1)}
           />
         </PaginationItem>

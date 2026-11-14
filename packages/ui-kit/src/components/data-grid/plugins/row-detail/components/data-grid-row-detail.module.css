@@ -1,0 +1,56 @@
+/*
+ * The toggle column's cell. One line of cell text, like the row select checkbox cell beside it: a
+ * row holding the toggle stays the height of a row of text.
+ */
+.toggleCell {
+  display: flex;
+  align-items: center;
+}
+
+/*
+ * The kit's small ghost icon Button taken down to the line's square, the glyph at its own size, so
+ * a toggle taller than a line of cell text would make every row that has one taller than the rows
+ * that do not. Two classes on purpose: they outrank the Button's own size, whichever stylesheet
+ * reaches the page first.
+ */
+.toggleCell .toggle {
+  block-size: var(--text-meta-line-height);
+  inline-size: var(--text-meta-line-height);
+  border-radius: var(--radius-sm);
+}
+
+.icon {
+  transition: transform var(--duration-micro) var(--ease-standard);
+}
+
+/* The chevron points at where the detail is: inline-end while closed, down when open. */
+.iconCollapsed {
+  transform: rotate(-90deg);
+}
+
+.iconCollapsed:dir(rtl) {
+  transform: rotate(90deg);
+}
+
+/*
+ * The detail row does not take the hover tint. The kit holds the tint on a record row while its
+ * disclosure is open, and that hold is the open cue; the pointer crossing the detail would
+ * tint it like a hovered row, a second and wrong mark. The kit's hook for the row's hover tint is
+ * what turns it off, the way the drag and drop plugin does while a row is dragged.
+ */
+.detailRow {
+  --table-row-hover-fill: transparent;
+}
+
+/*
+ * Under `tableLayout="auto"` a cell's content joins the width the columns it spans want, so a
+ * wide detail would stretch every column of the table. The wrapper is taken out of that
+ * measurement (`inline-size: 0`) and fills the cell's width instead (`min-inline-size: 100%`),
+ * the way a colspan cell is held to its columns' width in the kit's own table. Under
+ * `tableLayout="fixed"` the columns' widths are already fixed and the min-inline-size keeps the
+ * content full-bleed the same way.
+ */
+.detailContent {
+  inline-size: 0;
+  min-inline-size: 100%;
+}

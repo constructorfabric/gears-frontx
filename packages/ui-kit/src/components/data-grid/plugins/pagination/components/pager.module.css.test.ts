@@ -10,4 +10,12 @@ describe('pager.module.css', () => {
   it('wraps the pager row so a container narrower than its parts keeps every control inside it', () => {
     expect(declared('.pager', 'flex-wrap')).toBe('wrap');
   });
+
+  it('keeps the compact pager on one line that clips its text instead of spilling', () => {
+    expect(declared('.compact', 'flex-wrap')).toBe('nowrap');
+    expect(declared('.compact .info', 'min-inline-size')).toBe('0');
+    expect(declared('.compact .info', 'overflow')).toBe('hidden');
+    expect(declared('.compact .info', 'text-overflow')).toBe('ellipsis');
+    expect(declared('.compact .info', 'white-space')).toBe('nowrap');
+  });
 });

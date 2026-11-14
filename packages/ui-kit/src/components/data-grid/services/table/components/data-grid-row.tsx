@@ -7,6 +7,7 @@ import { useTableService } from '../table-context';
 import type { DataGridTableColumn } from '../table-types';
 import { DataGridCell } from './data-grid-cell';
 import { DataGridExtraBodyColumns } from './data-grid-extra-body-columns';
+import { DataGridTableSlot } from './data-grid-table-slot';
 
 interface DataGridRowProps<TItem extends DataGridItem> {
   record: DataGridRecord<TItem>;
@@ -16,6 +17,7 @@ export function DataGridRow<TItem extends DataGridItem>({ record }: DataGridRowP
   const tableService = useTableService<TItem>();
   const columns = tableService.useVisibleColumns();
   const tableLayout = tableService.useTableLayout();
+  const rowAfterSlots = tableService.useSlots('row-after');
 
   const BodyCellContent = tableService.useComponent<{ column: DataGridTableColumn<TItem>; item: TItem }>(
     'body-cell-content',
@@ -42,6 +44,7 @@ export function DataGridRow<TItem extends DataGridItem>({ record }: DataGridRowP
         })}
         <DataGridExtraBodyColumns position="end" />
       </TableRow>
+      <DataGridTableSlot slots={rowAfterSlots} />
     </DataGridRecordProvider>
   );
 }
