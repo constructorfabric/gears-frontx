@@ -17,8 +17,8 @@ describe('data-grid-row-detail.module.css', () => {
     expect(declared('.detailContent', 'min-inline-size')).toBe('100%');
   });
 
-  it('wraps the detail text the table cell keeps on one line, and scrolls content wider than the cell', () => {
+  it('wraps the detail text the table cell keeps on one line, long unbroken strings included', () => {
     expect(declared('.detailContent', 'white-space')).toBe('normal');
-    expect(declared('.detailContent', 'overflow-x')).toBe('auto');
+    expect(declared('.detailContent', 'overflow-wrap')).toBe('anywhere');
   });
 });
