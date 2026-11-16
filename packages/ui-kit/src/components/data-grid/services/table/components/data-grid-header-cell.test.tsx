@@ -8,7 +8,7 @@ import type { DataGridLoadResult } from '../../../data-grid-types';
 import { DataGridOrderPlugin } from '../../../plugins/order/order-plugin';
 import { createDataGridPlugin } from '../../plugins/plugins-helpers';
 import tableStyles from '../../../../table/table.module.css';
-import type { DataGridTableColumn } from '../table-types';
+import type { ColumnSortSource, DataGridTableColumn } from '../table-types';
 
 vi.stubGlobal(
   'ResizeObserver',
@@ -785,5 +785,90 @@ describe('DataGridHeaderCell aria-sort', () => {
       for (const listener of listeners) listener();
     });
     expect(findHeader(table, 'Email Address')).toHaveAttribute('aria-sort', 'descending');
+  });
+
+  function createSortSource(initial: { columnId: string; direction: 'asc' | 'desc' }) {
+    const listeners = new Set<() => void>();
+    const excludedColumns: readonly string[] = [];
+    const state = { order: initial };
+    const source: ColumnSortSource = {
+      subscribeColumnSort(listener) {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+      getColumnSortOrder: () => state.order,
+      getSortExcludedColumns: () => excludedColumns,
+    };
+    return { source, listeners, state };
+  }
+
+  it('announces the sort of a column sort source registered after the table rendered, without a remount', async () => {
+    const columns: DataGridTableColumn<TestItem>[] = [
+      { id: 'name', label: 'Name' },
+      { id: 'email', label: 'Email Address' },
+    ];
+    let register: ((source: ColumnSortSource) => void) | undefined;
+    const LateSortPlugin = createDataGridPlugin<TestItem, 'lateSort'>('lateSort', (context) => {
+      register = context.registerColumnSortSource;
+      return {};
+    });
+    render(
+      <DataGrid name="aria_sort_late_source_grid" load={loadData} columns={columns}>
+        <LateSortPlugin />
+      </DataGrid>,
+    );
+
+    const table = await screen.findByRole('table');
+    const emailHeader = findHeader(table, 'Email Address');
+    expect(emailHeader).not.toHaveAttribute('aria-sort');
+
+    const { source } = createSortSource({ columnId: 'email', direction: 'desc' });
+    act(() => register?.(source));
+
+    expect(findHeader(table, 'Email Address')).toBe(emailHeader);
+    expect(emailHeader).toHaveAttribute('aria-sort', 'descending');
+    expect(findHeader(table, 'Name')).toHaveAttribute('aria-sort', 'none');
+  });
+
+  it('follows a column sort source that replaces the one registered before, and leaves the old one', async () => {
+    const columns: DataGridTableColumn<TestItem>[] = [
+      { id: 'name', label: 'Name' },
+      { id: 'email', label: 'Email Address' },
+    ];
+    const first = createSortSource({ columnId: 'email', direction: 'asc' });
+    const second = createSortSource({ columnId: 'name', direction: 'desc' });
+    let register: ((source: ColumnSortSource) => void) | undefined;
+    const SwappingSortPlugin = createDataGridPlugin<TestItem, 'swappingSort'>(
+      'swappingSort',
+      (context) => {
+        register = context.registerColumnSortSource;
+        context.registerColumnSortSource(first.source);
+        return {};
+      },
+    );
+    render(
+      <DataGrid name="aria_sort_replaced_source_grid" load={loadData} columns={columns}>
+        <SwappingSortPlugin />
+      </DataGrid>,
+    );
+
+    const table = await screen.findByRole('table');
+    await waitFor(() =>
+      expect(findHeader(table, 'Email Address')).toHaveAttribute('aria-sort', 'ascending'),
+    );
+    expect(first.listeners.size).toBeGreaterThan(0);
+
+    act(() => register?.(second.source));
+
+    expect(findHeader(table, 'Name')).toHaveAttribute('aria-sort', 'descending');
+    expect(findHeader(table, 'Email Address')).toHaveAttribute('aria-sort', 'none');
+    expect(first.listeners.size).toBe(0);
+
+    act(() => {
+      first.state.order = { columnId: 'email', direction: 'desc' };
+      for (const listener of first.listeners) listener();
+    });
+    expect(findHeader(table, 'Name')).toHaveAttribute('aria-sort', 'descending');
+    expect(findHeader(table, 'Email Address')).toHaveAttribute('aria-sort', 'none');
   });
 });
