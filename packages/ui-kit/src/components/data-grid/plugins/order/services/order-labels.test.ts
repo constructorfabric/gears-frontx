@@ -30,4 +30,16 @@ describe('getOrderLabels', () => {
       descending: messages.order.descDate,
     });
   });
+
+  it('uses the texts it is given instead of the defaults, so the messages prop reaches the labels', () => {
+    const texts = {
+      ...messages.order,
+      ascNumber: 'Kleinste zuerst',
+      descNumber: 'Groesste zuerst',
+    };
+    expect(getOrderLabels('number', texts)).toEqual({
+      ascending: 'Kleinste zuerst',
+      descending: 'Groesste zuerst',
+    });
+  });
 });
