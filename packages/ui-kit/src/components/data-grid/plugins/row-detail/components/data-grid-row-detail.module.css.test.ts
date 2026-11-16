@@ -8,6 +8,18 @@ import { declaredIn } from '../../../../../__test-utils__/css-rules';
 describe('data-grid-row-detail.module.css', () => {
   const declared = declaredIn(import.meta.url, 'data-grid-row-detail.module.css');
 
+  it('gives the toggle a 24px hit area with a pseudo-element, the way the table tree toggle has it', () => {
+    // A box over the toggle, centred on it by equal offsets, that shows nothing and moves nothing.
+    expect(declared('.toggleCell .toggle::after', 'content')).toBe("''");
+    expect(declared('.toggleCell .toggle::after', 'position')).toBe('absolute');
+    // The offset counts from the padding box, so it carries the 1px border of the Button as well as
+    // the --space-1 the square reaches past the toggle's line.
+    expect(declared('.toggleCell .toggle::after', 'inset')).toBe(
+      'calc(-1 * (var(--space-1) + var(--border-width)))',
+    );
+    expect(declared('.toggleCell .toggle::after', 'background')).toBeUndefined();
+  });
+
   it('takes the row hover tint off the detail row, the way a dragged row is held', () => {
     expect(declared('.detailRow', '--table-row-hover-fill')).toBe('transparent');
   });
