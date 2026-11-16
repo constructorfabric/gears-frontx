@@ -15,6 +15,7 @@ export type { DataGridMessages, DataGridMessagesOverride } from './messages.js';
 export type { DataGridHooks } from './services/hooked/hooked-types.js';
 export type { DataGridPlugin, DataGridPluginContext } from './services/plugins/plugins-types.js';
 export type {
+  ColumnSortSource,
   DataGridTableColumn,
   DataGridTableColumnOverflow,
   DataGridTableGroup,

@@ -1294,7 +1294,7 @@ export const StatusPlugin = createDataGridPlugin<DataGridItem, 'status', Record<
 |------|---------|
 | Plugins | `hook(name, handler)`, `getPlugin<Api>(name)` |
 | Layout | `registerSlot(name, options)`, `setActiveSlotId(name, id)`, `getActiveSlotId(name)` |
-| Table | `registerTableSlot(name, options)` (`subheader`, `footer`, `header-cell-end`, `row-after`), `registerExtraColumn(options)`, `updateExtraColumnWidth` / `Order` / `Sticky`, `registerComponent(name, component)` (override `row`, `header-cell-label`, `body-cell-content` or `content`), `updateColumns`, `updateColumnVisibility`, `updateColumnSticky`, `updateTableLayout`, `updateStickyHeader` |
+| Table | `registerTableSlot(name, options)` (`subheader`, `footer`, `header-cell-end`, `row-after`), `registerExtraColumn(options)`, `updateExtraColumnWidth` / `Order` / `Sticky`, `registerComponent(name, component)` (override `row`, `header-cell-label`, `body-cell-content` or `content`), `registerColumnSortSource(source)` (the `ColumnSortSource` the header cells read `aria-sort` from; the order plugin registers one, a later call replaces it), `updateColumns`, `updateColumnVisibility`, `updateColumnSticky`, `updateTableLayout`, `updateStickyHeader` |
 | Persistent state | `registerPersistentState(key, options?)` |
 | Storage | `useStore(selector)` (`visibleRecords`, `rootSections`, `hasActiveFilters`, ...), `createSection`, `clearSections`, `getRecord`, `getItemId`, ... |
 | Load | `triggerLoad(config?)`, `refresh(options?)`, `abort()`, `getLoadInstances()`, `useLoadStateStore` |
@@ -1375,7 +1375,9 @@ columns' minimum content widths.
   the sortable columns that are not sorted, and no attribute on an unsorted column
   that has no sort label (excluded from header sorting, or drawn by its own
   `headerComponent`) or on a grid with no order plugin. A column the toolbar
-  sorted carries its direction even when its header has no sort label.
+  sorted carries its direction even when its header has no sort label. A
+  consumer's own sort plugin drives the same attribute by registering a
+  `ColumnSortSource` through `registerColumnSortSource`.
 - The table's scroll container is a tab stop (it holds `tabIndex=0` so a keyboard
   can scroll it).
 - The pager is a `nav` named "Pagination"; the page buttons are named "Go to page
