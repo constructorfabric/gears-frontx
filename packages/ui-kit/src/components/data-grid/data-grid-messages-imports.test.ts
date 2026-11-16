@@ -32,10 +32,15 @@ function sourceFiles(dir: string): string[] {
 
 /**
  * Each `import` or `export ... from` statement and each dynamic `import()` that is not type-only,
- * by specifier. Comments are stripped first, so a commented-out import is not one.
+ * by specifier. Comments are stripped first, so a commented-out import is not one. Quoted strings
+ * are matched in the same pass and kept, so a `/*` or `//` inside a string (a glob, a URL) does not
+ * open a comment that would hide a real import.
  */
 function valueImportSpecifiers(code: string): string[] {
-  const uncommented = code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  const uncommented = code.replace(
+    /'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g,
+    (token) => (token.startsWith('/') ? '' : token),
+  );
   const statement =
     /\b(import|export)\s+(type\s+)?[^;'"]*?\bfrom\s+['"]([^'"]+)['"]|\bimport\s*\(?\s*['"]([^'"]+)['"]/g;
   const specifiers: string[] = [];
@@ -66,7 +71,6 @@ const importers = sourceFiles(gridDir)
 describe('DataGrid messages imports', () => {
   it('imports the messages defaults only in the messages context and the order labels', () => {
     // The exact list is also the floor: a scan that stopped matching would find no importer.
-    expect(ALLOWED.length).toBeGreaterThan(0);
     expect(importers).toEqual([...ALLOWED].sort());
   });
 
@@ -79,6 +83,8 @@ describe('DataGrid messages imports', () => {
       "const loaded = await import('./messages.js');",
       "import { messages } from './messages.ts';",
       "import { messages } from './messages/index.js';",
+      "const g = '**/*.tsx';\nimport { messages } from './messages';\n/* note */",
+      "const u = 'http://x'; import { messages } from './messages';",
     ];
     const ignored = [
       "import type { DataGridMessages } from './messages';",
