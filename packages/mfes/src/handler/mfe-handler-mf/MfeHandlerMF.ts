@@ -214,6 +214,18 @@ interface LoadBlobState {
    * `sharedDepBlobUrls`.
    */
   readonly sharedDepLists?: SharedDepListLoadContext;
+  /**
+   * This load's own request for the entry chunk's source text, issued with
+   * the list document on the fetch-list path
+   * (`inst-md-fetch-entry-concurrent`). The build of the entry chunk takes
+   * its text from this promise, so the entry is downloaded once however many
+   * other texts the handler's source-text handling admits meanwhile. A
+   * one-shot hand-off: the build of the entry chunk takes the promise and
+   * clears the field, so the per-load state — which the lazy-import registry
+   * keeps for the page's lifetime when the load has lazy chunks — does not
+   * keep the entry text reachable.
+   */
+  entrySource?: Promise<string>;
 }
 
 /**
@@ -371,7 +383,7 @@ function createChainBuildState(): ChainBuildState {
  * worth of burst insertions; re-evaluate upward if a real MFE's static
  * import graph approaches this width.
  */
-const SOURCE_TEXT_CACHE_CAPACITY = 256;
+export const SOURCE_TEXT_CACHE_CAPACITY = 256;
 /**
  * Max adoption-notice ledger entries retained (keyed by name@version plus
  * the declaring manifest's id).
@@ -830,31 +842,37 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-derive-base-url
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-public-path
 
-    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-run-manifest-discovery
-    // Build shared dep blob URLs first (leaves first, dependency order).
-    // Each dep's standalone ESM may import other shared deps as bare specifiers;
-    // those are rewritten to already-resolved blob URLs before creating the blob.
-    const { urls: sharedDepBlobUrls, sharedDepLists } =
-      await this.buildSharedDepBlobUrls(
-        manifest,
-        baseUrl,
-        entryId,
-        extensionId,
-        exposedModule,
-        ledger
-      );
-    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-run-manifest-discovery
-
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-expose-chunk
     // Derive expose chunk filename directly from entry metadata — no regex needed.
+    // Refused before any fetch: the refusal depends only on the manifest, so
+    // it is deterministic and not retried.
     const exposeChunkFilename = exposeAssets.js.sync[0];
     if (!exposeChunkFilename) {
-      throw new MfeLoadError(
+      throw MfeHandlerMF.manifestDataRejection(
         `Cannot resolve expose chunk for '${exposedModule}': exposeAssets.js.sync is empty`,
         entryId
       );
     }
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-expose-chunk
+
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-run-manifest-discovery
+    // Build shared dep blob URLs first (leaves first, dependency order).
+    // Each dep's standalone ESM may import other shared deps as bare specifiers;
+    // those are rewritten to already-resolved blob URLs before creating the blob.
+    const {
+      urls: sharedDepBlobUrls,
+      sharedDepLists,
+      entrySource,
+    } = await this.buildSharedDepBlobUrls(
+      manifest,
+      baseUrl,
+      entryId,
+      extensionId,
+      exposedModule,
+      exposeChunkFilename,
+      ledger
+    );
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-run-manifest-discovery
 
     // @cpt-begin:cpt-frontx-state-mfe-isolation-load-blob-state:p1:inst-blob-building
     const loadState: LoadBlobState = {
@@ -866,6 +884,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       entryChunkFilename: exposeChunkFilename,
       attemptLedger: ledger,
       sharedDepLists,
+      entrySource,
     };
     // @cpt-end:cpt-frontx-state-mfe-isolation-load-blob-state:p1:inst-blob-building
 
@@ -983,8 +1002,9 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 
   /**
    * A load error for manifest data the handler refuses: an unresolvable or
-   * non-http(s) `publicPath`, the unresolved `"auto"` placeholder, or a
-   * shared `chunkPath` outside its rules. The refusal depends only on the
+   * non-http(s) `publicPath`, the unresolved `"auto"` placeholder, a
+   * shared `chunkPath` outside its rules, or an empty
+   * `exposeAssets.js.sync`. The refusal depends only on the
    * manifest, so it is marked deterministic and the load is not retried.
    */
   private static manifestDataRejection(message: string, entryId: string): MfeLoadError {
@@ -1317,6 +1337,11 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * Each dep's standalone ESM may import other shared deps as bare specifiers —
    * those are rewritten to already-resolved blob URLs before creating the blob.
    * Per-load fresh blob URLs ensure isolated module instances.
+   *
+   * On the fetch-list path the entry chunk's source request is started here,
+   * with the list document's, and its promise is returned as `entrySource`
+   * for the load to hand to the entry chunk's build; the legacy `chunkPath`
+   * path starts no entry request and returns none.
    */
   private async buildSharedDepBlobUrls(
     manifest: MfManifest,
@@ -1324,10 +1349,12 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     entryId: string,
     extensionId: string,
     exposedModule: string,
+    exposeChunkFilename: string,
     ledger?: AttemptSourceTextLedger
   ): Promise<{
     urls: Map<string, string>;
     sharedDepLists?: SharedDepListLoadContext;
+    entrySource?: Promise<string>;
   }> {
     // `sources`/`sharedDepBlobUrls` are keyed by bare `dep.name`, while
     // `sharedDepTextCache` is keyed by the more precise `name@version`. Two
@@ -1348,6 +1375,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         baseUrl,
         entryId,
         entryListRef,
+        exposeChunkFilename,
         ledger
       );
     }
@@ -1367,17 +1395,22 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * The fetch-list path: the entry's list document is fetched and
    * verified, every item missing from the realm text cache is fetched
    * in one parallel batch, and the items mint per load in dependency
-   * order (`cpt-frontx-adr-shared-dep-reuse`). No graph discovery.
+   * order (`cpt-frontx-adr-shared-dep-reuse`). No graph discovery. The entry
+   * chunk's source is requested concurrently with the list document and
+   * returned as `entrySource`; once either concurrent request fails, the load
+   * issues no further request.
    */
   private async buildListSharedDepBlobUrls(
     manifest: MfManifest,
     baseUrl: string,
     entryId: string,
     entryListRef: { location: string; contentHash: string },
+    exposeChunkFilename: string,
     ledger?: AttemptSourceTextLedger
   ): Promise<{
     urls: Map<string, string>;
     sharedDepLists?: SharedDepListLoadContext;
+    entrySource?: Promise<string>;
   }> {
     let assetBase = baseUrl;
     const sharedBase = manifest.metaData.sharedBase;
@@ -1416,21 +1449,57 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // extension loading at startup go out together and first. The items it
     // names keep the default priority.
     const listDocumentUrl = resolveAssetUrl(entryListRef.location);
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-entry-concurrent
+    // The entry module's source is requested in the same step as the list
+    // document: both locations are known from the manifest alone, so the
+    // entry request waits for neither the list, the item batch nor any
+    // minting. It is the last file the mount waits on, hence high priority.
+    const entrySource = this.fetchSourceText(
+      MfeHandlerMF.resolveChunkUrl(baseUrl, exposeChunkFilename),
+      ledger,
+      'high'
+    );
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-entry-concurrent
+    // The guard watches the entry request's outcome only, never its text, so
+    // the closures the lazy-loader registry keeps alive hold no entry text.
+    const requests = MfeHandlerMF.concurrentRequestGuard(
+      entrySource.then(() => undefined)
+    );
+    // A failed load's gated request must not be published to the realm cache
+    // either: a load joining it there would see this load's error.
+    const loadCache: SharedDepTextCache = {
+      get: (key) => this.sharedDepTextCache.get(key),
+      set: (key, value) => {
+        if (requests.failure() === undefined) {
+          this.sharedDepTextCache.set(key, value);
+        }
+      },
+      delete: (key) => this.sharedDepTextCache.delete(key),
+    };
     const loader = new SharedDepListLoader(
-      (url: string) =>
-        this.fetchSourceText(
+      (url: string) => {
+        // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-concurrent-failure
+        // Once the load has failed, no request is issued for it — not even
+        // the retry of a joined fetch another load's rejection triggers.
+        const failed = requests.failure();
+        if (failed !== undefined) return Promise.reject(failed.error);
+        // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-concurrent-failure
+        return this.fetchSourceText(
           url,
           ledger,
           url === listDocumentUrl ? 'high' : undefined
-        ),
+        );
+      },
       entryId,
-      this.sharedDepTextCache,
+      loadCache,
       ledger
     );
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-reachable-units
     const ctx = loader.createContext();
     const listDocBytesBefore = loader.bytesFetched;
-    const list = await loader.fetchListDocument(entryListRef, resolveAssetUrl);
+    const list = await requests.guard(
+      loader.fetchListDocument(entryListRef, resolveAssetUrl)
+    );
     const listDocBytes = loader.bytesFetched - listDocBytesBefore;
     // The dynamic-import machinery closes over `sharedDepLists`: the
     // resolver mints dependent lists on demand through the same load's
@@ -1461,18 +1530,20 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
           MfeHandlerMF.listImportToken(record, specifier, ctx),
       },
     };
-    const itemBytes = await loader.loadList(
-      ctx,
-      list,
-      resolveAssetUrl,
-      sharedDepLists.dynamicImports
+    const itemBytes = await requests.guard(
+      loader.loadList(
+        ctx,
+        list,
+        resolveAssetUrl,
+        sharedDepLists.dynamicImports
+      )
     );
     this.loadDiagnostics.summarize(
       manifest.id,
       listDocBytes + itemBytes,
       this.sharedDepTextCache
     );
-    return { urls: ctx.specifierToBlob, sharedDepLists };
+    return { urls: ctx.specifierToBlob, sharedDepLists, entrySource };
   }
 
   /**
@@ -2305,9 +2376,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 
     // Portable shared dep chunks use absolute URLs (resolved at generation time
     // to a canonical shared base). Use as-is to ensure sourceTextCache dedup.
-    const chunkUrl = filename.startsWith('http://') || filename.startsWith('https://')
-      ? filename
-      : loadState.baseUrl + filename;
+    const chunkUrl = MfeHandlerMF.resolveChunkUrl(loadState.baseUrl, filename);
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-fanout-bounded
     // Admission to the build's single fetch budget. The slot is held across
     // this one fetch and released the moment it settles — never across the
@@ -2326,7 +2395,17 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       }
       // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-if-failed-after-fetch
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-fetch-source
-      source = await this.fetchSourceText(chunkUrl, loadState.attemptLedger);
+      // The entry chunk's text is this load's own early request, taken
+      // directly rather than looked up by URL (`inst-md-fetch-entry-concurrent`).
+      const seeded =
+        filename === loadState.entryChunkFilename
+          ? loadState.entrySource
+          : undefined;
+      if (seeded !== undefined) loadState.entrySource = undefined;
+      source =
+        seeded !== undefined
+          ? await seeded
+          : await this.fetchSourceText(chunkUrl, loadState.attemptLedger);
       // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-fetch-source
     } finally {
       build.fetchBudget.release();
@@ -2597,6 +2676,54 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     return source.replace(/import\.meta\.url/g, JSON.stringify(chunkBaseUrl));
   }
 
+  /**
+   * Absolute URL of the chunk `filename` names: a portable shared chunk
+   * already carries an absolute http(s) URL and is used as-is (so the
+   * source-text cache dedups it); anything else resolves against `baseUrl`.
+   */
+  private static resolveChunkUrl(baseUrl: string, filename: string): string {
+    return filename.startsWith('http://') || filename.startsWith('https://')
+      ? filename
+      : baseUrl + filename;
+  }
+
+  /**
+   * The failure state of the load's concurrent requests: the entry
+   * module's request outcome and whichever list/item work {@link guard} wraps. The
+   * first of them to fail names the load's error and the others' outcomes
+   * are discarded; every promise the guard stops listening to gets a no-op
+   * handler, so a discarded rejection never surfaces as unhandled.
+   */
+  // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-concurrent-failure
+  private static concurrentRequestGuard(entryOutcome: Promise<void>): {
+    guard<T>(work: Promise<T>): Promise<T>;
+    failure(): { readonly error: unknown } | undefined;
+  } {
+    let failed: { readonly error: unknown } | undefined;
+    const markFailed = (error: unknown): void => {
+      failed ??= { error };
+    };
+    const entryFailure = new Promise<never>((_resolve, reject) => {
+      entryOutcome.catch((error: unknown) => {
+        markFailed(error);
+        reject(error);
+      });
+    });
+    entryFailure.catch(() => undefined);
+    return {
+      guard: <T>(work: Promise<T>): Promise<T> => {
+        work.catch(markFailed);
+        // One source of truth names the error: the recorded first failure,
+        // even when both rejections settle in the same drain.
+        return Promise.race([work, entryFailure]).catch((error: unknown) => {
+          throw failed === undefined ? error : failed.error;
+        });
+      },
+      failure: () => failed,
+    };
+  }
+  // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-concurrent-failure
+
   // ---- Source text fetching and parsing ----
 
   /**
@@ -2617,7 +2744,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       return cached;
     }
 
-    const fetchPromise = (priority === undefined
+    const fetchPromise: Promise<string> = (priority === undefined
       ? fetch(absoluteChunkUrl)
       : fetch(absoluteChunkUrl, { priority })
     )
@@ -2655,7 +2782,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         return text;
       })
       .catch((error) => {
-        this.sourceTextCache.delete(absoluteChunkUrl);
+        // Only while the cache still holds THIS promise: a late rejection
+        // of an abandoned attempt must not evict a retry's newer one.
+        // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-generation-identity
+        if (this.sourceTextCache.get(absoluteChunkUrl) === fetchPromise) {
+          this.sourceTextCache.delete(absoluteChunkUrl);
+        }
+        // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-generation-identity
         if (error instanceof MfeLoadError) {
           throw error;
         }
