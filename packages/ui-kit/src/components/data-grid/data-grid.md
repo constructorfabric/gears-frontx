@@ -1316,8 +1316,9 @@ the call, so a handler may unsubscribe itself or register another handler while
 the hook runs without changing that run. How the calls run them:
 
 - `callHook(name, ...)` starts handlers one after another, each only after the
-  previous one settled, and resolves to their return values in registration
-  order.
+  previous one fulfilled, and resolves to their return values in registration
+  order. A handler that throws or rejects stops the chain: the handlers after
+  it do not run, and the call rejects with that error.
 - `callHookParallel(name, ...)` starts them all in one synchronous pass, so a
   handler that throws synchronously throws out of the call instead of rejecting
   its promise.

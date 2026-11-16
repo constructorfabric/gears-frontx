@@ -3,7 +3,8 @@
  *
  * - a handler list is copied when a hook is called, so a handler may unsubscribe itself (or
  *   register another) while the hook runs without changing this run;
- * - `callHook` starts handlers one after another, each only after the previous one settled;
+ * - `callHook` starts handlers one after another, each only after the previous one fulfilled; a
+ *   handler that throws or rejects stops the ones after it, and the call rejects with its error;
  * - `callHookParallel` starts them all in one synchronous pass, so a handler that throws
  *   synchronously throws out of the call instead of rejecting its promise;
  * - every call resolves to the array of the handlers' return values, in registration order.
