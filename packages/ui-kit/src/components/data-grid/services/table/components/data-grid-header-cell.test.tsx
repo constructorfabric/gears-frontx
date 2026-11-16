@@ -864,14 +864,21 @@ describe('DataGridHeaderCell aria-sort', () => {
     expect(findHeader(table, 'Email Address')).toHaveAttribute('aria-sort', 'none');
   });
 
-  it('keeps the sort source after the order plugin unmounts, and sorts again when it mounts back', async () => {
+  it('keeps the column sortable after the order plugin unmounts, and reuses the same plugin when it mounts back', async () => {
     const columns: DataGridTableColumn<TestItem>[] = [
       { id: 'name', label: 'Name' },
       { id: 'email', label: 'Email Address' },
     ];
+    let registerSpy: ReturnType<typeof vi.fn> | undefined;
+    // Set up before the order plugin, so it watches every source the grid registers.
+    const SpyPlugin = createDataGridPlugin<TestItem, 'sortSourceSpy'>('sortSourceSpy', (context) => {
+      registerSpy = vi.spyOn(context, 'registerColumnSortSource');
+      return {};
+    });
     function Grid({ sortable }: { sortable: boolean }) {
       return (
         <DataGrid name="aria_sort_plugin_unmount_grid" load={loadData} columns={columns}>
+          <SpyPlugin />
           {sortable ? <DataGridOrderPlugin /> : null}
         </DataGrid>
       );
@@ -881,14 +888,22 @@ describe('DataGridHeaderCell aria-sort', () => {
     const table = await screen.findByRole('table');
     await user.click(sortLabel(findHeader(table, 'Name')!));
     expect(findHeader(table, 'Name')).toHaveAttribute('aria-sort', 'descending');
+    expect(registerSpy).toHaveBeenCalledTimes(1);
 
-    // data-grid.md: a registered source stays for the grid's lifetime, so unmounting the sorting
-    // plugin does not clear it.
+    // data-grid.md: a registered source stays for the grid's lifetime. The plugin's label component
+    // and its order store stay as well, so with the plugin unmounted the column still sorts.
     rerender(<Grid sortable={false} />);
     expect(findHeader(screen.getByRole('table'), 'Name')).toHaveAttribute('aria-sort', 'descending');
-
-    rerender(<Grid sortable />);
     await user.click(sortLabel(findHeader(screen.getByRole('table'), 'Name')!));
     expect(findHeader(screen.getByRole('table'), 'Name')).toHaveAttribute('aria-sort', 'ascending');
+
+    // Mounting back takes the plugin the grid already holds: setup does not run again, and the
+    // sort goes on from the order the unmounted plugin left: ascending clears, then descending again.
+    rerender(<Grid sortable />);
+    await user.click(sortLabel(findHeader(screen.getByRole('table'), 'Name')!));
+    expect(findHeader(screen.getByRole('table'), 'Name')).toHaveAttribute('aria-sort', 'none');
+    await user.click(sortLabel(findHeader(screen.getByRole('table'), 'Name')!));
+    expect(findHeader(screen.getByRole('table'), 'Name')).toHaveAttribute('aria-sort', 'descending');
+    expect(registerSpy).toHaveBeenCalledTimes(1);
   });
 });
