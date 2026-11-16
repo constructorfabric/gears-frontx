@@ -1375,8 +1375,9 @@ columns' minimum content widths.
   `ascending` while ascending (the second press on the same column), `none` on
   the sortable columns that are not sorted, and no attribute on an unsorted column
   that has no sort label (excluded from header sorting, or drawn by its own
-  `headerComponent`) or on a grid with no order plugin. A column the toolbar
-  sorted carries its direction even when its header has no sort label. A
+  `headerComponent`) or on a grid with no registered sort source (neither the
+  order plugin nor a consumer's own sort plugin registered one). A column the
+  toolbar sorted carries its direction even when its header has no sort label. A
   consumer's own sort plugin drives the same attribute by registering a
   `ColumnSortSource` through `registerColumnSortSource`. The source stays for the
   grid's lifetime: unmounting the sorting plugin does not clear it. Its two
