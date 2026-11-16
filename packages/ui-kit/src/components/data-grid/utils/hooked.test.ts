@@ -70,6 +70,18 @@ describe('createHooked', () => {
     expect(third).not.toHaveBeenCalled();
   });
 
+  it('stops the serial handlers after a first one that throws synchronously, and rejects', async () => {
+    const hooked = createHooked<Hooks>();
+    const second = vi.fn((value: number) => value);
+    hooked.hook('later', () => {
+      throw new Error('boom');
+    });
+    hooked.hook('later', second);
+
+    await expect(hooked.callHook('later', 1)).rejects.toThrow('boom');
+    expect(second).not.toHaveBeenCalled();
+  });
+
   it('starts parallel handlers in one synchronous pass', () => {
     const hooked = createHooked<Hooks>();
     const started: string[] = [];
