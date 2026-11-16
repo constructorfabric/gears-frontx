@@ -34,7 +34,8 @@ function sourceFiles(dir: string): string[] {
  * Each `import` or `export ... from` statement and each dynamic `import()` that is not type-only,
  * by specifier. Comments are stripped first, so a commented-out import is not one. Quoted strings
  * are matched in the same pass and kept, so a `/*` or `//` inside a string (a glob, a URL) does not
- * open a comment that would hide a real import.
+ * open a comment that would hide a real import. Regex literals are not matched, so one holding `//`
+ * or `/*` reads as a comment and could hide an import later on its line.
  */
 function valueImportSpecifiers(code: string): string[] {
   const uncommented = code.replace(

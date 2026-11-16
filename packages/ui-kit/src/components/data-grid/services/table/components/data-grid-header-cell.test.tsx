@@ -863,4 +863,32 @@ describe('DataGridHeaderCell aria-sort', () => {
     expect(findHeader(table, 'Name')).toHaveAttribute('aria-sort', 'descending');
     expect(findHeader(table, 'Email Address')).toHaveAttribute('aria-sort', 'none');
   });
+
+  it('keeps the sort source after the order plugin unmounts, and sorts again when it mounts back', async () => {
+    const columns: DataGridTableColumn<TestItem>[] = [
+      { id: 'name', label: 'Name' },
+      { id: 'email', label: 'Email Address' },
+    ];
+    function Grid({ sortable }: { sortable: boolean }) {
+      return (
+        <DataGrid name="aria_sort_plugin_unmount_grid" load={loadData} columns={columns}>
+          {sortable ? <DataGridOrderPlugin /> : null}
+        </DataGrid>
+      );
+    }
+    const { user, rerender } = render(<Grid sortable />);
+
+    const table = await screen.findByRole('table');
+    await user.click(sortLabel(findHeader(table, 'Name')!));
+    expect(findHeader(table, 'Name')).toHaveAttribute('aria-sort', 'descending');
+
+    // data-grid.md: a registered source stays for the grid's lifetime, so unmounting the sorting
+    // plugin does not clear it.
+    rerender(<Grid sortable={false} />);
+    expect(findHeader(screen.getByRole('table'), 'Name')).toHaveAttribute('aria-sort', 'descending');
+
+    rerender(<Grid sortable />);
+    await user.click(sortLabel(findHeader(screen.getByRole('table'), 'Name')!));
+    expect(findHeader(screen.getByRole('table'), 'Name')).toHaveAttribute('aria-sort', 'ascending');
+  });
 });
