@@ -35,8 +35,10 @@ describe('data-grid-row-detail.module.css', () => {
 
     // The square is the toggle's line and --space-1 each side: at least 1.5rem, 24px at a 16px root.
     expect(declared('.toggleCell .toggle', 'block-size')).toBe('var(--text-meta-line-height)');
+    expect(declared('.toggleCell .toggle', 'inline-size')).toBe('var(--text-meta-line-height)');
+    const tokens = invariantTokens();
     const rem = (token: string) => {
-      const value = invariantTokens().get(token);
+      const value = tokens.get(token);
       if (!value?.endsWith('rem')) throw new Error(`${token} is not a rem token of the theme`);
       return parseFloat(value);
     };
