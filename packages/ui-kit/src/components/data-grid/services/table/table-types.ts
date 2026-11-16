@@ -93,7 +93,9 @@ export type TableSlotName = 'subheader' | 'footer' | 'header-cell-end' | 'row-af
  * The slice of a grid's sorting that a header cell needs for `aria-sort`. A sorting plugin (the
  * order plugin, or a consumer's own) hands one to `registerColumnSortSource`. It is read through
  * `subscribe` and plain getters, not hooks: the plugin can mount after the header cells did, and a
- * hook that only exists once it is there would change the cells' hook order.
+ * hook that only exists once it is there would change the cells' hook order. The getters are
+ * `useSyncExternalStore` snapshots, so each must return the same object until the order or the
+ * excluded columns change; a new object on every call makes React render without end.
  */
 export interface ColumnSortSource {
   /** Calls `listener` when the order or the excluded columns change; returns the unsubscribe. */

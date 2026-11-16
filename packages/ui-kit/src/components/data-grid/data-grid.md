@@ -1379,7 +1379,10 @@ columns' minimum content widths.
   sorted carries its direction even when its header has no sort label. A
   consumer's own sort plugin drives the same attribute by registering a
   `ColumnSortSource` through `registerColumnSortSource`. The source stays for the
-  grid's lifetime: unmounting the sorting plugin does not clear it.
+  grid's lifetime: unmounting the sorting plugin does not clear it. Its two
+  getters must return the same object until the sort order or the excluded
+  columns change: the header cells read them as `useSyncExternalStore`
+  snapshots, and a new object on every call makes React render without end.
 - The table's scroll container is a tab stop (it holds `tabIndex=0` so a keyboard
   can scroll it).
 - The pager is a `nav` named "Pagination"; the page buttons are named "Go to page
