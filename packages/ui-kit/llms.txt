@@ -236,11 +236,14 @@ Rules for generated code:
   ordering, filters, a custom empty state, row numbers, row click, a
   toolbar actions slot, a row actions column, an actions menu, a column
   configuration popover, row selection with a bulk-action bar,
-  expandable tree rows and drag-and-drop row reordering, imported from
+  expandable tree rows, drag-and-drop row reordering and a row detail
+  that opens under a record row, imported from
   `@gears-frontx/ui-kit/data-grid/<plugin>` or the package root, and the
   actions menu's `exportMenuItems` for CSV and (with `exceljs` loaded by
-  the app) Excel export; state can persist to local/session storage,
-  the URL or memory.
+  the app) Excel export; the pagination plugin's `compact` prop draws a
+  one-line pager for narrow grids; the grid's `messages` prop replaces
+  any of its user-facing strings, for translation; state can persist
+  to local/session storage, the URL or memory.
 - [DataTable](dist/docs/data-table.md): sortable, paginated, optionally
   row-selectable table built on `Table` + `@tanstack/react-table` v9;
   productizes upstream's data-table *guide* into a real component
