@@ -16,6 +16,7 @@ function createTestStore(overrides: Partial<TableStore> = {}) {
     extraColumnsEnd: [],
     slots: new Map(),
     components: new Map(),
+    columnSortSource: undefined,
     tableLayout: 'fixed',
     stickyHeader: false,
     ...overrides,

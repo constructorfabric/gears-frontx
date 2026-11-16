@@ -6,6 +6,7 @@ import { Checkbox } from '../../../../checkbox/public.js';
 import { DataGrid } from '../../../data-grid';
 import type { DataGridLoadResult } from '../../../data-grid-types';
 import { DataGridOrderPlugin } from '../../../plugins/order/order-plugin';
+import { createDataGridPlugin } from '../../plugins/plugins-helpers';
 import tableStyles from '../../../../table/table.module.css';
 import type { DataGridTableColumn } from '../table-types';
 
@@ -740,5 +741,49 @@ describe('DataGridHeaderCell aria-sort', () => {
       .getAllByRole('columnheader')
       .find((cell) => within(cell).queryByRole('checkbox', { name: 'Select all' }));
     expect(selectHeader).not.toHaveAttribute('aria-sort');
+  });
+
+  it("announces the sort of a consumer's own sort plugin that registers a column sort source", async () => {
+    const columns: DataGridTableColumn<TestItem>[] = [
+      { id: 'name', label: 'Name' },
+      { id: 'email', label: 'Email Address' },
+    ];
+    let order: { columnId: string; direction: 'asc' | 'desc' } | undefined = {
+      columnId: 'email',
+      direction: 'asc',
+    };
+    const excludedColumns: readonly string[] = ['name'];
+    const listeners = new Set<() => void>();
+    const CustomSortPlugin = createDataGridPlugin<TestItem, 'customSort'>(
+      'customSort',
+      (context) => {
+        context.registerColumnSortSource({
+          subscribeColumnSort(listener) {
+            listeners.add(listener);
+            return () => listeners.delete(listener);
+          },
+          getColumnSortOrder: () => order,
+          getSortExcludedColumns: () => excludedColumns,
+        });
+        return {};
+      },
+    );
+    render(
+      <DataGrid name="aria_sort_custom_plugin_grid" load={loadData} columns={columns}>
+        <CustomSortPlugin />
+      </DataGrid>,
+    );
+
+    const table = await screen.findByRole('table');
+    await waitFor(() =>
+      expect(findHeader(table, 'Email Address')).toHaveAttribute('aria-sort', 'ascending'),
+    );
+    expect(findHeader(table, 'Name')).not.toHaveAttribute('aria-sort');
+
+    act(() => {
+      order = { columnId: 'email', direction: 'desc' };
+      for (const listener of listeners) listener();
+    });
+    expect(findHeader(table, 'Email Address')).toHaveAttribute('aria-sort', 'descending');
   });
 });

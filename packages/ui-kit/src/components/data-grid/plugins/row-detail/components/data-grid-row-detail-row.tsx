@@ -37,7 +37,7 @@ export function DataGridRowDetailRow<TItem extends DataGridItem>() {
 
   // The drag and drop plugin can mount after this row did, so its state is read through
   // useSyncExternalStore with a no-op stand-in while the plugin is absent, the way
-  // useColumnAriaSort reads the order plugin: the hooks called stay the same whoever mounts late.
+  // useColumnAriaSort reads the sort source: the hooks called stay the same whoever mounts late.
   const dragDrop = grid.getPlugin<DataGridDragDropPluginApi<TItem>>('dragDrop');
   const isDragging = useSyncExternalStore(
     dragDrop?.useDragDropStore.subscribe ?? subscribeToNothing,

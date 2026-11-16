@@ -90,10 +90,10 @@ export function isTableGroup<TItem extends DataGridItem>(
 export type TableSlotName = 'subheader' | 'footer' | 'header-cell-end' | 'row-after';
 
 /**
- * The slice of the grid's own sorting that a header cell needs for `aria-sort`, offered by the
- * order plugin beside its public api. It is read through `subscribe` and plain getters, not hooks:
- * the plugin can mount after the header cells did, and a hook that only exists once it is there
- * would change the cells' hook order.
+ * The slice of a grid's sorting that a header cell needs for `aria-sort`. A sorting plugin (the
+ * order plugin, or a consumer's own) hands one to `registerColumnSortSource`. It is read through
+ * `subscribe` and plain getters, not hooks: the plugin can mount after the header cells did, and a
+ * hook that only exists once it is there would change the cells' hook order.
  */
 export interface ColumnSortSource {
   /** Calls `listener` when the order or the excluded columns change; returns the unsubscribe. */
@@ -210,6 +210,8 @@ export interface TableStore<TItem extends DataGridItem = DataGridItem> {
   extraColumnsEnd: ExtraColumn[];
   slots: Map<TableSlotName, TableSlot[]>;
   components: Map<TableComponentName, RegisteredTableComponent>;
+  /** What `registerColumnSortSource` registered; `undefined` while no sorting plugin did. */
+  columnSortSource: ColumnSortSource | undefined;
   tableLayout: DataGridTableLayout;
   /** Mirrors `DataGrid`'s `stickyHeader` prop; read by the header renderers. */
   stickyHeader: boolean;
@@ -245,6 +247,11 @@ export interface TablePublicApi<TItem extends DataGridItem = DataGridItem> {
   updateExtraColumnSticky: (columnId: string, sticky: boolean) => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- `ComponentType<never>` would refuse a class component
   registerComponent: (name: TableComponentName, component: ComponentType<any>) => void;
+  /**
+   * Sets the source the header cells read `aria-sort` from. A grid has one: a later call replaces
+   * the earlier source. With none registered, the headers carry no `aria-sort`.
+   */
+  registerColumnSortSource: (source: ColumnSortSource) => void;
   updateColumns: (columns: (DataGridTableColumn<TItem> | DataGridTableGroup<TItem>)[]) => void;
   updateColumnVisibility: (columnId: string, visible: boolean) => void;
   updateColumnSticky: (id: string, sticky: boolean) => void;
@@ -259,6 +266,7 @@ export interface TableService<
   useSlots: <T extends TableSlotName>(name: T) => TableSlot[];
 
   useComponent: <TProps = unknown>(name: TableComponentName) => ComponentType<TProps>;
+  useColumnSortSource: () => ColumnSortSource | undefined;
 
   useExtraColumns: (position: ExtraColumnPosition) => ExtraColumn[];
 

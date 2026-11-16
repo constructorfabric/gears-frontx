@@ -19,6 +19,7 @@ import { prepareTableSlots } from './table-slots';
 import { prepareTableSticky } from './table-sticky';
 import { createTableStore } from './table-store';
 import type {
+  ColumnSortSource,
   ConfigurationColumn,
   ConfigurationEntry,
   DataGridTableColumn,
@@ -62,6 +63,7 @@ export function createTableService<TItem extends DataGridItem>(
     updateExtraColumnOrder: extraColumnsApi.updateExtraColumnOrder,
     updateExtraColumnSticky: extraColumnsApi.updateExtraColumnSticky,
     registerComponent,
+    registerColumnSortSource,
     updateColumns,
     updateColumnVisibility,
     updateColumnSticky,
@@ -74,6 +76,7 @@ export function createTableService<TItem extends DataGridItem>(
     ...publicApi,
     updateColumns,
     useComponent,
+    useColumnSortSource,
     useConfigurationColumns,
     useTableLayout,
     useStickyHeader,
@@ -159,6 +162,14 @@ export function createTableService<TItem extends DataGridItem>(
     const newComponents = new Map(state.components);
     newComponents.set(name, component as RegisteredTableComponent);
     useTableStore.setState({ components: newComponents });
+  }
+
+  function registerColumnSortSource(source: ColumnSortSource) {
+    useTableStore.setState({ columnSortSource: source });
+  }
+
+  function useColumnSortSource(): ColumnSortSource | undefined {
+    return useTableStore((state) => state.columnSortSource);
   }
 
   function useComponent<TProps = unknown>(name: TableComponentName): ComponentType<TProps> {

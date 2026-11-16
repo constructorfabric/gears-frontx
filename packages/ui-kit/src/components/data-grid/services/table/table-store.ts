@@ -15,6 +15,7 @@ export function createTableStore<TItem extends DataGridItem = DataGridItem>() {
     extraColumnsEnd: [],
     slots: new Map(),
     components: new Map(),
+    columnSortSource: undefined,
     tableLayout: 'fixed',
     stickyHeader: false,
   }));
