@@ -36,10 +36,27 @@ describe('getOrderLabels', () => {
       ...messages.order,
       ascNumber: 'Kleinste zuerst',
       descNumber: 'Groesste zuerst',
+      ascDate: 'Aelteste zuerst',
+      descDate: 'Neueste zuerst',
+      ascString: 'A bis Z',
+      descString: 'Z bis A',
     };
     expect(getOrderLabels('number', texts)).toEqual({
       ascending: 'Kleinste zuerst',
       descending: 'Groesste zuerst',
+    });
+    expect(getOrderLabels('date', texts)).toEqual({
+      ascending: 'Aelteste zuerst',
+      descending: 'Neueste zuerst',
+    });
+    expect(getOrderLabels('string', texts)).toEqual({
+      ascending: 'A bis Z',
+      descending: 'Z bis A',
+    });
+    // No type is the string branch too, and it reads the given texts as well.
+    expect(getOrderLabels(undefined, texts)).toEqual({
+      ascending: 'A bis Z',
+      descending: 'Z bis A',
     });
   });
 });
