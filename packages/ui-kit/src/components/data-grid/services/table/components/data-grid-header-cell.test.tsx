@@ -743,28 +743,33 @@ describe('DataGridHeaderCell aria-sort', () => {
     expect(selectHeader).not.toHaveAttribute('aria-sort');
   });
 
+  function createSortSource(
+    initial: { columnId: string; direction: 'asc' | 'desc' },
+    excludedColumns: readonly string[] = [],
+  ) {
+    const listeners = new Set<() => void>();
+    const state = { order: initial };
+    const source: ColumnSortSource = {
+      subscribeColumnSort(listener) {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+      getColumnSortOrder: () => state.order,
+      getSortExcludedColumns: () => excludedColumns,
+    };
+    return { source, listeners, state };
+  }
+
   it("announces the sort of a consumer's own sort plugin that registers a column sort source", async () => {
     const columns: DataGridTableColumn<TestItem>[] = [
       { id: 'name', label: 'Name' },
       { id: 'email', label: 'Email Address' },
     ];
-    let order: { columnId: string; direction: 'asc' | 'desc' } | undefined = {
-      columnId: 'email',
-      direction: 'asc',
-    };
-    const excludedColumns: readonly string[] = ['name'];
-    const listeners = new Set<() => void>();
+    const custom = createSortSource({ columnId: 'email', direction: 'asc' }, ['name']);
     const CustomSortPlugin = createDataGridPlugin<TestItem, 'customSort'>(
       'customSort',
       (context) => {
-        context.registerColumnSortSource({
-          subscribeColumnSort(listener) {
-            listeners.add(listener);
-            return () => listeners.delete(listener);
-          },
-          getColumnSortOrder: () => order,
-          getSortExcludedColumns: () => excludedColumns,
-        });
+        context.registerColumnSortSource(custom.source);
         return {};
       },
     );
@@ -781,26 +786,11 @@ describe('DataGridHeaderCell aria-sort', () => {
     expect(findHeader(table, 'Name')).not.toHaveAttribute('aria-sort');
 
     act(() => {
-      order = { columnId: 'email', direction: 'desc' };
-      for (const listener of listeners) listener();
+      custom.state.order = { columnId: 'email', direction: 'desc' };
+      for (const listener of custom.listeners) listener();
     });
     expect(findHeader(table, 'Email Address')).toHaveAttribute('aria-sort', 'descending');
   });
-
-  function createSortSource(initial: { columnId: string; direction: 'asc' | 'desc' }) {
-    const listeners = new Set<() => void>();
-    const excludedColumns: readonly string[] = [];
-    const state = { order: initial };
-    const source: ColumnSortSource = {
-      subscribeColumnSort(listener) {
-        listeners.add(listener);
-        return () => listeners.delete(listener);
-      },
-      getColumnSortOrder: () => state.order,
-      getSortExcludedColumns: () => excludedColumns,
-    };
-    return { source, listeners, state };
-  }
 
   it('announces the sort of a column sort source registered after the table rendered, without a remount', async () => {
     const columns: DataGridTableColumn<TestItem>[] = [
@@ -857,6 +847,8 @@ describe('DataGridHeaderCell aria-sort', () => {
       expect(findHeader(table, 'Email Address')).toHaveAttribute('aria-sort', 'ascending'),
     );
     expect(first.listeners.size).toBeGreaterThan(0);
+    // Kept past the swap: a stale notification from the old source must not bring its sort back.
+    const stale = [...first.listeners];
 
     act(() => register?.(second.source));
 
@@ -866,7 +858,7 @@ describe('DataGridHeaderCell aria-sort', () => {
 
     act(() => {
       first.state.order = { columnId: 'email', direction: 'desc' };
-      for (const listener of first.listeners) listener();
+      for (const listener of stale) listener();
     });
     expect(findHeader(table, 'Name')).toHaveAttribute('aria-sort', 'descending');
     expect(findHeader(table, 'Email Address')).toHaveAttribute('aria-sort', 'none');
