@@ -54,8 +54,13 @@
  * and a detail's prose does not, so the detail takes wrapping back, breaking a long unbroken
  * string too. It does not scroll on its own: a scroll area needs a keyboard focus stop, so content
  * that is wide by design (a nested table) brings its own, the kit's `Table` among them.
+ *
+ * The detail row's `--table-row-hover-fill: transparent` inherits into the content, so a `Table`
+ * nested in it would lose its own row hover tint and its held-open tint. `initial` is the
+ * guaranteed-invalid value of a custom property, so the kit's fallback in that table applies again.
  */
 .detailContent {
+  --table-row-hover-fill: initial;
   inline-size: 0;
   min-inline-size: 100%;
   white-space: normal;

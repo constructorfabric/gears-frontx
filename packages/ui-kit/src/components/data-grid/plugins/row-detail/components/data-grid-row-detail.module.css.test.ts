@@ -12,6 +12,13 @@ describe('data-grid-row-detail.module.css', () => {
     expect(declared('.detailRow', '--table-row-hover-fill')).toBe('transparent');
   });
 
+  it('gives a table nested in the detail its own row hover tint back, which the detail row turned off', () => {
+    // A custom property inherits, so the detail row's `transparent` would reach every table the
+    // consumer renders in the detail; `initial` is the guaranteed-invalid value, so the kit's
+    // `var(--table-row-hover-fill, ...)` falls back to its own tint inside the detail content.
+    expect(declared('.detailContent', '--table-row-hover-fill')).toBe('initial');
+  });
+
   it('takes the detail content out of the auto-layout width measurement and fills the cell instead', () => {
     expect(declared('.detailContent', 'inline-size')).toBe('0');
     expect(declared('.detailContent', 'min-inline-size')).toBe('100%');
