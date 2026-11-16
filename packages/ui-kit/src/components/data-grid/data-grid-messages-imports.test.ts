@@ -30,37 +30,64 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-/** Each `import` or `export ... from` statement of a module that is not type-only, by specifier. */
+/**
+ * Each `import` or `export ... from` statement and each dynamic `import()` that is not type-only,
+ * by specifier. Comments are stripped first, so a commented-out import is not one.
+ */
 function valueImportSpecifiers(code: string): string[] {
-  const statement = /\b(import|export)\s+(type\s+)?[^;'"]*?\bfrom\s+['"]([^'"]+)['"]|\bimport\s+['"]([^'"]+)['"]/g;
+  const uncommented = code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  const statement =
+    /\b(import|export)\s+(type\s+)?[^;'"]*?\bfrom\s+['"]([^'"]+)['"]|\bimport\s*\(?\s*['"]([^'"]+)['"]/g;
   const specifiers: string[] = [];
-  for (const match of code.matchAll(statement)) {
+  for (const match of uncommented.matchAll(statement)) {
     if (match[2]) continue;
     specifiers.push(match[3] ?? match[4]);
   }
   return specifiers;
 }
 
-function importsMessages(file: string): boolean {
-  return valueImportSpecifiers(readFileSync(file, 'utf8')).some(
-    (specifier) =>
-      specifier.startsWith('.') &&
-      join(dirname(file), specifier.replace(/\.js$/, '')) === messagesModule,
+/** A relative specifier as a path without its extension or a trailing `/index`. */
+function modulePath(file: string, specifier: string): string {
+  return join(dirname(file), specifier.replace(/\.[cm]?[jt]sx?$/, '').replace(/\/index$/, ''));
+}
+
+/** Whether `code`, the source of `file`, value-imports the `messages` module. */
+function importsMessages(code: string, file: string): boolean {
+  return valueImportSpecifiers(code).some(
+    (specifier) => specifier.startsWith('.') && modulePath(file, specifier) === messagesModule,
   );
 }
 
 const importers = sourceFiles(gridDir)
-  .filter(importsMessages)
+  .filter((file) => importsMessages(readFileSync(file, 'utf8'), file))
   .map((file) => relative(gridDir, file).split('\\').join('/'))
   .sort();
 
 describe('DataGrid messages imports', () => {
-  it('finds the allowed importers, so the scan still matches', () => {
-    // A floor: the assertion below would pass vacuously if the scan ever stopped matching.
-    expect(importers).toEqual(expect.arrayContaining(ALLOWED));
+  it('imports the messages defaults only in the messages context and the order labels', () => {
+    // The exact list is also the floor: a scan that stopped matching would find no importer.
+    expect(ALLOWED.length).toBeGreaterThan(0);
+    expect(importers).toEqual([...ALLOWED].sort());
   });
 
-  it('imports the messages defaults only in the messages context and the order labels', () => {
-    expect(importers).toEqual([...ALLOWED].sort());
+  it('reports every value import of the messages module and no type import or comment', () => {
+    const file = join(gridDir, 'some-component.tsx');
+    const reported = [
+      "import { messages as m } from './messages';",
+      "import {\n  messages,\n} from './messages';",
+      "export { messages } from './messages.js';",
+      "const loaded = await import('./messages.js');",
+      "import { messages } from './messages.ts';",
+      "import { messages } from './messages/index.js';",
+    ];
+    const ignored = [
+      "import type { DataGridMessages } from './messages';",
+      "// import { messages } from './messages';",
+      "/* import { messages } from './messages'; */",
+      "import { other } from './messages-helpers';",
+    ];
+
+    expect(reported.filter((code) => !importsMessages(code, file))).toEqual([]);
+    expect(ignored.filter((code) => importsMessages(code, file))).toEqual([]);
   });
 });
