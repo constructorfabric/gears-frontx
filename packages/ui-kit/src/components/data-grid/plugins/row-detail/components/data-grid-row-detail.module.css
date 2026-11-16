@@ -19,6 +19,20 @@
   border-radius: var(--radius-sm);
 }
 
+/*
+ * The toggle is a line high, 16px, which is little to hit. Its hit area is a 24px square, the line
+ * and --space-1 on every side, which a transparent pseudo-element centred on the button makes, as
+ * on the table tree's toggle: it adds nothing to the layout, to how the toggle looks or to the
+ * focus ring, which is the button's own box. (Offsets of an absolutely positioned box count from
+ * the padding box, inside the 1px border, so the border is added to the offset.) The toggle's cell
+ * ignores row clicks, so a press on the enlarged area is the toggle's and not the row's.
+ */
+.toggleCell .toggle::after {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * (var(--space-1) + var(--border-width)));
+}
+
 .icon {
   transition: transform var(--duration-micro) var(--ease-standard);
 }
