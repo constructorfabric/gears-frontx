@@ -31,7 +31,10 @@ export type HookFn<THooks, Name extends keyof THooks> = (
 export interface Hooked<THooks> {
   /** Registers a handler. Returns the function that removes it again. */
   hook: <Name extends HookName<THooks>>(name: Name, fn: HookFn<THooks, Name>) => () => void;
-  /** Runs the handlers one after another, each after the previous one settled. */
+  /**
+   * Runs the handlers one after another, each after the previous one fulfilled. A handler that
+   * throws or rejects stops the rest, and the call rejects with that error.
+   */
   callHook: <Name extends HookName<THooks>>(
     name: Name,
     ...args: HookArgs<THooks, Name>
