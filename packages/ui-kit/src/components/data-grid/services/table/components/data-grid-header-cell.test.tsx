@@ -1,4 +1,5 @@
 import { act } from '@testing-library/react';
+import type { MockInstance } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import { render } from '../../../../../__test-utils__/render-with-user';
@@ -869,7 +870,7 @@ describe('DataGridHeaderCell aria-sort', () => {
       { id: 'name', label: 'Name' },
       { id: 'email', label: 'Email Address' },
     ];
-    let registerSpy: ReturnType<typeof vi.fn> | undefined;
+    let registerSpy: MockInstance | undefined;
     // Set up before the order plugin, so it watches every source the grid registers.
     const SpyPlugin = createDataGridPlugin<TestItem, 'sortSourceSpy'>('sortSourceSpy', (context) => {
       registerSpy = vi.spyOn(context, 'registerColumnSortSource');
