@@ -14,6 +14,12 @@ refactoring is not.
 
 ### Changed
 
+- The `PROJECT_INVALID` refusal over a legacy `.frontx/provenance.json` now
+  says that every command reading project state, `register` included,
+  refuses, names the first step (move the file aside, keeping it) and states
+  that re-registration adopts no locally edited target. The file's contents
+  are not parsed or migrated, and the file is not modified or deleted.
+
 - `upgrade` reads the baseline and the candidate payloads each from its own
   origin's resolution, never from the local inventory's single installed
   version, so the plan holds the files the two versions add, modify and

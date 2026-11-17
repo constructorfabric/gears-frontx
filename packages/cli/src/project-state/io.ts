@@ -415,8 +415,12 @@ async function loadProjectStateDocument(
         ok: false,
         message:
           `"${legacyPath}" is a legacy provenance record from an older CLI version; this repository was never ` +
-          'migrated to the current .frontx/project.json model. Recreate the project or re-register its ' +
-          'templates against the current model before running this command.',
+          'migrated to the current .frontx/project.json model. Every command that reads project state, register ' +
+          'included, refuses while it is present; its contents are not parsed or migrated, and the file is not ' +
+          'modified or deleted. First move the file aside (keep it as a backup), ' +
+          'then `frontx register <origin>` each template it listed and `frontx apply` each target. Re-registration ' +
+          'starts from an empty project state: a target whose template-owned files were edited locally is refused ' +
+          'by `apply` as CONTENT_CONFLICT rather than adopted.',
       };
     }
     // @cpt-begin:cpt-frontx-algo-composed-provenance-project-state-io:p1:inst-psio-absent-default

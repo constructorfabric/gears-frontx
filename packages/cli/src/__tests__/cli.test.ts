@@ -692,6 +692,32 @@ describe('dispatch: list (cpt-frontx-flow-template-resolution-list)', () => {
     expect(outcome.stdout).toBeUndefined();
   });
 
+  // ADR-0019: a repository an older CLI left a `.frontx/provenance.json` in,
+  // with no `.frontx/project.json`, is refused by every command that reads
+  // project state — `register` included, so "re-register" alone is not a step
+  // the developer can take. The refusal has to name the first actionable step
+  // (move the legacy file aside, keeping it) and must not claim the record is
+  // parsed or migrated, or that locally edited targets are adopted.
+  it('refuses register with PROJECT_INVALID over a legacy provenance.json, naming the move-aside step and the no-adoption caveat', async () => {
+    const readProjectStateFn: ReadProjectStateFn = vi.fn(async (absolutePath: string) =>
+      absolutePath.endsWith(path.join('.frontx', 'provenance.json')) ? '[{"templateIdentity":"foo"}]' : null,
+    );
+    const { deps, registerManifest } = makeDeps({ readProjectStateFn });
+    registerManifest('github:acme/foo@v1.0.0', makeManifest('foo', '1.0.0'));
+
+    const outcome = await run(['register', 'github:acme/foo@v1.0.0', '--json'], deps);
+
+    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+    const envelope = JSON.parse(outcome.stdout ?? '') as { ok: boolean; error: { code: string; message: string } };
+    expect(envelope.ok).toBe(false);
+    expect(envelope.error.code).toBe('PROJECT_INVALID');
+    expect(envelope.error.message).toContain('provenance.json');
+    expect(envelope.error.message).toContain('register included');
+    expect(envelope.error.message).toContain('move the file aside');
+    expect(envelope.error.message).toContain('CONTENT_CONFLICT');
+    expect(deps.writeProjectStateFn).not.toHaveBeenCalled();
+  });
+
   // The real `createFsReadProjectStateFn` (`../adapters/fs-project-io.ts`)
   // wraps every one of its own three read-side refusals (a FIFO/socket/
   // device/directory/dangling symlink at the document path; an ancestor that

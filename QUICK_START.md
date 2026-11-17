@@ -100,6 +100,15 @@ commit. If you need a guarantee, wait for a verified pinning fix, or control
 the source and its versioning yourself outside this CLI; this guide makes no
 promise about either. A `path:` origin is never pinned (below).
 
+**Projects created by an older CLI.** A repository that carries
+`.frontx/provenance.json` and no `.frontx/project.json` is refused by every
+command that reads project state, `register` included — the old record's
+contents are not parsed or migrated, and the file is not modified or deleted.
+Move the file aside first (keep it as a backup), then
+`register` each template it listed and `apply` each target. Re-registration
+starts from an empty project state: a target whose template-owned files were
+edited locally is refused by `apply` as `CONTENT_CONFLICT`, not adopted.
+
 Registering the identical origin again is a no-op. Registering a *different*
 origin for an already-registered name fails unless `--replace` is given, and
 `--replace` itself refuses once the name has any applied target — `upgrade`

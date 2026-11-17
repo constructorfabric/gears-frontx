@@ -62,6 +62,12 @@ describe('readProjectState', () => {
     if (!result.ok) {
       expect(result.error).toBe('PROJECT_INVALID');
       expect(result.message).toContain(legacyPath);
+      // The message must carry the one step the developer can actually take
+      // first — `register` itself refuses with this same message while the
+      // file is in place — and must not promise a lossless migration.
+      expect(result.message).toContain('register included');
+      expect(result.message).toContain('move the file aside');
+      expect(result.message).toContain('CONTENT_CONFLICT');
     }
   });
 
