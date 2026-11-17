@@ -104,10 +104,55 @@ promise about either. A `path:` origin is never pinned (below).
 `.frontx/provenance.json` and no `.frontx/project.json` is refused by every
 command that reads project state, `register` included — the old record's
 contents are not parsed or migrated, and the file is not modified or deleted.
-Move the file aside first (keep it as a backup), then
-`register` each template it listed and `apply` each target. Re-registration
-starts from an empty project state: a target whose template-owned files were
-edited locally is refused by `apply` as `CONTENT_CONFLICT`, not adopted.
+There is no automatic migration; the transition is a manual sequence that
+starts from an empty project state and records the baseline you hand it:
+
+1. Back up first: commit, or copy the whole project to a **new** directory
+   **outside** the project — a destination that does not exist yet, so the
+   copy cannot merge into or overwrite existing data — and keep a copy of
+   every template-owned file you edited after scaffolding. A backup placed
+   inside the project lands inside the target and is reported by `apply` as
+   existing content the batch does not declare.
+2. Obtain the exact payload the project was scaffolded from — the files at the
+   original template version, byte for byte — together with a manifest in the
+   current four-field contract (`name`, `version`, `description`,
+   `excludedSubtrees`) whose `version` is exactly the version the project was
+   scaffolded from: `register` records the version the manifest declares, and
+   that recorded version is the baseline every later `upgrade` checks against.
+   A published template still carrying the old
+   `schemaVersion`/`ownershipBoundaries` manifest is refused as
+   `INVALID_MANIFEST`, so converting the published templates is a prerequisite
+   for registering a remote origin; until then, place the reconstructed
+   payload in a folder inside the project and register it as a `path:` origin.
+3. Move `.frontx/provenance.json` out of the project (keep it).
+4. Register the baseline and apply it to the target the old record covered;
+   `apply` records a target without writing anything only when every
+   template-owned file on disk is byte-identical to the payload, so put each
+   edited file back to its baseline content first. An edited file that is
+   still in place refuses the batch as `CONTENT_CONFLICT`, naming it.
+5. Restore your edits from the backup.
+
+```bash
+cp -R . ../my-project-backup   # a new directory; must not exist yet
+mv .frontx/provenance.json ../my-project-backup/provenance.json
+frontx register path:vendor/frontx-baseline/my-template-1.0.0
+cp vendor/frontx-baseline/my-template-1.0.0/README.md README.md   # baseline bytes
+frontx apply --input '{"templates":{"@acme/my-template":["."]}}'
+cp ../my-project-backup/README.md README.md                        # your edit
+```
+
+From here `upgrade` (below) treats each edit as a local change: a file the new
+version leaves alone stays yours (`KEEP_LOCAL`); a file the new version also
+changes refuses the whole upgrade as `CONTENT_CONFLICT` before anything is
+written, and `--restore` keeps your edits the same way. Keep the `path:`
+baseline folder as long as you may want to `--restore` to it; vendor a later
+version inside the project only after `apply`, or it is reported as existing
+content the batch does not declare. Alternatively, `frontx ownership add
+<edited-path>` before `apply` lets the edit stand without resetting it — at a
+cost: while the path is listed in `projectOwnedRoots`, it is outside the
+template's ownership, so upgrades skip it and the template's own changes to
+it are not delivered. `frontx ownership remove <path>` puts it back under the
+ordinary ownership and conflict rules from the next command on.
 
 Registering the identical origin again is a no-op. Registering a *different*
 origin for an already-registered name fails unless `--replace` is given, and
