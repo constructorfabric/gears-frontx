@@ -200,10 +200,9 @@ interface LoadBlobState {
    * source-text fetch in the load. Absent for a state built outside an
    * attempt (a hand-built one in tests, for instance).
    *
-   * Note that a lazy chunk resolved through this state long after the load
-   * settled still records into the ledger; that is harmless, because the
-   * ledger stops recording once released and is only ever released while
-   * its own attempt is still in flight.
+   * The ledger is settled when its attempt settles, so a lazy chunk
+   * resolved through this state afterwards records into nothing and this
+   * reference retains no source text.
    */
   readonly attemptLedger?: AttemptSourceTextLedger;
   /**
@@ -616,6 +615,11 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
               // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-no-retry-deterministic
             }
             throw error;
+          } finally {
+            // The attempt has settled: its record of waited-on entries is
+            // dropped, so the per-load state's reference to it retains no
+            // fetched text (`inst-lto-drop-record-on-settle`).
+            ledger.settle();
           }
         },
         this.config.retries ?? 0,
