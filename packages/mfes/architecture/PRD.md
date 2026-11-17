@@ -213,7 +213,7 @@ The system **MUST** meet measurable response-time and throughput targets for run
 **Thresholds**:
 - Admission: 100% of admitted microfrontends and extensions pass validation before running.
 - Access posture: a microfrontend receives no host state or capability beyond what its extension domain explicitly grants.
-- Isolation: a microfrontend receives no implicit access to other microfrontends' module state or capabilities. Microfrontends in one realm whose type-system providers share a store also share type registrations. That sharing is deliberate and grants no access: microfrontend code already shares the realm. Its risk is coupling between well-behaved runtimes, which the type-system provider mitigates.
+- Isolation: a microfrontend receives no implicit access to other microfrontends' module state or capabilities. Microfrontends in one realm whose type-system providers share a store also share type registrations. That sharing is deliberate and grants no access: microfrontend code already shares the realm. Its risk is coupling between well-behaved runtimes, which the type-system provider mitigates. Code a library loads from a target that cannot be determined before it runs is not isolated; the application that uses such a library carries that risk.
 - Default deny: denied or unvalidated units are not admitted or placed.
 
 **Rationale**: Running independently-developed microfrontends — potentially from different teams or vendors — within one host makes default-deny access and admission validation essential for the trust enterprises require.
@@ -226,9 +226,9 @@ The system **MUST** bound the transfer, evaluation, and retained memory of share
 
 **Thresholds**:
 - Shared-code transfer: a shared dependency at a given version, built identically, is transferred to the page at most once, however many microfrontends on that page use it.
-- Evaluation scope: each extension instance evaluates only the shared code its own functionality requires. The only exception is code that a published package does not offer separately, and every such case is reported under the visibility threshold.
+- Evaluation scope: each extension instance evaluates only the shared code its own functionality requires. The only exception is code that a published package does not offer separately.
 - Retained memory: memory the runtime retains grows only with the number of distinct extension instances registered. Unmounting and remounting the same extension instance any number of times does not increase it. Shared source text the runtime retains stays within an application-configurable byte budget.
-- Visibility: while running, the runtime reports the figures needed to check the three thresholds above without browser developer tools. This reporting is behaviour of the library, not operations monitoring of a deployed service. The figures include transferred and retained bytes, and evaluated versus available shared code per extension instance.
+- Visibility: while running, the runtime reports the shared code it transferred and the shared code it retains, without browser developer tools. This reporting is behaviour of the library, not operations monitoring of a deployed service.
 
 **Rationale**: An application composed of many independently built microfrontends must not pay repeatedly, in download, evaluation, or memory, for code those microfrontends share or never use.
 
@@ -300,7 +300,7 @@ None owned here. The package is distributed under the root PRD's package-registr
 - [ ] Microfrontends can communicate with the host — verifiable via `cpt-frontx-fr-mfe-host-communication`.
 - [ ] Microfrontends can react to host-state changes — verifiable via `cpt-frontx-fr-mfe-host-communication`.
 - [ ] Load failures degrade gracefully with diagnostics and recovery or retry outcome — verifiable via `cpt-frontx-fr-mfe-load-failure-handling`.
-- [ ] Shared-code transfer, evaluation scope, retained memory, and their runtime reporting meet the thresholds stated in `cpt-frontx-nfr-resource-efficiency`.
+- [ ] Shared-code transfer, evaluation scope, retained memory, and the runtime reporting of transferred and retained shared code meet the thresholds stated in `cpt-frontx-nfr-resource-efficiency`.
 - [ ] No unit is placed without passing type validation and domain contract matching — verifiable via `cpt-frontx-fr-mfe-type-validation`, `cpt-frontx-fr-mfe-extension-domain-governance`, and the security NFR's admission measurement.
 - [ ] The supported-platform baseline requires current evergreen browser capabilities for dynamic module loading, standard DOM placement, and modern JavaScript execution.
 - [ ] The runtime's public surface names no UI framework and no concrete type-definition specification — verifiable by inspection of the package's exports and dependencies.

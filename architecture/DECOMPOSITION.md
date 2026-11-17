@@ -73,7 +73,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 
 ### 2.3 [GTS Default Type-System Provider](../packages/gts-plugin/architecture/features/gts-type-provider/) - HIGH
 
-- [x] `p1` - **ID**: `cpt-frontx-feature-gts-type-provider`
+- [ ] `p1` - **ID**: `cpt-frontx-feature-gts-type-provider`
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/gts-plugin/architecture/features/gts-type-provider/FEATURE.md).
 
@@ -123,7 +123,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 **Installed-kit coverage references**:
 - `cpt-frontx-constraint-mfes-realm-shared-dep-cache`
 
-`cpt-frontx-constraint-mfes-realm-shared-dep-cache` is shared with §2.7: the constraint binds both the unit-format contract the cache's entries are verified against and the isolation feature that owns the cache itself.
+`cpt-frontx-constraint-mfes-realm-shared-dep-cache` is shared with §2.7: the constraint binds both the unit-format contract whose key forms and value formats the cache's entries follow and the isolation feature that owns the cache itself.
 
 ### 2.9 [API Protocol Surface](../packages/api/architecture/features/api-protocol-surface/) - MEDIUM
 
@@ -386,10 +386,10 @@ F1 ecosystem-distribution        (foundation)
 F2 type-substrate-port           (foundation)
    ├─→ F3 gts-type-provider
    └─→ F4 mfe-registry
-          ├─→ F5 mfe-loading ──────────────┐
+          ├─→ F5 mfe-loading ──────────────┐ (← F24)
           ├─→ F6 mfe-host-communication     │
           ├─→ F7 extension-domain-governance (also ← F3, F6)
-          └─→ F8 mfe-isolation ←────────────┘ (← F5)
+          └─→ F8 mfe-isolation ←────────────┘ (← F5, F24)
 F9 api-protocol-surface          (foundation, standalone)
 F10 template-resolution          (foundation)
    ├─→ F11 template-manifest
@@ -404,11 +404,15 @@ F20 ai-project-scaffolding       (← F10, F11, F12, F13, F15, F16)
 F21 routing-navigation-substrate (foundation, standalone)
    ├─→ F22 routing-route-ownership-signal ──┐
    └─→ F23 routing-engine-provider ←────────┘ (← F22; cross-package: routing-tanstack ← routing)
-F24 unit-format-contract         (foundation, standalone — defines the contract F5's load path and F8's cache consume)
+F24 unit-format-contract         (foundation — defines the contract F5's load path and F8's cache consume)
+   ├─→ F5 mfe-loading
+   └─→ F8 mfe-isolation
 ```
 
 **Dependency Rationale**:
 
+- `cpt-frontx-feature-mfe-loading` requires `cpt-frontx-feature-unit-format-contract`: the load path reads fetch-list documents in the contract's document format and value formats, and admits fetched shared files to the realm cache under the contract's key forms.
+- `cpt-frontx-feature-mfe-isolation` requires `cpt-frontx-feature-unit-format-contract`: the realm cache's keys and entries follow the contract's key forms and value formats.
 - `cpt-frontx-feature-gts-type-provider` requires `cpt-frontx-feature-type-substrate-port`: the GTS provider implements the opaque type-substrate port the runtime defines.
 - `cpt-frontx-feature-mfe-registry` requires `cpt-frontx-feature-type-substrate-port`: the registry façade is built with the type-system provider injected through the port contract.
 - `cpt-frontx-feature-mfe-loading` requires `cpt-frontx-feature-mfe-registry`: on-demand loading is orchestrated from the registry.

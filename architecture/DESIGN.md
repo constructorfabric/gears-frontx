@@ -87,7 +87,7 @@ Foundational:
 
 Published libraries:
 
-* `cpt-frontx-adr-mfe-runtime-public-surface` — Exposes microfrontend registration and loading through an abstract registry facade.
+* `cpt-frontx-adr-mfe-runtime-public-surface` — Exposes microfrontend registration and loading through an abstract registry facade; the root exports only what outside consumers use, plus the errors thrown to callers and the router contract.
 * `cpt-frontx-adr-runtime-type-system-coupling` — Keeps the runtime's schema surface opaque, with format-specific shape behind the type-system plugin.
 * `cpt-frontx-adr-default-type-substrate-provider` — Supplies the ecosystem's default type system as an injectable provider of the runtime's type-substrate port.
 * `cpt-frontx-gts-plugin-adr-type-store-scope` — Shares one type store, with its validation mirror, among the compatible copies of the default provider in a JavaScript realm, lets runtimes rely on one another's registrations, and keeps the first definition registered under a type identifier - owned by the gts-plugin member tree, `packages/gts-plugin/architecture/ADR/`.
@@ -97,10 +97,10 @@ Published libraries:
 * `cpt-frontx-adr-extension-domain-occupancy` — Governs extension-domain occupancy through mount strategies and cardinality rules, with executed actions as the sole channel of an occupancy change, restoration included.
 * `cpt-frontx-adr-domain-extension-compatibility` — Admits extensions into domains by contract matching.
 * `cpt-frontx-adr-mfe-load-isolation` — Isolates loaded microfrontends at runtime.
-* `cpt-frontx-adr-lazy-import-resolution` — Resolves lazily loaded chunks through a runtime lazy-import ABI inherited from the parent load, binding them to that load's map of shared-dependency units so units reached on demand join the same isolated graph.
-* `cpt-frontx-adr-mfe-asset-discovery` — Tells each load, through the microfrontend's manifest contract, which assets and which reachable shared code to fetch.
-* `cpt-frontx-adr-shared-dep-reuse` — Reuses shared-dependency code across microfrontends as content-identified, consumer-independent units, one per strongly connected component of a package's own module graph, under an ecosystem-owned format contract.
-* `cpt-frontx-adr-shared-dep-cache-reach` — Extends that reuse to one version-namespaced cache of verified source text per realm, bounded by an application-configurable byte budget and shared by compatible copies of the runtime without sharing module graphs.
+* `cpt-frontx-adr-lazy-import-resolution` — Resolves every literal and pattern dynamic import into its parent load's isolated graph through a runtime lazy-import ABI.
+* `cpt-frontx-adr-mfe-asset-discovery` — Tells each load what to fetch from the registered MFE entry and the registered manifest it references, under closed contracts.
+* `cpt-frontx-adr-shared-dep-reuse` — Reuses shared-dependency code across microfrontends as content-identified, consumer-independent units named on precomputed fetch lists.
+* `cpt-frontx-adr-shared-dep-cache-reach` — Shares one byte-budgeted cache of shared source text per realm among compatible copies of the runtime.
 * `cpt-frontx-adr-api-surface-organization` — Separates request/response and streaming behind a common protocol surface.
 * `cpt-frontx-adr-api-transport-bypass-and-fetch-sharing` — Provides a plugin short-circuit and a realm-shared fetch cache.
 * `cpt-frontx-adr-extension-routing-port` — Injects an optional abstract router into the runtime, places the FrontX router in the routing package, keeps occupant values private, and lets the runtime decide what the URL shows while the router writes it.
@@ -182,7 +182,7 @@ graph TD
 
 | Layer | Responsibility | Technology |
 |-------|---------------|------------|
-| Published libraries | Runtime substrate, type-system provider, protocol surface, telemetry, a navigation substrate holding the FrontX router with a pluggable routing-engine-provider port, and its default routing-engine provider — consumed as versioned dependencies; the core subset stays UI-framework- and type-format-agnostic | TypeScript npm packages; module-federation runtime with lazy import (`@gears-frontx/mfes`); concrete type-definition specification confined to `@gears-frontx/gts-plugin`; transport as a peer dependency of `@gears-frontx/api`; navigation substrate and FrontX router declaring an engine-provider port with no concrete engine dependency of its own (`@gears-frontx/routing`); concrete routing-engine dependency confined to its default provider (`@gears-frontx/routing-tanstack`) |
+| Published libraries | Runtime substrate, type-system provider, protocol surface, telemetry, a navigation substrate holding the FrontX router with a pluggable routing-engine-provider port, and its default routing-engine provider — consumed as versioned dependencies; the core subset stays UI-framework- and type-format-agnostic | TypeScript npm packages; manifest-driven microfrontend runtime that shares source text across loads and never module instances (`@gears-frontx/mfes`; `cpt-frontx-adr-mfe-load-isolation`, `cpt-frontx-adr-shared-dep-reuse`); concrete type-definition specification confined to `@gears-frontx/gts-plugin`; transport as a peer dependency of `@gears-frontx/api`; navigation substrate and FrontX router declaring an engine-provider port with no concrete engine dependency of its own (`@gears-frontx/routing`); concrete routing-engine dependency confined to its default provider (`@gears-frontx/routing-tanstack`) |
 | Templates | Producing and extending project content the receiving project owns | Externally hosted template repositories resolved by versioned source-spec; manifest publication contract |
 | Projects orchestration | Template and repository lifecycle (install, apply, assemble, upgrade) and AI-agent orchestration over it | Node.js CLI (`@gears-frontx/cli`); Constructor Studio kit (`cyber-pilot-kit-frontx`); GitHub source registry; npm package registry |
 | Outside the layers | Build internals (never published) and non-package repository code | Private `@gears-frontx/*` configuration packages; `scripts/` tooling |
@@ -425,7 +425,7 @@ Root capacity is expressed as an absence of structural caps. Concrete runtime or
 ### Non-applicable checklist categories
 
 - Database and data architecture are not applicable at root altitude.
-- Hosted infrastructure operations are not applicable at root altitude.
+- Operations — Not applicable because the root ecosystem deploys, monitors and supports no service of its own (§3.8); published packages are distributed through a package registry, and each project operates its own deployment.
 - Security and privacy behavior are owned by members and consuming applications unless a root contract explicitly states otherwise.
 - Performance — Not applicable because the root runs no service and sets no latency or throughput target; member PRDs own them.
 - Reliability — Not applicable because the root ecosystem runs no service of its own to keep available (§3.8); availability and recovery belong to the members and to the applications built on them.
