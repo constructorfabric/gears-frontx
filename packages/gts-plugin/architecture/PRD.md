@@ -79,7 +79,7 @@ This PRD uses the root PRD's vocabulary ([root PRD §1.4](../../../architecture/
 
 The provider is made available to the runtime by the application. From then on, the runtime can use it for type validation and type-of resolution, and the application can register its own definitions through the provider.
 
-A composed application runs several copies of the provider in one JavaScript realm: one in the host, and one in each microfrontend whose code imports it. Copies that use the same store format, the same GTS library line and the same built-in type definitions and default lifecycle-stage instances share one store of type knowledge, whatever their release. A definition or instance registered through any of them is known to all of them, and a runtime may rely on it. A copy that differs in any of the three keeps a separate store and reports that it does. A provider instance constructed with the isolation option keeps a private store.
+A composed application runs several copies of the provider in one JavaScript realm: one in the host, and one in each microfrontend whose code imports it. Copies that use the same store format, the same GTS library line and the same built-in type definitions and default lifecycle-stage instances share one store of type knowledge, whatever their release. A definition or instance registered through any of them is known to all of them, and a runtime may rely on it. A copy that differs in any of the three keeps a separate store and reports that it does. An application can also obtain a provider instance that keeps its own store of type knowledge, which no other instance reads or writes.
 
 ### 3.1 Module-Specific Environment Constraints
 
@@ -96,7 +96,7 @@ A composed application runs several copies of the provider in one JavaScript rea
 - Type-of resolution for handler matching.
 - Application-defined type definitions registered at runtime.
 - Default infrastructure type definitions the runtime's lifecycle model uses.
-- Sharing registered type knowledge among compatible copies of the provider in one realm, with an option for an instance to keep a private store.
+- Sharing registered type knowledge among compatible copies of the provider in one realm, and a provider instance that keeps its own.
 
 ### 4.2 Out of Scope
 
@@ -156,7 +156,7 @@ The system **MUST** provide the default infrastructure type definitions required
 
 - [ ] `p2` - **ID**: `cpt-frontx-fr-gts-realm-shared-type-store`
 
-The system **MUST** make a type definition or instance registered through one provider instance known to every provider instance in the same JavaScript realm whose copy uses the same store format, the same GTS library line and the same built-in type definitions and default lifecycle-stage instances. A runtime **MAY** rely on such a registration without registering it again. The system **MUST NOT** share between copies that differ in any of the three, and **MUST** report when a realm comes to hold more than one store. When a validation fails, the system **MUST** report the store it searched beside the type library's own reason, and **MUST** say that a definition not registered there may be registered later or on another store. A type definition registered under an identifier the store already holds **MUST NOT** replace the definition held there. Identical content **MUST** change nothing and report nothing. Different content **MUST** be reported to the developer as a conflict. A provider instance constructed with the isolation option **MUST** keep a private store.
+The system **MUST** make a type definition or instance registered through one sharing provider instance known to every sharing provider instance in the same JavaScript realm whose copy uses the same store format, the same GTS library line and the same built-in type definitions and default lifecycle-stage instances. A runtime **MAY** rely on such a registration without registering it again. The system **MUST NOT** share between copies that differ in any of the three, and **MUST** report when a realm comes to hold more than one store. When a validation fails, the system **MUST** report the store it searched beside the type library's own reason, and **MUST** say that a definition not registered there may be registered later or on another store. A type definition registered under an identifier the store already holds **MUST NOT** replace the definition held there. Identical content **MUST** change nothing and report nothing. Different content **MUST** be reported to the developer as a conflict. The system **MUST** let an application obtain a provider instance that keeps its own store of type knowledge, shared with no other instance; every other provider instance, the default one included, is a sharing instance.
 
 **Threshold**: A definition registered once is known to every runtime on the same store, with zero further registrations, and a runtime relies on it without registering it itself.
 
@@ -196,9 +196,9 @@ The root PRD's §6.2 exclusions (safety, privacy, accessibility, internationaliz
 
 **Stability**: unstable
 
-**Description**: The Type System provides the default GTS specification, validates entities against type definitions, resolves type-of relationships, supplies default infrastructure type definitions, and lets an application use type definitions for its own entities with additional type definitions registered at runtime.
+**Description**: The Type System provides the default GTS specification, validates entities against type definitions, resolves type-of relationships, supplies default infrastructure type definitions, supplies the lifecycle action identifiers and the default lifecycle stages hosts and microfrontends use, and lets an application use type definitions for its own entities with additional type definitions registered at runtime.
 
-**Documentation Obligation**: The public provider surface **MUST** document the provider-facing interface, how applications use runtime registration through the injected provider, and the isolation option for an instance that must keep a private store.
+**Documentation Obligation**: The public provider surface **MUST** document the provider-facing interface, how applications use runtime registration through the injected provider, the lifecycle action identifiers and default lifecycle stages it supplies, and how an application obtains a provider instance that keeps its own store of type knowledge.
 
 **Breaking Change Policy**: A major version bump is required for any incompatible change to the component's public surface; minor and patch versions preserve backward compatibility.
 
@@ -236,7 +236,7 @@ None owned here. The package is distributed under the root PRD's package-registr
 - [ ] Entities can be validated against GTS type definitions — verifiable via `cpt-frontx-fr-gts-type-validation`.
 - [ ] Type-of relationships can be resolved for handler matching — verifiable via `cpt-frontx-fr-gts-type-of-resolution`.
 - [ ] Provider-owned default infrastructure type definitions are available separately from application-defined registrations — verifiable via `cpt-frontx-fr-gts-default-infrastructure-types` and `cpt-frontx-fr-application-type-definitions`.
-- [ ] A type definition or instance registered through one provider instance can be relied on by every runtime on the same store; a later conflicting definition of the same type leaves it unchanged and is reported; a missing definition is reported with the store searched; and an isolated instance keeps a private store — verifiable via `cpt-frontx-fr-gts-realm-shared-type-store`.
+- [ ] A type definition or instance registered through one provider instance can be relied on by every runtime on the same store; a later conflicting definition of the same type leaves it unchanged and is reported; a missing definition is reported with the store searched; an application can obtain a provider instance whose store no other instance shares — verifiable via `cpt-frontx-fr-gts-realm-shared-type-store`.
 - [ ] The default GTS provider remains independently adoptable and replaceable by a conforming alternative provider without changing consuming applications' runtime composition requirements — verifiable via `cpt-frontx-gts-plugin-nfr-standalone`.
 
 ## 10. Dependencies
@@ -257,7 +257,7 @@ None owned here. The package is distributed under the root PRD's package-registr
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | The GTS specification changes incompatibly. | Applications with registered schemas face migration. | The specification is confined to this provider's product surface; the evolvability requirement's deprecation cycle applies to the provider's own major line. |
-| The first runtime to register a type identifier decides its definition for every runtime on that store. | A runtime that registers a different definition later validates against the first one. A shell that registers microfrontend schemas from copies taken at its own build wins over a redeployed microfrontend. Template-owned schemas collide across template releases. | A type identifier names its version, so different content under one identifier is a defect in a definition. The provider reports the conflict with both definitions and the copies involved. |
+| The first runtime to register a type identifier decides its definition for every runtime on that store. | A runtime that registers a different definition later validates against the first one. A shell that registers microfrontend schemas from copies taken at its own build wins over a redeployed microfrontend. Application-owned schemas collide across releases of those schemas. | A type identifier names its version, so different content under one identifier is a defect in a definition. The provider reports the conflict with both definitions and the copies involved. |
 | Runtimes whose provider copies differ in store format, GTS library line, or built-in definitions or default lifecycle-stage instances share nothing. | A runtime that relies on another runtime's registration does not find it. | The provider warns when a realm opens a second store, and every validation error names the store searched and says that something not registered there may be registered later or on another store. |
 | Within one compatible line, copies carry different patch levels of the GTS library. | Validation on a shared store follows the copy that published it, usually the host's, not each runtime's own patch level. | A patch within a line changes no promised behaviour. A change of line opens a separate store. |
 | A runtime replaces an instance another runtime registered under the same identifier. | A manifest or entry looked up by identifier is read with the later content in every runtime on that store. | The provider warns when one runtime replaces different content another runtime wrote. Instance identifiers must be unique across the runtimes of an application. |

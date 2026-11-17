@@ -1,6 +1,6 @@
 ---
-version: 5
-description: Specifies the ecosystem-owned unit format contract for shared-dependency output — type-system-neutral JSON fetch-list documents typed by TypeScript interfaces exported from `./unit-format`, content-identified chunks emitted under consumer-independent entry-point chunking, the manifest and boot-data fields that carry the lists — the integrity verification every fetched file passes before cache admission, the byte-agreement measurement across builds, and the `UnitFormatConformance` suite every producing build must pass.
+version: 7
+description: Specifies the ecosystem-owned shared-dependency format contract — consumer-independent content-identified chunks, type-system-neutral JSON fetch-list documents per exposed module and per lazy target typed by the fetch-list types exported from `./unit-format`, the naming of shared files, the value formats and the producer output obligations — the admission discipline that holds every fetched shared text in the realm cache under the content identity declared for it, and the `./unit-loader` surface of exactly the shared-unit fetcher and the location-to-URL resolver.
 ---
 
 # Feature: Shared-Dependency Unit Format Contract
@@ -13,20 +13,19 @@ description: Specifies the ecosystem-owned unit format contract for shared-depen
   - [1.3 Actors](#13-actors)
   - [1.4 References](#14-references)
 - [2. Actor Flows (CDSL)](#2-actor-flows-cdsl)
-  - [Producer Conformance Verification](#producer-conformance-verification)
+  - [Producer Output Loaded by the Runtime](#producer-output-loaded-by-the-runtime)
+  - [Host Admission Through the Shared-Unit Fetcher](#host-admission-through-the-shared-unit-fetcher)
 - [3. Processes / Business Logic (CDSL)](#3-processes--business-logic-cdsl)
   - [Fetch-List Contract](#fetch-list-contract)
-  - [Fetched-File Integrity Verification](#fetched-file-integrity-verification)
-  - [Byte-Agreement Measurement](#byte-agreement-measurement)
+  - [Shared-Text Admission Under the Declared Identity](#shared-text-admission-under-the-declared-identity)
   - [Sanctioned Loader Surface](#sanctioned-loader-surface)
 - [4. States (CDSL)](#4-states-cdsl)
   - [None](#none)
 - [5. Definitions of Done](#5-definitions-of-done)
-  - [One Flat Fetch List Per Entry](#one-flat-fetch-list-per-entry)
-  - [Integrity Verification Before Cache Admission](#integrity-verification-before-cache-admission)
-  - [Byte-Agreement Measurement — Runtime and Cross-Build](#byte-agreement-measurement--runtime-and-cross-build)
-  - [Producer Conformance Suite Shipped With the Contract](#producer-conformance-suite-shipped-with-the-contract)
-  - [Loader Surface Limited to Fetch, Verify, Cache and Mint](#loader-surface-limited-to-fetch-verify-cache-and-mint)
+  - [One Flat Fetch List per Exposed Module and Lazy Target](#one-flat-fetch-list-per-exposed-module-and-lazy-target)
+  - [Shared Text Admitted Under Its Declared Identity](#shared-text-admitted-under-its-declared-identity)
+  - [Producer Output Obligations](#producer-output-obligations)
+  - [Loader Surface Limited to the Shared-Unit Fetcher and the Resolver](#loader-surface-limited-to-the-shared-unit-fetcher-and-the-resolver)
 - [6. Acceptance Criteria](#6-acceptance-criteria)
 
 <!-- /toc -->
@@ -39,13 +38,13 @@ description: Specifies the ecosystem-owned unit format contract for shared-depen
 
 ### 1.1 Overview
 
-Defines the format a producing build emits and the runtime reads for shared-dependency reuse: consumer-independent chunks — one chunk per package entry point with overlapping internals in shared internal chunks, each package's chunk boundaries and bytes computed from that package's own complete entry set — and the per-entry flat fetch list that is the loading contract. Each build emits one precomputed fetch list per entry: each expose, each lazy target, the shell boot. A list item carries the chunk's URL, its content identity, the specifiers it answers and every import edge it holds — bare specifiers and intra-package relative edges recorded as resolved item references, so no edge is derived from source text at mint time; a list document nests the lazy-target lists — each holding only what the target needs beyond its parent chain's lists — the pattern-import lists keyed by matching file, and the opaque-import report entries naming each `import(expr)` call site with file and line. The manifest carries each entry's list by location and content identity; the shell boot chunk embeds the shell's boot list inline together with the lazy-target lists the boot list references. Fetch-list documents are type-system-neutral JSON build artifacts; the TypeScript interfaces exported from the package's `./unit-format` entry are their single typing source, and no list schema exists in any type system. The runtime reads a list, fetches every item missing from the realm text cache in one parallel batch, and mints per load in dependency order — there is no runtime graph discovery. The ecosystem owns this contract and ships, beside those interfaces, a `UnitFormatConformance` suite that any producing build must pass; the producer implementation itself is template territory and no producer option may change chunk bytes. Beside the contract subpath, the package ships a `./unit-loader` subpath exposing exactly the fetch, verify, realm-cache and mint classes — the surface a host's own unit loading (the shell boot chunk a producing build emits) consumes without reaching the registry, orchestrating handler or mediator. The same contract carries the integrity verification every fetched list document and chunk passes before it enters the realm cache and the byte-agreement measurement that makes a non-deterministic producer observable in the field and fails builds that disagree where they meet.
+Defines the format a producing build emits and the runtime reads for shared-dependency reuse: consumer-independent chunks — one chunk per package entry point with overlapping internals in shared internal chunks, each package's chunk boundaries and bytes computed from that package's own complete entry set — and one precomputed flat fetch list per exposed module and per lazy target. A list item carries the chunk's location, its content identity, the specifiers it answers and every import edge it holds, so every edge comes from the list's recorded imports; the list also carries `ownChunks`, the locations of the microfrontend's own chunks the module or target reaches statically, and it references the lazy-target and pattern-import lists and carries the opaque-import report entries. Fetch-list documents are type-system-neutral JSON typed by the fetch-list types exported from `./unit-format`. Every fetched fetch-list document and list item is admitted to the realm cache, as fetched, under the content identity declared for it, by one admission discipline, and `./unit-loader` exposes exactly the shared-unit fetcher and the location-to-URL resolver, so code outside the package admits text to the realm cache only under that discipline. Each producer verifies its own output against the producer output obligations in its own tests. This feature is the single owner of the realm cache key forms and of the admission discipline; the features that load microfrontends cite them by ID. While the project is at major version 0, a change to the fetch-list format, additive or not, takes no version bump, and the runtime accepts a new field before producers emit it (`cpt-frontx-adr-shared-dep-reuse`, `cpt-frontx-adr-mfe-asset-discovery`).
 
 ### 1.2 Purpose
 
-Content-keyed reuse across independently built and deployed microfrontends works only when every consumer receives the same bytes for a package at a version and when the runtime can verify that it does (`cpt-frontx-adr-shared-dep-reuse`). That requires the emitted format — what a chunk is, what a fetch list states, how files are named and identified, how lazy and pattern imports are carried — to be owned by the ecosystem that owns the reader, not left to whichever producing build emitted it, and verified mechanically so a producer that is not the ecosystem's own can still be trusted to emit conforming output. This feature fixes that contract and its conformance suite; how a load drives a list through fetch, verify and mint, and how the manifest's locating fields are read, belong to `cpt-frontx-feature-mfe-loading`, and how a load builds isolated module instances over the verified text belongs to `cpt-frontx-feature-mfe-isolation`.
+Content-keyed reuse across independently built and deployed microfrontends works only when every consumer receives the same bytes for a package at a version and when each producer declares the content identity of the file it publishes, so the runtime shares text under the identity its declaration names (`cpt-frontx-adr-shared-dep-reuse`, `cpt-frontx-adr-mfe-asset-discovery`). That requires the emitted format — what a chunk is, what a fetch list states, how files are named and identified, how lazy and pattern imports are carried — to be owned by the ecosystem that owns the reader, not left to whichever producing build emitted it. This feature fixes that contract, the admission discipline and the subpath surfaces that publish them; how a load drives a fetch list through its rounds and reads the manifest's locating fields belongs to `cpt-frontx-feature-mfe-loading`, and how a load builds isolated module instances over the admitted text belongs to `cpt-frontx-feature-mfe-isolation`.
 
-**Requirements**: `cpt-frontx-fr-mfe-runtime-registration`, `cpt-frontx-nfr-runtime-performance`, `cpt-frontx-nfr-resource-efficiency`
+**Requirements**: `cpt-frontx-fr-mfe-runtime-registration`, `cpt-frontx-fr-mfe-load-failure-handling`, `cpt-frontx-nfr-runtime-performance`, `cpt-frontx-nfr-resource-efficiency`, `cpt-frontx-nfr-security`
 
 **Principles**: none owned by this feature
 
@@ -53,26 +52,26 @@ Content-keyed reuse across independently built and deployed microfrontends works
 
 | Actor | Role in Feature |
 |-------|-----------------|
-| `cpt-frontx-actor-project-developer` | Builds a microfrontend with consumer-side build tooling that produces conforming output, and runs the shipped `UnitFormatConformance` suite against a producer's output before relying on it |
+| `cpt-frontx-actor-project-developer` | Builds a microfrontend with a producer whose output satisfies the contract, and loads shared text outside a microfrontend load through the `./unit-loader` subpath |
 
 ### 1.4 References
 
 - **PRD**: [PRD.md](../../PRD.md)
 - **Design**: [DESIGN.md](../../DESIGN.md)
 - **Decomposition**: `cpt-frontx-feature-unit-format-contract` (DECOMPOSITION §2.8)
-- **ADRs**: `cpt-frontx-adr-shared-dep-reuse`, `cpt-frontx-adr-mfe-asset-discovery`, `cpt-frontx-adr-shared-dep-cache-reach`
-- **Component**: `cpt-frontx-component-mfe-runtime` (shared with F4, F5, F6, F7, F8)
-- **Dependencies**: `cpt-frontx-feature-mfe-loading`, `cpt-frontx-feature-mfe-isolation`
+- **ADRs**: `cpt-frontx-adr-shared-dep-reuse`, `cpt-frontx-adr-mfe-asset-discovery`, `cpt-frontx-adr-shared-dep-cache-reach`, `cpt-frontx-adr-lazy-import-resolution`
+- **Component**: `cpt-frontx-component-mfe-runtime`
+- **Dependencies**: this feature consumes no feature contract; the steps `cpt-frontx-algo-mfe-loading-attempt-timeout` (`inst-lto-release-generation-identity`) and `cpt-frontx-flow-mfe-isolation-load` (`inst-emit-load-diagnostic`) are cited as pointers, and `cpt-frontx-feature-mfe-loading` and `cpt-frontx-feature-mfe-isolation` consume this feature's contract
 
 **Checklist applicability**:
-- PERF — Addressed in §5 (One Flat Fetch List Per Entry): precomputed per-entry lists let a load fetch only the chunks the entry reaches, in one parallel batch, with one further round per lazy target, and no runtime graph discovery (`cpt-frontx-nfr-runtime-performance`).
-- SEC — Addressed in §3 (Fetched-File Integrity Verification) and §5 (Integrity Verification Before Cache Admission): every fetched list document and chunk is verified against its declared content identity before it is used or admitted to the realm cache, and a mismatch is never cached, so no unverified text can be evaluated inside a microfrontend's isolated graph.
-- REL — Addressed in §3 (Fetch-List Contract) and §5 (Byte-Agreement Measurement — Runtime and Cross-Build): a barrel that cannot be proven side-effect-free is shipped whole in its entry's chunk — matching what the consumer's own production build already ships — and hash conflicts surface as one warning per conflicting pair plus a diagnostics event rather than silent reuse.
-- DATA — Not applicable because this feature stores nothing durable; the contract describes published files and in-memory verification.
-- INT — Addressed in §3 (Fetch-List Contract) and §5 (Producer Conformance Suite Shipped With the Contract): the TypeScript interfaces in `./unit-format`, the naming and identity rules, and the list-carrying manifest and boot-data fields are the boundary between template-territory producers and the ecosystem runtime.
-- OPS — Addressed in §3 (Byte-Agreement Measurement): hash conflicts and opaque dynamic imports are reported through the runtime's diagnostics and the build report for the host to surface.
-- MAINT — Not applicable because this feature sets no maintainability target of its own; the contract is a published interface surface whose evolution is governed by the manifest contract's additive-compatibility rules.
-- TEST — Addressed in §5 (Producer Conformance Suite Shipped With the Contract) and §6: `UnitFormatConformance` is itself the mechanical check a producer passes, and the acceptance criteria are what an implementation of the reader side is tested against.
+- PERF — Addressed in §5 (One Flat Fetch List per Exposed Module and Lazy Target): precomputed lists let a load fetch only the shared units and `ownChunks` the module reaches with no runtime graph discovery; the round bounds are those of `cpt-frontx-dod-mfe-loading-two-round-load` (`cpt-frontx-nfr-runtime-performance`).
+- SEC — Addressed in §3 (Shared-Text Admission Under the Declared Identity) and §5 (Shared Text Admitted Under Its Declared Identity): every fetched fetch-list document and list item is admitted to the realm cache only under the key its declared content identity fixes, and code outside the package admits text only through the shared-unit fetcher; the declared identity is a sharing key, not a grant of trust in code.
+- REL — Addressed in §3 (Shared-Text Admission Under the Declared Identity): a load that joined an in-flight fetch which rejects retries once from its own URL, a rejected fetch is evicted under an identity check, and a timed-out attempt releases every realm entry it waited on.
+- DATA — Addressed in §3 (Fetch-List Contract) and §5 (One Flat Fetch List per Exposed Module and Lazy Target): the fetch-list document format, the value formats and the format evolution rule are fixed here; nothing durable is stored, and admitted text is held in memory only.
+- INT — Addressed in §3 (Fetch-List Contract; Sanctioned Loader Surface) and §5 (One Flat Fetch List per Exposed Module and Lazy Target; Loader Surface Limited to the Shared-Unit Fetcher and the Resolver): the fetch-list types in `./unit-format`, the naming, identity and value-format rules, the manifest fields that carry the lists and the `./unit-loader` members are the boundary between producers, hosts and the runtime.
+- OPS — Not applicable because this feature is library code with no deployed service; opaque-import reporting is a producer output obligation.
+- MAINT — Not applicable because this feature sets no maintainability target of its own; while the project is at major version 0 a format change takes no version bump (§1.1).
+- TEST — Addressed in §5 (Producer Output Obligations) and §6: the acceptance criteria that state producer output are verified in each producer's own tests against the obligations, and the remaining acceptance criteria are what the runtime package's tests check.
 - COMPL — Not applicable because this feature handles no regulated or personal data.
 - UX — Not applicable because this feature renders no user interface.
 - BIZ — Not applicable because this is an internal library feature; its requirements are cited by ID in §1.2.
@@ -83,26 +82,41 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 
 **Use cases**: `cpt-frontx-usecase-add-microfrontend-to-project`
 
-### Producer Conformance Verification
+### Producer Output Loaded by the Runtime
 
-- [ ] `p1` - **ID**: `cpt-frontx-flow-unit-format-contract-producer-conformance-v2`
+- [ ] `p1` - **ID**: `cpt-frontx-flow-unit-format-contract-producer-output`
 
 **Actor**: `cpt-frontx-actor-project-developer`
 
 **Success Scenarios**:
-- The consumer-side build tooling produces shared-dependency output that passes the shipped `UnitFormatConformance` suite: every entry is described by one flat fetch list whose items close over every specifier the listed chunks import, each chunk's bytes depend only on `package@version`, and the runtime admits the output for content-keyed reuse.
+- The developer builds a microfrontend with a producer whose output satisfies the contract: every exposed module and every lazy target is described by one flat fetch list whose items close over every specifier the listed chunks import, each chunk's bytes depend only on `package@version`, and the runtime loads the output with content-keyed reuse.
 
 **Error Scenarios**:
-- The produced output violates the contract — a malformed list document, a chunk whose declared content identity does not match its bytes, an item's import edge no item answers, a lazy or pattern list that carries chunks its parent chain's lists already carry — and the conformance suite reports typed violations naming the violated rule and the offending file.
-- Two producing builds emit different chunk bytes for the same `package@version`; the conformance suite's byte-identity check across the two output directories fails, and at runtime each conflict is warned once per pair of content identities and reported through diagnostics.
+- A fetch-list document is not JSON or carries no item list: the load fails with an `MfeLoadError` naming the file and, where the document records one, its producer name and version.
+- The list items of a load form an import cycle: the load fails with an `MfeLoadError` naming the chunks on the cycle and the microfrontend (`cpt-frontx-feature-mfe-loading`).
 
 **Steps**:
-1. [ ] - `p1` - The consumer-side build tooling produces, for each entry, the shared chunks and the fetch-list document that describes them, following the contract of `cpt-frontx-algo-unit-format-contract-fetch-list-schema-v2`; chunk bytes depend only on `package@version` and no producer option may change them - `inst-produce-output`
-2. [ ] - `p1` - The build records each entry's fetch-list document in the microfrontend's manifest by location and content identity (`cpt-frontx-feature-mfe-loading`), forming the manifest → list → chunks content-identity chain - `inst-record-manifest-entries`
-3. [ ] - `p1` - The project developer — in the producer's CI — runs `UnitFormatConformance`, shipped from the package's `./unit-format` entry, against independent output directories of the same producer and the same inputs, built under different install layouts or consumer configs - `inst-run-conformance`
-4. [ ] - `p1` - **IF** the suite returns any typed violation - `inst-if-contract-violated`
-   1. [ ] - `p1` - **RETURN** conformance failure naming the violated rule and the offending file; the output is not admitted for reuse - `inst-conformance-fail`
-5. [ ] - `p1` - **RETURN** conforming output admitted for content-keyed reuse; at load time every fetched list document and chunk is verified against its declared content identity before entering the realm cache (`cpt-frontx-algo-unit-format-contract-integrity-verification`) - `inst-return-admitted`
+1. [ ] - `p1` - The producer emits, for each exposed module and each lazy target, the shared chunks and the fetch-list document that describes them, following `cpt-frontx-algo-unit-format-contract-fetch-list-schema-v2`; chunk bytes are fixed by `package@version` alone - `inst-produce-output`
+2. [ ] - `p1` - The producer records each exposed module's fetch-list document in the microfrontend's manifest by location and content identity, forming the manifest → fetch-list document → list items content-identity chain - `inst-record-manifest-entries`
+3. [ ] - `p1` - The producer verifies its own output against the producer output obligations (`cpt-frontx-dod-unit-format-contract-producer-obligations`) in its own tests - `inst-verify-own-output`
+4. [ ] - `p1` - **RETURN** output the runtime loads with content-keyed reuse; at load time every fetched fetch-list document and list item is admitted to the realm cache under the content identity declared for it (`cpt-frontx-algo-unit-format-contract-shared-text-admission`) - `inst-return-admitted`
+
+### Host Admission Through the Shared-Unit Fetcher
+
+- [ ] `p1` - **ID**: `cpt-frontx-flow-unit-format-contract-host-admission`
+
+**Actor**: `cpt-frontx-actor-project-developer`
+
+**Success Scenarios**:
+- A host outside a microfrontend load fetches a list item's text through `SharedUnitFetcher`; the text is admitted to the realm cache, as fetched, under the `chunk:` key the content identity the host supplies fixes, so a microfrontend load that needs the same item reuses it.
+
+**Error Scenarios**:
+- The fetch fails: the call rejects with an `MfeLoadError` carrying the fetcher's label and naming the file, and the rejected fetch is evicted from the realm cache, so a later call fetches the text again.
+
+**Steps**:
+1. [ ] - `p1` - The host constructs `SharedUnitFetcher` with its fetch and a label, and resolves a location to an absolute URL with the location-to-URL resolver `SharedAssetUrlResolver` (`cpt-frontx-algo-unit-format-contract-loader-surface`) - `inst-host-construct`
+2. [ ] - `p1` - The host calls `fetch` with the URL and the content identity; the fetcher derives the `chunk:<contentHash>` key itself and runs `cpt-frontx-algo-unit-format-contract-shared-text-admission` against the realm cache - `inst-host-fetch`
+3. [ ] - `p1` - **RETURN** the admitted text, or the rejection of the fetch - `inst-host-return`
 
 ## 3. Processes / Business Logic (CDSL)
 
@@ -112,179 +126,161 @@ Internal system functions and procedures that do not interact with actors direct
 
 - [ ] `p1` - **ID**: `cpt-frontx-algo-unit-format-contract-fetch-list-schema-v2`
 
-**Input**: The entries a build emits (each expose, each lazy target, the shell boot), the shared packages they reach, and each package's declared side-effect freedom
+**Input**: The exposed modules and lazy targets a build emits, the shared packages they reach, the own chunks they reach statically, and each package's declared side-effect freedom
 
-**Output**: One flat fetch-list document per entry — its items, its nested lazy-target and pattern-import lists and its opaque-import report entries — all content-addressed, plus the manifest-side facts the build records (each entry's list location and content identity) or the inline boot data the shell boot chunk embeds
-
-**Steps**:
-1. [ ] - `p1` - Determine each shared package's chunks by entry-point chunking: one chunk per entry point, with overlapping internals in shared internal chunks by deterministic, fixed-setting bundler chunk splitting. A package's entry set is its `exports` subpaths plus every module a public barrel re-exports; barrel members are split only when provably side-effect-free under the standard bundler semantics (the `sideEffects` field including its globs; when absent, a barrel proven to be a pure re-export list), and otherwise the whole entry's chunk is used and the build report names the package, the reason and the one-line fix - `inst-determine-chunks`
-2. [ ] - `p1` - Keep every bare import in every chunk external and inline nothing across a package boundary: a package's chunk boundaries and bytes are computed from that package's own complete entry set, independent of any consumer, so every runtime's chunks of `package@version` are byte-identical and no producer option may change them - `inst-externalize-imports`
-3. [ ] - `p1` - Write each entry's fetch list as a flat item list: every shared chunk the entry reaches, precomputed so the runtime fetches every item missing from the realm text cache in one parallel batch — each item carrying its URL (`location`, relative to the shared base or absolute), its content identity (`contentHash`, a SHA-256 hex digest), the specifiers it answers (`answers` — bare specifiers, package names and subpaths alike) and its import edges (`imports` — every edge the runtime needs for dependency-order minting: bare specifiers its source carries and intra-package relative edges recorded as resolved item references, with no edge derived from source text at mint time). Every specifier an item imports is answered by exactly one item on the entry's combined lists - `inst-emit-items`
-4. [ ] - `p1` - Carry every literal dynamic-import target as a nested list: each MFE lazy chunk, shell lazy chunk and literal `import()` inside a shared chunk gets its own fetch-list document holding only what the target needs beyond its parent chain's lists, referenced from the parent's `lazy` record keyed by the target's chunk location relative to the shared base - `inst-emit-lazy-lists`
-5. [ ] - `p1` - Carry every statically bounded pattern import — a template literal with a fixed prefix and suffix — as one list document per matching file, recorded in the parent's `patterns` record keyed by the matching file's location, and record every fully opaque `import(expr)` in the parent's `opaqueImports` with file and line; an opaque call stays native at runtime and never fails the build - `inst-emit-pattern-and-opaque`
-6. [ ] - `p1` - Emit the files content-addressed: list documents and chunks carry their content identity so the content-identity chain runs manifest → list document → chunks; a producing build may record the producer and its version on a list document for runtime diagnostics - `inst-emit-content-addressed`
-7. [ ] - `p1` - Read the list at the point of use only: the runtime performs no structural validation of list documents — trust rests on hash verification plus build-time conformance — and a required field that is absent where the runtime needs it fails the load with an `MfeLoadError` naming the file and the producer name and version the file itself records - `inst-read-point-of-use`
-8. [ ] - `p1` - **RETURN** the entry list documents and their chunks, and the manifest-side facts — each entry's list location and content identity — for the producing build to record in the manifest; a shell's boot list and the lazy-target lists it references are embedded inline in the shell boot chunk as its boot data - `inst-return-contract-output`
-
-### Fetched-File Integrity Verification
-
-- [ ] `p1` - **ID**: `cpt-frontx-algo-unit-format-contract-integrity-verification`
-
-**Input**: A fetched list document or chunk and the content identity declared for it (a SHA-256 declared by the manifest for each entry's list document, and by the list document for each chunk and each nested list document it references)
-
-**Output**: Admission of the verified text to the realm cache, or a load failure naming the file and both hashes
+**Output**: One flat fetch-list document per exposed module and per lazy target — its items, its `ownChunks`, its nested lazy-target and pattern-import list references and its opaque-import report entries — all content-addressed, plus the manifest-side facts the build records
 
 **Steps**:
-1. [ ] - `p1` - Compute the fetched text's SHA-256 and compare it against the content identity declared for the file, regardless of the source the text was fetched from — every fetched list document and chunk is checked before it is used or cached - `inst-compute-and-compare`
-2. [ ] - `p1` - **IF** the hashes match - `inst-if-hash-match`
-   1. [ ] - `p1` - **RETURN** admission of the text to the realm cache keyed by that content identity (`cpt-frontx-adr-shared-dep-cache-reach`) - `inst-admit-verified`
-3. [ ] - `p1` - **IF** the hashes differ - `inst-if-hash-mismatch`
-   1. [ ] - `p1` - **RETURN** load failure with an error naming the file and both hashes, reported through the runtime's diagnostics hook; the mismatching text is never cached - `inst-mismatch-fail`
-4. [ ] - `p1` - **IF** the entry is an old-rule chunk carrying no well-formed content identity - `inst-if-old-rule`
-   1. [ ] - `p1` - **RETURN** the behaviour in force for such entries: no verification against a declared hash, and never an admission to the realm cache under a `contentHash` key — an entry without a well-formed hash is deduplicated by its resolved URL so unverified text can never occupy a verified slot - `inst-old-rule-behaviour`
+1. [ ] - `p1` - Determine each shared package's chunks by entry-point chunking: one chunk per entry point, with overlapping internals in shared internal chunks by deterministic bundler chunk splitting with fixed settings. A package's entry set is its `exports` subpaths plus every module a public barrel re-exports; barrel members are split only when provably side-effect-free under the standard bundler semantics (the `sideEffects` field including its globs; when it is absent, only a barrel proven to be a pure re-export list), and otherwise the whole entry's chunk is used, which is what the consumer's own production build ships. One rule covers every package - `inst-determine-chunks`
+2. [ ] - `p1` - Keep every bare import in every chunk external and inline nothing across a package boundary: a package's chunk boundaries and bytes are computed from that package's own complete entry set, independent of any consumer, so every runtime's chunks of `package@version` are byte-identical; a chunk's bytes carry only text derived from the package, each build's output contains only the chunks its own fetch lists reference, and chunk bytes are fixed by `package@version` alone - `inst-externalize-imports`
+3. [ ] - `p1` - Write each exposed module's and each lazy target's fetch list as a flat item list (`items`): every shared chunk the module or target reaches, precomputed so the runtime requests every item missing from the realm cache in one batch — each item carrying `location` (a path relative to the shared base or an absolute http(s) URL), `contentHash` (the SHA-256 digest of the file's text as 64 lowercase hexadecimal characters), `answers` (the bare specifiers it answers — package names and subpaths alike) and `imports` (every edge the runtime needs for dependency-order minting: a bare specifier, or an intra-package relative edge recorded as `{ item: <contentHash> }` naming the item that supplies it). Every specifier an item imports is answered by exactly one item on the combined lists of the module or target and its parent chain, and the list items of a load form no import cycle. Recorded edges determine minting order; specifier rewriting resolves the specifiers in the text against the list - `inst-emit-items`
+4. [ ] - `p1` - Carry on each fetch list the field `ownChunks`, a string array listing every one of the microfrontend's own chunks the exposed module or lazy target reaches statically — each entry a path relative to `metaData.publicPath` or an absolute http(s) URL, with no content identity, because own chunks are not shared - `inst-emit-own-chunks`
+5. [ ] - `p1` - Carry every lazy target — an own lazy chunk, or the target of a literal dynamic import inside a shared chunk — as a nested fetch-list document holding only what the target needs beyond its parent chain's lists, referenced from the parent's `lazy` record by `location` and `contentHash` and keyed by the target's chunk location relative to the base that chunk resolves against: `metaData.publicPath` for an own chunk, the shared base for a shared unit - `inst-emit-lazy-lists`
+6. [ ] - `p1` - Carry every pattern import — a template literal with a statically bounded pattern — as one fetch-list document per matching file, recorded in the parent's `patterns` record keyed by the matching file's location under the same base rule; in a microfrontend's own code the producer emits the `__frontx_lazy` call with the computed path, while inside a shared unit the runtime rewrites the import at mint time, so the unit's bytes stay the same for every consumer. Record every fully opaque `import(expr)` in the parent's `opaqueImports` with `file` and `line` (and, where the producer can record it, the argument's `expression`); an opaque call stays native, outside the load's isolated graph, and the project that uses a library containing one carries that risk - `inst-emit-pattern-and-opaque`
+7. [ ] - `p1` - Emit every chunk, fetch-list document and pattern-matched file content-addressed, with the content hash in the file's location, so the content-identity chain runs manifest → fetch-list document → list items; a producer may record itself on a fetch-list document as `producer` with `name` and `version` - `inst-emit-content-addressed`
+8. [ ] - `p1` - Read a fetch-list document at the point of use, checking only that it parses as JSON and carries an item list; the correctness of its contents rests on the producer's conformance. A document that is not JSON, or carries no item list, fails the load with an `MfeLoadError` naming the file and, where the document records one, its producer name and version - `inst-read-point-of-use`
+9. [ ] - `p1` - Hold the value formats as part of the contract: a package `name` contains no colon, a `version` contains neither `:` nor `@`, and every `contentHash` is 64 lowercase hexadecimal characters; for the manifest's fields they are enforced by the type system's manifest and MFE entry types, and the runtime does not re-check them - `inst-value-formats`
+10. [ ] - `p1` - **RETURN** the fetch-list documents and their chunks, and the manifest-side facts for the producer to record: a top-level `entryLists` record keyed by exposed module, each value the `location` and `contentHash` of that module's fetch-list document, and optionally `metaData.sharedBase` as the base location for shared files - `inst-return-contract-output`
 
-### Byte-Agreement Measurement
+### Shared-Text Admission Under the Declared Identity
 
-- [ ] `p1` - **ID**: `cpt-frontx-algo-unit-format-contract-byte-agreement`
+- [ ] `p1` - **ID**: `cpt-frontx-algo-unit-format-contract-shared-text-admission`
 
-**Input**: Content identities declared for the same `package@version` by different manifests or builds, naming the producer versions involved
+**Input**: A shared file to be fetched — a fetch-list document, a list item or a whole-package entry — with its resolved URL and the content identity declared for it (by the manifest's `entryLists` for an exposed module's fetch-list document, by the parent list for a nested fetch-list document, by the list for each list item, and by `shared[].contentHash` for a whole-package entry), and a fetch function
 
-**Output**: One runtime warning per conflicting pair plus a diagnostics event; a conformance-suite failure across two output directories of the same producer
+**Output**: The fetched text, held in the realm cache under the key its declared data gives it, or a load failure naming the file
 
 **Steps**:
-1. [ ] - `p1` - Compare the output directories `UnitFormatConformance` receives — two or more independent outputs of the same producer and the same inputs, built under different install layouts or consumer configs — byte for byte: one producer with one set of inputs must emit byte-identical files regardless of layout or consumer, and a disagreement is a typed violation that fails the producer's conformance run - `inst-cross-build-check`
-2. [ ] - `p1` - At runtime, when manifests declare differing content identities for the same `package@version` under the same `sharedChunkRule`, warn once per pair of conflicting identities — naming the producer versions involved — and emit a diagnostics event, so the conflict is observable without depending on build-time checks; mismatches between old-rule and new-rule entries are summarized once per page rather than warned per pair - `inst-runtime-warn-once`
-3. [ ] - `p1` - Treat the runtime measurement as the measurer of last resort: deterministic output stays the producing build's obligation, and the remedy for disagreement is determinism in that build, never a weaker reuse key - `inst-determinism-obligation`
+1. [ ] - `p1` - Derive the realm cache key from the declared data: `list:<contentHash>` for a fetch-list document, `chunk:<contentHash>` for a list item, `name@version@<contentHash>` for a whole-package entry that declares one, and `name@version@<absolute URL>` for a whole-package entry that declares none. Under the value formats (`inst-value-formats`) no two key forms collide; the keys are an internal protocol between copies of the package, and no public operation takes or exposes one - `inst-derive-key`
+2. [ ] - `p1` - Answer from the realm cache when it holds a resident or in-flight entry under that key, with no new request - `inst-reuse-resident`
+   1. [ ] - `p1` - **IF** the joined in-flight fetch rejects: retry once from this load's own URL — joining a replacement another load has published meanwhile, otherwise issuing its own fetch — and never more, unless the load has already failed, in which case it retries nothing - `inst-join-retry-once`
+3. [ ] - `p1` - On a miss, request the text through the supplied fetch with the resolved URL and publish the in-flight promise under the key before it settles, so a concurrent request for the same key joins it; a load that has already failed publishes no further in-flight entry; the fetch bypasses the handler's URL-keyed source-text cache - `inst-fetch-on-miss`
+4. [ ] - `p1` - When the file declares a content identity, **RETURN** the text as fetched, admitted to the realm cache under the key that declared identity fixes — the declared identity is the sharing key (`cpt-frontx-adr-mfe-asset-discovery`, `cpt-frontx-adr-shared-dep-cache-reach`) — and never to the handler's URL-keyed source-text cache; a load that has already failed admits no text after the failure, text admitted before the failure stays in the cache, and the in-flight entries the failed load published are released under the identity check of `inst-evict-on-reject` - `inst-admit-as-fetched`
+5. [ ] - `p1` - **IF** the file is a whole-package entry that declares no `contentHash` - `inst-if-no-identity`
+   1. [ ] - `p1` - **RETURN** the text as fetched, admitted to the realm cache under its `name@version@<absolute URL>` key and reused only by loads that resolve the identical absolute location; the notice naming the dependency and the manifest is `cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls` (`inst-emit-adoption-notice`) - `inst-admit-whole-package-by-location`
+6. [ ] - `p1` - After the fetch settles, evict a rejected fetch from the realm cache only while the cache still holds that very promise under the key, so a replacement another load or copy published under the same key is never removed and a later call retries; a timed-out attempt releases every realm entry it waited on — `list:`, `chunk:` and whole-package `name@version@…` entries — under the same identity check (`cpt-frontx-algo-mfe-loading-attempt-timeout`, `inst-lto-release-generation-identity`) - `inst-evict-on-reject`
 
 ### Sanctioned Loader Surface
 
 - [x] `p1` - **ID**: `cpt-frontx-algo-unit-format-contract-loader-surface`
 
-**Input**: A consumer — the orchestrating handler or a host loading its own shared set — importing the package's `./unit-loader` subpath
+**Input**: A consumer outside the package importing the package's `./unit-loader` subpath
 
-**Output**: Exactly the fetch, verify, realm-cache and mint capabilities as classes, converging on the versioned realm content-identity cache — enough for a host to run `loadGraph` → `buildPlan` → `mint` with no hand-written fetch or URL logic
+**Output**: Exactly the shared-unit fetcher and the location-to-URL resolver, converging on the realm cache handler loads use
 
 **Steps**:
-1. [x] - `p1` - Export exactly the loader capability classes — `SharedDepListLoader` for list read, one-parallel-batch fetch, dependency-order mint and lazy/pattern dependent-list resolution, `RealmSharedDepTextCacheProvider` for the realm cache, `VerifiedUnitFetcher` for the fetch/verify/cache-admit/evict-on-reject discipline — a load that joined another load's in-flight fetch and sees it reject retries once from its own URL, never more — `SharedAssetUrlResolver` for shared-file location validation — with the supporting types (`SharedDepListContext`, `SharedDepTextCache`, `RealmSharedDepTextCacheDiagnostics`, `AttemptSourceTextLedger`, the fetch-list types and `MfManifest`) as type-only exports; nothing else crosses the subpath - `inst-loader-surface-classes`
-2. [x] - `p1` - Reach no registry, orchestrating handler (`MfeHandlerMF`) or mediator module from the subpath's module graph, and add nothing to the root barrel — a host's own loader imports the same collaborator classes the handler orchestrates, never the orchestration itself - `inst-loader-surface-no-orchestration`
-3. [x] - `p1` - Adopt a realm rendezvous slot entry whose protocol version and shape this copy recognizes — **RETURN** the published realm cache, so every compatible copy, handler-driven or host-driven, dedupes verified text by content identity - `inst-loader-slot-adopt`
+1. [x] - `p1` - Export exactly two classes and nothing else, no type among them. `SharedUnitFetcher` is constructed with a caller-supplied fetch, which turns a URL into a promise of its text, and a label its errors carry; its `fetch` member takes a URL and a content identity, fetches that list item's text and admits it through `cpt-frontx-algo-unit-format-contract-shared-text-admission` under the `chunk:<contentHash>` key it derives itself, using the realm cache — it admits list items only, never a fetch-list document, which is fetched only inside the package; it takes no cache, no key and no attempt record. `SharedAssetUrlResolver` has one static `resolve` member that takes a location, a base and a label, applies the location rules for the kinds that must stay inside their base (`cpt-frontx-algo-mfe-loading-manifest-discovery`, `inst-md-resolve-location`), and returns the absolute URL or fails with an `MfeLoadError` carrying the label. The contract types come from `./unit-format` - `inst-loader-surface-classes`
+2. [x] - `p1` - Reach no registry, orchestrating handler (`MfeHandlerMF`) or mediator module from the subpath's module graph, and add nothing to the root barrel - `inst-loader-surface-no-orchestration`
+3. [x] - `p1` - Reach the realm cache through the package-internal accessor: adopt a realm rendezvous slot entry whose protocol version and shape this copy recognizes — **RETURN** the published realm cache, so every compatible copy, handler-driven or host-driven, dedupes admitted text by content identity (`cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous`) - `inst-loader-slot-adopt`
 4. [x] - `p1` - On a malformed slot entry or one carrying a protocol version this copy does not recognize, **RETURN** a bounded cache local to this copy, logging a diagnostic and leaving the foreign entry untouched — a shape mismatch means do-not-share, never a thrown error (`cpt-frontx-adr-shared-dep-cache-reach`) - `inst-loader-slot-versioned`
 
 ## 4. States (CDSL)
 
 ### None
 
-This FEATURE defines no state machines. The unit format contract is a static contract and conformance suite; its behaviour is algorithmic (chunking, verification, measurement) without state transitions.
+This FEATURE defines no state machines. The unit format contract is a static contract; its runtime behaviour — shared-text admission and the loader surface — is algorithmic, without state transitions.
 
 ## 5. Definitions of Done
 
-### One Flat Fetch List Per Entry
+### One Flat Fetch List per Exposed Module and Lazy Target
 
 - [ ] `p1` - **ID**: `cpt-frontx-dod-unit-format-contract-fetch-list-schema-v2`
 
-The ecosystem **MUST** own and publish the unit format contract: the chunk of sharing (consumer-independent entry-point chunking — one chunk per package entry point with overlapping internals in shared internal chunks, each package's boundaries and bytes computed from its own complete entry set: `exports` subpaths plus every module a public barrel re-exports, barrel members split only when provably side-effect-free under the standard bundler `sideEffects` semantics); the externalization rule (every bare import external, no cross-package inlining, so no producer option may change chunk bytes); the content-addressed naming for chunks and list documents — as emitted today, every file sits under a `<pkg>@<version>` directory: chunks `<pkg>@<version>/<path>.<sha256>.js`, fetch-list documents `<pkg>@<version>/<entry>.list.<sha256>.json`, and pattern-matched files `<pkg>@<version>/pattern/<name>.<sha256>.<ext>` — and the fetch-list fields — each item's `location`, `contentHash`, `answers` and `imports`, the nested `lazy` record of delta lists keyed by lazy-target chunk location, the `patterns` record keyed by matching file, the `opaqueImports` report entries with file and line, and the optional producer identity — with `imports` carrying every edge the runtime needs for dependency-order minting (bare specifiers and intra-package relative edges recorded as resolved item references) so no edge is derived from source text at mint time. One flat list **MUST** be emitted per entry — each expose, each lazy target, the shell boot — and a lazy or pattern list **MUST** hold only what its target needs beyond its parent chain's lists. The TypeScript interfaces exported from `./unit-format` **MUST** be the single typing source for list documents, which are type-system-neutral JSON: no list schema **MUST** exist in any type system and the `TypeSystemPlugin` surface **MUST** stay unchanged for them. The runtime **MUST NOT** perform structural validation of list documents; a required field absent at the point of use **MUST** fail the load with an `MfeLoadError` naming the file and the producer it records. The manifest **MUST** carry each entry's list by location and content identity, and the shell boot chunk **MUST** embed the shell's boot list inline together with the lazy-target lists the boot list references.
+The ecosystem **MUST** own and publish the unit format contract: consumer-independent entry-point chunking (one chunk per package entry point with overlapping internals in shared internal chunks, each package's boundaries and bytes computed from its own complete entry set, barrel members split only when provably side-effect-free under the standard bundler `sideEffects` semantics); the externalization rule (every bare import external, no cross-package inlining, chunk bytes fixed by `package@version` alone); the content-addressed naming of chunks, fetch-list documents and pattern-matched files with the content hash in the file's location; and the fetch-list fields — `items` with each item's `location`, `contentHash`, `answers` and `imports`, `ownChunks`, the string array of the locations of the own chunks the module or target reaches statically — each a path relative to `metaData.publicPath` or an absolute http(s) URL, with no content identity — the `lazy` and `patterns` records of nested list references keyed by chunk location relative to the base that chunk resolves against (`metaData.publicPath` for an own chunk, the shared base for a shared unit), the `opaqueImports` report entries with `file` and `line`, and the optional `producer`. One flat list **MUST** exist per exposed module and per lazy target, and a lazy or pattern list **MUST** hold only what its target needs beyond its parent chain's lists. The `./unit-format` subpath **MUST** export the fetch-list types and nothing else — `SharedDepFetchList`, `SharedDepListItem`, `SharedDepImportEdge`, `SharedDepFileRef`, `SharedDepOpaqueImport`, `SharedDepProducer` and `SharedDepEntryListRefs` — as the single typing source for list documents, which are type-system-neutral JSON with no list schema in any type system. The runtime **MUST** validate a fetch-list document only by JSON parsing and the presence of the item list; a document that is not JSON or carries no item list **MUST** fail the load with an `MfeLoadError` naming the file and, where recorded, its producer. The manifest **MUST** carry each exposed module's list in `entryLists` by location and content identity. The value formats — a `name` without a colon, a `version` without `:` or `@`, a `contentHash` of 64 lowercase hexadecimal characters — **MUST** be part of the contract, enforced by the type system for the manifest's fields.
 
 **Implements**:
-- `cpt-frontx-flow-unit-format-contract-producer-conformance-v2`
+- `cpt-frontx-flow-unit-format-contract-producer-output`
 - `cpt-frontx-algo-unit-format-contract-fetch-list-schema-v2`
 
-**Addresses**:
+**Covers (PRD)**:
+- `cpt-frontx-nfr-resource-efficiency`
+
+**Covers (DESIGN)**:
 - `cpt-frontx-adr-shared-dep-reuse`
 - `cpt-frontx-adr-mfe-asset-discovery`
-- `cpt-frontx-nfr-resource-efficiency`
 
 **Constraints**: none owned
 
 **Touches**:
 - Entities: `MfManifest`
+- Modules: `src/unit-format/index.ts`
 
-### Integrity Verification Before Cache Admission
+### Shared Text Admitted Under Its Declared Identity
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-unit-format-contract-integrity-verification`
+- [ ] `p1` - **ID**: `cpt-frontx-dod-unit-format-contract-shared-text-admission`
 
-The runtime **MUST** check every fetched list document and chunk against its expected SHA-256 — declared by the manifest for each entry's list document and by the list document for each chunk and nested list it references — before the text is used or admitted to the realm cache, regardless of the source it was fetched from. A mismatch **MUST** fail the load with an error naming the file and both hashes, **MUST** be reported through the runtime's diagnostics hook, and the mismatching text **MUST NOT** be cached. An old-rule chunk carrying no well-formed content identity **MUST** keep the behaviour in force for such entries and **MUST NOT** be admitted to the realm cache under a `contentHash` key, so unverified text can never occupy a slot keyed by a hash it did not verify against.
+The runtime **MUST** admit every fetched fetch-list document, every list item and every whole-package entry that declares a `contentHash` to the realm cache only, as fetched, under the key its declared data gives it (`list:`, `chunk:` or `name@version@<contentHash>`), so the declared content identity is the key under which the text is shared. A load that joined another load's in-flight fetch which then rejects **MUST** retry once from its own URL and never more, unless the load has already failed; a load that has already failed **MUST** admit no text after the failure, text admitted before the failure stays, and the in-flight entries it published **MUST** be released under the identity check; and a rejected fetch **MUST** be evicted only while the cache still holds that very promise; a timed-out attempt **MUST** release every realm entry it waited on — `list:`, `chunk:` and whole-package `name@version@…` entries — under the same identity check. A whole-package entry that declares no `contentHash` **MUST** be admitted under its `name@version@<absolute URL>` key and reused only by loads resolving the identical absolute location. A public operation **MUST NOT** take or expose a cache key.
 
 **Implements**:
-- `cpt-frontx-algo-unit-format-contract-integrity-verification`
-- `cpt-frontx-flow-unit-format-contract-producer-conformance-v2`
+- `cpt-frontx-algo-unit-format-contract-shared-text-admission`
+- `cpt-frontx-flow-unit-format-contract-producer-output`
 
-**Addresses**:
-- `cpt-frontx-adr-shared-dep-cache-reach`
-- `cpt-frontx-adr-mfe-asset-discovery`
+**Covers (PRD)**:
+- `cpt-frontx-nfr-security`
 - `cpt-frontx-fr-mfe-load-failure-handling`
 
-**Constraints**: none owned
+**Covers (DESIGN)**:
+- `cpt-frontx-adr-shared-dep-cache-reach`
+- `cpt-frontx-adr-mfe-asset-discovery`
+
+**Constraints**: `cpt-frontx-constraint-mfes-realm-shared-dep-cache`
 
 **Touches**:
 - Entities: `MfManifest`
 
-### Byte-Agreement Measurement — Runtime and Cross-Build
+### Producer Output Obligations
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-unit-format-contract-byte-agreement`
+- [ ] `p1` - **ID**: `cpt-frontx-dod-unit-format-contract-producer-obligations`
 
-The runtime **MUST** warn once per pair of conflicting content identities declared for the same `package@version` under the same `sharedChunkRule`, naming the producer versions involved, and **MUST** emit a diagnostics event for each conflict; mismatches between old-rule and new-rule entries **MUST** be summarized once per page. `UnitFormatConformance` **MUST** compare the output directories it receives — two or more independent outputs of the same producer and inputs, built under different install layouts or consumer configs — byte for byte and report a violation on any disagreement. The runtime measurement is the measurer of last resort; deterministic output **MUST** remain the producing build's obligation, and a disagreement **MUST NOT** be remedied by weakening the reuse key.
-
-**Implements**:
-- `cpt-frontx-algo-unit-format-contract-byte-agreement`
-
-**Addresses**:
-- `cpt-frontx-adr-shared-dep-reuse`
-- `cpt-frontx-nfr-resource-efficiency`
-
-**Constraints**: none owned
-
-**Touches**:
-- Entities: `MfManifest`
-
-### Producer Conformance Suite Shipped With the Contract
-
-- [ ] `p1` - **ID**: `cpt-frontx-dod-unit-format-contract-conformance-suite-v2`
-
-The package **MUST** ship `UnitFormatConformance` from its `./unit-format` entry: a class that takes two or more independent output directories of the same producer and the same inputs — built under different install layouts or consumer configs — and no type system — and returns typed violations with no test-runner dependency. Its checks **MUST** cover: the content-identity chain manifest → list document → chunks; list completeness — every chunk reachable from an entry is on its list and every specifier an item imports is answered by an item on the entry's combined lists; the delta property of lazy and pattern lists — no chunk a parent chain's lists already carry; consumer independence — two consumers using different subsets of a package produce identical chunks for it; the barrel edge cases — re-export chains, namespace imports, `as default`, side-effectful barrels; and byte identity across all compared builds. Every producing build's CI **MUST** run it before its output is admitted for reuse. The package **MUST** ship fixture packages — an ESM package with an import cycle, a CommonJS package, a package with a barrel, and a package imported through a subpath — and its own tests **MUST** check that the runtime loads conforming output. `UnitFormatConformance` ships in a `@gears-frontx/mfes` minor version compatible in both directions; producer implementations are template territory and are never copied into this package.
+A producer's output **MUST** satisfy: content identity — every chunk and fetch-list document is content-addressed and the manifest → fetch-list document → list items hash chain holds; complete fetch lists — every shared chunk reachable from an exposed module is on its fetch list, every own chunk it reaches statically is in `ownChunks` (an own chunk missing from `ownChunks` is a producer defect), and every import edge is answered, including through re-export chains, namespace imports, `as default` and side-effectful barrels; acyclic list items; delta lists — a lazy or pattern fetch list holds only what its target needs beyond its parent chain's lists; lazy-import calls — every literal and pattern dynamic import in the microfrontend's own code is emitted as the `__frontx_lazy` call, with a fetch list per lazy target and per pattern-matching file; an opaque-import report — every fully opaque `import(expr)` is reported with its file and line; consumer independence — two consumers using different subsets of a package produce identical chunks for it; and byte identity across builds — rebuilding the same package version yields the same bytes. Each producer **MUST** verify its own output against these obligations in its own tests; the runtime depends on no specific producer.
 
 **Implements**:
-- `cpt-frontx-flow-unit-format-contract-producer-conformance-v2`
+- `cpt-frontx-flow-unit-format-contract-producer-output`
 - `cpt-frontx-algo-unit-format-contract-fetch-list-schema-v2`
 
-**Addresses**:
-- `cpt-frontx-adr-shared-dep-reuse`
+**Covers (PRD)**:
 - `cpt-frontx-fr-mfe-runtime-registration`
+
+**Covers (DESIGN)**:
+- `cpt-frontx-adr-shared-dep-reuse`
+- `cpt-frontx-adr-lazy-import-resolution`
 
 **Constraints**: none owned
 
 **Touches**:
 - Entities: `MfManifest`
 
-### Loader Surface Limited to Fetch, Verify, Cache and Mint
+### Loader Surface Limited to the Shared-Unit Fetcher and the Resolver
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-unit-format-contract-loader-surface`
 
-The package **MUST** publish a `./unit-loader` subpath exposing exactly the fetch/verify class `SharedUnitGraphLoader`, the mint class `UnitBlobMinter`, the realm-cache accessor `RealmSharedDepTextCacheProvider`, the verified-fetch class `VerifiedUnitFetcher`, the shared-asset URL validator `SharedAssetUrlResolver` and `PackFallbackPolicy` (whose `DEFAULT_BUDGET_MS` static is the documented `buildPlan` budget default) — the same collaborator classes `MfeHandlerMF` orchestrates, so a host runs `loadGraph` → `buildPlan` → `mint` with no hand-written fetch or URL logic. The exported type-only surface is exactly `SharedDepSourceRecord`, `SharedUnitGraphPlan`, `SharedUnitReach`, `LoadedGraph`, `SharedDepTextCache`, `RealmSharedDepTextCacheDiagnostics`, `AttemptSourceTextLedger`, `MfManifest`, `MfManifestShared` and `MfManifestRoot` — the types the capability classes' signatures require. The subpath's module graph **MUST NOT** reach the registry, the orchestrating handler or the mediator, and the root barrel **MUST NOT** gain implementation exports from it. Through the accessor a consumer **MUST** reach the versioned realm rendezvous: a slot entry whose protocol version or shape the copy does not recognize **MUST** be left untouched and never shared — the copy proceeds on its own bounded fallback cache and no error is thrown — while a recognized entry **MUST** be adopted so compatible copies dedupe verified text by content identity.
+The package **MUST** publish a `./unit-loader` subpath exporting exactly `SharedUnitFetcher` and `SharedAssetUrlResolver` and no type. `SharedUnitFetcher` **MUST** take only a fetch function and a label its errors carry, fetch and admit text under the same discipline a microfrontend load uses, use the realm cache, and derive the cache key itself from the content identity the caller declares for the text, so no cache, key or attempt record is a public parameter. It **MUST** admit list items only, under the `chunk:` key; fetch-list documents **MUST** be fetched only inside the package. `SharedAssetUrlResolver` **MUST** apply the location rules of `cpt-frontx-adr-mfe-asset-discovery` for the location kinds that must stay inside their base. The subpath's module graph **MUST NOT** reach the registry, the orchestrating handler or the mediator, and the root barrel **MUST NOT** gain anything from it. Through the package-internal accessor the shared-unit fetcher **MUST** reach the versioned realm rendezvous: a slot entry whose protocol version or shape the copy does not recognize **MUST** be left untouched and never shared — the copy proceeds on its own bounded fallback cache and no error is thrown — while a recognized entry **MUST** be adopted so compatible copies dedupe admitted text by content identity.
 
 **Implements**:
+- `cpt-frontx-flow-unit-format-contract-host-admission`
 - `cpt-frontx-algo-unit-format-contract-loader-surface`
 
-**Addresses**:
+**Covers (DESIGN)**:
 - `cpt-frontx-adr-shared-dep-reuse`
 - `cpt-frontx-adr-shared-dep-cache-reach`
 
-**Constraints**: none owned
+**Constraints**: `cpt-frontx-constraint-mfes-realm-shared-dep-cache`
 
 **Touches**:
-- Entities: `MfManifest`, `MfManifestShared`, `MfManifestRoot`
-- Modules: `src/unit-loader/index.ts`, `SharedUnitGraphLoader`, `UnitBlobMinter`, `RealmSharedDepTextCacheProvider`, `VerifiedUnitFetcher`, `SharedAssetUrlResolver`, `PackFallbackPolicy`, `AttemptSourceTextLedger`, `ByteBudgetLruCache`
+- Modules: `src/unit-loader/index.ts`, `SharedUnitFetcher`, `SharedAssetUrlResolver`
 
 ## 6. Acceptance Criteria
 
-- [ ] Shared packages are chunked by consumer-independent entry-point chunking: one chunk per entry point, overlapping internals in shared internal chunks; a package's chunk boundaries and bytes are computed from its own complete entry set (`exports` subpaths plus every module a public barrel re-exports), so every runtime's chunks of `package@version` are byte-identical.
-- [ ] Every bare import in a chunk is external and no package is inlined across a package boundary; barrel members are split only when provably side-effect-free under the standard bundler `sideEffects` semantics, and a barrel kept whole is reported with the package, the reason and the one-line fix; chunk bytes are identical for every consumer and no producer option changes them.
-- [ ] Exactly one flat fetch-list document exists per entry — each expose, each lazy target, the shell boot — each item carrying `location`, `contentHash`, `answers` and `imports` (every edge needed for dependency-order minting, none derived from source text at mint time), with nested `lazy` lists keyed by lazy-target chunk location, `patterns` lists keyed by matching file, and `opaqueImports` entries naming each `import(expr)` call site with file and line.
-- [ ] A lazy-target or pattern list holds only what its target needs beyond its parent chain's lists, and every specifier an item imports is answered by exactly one item on the entry's combined lists — the build-time list-completeness gate fails a build whose lists do not close.
-- [ ] The manifest carries each entry's list by location and content identity, and the shell boot chunk embeds the shell's boot list inline together with the lazy-target lists the boot list references; list documents and chunks are content-addressed so the identity chain runs manifest → list document → chunks.
-- [ ] List documents are read at the point of use with no structural validation; a required field absent where the runtime needs it fails the load with an `MfeLoadError` naming the file and the producer name and version the file records.
-- [ ] Every fetched list document and chunk is verified against its declared SHA-256 before use or cache admission; a mismatch fails the load naming the file and both hashes, is reported through diagnostics, and is never cached; old-rule chunks without a well-formed identity keep their existing behaviour and are never cached under a `contentHash` key.
-- [ ] Two manifests declaring different content identities for the same `package@version` under the same `sharedChunkRule` produce exactly one warning per conflicting pair naming the producer versions, plus a diagnostics event; old-rule versus new-rule mismatches are summarized once per page.
-- [x] `UnitFormatConformance` compares two or more independent output directories of the same producer and inputs — built under different install layouts or consumer configs — returning typed violations covering the identity chain, list completeness, the lazy/pattern delta property, consumer independence, the barrel edge cases and byte identity, each named with the offending file, and a producer CI run fails on any violation.
-- [ ] The shipped fixture packages (ESM with an import cycle, CommonJS, barrel, subpath import) produce conforming output that the package's own tests show the runtime loading.
-- [x] The `./unit-loader` subpath exports exactly `SharedDepListLoader`, `RealmSharedDepTextCacheProvider`, `VerifiedUnitFetcher` and `SharedAssetUrlResolver` (plus the type-only supporting types the loader-surface DoD records), its module graph reaches no registry, orchestrating handler or mediator module, and the root barrel is unchanged.
-- [x] A realm-slot entry whose protocol version or shape a copy does not recognize is left untouched and never shared — the copy proceeds on its own bounded fallback cache with no thrown error — while a recognized entry is adopted so compatible copies dedupe verified text by content identity.
+- [ ] Verified in each producer's own tests: shared packages are chunked by consumer-independent entry-point chunking: one chunk per entry point, overlapping internals in shared internal chunks; a package's chunk boundaries and bytes are computed from its own complete entry set (`exports` subpaths plus every module a public barrel re-exports), so every runtime's chunks of `package@version` are byte-identical.
+- [ ] Verified in each producer's own tests: every bare import in a chunk is external and no package is inlined across a package boundary; barrel members are split only when provably side-effect-free under the standard bundler `sideEffects` semantics; chunk bytes carry only text derived from the package and are identical for every consumer.
+- [ ] Verified in each producer's own tests: exactly one flat fetch-list document exists per exposed module and per lazy target, each item carrying `location`, `contentHash`, `answers` and `imports` (every edge needed for dependency-order minting, all recorded in the list), the list carrying `ownChunks`, a string array of own-chunk locations (relative to `metaData.publicPath` or absolute http(s) URLs, no content identity) the module or target reaches statically, with nested `lazy` and `patterns` list references keyed by chunk location relative to the base that chunk resolves against, and `opaqueImports` entries naming each `import(expr)` call site with file and line.
+- [ ] Verified in each producer's own tests: the manifest carries each exposed module's fetch-list document in `entryLists` by location and content identity; fetch-list documents and chunks are content-addressed so the identity chain runs manifest → fetch-list document → list items.
+- [ ] A fetch-list document that is not JSON, or carries no item list, fails the load with an `MfeLoadError` naming the file and, where the document records one, its producer name and version.
+- [ ] Fetched fetch-list documents and list items are admitted to the realm cache, as fetched, under their `list:` and `chunk:` keys, and a whole-package entry that declares a `contentHash` under its `name@version@<contentHash>` key; none of them is held in the handler's source-text cache; a whole-package entry without a `contentHash` is held under its `name@version@<absolute URL>` key, and a URL-keyed entry never collides with a hash-keyed one.
+- [x] A load that joined another load's in-flight fetch that then rejects issues one retry from its own URL unless the load has already failed, and a rejected fetch is evicted only while the cache still holds that promise.
+- [ ] A load that has already failed admits no text after the failure, text admitted before the failure stays in the realm cache, and the in-flight entries it published are released under the identity check.
+- [ ] A timed-out attempt releases every realm entry it waited on — `list:`, `chunk:` and whole-package `name@version@…` entries — under the identity check, so a hung fetch on an expired attempt is fetched again by the retry.
+- [ ] A host that calls `SharedUnitFetcher.fetch` with a URL and a content identity receives the fetched text, admitted to the realm cache under the `chunk:` key that content identity fixes.
+- [ ] The `./unit-format` subpath exports exactly the fetch-list types `SharedDepFetchList`, `SharedDepListItem`, `SharedDepImportEdge`, `SharedDepFileRef`, `SharedDepOpaqueImport`, `SharedDepProducer` and `SharedDepEntryListRefs`, and nothing else.
+- [ ] The `./unit-loader` subpath exports exactly `SharedUnitFetcher` and `SharedAssetUrlResolver`; the shared-unit fetcher takes only a fetch function and a label, admits only list items it fetched, under the `chunk:` key derived from the content identity, and never a fetch-list document, which is fetched only inside the package; the subpath's module graph reaches no registry, orchestrating handler or mediator module, and the root barrel gains nothing from either subpath.
+- [x] A realm-slot entry whose protocol version or shape a copy does not recognize is left untouched and never shared — the copy proceeds on its own bounded fallback cache with no thrown error — while a recognized entry is adopted so compatible copies dedupe admitted text by content identity.

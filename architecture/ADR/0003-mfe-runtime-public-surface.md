@@ -1,7 +1,7 @@
 ---
 status: accepted
 date: 2026-06-04
-description: "Decides that the MFE runtime exposes an abstract registry facade constructed through a factory that injects the type-system provider."
+description: "Decides that the MFE runtime exposes an abstract registry facade constructed through a factory that injects the type-system provider, and that its root exports only what consumers outside the package use."
 ---
 
 # The MFE Runtime's Public Access Surface
@@ -19,6 +19,8 @@ description: "Decides that the MFE runtime exposes an abstract registry facade c
   - [Abstract registry facade with factory injection](#abstract-registry-facade-with-factory-injection)
   - [Direct dependency on concrete implementation classes](#direct-dependency-on-concrete-implementation-classes)
   - [Module-level singleton with free functions](#module-level-singleton-with-free-functions)
+  - [Every symbol that passes the naming rule](#every-symbol-that-passes-the-naming-rule)
+  - [Only what outside consumers use, plus errors and the router contract](#only-what-outside-consumers-use-plus-errors-and-the-router-contract)
 - [More Information](#more-information)
 - [Traceability](#traceability)
 
@@ -33,15 +35,23 @@ The MFE Runtime registers microfrontends and their extension domains, loads them
 
 * Narrow, stable public surface — consumers should depend on a contract that does not change when internal coordination machinery changes (anchors `cpt-frontx-interface-mfe-runtime`).
 * Encapsulation of internal coordination — mount management, the actions-chains mediator, and bridge wiring are internal concerns that must not be part of the public surface.
+* Interface segregation — a consumer depends only on what it uses, so the package root carries only what consumers outside the package use; a symbol used only inside the package, or only by the package's tests, is internal.
 * Substitutability — the concrete runtime implementation must be replaceable without breaking any consumer.
 * Provider injection — the runtime depends on an injected type-system provider, which requires a single controlled construction point rather than implicit global wiring (anchors `cpt-frontx-principle-agnostic-core`).
 * Enforceable encapsulation — the boundary between the public contract and internal implementation must be expressible as a continuous-integration check, not a convention.
 
 ## Considered Options
 
+Access shape — how a consumer obtains and uses the runtime:
+
 * **Abstract registry facade with factory injection** — consumers depend only on an abstract `MfeRegistry` contract and obtain an instance from an injected factory (`createMfeRegistryFactory().build({ typeSystem })`); the concrete implementation and its coordination machinery stay internal.
 * **Direct dependency on concrete implementation classes** — consumers import and construct the concrete registry and its managers directly.
 * **Module-level singleton with free functions** — registration and loading are exposed as standalone functions over a hidden module-global runtime instance.
+
+Root export scope — what the package root carries besides the facade:
+
+* **Every symbol that passes the naming rule** — the root exports every symbol except concrete classes named `Default*`, guarded only by that naming rule.
+* **Only what outside consumers use, plus errors and the router contract** — the root exports what consumers outside the package use, plus the error classes thrown to callers and the abstract router contract with the history intent.
 
 ## Decision Outcome
 
@@ -49,21 +59,27 @@ Chosen option: **abstract registry facade with factory injection**, because it i
 
 The facade's actions-chain operation takes only the chain and returns nothing a consumer can await; chain execution is decided in `cpt-frontx-adr-action-dispatch-and-chaining`.
 
+For the root export scope, chosen option: **only what outside consumers use, plus errors and the router contract**, because it is the only option that applies interface segregation to the root: a consumer couples only to what it uses, and a symbol used only inside the package changes without touching any consumer.
+
+**What the root exports.** The package root exports only what a consumer outside the package uses: the facade and its creation function, the contracts and types a consumer implements or passes to the runtime, and the utilities a consumer calls. A package that re-exports a symbol on its own public surface is a consumer of it. A symbol used only inside the package, or only by the package's tests, is internal; a test is never a reason for a symbol to be public. The error classes the runtime and its bridges throw to callers are public, because they are part of what a caller receives whether or not it inspects them; an error class the runtime never throws to a caller is internal. The optional abstract router contract and the history intent type are public as `cpt-frontx-adr-extension-routing-port` decides. The list of root exports is recorded in the API contracts of `packages/mfes/architecture/DESIGN.md` (§3.3).
+
 ### Consequences
 
 * Good, because consumers couple only to the abstract `MfeRegistry` contract, so internal coordination machinery can change without breaking them.
 * Good, because the concrete implementation is substitutable behind the contract and is reachable only through the factory.
 * Good, because the type-system provider is injected at a single construction point, keeping the runtime agnostic to any concrete provider.
 * Good, because the public/internal boundary is a continuous-integration-checkable invariant.
+* Good, because the root carries only what consumers outside the package use, so a helper used only inside the package changes without touching any consumer.
+* Good, because the error classes are public, so a caller can tell apart the failures the runtime throws to it.
 * Good, because the actions-chain operation returns nothing, a change to how the mediator executes a chain never forces a change to the facade.
 * Bad, because a consumer cannot learn a chain's outcome from the facade and must express a dependency on that outcome as the chain's own `next` or `fallback`.
 * Bad, because the indirection of an abstract contract plus a factory adds a layer between the consumer and the working implementation.
 * Bad, because the factory's single-construction semantics require consumers to agree on one provider per composition root rather than constructing implementations ad hoc.
-* Bad, because the boundary is not yet complete: the barrel still exports a handful of concrete-but-not-`Default*`-named internals that the naming rule cannot detect, recorded with owner and removal criterion in the public-surface debt register of `packages/mfes/architecture/DESIGN.md` (§3.3).
+* Bad, because the naming rule detects only concrete classes named `Default*`: whether any other root export has a consumer outside the package is established by review, and an export that fails that review is recorded with owner and removal criterion in the public-surface debt register of `packages/mfes/architecture/DESIGN.md` (§3.3).
 
 ### Confirmation
 
-Architecture review confirms that registry construction crosses the package's public surface only as the abstract `MfeRegistry` contract and the `createMfeRegistryFactory` creation function, and that the concrete implementation and factory remain internal. Architecture review further confirms that `MfeRegistry`'s actions-chain operation takes only the chain and returns nothing a caller can await. A continuous-integration check (`scripts/mfes-import-boundary-check.mjs`, wired as `npm run policy:mfes-import-boundary` in `.github/workflows/main.yml`) confirms both halves over this repository: the barrel exports no concrete-implementation name (the `Default*` naming rule), and no consumer in this repository imports a concrete class or deep-imports past the barrel — every instance is obtained through `createMfeRegistryFactory().build({ typeSystem })`.
+Architecture review confirms that registry construction crosses the package's public surface only as the abstract `MfeRegistry` contract and the `createMfeRegistryFactory` creation function, and that the concrete implementation and factory remain internal. Architecture review further confirms that `MfeRegistry`'s actions-chain operation takes only the chain and returns nothing a caller can await, and that every root export has a consumer outside the package (a package that re-exports it on its own public surface counts as one), is an error class the runtime or its bridges throw to callers, or is the abstract router contract or the history intent (`cpt-frontx-adr-extension-routing-port`). A continuous-integration check (`scripts/mfes-import-boundary-check.mjs`, wired as `npm run policy:mfes-import-boundary` in `.github/workflows/main.yml`) confirms both halves over this repository: the barrel exports no concrete-implementation name (the `Default*` naming rule), and no consumer in this repository imports a concrete class or deep-imports past the barrel — every instance is obtained through `createMfeRegistryFactory().build({ typeSystem })`.
 
 The two halves do not reach equally far. The **barrel half** is structural and answers for every consumer anywhere, because a name the barrel does not export cannot be imported from any repository; that half is whole here. The **consumer half** reaches only as far as the tree it walks, so it answers for this repository's consumers and for no others: a repository that holds consumers of its own confirms that half by running the same rule over its own tree, and a consumer in a repository that runs no such check is unchecked. This is why the barrel half is the one that must stay complete. The reach of each half is recorded with the boundary it guards, in `packages/mfes/architecture/DESIGN.md` (§3.3).
 
@@ -95,9 +111,30 @@ Registration and loading are standalone functions over a hidden global runtime i
 * Bad, because a hidden global makes the type-system provider's injection implicit and the lifecycle hard to reason about.
 * Bad, because multiple isolated runtimes (for example in tests) cannot coexist.
 
+### Every symbol that passes the naming rule
+
+The root exports every symbol except concrete classes named `Default*`; the naming rule is the only guard.
+
+* Good, because the naming rule checks the whole root mechanically, with no review of who uses each export.
+* Good, because a consumer finds any helper on the root without a change to the package.
+* Bad, because internal helpers, managers and coordinators become surface a consumer can couple to, so changing one can break a consumer.
+* Bad, because a consumer depends on symbols it does not use, against the interface-segregation driver.
+
+### Only what outside consumers use, plus errors and the router contract
+
+The root exports what consumers outside the package use, the error classes thrown to callers, and the abstract router contract with the history intent.
+
+* Good, because a consumer couples only to what it uses, so internal machinery changes freely.
+* Good, because a caller can tell apart every failure thrown to it, whether or not any consumer inspects it.
+* Neutral, because the router contract and the history intent follow `cpt-frontx-adr-extension-routing-port` rather than a consumer count.
+* Bad, because whether an export has a consumer outside the package is established by review and a consumer scan; the naming rule alone does not detect it.
+* Bad, because a consumer that comes to need an internal symbol needs a change to the package before it can use it.
+
 ## More Information
 
 The present concrete instantiation of the runtime is `@gears-frontx/mfes`; the contract is the abstract `MfeRegistry` and instances are built through `createMfeRegistryFactory().build({ typeSystem })`. The factory itself is also an abstract contract (`packages/mfes/src/registry/MfeRegistryFactory.ts`, which declares `build(config): MfeRegistry` and holds no knowledge of any concrete implementation), and the concrete implementation that satisfies the registry contract (`packages/mfes/src/runtime/DefaultMfeRegistry.ts`) is internal. This decision governs only the shape of the runtime's public surface and its construction; the internal coordination mechanisms it encapsulates (the actions-chains mediator, mount strategies, and the parent–child bridge) are decided in their own records — including chain execution, decided in `cpt-frontx-adr-action-dispatch-and-chaining` — and the opaque type-substrate port the injected provider satisfies is decided in `cpt-frontx-adr-runtime-type-system-coupling`.
+
+**Two choices, one surface.** This record holds two choices, the access shape and the root export scope, because both decide one thing: what a consumer of the runtime can depend on. The facade is the root's centre, and the export scope fixes what stands beside it, so neither choice can be read or revisited without the other.
 
 **Scope of impact.** Applies to the runtime's public surface and the way consumers obtain a runtime instance. It does not decide the internal structure of the concrete implementation, the choice of type-system provider (decided in `cpt-frontx-adr-default-type-substrate-provider`), or how microfrontend code is loaded and isolated.
 
@@ -107,12 +144,17 @@ The present concrete instantiation of the runtime is `@gears-frontx/mfes`; the c
 
 * ARCH — applicable and addressed above (a structural decision affecting every runtime consumer and hard to reverse once consumers depend on the surface).
 * ARCH-ADR-008 (supersession) — Not applicable because this is a new, standalone decision that supersedes no prior record.
-* INT — applicable: the abstract `MfeRegistry` is the runtime's public integration surface; its breaking-change policy is governed by `cpt-frontx-interface-mfe-runtime`.
+* INT — applicable: the abstract `MfeRegistry` is the runtime's public integration surface; its breaking-change policy is governed by `cpt-frontx-interface-mfe-runtime`. The root keeps every symbol with a consumer outside the package, so limiting it to them leaves consumers unaffected.
 * PERF — Not applicable because the facade is a surface-shape decision, not a runtime-performance decision.
 * SEC — Not applicable because the facade introduces no secret, credential, or authorization concern.
 * REL — Not applicable because this governs the public surface, not runtime availability or fault tolerance.
 * DATA — Not applicable because no persistent data store or schema is involved.
 * OPS — Not applicable because no deployed-service operational procedure is governed by this decision.
+* MAINT — applicable and addressed above: internal coordination machinery changes without touching consumers, and an export kept beyond the rule is recorded with owner and removal criterion in the public-surface debt register of `packages/mfes/architecture/DESIGN.md` (§3.3).
+* TEST — applicable and addressed above: a test is never a reason for a symbol to be public, so the package's tests import internal symbols from inside the package rather than through the root, and the boundary check under Confirmation runs in continuous integration.
+* COMPL — Not applicable because the surface handles no regulated or personal data.
+* UX — Not applicable because the decision has no end-user-facing behaviour; the surface's users are developers, covered under INT.
+* BIZ — Not applicable because the decision serves the runtime's product requirements, cited by ID under Traceability.
 
 ## Traceability
 

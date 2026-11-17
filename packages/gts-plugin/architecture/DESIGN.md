@@ -37,9 +37,9 @@ description: Technical design of @gears-frontx/gts-plugin, the default implement
 
 The package is the ecosystem's default answer to a question the MFE Runtime deliberately refuses to answer: what a type identifier *means*. The runtime carries type identifiers opaquely and delegates all schema shape, validation and hierarchy resolution to whatever provider is injected at registry construction. This package is that provider — an implementation of the runtime's type-substrate port over the Global Type System (GTS) specification, ready to use immediately after construction.
 
-Everything the package does follows from being on the concrete side of an opaque boundary. It owns the ecosystem's infrastructure schemas and the default lifecycle instances and registers them at construction, so a consumer gets a working type system without authoring one. It owns no solution-specific schemas — those are registered by their owners at runtime through the same port. And it is the only place in the published-libraries layer where a concrete type-definition specification may appear, which is what keeps every other concern format-agnostic and lets a conforming alternative provider replace this one without touching the runtime.
+Everything the package does follows from being on the concrete side of an opaque boundary. It owns the ecosystem's infrastructure schemas and the default lifecycle instances and registers them at construction, so a consumer gets a working type system without authoring one. It owns no solution-specific schemas — those are registered by their owners at runtime through the same port. And it is the only place in the published-libraries layer where a concrete type-definition specification may appear, which is what keeps every other concern format-agnostic and lets a conforming alternative provider replace this one without touching the runtime. The runtime states its contracts, such as the closed manifest and MFE entry contracts, without type-system terms; this package gives them GTS form. A final type is closed and rejects any property it does not list, while an abstract base type stays open for derivation.
 
-The provider keeps what it knows in a store, and compatible copies in a JavaScript realm share that store. A composed application evaluates several copies of the provider, one in each runtime that imports it. Copies with the same store format, the same GTS library line and the same built-in set, meaning the built-in schemas and default lifecycle-stage instances, converge on one store pair through a realm slot keyed on those three. A definition registered in one runtime is then known in all of them, and a runtime may rely on it. Copies that differ in any of the three never meet, because they might give one type identifier different meaning. The first definition registered under a type identifier stands, so no runtime can change a type that another runtime already relies on. An instance constructed with the isolation option keeps a private store pair. Throughout, the plugin reads GTS identifiers and entities only through the GTS library; its own rules decide what is written, never what an identifier means.
+The provider keeps what it knows in a store, and compatible copies in a JavaScript realm share that store. A composed application evaluates several copies of the provider, one in each runtime that imports it. Copies with the same store format, the same GTS library line and the same built-in set, meaning the built-in schemas and default lifecycle-stage instances, converge on one store pair through a realm slot keyed on those three. A definition registered in one runtime is then known in all of them, and a runtime may rely on it. Copies that differ in any of the three never meet, because they might give one type identifier different meaning. The first definition registered under a type identifier stands, so no runtime can change a type that another runtime already relies on. Throughout, the plugin reads GTS identifiers and entities only through the GTS library; its own rules decide what is written, never what an identifier means.
 
 ### 1.2 Architecture Drivers
 
@@ -47,21 +47,25 @@ The provider keeps what it knows in a store, and compatible copies in a JavaScri
 
 | Requirement | Design Response |
 |-------------|------------------|
-| `cpt-frontx-fr-mfe-type-validation` | `cpt-frontx-component-type-system-plugin` supplies schema validation and type-of hierarchy resolution behind the runtime's port, so the runtime can validate microfrontends and extensions against type definitions while reasoning about types only by identity. |
-| `cpt-frontx-fr-application-type-definitions` | The port surface the plugin implements accepts type definitions registered at runtime, so applications and templates add their own schemas through the same registration path the plugin uses for its infrastructure schemas — without the plugin owning them. |
-| `cpt-frontx-fr-gts-realm-shared-type-store` | `cpt-frontx-component-type-system-plugin` reaches its store pair through a realm slot keyed on the store format, the GTS library line and a hash of its built-in set (GTS-PLUGIN-4). Every compatible plugin instance in the realm reads and writes the same store, a runtime may rely on what another registered there, and a type identifier keeps the first definition registered under it. Every failed validation names the store searched and says that anything it refers to that is not registered there may be registered later or on another store, and the opening of a second store in the realm is reported when it happens. |
+| `cpt-frontx-fr-mfe-type-validation` | `cpt-frontx-component-type-system-plugin` supplies schema validation and type-of hierarchy resolution behind the runtime's port, so the runtime can validate microfrontends and extensions against type definitions while reasoning about types only by identity. Its manifest and MFE entry types realize the runtime's closed contracts: they reject any property outside them, a missing required field and a value outside its format (GTS-PLUGIN-1). |
+| `cpt-frontx-fr-application-type-definitions` | The port surface the plugin implements accepts type definitions registered at runtime, so applications add their own schemas through the same registration path the plugin uses for its infrastructure schemas — without the plugin owning them. |
+| `cpt-frontx-fr-gts-type-validation` | `cpt-frontx-component-type-system-plugin` validates an entity against the registered GTS definition its type names, through the GTS library, and returns a verdict with the library's own reasons; a type with no registered definition is reported as an unknown type (GTS-PLUGIN-3, §3.6). |
+| `cpt-frontx-fr-gts-type-of-resolution` | `cpt-frontx-component-type-system-plugin` answers whether one registered type derives from another, so the runtime matches handlers by declared base type without reading the hierarchy itself (§3.6). |
+| `cpt-frontx-fr-gts-default-infrastructure-types` | `cpt-frontx-component-type-system-plugin` registers the infrastructure schemas and the default lifecycle-stage instances at construction and owns no solution schema, so a consumer starts from a working baseline and adds its own definitions through the same registration path (GTS-PLUGIN-1, GTS-PLUGIN-2). |
+| `cpt-frontx-fr-gts-realm-shared-type-store` | `cpt-frontx-component-type-system-plugin` reaches its store pair through a realm slot keyed on the store format, the GTS library line and a hash of its built-in set (GTS-PLUGIN-4). Every compatible plugin instance in the realm, other than one a caller constructs with a private store pair, reads and writes the same store, a runtime may rely on what another registered there, and a type identifier keeps the first definition registered under it. Every failed validation names the store searched and says that anything it refers to that is not registered there may be registered later or on another store, and the opening of a second store in the realm is reported when it happens. |
 
 #### NFR Allocation
 
 | NFR ID | NFR Summary | Allocated To | Design Response | Verification Approach |
 |--------|-------------|--------------|-----------------|----------------------|
 | `cpt-frontx-nfr-evolvability` | Versioned releases without lockstep upgrades | The published package | The plugin publishes on its own semver line; the runtime's compatibility with it is expressed as a satisfiable peer range on the `mfes → gts-plugin` edge rather than a matched version number, so either side can release without forcing the other. | The ecosystem version-policy check asserts the edge is a satisfiable range and not exact-pinned (no duplicate-runtime skew). |
-| `cpt-frontx-gts-plugin-nfr-standalone` | One port import, nothing else intra-ecosystem | The published package | The package imports `@gears-frontx/mfes` for the port contract it implements and nothing else from the ecosystem; no UI-framework or template-territory import exists in the published source. | The boundary guards (`arch:edges`, `arch:deps`) hold the manifest and import graph to the declared standalone property, with the port edge as the one recorded exception. |
+| `cpt-frontx-gts-plugin-nfr-standalone` | One port import, nothing else intra-ecosystem | The published package | The package imports `@gears-frontx/mfes` for the port contract it implements and nothing else from the ecosystem; no UI-framework import exists in the published source. | The boundary guards (`arch:edges`, `arch:deps`) hold the manifest and import graph to the declared standalone property, with the port edge as the one recorded exception. |
 
 **ADR coverage references:**
 
 - `cpt-frontx-adr-default-type-substrate-provider`
 - `cpt-frontx-gts-plugin-adr-type-store-scope`
+- `cpt-frontx-adr-mfe-asset-discovery`
 
 ### 1.3 Architecture Layers
 
@@ -73,15 +77,15 @@ graph TD
     Plugin --> Schemas[Infrastructure schemas + default lifecycle instances]
     Plugin --> GTS["@globaltypesystem/gts-ts (concrete type-definition specification)"]
     Plugin -- "realm slot keyed on format, library line and built-in hash" --> Store["Store pair shared by compatible copies in the realm"]
-    Owners[Application / template code] -- "register solution schemas at runtime" --> Plugin
+    Owners[Application code] -- "register solution schemas at runtime" --> Plugin
 ```
 
 | Layer | Responsibility | Technology |
 |-------|---------------|------------|
-| Public surface | The provider class, its default instance, the schema/lifecycle loaders and the schema type | TypeScript, single entry point |
+| Public surface | The provider class with its private-store construction option, its default instance, the schema type, the lifecycle action identifiers and the default lifecycle-stage loader | TypeScript, single entry point |
 | Port implementation | Schema registration, validation, type-of resolution behind the runtime's opaque port | TypeScript over the GTS specification API |
 | Schema ownership | Infrastructure schemas and default lifecycle instances, registered at construction | Bundled definitions, loaded by the package's own loaders |
-| Type store | One GTS store and its scratch mirror per compatible copy group per realm, reached through a realm slot keyed on what decides meaning; or a private pair for an isolated instance | GTS library stores; a `Symbol.for` slot on the realm's global object |
+| Type store | One GTS store and its scratch mirror per compatible copy group per realm, reached through a realm slot keyed on what decides meaning | GTS library stores; a `Symbol.for` slot on the realm's global object |
 
 ## 2. Principles & Constraints
 
@@ -101,13 +105,17 @@ The concrete type-definition specification lives only in this package, and insid
 
 The type-system plugin (`@gears-frontx/gts-plugin`) owns the ecosystem's infrastructure schemas and the default lifecycle instances, registering them as the concrete provider behind the runtime's opaque type-substrate port.
 
-**ADRs**: [The Default Type-Substrate Provider](../../../architecture/ADR/0005-default-type-substrate-provider.md)
+A final type is never derived from, and the plugin closes the type against unlisted properties, so it rejects any property that neither it nor its base types list. An abstract base type stays open, so a derived type can add properties, and the base type's own required fields apply to every derived type. Closure relies on the GTS library's handling of a closed type across its base types: an unknown property is rejected, inherited properties are accepted, and a base type's required fields are enforced.
+
+The manifest and MFE entry types realize the runtime's closed manifest and MFE entry contracts (`cpt-frontx-adr-mfe-asset-discovery`). The runtime states those contracts without type-system terms, and this package gives them GTS form. Both types are final. They list only the fields the runtime reads plus the GTS identity and reference fields, and they enforce the value formats the contract fixes for a package name, a version and a content identity. An MFE entry references a registered manifest instance by its identifier. A parity check holds these types and the runtime's manifest and MFE entry types to the same fields with the same required flags.
+
+**ADRs**: [The Default Type-Substrate Provider](../../../architecture/ADR/0005-default-type-substrate-provider.md), [MFE Asset Discovery](../../../architecture/ADR/0013-mfe-asset-discovery.md)
 
 #### GTS-PLUGIN-2 — Type-system plugin excludes solution schemas
 
 - [ ] `p2` - **ID**: `cpt-frontx-constraint-gts-plugin-excludes-solution-schemas`
 
-The type-system plugin owns no solution-specific schemas. Application- and template-specific type definitions are registered by their owners at runtime, keeping the plugin scoped to infrastructure concerns.
+The type-system plugin owns no solution-specific schemas. Solution-specific type definitions are registered by their owners at runtime, keeping the plugin scoped to infrastructure concerns.
 
 **ADRs**: [The Default Type-Substrate Provider](../../../architecture/ADR/0005-default-type-substrate-provider.md)
 
@@ -121,14 +129,11 @@ On top of the library's readings the plugin applies write rules of its own. They
 
 - The first definition registered under a type identifier stands. A later definition is compared with the held one by plain structural equality, which reads no GTS (GTS-PLUGIN-4).
 - The last valid write of an instance stands, and replacing content another copy wrote is reported (GTS-PLUGIN-4).
-- `registerSchema` refuses a definition the library classifies as an instance.
-- A definition is refused when the library rejects its identifier, and the error carries the library's own reason. It is also refused when the library does not report its identifier as a type.
-- An instance is refused when the library reports its identifier as a type, or when the store holds a type under that identifier.
-- A definition whose content is not representable as JSON is refused, because the plugin keeps a copy of every definition. This refusal concerns storing, not reading GTS.
+- A definition is refused when the library classifies it as an instance, rejects its identifier or does not report its identifier as a type, or when its content is not representable as JSON; an instance is refused when the library reports its identifier as a type or the store holds a type under it. `cpt-frontx-gts-plugin-adr-type-store-scope` states each refusal.
 
 So the plugin does not accept everything the library accepts. It accepts nothing the library rejects, and each refusal of its own rests on the library's answer or on the need to store a copy.
 
-Known gap: `isTypeOf` still derives one type from another by string prefix. That predates this constraint and breaks it, and it is tracked in [#671](https://github.com/constructorfabric/gears-frontx/issues/671).
+Known gap: `isTypeOf` derives one type from another by string prefix, which breaks this constraint; it is tracked in [#671](https://github.com/constructorfabric/gears-frontx/issues/671).
 
 **ADRs**: [The Default Type-Substrate Provider](../../../architecture/ADR/0005-default-type-substrate-provider.md), [How Far Should the Default Type Provider's Store Reach?](ADR/0001-type-store-scope.md)
 
@@ -136,13 +141,13 @@ Known gap: `isTypeOf` still derives one type from another by string prefix. That
 
 - [ ] `p2` - **ID**: `cpt-frontx-constraint-gts-plugin-realm-shared-store`
 
-Every non-isolated plugin instance in a JavaScript realm reads and writes one GTS store and one scratch store that mirrors it. The plugin reaches the pair through a realm slot of its own. The slot's key names a store format number, the GTS library line of the copy (`libraryLine`), taken from the library version it was built against, and a hash of the copy's built-in set: its built-in schemas and default lifecycle-stage instances. The line is `0.<minor>` while the library is below 1.0, and the major version from 1.0 on. The package's own version is not in the key. Copies that differ in any part of the key never share a store. The store format is bumped whenever the entry's shape or the meaning of the stored data changes. Every store in a pair is created by the copy that published it, so all validation on a pair runs on the publisher's copy of the GTS library and its validator. Within a line, verdicts therefore follow the publisher, which is usually the host. Sharing relies on the library keeping its store operations and entity shape stable within a line.
+Every plugin instance in a JavaScript realm, the default instance included, reads and writes one GTS store and one scratch store that mirrors it. The plugin reaches the pair through a realm slot of its own. The one exception is an instance a caller constructs with a private store pair: that pair follows the same write rules, starts from the built-in set and never touches the realm slot. The slot's key names a store format number, the GTS library line of the copy, as `cpt-frontx-gts-plugin-adr-type-store-scope` defines it, and a hash of the copy's built-in set: its built-in schemas and default lifecycle-stage instances. The package's own version is not in the key. Copies that differ in any part of the key never share a store. The store format is bumped whenever the entry's shape or the meaning of the stored data changes. Every store in a pair is created by the copy that published it, so all validation on a pair runs on the publisher's copy of the GTS library and its validator. Within a line, verdicts therefore follow the publisher, which is usually the host. Sharing relies on the library keeping its store operations and entity shape stable within a line.
 
-A runtime may rely on what another runtime registered on the same store. A copy that opens a key while the realm holds other keys logs a warning naming them. A failed validation names the store key it searched and carries a conditional hint: anything it refers to that is not registered here may be registered later, or by a runtime on another store. The hint is always present, because the provider does not read the structured issues the GTS library returns, which could name the missing identifier. ADR-0001 records reading them as separate work. The hint reads no GTS. A copy that finds a malformed or unrecognized entry leaves it untouched, logs a warning and works from a store pair local to its own evaluated copy.
+A runtime may rely on what another runtime registered on the same store. A copy that opens a key while the realm holds other keys logs a warning naming them. A failed validation names the store key it searched and carries a conditional hint: anything it refers to that is not registered here may be registered later, or by a runtime on another store. The hint is always present, because the provider does not read the structured issues the GTS library returns, which could name the missing identifier. `cpt-frontx-gts-plugin-adr-type-store-scope` records reading them as separate work. The hint reads no GTS. A copy that finds a malformed or unrecognized entry leaves it untouched, logs a warning and works from a store pair local to its own evaluated copy.
 
 The first definition registered under a type identifier stands, whichever method delivers a later one. Structurally identical content changes nothing and reports nothing. The comparison reads no GTS, so a definition that differs only in spelling, such as `gts://X~` against `X~`, counts as different content and draws a warning, while the first definition stands. Different content changes nothing and is reported once as a console warning naming the identifier, the copies involved and both contents. The refusals listed under GTS-PLUGIN-3 apply. An instance is validated against the store's current state and then replaces what the store held under its identifier. Replacing different content that another copy wrote is reported once, except for shared-property values. An action payload has no identifier: it is validated against the store and never stored. The store keeps copies, and `getSchema` returns a copy of a schema or an instance, so no caller changes stored content through what it registered or read. An instance whose content is not representable as JSON cannot be copied by the provider. The GTS library still keeps its own copy of it and hands out a fresh copy on every read, so a caller cannot change it either. Both stores hold the same entities between any two calls, and every call does all its store work synchronously.
 
-An instance constructed with `isolated: true` keeps a private store pair and never touches the realm slot. That option is the plugin's one public addition. Sharing adds no port method. The slot is trusted same-realm coordination state, not an authenticity boundary. The stores live as long as the realm.
+Sharing adds no port method and needs no wiring; the default instance always shares. The slot is trusted same-realm coordination state, not an authenticity boundary. The stores live as long as the realm.
 
 **ADRs**: [How Far Should the Default Type Provider's Store Reach?](ADR/0001-type-store-scope.md)
 
@@ -152,10 +157,11 @@ An instance constructed with `isolated: true` keeps a private store pair and nev
 
 | Entity | Definition | Representation |
 |--------|------------|----------------|
-| Schema | A type-definition identity the runtime carries opaquely; its concrete, format-specific shape and validation are owned here. | GTS schema behind the port; `JSONSchema` type on the public surface |
-| LifecycleStage | A defined stage in a unit's runtime lifecycle, modelled by the type substrate as one of the default infrastructure instances registered at construction. | Bundled GTS instances, loaded by `loadLifecycleStages` |
+| Schema | A type-definition identity the runtime carries opaquely; its concrete, format-specific shape and validation are owned here. A final type is closed and rejects any property it and its base types do not list; an abstract base type stays open for derivation (GTS-PLUGIN-1). | GTS schema behind the port; `JSONSchema` type on the public surface |
+| Manifest and MFE entry types | The GTS form of the runtime's closed manifest and MFE entry contracts: final types listing only the fields the runtime reads plus the GTS identity and reference fields, with the contract's value formats enforced; an entry references a registered manifest instance by its identifier (GTS-PLUGIN-1). | Bundled infrastructure schemas, registered at construction |
+| LifecycleStage | A defined stage in a unit's runtime lifecycle, modelled by the type substrate as one of the default infrastructure instances registered at construction. | Bundled GTS instances, registered at construction |
 | Type-of relation | The derivation of one type identifier from another, used to answer whether a declared type conforms to an expected base. | Hierarchy resolution inside the provider, exposed as a port verdict |
-| Type store | The registry of every schema and instance the provider knows, with a scratch mirror against which a candidate instance is validated before it is written. | Two GTS library stores, shared by compatible plugin copies in a realm, or private to an isolated instance (GTS-PLUGIN-4) |
+| Type store | The registry of every schema and instance the provider knows, with a scratch mirror against which a candidate instance is validated before it is written. | Two GTS library stores, shared by compatible plugin copies in a realm (GTS-PLUGIN-4) |
 
 ### 3.2 Component Model
 
@@ -174,6 +180,7 @@ The MFE Runtime treats types opaquely and needs a concrete provider to give type
 - Implements the runtime's type-substrate port (`TypeSystemPlugin`) over a concrete type-definition specification.
 - Owns the ecosystem infrastructure schemas and the default lifecycle instances, registering them at construction.
 - Provides schema validation, type-of resolution, and the format-specific schema shape the runtime never sees directly.
+- Realizes the runtime's closed manifest and MFE entry contracts as final GTS types, closes every final type and keeps abstract base types open for derivation (GTS-PLUGIN-1).
 - Keeps its schemas and instances in a store pair that compatible copies in the realm share, lets runtimes rely on one another's registrations, and keeps the first definition registered under each type identifier (GTS-PLUGIN-4).
 
 ##### Responsibility boundaries
@@ -182,7 +189,7 @@ The MFE Runtime treats types opaquely and needs a concrete provider to give type
 - Does not own the runtime registry, loading, or communication mechanisms — it is invoked by the runtime exclusively through the type-substrate port.
 - Does not interpret GTS identifiers or entities; every such reading is a call into the GTS library (GTS-PLUGIN-3).
 - Is the only published-libraries component permitted to depend on a concrete type-definition specification.
-- Shares its store only with copies that match its key. It never shares through the bridge or an export, and an isolated instance shares with nothing.
+- Shares its store only with copies that match its key. It never shares through the bridge or an export.
 
 ##### Related components (by ID)
 
@@ -198,12 +205,12 @@ The MFE Runtime treats types opaquely and needs a concrete provider to give type
 
 | Public surface | Purpose |
 |----------------|---------|
-| `GtsPlugin` / `gtsPlugin` | The provider class and its ready-made default instance — the object injected at registry construction to satisfy the port. The default instance uses the realm-shared store pair. |
-| `GtsPluginOptions` | The construction options. `isolated: true` gives an instance a private store pair, as every instance had before realm sharing. Tests that need a fresh store per test, in this package and in consumers, construct the provider this way. Added in version 0.3.2; earlier versions have neither this option nor the shared store. |
-| `loadSchemas`, `loadLifecycleStages` | Loaders for the bundled infrastructure schemas and default lifecycle instances the plugin registers at construction. |
-| `JSONSchema` | The schema type the provider accepts at registration; the one place the concrete format appears on a public surface. |
+| `GtsPlugin` / `gtsPlugin` | The provider class and its ready-made default instance — the object injected at registry construction to satisfy the port. The default instance uses the realm-shared store pair. The class's `isolated` construction option gives an instance a private store pair that never touches the realm slot, for a runtime or a build-time validator that must keep type knowledge of its own (GTS-PLUGIN-4). |
+| `JSONSchema` | The schema type the provider accepts at registration. |
+| `FRONTX_ACTION_*` constants | The GTS identifiers of the runtime's extension load, mount and unmount actions, which hosts and microfrontends name when they dispatch or handle those actions. |
+| `loadLifecycleStages` | The default lifecycle-stage instances, for a runtime that loads them itself. |
 
-The port methods themselves (validation, type-of resolution, schema registration) are the runtime's contract, not this package's: their shape is declared by `@gears-frontx/mfes` and this package conforms to it.
+The public surface holds only what consumers outside the package use. The port methods themselves (validation, type-of resolution, schema registration) are the runtime's contract, not this package's: their shape is declared by `@gears-frontx/mfes` and this package conforms to it.
 
 ### 3.4 Internal Dependencies
 
@@ -211,7 +218,6 @@ One ecosystem import: `@gears-frontx/mfes`, from which the package takes the typ
 
 **Dependency Rules** (per project conventions):
 - No circular dependencies at the design level: the runtime never imports the plugin; it consumes it only as an injected port implementation
-- No import of template territory
 - No UI-framework import
 
 ### 3.5 External Dependencies
@@ -302,15 +308,29 @@ sequenceDiagram
 
 ### 3.7 Database schemas & tables
 
-Not applicable. The package holds no database and no persistence. Its schemas and instances are in-memory entries of a store pair that lives as long as the realm and is shared by compatible plugin copies in it, or of a private pair that lives as long as an isolated instance.
+Not applicable. The package holds no database and no persistence. Its schemas and instances are in-memory entries of a store pair that lives as long as the realm and is shared by compatible plugin copies in it.
 
 ## 4. Additional context
 
 The provider implements the type-substrate port and nothing else, so its component boundary matches the port exactly and carries no runtime responsibility. Its one piece of shared state, the realm store pair, is reached through a slot the provider owns, and the runtime never reads or writes it. The one deliberate asymmetry in its coupling — an exact pin on the runtime whose peer range points back at it — exists to guarantee a single resolved provider inside an application while both packages keep independent release lines.
+
+Domains this design does not address:
+
+- **Performance** — The package sets no response-time or throughput target of its own; it validates in process, inside the runtime's registration path, whose targets the runtime's design owns. The GTS library's validator keeps a compiled validator for every validation call, so validator memory grows with the number of validations (`cpt-frontx-gts-plugin-adr-type-store-scope`).
+- **Capacity and cost** — Addressed in [ADR-0001](ADR/0001-type-store-scope.md): store and validator memory are unbounded by design. The store holds the realm's type vocabulary rather than a cache, so nothing evicts its entries, and the GTS library's validator keeps a compiled validator for every validation call, so its memory grows with the number of validations.
+- **Reliability** — Addressed in GTS-PLUGIN-4: a copy that finds a malformed or unrecognized slot entry leaves it untouched and works from a store pair local to itself; beyond that the package runs no service to keep available.
+- **Security** — Addressed in GTS-PLUGIN-1 and GTS-PLUGIN-4: final types reject any property they do not list, so admission validation is closed, and the realm slot is trusted same-realm coordination state, not an authenticity boundary.
+- **Operations** — Not applicable because the package is a library with no deployed service to run, monitor or support.
+- **Compliance** — Not applicable because the package handles no regulated or personal data.
+- **Usability** — Not applicable because the package renders no user interface.
+- **Testing** — Addressed in §1.2 and the FEATUREs: each NFR row states its verification approach, and the FEATUREs' acceptance criteria state what an implementation is tested against.
+- **Maintainability** — Addressed in GTS-PLUGIN-3 and §3.4: every reading of GTS is delegated to the GTS library, the known gap is tracked, and the runtime edge is exact-pinned under the ecosystem pin-drift policy.
+- **Business** — Not applicable because this is an internal library design; the outcomes it serves are the package PRD's goals.
+- **Integration and events** — Addressed in §3.3 and §3.4: the package implements the runtime's port and exact-pins the runtime; it publishes and consumes no events.
 
 ## 5. Traceability
 
 - **Features**: [features/](./features/)
 - **Root chain**: [PRD](../../../architecture/PRD.md), [DESIGN](../../../architecture/DESIGN.md), [DECOMPOSITION](../../../architecture/DECOMPOSITION.md)
 
-This package's requirements are owned by its own [PRD](./PRD.md), per the 3-layer model: each member explains its own reqs, and the root PRD describes the layers and the requirements binding every member equally. The design elements that moved here from the root DESIGN under the artifact-federation refactoring keep their identifiers unchanged, so citations from the root DECOMPOSITION and this package's FEATUREs resolve as before.
+This package's requirements are owned by its own [PRD](./PRD.md), per the 3-layer model: each member explains its own reqs, and the root PRD describes the layers and the requirements binding every member equally. This package's design elements are defined here, so citations from the root DECOMPOSITION and this package's FEATUREs resolve against them directly.

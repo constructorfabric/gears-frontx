@@ -356,7 +356,7 @@ The system **MUST** run subset-rule contract matching on every extension before 
 - `cpt-frontx-flow-extension-domain-governance-admission`
 - `cpt-frontx-algo-extension-domain-governance-contract-matching`
 
-**Addresses**:
+**Covers (PRD)**:
 - `cpt-frontx-fr-mfe-extension-domain-governance`
 
 **Constraints**: `cpt-frontx-constraint-mfes-no-layout-domain-values`
@@ -376,7 +376,7 @@ The system **MUST** reject any domain registration whose declared lifecycle acti
 - `cpt-frontx-flow-extension-domain-governance-admission`
 - `cpt-frontx-algo-extension-domain-governance-strategy-cardinality`
 
-**Addresses**:
+**Covers (PRD)**:
 - `cpt-frontx-fr-mfe-extension-domain-governance`
 
 **Constraints**: `cpt-frontx-constraint-mfes-no-layout-domain-values`
@@ -396,7 +396,7 @@ The system **MUST** deny extension admission by default: an extension is only mo
 - `cpt-frontx-flow-extension-domain-governance-admission`
 - `cpt-frontx-state-extension-domain-governance-admission`
 
-**Addresses**:
+**Covers (PRD)**:
 - `cpt-frontx-fr-mfe-extension-domain-governance`
 
 **Constraints**: `cpt-frontx-constraint-mfes-no-layout-domain-values`
