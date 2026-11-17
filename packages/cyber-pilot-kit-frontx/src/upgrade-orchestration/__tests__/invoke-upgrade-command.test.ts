@@ -225,6 +225,51 @@ describe('createInvokeUpgradeCommand (cpt-frontx-dod-ai-upgrade-orchestration-si
     });
   });
 
+  describe('review failure (cpt-frontx-flow-ai-upgrade-orchestration-upgrade)', () => {
+    it('rejects with the review error itself, issues no confirming call, and never writes to stdin', async () => {
+      const firstChild = makeFakeChild();
+      const spawnFn: SpawnFn = vi.fn(() => firstChild as never);
+      const invoke = createInvokeUpgradeCommand({ spawnFn });
+      const reviewError = new Error('enrichment failed');
+
+      const resultPromise = invoke('/proj', 'my-template', '2.0.0', async () => {
+        throw reviewError;
+      });
+      respond(firstChild, CONFIRMATION_REQUIRED_ENVELOPE);
+
+      await expect(resultPromise).rejects.toBe(reviewError);
+      expect(spawnFn).toHaveBeenCalledTimes(1);
+      expect(firstChild.stdin.writtenChunks).toEqual([]);
+    });
+
+    it('treats a review that throws synchronously the same way', async () => {
+      const firstChild = makeFakeChild();
+      const spawnFn: SpawnFn = vi.fn(() => firstChild as never);
+      const invoke = createInvokeUpgradeCommand({ spawnFn });
+      const reviewError = new Error('sync failure');
+
+      const resultPromise = invoke('/proj', 'my-template', '2.0.0', (() => {
+        throw reviewError;
+      }) as unknown as (changeSet: ChangeSet) => Promise<ReviewDecision>);
+      respond(firstChild, CONFIRMATION_REQUIRED_ENVELOPE);
+
+      await expect(resultPromise).rejects.toBe(reviewError);
+      expect(spawnFn).toHaveBeenCalledTimes(1);
+    });
+
+    it('wraps a rejection that is not an Error, keeping its text', async () => {
+      const firstChild = makeFakeChild();
+      const spawnFn: SpawnFn = vi.fn(() => firstChild as never);
+      const invoke = createInvokeUpgradeCommand({ spawnFn });
+
+      const resultPromise = invoke('/proj', 'my-template', '2.0.0', () => Promise.reject('plain text'));
+      respond(firstChild, CONFIRMATION_REQUIRED_ENVELOPE);
+
+      await expect(resultPromise).rejects.toThrow('The change-set review failed: plain text');
+      expect(spawnFn).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('short-circuits cleanly on an ok:true first response (idempotent no-op) without calling onChangeSet or invoking a second time', async () => {
     const firstChild = makeFakeChild();
     const spawnFn: SpawnFn = vi.fn(() => firstChild as never);

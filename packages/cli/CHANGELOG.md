@@ -14,6 +14,12 @@ refactoring is not.
 
 ### Changed
 
+- `upgrade` reads the baseline and the candidate payloads each from its own
+  origin's resolution, never from the local inventory's single installed
+  version, so the plan holds the files the two versions add, modify and
+  remove whichever version is installed (#700, #701) — a property of the
+  rewritten engine rather than a separate code path.
+
 - `apply` now skips payload paths inside a template's own declared
   `excludedSubtrees` and reports them in the successful result: text output
   prints `SKIPPED <path> (...; declared excludedSubtrees)`, while JSON adds

@@ -1,3 +1,4 @@
+// @cpt-flow:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1
 // @cpt-dod:cpt-frontx-dod-ai-upgrade-orchestration-single-engine:p1
 // @cpt-dod:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1
 //
@@ -298,7 +299,21 @@ export function createInvokeUpgradeCommand(options: InvokeUpgradeCommandOptions 
         `"CONFIRMATION_REQUIRED"'s details carried no planDigest, so an approval cannot be bound to the reviewed plan: ${JSON.stringify(first.error.details)}`,
       );
     }
-    const decision = await onChangeSet(changeSet);
+    let decision: ReviewDecision;
+    // @cpt-begin:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-check-review-failure
+    try {
+      decision = await onChangeSet(changeSet);
+    } catch (error: unknown) {
+      // @cpt-begin:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-decline-on-review-failure
+      // A failed review (a rejection or a synchronous throw) is a decline
+      // with an error attached: no confirming call is issued, and the first
+      // call already guaranteed nothing was written.
+      // @cpt-end:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-decline-on-review-failure
+      // @cpt-begin:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-return-review-failure
+      throw error instanceof Error ? error : new Error(`The change-set review failed: ${String(error)}`);
+      // @cpt-end:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-return-review-failure
+    }
+    // @cpt-end:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-check-review-failure
     // @cpt-end:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1:inst-relay-changeset
 
     // @cpt-begin:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1:inst-gate-decision
