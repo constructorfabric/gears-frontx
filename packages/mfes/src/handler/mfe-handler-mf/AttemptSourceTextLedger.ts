@@ -43,16 +43,18 @@ export class AttemptSourceTextLedger {
     settled: boolean;
   }> = [];
 
-  private released = false;
+  private closed = false;
 
   /**
    * Record that this attempt is waiting on `promise` under `key` in
    * `cache`. Entries that settle before {@link release} are marked and
    * skipped there: a settled entry is not one the attempt is still
    * waiting on, and dropping it would only cost the cache a legitimate
-   * hit. Recording stops once the ledger is released — anything the
-   * abandoned attempt's background work registers afterwards belongs to
-   * that work, not to a retry this ledger can still speak for.
+   * hit. Recording stops once the ledger is closed (released on timeout,
+   * or {@link settle}d with its attempt) — anything the abandoned attempt's
+   * background work registers afterwards belongs to that work, not to a
+   * retry this ledger can still speak for, and anything a settled load's
+   * later lazy resolution fetches must not be kept reachable here.
    */
   // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-record-cache
   record(
@@ -60,7 +62,7 @@ export class AttemptSourceTextLedger {
     key: string,
     promise: Promise<string>
   ): void {
-    if (this.released) {
+    if (this.closed) {
       return;
     }
     // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-generation-identity
@@ -79,11 +81,25 @@ export class AttemptSourceTextLedger {
   // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-record-cache
 
   /**
+   * The attempt this ledger belongs to has settled: drop every entry and
+   * accept none further, so the ledger — which the per-load state keeps
+   * reachable for the page lifetime — never retains a fetched text beyond
+   * the bounded caches. Nothing is removed from any cache: a settled attempt
+   * has no abandoned wait to release.
+   */
+  // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-drop-record-on-settle
+  settle(): void {
+    this.closed = true;
+    this.entries.length = 0;
+  }
+  // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-drop-record-on-settle
+
+  /**
    * Release the still-unsettled cache entries this attempt was waiting on.
    */
   // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-abandoned-source-text
   release(): void {
-    this.released = true;
+    this.closed = true;
     for (const entry of this.entries) {
       if (entry.settled) {
         continue;
