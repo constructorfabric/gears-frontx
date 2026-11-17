@@ -322,8 +322,8 @@ accounting layer over the same mechanics - the categories a claim has to satisfy
 each with a stable id, and every item in it tracing back to a rule written out
 here. It adds no requirement this step does not already carry.
 
-**Read it in full before the browser walk begins.** It is installed beside this
-document, at `skills/project-scaffolding/verification-checklist.md` under the
+**Read it in full, once, before the browser walk begins.** It is installed beside
+this document, at `skills/project-scaffolding/verification-checklist.md` under the
 installed kit root, and the kit declares it as the
 `frontx_verification_checklist` resource. Open that path and read it end to end,
 first line to last. **A partial read does not count**: a head, a line limit, an
@@ -332,9 +332,11 @@ items. One run read 120 of its 480 lines and asserted every category passed off
 the contents list, which named the categories and not one of the items under
 them. **A PASS line in the report may be written only against items this run
 actually read**, so a checklist read partly is a checklist whose unread items
-cannot be passed. Read it before the walk, so the walk is driven toward what will
-be accounted for, and walk it again before the report is composed. Step 8 carries
-its per-category status, and a category the report leaves out fails there.
+cannot be passed. Read it once, before the walk, so the walk is driven toward what
+will be accounted for. The report is composed from the item ids the read covered,
+and an item is re-checked only where its status is in doubt; the file is not read
+end to end a second time. Step 8 carries its per-category status, and a category the
+report leaves out fails there.
 
 **The walk runs the shipped driver.** The kit installs it as the
 `frontx_verify_walk` resource, beside this document at
@@ -428,9 +430,10 @@ quote characters work, and an unbalanced one is refused rather than guessed at, 
 `--browser-cmd '"/path/with a space/browser-cli" --headless'` reaches the child as
 the path and the flag, each whole.
 
-`node <that path> --help` prints the whole flag surface. `$CAPDIR` is the
-run-unique capture directory made under the capture rule below, and the driver
-refuses a directory that already holds files rather than write into another
+`node <that path> --help` prints the whole flag surface. Compose the arguments
+from that output; the driver's source is not reading matter for a run. `$CAPDIR`
+is the run-unique capture directory made under the capture rule below, and the
+driver refuses a directory that already holds files rather than write into another
 run's captures. The driver exits 0 only when every control it was given dispatched,
 every declared variant became active against its own switcher label, every
 read-back agreed, and every declared capture landed; on any failure - a refused invocation, an input file
@@ -451,8 +454,8 @@ contradicts.
 
 Everything from here to the end of this step is **the specification of the
 mechanics** - which one exists, and what each cost the run that learned it. Read
-it to know what the driver is doing on your behalf, to compose its arguments, and
-to drive by hand when you have to.
+it to know what the driver does on your behalf and to drive by hand when you have
+to; the arguments come from `--help`.
 
 **The driver performs the walk and nothing else in this step.** It carries
 sub-step 1's probe, sub-step 3's native pointer sequence, sub-step 5's whole
