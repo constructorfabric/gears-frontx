@@ -1,7 +1,7 @@
 # Scaffolding Verification Checklist
 
 **Artifact**: the verification a scaffolding run performs in Step 7 and reports in Step 8
-**Version**: 1.2
+**Version**: 1.3
 **Purpose**: the accounting layer over Step 7's browser walk and Step 8's report - what must be true for a claim to stand
 
 This checklist states **what must hold**. The skill document beside it states **how**
@@ -58,7 +58,8 @@ Before walking this checklist, confirm:
 
 - [ ] I have read this file end to end, first line to last, before the browser walk
       began - not a head, not a line limit, not an excerpt, and not the table of
-      contents read as if it were the items
+      contents read as if it were the items; this one read is the only full read
+      the run owes
 - [ ] I will check every item in MUST HAVE and verify every item in MUST NOT HAVE
 - [ ] I will judge each item against what this run captured, not against what it intended
 - [ ] I will report a category as FAIL when its evidence is absent, rather than omit it
@@ -403,7 +404,8 @@ not a property of every project this checklist accounts for.
       table of contents read as if it were the items under it
 - [ ] Every PASS in the status walk is claimed against an item this run actually read
 - [ ] The read happened before the walk, so the walk was driven toward what would be
-      accounted for, and this file was walked again before the report was composed
+      accounted for, and the status walk is composed from the item ids the read
+      covered, not from a second full read
 
 ### VER-REPORT-006: Every Attempt Is Disclosed
 **Severity**: CRITICAL
