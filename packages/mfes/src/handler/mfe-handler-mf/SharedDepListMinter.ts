@@ -52,19 +52,13 @@ export interface SharedDepListMintMaps {
 }
 
 /**
- * How the minter handles a literal dynamic `import('<specifier>')` in an
- * item's source: `tokenFor` resolves the specifier — relative to the
- * issuing item's location, or bare — to the resolver token the rewritten
- * call passes to `__frontx_lazy` (or `undefined` to leave the call
- * untouched), and `loaderUrl` mints the per-load loader-stub blob URL on
- * first use.
+ * How the minter handles the dynamic imports in an item's source: every
+ * literal and bounded-pattern `import()` becomes a `__frontx_lazy` call
+ * naming the item's location (`UnitDynamicImportRewriter`), and
+ * `loaderUrl` mints the per-load loader-stub blob URL on first use.
  */
 export interface ListDynamicImportRewrites {
   readonly loaderUrl: () => string;
-  readonly tokenFor: (
-    record: SharedDepListRecord,
-    specifier: string,
-  ) => string | undefined;
 }
 
 export class SharedDepListMinter {
@@ -77,6 +71,11 @@ export class SharedDepListMinter {
    * `patterns` records are keyed by.
    */
   static resolveLocation(fromLocation: string, specifier: string): string {
+    // An absolute item location resolves to an absolute location, the form
+    // an absolute list location is keyed by.
+    if (/^https?:/i.test(fromLocation)) {
+      return new URL(specifier, fromLocation).href;
+    }
     const syntheticBase = 'http://r/';
     const from = new URL(fromLocation, syntheticBase);
     return new URL(specifier, from).pathname.slice(1);
@@ -99,9 +98,19 @@ export class SharedDepListMinter {
   ): void {
     const pending = new Map(records.map((r) => [r.item.contentHash, r]));
     const minted = new Map<string, string>();
-    // specifier -> record answering it, across the load's combined set.
+    // Only what this batch can order against: items the load already
+    // minted and this batch's own records. An item another, still
+    // unminted batch registered is no edge of this one, so it can neither
+    // answer a specifier nor hold this batch behind a minting order that
+    // never comes.
+    const reachable = [...items.values()].filter(
+      (item) =>
+        maps.itemBlobByHash.has(item.contentHash) ||
+        pending.has(item.contentHash),
+    );
+    // specifier -> record answering it, across the reachable set.
     const answerer = new Map<string, SharedDepListItem>();
-    for (const item of items.values()) {
+    for (const item of reachable) {
       for (const specifier of item.answers) {
         if (!answerer.has(specifier)) answerer.set(specifier, item);
       }
@@ -116,7 +125,7 @@ export class SharedDepListMinter {
         if (
           targetHash !== undefined &&
           targetHash !== record.item.contentHash &&
-          !maps.itemBlobByHash.has(targetHash)
+          pending.has(targetHash)
         ) {
           deps.add(targetHash);
         }
@@ -128,10 +137,14 @@ export class SharedDepListMinter {
     // location → contentHash over the load's combined item set; built
     // once rather than per record.
     const locationToHash = new Map<string, string>();
-    for (const item of items.values()) {
+    for (const item of reachable) {
       locationToHash.set(item.location, item.contentHash);
     }
 
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-serialised
+    // The whole batch mints in this one synchronous call — nothing
+    // awaits between its first and last reference — so one load's batches
+    // never interleave with one another or with a chain mint.
     while (pending.size > 0) {
       const before = pending.size;
       for (const [hash, record] of pending) {
@@ -177,11 +190,13 @@ export class SharedDepListMinter {
           },
         );
         if (dynamicImports !== undefined) {
+          // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-shared-dynamic-imports
           rewritten = UnitDynamicImportRewriter.rewrite(
             rewritten,
             dynamicImports.loaderUrl,
-            (specifier) => dynamicImports.tokenFor(record, specifier),
+            record.item.location,
           );
+          // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-shared-dynamic-imports
         }
         const blob = URL.createObjectURL(
           new Blob([rewritten], { type: 'text/javascript' }),
@@ -206,6 +221,7 @@ export class SharedDepListMinter {
         );
       }
     }
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-serialised
   }
 }
 

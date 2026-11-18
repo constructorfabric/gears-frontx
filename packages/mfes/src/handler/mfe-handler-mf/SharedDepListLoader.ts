@@ -62,8 +62,6 @@ export interface SharedDepListContext {
   readonly dependentLists: Map<string, SharedDepFileRef>;
   /** One in-flight resolution per dependent-list key. */
   readonly pending: Map<string, Promise<void>>;
-  /** Tail of the load's mint-batch chain: batches never interleave. */
-  readonly mintQueue: { tail: Promise<void> };
 }
 
 export class SharedDepListLoader {
@@ -104,7 +102,6 @@ export class SharedDepListLoader {
       itemByLocation: new Map(),
       dependentLists: new Map(),
       pending: new Map(),
-      mintQueue: { tail: Promise.resolve() },
     };
   }
 
@@ -245,10 +242,13 @@ export class SharedDepListLoader {
       (r): r is PromiseRejectedResult => r.status === 'rejected',
     );
     if (failure) throw failure.reason;
-    const records = settled.map(
-      (r) => (r as PromiseFulfilledResult<SharedDepListRecord>).value,
-    );
+    // A concurrent batch of the same load may have minted an item while
+    // this one fetched: an existing per-load map entry is never replaced.
+    const records = settled
+      .map((r) => (r as PromiseFulfilledResult<SharedDepListRecord>).value)
+      .filter((record) => !ctx.itemBlobByHash.has(record.item.contentHash));
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-list-items
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-serialised
     SharedDepListMinter.mint(
       records,
       new Map([...ctx.itemByLocation.values()].map((i) => [i.location, i])),
@@ -259,18 +259,22 @@ export class SharedDepListLoader {
       this.entryId,
       dynamicImports,
     );
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-serialised
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-list-items
     return this.fetchedBytes - bytesBefore;
   }
 
   /**
    * Resolve a dependent-list key — a `lazy` or `patterns` record key, a
-   * lazy chunk's shared-base-relative location — on first use: fetch
-   * the target's delta list document, then fetch and mint
-   * its missing items in one parallel batch inside the same load.
-   * Concurrent resolutions of one key share one in-flight batch; a
-   * rejected batch is evicted so a later call retries. `fetchOwnChunk` is
-   * forwarded to {@link loadList} for the delta list's `ownChunks`.
+   * lazy target's chunk location relative to the base that chunk resolves
+   * against — on first use: fetch the target's delta list document, then
+   * fetch in one flat batch and mint its missing items inside the same
+   * load. The document request is issued in this call, never behind
+   * another target's rounds, so distinct targets download in parallel; a
+   * mint is one synchronous step, so minting never overlaps. Concurrent
+   * resolutions of one key share one in-flight batch; a rejected batch is
+   * evicted so a later call retries. `fetchOwnChunk` is forwarded to
+   * {@link loadList} for the delta list's `ownChunks`.
    */
   resolveDependent(
     ctx: SharedDepListContext,
@@ -280,6 +284,8 @@ export class SharedDepListLoader {
     fetchOwnChunk?: (location: string) => Promise<unknown>,
   ): Promise<void> {
     // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-lazy-roots
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-parallel-targets
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-second-round
     let pending = ctx.pending.get(key);
     if (pending === undefined) {
       const batch = async (): Promise<void> => {
@@ -296,68 +302,17 @@ export class SharedDepListLoader {
           fetchOwnChunk,
         );
       };
-      pending = ctx.mintQueue.tail.then(batch);
-      ctx.mintQueue.tail = pending.then(
-        () => undefined,
-        () => undefined,
-      );
+      pending = batch();
       ctx.pending.set(key, pending);
       const tracked = pending;
       tracked.catch(() => {
         if (ctx.pending.get(key) === tracked) ctx.pending.delete(key);
       });
     }
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-second-round
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-parallel-targets
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-lazy-roots
     return pending;
-  }
-
-  /**
-   * Candidate `lazy`/`patterns` record keys for a lazy chunk known only
-   * by its asset-base-relative `filename` (the `__frontx_lazy` path
-   * resolved against the entry chunk's directory). Record keys are
-   * shared-base-relative locations, so when `metaData.sharedBase` and
-   * `publicPath` differ the bare filename never matches: the candidates
-   * are the filename itself (bases equal, or producer recorded the
-   * asset-base-relative path), the chunk's absolute URL (absolute keys),
-   * and its location relative to the shared asset base — a `…/` climb
-   * when the chunk lives outside it.
-   */
-  static dependentListKeyCandidates(
-    filename: string,
-    baseUrl: string,
-    assetBase: string,
-  ): string[] {
-    const candidates = new Set<string>([filename]);
-    try {
-      const target = new URL(filename, baseUrl);
-      candidates.add(target.href);
-      const base = new URL(assetBase);
-      if (target.origin === base.origin) {
-        if (target.href.startsWith(base.href)) {
-          candidates.add(target.href.slice(base.href.length));
-        } else {
-          const baseDirs = base.pathname.split('/').filter(Boolean);
-          const targetSegments = target.pathname
-            .split('/')
-            .filter(Boolean);
-          let common = 0;
-          while (
-            common < baseDirs.length &&
-            common < targetSegments.length - 1 &&
-            baseDirs[common] === targetSegments[common]
-          ) {
-            common += 1;
-          }
-          candidates.add(
-            '../'.repeat(baseDirs.length - common) +
-              targetSegments.slice(common).join('/'),
-          );
-        }
-      }
-    } catch {
-      // An unparseable URL leaves the filename candidate only.
-    }
-    return [...candidates];
   }
 
   /**

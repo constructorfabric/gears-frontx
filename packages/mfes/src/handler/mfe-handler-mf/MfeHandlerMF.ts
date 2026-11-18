@@ -56,6 +56,7 @@ import { ManifestCache } from './ManifestCache';
 import { SharedTextAdmission } from './SharedTextAdmission';
 import { SharedDepListLoader, type SharedDepListContext } from './SharedDepListLoader';
 import { SharedDepListMinter, type ListDynamicImportRewrites } from './SharedDepListMinter';
+import { UnitDynamicImportRewriter } from './UnitDynamicImportRewriter';
 import { LoadDiagnosticsAccumulator } from './LoadDiagnosticsAccumulator';
 
 const RUNTIME_STYLE_ID_PREFIX = '__frontx-mfe-runtime-style-';
@@ -224,6 +225,22 @@ interface LoadBlobState {
    * keep the entry text reachable.
    */
   entrySource?: Promise<string>;
+  /**
+   * The lazy resolutions in flight, by target location: concurrent
+   * resolutions of one target share one, and a settled one leaves the map.
+   */
+  lazyResolutions?: Map<string, Promise<string>>;
+}
+
+/**
+ * What the mint of a whole-package entry needs to route its dynamic
+ * imports through the load's lazy-import ABI: the entry's `chunkPath` —
+ * the location, against the asset base, its calls resolve against — by
+ * package name, and the per-load loader stub.
+ */
+interface WholePackageLazy {
+  readonly chunkPaths: ReadonlyMap<string, string>;
+  readonly loaderUrl: () => string;
 }
 
 /**
@@ -241,8 +258,10 @@ interface SharedDepListLoadContext {
   readonly entryId: string;
   /**
    * The shared asset base (`metaData.sharedBase` resolved, or the load's
-   * own base URL when absent): the base the `lazy`/`patterns` record keys
-   * — shared-base-relative locations — are expressed against.
+   * own base URL when absent): the base fetch-list documents and list
+   * items resolve against, and the base the `lazy`/`patterns` record keys
+   * of a shared unit are expressed against — an own chunk's key is
+   * relative to the asset base instead.
    */
   readonly assetBase: string;
   readonly resolveAssetUrl: (location: string) => string;
@@ -259,6 +278,12 @@ interface SharedDepListLoadContext {
    * eviction cannot cost a second request) and then dropped.
    */
   readonly ownChunkTexts: Map<string, Promise<string>>;
+  /**
+   * Whether the load has minted the own chunk at a location; bound once
+   * the load's state exists, so a later list naming a minted chunk issues
+   * no request for it.
+   */
+  readonly ownChunkMinted: { has: (location: string) => boolean };
 }
 
 /**
@@ -311,6 +336,13 @@ interface ChainBuildState {
    * fact about one build's traversal, not about the load.
    */
   readonly reportedCycles: Set<string>;
+  /**
+   * Whether the chunks this build reaches carry native literal or pattern
+   * dynamic imports that must reach the load's lazy-import ABI: set for a
+   * walk started by a whole-package entry's call, whose chunks are shared
+   * text the build emitted no ABI calls into.
+   */
+  readonly rewriteNativeDynamicImports: boolean;
 }
 
 /**
@@ -354,11 +386,15 @@ function describeSharedDepCycle(pending: ReadonlyMap<string, string>): string {
 
 /** Start a fresh chain build (see {@link ChainBuildState}). */
 // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-build-failure-scope
-function createChainBuildState(bounded: boolean): ChainBuildState {
+function createChainBuildState(
+  bounded: boolean,
+  rewriteNativeDynamicImports = false
+): ChainBuildState {
   return {
     failed: false,
     fetchBudget: bounded ? new FetchBudget(MAX_CONCURRENT_FETCHES) : undefined,
     reportedCycles: new Set<string>(),
+    rewriteNativeDynamicImports,
   };
 }
 // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-build-failure-scope
@@ -857,6 +893,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       urls: sharedDepBlobUrls,
       sharedDepLists,
       entrySource,
+      bindWholePackageLoad,
     } = await this.buildSharedDepBlobUrls(
       manifest,
       baseUrl,
@@ -880,6 +917,11 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       entrySource,
     };
     // @cpt-end:cpt-frontx-state-mfe-isolation-load-blob-state:p1:inst-blob-building
+    bindWholePackageLoad?.(loadState);
+    if (sharedDepLists !== undefined) {
+      sharedDepLists.ownChunkMinted.has = (location) =>
+        loadState.blobUrlMap.has(location);
+    }
 
     // Fresh per-build failure token for this chain build (see
     // `ChainBuildState`) — scoped to this one expose-chunk build, not to
@@ -1334,6 +1376,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     urls: Map<string, string>;
     sharedDepLists?: SharedDepListLoadContext;
     entrySource?: Promise<string>;
+    bindWholePackageLoad?: (loadState: LoadBlobState) => void;
   }> {
     // `sources`/`sharedDepBlobUrls` are keyed by bare `dep.name`, while
     // `sharedDepTextCache` is keyed by the more precise `name@version`. Two
@@ -1361,13 +1404,49 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-whole-package-path
     const sources = await this.fetchSharedDepSources(manifest, baseUrl, entryId, ledger);
     const sharedNames = new Set(manifest.shared.map((d) => d.name));
-    return {
-      urls: this.createBlobUrlsInDependencyOrder(
-        sources,
-        sharedNames,
-        entryId,
-        extensionId
+    // The whole-package entries mint before the load's state exists, yet
+    // their lazy calls resolve through that state once the load is built:
+    // the resolver reads it through this holder, bound after the build.
+    const holder: { loadState?: LoadBlobState } = {};
+    const urls = new Map<string, string>();
+    let unitLoaderUrl: string | undefined;
+    const lazy: WholePackageLazy = {
+      // The resolved fetch location, so the caller a call names and the
+      // base it resolves against agree with the URL the entry came from.
+      chunkPaths: new Map(
+        manifest.shared.map((d) => [
+          d.name,
+          MfeHandlerMF.resolveSharedChunkUrl(d, baseUrl, entryId),
+        ])
       ),
+      loaderUrl: () => {
+        if (unitLoaderUrl === undefined) {
+          const registry = LazyLoaderRegistry.ensureExposed();
+          const loaderId = registry.register((argument) =>
+            this.resolveWholePackageImport(argument, holder, baseUrl, entryId, urls)
+          );
+          unitLoaderUrl = URL.createObjectURL(
+            new Blob([DynamicModuleOps.buildLazyLoaderStubSource(loaderId)], {
+              type: 'text/javascript',
+            })
+          );
+        }
+        return unitLoaderUrl;
+      },
+    };
+    const minted = this.createBlobUrlsInDependencyOrder(
+      sources,
+      sharedNames,
+      entryId,
+      extensionId,
+      lazy
+    );
+    for (const [name, blob] of minted) urls.set(name, blob);
+    return {
+      urls,
+      bindWholePackageLoad: (loadState) => {
+        holder.loadState = loadState;
+      },
     };
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-whole-package-path
   }
@@ -1479,6 +1558,10 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // the realm cache; the chain build joins this entry. Once the load
     // has failed no request is issued for it.
     const ownChunkTexts = new Map<string, Promise<string>>();
+    // Bound to the load's minted chunks once its state exists.
+    const ownChunkMinted: { has: (location: string) => boolean } = {
+      has: () => false,
+    };
     const fetchOwnChunk = (location: string): Promise<unknown> => {
       if (typeof (location as unknown) !== 'string') {
         return Promise.reject(
@@ -1490,9 +1573,20 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       }
       const failed = requests.failure();
       if (failed !== undefined) return Promise.reject(failed.error);
+      // A chunk the load already minted needs no text, and one already
+      // requested for it is joined rather than requested again.
+      if (ownChunkMinted.has(location)) return Promise.resolve(undefined);
       const url = MfeHandlerMF.resolveChunkUrl(baseUrl, location);
+      const inFlight = ownChunkTexts.get(url);
+      if (inFlight !== undefined) return inFlight;
       const text = this.fetchSourceText(url, ledger);
       ownChunkTexts.set(url, text);
+      // A failed request leaves no hand-off behind, so a later lazy import
+      // of the same chunk requests it afresh instead of re-awaiting the
+      // rejected promise.
+      text.catch(() => {
+        if (ownChunkTexts.get(url) === text) ownChunkTexts.delete(url);
+      });
       return text;
     };
     const ctx = loader.createContext();
@@ -1513,12 +1607,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       resolveAssetUrl,
       fetchOwnChunk,
       ownChunkTexts,
+      ownChunkMinted,
       dynamicImports: {
         loaderUrl: () => {
           if (unitLoaderUrl === undefined) {
             const registry = LazyLoaderRegistry.ensureExposed();
-            const loaderId = registry.register((token) =>
-              this.resolveListImport(token, sharedDepLists)
+            const loaderId = registry.register((argument) =>
+              this.resolveListImport(argument, sharedDepLists)
             );
             unitLoaderUrl = URL.createObjectURL(
               new Blob([DynamicModuleOps.buildLazyLoaderStubSource(loaderId)], {
@@ -1528,8 +1623,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
           }
           return unitLoaderUrl;
         },
-        tokenFor: (record, specifier) =>
-          MfeHandlerMF.listImportToken(record, specifier, ctx),
       },
     };
     const itemBytes = await requests.guard(
@@ -1550,132 +1643,127 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   }
 
   /**
-   * The resolver token a literal dynamic-import specifier in `record`
-   * rewrites to: a dependent-list token `list:<location>` when the
-   * specifier resolves (against the issuing item's location) to a key
-   * the load's `lazy`/`patterns` records carry; `item:<hash>` when it
-   * names an item already on the load's lists; `spec:<specifier>` for a
-   * bare specifier the load answers. `undefined` leaves the call
-   * untouched — the fully opaque `import(expr)` case stays native.
+   * The resolver behind every `__frontx_lazy(...)` call minted into a
+   * list item of this load: the argument names the calling item's
+   * location and the requested path, which resolve against the shared
+   * base to the target's location, the key the load's `lazy`/`patterns`
+   * records carry (`inst-lai-resolve-relative-path`).
    */
-  private static listImportToken(
-    record: { item: { location: string; contentHash: string } },
-    specifier: string,
-    ctx: SharedDepListContext
-  ): string | undefined {
-    if (specifier.startsWith('./') || specifier.startsWith('../')) {
-      const key = SharedDepListMinter.resolveLocation(
-        record.item.location,
-        specifier
-      );
-      if (ctx.dependentLists.has(key)) return `list:${key}`;
-      const item = ctx.itemByLocation.get(key);
-      return item === undefined ? undefined : `item:${item.contentHash}`;
-    }
-    if (ctx.dependentLists.has(specifier)) return `list:${specifier}`;
-    return ctx.specifierToBlob.has(specifier) ? `spec:${specifier}` : undefined;
-  }
-
-  /**
-   * The resolver behind `__frontx_lazy('list:<loc>' | 'item:<hash>' |
-   * 'spec:<specifier>')` calls emitted into minted items: `list:` fetches
-   * and mints the dependent list on demand (one batch, deduplicated per
-   * key, retried after failure), `item:` returns the already-minted
-   * item's blob, `spec:` returns the specifier's minted blob.
-   */
+  // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-when-exercised
+  // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-resolve-relative-path
   private resolveListImport(
-    token: string,
+    argument: string,
     sharedDepLists: SharedDepListLoadContext
   ): Promise<string> {
     const { loader, ctx, resolveAssetUrl, entryId } = sharedDepLists;
     const fail = (detail: string): Promise<string> =>
       Promise.reject(new MfeLoadError(detail, entryId));
-    if (token.startsWith('list:')) {
-      const key = token.slice('list:'.length);
-      return loader
-        .resolveDependent(
-          ctx,
-          key,
-          resolveAssetUrl,
-          sharedDepLists.dynamicImports,
-          sharedDepLists.fetchOwnChunk
-        )
-        .then(() => {
-          const blob = loader.blobForKey(ctx, key);
-          if (blob === undefined) {
-            throw new MfeLoadError(
-              `__frontx_lazy: dependent list '${key}' minted no blob for ` +
-                'the import target.',
-              entryId
-            );
-          }
-          return blob;
-        });
+    const split = UnitDynamicImportRewriter.splitCallerArgument(argument);
+    if (split === undefined) {
+      return fail(`__frontx_lazy: unresolvable argument '${argument}'`);
     }
-    if (token.startsWith('item:')) {
-      const blob = ctx.itemBlobByHash.get(token.slice('item:'.length));
-      return blob === undefined
-        ? fail(`__frontx_lazy: unresolvable item token '${token}'`)
-        : Promise.resolve(blob);
+    const { caller, path } = split;
+    const relative = path.startsWith('./') || path.startsWith('../');
+    // A bare specifier is its own key: a unit already answering it is the
+    // target, and no other base applies to it.
+    const key = relative ? SharedDepListMinter.resolveLocation(caller, path) : path;
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-resolve-relative-path
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-if-cached
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-return-cached
+    const minted = relative
+      ? loader.blobForKey(ctx, key)
+      : ctx.specifierToBlob.get(key);
+    if (minted !== undefined) return Promise.resolve(minted);
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-return-cached
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-if-cached
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-find-target-list
+    const hasList = ctx.dependentLists.has(key);
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-find-target-list
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-if-no-list
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-if-shared-caller
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-shared-no-list-fail
+    if (!hasList) {
+      return fail(
+        `__frontx_lazy: '${key}', imported by shared unit '${caller}', ` +
+          `matches no lazy-target fetch list of the load for '${entryId}'; ` +
+          'a shared unit cannot load a target it has no list for.'
+      );
     }
-    if (token.startsWith('spec:')) {
-      const blob = ctx.specifierToBlob.get(token.slice('spec:'.length));
-      return blob === undefined
-        ? fail(`__frontx_lazy: unresolvable specifier token '${token}'`)
-        : Promise.resolve(blob);
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-shared-no-list-fail
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-if-shared-caller
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-if-no-list
+    // A shared-unit target requests no own chunk: its list item joins the
+    // list's second round.
+    return loader
+      .resolveDependent(
+        ctx,
+        key,
+        resolveAssetUrl,
+        sharedDepLists.dynamicImports,
+        sharedDepLists.fetchOwnChunk
+      )
+      .then(() => {
+        const blob = loader.blobForKey(ctx, key);
+        if (blob === undefined) {
+          throw new MfeLoadError(
+            `__frontx_lazy: the list of '${key}' minted no blob for the ` +
+              'import target.',
+            entryId
+          );
+        }
+        return blob;
+      });
+  }
+  // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-when-exercised
+
+  /**
+   * The resolver behind every `__frontx_lazy(...)` call minted into a
+   * whole-package entry: the path resolves against the entry's
+   * `chunkPath`, which resolves against the asset base, and the target
+   * and the own chunks it reaches are found by walking the chunk graph
+   * from it (`inst-lai-walk-chunk-graph`). A bare specifier is the
+   * whole-package unit of that name in the per-load map.
+   */
+  private resolveWholePackageImport(
+    argument: string,
+    holder: { loadState?: LoadBlobState },
+    baseUrl: string,
+    entryId: string,
+    urls: ReadonlyMap<string, string>
+  ): Promise<string> {
+    const fail = (detail: string): Promise<string> =>
+      Promise.reject(new MfeLoadError(detail, entryId));
+    const split = UnitDynamicImportRewriter.splitCallerArgument(argument);
+    if (split === undefined) {
+      return fail(`__frontx_lazy: unresolvable argument '${argument}'`);
     }
-    return fail(`__frontx_lazy: unresolvable token '${token}'`);
+    const { caller, path } = split;
+    if (!(path.startsWith('./') || path.startsWith('../'))) {
+      const unit = urls.get(path);
+      return unit === undefined
+        ? fail(
+            `__frontx_lazy: whole-package entry '${caller}' imports ` +
+              `'${path}', which names no whole-package unit of the load.`
+          )
+        : Promise.resolve(unit);
+    }
+    if (holder.loadState === undefined) {
+      return fail(
+        `__frontx_lazy: '${path}' was requested before the load of ` +
+          `'${entryId}' completed.`
+      );
+    }
+    const target = new URL(path, new URL(caller, baseUrl)).href;
+    const filename = target.startsWith(baseUrl)
+      ? target.slice(baseUrl.length)
+      : target;
+    return this.resolveLazyTarget(filename, holder.loadState, true);
   }
 
   /** Whether `char` is a space or control character a URL parse would mangle. */
   private static isControlOrSpace(char: string): boolean {
     const code = char.charCodeAt(0);
     return code <= 0x20 || (code >= 0x7f && code <= 0x9f);
-  }
-
-  /**
-   * Fetch and mint the items the dependent list recorded for the lazy
-   * chunk `filename` carries, extending `sharedDepBlobUrls` — never
-   * rewriting it (`inst-lai-lazy-roots`). One in-flight resolution per
-   * key; items already minted by the entry batch or an earlier lazy
-   * batch are reused as they are. `filename` is relative to the load's
-   * asset base (`publicPath`), while the `lazy`/`patterns` record keys
-   * are locations relative to the shared base — when
-   * `metaData.sharedBase` differs from `publicPath` the two do not
-   * coincide, so the filename is first resolved to the shared-base
-   * location the records are keyed by. A filename no record key matches
-   * emits a once-per-page diagnostic rather than silently skipping the
-   * dependent-list load.
-   */
-  private async ensureLazySharedDepList(
-    loadState: LoadBlobState,
-    filename: string
-  ): Promise<void> {
-    const shared = loadState.sharedDepLists;
-    if (shared === undefined) return;
-    const key = SharedDepListLoader.dependentListKeyCandidates(
-      filename,
-      loadState.baseUrl,
-      shared.assetBase
-    ).find((candidate) => shared.ctx.dependentLists.has(candidate));
-    if (key === undefined) {
-      this.loadDiagnostics.warnOnce(
-        `lazy-list-miss:${loadState.entryId}:${filename}`,
-        `[MfeHandlerMF] lazy chunk '${filename}' of '${loadState.entryId}' ` +
-          "matched no key in the load's lazy/patterns fetch-list records " +
-          '(checked against the shared-base location); its dependent ' +
-          'list, if the producer recorded one under a different spelling, ' +
-          'is not loaded.'
-      );
-      return;
-    }
-    await shared.loader.resolveDependent(
-      shared.ctx,
-      key,
-      shared.resolveAssetUrl,
-      shared.dynamicImports,
-      shared.fetchOwnChunk
-    );
   }
 
   /**
@@ -1864,11 +1952,15 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     sources: Map<string, string>,
     sharedNames: Set<string>,
     entryId: string,
-    extensionId: string
+    extensionId: string,
+    lazy?: WholePackageLazy
   ): Map<string, string> {
     const blobUrls = new Map<string, string>();
     const pending = new Map(sources);
 
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-serialised
+    // The whole-package entries mint leaves-first in this one synchronous
+    // call, so no other mint of the load interleaves with them.
     while (pending.size > 0) {
       const before = pending.size;
       for (const [name, source] of pending) {
@@ -1881,7 +1973,8 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
               sharedNames,
               name,
               entryId,
-              extensionId
+              extensionId,
+              lazy
             )
           );
           pending.delete(name);
@@ -1905,6 +1998,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       }
       // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-shared-cycle
     }
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-serialised
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-return-map
     return blobUrls;
     // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-return-map
@@ -1931,7 +2025,8 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     sharedNames: Set<string>,
     depName: string,
     entryId: string,
-    extensionId: string
+    extensionId: string,
+    lazy?: WholePackageLazy
   ): string {
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-rewrite-specifiers
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-rewrite-specifiers
@@ -1978,7 +2073,16 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-undeclared-specifier
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-shared-blob
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-create-dep-blob
-    const blob = new Blob([rewritten], { type: 'text/javascript' });
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-shared-dynamic-imports
+    // Every literal and bounded-pattern dynamic import of the entry reaches
+    // the load's lazy-import ABI; the fetched bytes stay as they are.
+    const chunkPath = lazy?.chunkPaths.get(depName);
+    const minted =
+      lazy !== undefined && chunkPath !== undefined
+        ? UnitDynamicImportRewriter.rewrite(rewritten, lazy.loaderUrl, chunkPath)
+        : rewritten;
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-shared-dynamic-imports
+    const blob = new Blob([minted], { type: 'text/javascript' });
     return URL.createObjectURL(blob);
     // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-create-dep-blob
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-shared-blob
@@ -2451,7 +2555,11 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-shared
     // Rewrite bare specifiers (from "react" → from "blob:xxx") using
     // the pre-built shared dep blob URL map.
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-lazy-specifiers
+    // A lazy target's chunks take the references the parent load's
+    // per-load map holds, the same map the entry chunk took.
     rewritten = this.rewriteBareSpecifiers(rewritten, loadState.sharedDepBlobUrls);
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-lazy-specifiers
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-shared
 
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-if-lazy-ref
@@ -2462,18 +2570,47 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // `__frontx_lazy('./X')`; the loader stub closes over this load's resolver
     // and routes those calls through the parent load's blob URL chain so
     // lazy chunks inherit the same `sharedDepBlobUrls` as the entry chunk.
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-inject-stub
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-nested-lazy
+    // A chunk a whole-package entry's call reached is shared text: its
+    // native literal and pattern imports reach the ABI here, as they do in
+    // a minted shared unit, so they stay inside the load's graph.
+    if (build.rewriteNativeDynamicImports) {
+      rewritten = UnitDynamicImportRewriter.rewriteCalls(
+        rewritten,
+        '__frontx_lazy'
+      );
+    }
+    // Every chunk of the load that references the ABI — a lazy target's
+    // nested calls included — takes a `__frontx_lazy` that imports the same
+    // per-load loader stub and tags each call with this chunk's own
+    // location, so the path resolves against the chunk that makes the call.
     if (rewritten.includes('__frontx_lazy(')) {
       const loaderUrl = this.ensureLazyLoaderUrl(loadState);
-      rewritten = `import{__frontx_lazy}from${JSON.stringify(loaderUrl)};\n${rewritten}`;
+      rewritten =
+        UnitDynamicImportRewriter.callerBinding(rewritten, loaderUrl, filename) +
+        rewritten;
     }
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-nested-lazy
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-inject-stub
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-inject-lazy-stub
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-if-lazy-ref
 
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-create-blob
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-return-complete
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-mint-lazy-blob
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-serialised
+    // A mint is one synchronous step — the dependencies this chunk imports
+    // are minted before it, and nothing interleaves between creating the
+    // reference and recording it — so one load's mints never overlap while
+    // its fetches stay concurrent.
     const blob = new Blob([rewritten], { type: 'text/javascript' });
     const blobUrl = URL.createObjectURL(blob);
     loadState.blobUrlMap.set(filename, blobUrl);
+    // The minted chunk's prefetched text has no further reader.
+    loadState.sharedDepLists?.ownChunkTexts.delete(chunkUrl);
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-serialised
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-mint-lazy-blob
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-return-complete
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-create-blob
   }
@@ -2498,8 +2635,15 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     if (loadState.lazyLoaderUrl !== undefined) return loadState.lazyLoaderUrl;
 
     // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-mint-stub
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-mint-lazy-stub
     const registry = LazyLoaderRegistry.ensureExposed();
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-lazy-exercised
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-resolve-lazy-chunks
+    // Each call exercised in a loaded chunk reaches this load's resolver,
+    // so the lazy target joins this load's isolated graph.
     const loaderId = registry.register((path) => this.resolveLazyChunk(path, loadState));
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-resolve-lazy-chunks
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-lazy-exercised
 
     // The stub uses `globalThis.__FRONTX_LAZY__.resolve` (exposed by
     // {@link LazyLoaderRegistry}) to reach the host-side resolver. Returning
@@ -2515,6 +2659,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     const url = URL.createObjectURL(blob);
     loadState.lazyLoaderUrl = url;
     return url;
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-mint-lazy-stub
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-mint-stub
   }
 
@@ -2550,51 +2695,164 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * disconnected, empty lineage against the load's shared `inFlight` map.
    */
   private async resolveLazyChunk(
-    relPath: string,
+    argument: string,
     loadState: LoadBlobState
   ): Promise<string> {
-    // Compiled-chunk dynamic imports are sibling-relative: Rollup emits
-    // paths like `./LayoutElements-hash.js` against the importing chunk's
-    // directory. The entry chunk lives in `loadState.entryChunkFilename`
-    // (e.g., `assets/lifecycle-uikit-X.js`); every other chunk in a Vite
-    // build shares that directory, so resolving `./<file>` against the
-    // entry chunk's path produces the correct filename relative to
-    // `loadState.baseUrl` for both the entry chunk and its lazy siblings.
-    const filename = this.resolveRelativePath(
-      loadState.entryChunkFilename,
-      relPath
-    );
+    // A call made by a compiled chunk of this load names that chunk
+    // (`UnitDynamicImportRewriter.callerBinding`), and its path resolves
+    // against the base the chunk resolves against — `publicPath` for the
+    // microfrontend's own code — whatever directory the chunk sits in
+    // (`inst-lai-resolve-relative-path`). A bare path names no caller and
+    // is the entry chunk's.
+    const split = UnitDynamicImportRewriter.splitCallerArgument(argument);
+    const caller = split?.caller ?? loadState.entryChunkFilename;
+    const path = split?.path ?? argument;
+    return this.resolveLazyTarget(this.resolveRelativePath(caller, path), loadState);
+  }
 
-    // inst-lai-lazy-roots: fetch and mint the shared-dep units this lazy
-    // chunk's declared roots reach before its own chain is built, so its
-    // bare specifiers rewrite to blob URLs.
-    await this.ensureLazySharedDepList(loadState, filename);
+  /**
+   * Resolve a lazy target named by its location relative to the asset
+   * base — or an absolute URL — into this load's isolated graph.
+   * Concurrent resolutions of one target share one resolution; the entry
+   * is dropped once it settles so a failed import can be retried and a
+   * settled one answers from the per-load map.
+   */
+  private resolveLazyTarget(
+    filename: string,
+    loadState: LoadBlobState,
+    rewriteNativeDynamicImports = false
+  ): Promise<string> {
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-if-cached
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-return-cached
+    const existing = loadState.blobUrlMap.get(filename);
+    if (existing !== undefined) return Promise.resolve(existing);
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-return-cached
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-if-cached
+    const resolutions = (loadState.lazyResolutions ??= new Map());
+    const joined = resolutions.get(filename);
+    if (joined !== undefined) return joined;
+    const resolution = this.runLazyResolution(
+      filename,
+      loadState,
+      rewriteNativeDynamicImports
+    );
+    resolutions.set(filename, resolution);
+    const release = (): void => {
+      if (resolutions.get(filename) === resolution) resolutions.delete(filename);
+    };
+    resolution.then(release, release);
+    return resolution;
+  }
+
+  private async runLazyResolution(
+    filename: string,
+    loadState: LoadBlobState,
+    rewriteNativeDynamicImports: boolean
+  ): Promise<string> {
+    const shared = loadState.sharedDepLists;
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-if-whole-package
+    // A load whose exposed module has no fetch list has no lists to find:
+    // its target is found by walking the chunk graph below.
+    const wholePackage = shared === undefined;
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-if-whole-package
+    if (shared !== undefined) {
+      await this.fetchLazyTargetLists(filename, loadState, shared);
+    }
 
     // Fresh per-build failure token (see `ChainBuildState`) for THIS
-    // `resolveLazyChunk` call, scoped to `loadState`. A network blip on one
+    // lazy resolution, scoped to `loadState`. A network blip on one
     // lazy import must not latch a load-wide flag that then blocks every
     // later, otherwise-independent, lazy import on the same already-mounted
     // MFE — each call here gets its own token instead of sharing one on
     // `loadState`.
-    const build = createChainBuildState(loadState.sharedDepLists === undefined);
+    const build = createChainBuildState(wholePackage, rewriteNativeDynamicImports);
 
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-walk-chunk-graph
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-return-whole-package
+    // On a whole-package load the chunk graph is walked from the target
+    // under the build's fixed fetch budget, its bare specifiers binding to
+    // the whole-package units the per-load map already holds.
     await this.createBlobUrlChain(
       loadState,
       filename,
       build,
       new Set([loadState.entryChunkFilename])
     );
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-return-whole-package
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-walk-chunk-graph
 
     // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-return-lazy-blob
     const blobUrl = loadState.blobUrlMap.get(filename);
     if (blobUrl === undefined) {
       throw new MfeLoadError(
-        `__frontx_lazy: failed to mint blob URL for lazy chunk '${relPath}'`,
+        `__frontx_lazy: failed to mint blob URL for lazy chunk '${filename}'`,
         loadState.entryId
       );
     }
     return blobUrl;
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-return-lazy-blob
+  }
+
+  /**
+   * The fetch-list rounds of a lazy target of the microfrontend's own
+   * code: the target's list document and its own chunk are requested
+   * together, before either arrives, and the list's second-round batch
+   * follows the document. A target matching no list loads with the units
+   * the per-load map already holds, after one warning per handler.
+   */
+  private async fetchLazyTargetLists(
+    filename: string,
+    loadState: LoadBlobState,
+    shared: SharedDepListLoadContext
+  ): Promise<void> {
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-find-target-list
+    // An own chunk's list is keyed by its location relative to the asset
+    // base, the base an own chunk resolves against.
+    const key = filename;
+    const hasList = shared.ctx.dependentLists.has(key);
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-find-target-list
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-if-no-list
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-else-own-caller
+    if (!hasList) {
+      // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-no-list-warning
+      this.loadDiagnostics.warnOnce(
+        `lazy-no-list:${loadState.entryId}:${filename}`,
+        `[MfeHandlerMF] lazy chunk '${filename}' of '${loadState.entryId}' ` +
+          'matches no lazy-target fetch list of the load; it loads with ' +
+          'the shared units the load already holds, and any shared unit ' +
+          'it needs beyond them is not fetched.'
+      );
+      // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-no-list-warning
+      // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-return-no-list
+      return;
+      // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-return-no-list
+    }
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-else-own-caller
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-if-no-list
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-fetch-lazy-chunk
+    // First round: the list document and the own chunk go out in one
+    // step, neither waiting for the other. The list's second round (its
+    // missing shared units and `ownChunks`) starts on the document's
+    // arrival inside the same resolution.
+    const lists = shared.loader.resolveDependent(
+      shared.ctx,
+      key,
+      shared.resolveAssetUrl,
+      shared.dynamicImports,
+      shared.fetchOwnChunk
+    );
+    const ownChunk = shared.fetchOwnChunk(filename);
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-fetch-lazy-chunk
+    const settled = await Promise.allSettled([lists, ownChunk]);
+    const failure = settled.find(
+      (result): result is PromiseRejectedResult => result.status === 'rejected'
+    );
+    if (failure) {
+      // The chunk is not built after a failed round: nothing reads its
+      // prefetched text, so the hand-off is not kept.
+      shared.ownChunkTexts.delete(MfeHandlerMF.resolveChunkUrl(loadState.baseUrl, filename));
+      throw failure.reason;
+    }
   }
 
   /**
