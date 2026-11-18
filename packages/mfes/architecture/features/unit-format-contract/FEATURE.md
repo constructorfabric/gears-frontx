@@ -109,6 +109,7 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 
 **Success Scenarios**:
 - A host outside a microfrontend load fetches a list item's text through `SharedUnitFetcher`; the text is admitted to the realm cache, as fetched, under the `chunk:` key the content identity the host supplies fixes, so a microfrontend load that needs the same item reuses it.
+- A microfrontend load starts while the host's fetches are in flight: the load's list item whose key is in flight from the host's fetch joins that fetch rather than issuing its own, and a host that fills many items publishes every in-flight entry at once.
 
 **Error Scenarios**:
 - The fetch fails: the call rejects with an `MfeLoadError` carrying the fetcher's label and naming the file, and the rejected fetch is evicted from the realm cache, so a later call fetches the text again.
@@ -116,7 +117,8 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 **Steps**:
 1. [ ] - `p1` - The host constructs `SharedUnitFetcher` with its fetch and a label, and resolves a location to an absolute URL with the location-to-URL resolver `SharedAssetUrlResolver` (`cpt-frontx-algo-unit-format-contract-loader-surface`) - `inst-host-construct`
 2. [ ] - `p1` - The host calls `fetch` with the URL and the content identity; the fetcher derives the `chunk:<contentHash>` key itself and runs `cpt-frontx-algo-unit-format-contract-shared-text-admission` against the realm cache - `inst-host-fetch`
-3. [ ] - `p1` - **RETURN** the admitted text, or the rejection of the fetch - `inst-host-return`
+3. [ ] - `p1` - A microfrontend load whose list item's key is in flight from the host's fetch joins that fetch, as it joins any concurrent load's in-flight fetch, so the unit is fetched once - `inst-host-concurrent-join`
+4. [ ] - `p1` - **RETURN** the admitted text, or the rejection of the fetch - `inst-host-return`
 
 ## 3. Processes / Business Logic (CDSL)
 
@@ -281,6 +283,7 @@ The package **MUST** publish a `./unit-loader` subpath exporting exactly `Shared
 - [ ] A load that has already failed admits no text after the failure, text admitted before the failure stays in the realm cache, and the in-flight entries it published are released under the identity check.
 - [ ] A timed-out attempt releases every realm entry it waited on — `list:`, `chunk:` and whole-package `name@version@…` entries — under the identity check, so a hung fetch on an expired attempt is fetched again by the retry.
 - [ ] A host that calls `SharedUnitFetcher.fetch` with a URL and a content identity receives the fetched text, admitted to the realm cache under the `chunk:` key that content identity fixes.
+- [ ] A microfrontend load that starts while a host's `SharedUnitFetcher` fetches are in flight joins the in-flight entry for each list item whose `chunk:` key the host has published and issues no second fetch for it.
 - [x] The `./unit-format` subpath exports exactly the fetch-list types `SharedDepFetchList`, `SharedDepListItem`, `SharedDepImportEdge`, `SharedDepFileRef`, `SharedDepOpaqueImport`, `SharedDepProducer` and `SharedDepEntryListRefs`, and nothing else.
 - [x] The `./unit-loader` subpath exports exactly `SharedUnitFetcher` and `SharedAssetUrlResolver`; the shared-unit fetcher takes only a fetch function and a label, admits only list items it fetched, under the `chunk:` key derived from the content identity, and never a fetch-list document, which is fetched only inside the package; the subpath's module graph reaches no registry, orchestrating handler or mediator module, and the root barrel gains nothing from either subpath.
 - [x] A realm-slot entry whose protocol version or shape a copy does not recognize is left untouched and never shared — the copy proceeds on its own bounded fallback cache with no thrown error — while a recognized entry is adopted so compatible copies dedupe admitted text by content identity.
