@@ -182,6 +182,11 @@ export class SharedDepListLoader {
    * surfacing); nothing is minted on failure, so a retry re-runs the
    * batch in full.
    *
+   * When `fetchOwnChunk` is given, every distinct entry of the list's
+   * `ownChunks` joins the same batch, requested through that callback by
+   * location; own chunks are never admitted to the realm cache and never
+   * counted in the returned bytes.
+   *
    * Returns the UTF-8 bytes this call's batch actually transferred —
    * cache-joined items count nothing — for the per-load diagnostics
    * summary (F-011).
@@ -191,6 +196,7 @@ export class SharedDepListLoader {
     list: SharedDepFetchList,
     resolveAssetUrl: (location: string) => string,
     dynamicImports?: ListDynamicImportRewrites,
+    fetchOwnChunk?: (location: string) => Promise<unknown>,
   ): Promise<number> {
     this.registerList(ctx, list);
     const bytesBefore = this.fetchedBytes;
@@ -206,17 +212,36 @@ export class SharedDepListLoader {
       queuedHashes.add(item.contentHash);
       missing.push(item);
     }
-    const settled = await Promise.allSettled(
-      missing.map(async (item): Promise<SharedDepListRecord> => {
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-reachable-units
+    // One flat batch, no concurrency limit: every missing list item and
+    // every own chunk the list names, all requested before any response
+    // arrives. Own chunks go through the caller's handler source-text
+    // fetch, by location, and never enter the realm cache; the chain build
+    // later joins the same in-flight entry, so it issues no second request.
+    const itemRequests = missing.map(
+      async (item): Promise<SharedDepListRecord> => {
         const text = await this.admission.admit(
           SharedTextAdmission.chunkKey(item.contentHash),
           resolveAssetUrl(item.location),
           this.fetchText,
         );
         return { item, text };
-      }),
+      },
     );
-    const failure = settled.find(
+    const ownChunks =
+      fetchOwnChunk !== undefined && Array.isArray(list.ownChunks)
+        ? [...new Set(list.ownChunks)]
+        : [];
+    // An async wrapper: the request is still issued synchronously, and a
+    // synchronous throw becomes a rejection of its own promise, so every
+    // promise of the batch exists before `allSettled` observes any.
+    const ownRequests = fetchOwnChunk
+      ? ownChunks.map(async (location) => fetchOwnChunk(location))
+      : [];
+    const all = await Promise.allSettled([...itemRequests, ...ownRequests]);
+    const settled = all.slice(0, itemRequests.length);
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-reachable-units
+    const failure = all.find(
       (r): r is PromiseRejectedResult => r.status === 'rejected',
     );
     if (failure) throw failure.reason;
@@ -244,13 +269,15 @@ export class SharedDepListLoader {
    * the target's delta list document, then fetch and mint
    * its missing items in one parallel batch inside the same load.
    * Concurrent resolutions of one key share one in-flight batch; a
-   * rejected batch is evicted so a later call retries.
+   * rejected batch is evicted so a later call retries. `fetchOwnChunk` is
+   * forwarded to {@link loadList} for the delta list's `ownChunks`.
    */
   resolveDependent(
     ctx: SharedDepListContext,
     key: string,
     resolveAssetUrl: (location: string) => string,
     dynamicImports?: ListDynamicImportRewrites,
+    fetchOwnChunk?: (location: string) => Promise<unknown>,
   ): Promise<void> {
     // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-lazy-roots
     let pending = ctx.pending.get(key);
@@ -261,7 +288,13 @@ export class SharedDepListLoader {
         const list = await this.fetchListDocument(target, resolveAssetUrl);
         // Register BEFORE minting so edges into the delta's own items
         // resolve, then mint only what is still unminted.
-        await this.loadList(ctx, list, resolveAssetUrl, dynamicImports);
+        await this.loadList(
+          ctx,
+          list,
+          resolveAssetUrl,
+          dynamicImports,
+          fetchOwnChunk,
+        );
       };
       pending = ctx.mintQueue.tail.then(batch);
       ctx.mintQueue.tail = pending.then(
