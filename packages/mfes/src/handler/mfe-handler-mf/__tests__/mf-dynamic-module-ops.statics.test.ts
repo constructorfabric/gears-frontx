@@ -1,38 +1,18 @@
 /**
- * Root-barrel compatibility of the dynamic-module operations.
- *
- * `sourceImports`, `rewriteBareSpecifier`, and `importBlobModule` are
- * published from the `@gears-frontx/mfes` root as free functions. The trust
- * kernel now holds them as `DynamicModuleOps` statics; this suite pins that
- * the root still exports all three under the same names with the same
- * behaviour, and that the class itself does not cross the barrel.
+ * Behaviour of the dynamic-module operations statics (`sourceImports`,
+ * `rewriteBareSpecifier`, `importBlobModule`) held by the trust kernel's
+ * `DynamicModuleOps`. They are package-internal: the root barrel does not
+ * export them.
  */
 import { describe, expect, it } from 'vitest';
-import * as publicApi from '../../../index';
-import {
-  importBlobModule,
-  rewriteBareSpecifier,
-  sourceImports,
-} from '../../../index';
 import { DynamicModuleOps } from '../mf-dynamic-module-ops';
 
-describe('dynamic-module ops — package root exports', () => {
-  it('exports sourceImports, rewriteBareSpecifier and importBlobModule as functions', () => {
-    expect(typeof publicApi.sourceImports).toBe('function');
-    expect(typeof publicApi.rewriteBareSpecifier).toBe('function');
-    expect(typeof publicApi.importBlobModule).toBe('function');
-  });
+const sourceImports = (source: string, name: string) => DynamicModuleOps.sourceImports(source, name);
+const rewriteBareSpecifier = (source: string, name: string, replacement: string) =>
+  DynamicModuleOps.rewriteBareSpecifier(source, name, replacement);
+const importBlobModule = (url: string) => DynamicModuleOps.importBlobModule(url);
 
-  it('keeps the original arities', () => {
-    expect(sourceImports.length).toBe(2);
-    expect(rewriteBareSpecifier.length).toBe(3);
-    expect(importBlobModule.length).toBe(1);
-  });
-
-  it('does not export the DynamicModuleOps class from the root', () => {
-    expect(Object.keys(publicApi)).not.toContain('DynamicModuleOps');
-  });
-
+describe('dynamic-module ops — statics', () => {
   describe('sourceImports', () => {
     it('matches static imports, re-exports and side-effect imports in either quote style', () => {
       expect(sourceImports(`import React from "react";`, 'react')).toBe(true);
@@ -60,13 +40,6 @@ describe('dynamic-module ops — package root exports', () => {
       expect(sourceImports(src, 'react')).toBe(true);
       expect(sourceImports(src, 'react')).toBe(true);
     });
-
-    it('agrees with DynamicModuleOps.sourceImports', () => {
-      const src = `import a from "react";\nimport "@scope/pkg";`;
-      for (const name of ['react', '@scope/pkg', 'react-dom']) {
-        expect(sourceImports(src, name)).toBe(DynamicModuleOps.sourceImports(src, name));
-      }
-    });
   });
 
   describe('rewriteBareSpecifier', () => {
@@ -87,15 +60,6 @@ describe('dynamic-module ops — package root exports', () => {
     it('leaves the dynamic import("x") form untouched', () => {
       const src = `const m = import("react");`;
       expect(rewriteBareSpecifier(src, 'react', 'blob:abc')).toBe(src);
-    });
-
-    it('agrees with DynamicModuleOps.rewriteBareSpecifier', () => {
-      const src = `import a from "@scope/pkg";\nimport 'lodash.merge';`;
-      for (const name of ['@scope/pkg', 'lodash.merge', 'absent']) {
-        expect(rewriteBareSpecifier(src, name, 'blob:x')).toBe(
-          DynamicModuleOps.rewriteBareSpecifier(src, name, 'blob:x'),
-        );
-      }
     });
   });
 

@@ -57,7 +57,6 @@ import { SharedTextAdmission } from './SharedTextAdmission';
 import { SharedDepListLoader, type SharedDepListContext } from './SharedDepListLoader';
 import { SharedDepListMinter, type ListDynamicImportRewrites } from './SharedDepListMinter';
 import { LoadDiagnosticsAccumulator } from './LoadDiagnosticsAccumulator';
-import type { RealmSharedDepTextCacheDiagnostics } from './ByteBudgetLruCache';
 
 const RUNTIME_STYLE_ID_PREFIX = '__frontx-mfe-runtime-style-';
 
@@ -1642,23 +1641,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       shared.resolveAssetUrl,
       shared.dynamicImports
     );
-  }
-
-  /**
-   * Diagnostics-hook getter: the realm shared-dep text cache's
-   * byte/entry/budget/eviction snapshot when the cache supports it
-   * (F-011). `undefined` for a structurally conforming cache that
-   * reports no diagnostics.
-   */
-  get sharedDepTextCacheDiagnostics():
-    | RealmSharedDepTextCacheDiagnostics
-    | undefined {
-    const cache = this.sharedDepTextCache as {
-      getDiagnostics?: () => RealmSharedDepTextCacheDiagnostics;
-    };
-    return typeof cache.getDiagnostics === 'function'
-      ? cache.getDiagnostics()
-      : undefined;
   }
 
   /**

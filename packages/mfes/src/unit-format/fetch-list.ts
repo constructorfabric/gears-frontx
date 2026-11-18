@@ -6,11 +6,10 @@
  * `cpt-frontx-adr-shared-dep-reuse`).
  *
  * Each build emits one precomputed flat fetch list per entry — each
- * expose, each lazy target, the shell boot. A list names every shared
- * chunk the entry needs up front: the runtime reads the list (from the
- * manifest, or from boot data embedded in the shell boot chunk),
- * fetches every item missing from the realm text cache in one parallel
- * batch, then mints per load in dependency order. There is no runtime
+ * expose and each lazy target. A list names every shared chunk the
+ * entry needs up front: the runtime reads the list (through the
+ * manifest's `entryLists`), fetches every item missing from the realm
+ * text cache in one parallel batch, then mints per load in dependency order. There is no runtime
  * graph discovery.
  *
  * Fetch-list documents are type-system-neutral JSON build artifacts:
@@ -201,33 +200,3 @@ export interface SharedDepFetchList {
  * field that carries the lists (`cpt-frontx-adr-shared-dep-reuse`).
  */
 export type SharedDepEntryListRefs = Record<string, SharedDepFileRef>;
-
-/**
- * The shell boot data embedded in the shell boot chunk: the shell's own
- * boot {@link SharedDepFetchList} plus the lazy-target lists it
- * references, carried inline because the shell emits no manifest. Where
- * a microfrontend's manifest and list documents name dependent lists by
- * external {@link SharedDepFileRef}, the boot data embeds the inline
- * boot list and the lazy lists themselves. The boot chunk imports the
- * unit loader from `@gears-frontx/mfes/unit-loader` and loads the
- * shell's shared set through it exactly as a microfrontend load does
- * (`cpt-frontx-adr-shared-dep-reuse`).
- */
-export interface SharedDepBootData {
-  /**
-   * The shell boot entry's inline fetch list. Its `lazy` record keeps
-   * the usual keys — each lazy target's chunk location relative to the
-   * shared base — and each key is answered by an entry in
-   * {@link SharedDepBootData.lazyLists} rather than by a fetched
-   * document.
-   */
-  list: SharedDepFetchList;
-  /**
-   * The lazy-target lists the boot list references, embedded inline and
-   * keyed exactly like the boot list's `lazy` record — by the lazy
-   * target's chunk location relative to the shared base. Each value is
-   * the target's own {@link SharedDepFetchList}, holding only what the
-   * target needs beyond its parent chain's lists.
-   */
-  lazyLists: Record<string, SharedDepFetchList>;
-}

@@ -217,7 +217,10 @@ describe('SharedDepListLoader', () => {
     const record = { item: item2('chunks/main.js', 'x', [], []), text: 'x' };
     const l = new SharedDepListLoader(async () => '', 'e', new Map() as never);
     const ctx = l.createContext();
-    ctx.dependentLists.set('chunks/lazy.js', { items: [] });
+    ctx.dependentLists.set('chunks/lazy.js', {
+      location: 'lists/lazy.json',
+      contentHash: 'a'.repeat(64),
+    });
     const token = SharedDepListMinter.resolveLocation(record.item.location, './lazy.js');
     expect(ctx.dependentLists.has(token)).toBe(true);
   });

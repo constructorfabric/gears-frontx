@@ -2,14 +2,14 @@
  * List-driven shared-dependency loader: the runtime half of the
  * per-entry flat fetch-list model
  * (`cpt-frontx-adr-shared-dep-reuse`). Reads an entry's
- * {@link SharedDepFetchList} — from a fetched list document or inline
- * boot data — fetches every item missing from the realm text cache in
+ * {@link SharedDepFetchList} — from a fetched list document —
+ * fetches every item missing from the realm text cache in
  * one parallel batch through `SharedTextAdmission` +
  * `SharedAssetUrlResolver`, and mints per load in dependency order
  * through `SharedDepListMinter`. There is no runtime graph discovery.
  *
  * Lazy-target and pattern lists load on first use: the target's delta
- * list is fetched (or read inline from boot data), its items missing
+ * list is fetched, its items missing
  * from the realm cache are fetched in one parallel batch and minted
  * into the same load — the per-load maps are extended, never replaced —
  * and concurrent resolutions of one target are deduplicated. A failed
@@ -57,12 +57,9 @@ export interface SharedDepListContext {
   readonly itemByLocation: Map<string, SharedDepListItem>;
   /**
    * Dependent-list lookup keyed by the `lazy`/`patterns` record key —
-   * a `SharedDepFileRef` to fetch, or an inline list (boot data).
+   * the `SharedDepFileRef` of the list document to fetch.
    */
-  readonly dependentLists: Map<
-    string,
-    SharedDepFileRef | SharedDepFetchList
-  >;
+  readonly dependentLists: Map<string, SharedDepFileRef>;
   /** One in-flight resolution per dependent-list key. */
   readonly pending: Map<string, Promise<void>>;
   /** Tail of the load's mint-batch chain: batches never interleave. */
@@ -178,18 +175,6 @@ export class SharedDepListLoader {
   }
 
   /**
-   * Register an inline dependent list (shell boot data embeds its lazy
-   * lists rather than referencing documents).
-   */
-  registerInlineList(
-    ctx: SharedDepListContext,
-    key: string,
-    list: SharedDepFetchList,
-  ): void {
-    if (!ctx.dependentLists.has(key)) ctx.dependentLists.set(key, list);
-  }
-
-  /**
    * Fetch every item of `list` missing from the realm text cache in one
    * parallel batch — cache hits are joined without a request — then
    * mint the unminted items in dependency order. The first failure in
@@ -258,7 +243,7 @@ export class SharedDepListLoader {
   /**
    * Resolve a dependent-list key — a `lazy` or `patterns` record key, a
    * lazy chunk's shared-base-relative location — on first use: fetch
-   * the target's delta list (or read it inline), then fetch and mint
+   * the target's delta list document, then fetch and mint
    * its missing items in one parallel batch inside the same load.
    * Concurrent resolutions of one key share one in-flight batch; a
    * rejected batch is evicted so a later call retries.
@@ -275,10 +260,7 @@ export class SharedDepListLoader {
       const batch = async (): Promise<void> => {
         const target = ctx.dependentLists.get(key);
         if (target === undefined) return;
-        const list =
-          'items' in target
-            ? target
-            : await this.fetchListDocument(target, resolveAssetUrl);
+        const list = await this.fetchListDocument(target, resolveAssetUrl);
         // Register BEFORE minting so edges into the delta's own items
         // resolve, then mint only what is still unminted.
         await this.loadList(ctx, list, resolveAssetUrl, dynamicImports);

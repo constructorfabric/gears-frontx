@@ -9,8 +9,7 @@
  * non-literal calls untouched (see `graph-file.ts`). The scan is used by
  * the mint-time rewriter (`UnitDynamicImportRewriter`), so it lives in
  * the `./unit-format` contract directory — it is NOT re-exported through
- * `index.ts`: the public contract surface stays types plus
- * `UnitFormatConformance`.
+ * `index.ts`: the public contract surface stays the fetch-list types.
  *
  * The scan is a small lexer, not a regex: it tracks code, line/block
  * comments, string literals, template literals (including code nested in

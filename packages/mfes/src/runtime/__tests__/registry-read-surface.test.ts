@@ -98,15 +98,6 @@ describe('registry reads return registrations without route', () => {
     expect(read.map((e) => e.id)).toEqual([EXTENSION_ID]);
     for (const e of read) expect(e).not.toHaveProperty('route');
   });
-
-  it('getExtensionsForPackage', async () => {
-    const registry = await buildRegistry();
-
-    const read = registry.getExtensionsForPackage('acme.demo');
-
-    expect(read.map((e) => e.id)).toEqual([EXTENSION_ID]);
-    for (const e of read) expect(e).not.toHaveProperty('route');
-  });
 });
 
 describe('the declared route reaches the injected router', () => {
