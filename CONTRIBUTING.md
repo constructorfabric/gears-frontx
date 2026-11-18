@@ -177,6 +177,11 @@ npm run arch:deps
 
 ### Unit tests
 
+CLI tests create a private home and a separate temporary directory for each test file.
+On Windows, set `FRONTX_TEST_SCRATCH` to an existing writable directory outside
+your user profile if the runner does not already provide such a `RUNNER_TEMP`.
+The harness checks the physical location before creating either directory.
+
 Run the full suite from the repo root with the monorepo fan-out runner ([`scripts/run-monorepo-unit-tests.mjs`](scripts/run-monorepo-unit-tests.mjs)):
 
 ```bash

@@ -13,7 +13,7 @@
 // the real materialize path. It walks a local directory and
 // emits the exact bundle envelope `FsContentStore`
 // (`packages/cli/src/adapters/fs-content-store.ts`) already materializes —
-// `{ "$frontxTemplateFiles": { <relative path>: <file text>, ... } }` — the
+// `{ "$frontxTemplateFiles": { <relative path>: <base64 envelope>, ... } }` — the
 // same envelope the real GitHub adapter (`github-fetch.ts`) produces. The
 // `url` argument the seam passes is ignored: the local adapter's whole point
 // is to serve fixed on-disk content regardless of the fetch address the

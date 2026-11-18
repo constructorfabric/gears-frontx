@@ -82,7 +82,7 @@ function makeCommandInvoker(options: {
       // invoked, exactly as it never is for a genuine resolution failure;
       // this is the real no-op this kit's own `empty-changeset` status
       // names, never a refusal.
-      return { ok: true, status: 'noop' };
+      return { ok: true, status: 'noop', targetVersion: '1.0.0' };
     }
     const decision: ReviewDecision = await onChangeSet(options.changeSet ?? RESOLVABLE_CHANGESET);
     if (decision === 'approved') {
@@ -119,6 +119,17 @@ describe('orchestrateAiDrivenUpgrade (F17 — drives the SINGLE F14 engine throu
     expect(invokeSpy).not.toHaveBeenCalled();
   });
 
+  it('returns PROJECT_INVALID before review or invocation when a parsed entry lacks targets', async () => {
+    const deps = baseDeps({
+      readProvenance: async () => JSON.parse('{"formatVersion":1,"templates":{"my-template":{"origin":"github:acme/repo@v1","version":"1.0.0"}},"projectOwnedRoots":[]}'),
+      invokeUpgradeCommand: vi.fn(),
+    });
+    await expect(orchestrateAiDrivenUpgrade(PROJ_ROOT, 'my-template', '2.0.0', deps))
+      .resolves.toMatchObject({ status: 'project-invalid', code: 'PROJECT_INVALID' });
+    expect(deps.invokeUpgradeCommand).not.toHaveBeenCalled();
+    expect(deps.presentEnrichedReview).not.toHaveBeenCalled();
+  });
+
   // inst-check-not-registered / inst-provenance-not-registered — the document has entries, but none for the named template
   it('returns template-not-registered when the document holds no templates[name] entry for the named template', async () => {
     const { invoke } = makeCommandInvoker({});
@@ -150,7 +161,7 @@ describe('orchestrateAiDrivenUpgrade (F17 — drives the SINGLE F14 engine throu
   // inst-check-not-registered — a multi-entry document, selects the NAMED entry (not the first one)
   it('selects the entry for the named template out of a multi-entry templates map', async () => {
     const readProvenance = vi.fn().mockResolvedValue(PROJECT_STATE);
-    const { invoke } = makeCommandInvoker({});
+    const { invoke } = makeCommandInvoker({ changeSet: { ...RESOLVABLE_CHANGESET, templateIdentity: 'other-template', targetVersion: '4.0.0' } });
     const deps = baseDeps({
       readProvenance,
       invokeUpgradeCommand: invoke,
@@ -182,6 +193,14 @@ describe('orchestrateAiDrivenUpgrade (F17 — drives the SINGLE F14 engine throu
     const result = await orchestrateAiDrivenUpgrade(PROJ_ROOT, 'my-template', '1.0.0', deps);
     expect(result.status).toBe('empty-changeset');
     expect(presentSpy).not.toHaveBeenCalled();
+  });
+
+  it('refuses a noop whose manifest version disagrees with the requested tag', async () => {
+    const { invoke } = makeCommandInvoker({ noop: true });
+    const deps = baseDeps({ invokeUpgradeCommand: invoke });
+    await expect(orchestrateAiDrivenUpgrade(PROJ_ROOT, 'my-template', 'v2.0.0', deps))
+      .rejects.toThrow('Requested ref v2.0.0 resolves to manifest version 1.0.0');
+    expect(deps.presentEnrichedReview).not.toHaveBeenCalled();
   });
 
   // inst-invoke-enrichment / inst-check-changeset — a genuine CLI refusal
@@ -319,4 +338,23 @@ describe('orchestrateAiDrivenUpgrade (F17 — drives the SINGLE F14 engine throu
     await orchestrateAiDrivenUpgrade(PROJ_ROOT, 'my-template', '2.0.0', deps);
     expect(invokeSpy).toHaveBeenCalledTimes(1);
   });
+  it('refuses a version-tag mismatch before presenting the plan', async () => {
+    const deps = baseDeps({});
+    await expect(orchestrateAiDrivenUpgrade(PROJ_ROOT, 'my-template', 'v2.1.0', deps)).rejects.toThrow('manifest version 2.0.0');
+    expect(deps.presentEnrichedReview).not.toHaveBeenCalled();
+  });
+
+  it('preserves lifecycle and recovery guidance if the adapter throws after approval', async () => {
+    const deps = baseDeps({
+      presentEnrichedReview: async () => 'approved',
+      invokeUpgradeCommand: async (_root, _name, _origin, review) => {
+        expect(await review(RESOLVABLE_CHANGESET)).toBe('approved');
+        throw new Error('disconnected');
+      },
+    });
+    const result = await orchestrateAiDrivenUpgrade(PROJ_ROOT, 'my-template', 'v2.0.0', deps);
+    expect(result).toMatchObject({ status: 'apply-failed', code: 'OUTCOME_UNKNOWN',
+      message: expect.stringContaining('--recover'), lifecycleHistory: ['PROVENANCE_READ', 'ANALYZED', 'REVIEWED', 'FAILED'] });
+  });
+
 });

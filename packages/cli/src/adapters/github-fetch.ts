@@ -29,7 +29,7 @@ const ROOT_SUFFIX_PATTERN = /^[0-9a-f]{7,40}$/i;
 // this adapter performs the actual HTTP GET against the GitHub source
 // registry, then GUNZIPs + UNTARs the response body (GitHub's tarball
 // endpoint returns a gzipped tar of the repo at the given ref) and returns
-// the `{ "$frontxTemplateFiles": { <relative path>: <file text>, ... } }`
+// the `{ "$frontxTemplateFiles": { <relative path>: <base64 envelope>, ... } }`
 // bundle envelope that `FsContentStore.writeBundle`
 // (`packages/cli/src/adapters/fs-content-store.ts`) already materializes
 // into the template's actual on-disk files
@@ -115,7 +115,7 @@ async function readBoundedBody(url: string, response: Response, limit: number): 
   if (response.body === null) return Buffer.alloc(0);
   const chunks: Uint8Array[] = [];
   let total = 0;
-  // Throwing out of the loop cancels the stream, so the rest is never fetched.
+  // Cancel the remaining response body when the running total exceeds the cap.
   const reader = response.body.getReader();
   for (;;) {
     const { done, value } = await reader.read();
@@ -143,11 +143,11 @@ interface UnpackedGithubTarball {
 // the rest cannot change framing or content and are ignored. Any other key
 // (notably `size`) refuses.
 const PER_FILE_PAX_KEYS = new Set(['path', 'mtime', 'atime', 'ctime', 'linkpath']);
-const UTF8 = new TextDecoder('utf-8', { fatal: true });
+const UTF8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 
 /**
  * GUNZIPs the GitHub tarball response and UNTARs it, strictly: header
- * checksums, octal sizes, padding and the end-of-archive marker are checked;
+ * checksums, octal sizes and the end-of-archive marker are checked;
  * PAX records are parsed by an exact byte-counted grammar; only regular files,
  * directories and symlinks are accepted; every name must share one
  * `<owner>-<repo>-<abbrev>/` root. Any deviation throws an `Error` naming the
@@ -234,7 +234,7 @@ function unpackGithubTarball(url: string, tarballBytes: Buffer, maxExpandedBytes
     }
     sawEntry = true;
 
-    const name = pending?.get('path') ?? ustarName(header);
+    const name = pending?.get('path') ?? ustarName(header, refuse);
     pending = undefined;
     // A regular file's key below the root is judged by the shared resolver
     // (`inst-resolve-bundle-keys`, `INVALID_PATH`) after subtree narrowing, so
@@ -263,7 +263,7 @@ function unpackGithubTarball(url: string, tarballBytes: Buffer, maxExpandedBytes
       throw refuse(`has an entry with no path below the root: ${JSON.stringify(name)}`);
     }
     if (typeflag === '5') continue;
-    if (taken.has(relative)) throw refuse(`has two entries for "${relative}"`);
+    if (taken.has(relative)) throw refuse(`has two entries for ${JSON.stringify(relative)}`);
     taken.add(relative);
     if (typeflag === '2') {
       symlinks.push(relative);
@@ -290,11 +290,15 @@ function parseOctalField(header: Buffer, start: number, length: number): number 
   return match ? parseInt(match[1]!, 8) : undefined;
 }
 
-function ustarName(header: Buffer): string {
+function ustarName(header: Buffer, refuse: (why: string) => Error): string {
   const field = (start: number, end: number): string => {
     const bytes = header.subarray(start, end);
     const nul = bytes.indexOf(0);
-    return bytes.subarray(0, nul === -1 ? bytes.length : nul).toString('utf-8');
+    try {
+      return UTF8.decode(bytes.subarray(0, nul === -1 ? bytes.length : nul));
+    } catch {
+      throw refuse('has a ustar entry name that is not valid UTF-8');
+    }
   };
   const name = field(0, 100);
   const prefix = header.toString('latin1', 257, 262) === 'ustar' ? field(345, 500) : '';

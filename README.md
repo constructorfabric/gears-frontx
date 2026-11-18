@@ -69,12 +69,9 @@ templates.
 Equips **AI agents with ecosystem-wide capabilities** and lets templates
 contribute their own:
 
-- FrontX-specific skills for agents (create microfrontends, validate templates, generate type definitions, …)
-- Template-bundled AI extensions — skills, workflows, guidelines, reference artifacts — alongside the base capabilities
-- Automatic discovery and activation of installed-template extensions, with no manual wiring
-- AI-driven upgrade orchestration with review gates and impact analysis
-- Ecosystem knowledge available at session start, with no training step
-- Template-agnostic: ships zero template-specific content
+- Request routing and intent-driven scaffolding through installed kit skills
+- Template-specific skills, workflows, guidelines and reference artifacts from applied templates
+- Extension discovery and upgrade orchestration APIs for integrating hosts
 
 Package: `@gears-frontx/cyber-pilot-kit-frontx` — the AI Tooling Kit.
 
@@ -112,14 +109,16 @@ and AI Tooling Framework carry a project through its lifecycle.
 
 ### Requirements
 
-- Node.js 24+
+- Node.js 24.14.0+
 - npm 10+
 
 ### Install the CLI
 
-```bash
-npm install -g @gears-frontx/cli
-```
+This walkthrough requires **FrontX CLI 0.4.0**. Follow the
+[source build instructions](QUICK_START.md#install-the-cli) until the release
+is published. After publication, install `@gears-frontx/cli@0.4.0` with
+`npm install -g @gears-frontx/cli@0.4.0` and verify that `frontx version`
+prints `0.4.0`.
 
 The `frontx` CLI is your entry point to the ecosystem. It resolves templates
 from a source you name and manages them across a project's lifecycle; it ships
@@ -128,53 +127,17 @@ template you apply.
 
 ### Scaffold and evolve a project
 
-```bash
-# Register a template's origin under the project — creates .frontx/project.json
-# on first use. The intended contract is to pin a remote origin to the exact commit or
-# version the fetch settled on, but exact pinning is not currently guaranteed
-# (known defect; see QUICK_START.md, step 2)
-frontx register github:acme/starter-repo@v1.0.0
+[Create your first project](QUICK_START.md#your-first-project) with a local
+template. The walkthrough creates a manifest, registers it, applies it to
+`app` and verifies the generated file. For a project created by an older CLI,
+follow the [manual migration](QUICK_START.md#migrate-a-project-created-by-an-older-cli).
 
-# Apply the registered template to a target, via an explicit batch — the name
-# is the identity the template's own manifest declares, not the repository it
-# came from
-frontx apply --input '{"templates":{"@acme/starter-repo":["."]}}'
-
-# List what the project has registered, plus what is installed locally
-frontx list
-
-# Later, upgrade a registered template to a newer origin (reviewable, reversible)
-frontx upgrade @acme/starter-repo github:acme/starter-repo@v1.1.0
-
-# ...or roll it back to the origin it just left (run again to go back — one generation)
-frontx upgrade @acme/starter-repo --restore
-```
-
-`acme` above is a placeholder: any repository can publish templates. This
-repository contains none, and no published template source is declared
-compatible with the current CLI here. The repository
-[`constructorfabric/gears-frontx-templates`](https://github.com/constructorfabric/gears-frontx-templates)
-has been the place FrontX templates were published from, but when this was
-checked (2026-11-09) its manifests still used the legacy `schemaVersion` /
-`ownershipBoundaries` form that this CLI refuses with `INVALID_MANIFEST`, and
-its README documents older command forms (`frontx seed … --source`,
-`frontx add … --source`) that this CLI does not accept. Do not follow that
-README for the commands of this CLI, and do not assume its templates install
-or register until they are republished in the current manifest form; this
-documentation promises no release or compatibility between the two.
-
-To use the CLI today, author a template folder in the current four-field
-contract and apply it from a local `path:` origin — see
-[QUICK_START.md](QUICK_START.md#a-minimal-local-template-current-contract).
-
-The CLI tracks every registered template's origin and applied targets in one
-`.frontx/project.json`, and upgrades each registered template independently.
-`frontx seed` can register and apply the CLI's own built-in default templates
-in one call, but it accepts nothing else, so it is only as useful as the
-`defaults` set your installed CLI reports in `frontx list`. `register` +
-`apply` is the way to start a project from any template, wherever it is
-published. See [QUICK_START.md](QUICK_START.md) for the full command
-walkthrough, including `seed`, `delete`, and `ownership`, and AI-tooling usage.
+For a published template, register a `github:owner/repo[//subtree]@ref`
+origin. The CLI records the full 40-hex commit stated by the archive and
+refuses an archive missing that commit. Consult the
+[templates repository](https://github.com/constructorfabric/gears-frontx-templates)
+for published versions and the [manifest contract](packages/cli/architecture/features/template-manifest/FEATURE.md)
+for compatibility.
 
 ### The FrontX CLI
 
@@ -188,32 +151,15 @@ filename restrictions; those apply to AI-bundle names only.
 
 | Command | Purpose |
 |---------|---------|
-| `frontx install <spec>` | Install a template from a source-spec (`host:owner/repo[//subtree]@ref`) into the local inventory, tracked under the identity its manifest declares |
-| `frontx list [--json]` | List the CLI's built-in default templates, this project's registered templates, and the local inventory; `--json` emits `{"ok":true,"data":{"defaults":[...],"registered":[...],"installed":[...]}}` |
-| `frontx register <origin> [--replace]` | Register a template's origin under the current project's `.frontx/project.json`, intended to pin a remote origin to the immutable value the fetch settled on; exact pinning is not currently guaranteed (known defect, see the pin note in [QUICK_START.md](QUICK_START.md#2-register-a-templates-origin)) |
-| `frontx assemble --input <batch-json>` | Preview an explicit, target-keyed batch against every registered template's declared ownership; writes nothing |
-| `frontx apply --input <batch-json> [--adopt-existing] [--json [--yes --plan-digest=<digest>]]` | Materialize an explicit batch into the current project — bootstrapping it or extending it further; replacing an existing `.frontx/ai/<name>/` bundle is reviewed first and needs the review's `--plan-digest` |
-| `frontx seed <dir> --input <batch-json> [--adopt-existing] [--json [--yes --plan-digest=<digest>]]` | Bootstrap a **new** project directory from the CLI's own built-in default templates only — see [QUICK_START.md](QUICK_START.md) for where this does and does not work |
-| `frontx upgrade <name> <origin> [--json [--yes --plan-digest=<digest>]]` \| `frontx upgrade <name> --restore [--json [--yes --plan-digest=<digest>]]` | Upgrade a registered template to a new origin, or reverse its most recent upgrade, as a reviewable change set (the confirming `--json --yes` call must carry the review's `--plan-digest`, which binds approval to that plan; without it nothing is applied and the current review is returned). `frontx upgrade <name> --recover [--json [--yes --plan-digest=<digest>]]` finishes or cancels an interrupted upgrade/restore after a fresh review; until then every writing command answers `RECOVERY_REQUIRED` |
-| `frontx unregister <name>` | Remove a registered template that has no applied targets; the one exception is an entry whose origin is confirmed absent (a read or permission error does not qualify) and that recorded no `excludedSubtrees` — it is dropped (JSON `outcome: "orphan-dropped"`) and its files are left on disk. This orphan branch is defensive for an unsupported intermediate state, not a supported migration. See [QUICK_START.md](QUICK_START.md) |
-| `frontx ownership add\|remove\|list <path>` | Manage the project's own reserved paths (`projectOwnedRoots`) |
-| `frontx delete <target> [--dry-run] [--json [--yes --plan-digest=<digest>]]` | Delete an applied template target; confirmation-gated and bound to the reviewed plan (`--yes` needs `--json` and the review's `--plan-digest`; a plan that changed after review is shown again, nothing deleted). Lists paths to remove and preserve, including exclusions, nested targets, project-owned roots, recorded relinquished ground, local origins under the target, environment entries, and unenumerable entries; a covering root may represent paths beneath it. Removing a name's last target also removes its AI bundle; if bundle cleanup fails, the successful result reports `aiBundleResidue`. `--dry-run` needs no confirmation |
-| `frontx validate <templateDir> [--json]` | Validate a template manifest for publication |
-| `frontx validate --project` | Validate `.frontx/project.json` against the registry, the local inventory, and the filesystem |
-| `frontx update-local <identity> <spec>` | Refresh a locally installed template from its source |
+| `frontx install <spec>` | Install into local inventory. |
+| `frontx register <origin>` | Record the manifest name and origin in `.frontx/project.json`. |
+| `frontx assemble --input <batch-json>` | Preview ownership. A missing remote origin may be installed into inventory. |
+| `frontx apply --input <batch-json>` | Materialize the registered templates at the specified targets. |
+| `frontx upgrade <name> <origin>` | Review changes across a template's targets. |
+| `frontx delete <target> --dry-run` | Show which paths deletion would remove and preserve. |
 
-Every command except `help` also accepts `--json` and then emits one JSON
-envelope on stdout. `--yes` is accepted only together with `--json` (on `delete`
-and `upgrade`): without `--json` those commands ask for confirmation interactively,
-and `--yes` alone is refused with exit code 1. The one exception is
-`delete --dry-run`, which needs no confirmation, issues no `planDigest` and accepts `--yes` as a no-op.
-
-Upgrade and restore plans may also include `skipped[]` entries: `OUTSIDE_BOUNDARY`,
-`RESERVED_TEMP_NAME`, or `RETAINED_GROUND`. Skipped paths stay unchanged while the
-recorded version advances; a later upgrade may report retained paths as conflicts.
-Running `upgrade <name> --restore` again is a redo to the origin it just left; only
-one preceding generation is recorded. See [QUICK_START.md](QUICK_START.md) for the
-restore refusal cases and local `path:` upgrade form.
+See the [full command reference](QUICK_START.md#cli-command-reference) and
+[confirmation protocol for agents](QUICK_START.md#confirmation-protocol).
 
 ### AI Tooling
 
@@ -232,25 +178,17 @@ cfs kit install path/packages/cyber-pilot-kit-frontx
 
 On install, its `frontx_`-prefixed resources (KIT-1) register in the project's
 `.cf-studio/config/core.toml` and become available to agents at session start —
-no training step. As shipped today the kit provides four capabilities:
-
-- **Ecosystem fluency and request routing** — a top-level skill (`SKILL.md`), navigation rules (`AGENTS.md`), and boundary guidelines that let agents reason correctly about MFEs, extension domains, source-specs, and the ecosystem/template boundary. Its routing section states which capability serves each kind of FrontX request.
-- **Intent-driven project scaffolding** — the developer says what they want built rather than naming a template; the kit matches that intent against the descriptions installed templates declare, applies the chosen set by running `frontx register`/`frontx apply`, and then realizes each unit the intent names through the applied templates' own activated skills. The direct CLI path stays available unchanged for a developer who already holds a reference.
-- **Template-extension discovery & activation** — a template can ship its own skills, workflows, guidelines, and reference artifacts; on `frontx install`, the kit discovers and activates them in the consuming project, with no manual wiring.
-- **AI-driven upgrade orchestration** — the kit drives template upgrades over the CLI's machine-readable command surface (`frontx upgrade --json`), layering review gates, migration analysis, and downstream impact assessment onto the direct CLI path.
-
-Standalone skills such as creating a microfrontend or generating type
-definitions are PRD-declared (under the `project`/`mfe` namespaces) but not yet
-shipped as discrete skills. The framework is template-agnostic and ships zero
-template-specific content; template-specific capabilities arrive through
-template bundles.
+no training step. The [kit skill](packages/cyber-pilot-kit-frontx/SKILL.md)
+routes requests and guides intent-driven project scaffolding. Applying a
+registered template to its first target materializes its AI bundle. Hosts
+can integrate extension discovery and upgrade orchestration through the npm
+package's [TypeScript APIs](packages/cyber-pilot-kit-frontx/src/index.ts).
 
 ### Repository Structure
 
 This repository ships the **ecosystem** — the runtime, type system, API layer,
 CLI, and AI kit. What an application *becomes* is defined by templates, which
-live and version outside this repository; see the compatibility note above
-before relying on any published source.
+live and version outside this repository; see the manifest contract above.
 
 ```bash
 FrontX/                              # Ecosystem repository root
@@ -277,7 +215,7 @@ layer, CLI, and AI kit:
 git clone https://github.com/constructorfabric/gears-frontx.git
 cd gears-frontx
 npm ci
-npm run build:packages       # build all ecosystem packages
+npm run build:packages       # build the packages in the root aggregate (AI kit excluded)
 npm run test:unit            # unit tests across packages/* and scripts/
 npm run arch:check           # architecture-boundary gates
 npm run arch:deps            # dependency-boundary rules

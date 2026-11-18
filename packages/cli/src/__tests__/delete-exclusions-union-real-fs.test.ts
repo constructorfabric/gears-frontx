@@ -38,7 +38,7 @@
 //   forgotten. `delete`'s own refusal then names `unregister`, not
 //   `register --replace`, as the remedy for exactly this state.
 import path from 'node:path';
-import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile, readFile, symlink, lstat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 import { computeDeletionPlan } from '../scaffold/delete-plan';
@@ -107,6 +107,36 @@ const neverConfirm = async (): Promise<'confirmed' | 'declined'> => {
 };
 
 describe('delete-plan\'s union of RECORDED and CURRENT excludedSubtrees (real filesystem)', () => {
+  it.each([false, true])('deletes a sibling referent and link (unlink fails once: %s)', async (failLink) => {
+    root = await mkdtemp(path.join(tmpdir(), 'frontx-delete-link-'));
+    await mkdir(path.join(root, 'app'));
+    await writeFile(path.join(root, 'app/AGENTS.md'), 'owned');
+    await symlink('AGENTS.md', path.join(root, 'app/CLAUDE.md'));
+    await writeProjectState(root, {
+      formatVersion: 1, templates: { demo: { origin: 'path:gone', version: '1.0.0', targets: ['app'], excludedSubtrees: [] } },
+      projectOwnedRoots: [],
+    });
+    const deps = realDeleteDeps(root);
+    const project = root;
+    const invoke = (remove: typeof deps.removeFileFn) => deleteTarget('app', project, { jsonMode: false, yes: false, dryRun: false }, noInventory,
+      deps.canonicalizeFn, deps.listTargetFilesFn, deps.listUnenumerableTargetEntriesFn, deps.readFileFn,
+      remove, deps.assertPathWithinRootFn, deps.readProjectStateFn, deps.writeProjectStateFn, async () => 'confirmed');
+    const result = await invoke(async (file) => {
+      if (failLink && file.endsWith('CLAUDE.md')) throw new Error('unlink failed');
+      await deps.removeFileFn(file);
+    });
+    if (failLink) {
+      expect(result).toMatchObject({ ok: false, details: { deletedPaths: ['app/AGENTS.md'], failedPath: 'app/CLAUDE.md' },
+        message: expect.stringContaining('review the new plan') });
+      expect(await invoke(deps.removeFileFn)).toMatchObject({ ok: true, outcome: 'deleted', toDelete: [], toPreserve: ['app/CLAUDE.md'] });
+      expect((await lstat(path.join(project, 'app/CLAUDE.md'))).isSymbolicLink()).toBe(true);
+      expect(JSON.parse(await readFile(path.join(project, '.frontx/project.json'), 'utf8')).templates.demo.targets).toEqual([]);
+    } else {
+      expect(result).toMatchObject({ ok: true, outcome: 'deleted', toDelete: ['app/AGENTS.md', 'app/CLAUDE.md'] });
+      await expect(lstat(path.join(project, 'app/CLAUDE.md'))).rejects.toMatchObject({ code: 'ENOENT' });
+    }
+  });
+
   it('a narrowed manifest cannot un-protect ground the recorded declaration already protected, and reports the drift', async () => {
     root = await mkdtemp(path.join(tmpdir(), 'frontx-union-narrow-'));
 

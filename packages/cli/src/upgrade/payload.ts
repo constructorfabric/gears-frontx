@@ -203,6 +203,7 @@ function buildPayloadFromResolved(record: InventoryReadyRecord, origin: string):
   const aiFiles = new Map<string, Buffer>();
   if (bundleFiles) {
     for (const [relativePath, value] of Object.entries(bundleFiles)) {
+      if (relativePath.split('/').slice(0, -1).includes('node_modules')) continue;
       if (relativePath.startsWith(aiPrefix)) {
         const bytes = typeof value === 'string' ? Buffer.from(value, 'utf-8') : isBinaryBundleValue(value) ? decodeBundleValue(value) : null;
         if (bytes === null) {

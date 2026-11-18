@@ -66,7 +66,7 @@ export interface ReviewablePlan {
   ai?: {
     destination: string;
     changes: { path: string; kind: string }[];
-    files: { path: string; length: number; sha256: string }[];
+    files: { path: string; length: number; sha256: string; linkTarget?: string }[];
     // What the destination holds now (lengths and hashes), so a reviewer can tell
     // which local files a `replace`/`local-only` change discards.
     existing: { path: string; length: number; sha256: string; linkTarget?: string }[];

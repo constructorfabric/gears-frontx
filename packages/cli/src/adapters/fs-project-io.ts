@@ -560,9 +560,7 @@ export function createFsWriteProjectFileFn(): WriteProjectFileFn {
 // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-remove
 export function createFsRemoveProjectFileFn(): RemoveProjectFileFn {
   return async function removeProjectFile(absolutePath: string): Promise<void> {
-    if (fs.existsSync(absolutePath)) {
-      fs.rmSync(absolutePath, { force: true });
-    }
+    fs.rmSync(absolutePath, { force: true });
   };
 }
 // @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-remove
@@ -1362,9 +1360,7 @@ function walkFiles(
       // the tree) from having the second one wrongly skipped as "already
       // visited" - only a cycle back to a directory still open on the
       // current path is a cycle at all.
-      files.push(
-        ...descendDirectory(templateDir, relativePath, root, visitedRealDirs, undefined, skipNames, unenumerableSink, pruneNames),
-      );
+      for (const file of descendDirectory(templateDir, relativePath, root, visitedRealDirs, undefined, skipNames, unenumerableSink, pruneNames)) files.push(file);
       continue;
     }
     if (entry.isFile()) {
@@ -1388,9 +1384,7 @@ function walkFiles(
 
     const targetStat = fs.statSync(resolved);
     if (targetStat.isDirectory()) {
-      files.push(
-        ...descendDirectory(templateDir, relativePath, root, visitedRealDirs, resolved, skipNames, unenumerableSink, pruneNames),
-      );
+      for (const file of descendDirectory(templateDir, relativePath, root, visitedRealDirs, resolved, skipNames, unenumerableSink, pruneNames)) files.push(file);
     } else if (targetStat.isFile()) {
       files.push(toPosixPath(relativePath));
     } else {
@@ -1763,8 +1757,10 @@ export function createFsClassifyPathStrictFn(projectRoot: string): ClassifyPathS
         } catch (error) {
           return { kind: 'unknown', reason: (error as NodeJS.ErrnoException).code ?? 'readlink-error' };
         }
-        if (path.isAbsolute(target)) resolved = path.parse(target).root;
-        queue.unshift(...target.split(/[\\/]/).filter((part) => part !== ''));
+        const targetRoot = path.parse(target).root;
+        if (targetRoot) resolved = targetRoot;
+        const relative = target.slice(targetRoot.length);
+        queue.unshift(...(path.sep === '/' ? relative.split('/') : relative.split(/[\\/]/)).filter(Boolean));
         continue;
       }
       if (entryPath !== undefined) entries.push({ path: entryPath, symlink: false });

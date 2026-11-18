@@ -6,7 +6,7 @@
 // the CLI package. Per DESIGN §3.4 ("the only edge is @gears-frontx/mfes
 // -> @gears-frontx/gts-plugin; every other artifact is standalone" /
 // "The AI Tooling Framework coordinates with the CLI by orchestrating its
-// public command surface, not by linking its engine") and ADR-0027 ("reaches
+// public command surface, not by linking its engine") and ADR-0026 ("reaches
 // the engine only through the CLI's invocation surface ... not a dependent
 // of the CLI's command surface"), this kit reaches the single F14 engine
 // (`cpt-frontx-feature-upgrade-changeset`) ONLY through the `frontx upgrade`
@@ -24,7 +24,7 @@ export type ChangeKind = 'add' | 'modify' | 'remove';
 export interface CleanEntry {
   kind: ChangeKind;
   path: string;
-  content?: string; // undefined for 'remove'
+  content?: string; // Optional for custom adapters; CLI review plans carry no file bytes.
 }
 
 export interface ConflictEntry {
@@ -34,14 +34,38 @@ export interface ConflictEntry {
   localContent: string; // current developer-modified content
 }
 
-// Structural mirror of the F14 engine's `ChangeSet` — the reviewable change
-// set carried across the `frontx upgrade` command surface's JSON contract.
+export interface ReviewablePlan {
+  name: string;
+  from: { origin: string; version: string };
+  to: { origin: string; version: string };
+  targets: string[];
+  operations: { target: string; path: string; op: 'ADD' | 'REPLACE' | 'REMOVE' | 'KEEP_LOCAL' | 'UNCHANGED' }[];
+  skipped: { target: string; path: string; reason: string }[];
+  retainedGround?: { template: string; ground: string }[];
+  ai?: {
+    destination: string;
+    changes: { path: string; kind: string }[];
+    files: ReviewableFile[];
+    existing: ReviewableFile[];
+  };
+}
+
+interface ReviewableFile {
+  path: string;
+  length: number;
+  sha256: string;
+  linkTarget?: string;
+}
+
+// Kit-local projection for enrichment. The CLI adapter also supplies the complete review.
 export interface ChangeSet {
   templateIdentity: string;
   baselineVersion: string;
   targetVersion: string;
   clean: CleanEntry[];
-  conflicts: ConflictEntry[];
+  conflicts: ConflictEntry[]; // Custom adapters may supply conflicts; the CLI refuses them before review.
+  plan?: ReviewablePlan;
+  notes?: string[];
 }
 // @cpt-end:cpt-frontx-dod-ai-upgrade-orchestration-flow-complete:p1:inst-changeset-types
 
@@ -93,6 +117,8 @@ export interface SelectedTemplate {
 export interface EnrichedReviewPackage {
   selectedTemplate: SelectedTemplate;
   changeSet: ChangeSet;
+  /** Complete CLI plan and its consequence notes, formatted for the approval prompt. */
+  reviewText?: string;
   impactAnalysis: ChangeImpactAnalysis;
   downstreamAssessment: DownstreamEffectAssessment;
 }
@@ -120,64 +146,7 @@ export type ReadProvenanceFn = (projectRoot: string) => Promise<ProjectStateDocu
 // `../project-state.js` alongside the document shape it looks up — imported
 // directly by callers (e.g. `orchestrate.ts`) rather than re-exported here.
 
-/**
- * The engine's second positional argument is an ORIGIN, not a version —
- * `cpt-frontx-adr-project-upgrade-mechanism` fixes the surface as
- * `upgrade <templateName> <new-origin>` — while this orchestration's own
- * input is the target template VERSION (FEATURE §3 **Input**).
- * `inst-invoke-engine` is precisely what bridges the two: it requires "the
- * target version's RESOLVED origin", so the version is rebased onto the
- * origin the name is currently recorded at rather than handed to the engine
- * verbatim. Passing it verbatim is not a cosmetic mismatch — the engine
- * parses that argument as a source-spec, so a bare `0.2.0` is refused for
- * having no `host:` prefix, and the AI path would fail where the direct CLI
- * path succeeds.
- *
- * The ref is bounded by the FIRST `@` after the `host:` prefix, mirroring
- * the resolver's own grammar rather than re-deriving a second rule for the
- * same syntax (`spec-parser/parse.ts`'s `inst-parse-at-check`: "Only the
- * FIRST `@` bounds the selector, so a ref that itself contains one is
- * unaffected").
- *
- * A local `path:` origin is refused rather than guessed at: it carries no
- * ref to rebase, and a version names nothing inside a directory. Refusing
- * keeps the failure legible at the boundary that can explain it, instead of
- * handing the engine an origin string that means something else.
- */
-export function resolveTargetOrigin(
-  recordedOrigin: string,
-  targetVersion: string,
-): { ok: true; origin: string } | { ok: false; message: string } {
-  const colonIdx = recordedOrigin.indexOf(':');
-  if (colonIdx === -1) {
-    return {
-      ok: false,
-      message: `Recorded origin "${recordedOrigin}" carries no "host:" prefix, so the target version "${targetVersion}" cannot be resolved to an origin.`,
-    };
-  }
-
-  const host = recordedOrigin.slice(0, colonIdx);
-  const remainder = recordedOrigin.slice(colonIdx + 1);
-
-  // The one local-origin scheme the engine recognizes (`upgrade/validate.ts`'s
-  // `LOCAL_ORIGIN_PREFIX`); there is no second spelling for it.
-  if (host === 'path') {
-    return {
-      ok: false,
-      message: `"${recordedOrigin}" is a local origin with no version ref to rebase, so the target version "${targetVersion}" cannot be resolved to an origin. Upgrade a locally-originated template by naming the new origin directly.`,
-    };
-  }
-
-  const atIdx = remainder.indexOf('@');
-  if (atIdx === -1 || atIdx === remainder.length - 1) {
-    return {
-      ok: false,
-      message: `Recorded origin "${recordedOrigin}" carries no "@ref" version selector to rebase onto the target version "${targetVersion}".`,
-    };
-  }
-
-  return { ok: true, origin: `${host}:${remainder.slice(0, atIdx)}@${targetVersion}` };
-}
+export { resolveTargetOrigin } from './resolve-target-origin.js';
 
 // @cpt-begin:cpt-frontx-dod-ai-upgrade-orchestration-single-engine:p1:inst-command-surface-types
 // The `frontx upgrade` command/invocation surface's outcome, mirrored
@@ -207,7 +176,7 @@ export interface UpgradeCommandJsonResult {
   status: 'applied' | 'declined' | 'resolution-failed' | 'apply-failed' | 'noop';
   message?: string;
   /**
-   * The real surface's own `error.code` (the sixteen-code
+   * The real surface's own `error.code` (the shared
    * `cpt-frontx-adr-cli-machine-readable-output` vocabulary) for a
    * `resolution-failed` or `apply-failed` result — carried verbatim rather
    * than collapsed into `message`, so a caller can distinguish e.g.
@@ -218,6 +187,8 @@ export interface UpgradeCommandJsonResult {
    * envelope.
    */
   code?: string;
+  transitionCommitted?: boolean;
+  targetVersion?: string;
 }
 
 // Drives the SINGLE F14 engine strictly through its `frontx upgrade

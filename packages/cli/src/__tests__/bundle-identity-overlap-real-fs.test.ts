@@ -33,6 +33,8 @@
 // Isolation: every project, inventory and home directory lives under one
 // `mkdtemp` sandbox (inside `TMPDIR`) removed in `afterAll`; the one-off tsup
 // build writes into it too.
+import { createRequire } from 'node:module';
+import { sandboxEnv } from './support/sandbox-env';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile, lstat } from 'node:fs/promises';
@@ -53,8 +55,8 @@ beforeAll(async () => {
   await mkdir(path.join(sandbox, 'home'));
   buildDir = path.join(sandbox, 'build');
   execFileSync(
-    'npx',
-    ['tsup', '--no-config', 'src/cli.ts', '--format', 'esm', '--out-dir', buildDir, '--silent'],
+    process.execPath,
+    [createRequire(import.meta.url).resolve('tsup/dist/cli-default.js'), '--no-config', 'src/cli.ts', '--format', 'esm', '--out-dir', buildDir, '--silent'],
     { cwd: packageRoot, stdio: 'pipe', timeout: 180_000 },
   );
 }, 180_000);
@@ -82,7 +84,7 @@ function frontxOnce(project: string, inventory: string, args: string[]): Run {
     cwd: project,
     encoding: 'utf-8',
     timeout: 60_000,
-    env: { PATH: process.env.PATH ?? '', HOME: path.join(sandbox, 'home'), FRONTX_INVENTORY_ROOT: inventory },
+    env: { PATH: process.env.PATH ?? '', ...sandboxEnv(path.join(sandbox, 'home')), FRONTX_INVENTORY_ROOT: inventory },
   });
   expect(result.error, `spawn failed: ${String(result.error)}`).toBeUndefined();
   let envelope: Envelope;

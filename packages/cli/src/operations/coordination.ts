@@ -3,8 +3,9 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { probeVolumeCaseInsensitive } from '../paths/volume-case';
 import { canonicalJson } from '../canonical-json';
-import { acquireNamespaceLockIn, NamespaceLockBusyError } from './namespace-lock';
+import { acquireNamespaceLockIn, NAMESPACE_LOCK_FILENAME, NamespaceLockBusyError } from './namespace-lock';
 
 /**
  * Shared mutation boundary for every writing CLI command (plan-ai-recovery r9 §2–§7):
@@ -15,7 +16,7 @@ import { acquireNamespaceLockIn, NamespaceLockBusyError } from './namespace-lock
  *   the shared reservation, the reservation under the ACTUAL inventory root
  *   (`<root>/.frontx-operations/reservations/<id>.json`), then advances the receipt
  *   to `prepared`; only then may any effect run;
- * - post-commit task status lives in the receipt, which is advanced to
+ * - post-commit task status lives in the project entry. Its receipt is advanced to
  *   `finalizing` with the verified terminal entry before the reservation and
  *   then the receipt are unlinked — never otherwise;
  * - every writer refuses with RECOVERY_REQUIRED while a receipt for its project,
@@ -30,7 +31,7 @@ import { acquireNamespaceLockIn, NamespaceLockBusyError } from './namespace-lock
  */
 export class CoordinationError extends Error {
   constructor(
-    readonly code: 'RECOVERY_REQUIRED' | 'RESOURCE_BUSY',
+    readonly code: 'RECOVERY_REQUIRED' | 'RESOURCE_BUSY' | 'INTERNAL',
     message: string,
     readonly details: Record<string, unknown> = {},
   ) {
@@ -112,7 +113,7 @@ const TEMP = new RegExp(`^${UUID}\\.${UUID}\\.tmp$`);
 const STATUS = new Set<unknown>(['pending', 'done', 'not-required']);
 
 /** Physical spelling: realpath of the nearest existing ancestor plus the missing remainder. */
-// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
 function physicalPath(target: string): string {
   const absolute = path.resolve(target);
   const missing: string[] = [];
@@ -129,10 +130,10 @@ function physicalPath(target: string): string {
     }
   }
 }
-// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
 
 /** Every existing component from `directory` up to (excluding) `root` must be a plain directory. */
-// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
 function assertPlainChain(directory: string, root: string): void {
   for (let current = directory; current !== root && current !== path.dirname(current); current = path.dirname(current)) {
     let stat: fs.Stats;
@@ -147,7 +148,7 @@ function assertPlainChain(directory: string, root: string): void {
     }
   }
 }
-// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
 
 /** Lists a coordination directory whose chain below `root` was proven plain; absent = empty. */
 // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
@@ -196,12 +197,12 @@ function isIntent(value: unknown): value is TransitionIntent {
 // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
 function parseReceipt(file: string): TransitionReceipt {
   const stat = fs.lstatSync(file);
-  if (!stat.isFile()) throw new CoordinationError('RECOVERY_REQUIRED', `Unverifiable recovery record: ${file}`, { path: file });
+  if (!stat.isFile()) throw new CoordinationError('RECOVERY_REQUIRED', `Unverifiable recovery record: ${file}. ${manualHint}`, { path: file });
   let value: unknown;
   try {
     value = JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch {
-    throw new CoordinationError('RECOVERY_REQUIRED', `Malformed recovery record: ${file}`, { path: file });
+    throw new CoordinationError('RECOVERY_REQUIRED', `Malformed recovery record: ${file}. ${manualHint}`, { path: file });
   }
   const r = value as Partial<TransitionReceipt> | null;
   const completionOk =
@@ -214,7 +215,7 @@ function parseReceipt(file: string): TransitionReceipt {
     !isIntent(r.intent) || (r.phase !== 'preparing' && r.phase !== 'prepared' && r.phase !== 'finalizing') ||
     !completionOk || (r.phase === 'finalizing') !== (r.completion !== undefined)
   ) {
-    throw new CoordinationError('RECOVERY_REQUIRED', `Unknown or malformed recovery record: ${file}`, { path: file });
+    throw new CoordinationError('RECOVERY_REQUIRED', `Unknown or malformed recovery record: ${file}. ${manualHint}`, { path: file });
   }
   return r as TransitionReceipt;
 }
@@ -230,7 +231,7 @@ function writeRecord(directory: string, root: string, receipt: TransitionReceipt
   const temp = path.join(directory, `${receipt.id}.${randomUUID()}.tmp`);
   const fd = fs.openSync(temp, 'wx', 0o600);
   try {
-    fs.writeSync(fd, JSON.stringify(receipt));
+    fs.writeFileSync(fd, JSON.stringify(receipt));
     fs.fsyncSync(fd);
   } finally {
     fs.closeSync(fd);
@@ -250,13 +251,29 @@ function unlinkRecord(file: string): void {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
     throw error;
   }
-  if (!stat.isFile()) throw new CoordinationError('RECOVERY_REQUIRED', `Unverifiable recovery record: ${file}`, { path: file });
+  if (!stat.isFile()) throw new CoordinationError('RECOVERY_REQUIRED', `Unverifiable recovery record: ${file}. ${manualHint}`, { path: file });
   fs.unlinkSync(file);
 }
 // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-finalize
 
-const recoverHint = (projectRoot: string) =>
-  `Run "frontx upgrade <name> --recover" in ${projectRoot} with the inventory root the interrupted operation used.`;
+// @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-return-blocked
+const manualHint = 'Inspect the named record and reconcile the project and inventory before moving a stale record aside.';
+
+export function recoverCommandHint(name: string): string {
+  return /^[a-zA-Z0-9@_][a-zA-Z0-9@_./-]*$/.test(name)
+    ? `Run "frontx upgrade ${name} --recover"`
+    : `Run frontx upgrade with the recorded template name ${JSON.stringify(name)} as one argument and --recover`;
+}
+
+function missingReceiptHint(project: string, inventory: string, id: string): string {
+  const receipt = path.join(project, '.frontx', 'operations', id + '.json');
+  return `If receipt ${receipt} is missing, preserve the reservation. Restore the project ${project} and inventory ${inventory} together from a verified consistent backup at their original paths.`;
+}
+
+function recoverHint(receipt: TransitionReceipt): string {
+  return `${recoverCommandHint(receipt.intent.name)} in ${receipt.projectRoot} using inventory ${receipt.inventoryRoot}.`;
+}
+// @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-return-blocked
 
 /**
  * Production boundary. `frontxDirectory` (default `~/.frontx`) holds the per-user
@@ -281,7 +298,10 @@ export function createFsWithMutationScope(
       }
       // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-return-busy
       // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-if-busy
-      throw error;
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new CoordinationError('INTERNAL',
+        `Could not acquire the namespace lock under ${frontxDirectory}: ${reason}. Check that the home exists and its lock directory is private and writable.`,
+        { path: frontxDirectory });
     }
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
     try {
@@ -292,12 +312,12 @@ export function createFsWithMutationScope(
       const ownReservations = reservationsDir(physicalInventory);
 
       // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
-      const blocking: string[] = [];
+      const blocking = new Map<string, string>();
       const pending: Transition[] = [];
 
       // The coordination directory under the inventory root holds nothing but `reservations`.
       for (const entry of listRecords(path.join(physicalInventory, COORDINATION_DIRECTORY), physicalInventory)) {
-        if (entry !== 'reservations') blocking.push(path.join(physicalInventory, COORDINATION_DIRECTORY, entry));
+        if (entry !== 'reservations') blocking.set(path.join(physicalInventory, COORDINATION_DIRECTORY, entry), manualHint);
       }
       const reservationIds = new Set<string>();
       for (const entry of listRecords(ownReservations, physicalInventory)) {
@@ -307,13 +327,17 @@ export function createFsWithMutationScope(
           continue;
         }
         if (!RECORD.test(entry)) {
-          blocking.push(file);
+          blocking.set(file, manualHint);
           continue;
         }
         const reservation = parseReceipt(file);
         // Only the project's own recovery may proceed past its own reservation.
-        if (mode === 'normal' || reservation.projectRoot !== projectRoot) blocking.push(file);
-        else reservationIds.add(reservation.id);
+        if (reservation.projectRoot !== projectRoot) {
+          blocking.set(file, `Reservation belongs to ${reservation.projectRoot}. For a surviving receipt: ${recoverHint(reservation)} ${missingReceiptHint(reservation.projectRoot, reservation.inventoryRoot, reservation.id)}`);
+        } else {
+          reservationIds.add(reservation.id);
+          if (mode === 'normal') blocking.set(file, recoverHint(reservation));
+        }
       }
       // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
 
@@ -360,7 +384,7 @@ export function createFsWithMutationScope(
               throw new CoordinationError(
                 'RECOVERY_REQUIRED',
                 reservation === undefined
-                  ? `Reservation ${reservationPath} of a prepared transition is missing; inspect it by hand.`
+                  ? `Reservation ${reservationPath} of a prepared transition is missing. Inspect receipt ${receiptPath} and restore the matching reservation from a verified backup before retrying finalization.`
                   : `Reservation ${reservationPath} does not match its receipt; inspect it by hand.`,
                 { path: reservationPath },
               );
@@ -376,36 +400,40 @@ export function createFsWithMutationScope(
 
       // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
       for (const entry of listRecords(receiptsDir, projectRoot)) {
+        // In HOME the live SQLite mutex and its DELETE-mode journal share the receipt directory.
+        if ((entry === NAMESPACE_LOCK_FILENAME || entry === `${NAMESPACE_LOCK_FILENAME}-journal`) &&
+            path.relative(physicalPath(frontxDirectory), path.dirname(receiptsDir)) === '') continue;
         const file = path.join(receiptsDir, entry);
         if (mode === 'recover' && TEMP.test(entry)) {
           unlinkRecord(file);
           continue;
         }
         if (!RECORD.test(entry)) {
-          blocking.push(file);
+          blocking.set(file, manualHint);
           continue;
         }
         const receipt = parseReceipt(file);
         if (receipt.projectRoot !== projectRoot) {
           throw new CoordinationError('RECOVERY_REQUIRED', `Recovery record ${file} belongs to another project root (${receipt.projectRoot}).`, { path: file });
         }
-        if (mode === 'normal') blocking.push(file);
+        reservationIds.delete(receipt.id);
+        if (mode === 'normal') blocking.set(file, recoverHint(receipt));
         else pending.push(handle(receipt, file));
       }
       // A reservation always has its receipt (receipt first, reservation unlinked first):
       // one without it is unexplained and stays until a person looks at it.
       for (const id of reservationIds) {
-        if (!pending.some((t) => t.receipt.id === id)) blocking.push(path.join(ownReservations, `${id}.json`));
+        blocking.set(path.join(ownReservations, `${id}.json`), missingReceiptHint(projectRoot, physicalInventory, id));
       }
       // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-collect-records
 
       // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-if-blocked
       // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-return-blocked
-      if (blocking.length > 0) {
+      if (blocking.size > 0) {
         throw new CoordinationError(
           'RECOVERY_REQUIRED',
-          `An interrupted frontx operation must be recovered first (${blocking.join(', ')}). ${recoverHint(projectRoot)}`,
-          { records: blocking },
+          Array.from(blocking, ([file, hint]) => `${file}: ${hint}`).join('\n'),
+          { records: [...blocking.keys()] },
         );
       }
       // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-return-blocked
@@ -448,6 +476,12 @@ export function createFsWithMutationScope(
 }
 
 /** A slot name that would land in the inventory root's coordination directory. */
-export function isReservedSlotName(name: string): boolean {
-  return name.split('/')[0] === COORDINATION_DIRECTORY;
+export function isReservedSlotName(name: string, inventoryRoot: string): boolean {
+  const segment = name.split('/')[0]!;
+  if (segment === COORDINATION_DIRECTORY) return true;
+  if (segment.toLowerCase() !== COORDINATION_DIRECTORY) return false;
+  // The inventory may be on a different volume than the cwd, and may not exist yet.
+  let directory = path.resolve(inventoryRoot);
+  while (!fs.existsSync(directory) && directory !== path.dirname(directory)) directory = path.dirname(directory);
+  return probeVolumeCaseInsensitive(directory);
 }

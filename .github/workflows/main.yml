@@ -52,6 +52,51 @@ jobs:
     - name: Build workspace packages
       run: npm run build:packages
 
+    - name: Audit production package artifacts (high severity)
+      run: |
+        audit_root=$(mktemp -d "$RUNNER_TEMP/production-audit.XXXXXXXX")
+        trap 'rm -rf -- "$audit_root"' EXIT
+        npm run audit:production -- --output-dir "$audit_root/gate"
+
+    - name: Report full toolchain audit
+      if: always()
+      run: |
+        report="$RUNNER_TEMP/toolchain-audit"
+        mkdir -p "$report"
+        status=0
+        npm audit --audit-level=high --include=dev --include=optional --include=peer --json \
+          > "$report/audit.json" 2> "$report/stderr.log" || status=$?
+        printf '%s\n' "$status" > "$report/exit.txt"
+        cat "$report/audit.json"
+        cat "$report/stderr.log" >&2
+        if summary=$(jq -er -s --argjson status "$status" '
+          if length != 1 then error("expected one audit report") else .[0] end
+          | . as $report
+          | .metadata.vulnerabilities as $counts
+          | if $report.auditReportVersion != 2 or ($report | has("error"))
+              or ($report.vulnerabilities | type) != "object"
+              or any(["info", "low", "moderate", "high", "critical", "total"][];
+                     $counts[.] as $n | ($n | type) != "number" or $n < 0 or ($n | floor) != $n)
+              or ($counts.info + $counts.low + $counts.moderate + $counts.high + $counts.critical) != $counts.total
+              or $status != (if $counts.high + $counts.critical > 0 then 1 else 0 end)
+            then error("incomplete or unsuccessful npm audit")
+            else "high \($counts.high), critical \($counts.critical), total \($counts.total)" end
+        ' "$report/audit.json"); then
+          echo "Toolchain audit (report only) — $summary, npm exit $status" >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "Toolchain audit could not obtain a valid report (npm exit $status)." >> "$GITHUB_STEP_SUMMARY"
+          echo "::error::Toolchain audit could not obtain a valid report (npm exit $status)."
+          exit 1
+        fi
+
+    - name: Upload toolchain audit report
+      if: always()
+      uses: actions/upload-artifact@v5
+      with:
+        name: toolchain-audit-node-${{ matrix.node-version }}
+        path: ${{ runner.temp }}/toolchain-audit/
+        if-no-files-found: error
+
     - name: Run TypeScript validation
       run: npm run type-check:all
 
@@ -72,9 +117,6 @@ jobs:
     # why it runs as its own step.
     - name: Verify ui-kit installs into a clean consumer
       run: npm run test:consumer --workspace=@gears-frontx/ui-kit
-
-    - name: Audit dependencies for high severity vulnerabilities
-      run: npm audit --audit-level=high --omit=dev
 
     - name: Run architecture validation
       run: npm run arch:check

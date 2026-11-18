@@ -39,8 +39,8 @@ import { setOwn } from '../own-record';
 //     real on-disk file the CLI can derive from today's resolver output.
 // The inventory root's coordination directory holds shared reservations
 // (`operations/coordination.ts`); a slot there would overwrite or remove them.
-function assertNotCoordinationSlot(name: string): void {
-  if (isReservedSlotName(name)) {
+function assertNotCoordinationSlot(name: string, inventoryRoot: string): void {
+  if (isReservedSlotName(name, inventoryRoot)) {
     throw new Error(`"${name}" names the inventory's reserved "${COORDINATION_DIRECTORY}" directory and cannot be installed.`);
   }
 }
@@ -50,7 +50,7 @@ export class FsContentStore implements ContentStorePort {
 
   // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-write
   write(name: string, content: string): void {
-    assertNotCoordinationSlot(name);
+    assertNotCoordinationSlot(name, this.root);
     const bundle = readWritableBundle(content);
     const installedPath = resolveInstalledContentPath(this.root, name);
     assertWithinRoot(this.root, installedPath);
@@ -71,7 +71,7 @@ export class FsContentStore implements ContentStorePort {
 
   // @cpt-begin:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-replace
   replace(name: string, content: string): void {
-    assertNotCoordinationSlot(name);
+    assertNotCoordinationSlot(name, this.root);
     const bundle = readWritableBundle(content);
     const installedPath = resolveInstalledContentPath(this.root, name);
     assertWithinRoot(this.root, installedPath);

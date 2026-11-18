@@ -345,9 +345,10 @@ const WRITE_ALLOW_LIST: Record<string, FileAllowList> = {
     ],
   },
   'operations/namespace-lock.ts': {
+    'fs.openSync': [{ guard: 'acquireNamespaceLockIn + assertDirectory', note: "Exclusively creates the fixed lock file with mode 0600 in the checked lock directory. An existing entry is inspected before SQLite opens it." }],
     'fs.mkdirSync': [
       { guard: 'acquireNamespaceLockIn + assertDirectory', note: 'Non-recursive mode-0700 create of the per-user `.frontx` dir; only `EEXIST` is tolerated, then `assertDirectory` refuses a symlink, non-directory or foreign-owned entry.' },
-      { guard: 'acquireNamespaceLockIn + assertDirectory', note: 'Same pattern for `.frontx/operations`; `assertDirectory(..., true)` additionally refuses any group/other permission bit.' },
+      { guard: 'acquireNamespaceLockIn + assertDirectory', note: 'Same pattern for `.frontx/operations`; `assertDirectory(..., true)` additionally refuses group/other permission bits on POSIX.' },
     ],
   },
   'adapters/fs-ai-review-materialize.ts': {
@@ -362,9 +363,9 @@ const WRITE_ALLOW_LIST: Record<string, FileAllowList> = {
     'fs.rmdirSync': [{ guard: 'removeEmptyDirectory', note: 'Non-recursive removal of a reviewed `local-only-directory` (or the absent-candidate destination); fails on a non-empty directory.' }],
   },
   'operations/coordination.ts': {
-    'fs.mkdirSync': [{ guard: 'writeRecord', note: 'Creates only `<project>/.frontx/operations` (its `.frontx` already proven a plain directory by the scope scan) or the reservations dir under the lock-verified private `~/.frontx/operations`; runs under the namespace mutex.' }],
-    'fs.openSync': [{ guard: 'writeRecord', note: "Exclusive `'wx'` create of a fresh `<uuid>.json.tmp`: never opens or follows an existing name." }],
-    'fs.writeSync': [{ guard: 'writeRecord', note: 'Writes only to the descriptor the exclusive create above just returned.' }],
+    'fs.mkdirSync': [{ guard: 'writeRecord', note: 'Creates the project receipt directory or inventory reservation directory under the namespace mutex; assertPlainChain checks the directory chain before and after creation.' }],
+    'fs.openSync': [{ guard: 'writeRecord', note: "Exclusive `'wx'` create of a fresh `<intentId>.<uuid>.tmp`: never opens or follows an existing name." }],
+    'fs.writeFileSync': [{ guard: 'writeRecord', note: 'Writes only to the descriptor the exclusive create above just returned.' }],
     'fs.renameSync': [{ guard: 'writeRecord', note: 'Renames this call\'s own temp record onto its `<uuid>.json` name inside the same coordination directory.' }],
     'fs.unlinkSync': [{ guard: 'unlinkRecord', note: 'Unlinks one named record only after `lstat` proves it a regular file; never recursive, never a directory.' }],
   },
@@ -448,6 +449,7 @@ const READ_ALLOW_LIST: Record<string, FileAllowList> = {
     'fs.lstatSync': [{ guard: 'pathOccupied', note: 'Read-only presence probe of an unindexed slot path before any install; unreadable counts as occupied.' }],
   },
   'operations/coordination.ts': {
+    'fs.existsSync': [{ guard: 'isReservedSlotName', note: 'Finds the nearest existing inventory ancestor to probe its filesystem case sensitivity.' }],
     'fs.realpathSync': [{ guard: 'physicalPath', note: 'Canonicalizes the nearest existing ancestor of a project/inventory root; read-only.' }],
     'fs.lstatSync': [
       { guard: 'assertPlainChain', note: 'Proves every existing coordination path component a plain directory before any list, read or write below it.' },
@@ -509,8 +511,7 @@ const READ_ALLOW_LIST: Record<string, FileAllowList> = {
       { guard: 'createFsReadFolderFileBinaryFn', note: 'Only reached once `resolvePathKind` confirms `\'file\'`; returns raw Buffer for byte-preserving reads.' },
     ],
     'fs.existsSync': [
-      { guard: 'createFsCanonicalizeTargetFn', note: 'Containment already proven by canonicalization.' },
-      { guard: 'createFsAssertPathWithinRootFn', note: 'Caller-side guard, `commands/delete.ts`.' },
+      { guard: 'createFsPathExistsFn', note: 'Checks existence of the canonicalized local origin during resolution.' },
     ],
     'fs.realpathSync': [
       {
@@ -554,8 +555,7 @@ const READ_ALLOW_LIST: Record<string, FileAllowList> = {
   'operations/namespace-lock.ts': {
     'fs.lstatSync': [
       { guard: 'assertDirectory', note: 'Read-only shape/owner/mode probe that refuses a symlink or non-directory before the lock file is touched.' },
-      { guard: 'acquireNamespaceLockIn', note: 'Pre-open probe of the lock file; refuses a symlink, non-file, foreign owner or loose mode; only `ENOENT` is tolerated.' },
-      { guard: 'acquireNamespaceLockIn', note: 'Post-open re-check of the same lock file after `chmodSync`; identical refusal, closes the database on failure.' },
+      { guard: 'acquireNamespaceLockIn', note: 'After exclusive create or EEXIST, checks the lock file is regular and has safe permissions before opening SQLite.' },
     ],
   },
   'paths/volume-case.ts': {

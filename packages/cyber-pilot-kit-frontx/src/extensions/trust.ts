@@ -3,7 +3,7 @@
 /**
  * The trust gate predicate (§1.1-1.2): an identity is trusted exactly when
  * the project's single state document holds a `templates[identity]` entry
- * carrying a non-empty `origin` — the fact that a legitimate
+ * carrying a non-empty `origin` with no pending AI bundle write — the fact that a legitimate
  * `register`/`apply` operation produced that pinning, which post-hoc
  * content placed under `.frontx/ai/` outside the CLI cannot fabricate. A
  * local `path:` origin is trusted exactly like a remote one: the
@@ -48,14 +48,16 @@ export function checkIdentityTrust(
   projectState: ProjectStateDocument | null,
 ): { trusted: true } | { trusted: false; denial: TrustDenial } {
   const entry = projectState ? selectTemplateEntry(projectState, identity) : undefined;
+  const aiPending = entry?.pendingPostCommit?.ai === 'pending';
   const isTrusted = !!entry && typeof entry.origin === 'string' && entry.origin.trim().length > 0;
 
   // @cpt-begin:cpt-frontx-flow-template-ai-extensions-bundle-publish-discover-activate:p1:inst-if-untrusted-identity
   // @cpt-begin:cpt-frontx-algo-template-ai-extensions-contract-scan-activate:p1:inst-if-identity-untrusted
-  if (!isTrusted) {
+  if (!isTrusted || aiPending) {
     // @cpt-begin:cpt-frontx-flow-template-ai-extensions-bundle-publish-discover-activate:p1:inst-deny-untrusted-bundle
     // @cpt-begin:cpt-frontx-algo-template-ai-extensions-contract-scan-activate:p1:inst-return-denied-bundle
-    return { trusted: false, denial: transitionBundledToDenied(identity).denial };
+    const reason = aiPending ? `AI bundle materialization for "${identity}" is pending` : undefined;
+    return { trusted: false, denial: transitionBundledToDenied(identity, reason).denial };
     // @cpt-end:cpt-frontx-algo-template-ai-extensions-contract-scan-activate:p1:inst-return-denied-bundle
     // @cpt-end:cpt-frontx-flow-template-ai-extensions-bundle-publish-discover-activate:p1:inst-deny-untrusted-bundle
   }

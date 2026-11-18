@@ -14,11 +14,7 @@
 // (FEATURE §1.2). A manifest declaring any of those retired fields is
 // never read as this shape by any command - `cpt-frontx-algo-template-
 // manifest-refuse-legacy` (./refuse-legacy.ts) refuses it outright instead
-// of translating it into this one. The now-legacy interfaces
-// (`OwnershipBoundary`, `SharedFileEntry`, `MergeStrategy`,
-// `ReferencedTemplate`) moved to `./legacy-ownership.ts`, a temporary
-// module kept only so retiring composition/assembly/upgrade code still
-// compiles during the migration.
+// of translating it into this one. The retired shapes are used only by legacy manifest tests.
 
 export const MANIFEST_FILENAME = 'frontx-template.json';
 
@@ -121,16 +117,12 @@ export type ManifestValidationResult =
   | { status: 'VALIDATED'; violations: [] }
   | { status: 'REJECTED'; violations: ManifestViolation[] };
 
-// State machine states - cpt-frontx-state-template-manifest-validation-lifecycle
-// @cpt-begin:cpt-frontx-state-template-manifest-validation-lifecycle:p1:inst-draft-to-validated
-// @cpt-begin:cpt-frontx-state-template-manifest-validation-lifecycle:p1:inst-draft-to-rejected
+// Editing a rejected candidate and publishing a validated one are developer actions outside the CLI.
 // @cpt-begin:cpt-frontx-state-template-manifest-validation-lifecycle:p1:inst-rejected-to-draft
 // @cpt-begin:cpt-frontx-state-template-manifest-validation-lifecycle:p1:inst-validated-to-published
-export type ManifestValidationState = 'DRAFT' | 'VALIDATED' | 'REJECTED' | 'PUBLISHED';
+export type ManifestValidationState = 'DRAFT' | ManifestValidationResult['status'] | 'PUBLISHED';
 // @cpt-end:cpt-frontx-state-template-manifest-validation-lifecycle:p1:inst-validated-to-published
 // @cpt-end:cpt-frontx-state-template-manifest-validation-lifecycle:p1:inst-rejected-to-draft
-// @cpt-end:cpt-frontx-state-template-manifest-validation-lifecycle:p1:inst-draft-to-rejected
-// @cpt-end:cpt-frontx-state-template-manifest-validation-lifecycle:p1:inst-draft-to-validated
 
 // ReadFileFn — injected for testability (no fs calls in core logic)
 export type ReadFileFn = (path: string) => Promise<string>;

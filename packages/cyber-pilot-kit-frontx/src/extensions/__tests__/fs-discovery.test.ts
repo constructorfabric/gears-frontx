@@ -1,6 +1,6 @@
 // @cpt-algo:cpt-frontx-algo-template-ai-extensions-contract-scan-activate:p1
 import { describe, it, expect } from 'vitest';
-import { discoverExtensionBundlesFromFs, type BundleFsReader } from '../fs-discovery.js';
+import { discoverExtensionBundlesFromFs, readProjectStateDocument, type BundleFsReader } from '../fs-discovery.js';
 
 /**
  * In-memory `BundleFsReader` for fully deterministic, disk-free scan tests.
@@ -396,5 +396,43 @@ describe('discoverExtensionBundlesFromFs — trust gate (§1.1-1.2, §4 transiti
     const bundles = discoverExtensionBundlesFromFs(PROJECT_ROOT, reader);
 
     expect(bundles[0].denial).toBeDefined();
+  });
+});
+
+describe('project state at the discovery boundary', () => {
+  const entry = { origin: 'path:vendor/template', version: '1.0.0', targets: ['.'] };
+  const state = { formatVersion: 3, templates: { template: entry }, projectOwnedRoots: [] };
+
+  it.each([
+    { ...state, formatVersion: 4 },
+    { ...state, projectOwnedRoots: [null] },
+    { ...state, templates: [] },
+    ...[null, { ...entry, origin: 4 }, { ...entry, version: null }, { ...entry, targets: undefined },
+      { ...entry, targets: [null] }, { ...entry, previous: {} }, { ...entry, pendingPostCommit: {} },
+    ].map(invalid => ({ ...state, templates: { template: invalid } })),
+    { ...state, formatVersion: 2, templates: { template: { ...entry, pendingPostCommit: { ai: 'pending' } } } },
+  ])('refuses malformed or unsupported state %#', invalid => {
+    const reader = makeFakeReader({ [PROJECT_STATE_PATH]: JSON.stringify(invalid) });
+    expect(readProjectStateDocument(PROJECT_ROOT, reader)).toBeNull();
+  });
+
+  it('skips only a pending AI bundle before reading its anchor', () => {
+    const pendingEntry = {
+      ...entry,
+      pendingPostCommit: { intentId: '28e6c1e8-b540-492b-b668-8189e15924d1', inventory: 'pending', ai: 'pending' },
+    };
+    const reader = makeFakeReader({
+      [PROJECT_STATE_PATH]: JSON.stringify({ ...state, templates: { pending: pendingEntry, ready: entry } }),
+      [`${AI_ROOT}/pending/extension.json`]: 'unread',
+      [`${AI_ROOT}/ready/extension.json`]: JSON.stringify({ id: 'ready', entries: [] }),
+    });
+    const readFile = reader.readFile;
+    reader.readFile = path => {
+      if (path.startsWith(`${AI_ROOT}/pending/`)) throw new Error('pending bundle read');
+      return readFile(path);
+    };
+    const [pending, ready] = discoverExtensionBundlesFromFs(PROJECT_ROOT, reader);
+    expect(pending.denial?.reason).toMatch(/materialization .* is pending/);
+    expect(ready).toEqual({ identity: 'ready', bundle: [], structuralErrors: [] });
   });
 });

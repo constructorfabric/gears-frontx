@@ -76,6 +76,23 @@ describe('resolveToInventory', () => {
     expect(fetchFn).toHaveBeenCalledWith('https://api.github.com/repos/acme/my-template/tarball/v1.2.0');
   });
 
+  it('addresses the literal ref as one URL path segment', async () => {
+    const fetchFn = vi.fn(async () => manifestContent('widget-kit'));
+    const ref = { ...validRef, ref: 'topic/fix#1%23' };
+    await resolveToInventory({ kind: 'remote', ref }, { fetchFn });
+    expect(fetchFn).toHaveBeenCalledWith('https://api.github.com/repos/acme/my-template/tarball/topic%2Ffix%231%2523');
+  });
+
+  it.each([
+    { ref: '.' }, { ref: '..' }, { owner: '.' }, { repo: '..' },
+    { ref: 'topic\ud800' }, { repo: '\udc00' }, { owner: '\ud800' },
+  ])('refuses an unaddressable GitHub segment before fetch: %j', async (part) => {
+    const fetchFn = vi.fn(async () => manifestContent('widget-kit'));
+    const result = await resolveToInventory({ kind: 'remote', ref: { ...validRef, ...part } }, { fetchFn });
+    expect(result).toMatchObject({ ok: false, error: { code: 'INVALID_INPUT' } });
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
   // inst-resolve-fetch-fail — no partial state on failure
   it('fetch failure returns resolution error (no partial state)', async () => {
     const fetchFn: FetchFn = vi.fn().mockRejectedValue(new Error('503 Service Unavailable'));

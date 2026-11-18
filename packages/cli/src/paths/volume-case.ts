@@ -53,7 +53,7 @@ export function isVolumeCaseInsensitive(probeDir: string = process.cwd()): boole
   return cachedCaseInsensitive;
 }
 
-function probeVolumeCaseInsensitive(probeDir: string): boolean {
+export function probeVolumeCaseInsensitive(probeDir: string): boolean {
   const marker = `frontx-case-probe-${process.pid}-${crypto.randomUUID().replace(/-/g, '')}`;
   const lowerPath = path.join(probeDir, marker.toLowerCase());
   const upperPath = path.join(probeDir, marker.toUpperCase());

@@ -24,6 +24,7 @@
   ],
   "scripts": {
     "build": "tsup",
+    "prepack": "node -e \"require('@gears-frontx/cyber-pilot-kit-frontx')\" && node --input-type=module -e \"await import('@gears-frontx/cyber-pilot-kit-frontx')\"",
     "type-check": "tsc --noEmit",
     "type-check:test": "tsc -p tsconfig.test.json",
     "test": "npm run test:unit",

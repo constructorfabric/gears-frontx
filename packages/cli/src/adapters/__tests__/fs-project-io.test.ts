@@ -713,6 +713,22 @@ describe('createFsListTargetFilesFn', () => {
     return dir;
   }
 
+  it('collects a nested listing larger than the engine argument limit', async () => {
+    const dir = await makeRepo();
+    const nested = path.join(dir, 'nested');
+    await mkdir(nested);
+    await writeFile(path.join(nested, 'file'), '');
+    const [file] = fs.readdirSync(nested, { withFileTypes: true });
+    const readdir = fs.readdirSync;
+    const spy = vi.spyOn(fs, 'readdirSync').mockImplementation(((...args: Parameters<typeof readdir>) =>
+      String(args[0]) === nested ? Array(150_000).fill(file) : readdir(...args)) as typeof readdir);
+    try {
+      expect(await createFsListTargetFilesFn()(dir)).toHaveLength(150_000);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('enumerates real files under an ordinary target directory, unchanged', async () => {
     const dir = await makeRepo();
     await mkdir(path.join(dir, 'app'), { recursive: true });

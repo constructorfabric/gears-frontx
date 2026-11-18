@@ -65,6 +65,29 @@ async function refusal(promise: Promise<unknown>): Promise<CoordinationError> {
 }
 
 describe('mutation scope', () => {
+  it('admits a writer in HOME and still blocks unknown records there and lookalikes elsewhere', async () => {
+    const { root, scopeFor } = world();
+    const scope = scopeFor('inv1');
+    const home = path.join(root, 'home');
+    await expect(scope(home, 'normal', async () => 'ran')).resolves.toBe('ran');
+    for (const [project, entry] of [[home, 'unknown'], [path.join(root, 'a'), 'namespace-lock.sqlite']]) {
+      const dir = path.join(project, '.frontx', 'operations');
+      fs.mkdirSync(dir, { recursive: true });
+      const file = path.join(dir, entry);
+      fs.writeFileSync(file, '');
+      expect((await refusal(scope(project, 'recover', async () => 'ran'))).details).toEqual({ records: [file] });
+    }
+  });
+
+  it('names the lock root and remedy when the home directory is unavailable', async () => {
+    const { root } = world();
+    const frontx = path.join(root, 'missing-home', '.frontx');
+    const scope = createFsWithMutationScope(path.join(root, 'inv1'), frontx);
+    const error = await refusal(scope(root, 'normal', async () => 'ran'));
+    expect(error).toMatchObject({ code: 'INTERNAL', details: { path: frontx } });
+    expect(error.message).toContain('private and writable');
+  });
+
   it('a prepared transition is discoverable from its project and from its actual inventory root', async () => {
     const { root, scopeFor } = world();
     const a = path.join(root, 'a');
@@ -84,9 +107,10 @@ describe('mutation scope', () => {
 
     expect((await refusal(scopeFor('inv1')(a, 'normal', async () => 'ran'))).code).toBe('RECOVERY_REQUIRED');
     // Project discovery does not depend on the caller's current inventory root.
-    expect((await refusal(scopeFor('inv2')(a, 'normal', async () => 'ran'))).code).toBe('RECOVERY_REQUIRED');
+    expect((await refusal(scopeFor('inv2')(a, 'normal', async () => 'ran'))).message).toContain(`frontx upgrade demo --recover" in ${a} using inventory ${path.join(root, 'inv1')}`);
     // Another project sharing the reserved root, also through a symlink alias, is blocked.
     expect((await refusal(scopeFor('inv1')(b, 'normal', async () => 'ran'))).code).toBe('RECOVERY_REQUIRED');
+    expect((await refusal(scopeFor('inv1')(b, 'recover', async () => 'ran'))).message).toContain(`Reservation belongs to ${a}`);
     fs.symlinkSync(path.join(root, 'inv1'), path.join(root, 'inv-link'), 'dir');
     expect((await refusal(scopeFor('inv-link')(b, 'normal', async () => 'ran'))).code).toBe('RECOVERY_REQUIRED');
     await expect(scopeFor('inv2')(b, 'normal', async () => 'ran')).resolves.toBe('ran');
@@ -163,8 +187,17 @@ describe('mutation scope', () => {
     let receiptPath = '';
     await scopeFor('inv1')(a, 'normal', async (scope) => { receiptPath = scope.beginTransition(intent()).receiptPath; });
     fs.unlinkSync(receiptPath);
-    expect((await refusal(scopeFor('inv1')(a, 'normal', async () => 'ran'))).code).toBe('RECOVERY_REQUIRED');
-    expect((await refusal(scopeFor('inv1')(a, 'recover', async () => 'ran'))).code).toBe('RECOVERY_REQUIRED');
+    for (const mode of ['normal', 'recover'] as const) {
+      const error = await refusal(scopeFor('inv1')(a, mode, async () => 'ran'));
+      expect(error.code).toBe('RECOVERY_REQUIRED');
+      expect(error.message).toContain(receiptPath);
+      expect(error.message).toContain('verified consistent backup');
+      expect(error.message).toContain(path.join(root, 'inv1'));
+      expect(error.message).not.toContain('--recover');
+    }
+    const foreign = await refusal(scopeFor('inv1')(path.join(root, 'b'), 'normal', async () => 'ran'));
+    expect(foreign.message).toContain(receiptPath);
+    expect(foreign.message).toContain('verified consistent backup');
     expect(fs.readdirSync(path.join(root, 'inv1', '.frontx-operations', 'reservations'))).toHaveLength(1);
   });
 
@@ -194,6 +227,21 @@ describe('mutation scope', () => {
     const { root, scopeFor } = world();
     fs.mkdirSync(path.join(root, 'inv1', '.frontx-operations', 'stray'), { recursive: true });
     expect((await refusal(scopeFor('inv1')(path.join(root, 'a'), 'normal', async () => 'ran'))).code).toBe('RECOVERY_REQUIRED');
+  });
+
+  it('reserves case variants only where the inventory volume identifies them as the same name', () => {
+    const { root } = world();
+    const inventory = path.join(root, 'inv1');
+    const store = new FsContentStore(inventory);
+    const reserved = path.join(inventory, '.frontx-operations');
+    fs.mkdirSync(reserved);
+    if (fs.existsSync(path.join(inventory, '.FRONTX-OPERATIONS'))) {
+      expect(() => store.replace('.FRONTX-OPERATIONS', 'x')).toThrow(/reserved/);
+    } else {
+      store.write('.FRONTX-OPERATIONS', 'x');
+      fs.rmSync(path.join(inventory, '.FRONTX-OPERATIONS'), { recursive: true });
+    }
+    expect(fs.readdirSync(reserved)).toEqual([]);
   });
 
   it('the content store refuses a slot inside the coordination directory before touching disk', () => {

@@ -1,5 +1,5 @@
 // @cpt-flow:cpt-frontx-flow-cli-scaffolding-delete-target:p1
-// @cpt-state:cpt-frontx-state-cli-scaffolding-delete-op:p1
+// @cpt-state:cpt-frontx-state-cli-scaffolding-delete-op:p2
 //
 // Approval of a `delete` is bound to the reviewed plan — through the BUILT
 // `frontx` executable, as a subprocess, on a real filesystem. The project is
@@ -16,6 +16,8 @@
 // (the digest says only that the caller restated this plan's digest).
 // Isolation: one `mkdtemp` sandbox (project, inventory, home, templates), removed
 // in `afterAll` (best effort); a closed subprocess environment; no network.
+import { createRequire } from 'node:module';
+import { sandboxEnv } from './support/sandbox-env';
 import path from 'node:path';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
@@ -31,7 +33,7 @@ beforeAll(async () => {
   // The CLI's per-user mutex lives under HOME, which it never creates.
   await mkdir(path.join(sandbox, 'home'));
   buildDir = path.join(sandbox, 'build');
-  execFileSync('npx', ['tsup', '--no-config', 'src/cli.ts', '--format', 'esm', '--out-dir', buildDir, '--silent'], {
+  execFileSync(process.execPath, [createRequire(import.meta.url).resolve('tsup/dist/cli-default.js'), '--no-config', 'src/cli.ts', '--format', 'esm', '--out-dir', buildDir, '--silent'], {
     cwd: packageRoot,
     stdio: 'pipe',
     timeout: 180_000,
@@ -52,12 +54,12 @@ interface Run {
   envelope: Envelope;
 }
 
-function frontx(cwd: string, args: string[]): Run {
-  const result = spawnSync(process.execPath, [path.join(buildDir, 'cli.js'), ...args, '--json'], {
+function frontx(cwd: string, args: string[], nodeArgs: string[] = []): Run {
+  const result = spawnSync(process.execPath, [...nodeArgs, path.join(buildDir, 'cli.js'), ...args, '--json'], {
     cwd,
     encoding: 'utf-8',
     timeout: 60_000,
-    env: { PATH: process.env.PATH ?? '', HOME: path.join(sandbox, 'home'), FRONTX_INVENTORY_ROOT: path.join(sandbox, 'inventory') },
+    env: { PATH: process.env.PATH ?? '', ...sandboxEnv(path.join(sandbox, 'home')), FRONTX_INVENTORY_ROOT: path.join(sandbox, 'inventory') },
   });
   expect(result.error, `spawn failed: ${String(result.error)}`).toBeUndefined();
   try {
@@ -169,6 +171,25 @@ describe('delete: approval is bound to the reviewed plan (built binary, real fil
     expect(await exists(path.join(f.bundle, 'guide.md'))).toBe(false);
   });
 
+  it('preserves a bundle edited after actual target removal begins', async () => {
+    const f = await makeProject();
+    const digest = digestOf(review(f));
+    const preload = path.join(f.project, 'edit-bundle.cjs');
+    await writeFile(preload, `
+      const fs = require('node:fs');
+      const original = fs.rmSync;
+      fs.rmSync = function(file, options) {
+        const result = original.call(fs, file, options);
+        if (file === require('node:path').join(process.cwd(), 'app/README.md'))
+          fs.writeFileSync(${JSON.stringify(path.join(f.bundle, 'guide.md'))}, 'local edit');
+        return result;
+      };
+    `);
+    const result = frontx(f.project, ['delete', 'app', '--yes', `--plan-digest=${digest}`], ['--require', preload]);
+    expect(result.envelope.data?.aiBundleResidue).toMatchObject({ path: '.frontx/ai/@acme/tpl' });
+    expect(await readFile(path.join(f.bundle, 'guide.md'), 'utf8')).toBe('local edit');
+  });
+
   it('a bare --json --yes writes nothing and returns the plan with its digest', async () => {
     const f = await makeProject();
     const before = await f.everything();
@@ -217,7 +238,7 @@ describe('delete: approval is bound to the reviewed plan (built binary, real fil
     expect(await exists(path.join(f.bundle, 'guide.md'))).toBe(false);
   });
 
-  it('a change of the preserved set alone (an entry that cannot be enumerated appears) is a changed plan', async () => {
+  it.skipIf(process.platform === 'win32')('adding a POSIX FIFO changes only the preserved set and invalidates the reviewed plan', async () => {
     const f = await makeProject();
     const r1 = review(f);
     execFileSync('mkfifo', [path.join(f.project, 'app/pipe')]);
@@ -362,7 +383,7 @@ async function interactiveDelete(
 ): Promise<{ status: number | null; prompts: string[]; stdout: string }> {
   const child = spawn(process.execPath, [path.join(buildDir, 'cli.js'), 'delete', target], {
     cwd: f.project,
-    env: { PATH: process.env.PATH ?? '', HOME: path.join(sandbox, 'home'), FRONTX_INVENTORY_ROOT: path.join(sandbox, 'inventory') },
+    env: { PATH: process.env.PATH ?? '', ...sandboxEnv(path.join(sandbox, 'home')), FRONTX_INVENTORY_ROOT: path.join(sandbox, 'inventory') },
     stdio: ['pipe', 'pipe', 'pipe'],
   });
   let stdout = '';
@@ -413,6 +434,13 @@ describe('delete: the interactive prompt shows the whole reviewed projection, ow
     expect(out.prompts[0]).toContain('No AI bundle is removed (other targets of @acme/tpl remain).');
     expect(out.prompts[0]).toContain('Would delete:\n  app/README.md');
     expect(await exists(path.join(f.project, 'app/src/main.ts'))).toBe(true);
+  });
+
+  it.skipIf(process.platform === 'win32')('prints a control character in a filename as visible text', async () => {
+    const f = await makeProject();
+    await writeFile(path.join(f.project, 'app', 'line\nbreak'), '');
+    const out = await interactiveDelete(f, 'app', [{ answer: 'n' }]);
+    expect(out.prompts[0]).toContain(String.raw`app/line\u000abreak`);
   });
 
   it('last target: the owner and the bundle path are both on screen', async () => {

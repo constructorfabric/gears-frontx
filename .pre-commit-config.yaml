@@ -27,10 +27,11 @@ repos:
   - repo: local
     hooks:
       - id: audit-high
-        name: Audit dependencies for high severity vulnerabilities
-        entry: npm audit --audit-level=high --omit=dev
+        name: Audit staged production package artifacts (high severity)
+        entry: bash scripts/audit-staged.sh
         language: system
         pass_filenames: false
+        always_run: true
       - id: arch-check
         name: Architecture check
         entry: npm run arch:check

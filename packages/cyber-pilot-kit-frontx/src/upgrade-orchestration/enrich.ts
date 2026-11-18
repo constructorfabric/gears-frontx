@@ -4,7 +4,7 @@
 //
 // PLAN CORRECTION (2026-07-14) — REOPENED: this module no longer invokes the
 // F14 engine directly (that would require importing the CLI package,
-// forbidden by DESIGN §3.4 / ADR-0027). The engine is invoked, through the
+// forbidden by DESIGN §3.4 / ADR-0026). The engine is invoked, through the
 // `frontx upgrade` command/invocation surface, by `orchestrate.ts`
 // (inst-extract-provenance / inst-invoke-engine), which passes the raw
 // change set the command surface computed into this module's pure
@@ -72,7 +72,7 @@ export function computeDownstreamEffects(changeSet: ChangeSet): DownstreamEffect
  */
 export function enrichUpgradeChangeSet(changeSet: ChangeSet, selectedTemplate: SelectedTemplate): EnrichmentResult {
   // @cpt-begin:cpt-frontx-algo-ai-upgrade-orchestration-enrich:p1:inst-check-empty
-  if (changeSet.clean.length === 0 && changeSet.conflicts.length === 0) {
+  if (!changeSet.plan && changeSet.clean.length === 0 && changeSet.conflicts.length === 0) {
     // @cpt-begin:cpt-frontx-algo-ai-upgrade-orchestration-enrich:p1:inst-empty-signal
     return { status: 'empty' };
     // @cpt-end:cpt-frontx-algo-ai-upgrade-orchestration-enrich:p1:inst-empty-signal
@@ -87,7 +87,10 @@ export function enrichUpgradeChangeSet(changeSet: ChangeSet, selectedTemplate: S
   // @cpt-end:cpt-frontx-algo-ai-upgrade-orchestration-enrich:p1:inst-downstream-assess
 
   // @cpt-begin:cpt-frontx-algo-ai-upgrade-orchestration-enrich:p1:inst-combine-results
-  const enriched = { selectedTemplate, changeSet, impactAnalysis, downstreamAssessment };
+  const enriched = {
+    selectedTemplate, changeSet, impactAnalysis, downstreamAssessment,
+    ...(changeSet.plan && { reviewText: JSON.stringify({ plan: changeSet.plan, notes: changeSet.notes }, null, 2) }),
+  };
   // @cpt-end:cpt-frontx-algo-ai-upgrade-orchestration-enrich:p1:inst-combine-results
 
   // @cpt-begin:cpt-frontx-algo-ai-upgrade-orchestration-enrich:p1:inst-return-enriched

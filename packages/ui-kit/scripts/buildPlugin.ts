@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -135,17 +136,66 @@ export function buildPlugin(): PluginOption[] {
   }
 
   function buildEntries(): Plugin {
+    const root = path.resolve('../..');
+    const sidecar = path.join(root, 'dist/audit-production/ui-kit.json');
+    const origins = new Map<string, { ids: string[]; imports: string[] }>();
+    const cssInputs = new Map<string, Set<string>>();
+    const sha256 = (file: string) => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+
+    const verifyCss = (file: string) => {
+      const syntax = fs.readFileSync(file, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\/|"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*'/gu, '');
+      if (/\\|@import\b|\b(?:url|image-set|src)\s*\(/iu.test(syntax)) {
+        throw new Error(`Untracked CSS asset reference: ${file}`);
+      }
+    };
+
     return {
       name: 'ui-kit-build-entries',
       apply: 'build',
       config() {
         return getBuildConfig();
       },
-      closeBundle(error) {
-        if (error) {
-          return;
-        }
+      buildStart() {
+        origins.clear();
+        cssInputs.clear();
+        fs.rmSync(sidecar, { force: true });
+      },
+      renderChunk: {
+        // Vite removes pure CSS chunks before the final bundle is inventoried.
+        order: 'post',
+        handler(_code, chunk) {
+          const ids = chunk.moduleIds.filter((id) => id.endsWith('.css'));
+          for (const css of chunk.viteMetadata?.importedCss ?? []) {
+            const inputs = cssInputs.get(css) ?? new Set<string>();
+            ids.forEach((id) => inputs.add(id));
+            cssInputs.set(css, inputs);
+          }
+        },
+      },
+      generateBundle: {
+        order: 'post',
+        handler(_options, bundle) {
+          for (const chunk of Object.values(bundle)) {
+            if (chunk.type !== 'chunk') continue;
+            const ids = Object.keys(chunk.modules);
+            const imports = [...chunk.imports, ...chunk.dynamicImports]
+              .filter((target) => !Object.hasOwn(bundle, target));
+            origins.set('dist/' + chunk.fileName, { ids, imports });
+          }
 
+          for (const asset of Object.values(bundle)) {
+            if (asset.type !== 'asset' || asset.fileName.endsWith('.map')) continue;
+            const ids = [...(cssInputs.get(asset.fileName) ?? [])];
+            if (!asset.fileName.endsWith('.css') || !ids.length) {
+              throw new Error(`Unknown Rollup asset inputs: ${asset.fileName}`);
+            }
+            ids.forEach(verifyCss);
+            origins.set('dist/' + asset.fileName, { ids, imports: [] });
+          }
+        },
+      },
+      writeBundle() {
         // Design tokens are plain CSS (not a module) and must ship as a
         // separate, consumer-importable file — Vite's lib build only emits
         // CSS that JS actually imports, and theme.css is deliberately never
@@ -201,6 +251,32 @@ export function buildPlugin(): PluginOption[] {
         ]) {
           fs.copyFileSync(file, path.join('dist/docs', path.basename(file)));
         }
+
+        for (const [output, source] of [
+          ['dist/theme.css', 'src/styles/theme.css'],
+          ['dist/utilities.css', 'src/styles/utilities.css'],
+          ['dist/typeset.css', 'src/styles/typeset.css'],
+          ['dist/frontx-ui-grid-css.mjs', 'scripts/frontx-ui-grid-css.mjs'],
+          ['dist/grid-css.mjs', 'src/components/grid/grid-css.mjs'],
+          ['dist/grid-config-check.mjs', 'src/components/grid/grid-config-check.mjs'],
+          ['dist/grid-default-config.json', 'src/components/grid/grid-default-config.json'],
+        ]) {
+          if (source.endsWith('.css')) verifyCss(source);
+          origins.set(output, { ids: [path.resolve(source)], imports: [] });
+        }
+
+        const outputRecords = [...origins].flatMap(([file, { ids, imports }]) => {
+          const inputs = Object.fromEntries(ids.map((id) => {
+            if (!path.isAbsolute(id) || id.includes('\0') || !fs.existsSync(id)) {
+              throw new Error(`Unknown Rollup module input: ${id}`);
+            }
+            return [path.relative(root, id).split(path.sep).join('/'), sha256(id)];
+          }));
+          const variants = fs.existsSync(file + '.map') ? [file, file + '.map'] : [file];
+          return variants.map((output) => [output, { inputs, imports, sha256: sha256(output) }]);
+        });
+        fs.mkdirSync(path.dirname(sidecar), { recursive: true });
+        fs.writeFileSync(sidecar, JSON.stringify(Object.fromEntries(outputRecords)));
       },
     };
   }

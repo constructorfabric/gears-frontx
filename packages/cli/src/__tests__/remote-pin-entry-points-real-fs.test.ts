@@ -11,7 +11,7 @@ import zlib from 'node:zlib';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { run, createRealDeps } from '../cli';
 import { createGithubFetchFn } from '../adapters/github-fetch';
-import { craftTarball, tarballFetch } from './support/crafted-tarball';
+import { craftTarball, tarballFetch, tarballRequestRef } from './support/crafted-tarball';
 import type { CraftedTarball } from './support/crafted-tarball';
 import { withReviewedDigestAsync } from './support/confirm-upgrade';
 
@@ -77,7 +77,7 @@ const indexText = () => readFile(path.join(inventory, 'index.json'), 'utf-8');
 // Serves `refs` by the last URL segment; anything else is a 404.
 function serving(refs: Record<string, Buffer>): typeof fetch {
   return (async (url: string | URL | Request) => {
-    const bytes = refs[String(url).split('/').pop() ?? ''];
+    const bytes = refs[tarballRequestRef(url)];
     return bytes ? new Response(new Uint8Array(bytes), { status: 200 }) : new Response('nf', { status: 404, statusText: 'Not Found' });
   }) as typeof fetch;
 }
@@ -100,8 +100,8 @@ describe('a newly resolved remote origin is persisted as the full PAX commit', (
   });
 
   it('C1. update-local: the index source becomes the full SHA', async () => {
-    const tarballs = { v1: template('1.0.0', SHA_V1), v2: template('2.0.0', SHA_V2) };
-    expect((await invoke(['install', 'github:acme/tpl@v1'], tarballFetch(tarballs))).exitCode).toBe(0);
+    const tarballs = { 'topic/fix#1%23🚀': template('1.0.0', SHA_V1), v2: template('2.0.0', SHA_V2) };
+    expect((await invoke(['install', 'github:acme/tpl@topic/fix#1%23🚀'], tarballFetch(tarballs))).exitCode).toBe(0);
     expect(await indexText()).toContain(`github:acme/tpl@${SHA_V1}`);
     expect((await invoke(['update-local', NAME, 'github:acme/tpl@v2'], tarballFetch(tarballs))).exitCode).toBe(0);
     expect(await indexText()).toContain(`github:acme/tpl@${SHA_V2}`);

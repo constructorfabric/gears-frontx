@@ -1,14 +1,5 @@
-// TEMPORARY module - exists only so the assembly/composition/upgrade code
-// slated for deletion under the manifest contract's cutover from the old
-// five-category shape to the new four-field shape
-// (`cpt-frontx-adr-template-manifest-contract`) keeps compiling during the
-// migration. It is NOT part of the manifest contract - the contract
-// (`cpt-frontx-contract-template-manifest`) declares exactly `name`,
-// `version`, `excludedSubtrees`, `description` (see `./types.ts`) - and
-// carries NO `@cpt-*` markers of its own: nothing here is validated
-// behavior, only a staging area for the types the four-field contract
-// retired. This module is deleted together with its consumers once that
-// retiring code is removed.
+// Test fixtures for the retired five-category manifest. Production manifest
+// validation refuses these fields (cpt-frontx-adr-template-manifest-contract).
 import { readBundleFiles } from '../bundle/envelope';
 import { MANIFEST_FILENAME } from './types';
 

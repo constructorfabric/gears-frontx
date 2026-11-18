@@ -17,19 +17,19 @@
 import { describe, it, expect, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { createInvokeUpgradeCommand, type SpawnFn } from '../invoke-upgrade-command.js';
+import { enrichUpgradeChangeSet } from '../enrich.js';
 import type { ChangeSet, ReviewDecision } from '../types.js';
 
 /** Minimal fake `ChildProcessWithoutNullStreams` double. */
 function makeFakeChild() {
   const emitter = new EventEmitter() as EventEmitter & {
+    kill: ReturnType<typeof vi.fn>;
     stdout: PassThrough;
     stderr: PassThrough;
     stdin: PassThrough & { writtenChunks: unknown[] };
   };
+  emitter.kill = vi.fn();
   emitter.stdout = new PassThrough();
   emitter.stderr = new PassThrough();
   const stdin = new PassThrough() as PassThrough & { writtenChunks: unknown[] };
@@ -44,12 +44,12 @@ function makeFakeChild() {
 }
 
 /** Ends one fake invocation: writes a full stdout envelope, then closes. */
-function respond(child: ReturnType<typeof makeFakeChild>, envelope: unknown, exitCode = 0): void {
+function respond(child: ReturnType<typeof makeFakeChild>, envelope: unknown, exitCode = (envelope as {ok?: boolean}).ok ? 0 : 1): void {
   child.stdout.write(JSON.stringify(envelope));
   child.emit('close', exitCode);
 }
 
-const CONFIRMATION_PLAN = {
+const CONFIRMATION_PLAN: NonNullable<ChangeSet['plan']> = {
   name: 'my-template',
   from: { origin: 'git:example/tpl@1.0.0', version: '1.0.0' },
   to: { origin: 'git:example/tpl@2.0.0', version: '2.0.0' },
@@ -85,6 +85,8 @@ const EXPECTED_CHANGE_SET: ChangeSet = {
     { kind: 'remove', path: 'src/old-file.ts' },
   ],
   conflicts: [],
+  plan: CONFIRMATION_PLAN,
+  notes: [],
 };
 
 describe('createInvokeUpgradeCommand (cpt-frontx-dod-ai-upgrade-orchestration-single-engine)', () => {
@@ -124,7 +126,7 @@ describe('createInvokeUpgradeCommand (cpt-frontx-dod-ai-upgrade-orchestration-si
       respond(secondChild, { ok: true, data: { outcome: 'success', plan: { ...CONFIRMATION_PLAN } } });
 
       const result = await resultPromise;
-      expect(result).toEqual({ ok: true, status: 'applied' });
+      expect(result).toEqual({ ok: true, status: 'applied', targetVersion: '2.0.0' });
 
       expect(firstChild.stdin.writtenChunks).toEqual([]);
       expect(secondChild.stdin.writtenChunks).toEqual([]);
@@ -281,7 +283,7 @@ describe('createInvokeUpgradeCommand (cpt-frontx-dod-ai-upgrade-orchestration-si
     respond(firstChild, { ok: true, data: { outcome: 'noop', at: { origin: 'git:example/tpl@2.0.0', version: '2.0.0' } } });
 
     const result = await resultPromise;
-    expect(result).toEqual({ ok: true, status: 'noop' });
+    expect(result).toEqual({ ok: true, status: 'noop', targetVersion: '2.0.0' });
     expect(onChangeSet).not.toHaveBeenCalled();
     expect(spawnFn).toHaveBeenCalledTimes(1);
   });
@@ -347,54 +349,133 @@ describe('createInvokeUpgradeCommand (cpt-frontx-dod-ai-upgrade-orchestration-si
     await expect(resultPromise).rejects.toThrow(/did not carry the expected/);
   });
 
-  it('never imports @gears-frontx/cli — command-surface-only coupling (no kit->cli package edge)', () => {
-    // Enforced repo-wide by `src/__tests__/no-cli-package-edge.test.ts`;
-    // documented here alongside the adapter's own behavioral coverage.
-    expect(true).toBe(true);
-  });
-});
-
-// Pins this adapter's protocol assumptions against the REAL CLI contract,
-// not against the fake above — a fake nobody checks against the real
-// surface is exactly how the retired stdin-handshake defect this file
-// replaces survived undetected. Reading the CLI's own source text (never
-// importing `@gears-frontx/cli` — this package carries no dependency on it,
-// per `guidelines/ecosystem-boundaries.md`) is the closest available check
-// from inside this package's boundary: an `npm test` run breaks the moment
-// the CLI's envelope shape, its `CONFIRMATION_REQUIRED` details shape, or
-// its `--yes` semantics for `upgrade` drift from what this adapter assumes.
-describe('pinned against the real CLI contract (packages/cli/src, read as text — never imported)', () => {
-  const CLI_SRC = join(dirname(fileURLToPath(import.meta.url)), '../../../../../packages/cli/src');
-  const read = (relativePath: string): string => readFileSync(join(CLI_SRC, relativePath), 'utf-8');
-
-  it('envelope.ts still defines the {ok:true,data} / {ok:false,error:{code,message,details}} shape this adapter parses', () => {
-    const envelope = read('envelope.ts');
-    expect(envelope).toMatch(/interface\s+OkEnvelope<T>\s*\{\s*ok:\s*true;\s*data:\s*T;/);
-    expect(envelope).toMatch(/interface\s+ErrEnvelope\s*\{\s*ok:\s*false;\s*error:\s*EnvelopeError;/);
-    expect(envelope).toMatch(/interface\s+EnvelopeError\s*\{\s*code:\s*ErrorCode;\s*message:\s*string;/);
-    // `CONFIRMATION_REQUIRED` and the other codes this adapter branches on
-    // (or passes through verbatim) still belong to the shared vocabulary.
-    expect(envelope).toMatch(/'CONFIRMATION_REQUIRED'/);
-    expect(envelope).toMatch(/'CONTENT_CONFLICT'/);
+  it.each([undefined, 'yes', true])('refuses invalid review decision %s', async decision => {
+    const child = makeFakeChild();
+    const spawnFn = vi.fn(() => child as never);
+    const pending = createInvokeUpgradeCommand({ spawnFn })('/p', 'my-template', 'ref', async () => decision as ReviewDecision);
+    respond(child, CONFIRMATION_REQUIRED_ENVELOPE);
+    await expect(pending).rejects.toThrow('explicit approval');
+    expect(spawnFn).toHaveBeenCalledTimes(1);
   });
 
-  it('commands/upgrade.ts still reports CONFIRMATION_REQUIRED as {name, plan: renderReviewablePlan(...), planDigest} under details, gated on jsonMode && (no --yes || plan changed since review)', () => {
-    const upgradeCommand = read('commands/upgrade.ts');
-    expect(upgradeCommand).toMatch(/code:\s*'CONFIRMATION_REQUIRED'/);
-    expect(upgradeCommand).toMatch(/details:\s*\{\s*name:\s*templateName,\s*plan:\s*renderReviewablePlan\(outcome\.plan\),\s*planDigest:\s*computePlanDigest\(outcome\.plan\),/);
-    expect(upgradeCommand).toMatch(/flags\.jsonMode\s*&&\s*\(!flags\.yes\s*\|\|\s*planChangedSinceReview\s*\|\|\s*digestMissing\)/);
-    // `--json` never blocks on a TTY: the substitution never reads stdin.
-    expect(upgradeCommand).toMatch(/never reads stdin/);
+  it.each([
+    { plan: { ...CONFIRMATION_PLAN, operations: null } },
+    { plan: { ...CONFIRMATION_PLAN, operations: [{ op: 'MOVE', path: 'a', target: '.' }] } },
+    { plan: { ...CONFIRMATION_PLAN, operations: [{ op: 'ADD', target: '.' }] } },
+    { planDigest: 'bogus' },
+  ])('rejects malformed details before review', async invalid => {
+    const child = makeFakeChild();
+    const review = vi.fn();
+    const pending = createInvokeUpgradeCommand({ spawnFn: () => child as never })('/p', 'my-template', 'ref', review);
+    const { error } = CONFIRMATION_REQUIRED_ENVELOPE;
+    respond(child, { ok: false, error: { ...error, details: { ...error.details, ...invalid } } });
+    await expect(pending).rejects.toThrow();
+    expect(review).not.toHaveBeenCalled();
   });
 
-  it('upgrade/plan.ts still renders a reviewable plan with no content field on its operations', () => {
-    const plan = read('upgrade/plan.ts');
-    expect(plan).toMatch(/interface\s+ReviewableOperation\s*\{\s*target:\s*string;\s*path:\s*string;\s*op:\s*UpgradeOpKind;\s*\}/);
-    expect(plan).not.toMatch(/interface\s+ReviewableOperation\s*\{[^}]*content/);
+  it.each([
+    ['files', -1, DIGEST],
+    ['existing', 0, ''],
+    ['files', 0, 'z'.repeat(64)],
+  ])('rejects invalid AI file metadata in %s before review', async (field, length, sha256) => {
+    const child = makeFakeChild();
+    const spawnFn = vi.fn(() => child as never);
+    const review = vi.fn();
+    const pending = createInvokeUpgradeCommand({ spawnFn })('/p', 'my-template', 'ref', review);
+    const { error } = CONFIRMATION_REQUIRED_ENVELOPE;
+    const ai = { destination: '.frontx/ai/my-template', changes: [], files: [], existing: [],
+      [field]: [{ path: 'a', length, sha256 }] };
+    respond(child, { ok: false, error: { ...error, details: { ...error.details, plan: { ...CONFIRMATION_PLAN, ai } } } });
+    await expect(pending).rejects.toThrow('did not carry the expected');
+    expect(review).not.toHaveBeenCalled();
+    expect(spawnFn).toHaveBeenCalledTimes(1);
   });
 
-  it('cli.ts still routes upgrade through the shared envelope, never the retired bespoke {ok,status} shape', () => {
-    const cli = read('cli.ts');
-    expect(cli).toMatch(/never the retired bespoke `\{ok, status\}`/);
+  it.each([undefined, { origin: 'git:example/tpl@1.0.0' }])('rejects noop without a resolved version', async at => {
+    const child = makeFakeChild();
+    const review = vi.fn();
+    const pending = createInvokeUpgradeCommand({ spawnFn: () => child as never })('/p', 'my-template', 'ref', review);
+    respond(child, { ok: true, data: { outcome: 'noop', at } });
+    await expect(pending).rejects.toThrow('noop');
+    expect(review).not.toHaveBeenCalled();
   });
+
+  it('presents the complete plan when only the AI bundle and version change', async () => {
+    const child = makeFakeChild();
+    const plan = { ...CONFIRMATION_PLAN, operations: [{ target: '.', path: 'a', op: 'UNCHANGED' }],
+      skipped: [{ target: '.', path: 'b', reason: 'RETAINED_GROUND' }], retainedGround: [{ template: 'other', ground: 'b' }],
+      ai: { destination: '.frontx/ai/my-template', changes: [{ path: 'locál', kind: 'local-only' }], files: [], existing: [] } };
+    const notes = ['Project-only files will be removed'];
+    const review = vi.fn(async (changeSet: ChangeSet) => {
+      const result = enrichUpgradeChangeSet(changeSet, { name: plan.name, ...plan.from, targets: plan.targets });
+      expect(result.status).toBe('enriched');
+      if (result.status === 'enriched') expect(JSON.parse(result.package.reviewText!)).toEqual({ plan, notes });
+      return 'declined' as const;
+    });
+    const pending = createInvokeUpgradeCommand({ spawnFn: () => child as never })('/p', plan.name, 'ref', review);
+    const raw = Buffer.from(JSON.stringify({ ok: false, error: { ...CONFIRMATION_REQUIRED_ENVELOPE.error,
+      details: { name: plan.name, plan, notes, planDigest: DIGEST } } }));
+    const split = raw.indexOf(Buffer.from('á')) + 1;
+    child.stdout.write(raw.subarray(0, split));
+    child.stdout.write(raw.subarray(split));
+    child.emit('close', 1);
+    await expect(pending).resolves.toMatchObject({ status: 'declined' });
+    expect(review).toHaveBeenCalledOnce();
+  });
+
+  it.each(['RESOURCE_BUSY', 'RECOVERY_REQUIRED'])('relays %s before and after approval', async code => {
+    const refusal = { ok: false, error: { code, message: 'refused', details: { transitionCommitted: code === 'RECOVERY_REQUIRED' } } };
+    for (const confirm of [false, true]) {
+      const first = makeFakeChild();
+      const second = makeFakeChild();
+      const spawnFn = vi.fn().mockReturnValueOnce(first).mockReturnValueOnce(second);
+      const pending = createInvokeUpgradeCommand({ spawnFn })('/p', 'my-template', 'ref', async () => 'approved');
+      respond(first, confirm ? CONFIRMATION_REQUIRED_ENVELOPE : refusal);
+      if (confirm) {
+        await vi.waitFor(() => expect(spawnFn).toHaveBeenCalledTimes(2));
+        respond(second, refusal);
+      }
+      await expect(pending).resolves.toMatchObject({ status: confirm ? 'apply-failed' : 'resolution-failed', code,
+        ...(confirm && code === 'RECOVERY_REQUIRED' && { transitionCommitted: true }) });
+    }
+  });
+
+  it.each(['spawn', 'stderr-only', 'non-json', 'signal', 'exit mismatch', 'unknown outcome', 'review superseded'])(
+    'reports confirmation failure: %s', async failure => {
+      const first = makeFakeChild();
+      const second = makeFakeChild();
+      const spawnFn = vi.fn().mockReturnValueOnce(first).mockReturnValueOnce(second);
+      const pending = createInvokeUpgradeCommand({ spawnFn })('/p', 'my-template', 'ref', async () => 'approved');
+      respond(first, CONFIRMATION_REQUIRED_ENVELOPE);
+      await vi.waitFor(() => expect(spawnFn).toHaveBeenCalledTimes(2));
+      switch (failure) {
+        case 'spawn': second.emit('error', new Error('ENOENT')); break;
+        case 'stderr-only': second.stderr.write('post-commit failure'); second.emit('close', 2); break;
+        case 'signal': second.emit('close', null, 'SIGKILL'); break;
+        case 'non-json': second.stdout.write('broken'); second.emit('close', 0); break;
+        case 'exit mismatch': respond(second, { ok: true, data: { outcome: 'success', plan: CONFIRMATION_PLAN } }, 2); break;
+        case 'unknown outcome': respond(second, { ok: true, data: { outcome: 'released' } }); break;
+        case 'review superseded': respond(second, { ok: false, error: { code: 'CONFIRMATION_REQUIRED',
+          message: 'already at candidate', details: { reviewSuperseded: true } } }); break;
+      }
+      await expect(pending).resolves.toMatchObject({ status: 'apply-failed', code: failure === 'review superseded' ? 'CONFIRMATION_REQUIRED' : 'OUTCOME_UNKNOWN' });
+      expect(spawnFn).toHaveBeenCalledTimes(2);
+    });
+
+  it('rejects flag-like template names before spawning', async () => {
+    const spawnFn = vi.fn();
+    await expect(createInvokeUpgradeCommand({ spawnFn })('/p', '--restore', 'ref', vi.fn())).rejects.toThrow('flag-like');
+    expect(spawnFn).not.toHaveBeenCalled();
+  });
+
+  it.each(['timeout', 'output'])('terminates the child on %s before review', async reason => {
+    const child = makeFakeChild();
+    const review = vi.fn();
+    const pending = createInvokeUpgradeCommand({ spawnFn: () => child as never, timeoutMs: 50 })('/p', 'my-template', 'ref', review);
+    if (reason === 'output') child.stdout.write(Buffer.alloc(16 * 1024 * 1024 + 1));
+    await expect(pending).rejects.toThrow(reason === 'timeout' ? 'timed out' : 'output limit');
+    expect(child.kill).toHaveBeenCalledWith('SIGKILL');
+    expect(review).not.toHaveBeenCalled();
+  });
+
 });

@@ -38,12 +38,12 @@ describe('createLocalFetchFn — TEST-ONLY local content adapter', () => {
     const files = readBundleFiles(content);
     expect(files).toBeDefined();
     const keys = Object.keys(files!).sort();
-    expect(keys).toEqual(['frontx-template.json', path.join('src', 'index.ts')].sort());
+    expect(keys).toEqual(['frontx-template.json', 'src/index.ts'].sort());
     for (const v of Object.values(files!)) {
       expect(isBinaryBundleValue(v)).toBe(true);
     }
     expect(decodeBundleValue(files!['frontx-template.json'] as never)?.toString('utf-8')).toBe('{"name":"fixture","version":"1.0.0"}');
-    expect(decodeBundleValue(files![path.join('src', 'index.ts')] as never)?.toString('utf-8')).toBe('export {};');
+    expect(decodeBundleValue(files!['src/index.ts'] as never)?.toString('utf-8')).toBe('export {};');
   });
 
   it('preserves exact bytes for a file containing invalid UTF-8 sequences', async () => {

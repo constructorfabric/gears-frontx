@@ -29,47 +29,58 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0 # Full history needed for github.event.before comparison
+          persist-credentials: false
 
       - name: Detect version changes
         id: detect
+        shell: bash
+        env:
+          BASE_COMMIT: ${{ github.event.before }}
         run: |
           PACKAGES=()
-          BASE_COMMIT="${{ github.event.before }}"
+          if [[ "$BASE_COMMIT" == "0000000000000000000000000000000000000000" ]]; then
+            echo "No pre-push commit to compare; no versions selected."
+            printf '%s\n' 'packages=[]' 'has_changes=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git rev-parse --verify "$BASE_COMMIT^{commit}" >/dev/null
           echo "Comparing HEAD against pre-push state: $BASE_COMMIT"
 
-          for pkg_dir in packages/*/; do
-            pkg_json="${pkg_dir}package.json"
-            [ -f "$pkg_json" ] || continue
-
-            # Private packages can never be published — skip them. Without
-            # this, a package that is private while it matures (ui-kit until
-            # its MVP set lands) enters the matrix on its first commit and
-            # fails the run on `npm publish`.
-            IS_PRIVATE=$(jq -r '.private // false' "$pkg_json")
-            if [ "$IS_PRIVATE" = "true" ]; then continue; fi
-
-            if git diff "$BASE_COMMIT" --name-only | grep -q "^${pkg_json}$"; then
-              OLD_VERSION=$(git show "$BASE_COMMIT":"$pkg_json" 2>/dev/null | jq -r '.version' || echo "")
-              NEW_VERSION=$(jq -r '.version' "$pkg_json")
-              NPM_NAME=$(jq -r '.name' "$pkg_json")
-
-              if [ "$OLD_VERSION" != "$NEW_VERSION" ] && [ -n "$NEW_VERSION" ]; then
-                echo "Version change detected: $NPM_NAME $OLD_VERSION -> $NEW_VERSION"
-                PACKAGES+=("{\"name\":\"$NPM_NAME\",\"path\":\"${pkg_dir%/}\",\"version\":\"$NEW_VERSION\"}")
-              fi
+          candidates=$(mktemp "$RUNNER_TEMP/publish-candidates.XXXXXXXX")
+          trap 'rm -f -- "$candidates"' EXIT
+          node --input-type=module > "$candidates" <<'JS'
+          import { readEcosystemPackages, readPackageManifest } from './scripts/ecosystem-packages.mjs';
+          for (const { dir, name, version } of readEcosystemPackages(process.cwd())) {
+            const path = `packages/${dir}`;
+            if (readPackageManifest(`${path}/package.json`).private !== true) {
+              console.log(JSON.stringify({ path, name, version }));
+            }
+          }
+          JS
+          while IFS= read -r row; do
+            pkg_json="$(jq -er '.path' <<< "$row")/package.json"
+            OLD_VERSION=""
+            if git cat-file -e "$BASE_COMMIT:$pkg_json" 2>/dev/null; then
+              OLD_VERSION=$(git show "$BASE_COMMIT:$pkg_json" | jq -r '.version')
             fi
-          done
+            NEW_VERSION=$(jq -er '.version' <<< "$row")
+            if [[ "$OLD_VERSION" != "$NEW_VERSION" ]]; then
+              NPM_NAME=$(jq -er '.name' <<< "$row")
+              echo "Version change detected: $NPM_NAME $OLD_VERSION -> $NEW_VERSION"
+              PACKAGES+=("$row")
+            fi
+          done < "$candidates"
 
           if [ ${#PACKAGES[@]} -eq 0 ]; then
             echo "No ecosystem packages with version changes"
-            echo "packages=[]" >> $GITHUB_OUTPUT
-            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "packages=[]" >> "$GITHUB_OUTPUT"
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
           else
             # PUBLISH ORDER: @gears-frontx/gts-plugin declares an EXACT
             # dependency on @gears-frontx/mfes, so publishing it first puts a
             # tarball on the registry whose own dependency does not resolve yet.
             # Anyone installing gts-plugin in that window gets an ETARGET; the
-            # window closes only when mfes lands. Directory-glob order above is
+            # window closes only when mfes lands. Manifest discovery order is
             # alphabetical, which puts gts-plugin BEFORE mfes - precisely the
             # wrong way round (review round 3 on #492).
             #
@@ -84,8 +95,8 @@ jobs:
                 else 1 end;
               sort_by((.name | publishRank), .name)')
             echo "Publish order: $(echo "$JSON_ARRAY" | jq -r '[.[].name] | join(" -> ")')"
-            echo "packages=$JSON_ARRAY" >> $GITHUB_OUTPUT
-            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "packages=$JSON_ARRAY" >> "$GITHUB_OUTPUT"
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
           fi
 
   publish-ecosystem:
@@ -98,6 +109,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
@@ -123,14 +136,57 @@ jobs:
       - name: Build ecosystem packages
         run: npm run build:packages
 
-      - name: Publish packages
-        id: publish
+      - name: Select unpublished versions
+        id: selection
+        shell: bash
         env:
+          PACKAGES: ${{ needs.detect-ecosystem.outputs.packages }}
+        run: |
+          audit_root=$(mktemp -d "$RUNNER_TEMP/production-audit.XXXXXXXX")
+          echo "audit_root=$audit_root" >> "$GITHUB_OUTPUT"
+          pending=() skipped=()
+          jq -c 'if type == "array" then .[] else error("expected package list") end' <<< "$PACKAGES" > "$audit_root/candidates.jsonl"
+          while IFS= read -r row; do
+            name=$(jq -er '.name' <<< "$row")
+            version=$(jq -er '.version' <<< "$row")
+            if npm view "$name@$version" version --json --prefer-online > "$audit_root/view.json" 2> "$audit_root/view.err"; then
+              jq -e --arg version "$version" '. == $version' "$audit_root/view.json" >/dev/null
+              echo "SKIPPING: $name@$version already exists on NPM"
+              skipped+=("$(jq -c '. | {name,version,reason:"already exists on NPM"}' <<< "$row")")
+            elif jq -e -s 'length == 1 and .[0].error.code == "E404"' "$audit_root/view.json" >/dev/null; then
+              pending+=("$row")
+            else
+              cat "$audit_root/view.json" "$audit_root/view.err" >&2
+              echo "Could not determine registry status for $name@$version" >&2
+              exit 1
+            fi
+          done < "$audit_root/candidates.jsonl"
+          printf '%s\n' "${pending[@]}" | jq -sc '.' > "$audit_root/publish-set.json"
+          printf '%s\n' "${skipped[@]}" | jq -sc '.' > "$audit_root/skipped.json"
+
+      - name: Audit production package artifacts (high severity)
+        env:
+          AUDIT_ROOT: ${{ steps.selection.outputs.audit_root }}
+        shell: bash
+        run: |
+          args=(--output-dir "$AUDIT_ROOT/gate")
+          count=$(jq -er -s '
+            if length == 1 and (.[0] | type) == "array" then .[0] | length
+            else error("expected a single publish set array") end
+          ' "$AUDIT_ROOT/publish-set.json")
+          if (( count > 0 )); then
+            args+=(--publish-set "$AUDIT_ROOT/publish-set.json")
+          fi
+          npm run audit:production -- "${args[@]}"
+
+      - name: Publish audited packages
+        id: publish
+        shell: bash
+        env:
+          AUDIT_ROOT: ${{ steps.selection.outputs.audit_root }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          PACKAGES='${{ needs.detect-ecosystem.outputs.packages }}'
           PUBLISHED_PACKAGES=()
-          SKIPPED_PACKAGES=()
 
           BRANCH="${GITHUB_REF#refs/heads/}"
           get_npm_tag() {
@@ -148,50 +204,63 @@ jobs:
           }
 
           publish_with_retry() {
-            local tag="$1" max_attempts=3 attempt=1 delay=5
-            while [ $attempt -le $max_attempts ]; do
+            local tag="$1" tarball="$2" digest="$3" name="$4" version="$5"
+            local max_attempts=3 attempt=1 delay=5 actual
+            while [ "$attempt" -le "$max_attempts" ]; do
+              actual=$(sha256sum < "$tarball") || return 1
+              if [[ "${actual%% *}" != "$digest" ]]; then
+                echo "Audit receipt digest mismatch for $name@$version" >&2
+                return 1
+              fi
+              tar -xOzf "$tarball" -- package/package.json |
+                jq -es --arg name "$name" --arg version "$version" \
+                  'length == 1 and .[0].name == $name and .[0].version == $version' >/dev/null || {
+                    echo "Packed package identity mismatch for $name@$version" >&2
+                    return 1
+                  }
               echo "Publish attempt $attempt of $max_attempts..."
-              if npm publish --access public --tag "$tag"; then return 0; fi
-              if [ $attempt -lt $max_attempts ]; then
+              if npm publish "$tarball" --ignore-scripts --access public --tag "$tag"; then return 0; fi
+              if [ "$attempt" -lt "$max_attempts" ]; then
                 echo "Attempt $attempt failed. Retrying in ${delay}s..."
-                sleep $delay; delay=$((delay * 2))
+                sleep "$delay"; delay=$((delay * 2))
               fi
               attempt=$((attempt + 1))
             done
             echo "All $max_attempts attempts failed"; return 1
           }
 
-          # Independent VERSIONING - each artifact publishes on its own semver
-          # line, with no matched-version gate. That is not the same as
-          # independent ORDER: `detect-ecosystem` hands this list over already
-          # sorted so mfes precedes gts-plugin, which pins it exactly.
-          for row in $(echo "$PACKAGES" | jq -r '.[] | @base64'); do
-            _jq() { echo "${row}" | base64 --decode | jq -r "${1}"; }
-            NAME=$(_jq '.name'); PKG_PATH=$(_jq '.path'); VERSION=$(_jq '.version')
-
-            echo ""
-            echo "=========================================="
-            echo "Processing: $NAME@$VERSION"
-            echo "=========================================="
-
-            if npm view "$NAME@$VERSION" version 2>/dev/null; then
-              echo "SKIPPING: $NAME@$VERSION already exists on NPM"
-              SKIPPED_PACKAGES+=("{\"name\":\"$NAME\",\"version\":\"$VERSION\",\"reason\":\"already exists on NPM\"}")
-              continue
+          # Version selection preserves the original mfes-before-gts-plugin order.
+          gate=$(realpath -- "$AUDIT_ROOT/gate")
+          receipt="$gate/receipt.json"
+          jq -e -s 'length == 1 and (.[0].packages | type) == "array"' "$receipt" >/dev/null
+          jq -c '.[]' "$AUDIT_ROOT/publish-set.json" > "$AUDIT_ROOT/pending.jsonl"
+          while IFS= read -r row; do
+            name=$(jq -er '.name' <<< "$row")
+            version=$(jq -er '.version' <<< "$row")
+            audited=$(jq -ce --arg name "$name" --arg version "$version" '
+              [.packages[] | select(.name == $name)] |
+              if length == 1 and .[0].version == $version then .[0]
+              else error("missing, duplicate or mismatched audit receipt for " + $name) end
+            ' "$receipt")
+            tarball=$(jq -er '.tarball | strings | select(startswith("/"))' <<< "$audited")
+            tarball=$(realpath -- "$tarball")
+            digest=$(jq -er '.sha256 | strings | select(test("^[0-9a-f]{64}$"))' <<< "$audited")
+            if [[ "$tarball" != "$gate/"*.tgz || ! -f "$tarball" ]]; then
+              echo "Invalid audited tarball path for $name@$version" >&2
+              exit 1
             fi
 
-            NPM_TAG=$(get_npm_tag "$VERSION")
-            echo "Publishing $NAME@$VERSION with tag '$NPM_TAG'..."
-            ( cd "$PKG_PATH" && publish_with_retry "$NPM_TAG" ) || { echo "FAILED: $NAME@$VERSION"; exit 1; }
+            tag=$(get_npm_tag "$version")
+            echo "Publishing audited $name@$version with tag '$tag'..."
+            publish_with_retry "$tag" "$tarball" "$digest" "$name" "$version" || {
+              echo "FAILED: $name@$version" >&2
+              exit 1
+            }
+            PUBLISHED_PACKAGES+=("$(jq -c '{name,version}' <<< "$row")")
+          done < "$AUDIT_ROOT/pending.jsonl"
 
-            echo "SUCCESS: Published $NAME@$VERSION"
-            PUBLISHED_PACKAGES+=("{\"name\":\"$NAME\",\"version\":\"$VERSION\"}")
-          done
-
-          if [ ${#PUBLISHED_PACKAGES[@]} -eq 0 ]; then echo "published=[]" >> $GITHUB_OUTPUT;
-          else echo "published=$(printf '%s\n' "${PUBLISHED_PACKAGES[@]}" | jq -sc '.')" >> $GITHUB_OUTPUT; fi
-          if [ ${#SKIPPED_PACKAGES[@]} -eq 0 ]; then echo "skipped=[]" >> $GITHUB_OUTPUT;
-          else echo "skipped=$(printf '%s\n' "${SKIPPED_PACKAGES[@]}" | jq -sc '.')" >> $GITHUB_OUTPUT; fi
+          echo "published=$(printf '%s\n' "${PUBLISHED_PACKAGES[@]}" | jq -sc '.')" >> "$GITHUB_OUTPUT"
+          echo "skipped=$(cat "$AUDIT_ROOT/skipped.json")" >> "$GITHUB_OUTPUT"
 
   # ══════════════════════════════════════════════════════════════════════
   # Summary

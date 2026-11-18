@@ -8,6 +8,7 @@ export const OrchestrationLifecycleState = {
   PROVENANCE_READ: 'PROVENANCE_READ',
   ANALYZED: 'ANALYZED',
   REVIEWED: 'REVIEWED',
+  FAILED: 'FAILED',
   APPLIED: 'APPLIED',
   DECLINED: 'DECLINED',
 } as const;

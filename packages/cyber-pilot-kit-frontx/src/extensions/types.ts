@@ -50,7 +50,7 @@ export interface StructuralError {
 export interface TrustDenial {
   /** The `<template-identity>` whose bundle was excluded on trust grounds. */
   identity: string;
-  /** Human-readable reason — always the untrusted-origin reason, never a structural-shape complaint. */
+  /** Why discovery denied the bundle before inspecting its slots. */
   reason: string;
 }
 
@@ -67,11 +67,9 @@ export const AiExtensionLifecycleState = {
 export type AiExtensionLifecycleState = (typeof AiExtensionLifecycleState)[keyof typeof AiExtensionLifecycleState];
 
 /** Outcome of running one bundle entry through the lifecycle. */
-export interface LifecycleResult {
-  state: typeof AiExtensionLifecycleState.ACTIVATED | typeof AiExtensionLifecycleState.REJECTED;
-  entry?: AiExtensionEntry;
-  error?: StructuralError;
-}
+export type LifecycleResult =
+  | { state: typeof AiExtensionLifecycleState.ACTIVATED; entry: AiExtensionEntry; error?: never }
+  | { state: typeof AiExtensionLifecycleState.REJECTED; error: StructuralError; entry?: never };
 
 /** A capability contributed to a named slot, sourced either from the base kit or an installed template. */
 export interface CapabilityContribution {

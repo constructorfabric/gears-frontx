@@ -144,6 +144,12 @@ describe('createGithubFetchFn', () => {
       expect(fileText(result.content, 'truncated')).toBeUndefined();
     });
 
+    it('reconstructs a long ustar name from its prefix and name fields', async () => {
+      const key = `${'d'.repeat(96)}/index.ts`;
+      const result = await fetchTar(makeGithubTarball({ [key]: 'content' }));
+      expect(fileText(result.content, key)).toBe('content');
+    });
+
     it('A5. a Unicode `x path` whose byte length differs from its character length', async () => {
       const name = 'docs/привет-мир.md';
       const result = await fetchTar(
@@ -355,6 +361,11 @@ describe('createGithubFetchFn', () => {
       return { state, stream };
     };
 
+    it('refuses a gzip response truncated after the compressed tar content', async () => {
+      const gz = zlib.gzipSync(makeGithubTarball({ 'a.txt': 'ok' }));
+      await expect(fetchGz(gz.subarray(0, -8), {})).rejects.toThrow(/not valid gzip/);
+    });
+
     it('L1. accepts an archive exactly at the archive cap, refuses one byte under', async () => {
       await expect(fetchGz(gz, { maxArchiveBytes: gz.length })).resolves.toMatchObject({ pinnedRef: COMMIT });
       await expect(fetchGz(gz, { maxArchiveBytes: gz.length - 1 })).rejects.toThrow(
@@ -402,6 +413,27 @@ describe('createGithubFetchFn', () => {
     });
   });
 
+  it('preserves binary, block-aligned and empty file payloads under their archive names', async () => {
+    const block = Buffer.alloc(512, 0xff);
+    const result = await fetchTar(Buffer.concat([
+      globalHeader(), rootDir(), tarEntry(`${ROOT}/__proto__`, block), tarEntry(`${ROOT}/empty`), END_OF_ARCHIVE,
+    ]));
+    const files = readBundleFiles(result.content);
+    expect(Object.keys(files ?? {})).toEqual(['__proto__', 'empty']);
+    expect(files?.['__proto__']).toEqual({ encoding: 'base64', data: block.toString('base64') });
+    expect(files?.empty).toEqual({ encoding: 'base64', data: '' });
+  });
+
+  it('refuses an archive containing only directories', async () => {
+    await expectRefused(Buffer.concat([globalHeader(), rootDir(), END_OF_ARCHIVE]), /zero files/);
+  });
+
+  it('refuses a ustar file name that cannot be represented as UTF-8', async () => {
+    const header = tarHeader(`${ROOT}/x`, 0);
+    header[ROOT.length + 1] = 0xff;
+    await expectRefused(Buffer.concat([globalHeader(), rootDir(), withChecksum(header), END_OF_ARCHIVE]), /UTF-8/);
+  });
+
   describe('symlink scope (resolver)', () => {
     it.each([
       ['inside the selected subtree', 'github:acme/my-template//shell@main', `${ROOT}/shell/link`],
@@ -410,7 +442,7 @@ describe('createGithubFetchFn', () => {
     ])('B22. refuses a symlink %s', async (_label, spec, link) => {
       const resolved = await resolveSpec(
         spec,
-        Buffer.concat([globalHeader(), rootDir(), tarEntry(link, '', '2'), tarEntry(`${ROOT}/shell/frontx-template.json`, MANIFEST), tarEntry(`${ROOT}/frontx-template.json`, MANIFEST), END_OF_ARCHIVE]),
+        Buffer.concat([globalHeader(), rootDir(), tarEntry(link, '', '2'), tarEntry(`${ROOT}/frontx-template.json`, MANIFEST), END_OF_ARCHIVE]),
       );
       expect(resolved.ok).toBe(false);
       if (resolved.ok) return;

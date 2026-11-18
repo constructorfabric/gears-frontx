@@ -1,6 +1,6 @@
 // @cpt-FEATURE:cpt-frontx-feature-cli-scaffolding:p1
 // @cpt-flow:cpt-frontx-flow-cli-scaffolding-delete-target:p1
-// @cpt-state:cpt-frontx-state-cli-scaffolding-delete-op:p1
+// @cpt-state:cpt-frontx-state-cli-scaffolding-delete-op:p2
 // @cpt-state:cpt-frontx-state-composed-provenance-registration-lifecycle:p2
 // @cpt-dod:cpt-frontx-dod-cli-scaffolding-delete:p1
 //
@@ -42,6 +42,8 @@ import type { ProjectStateDocument, ReadProjectStateFn, WriteProjectStateFn, Tem
 import type { CanonicalizeTargetFn } from '../scaffold/conflict-check';
 import type { ReadFileFn } from '../manifest/types';
 import type { ErrorCode } from '../envelope';
+import { isSafeRelativePath } from '../paths/relative-path';
+import type { RemoveProjectFileFn } from '../upgrade/types';
 import type { AssertPathWithinRootFn } from '../scaffold/types';
 // `listTargetFilesFn`'s real implementation (`createFsListTargetFilesFn`,
 // `../adapters/fs-project-io.ts`) throws this typed error, rather than
@@ -58,12 +60,7 @@ import type { AssertPathWithinRootFn } from '../scaffold/types';
 import { PathContainmentError, TargetNotDirectoryError } from '../adapters/fs-project-io';
 import { getOwn } from '../own-record';
 
-// Symmetric to `upgrade/types.ts`'s `RemoveProjectFileFn` — removes one
-// absolute file path, no-op when already absent. Reused directly rather
-// than a second "remove a file" seam invented for this command: the real
-// implementation (`createFsRemoveProjectFileFn`, `../adapters/fs-project-
-// io.ts`) already does exactly what removing one `toDelete` entry needs.
-export type RemoveTargetFileFn = (absolutePath: string) => Promise<void>;
+export type RemoveTargetFileFn = RemoveProjectFileFn;
 
 // The CLI-owned AI-extension bundle removal this flow's `inst-del-remove-
 // bundle` step names (`cpt-frontx-algo-cli-scaffolding-ai-bundle`) — declared
@@ -86,14 +83,7 @@ export interface AiBundleTree {
   digest: string;
 }
 
-// The developer's or agent's confirmation decision for one computed plan —
-// symmetric to `upgrade/types.ts`'s `PresentAndGetApprovalFn`, with a
-// delete-shaped payload instead of a `ChangeSet`. The real interactive
-// implementation prompts on stdin, defaulting to "No" on anything but an
-// explicit affirmative (`cli.ts`'s own `createInteractiveApproval` precedent
-// for `upgrade`); this seam is never called at all in `--json` mode
-// (`inst-del-if-json-no-yes` returns `CONFIRMATION_REQUIRED` without
-// reading stdin) or in `--dry-run` mode (nothing is at stake to confirm).
+// Interactive confirmation for one reviewed plan. JSON and dry-run never prompt.
 export type ConfirmDeletionFn = (plan: {
   target: string;
   // The owning template: part of the reviewed (hashed) projection, so every
@@ -392,10 +382,6 @@ export async function deleteTarget(
   classifyPathStrictFn?: ClassifyPathStrictFn,
   entryKindFn?: EntryKindFn,
 ): Promise<DeleteOutcome> {
-  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-invoke
-  // `rawTarget`/`flags` are accepted as this function's own parameters.
-  // @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-invoke
-
   // Refused up front, before anything about WHICH recorded target the
   // caller means is even asked: an argument that cannot be canonicalized at
   // all (escapes the project root, say) is an ordinary invalid-path
@@ -408,7 +394,7 @@ export async function deleteTarget(
     return {
       ok: false,
       code: 'INVALID_PATH',
-      message: `Target "${rawTarget}" could not be proven to stay inside the project root.`,
+      message: `Target "${rawTarget}" could not be proven to stay inside the project root. Check the target and restore any redirected link before retrying.`,
       details: { target: rawTarget },
     };
   }
@@ -425,6 +411,10 @@ export async function deleteTarget(
     const stateResult = await readProjectState(repoRoot, readProjectStateFn);
     if (!stateResult.ok) {
       return { ok: false, code: 'PROJECT_INVALID', message: stateResult.message, ...(stateResult.details ? { details: stateResult.details } : {}) };
+    }
+    const unsafeName = Object.keys(stateResult.document.templates).find((name) => !isSafeRelativePath(name));
+    if (unsafeName !== undefined) {
+      return { ok: false, code: 'PROJECT_INVALID', message: `Invalid recorded template identity ${JSON.stringify(unsafeName)}.`, details: { name: unsafeName } };
     }
     const aliased = aliasedOwnedRootRefusal(stateResult.document, canonicalizeFn);
     if (aliased !== undefined) return { ok: false, code: 'PROJECT_INVALID', ...aliased };
@@ -662,11 +652,10 @@ function detachmentNote(review: DeletionReview): string {
     }
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-if-digest-missing
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-recompute-plan
-    // @cpt-begin:cpt-frontx-state-cli-scaffolding-delete-op:p1:inst-do-pending-confirmed
     const recomputed = await computePlan();
-    // @cpt-end:cpt-frontx-state-cli-scaffolding-delete-op:p1:inst-do-pending-confirmed
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-recompute-plan
     if (!recomputed.ok) return recomputed;
+    // @cpt-begin:cpt-frontx-state-cli-scaffolding-delete-op:p1:inst-do-pending-confirmed
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-if-plan-changed
     // The comparison is against the RECOMPUTED plan, the very object about to
     // be executed, never against the first computation of this process.
@@ -682,6 +671,7 @@ function detachmentNote(review: DeletionReview): string {
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-if-plan-changed
     final = recomputed;
     acceptedReview = recomputedReview;
+    // @cpt-end:cpt-frontx-state-cli-scaffolding-delete-op:p1:inst-do-pending-confirmed
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-else-json-yes
   } else {
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-else-interactive
@@ -725,17 +715,17 @@ function detachmentNote(review: DeletionReview): string {
       // Recomputed on the identical confirmed path the `--json --yes` branch
       // takes: both routes to CONFIRMED recompute rather than trust what was
       // shown, and both compare the recomputed plan with what was approved.
-      // @cpt-begin:cpt-frontx-state-cli-scaffolding-delete-op:p1:inst-do-pending-confirmed
       const recomputed = await computePlan();
-      // @cpt-end:cpt-frontx-state-cli-scaffolding-delete-op:p1:inst-do-pending-confirmed
       if (!recomputed.ok) return recomputed;
       // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-interactive-reconfirm
       const recomputedReview = reviewOf(recomputed, removeAiBundleFn);
+      // @cpt-begin:cpt-frontx-state-cli-scaffolding-delete-op:p1:inst-do-pending-confirmed
       if (computeDeletionPlanDigest(recomputedReview) === computeDeletionPlanDigest(shownReview)) {
         final = recomputed;
         acceptedReview = recomputedReview;
         break;
       }
+      // @cpt-end:cpt-frontx-state-cli-scaffolding-delete-op:p1:inst-do-pending-confirmed
       shown = recomputed;
       changedSinceShown = true;
       // @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-interactive-reconfirm
@@ -756,6 +746,7 @@ function detachmentNote(review: DeletionReview): string {
   // about to remove is proven to stay inside `repoRoot` in its own pass
   // BEFORE anything is deleted — an escape anywhere in the plan aborts the
   // whole deletion, nothing removed.
+  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-remove
   const invalidPaths: string[] = [];
   for (const deletedPath of final.plan.toDelete) {
     try {
@@ -775,18 +766,15 @@ function detachmentNote(review: DeletionReview): string {
     };
   }
 
-  // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-remove
   // @cpt-begin:cpt-frontx-state-cli-scaffolding-delete-op:p1:inst-do-confirmed-deleted
-  // A failure partway leaves a partial result: reported with what is already
-  // gone, and recoverable by re-running the same delete (the record still
-  // names the target, so the recomputed plan covers what is left).
+  // A retry reclassifies the remaining paths, including links whose referents were removed.
   const deletedSoFar: string[] = [];
   const partial = (reason: string): string =>
     `${reason} Deletion of "${final.target}" stopped partway: ${deletedSoFar.length} of ` +
     `${final.plan.toDelete.length} planned file(s) were already deleted` +
     (deletedSoFar.length > 0 ? ` (${deletedSoFar.join(', ')})` : '') +
-    `, and the project state still records the target. Re-run "frontx delete ${final.target}" to review and finish ` +
-    'the deletion, or restore the deleted files from version control.';
+    `, and the project state still records the target. Re-run "frontx delete ${final.target}" to review the new plan. ` +
+    'Previously planned paths can now be preserved, including dangling links. Inspect them before confirming, or restore the deleted files from backup.';
   for (const deletedPath of final.plan.toDelete) {
     try {
       await removeFileFn(path.join(repoRoot, deletedPath));
@@ -817,8 +805,11 @@ function detachmentNote(review: DeletionReview): string {
     // recorded on the entry, merged with any already retained, so a later
     // delete of a nested or aliased template there still preserves the file.
     const retained = [...new Set([...(ownerEntry.relinquishedGround ?? []), ...(final.plan.relinquishedGround ?? [])])].sort();
+    const stateFailure = (reason: string) =>
+      `${reason} All ${deletedSoFar.length} planned file(s) were removed. Re-run "frontx delete ${final.target}" to review and finish the project state update.`;
     let written: Awaited<ReturnType<typeof mutateProjectState>>;
     try {
+      // @cpt-begin:cpt-frontx-state-composed-provenance-registration-lifecycle:p1:inst-rl-applied-to-empty
       written = await mutateProjectState(
         repoRoot,
         {
@@ -829,12 +820,13 @@ function detachmentNote(review: DeletionReview): string {
         readProjectStateFn,
         writeProjectStateFn,
       );
+      // @cpt-end:cpt-frontx-state-composed-provenance-registration-lifecycle:p1:inst-rl-applied-to-empty
     } catch (error) {
       const containment = error instanceof PathContainmentError;
       return {
         ok: false,
         code: containment ? 'INVALID_PATH' : 'INTERNAL',
-        message: partial(`The project state could not be written: ${error instanceof Error ? error.message : String(error)}.`),
+        message: stateFailure(`The project state could not be written: ${error instanceof Error ? error.message : String(error)}.`),
         details: { target: final.target, deletedPaths: deletedSoFar, ...(containment ? { path: error.offendingPath } : {}) },
       };
     }
@@ -842,7 +834,7 @@ function detachmentNote(review: DeletionReview): string {
       return {
         ok: false,
         code: 'PROJECT_INVALID',
-        message: partial(written.message),
+        message: stateFailure(written.message),
         details: { ...written.details, target: final.target, deletedPaths: deletedSoFar },
       };
     }
@@ -850,7 +842,6 @@ function detachmentNote(review: DeletionReview): string {
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-update-state
   // @cpt-end:cpt-frontx-state-cli-scaffolding-delete-op:p1:inst-do-confirmed-deleted
 
-  // @cpt-begin:cpt-frontx-state-composed-provenance-registration-lifecycle:p1:inst-rl-applied-to-empty
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-if-last-target
   // Never `reviewOf(final, ...)` here: that would be a second bundle capture
   // after the targets are gone (see `acceptedReview` above).
@@ -884,7 +875,6 @@ function detachmentNote(review: DeletionReview): string {
   }
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-remove-bundle
   // @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-if-last-target
-  // @cpt-end:cpt-frontx-state-composed-provenance-registration-lifecycle:p1:inst-rl-applied-to-empty
 
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-return-success
   return {

@@ -21,17 +21,6 @@ export type WriteFileFn = (destPath: string, content: Buffer | string) => Promis
 // not exist on the real filesystem at all.
 export type AssertPathWithinRootFn = (absolutePath: string) => void;
 
-// Injected reader for a file already on disk at a target repository path —
-// `null` when absent. Symmetric to upgrade's `ReadProjectFileFn`
-// (`../upgrade/types.ts`), redeclared here (rather than imported) so
-// scaffold does not take a cross-feature dependency on upgrade for a shape
-// this simple; both seams share the SAME real implementation
-// (`createFsReadProjectFileFn`, `../adapters/fs-project-io.ts`). Needed by
-// `composeSharedFiles` (cpt-frontx-algo-cli-scaffolding-compose-shared-files
-// inst-cs-read-existing-blocks) to read a `region-union` shared file already
-// on disk before composing over it.
-export type ReadProjectFileFn = (absolutePath: string) => Promise<string | null>;
-
 // Injected conflict check — returns true when the target directory has conflicting content.
 // Used by the composed-provenance (F13) scaffolder; unrelated to the kindless
 // assembly-op's boundary-intersection conflict verdict (cpt-frontx-state-cli-scaffolding-assembly-op).
@@ -39,8 +28,7 @@ export type ConflictCheckFn = (targetDir: string) => Promise<boolean>;
 
 // A single content item — a path within the template and the content to write
 // at that destination. Read directly from a template's resolved on-disk
-// installed content path — never carried by the manifest
-// (cpt-frontx-algo-cli-scaffolding-uniform-apply inst-ua-read-content).
+// installed content path.
 export interface ContentItem {
   path: string;
   // Buffer for regular files; string for SYMLINK/DIRECTORY/SPECIAL markers.

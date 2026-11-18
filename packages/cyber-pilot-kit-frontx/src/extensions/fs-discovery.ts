@@ -17,7 +17,7 @@
  */
 import type { AiExtensionBundle, ExtensionCategory, StructuralError, TrustDenial } from './types.js';
 import { checkIdentityTrust } from './trust.js';
-import type { ProjectStateDocument } from '../project-state.js';
+import { isProjectStateDocument, type ProjectStateDocument } from '../project-state.js';
 
 /** Injectable filesystem access for the AI-extension bundle scan. */
 export interface BundleFsReader {
@@ -114,15 +114,7 @@ function validateOnDiskShape(
   return { ok: true };
 }
 
-/**
- * Reads and parses the project's single state document,
- * `<contentRoot>/.frontx/project.json`, through the SAME injected
- * `BundleFsReader` the bundle scan itself uses — no new I/O dependency is
- * introduced for the trust gate. `null` for an absent, unparseable, or
- * structurally-invalid (missing/malformed `templates` map) document; per
- * §1.2, deny is the safe direction, so a `null` result denies every
- * discovered identity downstream rather than guessing at partial content.
- */
+/** Reads the kit's projection of project.json. Malformed or unsupported state denies discovery. */
 export function readProjectStateDocument(contentRoot: string, reader: BundleFsReader): ProjectStateDocument | null {
   const raw = reader.readFile(joinPath(contentRoot, '.frontx', 'project.json'));
   if (raw === undefined) return null;
@@ -134,11 +126,7 @@ export function readProjectStateDocument(contentRoot: string, reader: BundleFsRe
     return null;
   }
 
-  if (typeof parsed !== 'object' || parsed === null) return null;
-  const candidate = parsed as Record<string, unknown>;
-  if (typeof candidate.templates !== 'object' || candidate.templates === null) return null;
-
-  return candidate as unknown as ProjectStateDocument;
+  return isProjectStateDocument(parsed) ? parsed : null;
 }
 
 /**

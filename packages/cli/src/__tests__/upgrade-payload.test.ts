@@ -289,6 +289,11 @@ describe('createResolvePayloadFn — remote origin', () => {
         [MANIFEST_FILENAME]: manifest,
         'README.md': '# hi',
         '.frontx/ai/@scope/shell/x.md': 'ai bundle content',
+        '.frontx/ai/shell/guide.md': 'keep',
+        '.frontx/ai/shell/node_modules/dep/index.js': 'skip',
+        'src/node_modules/dep/index.js': 'skip',
+        'docs/node_modules': 'ordinary file',
+        '.frontx/ai/shell/docs/node_modules': 'ordinary AI file',
         'src/app.ts': 'export {}',
       },
     });
@@ -301,10 +306,12 @@ describe('createResolvePayloadFn — remote origin', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.payload.name).toBe('shell');
+    expect(result.payload.aiFiles).toEqual(new Map([['guide.md', Buffer.from('keep')], ['docs/node_modules', Buffer.from('ordinary AI file')]]));
     expect(result.payload.version).toBe('3.1.4');
     expect(result.payload.excludedSubtrees).toEqual(['docs/']);
     expect(Object.fromEntries(result.payload.files)).toEqual({
       'README.md': '# hi',
+      'docs/node_modules': 'ordinary file',
       'src/app.ts': 'export {}',
     });
     // The resolved (pinned) address, not necessarily the raw string —

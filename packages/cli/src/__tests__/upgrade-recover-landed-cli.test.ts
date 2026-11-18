@@ -20,7 +20,7 @@
 // `.frontx` while its `operations/` subdirectory (receipts) stays writable.
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { chmod, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
@@ -47,13 +47,15 @@ afterEach(async () => {
 
 type Envelope = { ok: boolean; data: Record<string, unknown>; error: { code: string; message: string; details: Record<string, unknown> } };
 
-function cli(project: string, ...args: string[]): { status: number | null; envelope: Envelope } {
-  const result = spawnSync(process.execPath, [path.join(buildDir, 'cli.js'), ...args, '--json'], {
-    cwd: project,
-    encoding: 'utf-8',
-    timeout: 60_000,
+function invoke(project: string, args: string[], nodeArgs: string[] = [], input?: string) {
+  return spawnSync(process.execPath, [...nodeArgs, path.join(buildDir, 'cli.js'), ...args], {
+    cwd: project, encoding: 'utf-8', input, timeout: 60_000,
     env: { ...process.env, FRONTX_INVENTORY_ROOT: path.join(path.dirname(project), 'inventory') },
   });
+}
+
+function cli(project: string, ...args: string[]): { status: number | null; envelope: Envelope } {
+  const result = invoke(project, [...args, '--json']);
   return { status: result.status, envelope: JSON.parse(result.stdout) as Envelope };
 }
 
@@ -164,4 +166,66 @@ describe.skipIf(process.getuid?.() === 0)('upgrade --recover after a failed stat
     expect(refused.envelope).toMatchObject({ ok: false, error: { code: 'RECOVERY_REQUIRED', details: { foreignPaths: ['app/a.txt', 'app/gone.txt', 'app/n.txt'] } } });
     expect(await receipts(project)).toHaveLength(1);
   });
+});
+
+it('recovers approved AI work with its receipt and requires the matching reservation to finalize', async () => {
+  sandbox = await mkdtemp(path.join(tmpdir(), 'frontx-recover-ai-'));
+  const project = path.join(sandbox, 'project');
+  const guide = '.frontx/ai/@x/t/guide.md';
+  await template(project, 't1', '1.0.0', { 'a.txt': 'A1', [guide]: 'old' });
+  await template(project, 't2', '2.0.0', { 'a.txt': 'A2', [guide]: 'new' });
+  expect(cli(project, 'register', 'path:t1').envelope.ok).toBe(true);
+  expect(cli(project, 'apply', '--input', JSON.stringify({ templates: { '@x/t': ['app'] } })).envelope.ok).toBe(true);
+  const upgrade = ['upgrade', '@x/t', 'path:t2'];
+  const review = cli(project, ...upgrade);
+  expect(review.envelope.error.code).toBe('CONFIRMATION_REQUIRED');
+  // Stop the child immediately after the real state commit, before the AI write.
+  const preload = path.join(sandbox, 'interrupt.cjs');
+  await writeFile(preload, `
+    const fs = require('node:fs');
+    const rename = fs.renameSync;
+    fs.renameSync = (from, to) => {
+      rename(from, to);
+      if (require('node:path').basename(to) === 'project.json' &&
+          JSON.parse(fs.readFileSync(to)).templates['@x/t']?.pendingPostCommit?.ai === 'pending') process.exit(73);
+    };
+  `);
+  expect(invoke(project, [...upgrade, '--json', '--yes', '--plan-digest=' + review.envelope.error.details.planDigest], ['--require', preload]).status).toBe(73);
+  expect(await read(project, 'app/a.txt')).toBe('A2');
+  expect(await read(project, guide)).toBe('old');
+  const state = await read(project, '.frontx/project.json');
+  const [file] = await receipts(project);
+  const receipt = path.join(project, '.frontx/operations', file!);
+  const reservation = path.join(sandbox, 'inventory/.frontx-operations/reservations', file!);
+  const recover = ['upgrade', '@x/t', '--recover'];
+  const backups = [[receipt, path.join(sandbox, 'receipt')], [reservation, path.join(sandbox, 'reservation')]] as const;
+  // Model a state-only restore, then restore each original record at its own recovery boundary.
+  for (const [record, backup] of backups) await rename(record, backup);
+  const orphan = cli(project, ...recover);
+  expect(orphan.envelope).toMatchObject({ error: { code: 'RECOVERY_REQUIRED', details: { template: '@x/t', intentId: file!.slice(0, -5) } } });
+  expect(await read(project, '.frontx/project.json')).toBe(state);
+  await rename(path.join(sandbox, 'receipt'), receipt);
+  const first = cli(project, ...recover);
+  expect(first.envelope.error.code).toBe('CONFIRMATION_REQUIRED');
+  const declined = invoke(project, recover, [], 'n\n');
+  expect(declined.stdout + declined.stderr).toContain('declined');
+  expect(await read(project, guide)).toBe('old');
+  await writeFile(path.join(project, guide), 'local edit');
+  const stale = cli(project, ...recover, '--yes', '--plan-digest=' + first.envelope.error.details.planDigest);
+  expect(stale.envelope.error.code).toBe('CONFIRMATION_REQUIRED');
+  expect(stale.envelope.error.details.planDigest).not.toBe(first.envelope.error.details.planDigest);
+  expect(await read(project, guide)).toBe('local edit');
+  expect(await read(project, '.frontx/project.json')).toBe(state);
+  const fresh = cli(project, ...recover, '--yes', '--plan-digest=' + stale.envelope.error.details.planDigest);
+  expect(fresh.envelope).toMatchObject({ ok: false, error: { code: 'RECOVERY_REQUIRED', message: expect.stringContaining('reservation from a verified backup') } });
+  expect(await entry(project)).toMatchObject({ pendingPostCommit: { ai: 'done' } });
+  expect(await receipts(project)).toEqual([file]);
+  expect(await read(project, guide)).toBe('new');
+  await rename(path.join(sandbox, 'reservation'), reservation);
+  expect(cli(project, ...recover).envelope).toMatchObject({ ok: true, data: { outcome: 'recovered' } });
+  expect(await read(project, guide)).toBe('new');
+  expect(await entry(project)).not.toHaveProperty('pendingPostCommit');
+  expect(await receipts(project)).toEqual([]);
+  await expect(readFile(reservation)).rejects.toMatchObject({ code: 'ENOENT' });
+  expect(cli(project, ...recover).envelope).toMatchObject({ ok: true, data: { outcome: 'no-pending' } });
 });

@@ -93,15 +93,15 @@ Delivers the AI-guided upgrade path defined in `cpt-frontx-seq-ai-driven-templat
    1. [x] - `p1` - **RETURN** `TEMPLATE_NOT_REGISTERED`: no matching entry for that name; upgrade cannot proceed - `inst-provenance-not-registered`
 5. [x] - `p1` - **IF** that entry's `targets` array is empty - `inst-check-no-targets`
    1. [x] - `p1` - **RETURN** `TARGET_NOT_APPLIED`: the name is registered but has no applied target to upgrade; upgrade cannot proceed - `inst-provenance-no-targets`
-6. [x] - `p1` - AI invokes the Upgrade Enrichment algorithm with the selected template name's `{origin, version, targets[]}` entry and the target template version - `inst-invoke-enrichment`
+6. [x] - `p1` - AI invokes the Upgrade Enrichment algorithm with the selected template name's `{origin, version, targets[]}` entry and the target Git ref (including its exact tag prefix) - `inst-invoke-enrichment`
 7. [x] - `p1` - **IF** the engine returns an empty or unresolvable change set — checked here alongside the distinct case of the command surface's first, unconfirmed call refusing outright before any change set is computed at all (a genuine refusal — `CONTENT_CONFLICT`, `TARGET_CONFLICT`, `PROJECT_INVALID`, or any other non-`CONFIRMATION_REQUIRED` code the command surface reports on that first call): the two are told apart by the command surface's own reported status, checked before the empty-changeset case is assumed, since a genuine refusal leaves no review package behind either and would otherwise be indistinguishable from "nothing to update"; a genuine refusal returns the finding relaying the command surface's own reported code and message verbatim, exactly as the empty-changeset case below does, and halts before the review gate the same way - `inst-check-changeset`
    1. [x] - `p1` - **RETURN** finding to developer, relaying the engine's own reported error code unreinterpreted: no applicable change set; upgrade halted before review gate - `inst-empty-changeset`
 8. [x] - `p1` - AI presents the enriched change set (change-impact analysis + downstream-effect assessment) to the developer for review - `inst-present-review`
 9. [x] - `p1` - **IF** enrichment or review fails before the developer decides - `inst-check-review-failure`
    1. [x] - `p1` - Issue no confirming call: the first, unconfirmed call already wrote nothing, so the engine writes no project files and the project remains at its current version - `inst-decline-on-review-failure`
    2. [x] - `p1` - **RETURN** error to developer: the failure itself, which no later engine result replaces - `inst-return-review-failure`
-10. [x] - `p1` - **IF** developer approves the change set - `inst-gate-approve`
-   1. [x] - `p1` - Trigger engine apply: engine writes the change set to project files non-destructively, within each target's effective ownership, as one reviewed plan across every target listed under the upgraded name; files land one at a time (each by its own rename), so this is not a single transaction across the tree, and a failure caught during the write phase triggers an attempted rollback that reports any path it could not restore (`cpt-frontx-adr-project-upgrade-mechanism`) - `inst-engine-apply`
+10. [x] - `p1` - **IF** the developer reviews the complete plan and notes and the review callback explicitly returns `approved` - `inst-gate-approve`
+   1. [x] - `p1` - Reissue the command with `--yes --plan-digest=<reviewed digest>`. The engine writes the change set to project files non-destructively, within each target's effective ownership, as one reviewed plan across every target listed under the upgraded name; files land one at a time (each by its own rename), so this is not a single transaction across the tree, and a failure caught during the write phase triggers an attempted rollback that reports any path it could not restore (`cpt-frontx-adr-project-upgrade-mechanism`) - `inst-engine-apply`
    2. [x] - `p1` - Engine updates the `templates[name]` entry's `origin` and `version` in the project's single state document to the newer template version, in a single atomic state-document write (the commit point, after the target files have landed) that covers every target listed under that name; the entry's `targets` array itself is untouched, since upgrade changes which version a name is at, not which targets belong to it - `inst-update-provenance`
    3. [x] - `p1` - **RETURN** upgrade complete with summary of applied changes - `inst-return-applied`
 11. [x] - `p1` - **ELSE** developer declines or incompatibilities are flagged - `inst-gate-decline`
@@ -114,13 +114,13 @@ Delivers the AI-guided upgrade path defined in `cpt-frontx-seq-ai-driven-templat
 
 - [x] `p1` - **ID**: `cpt-frontx-algo-ai-upgrade-orchestration-enrich`
 
-**Input**: the selected template name's `templates[name]` entry from the project's single state document (`origin`, `version`, every target listed under it), target template version
+**Input**: the selected template name's `templates[name]` entry from the project's single state document (`origin`, `version`, every target listed under it), target Git ref (including its exact tag prefix)
 
 **Output**: Enriched review package containing the proposed change set, change-impact analysis, and downstream-effect assessment
 
 **Steps**:
 1. [x] - `p1` - Extract the selected template's name, its current `origin`/`version`, and every target listed under it from its `templates[name]` entry - `inst-extract-provenance`
-2. [x] - `p1` - Invoke the single CLI change-set engine (F14) via `upgrade <templateName> <new-origin>` (`cpt-frontx-adr-project-upgrade-mechanism`), passing the selected template's name and the target version's resolved origin directly, so the engine validates the new origin against every target listed under that name as one unit; the orchestration's selected name is the same name the engine's own baseline reads, so neither layer can name a template the other did not (§1.1) - `inst-invoke-engine`
+2. [x] - `p1` - Invoke the single CLI change-set engine (F14) via `upgrade <templateName> <new-origin>` (`cpt-frontx-adr-project-upgrade-mechanism`), passing the selected template's name and the origin resolved from the requested Git ref directly, so the engine validates the new origin against every target listed under that name as one unit; the orchestration's selected name is the same name the engine's own baseline reads, so neither layer can name a template the other did not (§1.1) - `inst-invoke-engine`
 3. [x] - `p1` - Receive the proposed reviewable change set from the engine (the identical all-targets change set the direct CLI upgrade path would produce) - `inst-receive-changeset`
 4. [x] - `p1` - **IF** the change set is empty or unresolvable, or validation fails for any one of the name's targets - `inst-check-empty`
    1. [x] - `p1` - **RETURN** empty change set signal to the caller; a validation failure on any one target refuses the entire upgrade rather than a partial one, per `cpt-frontx-adr-project-upgrade-mechanism` - `inst-empty-signal`
@@ -135,7 +135,7 @@ Delivers the AI-guided upgrade path defined in `cpt-frontx-seq-ai-driven-templat
 
 - [x] `p2` - **ID**: `cpt-frontx-state-ai-upgrade-orchestration-lifecycle`
 
-**States**: PROVENANCE_READ, ANALYZED, REVIEWED, APPLIED, DECLINED
+**States**: PROVENANCE_READ, ANALYZED, REVIEWED, APPLIED, DECLINED, FAILED
 
 **Initial State**: PROVENANCE_READ
 
@@ -144,6 +144,8 @@ Delivers the AI-guided upgrade path defined in `cpt-frontx-seq-ai-driven-templat
 2. [x] - `p1` - **FROM** ANALYZED **TO** REVIEWED **WHEN** the enriched change set with downstream-impact assessment has been presented to the developer at the review gate - `inst-to-reviewed`
 3. [x] - `p1` - **FROM** REVIEWED **TO** APPLIED **WHEN** developer approves and the engine has applied the change set non-destructively across every target listed under the upgraded name, and the `templates[name]` entry's `origin`/`version` has been updated to the newer template version by the single state-document commit that follows those file writes - `inst-to-applied`
 4. [x] - `p1` - **FROM** REVIEWED **TO** DECLINED **WHEN** developer declines or incompatibilities are flagged at the review gate, or validation fails for any one of the name's targets; no project files written; every target of that name remains at its current version - `inst-to-declined`
+5. [x] - `p1` - **FROM** REVIEWED **TO** FAILED **WHEN** confirmation fails. Relay the code and any committed-transition flag. For an unknown outcome, report that files may have landed and identify the recovery command - `inst-to-failed`
+
 
 ## 5. Definitions of Done
 
@@ -168,6 +170,8 @@ The system **MUST** implement the AI-driven upgrade orchestration flow such that
 ### Review Gate Enforced Before Apply
 
 - [x] `p1` - **ID**: `cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced`
+
+Each confirmation binds the digest of the exact CLI review. Present the complete plan (both origins and versions, targets, every operation, skipped paths, retained ground, AI replacement and deletion) and its consequence notes, including for version-only upgrades. A version-shaped ref must agree with the candidate manifest version before approval. Report the confirmed manifest version on success. Invalid decisions and malformed plans cannot authorize a confirming call.
 
 The system **MUST** ensure that the engine apply step is never triggered without an explicit developer approval at the review gate — the engine writes no project files until the developer approves, and a decline, a flagged incompatibility, or a validation failure on any one of the name's targets leaves every target of that name at its current version with no files written.
 
@@ -208,4 +212,4 @@ The system **MUST** invoke only the CLI change-set engine (F14 — `cpt-frontx-f
 - [x] On developer decline, flagged incompatibilities, or a validation failure on any one of the name's targets, every target of that name remains at its current version with no files written — a partial upgrade of one target while a sibling target of the same name is left behind is never produced (`cpt-frontx-adr-project-upgrade-mechanism`).
 - [x] The AI orchestration layer contains no second change-set engine implementation and defines no file-level diff or merge mechanics of its own; the identical all-targets change set is applied by both the AI-orchestrated path and the direct CLI path.
 - [x] The `templates[name]` entry's `origin` and `version` are updated to the newer template version for every target listed under that name in a single state-document write, only after a successful non-destructive apply.
-- [x] The orchestrated-upgrade state machine transitions correctly through PROVENANCE_READ → ANALYZED → REVIEWED → APPLIED on approval and PROVENANCE_READ → ANALYZED → REVIEWED → DECLINED on decline. Reaching ANALYZED no longer depends on an open question: `inst-invoke-engine` passes the selected name and the target version's resolved origin to the engine.
+- [x] The orchestrated-upgrade state machine transitions correctly through PROVENANCE_READ → ANALYZED → REVIEWED → APPLIED on approval and PROVENANCE_READ → ANALYZED → REVIEWED → DECLINED on decline. Reaching ANALYZED no longer depends on an open question: `inst-invoke-engine` passes the selected name and the origin resolved from the requested Git ref to the engine.

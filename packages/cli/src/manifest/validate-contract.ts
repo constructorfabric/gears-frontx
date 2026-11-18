@@ -205,7 +205,9 @@ export function validateManifestContract(raw: string): ManifestValidationResult 
     violations.push({ field: 'manifest', message: 'manifest is unparseable: invalid JSON' });
     // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-add-parse-violation
     // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-return-parse-rejected
+    // @cpt-begin:cpt-frontx-state-template-manifest-validation-lifecycle:p1:inst-draft-to-rejected
     return { status: 'REJECTED', violations };
+    // @cpt-end:cpt-frontx-state-template-manifest-validation-lifecycle:p1:inst-draft-to-rejected
     // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-return-parse-rejected
     // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-if-parse-error
   }
@@ -214,7 +216,9 @@ export function validateManifestContract(raw: string): ManifestValidationResult 
   // Guard: must be a plain object after parsing
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
     violations.push({ field: 'manifest', message: 'manifest must be a JSON object' });
+    // @cpt-begin:cpt-frontx-state-template-manifest-validation-lifecycle:p1:inst-draft-to-rejected
     return { status: 'REJECTED', violations };
+    // @cpt-end:cpt-frontx-state-template-manifest-validation-lifecycle:p1:inst-draft-to-rejected
   }
 
   const obj = parsed as Record<string, unknown>;
@@ -326,12 +330,16 @@ export function validateManifestContract(raw: string): ManifestValidationResult 
   // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-if-violations
   if (violations.length > 0) {
     // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-return-rejected
+    // @cpt-begin:cpt-frontx-state-template-manifest-validation-lifecycle:p1:inst-draft-to-rejected
     return { status: 'REJECTED', violations };
+    // @cpt-end:cpt-frontx-state-template-manifest-validation-lifecycle:p1:inst-draft-to-rejected
     // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-return-rejected
   }
   // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-if-violations
 
   // @cpt-begin:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-return-validated
+  // @cpt-begin:cpt-frontx-state-template-manifest-validation-lifecycle:p1:inst-draft-to-validated
   return { status: 'VALIDATED', violations: [] };
+  // @cpt-end:cpt-frontx-state-template-manifest-validation-lifecycle:p1:inst-draft-to-validated
   // @cpt-end:cpt-frontx-algo-template-manifest-validate-contract:p1:inst-return-validated
 }

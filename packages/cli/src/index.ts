@@ -49,16 +49,6 @@ export type {
   ResolveDeclaredExclusionFn,
 } from './manifest/types';
 export type { ReadManifestResult } from './manifest/validate-contract';
-// The now-legacy ownership/reference shapes the four-field contract retired
-// (cpt-frontx-adr-template-manifest-contract) are NOT re-exported here:
-// every consumer of `./manifest/legacy-ownership.ts` — the composition/
-// assembly/upgrade code still migrating off the five-category shape, and
-// this package's own tests — imports it by its own relative path, and
-// nothing outside this package depends on `@gears-frontx/cli` at all
-// (the kit's `no-cli-package-edge` test enforces exactly that boundary).
-// Putting a transitional, internal-only shape on the public barrel would
-// invite an external dependency on something meant to be retired, not
-// preserve one that already exists.
 // The read-side counterpart to pre-publish validation
 // (cpt-frontx-algo-template-manifest-refuse-legacy): refuses a manifest
 // declaring any undeclared field outright. Wired into `manifest/validate-
@@ -85,10 +75,6 @@ export type { UniformApplyResult } from './scaffold/assembler';
 // machine look implemented by code nothing invokes while the live pipeline
 // (`commands/apply.ts`) carries no markers for it.
 
-// `ReadProjectFileFn` is intentionally NOT re-exported from here again: it is
-// the same shape as upgrade's `ReadProjectFileFn` (already exported below),
-// redeclared locally in `scaffold/types.ts` only to avoid a cross-feature
-// import, not to mint a second public name for it.
 export type {
   WriteFileFn,
   ConflictCheckFn,

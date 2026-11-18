@@ -220,6 +220,15 @@ async function resolveRemoteOrigin(ref: StructuredRef, fetchFn: FetchFn): Promis
   // use from that point on — the identity/legacy-manifest error messages and
   // the final returned record — carries the pinned form instead.
   let source = buildSourceSpec(ref);
+  // WHATWG URLs normalize dot segments, and encodeURIComponent rejects lone surrogates.
+  for (const part of [ref.owner, ref.repo, ref.ref]) {
+    if (part === '.' || part === '..' || /[\uD800-\uDFFF]/u.test(part)) {
+      return {
+        ok: false,
+        error: { code: 'INVALID_INPUT', message: `Cannot address source-spec segment ${JSON.stringify(part)} in a registry URL.` },
+      };
+    }
+  }
   const url = buildFetchUrl(ref);
   // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-addr
 
@@ -253,6 +262,23 @@ async function resolveRemoteOrigin(ref: StructuredRef, fetchFn: FetchFn): Promis
     // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-fetch-fail-check
   }
   // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-fetch
+
+  // A symlink the adapter could not materialize, inside the scope this
+  // resolution keeps, would make the installed content differ from the commit;
+  // refuse it as a fetch failure instead of dropping it. One outside the
+  // selected subtree would never have been materialized, so it does not count.
+  const subtree = ref.subtree;
+  const symlinkInScope = symlinks.find((link) => subtree === undefined || pathWithinSubtree(link, subtree));
+  if (symlinkInScope !== undefined) {
+    return {
+      ok: false,
+      error: {
+        message:
+          `Failed to fetch template from registry: "${url}" carries the symlink ${JSON.stringify(symlinkInScope)} ` +
+          'inside the template, and symlinks are not materialized; the template was refused.',
+      },
+    };
+  }
 
   // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-subtree
   if (ref.subtree !== undefined) {
@@ -290,23 +316,6 @@ async function resolveRemoteOrigin(ref: StructuredRef, fetchFn: FetchFn): Promis
     content = narrowed.content;
   }
   // @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-subtree
-
-  // A symlink the adapter could not materialize, inside the scope this
-  // resolution keeps, would make the installed content differ from the commit;
-  // refuse it as a fetch failure instead of dropping it. One outside the
-  // selected subtree would never have been materialized, so it does not count.
-  const subtree = ref.subtree;
-  const symlinkInScope = symlinks.find((link) => subtree === undefined || pathWithinSubtree(link, subtree));
-  if (symlinkInScope !== undefined) {
-    return {
-      ok: false,
-      error: {
-        message:
-          `Failed to fetch template from registry: "${url}" carries the symlink "${symlinkInScope}" ` +
-          'inside the template, and symlinks are not materialized; the template was refused.',
-      },
-    };
-  }
 
   // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-pin
   // Settle the pin BEFORE identity resolution, per this step's own place in
@@ -551,7 +560,8 @@ function buildSourceSpec(ref: StructuredRef): string {
 // `cpt-frontx-adr-source-spec-syntax`'s own evolvability note, that neither
 // invalidates a reference already written nor requires touching the refusal.
 const SUPPORTED_HOST_ADDRESS_BUILDERS: Record<string, (ref: StructuredRef) => string> = {
-  github: (ref) => `https://api.github.com/repos/${ref.owner}/${ref.repo}/tarball/${ref.ref}`,
+  github: ({ owner, repo, ref }) =>
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/tarball/${encodeURIComponent(ref)}`,
 };
 
 const SUPPORTED_HOSTS = Object.keys(SUPPORTED_HOST_ADDRESS_BUILDERS);

@@ -544,7 +544,7 @@ describe('nested environment-owned entries (exact spelling), real filesystem thr
       expect(fs.readFileSync(path.join(sandbox, 'elsewhere', 'keep.txt'), 'utf-8')).toBe('outside\n');
     });
 
-    it.skipIf(process.getuid?.() === 0)('D7: an unreadable NON-reserved directory fails the plan (generic error, no envelope), nothing is written', async () => {
+    it.skipIf(process.getuid?.() === 0)('D7: an unreadable NON-reserved directory reports INTERNAL in JSON, nothing is written', async () => {
       await apply();
       write('app/locked/f.txt', 'f\n');
       fs.chmodSync(path.join(project, 'app/locked'), 0o000);
@@ -552,10 +552,11 @@ describe('nested environment-owned entries (exact spelling), real filesystem thr
       for (const args of [['delete', 'app', '--dry-run'], ['delete', 'app']]) {
         const o = await call(args);
         expect(o.exitCode, args.join(' ')).toBe(2);
-        expect(String(o.stderr ?? '')).toMatch(/could not enumerate target directory/);
-        expect(o.stdout ?? '').toBe('');
+        expect(envelope(o)).toMatchObject({ ok: false, error: { code: 'INTERNAL', message: expect.stringContaining('could not enumerate target directory') } });
       }
       expect(snapshot(project)).toEqual(before);
+      fs.chmodSync(path.join(project, 'app/locked'), 0o755);
+      expect(fs.readFileSync(path.join(project, 'app/locked/f.txt'), 'utf8')).toBe('f\n');
     });
 
     for (const [label, disk] of [['matching', 'ds0'], ['diverged', 'developer edit']] as const) {

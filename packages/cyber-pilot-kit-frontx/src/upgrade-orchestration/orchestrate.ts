@@ -9,10 +9,11 @@
 // `applyChangeSet` exports. It drives the SINGLE engine strictly through the
 // injected `invokeUpgradeCommand` — the `frontx upgrade` COMMAND/INVOCATION
 // SURFACE (`InvokeUpgradeCommandFn`) — never a compile-time package
-// dependency (DESIGN §3.4; ADR-0027 `cpt-frontx-adr-ai-driven-upgrade-orchestration`).
+// dependency (DESIGN §3.4; ADR-0026 `cpt-frontx-adr-ai-driven-upgrade-orchestration`).
 import { enrichUpgradeChangeSet } from './enrich.js';
 import { OrchestrationLifecycleState, type OrchestrationLifecycleStateValue } from './state.js';
-import { resolveTargetOrigin } from './types.js';
+import { resolveTargetOrigin } from './resolve-target-origin.js';
+import { unknownConfirmation } from './invoke-upgrade-command.js';
 import type {
   ChangeSet,
   EnrichedReviewPackage,
@@ -25,7 +26,7 @@ import type {
 // are promoted to the neutral `src/project-state.ts` (F16's AI-extension
 // trust gate reads the SAME document) — imported directly rather than
 // re-exported through this package's own `types.ts`.
-import { selectTemplateEntry } from '../project-state.js';
+import { isProjectStateDocument, selectTemplateEntry } from '../project-state.js';
 
 // All dependencies are injected. `invokeUpgradeCommand` MUST drive the F14
 // engine strictly through the `frontx upgrade` command/invocation surface —
@@ -58,7 +59,13 @@ export type OrchestrationResult =
   // for a real refusal, and only absent for an incomplete test double.
   | { status: 'resolution-failed'; code?: string; message: string }
   | { status: 'empty-changeset' }
-  | { status: 'apply-failed'; message: string; lifecycleHistory: readonly OrchestrationLifecycleStateValue[] };
+  | { status: 'apply-failed'; code?: string; transitionCommitted?: boolean; message: string; lifecycleHistory: readonly OrchestrationLifecycleStateValue[] };
+
+function checkRequestedVersion(targetRef: string, manifestVersion: string | undefined): void {
+  if (/^v?\d+\.\d+\.\d+(?:[-+].*)?$/.test(targetRef) && targetRef.replace(/^v/, '') !== manifestVersion) {
+    throw new Error(`Requested ref ${targetRef} resolves to manifest version ${manifestVersion ?? '(missing)'}`);
+  }
+}
 
 // @cpt-begin:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-request-upgrade
 /**
@@ -70,6 +77,7 @@ export type OrchestrationResult =
  * review gate before any apply, and applies or declines
  * (cpt-frontx-flow-ai-upgrade-orchestration-upgrade).
  *
+ * `targetRef` is the exact Git ref, including any tag prefix (for example `v1.2.0`).
  * `appliedTemplateName` is the registered template's name as keyed in the
  * project's single state document's `templates` map (`inst-request-upgrade`)
  * — the developer either names it directly or the AI first lists the
@@ -78,7 +86,7 @@ export type OrchestrationResult =
 export async function orchestrateAiDrivenUpgrade(
   projectRoot: string,
   appliedTemplateName: string,
-  targetVersion: string,
+  targetRef: string,
   deps: OrchestrationDeps,
 ): Promise<OrchestrationResult> {
   // @cpt-end:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-request-upgrade
@@ -93,12 +101,12 @@ export async function orchestrateAiDrivenUpgrade(
   // @cpt-end:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-read-provenance
 
   // @cpt-begin:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-check-provenance-unreadable
-  if (!projectState) {
+  if (!isProjectStateDocument(projectState)) {
     // @cpt-begin:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-provenance-unreadable
     return {
       status: 'project-invalid',
       code: 'PROJECT_INVALID',
-      message: "The project's single state document (.frontx/project.json) is absent or unreadable — AI-driven upgrade cannot proceed.",
+      message: "The project's single state document (.frontx/project.json) is absent, unreadable, or invalid — AI-driven upgrade cannot proceed.",
     };
     // @cpt-end:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-provenance-unreadable
   }
@@ -134,7 +142,7 @@ export async function orchestrateAiDrivenUpgrade(
   // @cpt-begin:cpt-frontx-algo-ai-upgrade-orchestration-enrich:p1:inst-extract-provenance
   // Extract the SELECTED template's name, its current `origin`/`version`,
   // and every target listed under it from its `templates[name]` entry — the
-  // command surface receives projectRoot/templateName/targetVersion and
+  // command surface receives projectRoot/templateName/targetOrigin and
   // resolves its own baseline internally when computing the change set;
   // this orchestration layer's extraction is what makes the enriched review
   // package reflect the SELECTED template, `targets` included.
@@ -147,14 +155,11 @@ export async function orchestrateAiDrivenUpgrade(
   // @cpt-end:cpt-frontx-algo-ai-upgrade-orchestration-enrich:p1:inst-extract-provenance
 
   let reviewPackage: EnrichedReviewPackage | undefined;
+  let approved = false;
   let sawEmptyChangeSet = false;
 
-  // The target version's RESOLVED origin, rebased onto the origin this name
-  // is currently recorded at. `inst-invoke-engine` asks for the resolved
-  // origin, and the engine reads its second argument as a source-spec, so
-  // the bare version this orchestration takes as input cannot travel there
-  // unchanged (`resolveTargetOrigin`).
-  const resolvedTarget = resolveTargetOrigin(selectedEntry.origin, targetVersion);
+  // Resolve the exact Git ref against the registered repository and subtree.
+  const resolvedTarget = resolveTargetOrigin(selectedEntry.origin, targetRef);
   if (!resolvedTarget.ok) {
     return { status: 'origin-unavailable', code: 'ORIGIN_UNAVAILABLE', message: resolvedTarget.message };
   }
@@ -184,6 +189,7 @@ export async function orchestrateAiDrivenUpgrade(
         return 'declined' satisfies ReviewDecision;
       }
 
+      checkRequestedVersion(targetRef, changeSet.targetVersion);
       reviewPackage = enrichment.package;
 
       // @cpt-begin:cpt-frontx-state-ai-upgrade-orchestration-lifecycle:p1:inst-to-analyzed
@@ -192,15 +198,20 @@ export async function orchestrateAiDrivenUpgrade(
 
       // @cpt-begin:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-present-review
       const decision = await deps.presentEnrichedReview(reviewPackage);
+      if (decision !== 'approved' && decision !== 'declined') throw new Error('Invalid developer review decision');
       // @cpt-end:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-present-review
 
       // @cpt-begin:cpt-frontx-state-ai-upgrade-orchestration-lifecycle:p1:inst-to-reviewed
       lifecycleHistory.push(OrchestrationLifecycleState.REVIEWED);
       // @cpt-end:cpt-frontx-state-ai-upgrade-orchestration-lifecycle:p1:inst-to-reviewed
 
+      approved = decision === 'approved';
       return decision;
     },
-  );
+  ).catch((error: unknown) => {
+    if (!approved) throw error;
+    return unknownConfirmation(appliedTemplateName, error);
+  });
   // @cpt-end:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-invoke-enrichment
 
   // @cpt-begin:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-check-changeset
@@ -218,6 +229,8 @@ export async function orchestrateAiDrivenUpgrade(
       message: commandResult.message ?? 'The upgrade command surface refused to resolve a change set.',
     };
   }
+
+  if (commandResult.status === 'noop') checkRequestedVersion(targetRef, commandResult.targetVersion);
 
   if (sawEmptyChangeSet || !reviewPackage) {
     // @cpt-begin:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-empty-changeset
@@ -244,13 +257,16 @@ export async function orchestrateAiDrivenUpgrade(
     // @cpt-end:cpt-frontx-state-ai-upgrade-orchestration-lifecycle:p1:inst-to-applied
 
     // @cpt-begin:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-return-applied
-    return { status: 'applied', targetVersion, reviewPackage, lifecycleHistory };
+    return { status: 'applied', targetVersion: commandResult.targetVersion ?? reviewPackage.changeSet.targetVersion, reviewPackage, lifecycleHistory };
     // @cpt-end:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-return-applied
   }
   // @cpt-end:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-gate-approve
 
   if (commandResult.status === 'apply-failed') {
-    return { status: 'apply-failed', message: commandResult.message ?? 'Engine apply failed.', lifecycleHistory };
+    // @cpt-begin:cpt-frontx-state-ai-upgrade-orchestration-lifecycle:p1:inst-to-failed
+    lifecycleHistory.push(OrchestrationLifecycleState.FAILED);
+    // @cpt-end:cpt-frontx-state-ai-upgrade-orchestration-lifecycle:p1:inst-to-failed
+    return { status: 'apply-failed', code: commandResult.code, transitionCommitted: commandResult.transitionCommitted, message: commandResult.message ?? 'Engine apply failed.', lifecycleHistory };
   }
 
   // @cpt-begin:cpt-frontx-flow-ai-upgrade-orchestration-upgrade:p1:inst-gate-decline

@@ -55,7 +55,7 @@ import { AiReviewDriftError, applyFsAiReview } from './adapters/fs-ai-review-mat
 import { AiReviewConflictError } from './operations/ai-review';
 import { createHash } from 'node:crypto';
 import { createResolvePayloadFn, payloadFromStoredContent } from './upgrade/payload';
-import { readProjectState } from './project-state/io';
+import { projectStatePath, readProjectState } from './project-state/io';
 import { resolveRegisteredExcludedSubtrees } from './scaffold/registered-manifest';
 import {
   createFsReadDiskEntryFn,
@@ -130,8 +130,10 @@ import { MANIFEST_FILENAME } from './manifest/types';
 import { getOwn, setOwn } from './own-record';
 import { canonicalJson } from './canonical-json';
 import {
+  COORDINATION_DIRECTORY,
   CoordinationError,
   createFsWithMutationScope,
+  recoverCommandHint,
   type MutationScope,
   type Transition,
   type WithMutationScopeFn,
@@ -576,39 +578,42 @@ export async function writeInteractiveLineOrEscalate(
 // @cpt-end:cpt-frontx-flow-cli-invocation-run-command:p1:inst-run-return-if-write-failed
 
 function createInteractiveDeletionConfirm(): ConfirmDeletionFn {
+  // Filenames may contain terminal controls. Keep each reviewed path on one visible line.
+  const display = (value: string) => value.replace(/[\\\p{Cc}\p{Zl}\p{Zp}]/gu,
+    (char) => char === '\\' ? '\\\\' : `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`);
   return async function confirmDeletion(plan): Promise<'confirmed' | 'declined'> {
     if (plan.changedSinceShown) {
       await writeInteractiveLineOrEscalate('The plan changed since it was shown. Updated plan:\n');
     }
     // The owner is hashed into the approved plan, so it is shown on every prompt.
     await writeInteractiveLineOrEscalate(`Owning template: ${plan.templateName}\n`);
-    await writeInteractiveLineOrEscalate(`Would delete:\n${plan.toDelete.map((p) => `  ${p}`).join('\n') || '  (nothing)'}\n`);
-    await writeInteractiveLineOrEscalate(`Would preserve:\n${plan.toPreserve.map((p) => `  ${p}`).join('\n') || '  (nothing)'}\n`);
+    await writeInteractiveLineOrEscalate(`Would delete:\n${plan.toDelete.map((p) => `  ${display(p)}`).join('\n') || '  (nothing)'}\n`);
+    await writeInteractiveLineOrEscalate(`Would preserve:\n${plan.toPreserve.map((p) => `  ${display(p)}`).join('\n') || '  (nothing)'}\n`);
     if (plan.exclusionsDrift) {
       await writeInteractiveLineOrEscalate(
         `Note: the owning template's current manifest and its recorded declaration disagree on excludedSubtrees ` +
-          `— current: ${plan.exclusionsDrift.current.join(', ') || '(none)'}; recorded: ` +
-          `${plan.exclusionsDrift.recorded.join(', ') || '(none)'}. Both are honoured above.\n`,
+          `— current: ${plan.exclusionsDrift.current.map(display).join(', ') || '(none)'}; recorded: ` +
+          `${plan.exclusionsDrift.recorded.map(display).join(', ') || '(none)'}. Both are honoured above.\n`,
       );
     }
     if (plan.relinquishedGround && plan.relinquishedGround.length > 0) {
       await writeInteractiveLineOrEscalate(
-        `Will record as relinquished ground (kept protected after this delete): ${plan.relinquishedGround.join(', ')}\n`,
+        `Will record as relinquished ground (kept protected after this delete): ${plan.relinquishedGround.map(display).join(', ')}\n`,
       );
     }
     await writeInteractiveLineOrEscalate(
       plan.aiBundle.removed
         ? `AI bundle ${plan.aiBundle.path}/ will be removed with everything in it (last target of ${plan.templateName}).\n` +
-          (plan.aiBundle.tree?.files.map((f) => `  - ${plan.aiBundle.path}/${f.path}${f.linkTarget === undefined ? ` (${f.length} bytes)` : ` (symbolic link to ${JSON.stringify(f.linkTarget)})`}\n`).join('') ?? '')
+          (plan.aiBundle.tree?.files.map((f) => `  - ${plan.aiBundle.path}/${display(f.path)}${f.linkTarget === undefined ? ` (${f.length} bytes)` : ` (symbolic link to ${JSON.stringify(display(f.linkTarget))})`}\n`).join('') ?? '')
         : `No AI bundle is removed (other targets of ${plan.templateName} remain).\n`,
     );
     await writeInteractiveLineOrEscalate(
-      `Confirming also removes "${plan.target}" from "${plan.templateName}"'s applied targets` +
+      `Confirming also removes "${display(plan.target)}" from "${plan.templateName}"'s applied targets` +
         `${plan.aiBundle.removed ? ` and removes its AI bundle at ${plan.aiBundle.path}` : ''} — even if every file is preserved.\n`,
     );
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     try {
-      const answer = await askWithDefaultOnEndOfInput(rl, `Delete "${plan.target}"? [y/N] `);
+      const answer = await askWithDefaultOnEndOfInput(rl, `Delete "${display(plan.target)}"? [y/N] `);
       return answer.trim().toLowerCase() === 'y' ? 'confirmed' : 'declined';
     } finally {
       rl.close();
@@ -873,8 +878,8 @@ function mutationProjectRoot(command: KnownCommand, args: string[]): string {
  * - `finalizing`: the outcome was already verified; release completes once the
  *   entry still equals the recorded terminal entry.
  * - `prepared`, not committed: released as cancelled only when every footprint
- *   path is back at its pre-commit content; otherwise refused with the changed
- *   paths (no blind rollback).
+ *   path is back at its pre-commit content. Approved landed bytes are kept and
+ *   reported as released; foreign changes keep the transition blocked.
  * - `prepared`, committed: the candidate is re-acquired from the pinned origin
  *   and must hash to the approved one; the remaining effects (inventory slot,
  *   AI bundle against the CURRENT destination) are reviewed afresh and run only
@@ -1645,7 +1650,8 @@ function renderDeleteOutcome(result: DeleteOutcome, jsonMode: boolean): CommandO
     };
     const text =
       `Dry run for "${result.target}"\n${listText('Would delete', result.toDelete)}\n${listText('Would preserve', result.toPreserve)}` +
-      driftText(result.exclusionsDrift);
+      `\nWould remove ${result.target} from its registered template’s applied targets.` +
+      (result.aiBundle.removed ? ` Would remove the AI bundle at ${result.aiBundle.path}.` : '') + driftText(result.exclusionsDrift);
     return jsonMode ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) } : { exitCode: EXIT_SUCCESS, stdout: text };
   }
   if (result.outcome === 'declined') {
@@ -1687,7 +1693,7 @@ function renderDeleteOutcome(result: DeleteOutcome, jsonMode: boolean): CommandO
     ? { exitCode: EXIT_SUCCESS, stdout: JSON.stringify(ok(data)) }
     : {
         exitCode: EXIT_SUCCESS,
-        stdout: `Deleted "${result.target}" (${result.toDelete.length} path(s) removed).${residueNote}${driftText(result.exclusionsDrift)}`,
+        stdout: `Deleted "${result.target}" (${result.toDelete.length} path(s) removed). Detached from ${result.templateName}.${result.aiBundle.removed && !result.aiBundleResidue ? ` Cleared the AI bundle at ${result.aiBundle.path} if present.` : ''}${residueNote}${driftText(result.exclusionsDrift)}`,
       };
 }
 
@@ -1776,16 +1782,29 @@ export async function runCommand(
           ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('PROJECT_INVALID', message, state.details)) }
           : { exitCode: EXIT_USER_ERROR, stderr: message };
       }
+      // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-if-pending-post-commit
       const receiptIds = new Set(acquired.pending.map((transition) => transition.receipt.id));
       const pending = Object.entries(state.document.templates).find(([, entry]) =>
         entry.pendingPostCommit !== undefined && !receiptIds.has(entry.pendingPostCommit.intentId),
       );
-      if (pending) {
-        const message = `Template "${pending[0]}" has unfinished post-commit work without a coordination receipt. Writers are blocked; manual recovery is required before retrying. The CLI cannot repair this orphaned state automatically.`;
+      const record = pending?.[1].pendingPostCommit;
+      if (pending && record) {
+        // @cpt-begin:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-return-pending-post-commit
+        const template = pending[0];
+        const { intentId } = record;
+        const statePath = projectStatePath(acquired.projectRoot);
+        const receiptPath = path.join(acquired.projectRoot, '.frontx', 'operations', intentId + '.json');
+        const reservationPath = path.join(acquired.inventoryRoot, COORDINATION_DIRECTORY, 'reservations', intentId + '.json');
+        const message = `Template "${template}" in ${statePath} has unfinished intent ${intentId} without its receipt. ` +
+          `All writers, including --recover, are blocked. Expected receipt: ${receiptPath}. Reservation path in the active inventory (original root unknown): ${reservationPath}. ` +
+          'Stop writers and restore a verified, consistent backup of the project and inventory, including the matching state, receipt and reservation, ' +
+          `at their original roots. Do not invent records or clear pendingPostCommit by hand. ${recoverCommandHint(template)}.`;
         return parseJsonMode(args)
-          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('RECOVERY_REQUIRED', message, { template: pending[0], pendingPostCommit: pending[1].pendingPostCommit })) }
+          ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('RECOVERY_REQUIRED', message, { template, pendingPostCommit: record, intentId, statePath, receiptPath, reservationPath })) }
           : { exitCode: EXIT_USER_ERROR, stderr: message };
+        // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-return-pending-post-commit
       }
+      // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-if-pending-post-commit
       return runCommand(command, args, deps, acquired);
     });
     // @cpt-end:cpt-frontx-algo-upgrade-changeset-mutation-boundary:p1:inst-mb-acquire
@@ -2501,7 +2520,9 @@ export async function runCommand(
       // only: `--json --yes`, never a dry run (a preview issues no digest).
       if (expectedPlanDigest !== undefined && (dryRun || !jsonMode || !yes || !/^[0-9a-f]{64}$/.test(expectedPlanDigest))) {
         const message =
-          '--plan-digest=<64 hex digits> belongs to the confirming call: pass the planDigest of the CONFIRMATION_REQUIRED review together with --json --yes (never --dry-run).';
+          !/^[0-9a-f]{64}$/.test(expectedPlanDigest)
+            ? '--plan-digest must be exactly the 64 lowercase hexadecimal digits from the reviewed planDigest.'
+            : '--plan-digest belongs to the confirming call: use --json --yes without --dry-run.';
         return jsonMode
           ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(err('INVALID_INPUT', message)) }
           : { exitCode: EXIT_USER_ERROR, stderr: message };
@@ -3059,8 +3080,8 @@ export async function run(argv: string[], deps: CliDeps): Promise<CommandOutcome
     if (error instanceof CoordinationError) {
       const envelope = err(error.code, error.message, error.details);
       return parseJsonMode(parsed.args)
-        ? { exitCode: EXIT_USER_ERROR, stdout: JSON.stringify(envelope) }
-        : { exitCode: EXIT_USER_ERROR, stderr: error.message };
+        ? { exitCode: exitCodeForError(error.code), stdout: JSON.stringify(envelope) }
+        : { exitCode: exitCodeForError(error.code), stderr: error.message };
     }
     if (error instanceof InvalidBundleKeyError) {
       const envelope = err('INVALID_PATH', error.message, { path: error.key });
@@ -3204,6 +3225,9 @@ export async function run(argv: string[], deps: CliDeps): Promise<CommandOutcome
     // The dispatched behavior failed unexpectedly -> internal-error exit code.
     // @cpt-begin:cpt-frontx-state-cli-invocation-run:p1:inst-st-dispatched-internal-error
     const message = error instanceof Error ? error.message : String(error);
+    if (recognizedCommand === 'delete' && parseJsonMode(parsed.args)) {
+      return { exitCode: EXIT_INTERNAL_ERROR, stdout: JSON.stringify(err('INTERNAL', message)) };
+    }
     return { exitCode: EXIT_INTERNAL_ERROR, stderr: message };
     // @cpt-end:cpt-frontx-state-cli-invocation-run:p1:inst-st-dispatched-internal-error
   }

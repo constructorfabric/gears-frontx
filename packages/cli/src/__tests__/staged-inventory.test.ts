@@ -28,6 +28,22 @@ describe('staged batch auto-install (plan-ai-recovery r9 §4/§203)', () => {
     expect(real.lookup('demo')).toMatchObject({ name: 'demo' });
   });
 
+  it('keeps a file named node_modules and skips files beneath node_modules directories', async () => {
+    const staged = createStagedInventory(new TemplateInventory(), (name) => `/inv/${name}`);
+    const files = {
+      'frontx-template.json': manifest,
+      'docs/node_modules': 'ordinary file',
+      'src/node_modules/dep/index.js': 'dependency',
+    };
+    const result = await staged.inventory.install('github:acme/demo@v1', async () => JSON.stringify({ [BUNDLE_MARKER]: files }));
+    expect(result.ok).toBe(true);
+    const items = await staged.readInstalledContent(async () => [])('/inv/demo');
+    expect(items).toEqual([
+      { path: 'frontx-template.json', content: Buffer.from(manifest) },
+      { path: 'docs/node_modules', content: Buffer.from('ordinary file') },
+    ]);
+  });
+
   it('refuses the commit when the installed slot does not hold the checked candidate', async () => {
     let installedContent: string | undefined;
     const real = {

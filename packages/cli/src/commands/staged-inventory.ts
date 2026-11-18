@@ -67,7 +67,7 @@ export function createStagedInventory(real: TemplateInventory, resolveInstalledC
     if (files === undefined || files === null) return [{ path: MANIFEST_FILENAME, content: Buffer.from(content, 'utf-8') }];
     const items: ContentItem[] = [];
     for (const [key, value] of Object.entries(files)) {
-      if (key.split('/').includes('node_modules')) continue; // mirrors the installed-content reader's skip
+      if (key.split('/').slice(0, -1).includes('node_modules')) continue; // mirrors the installed-content reader's skip
       const bytes = typeof value === 'string' ? Buffer.from(value, 'utf-8') : isBinaryBundleValue(value) ? decodeBundleValue(value) : null;
       if (bytes === null) throw new Error(`Staged content entry "${key}" could not be decoded.`);
       items.push({ path: key, content: bytes });

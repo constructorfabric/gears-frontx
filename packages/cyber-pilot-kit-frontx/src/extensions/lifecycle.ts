@@ -21,11 +21,11 @@ import {
  * the denial action.
  */
 // @cpt-begin:cpt-frontx-state-template-ai-extensions-extension-lifecycle:p1:inst-trans-bundled-to-denied
-export function transitionBundledToDenied(identity: string): { state: typeof AiExtensionLifecycleState.DENIED; denial: TrustDenial } {
+export function transitionBundledToDenied(identity: string, reason?: string): { state: typeof AiExtensionLifecycleState.DENIED; denial: TrustDenial } {
   // @cpt-begin:cpt-frontx-state-template-ai-extensions-extension-lifecycle:p1:inst-action-report-denial
   const denial: TrustDenial = {
     identity,
-    reason: `template identity "${identity}" carries no registered, pinned origin in the project's single state document (.frontx/project.json) — its AI-extension bundle is untrusted and excluded from activation before any of its slots are scanned`,
+    reason: reason ?? `template identity "${identity}" carries no registered, pinned origin in the project's single state document (.frontx/project.json) — its AI-extension bundle is untrusted and excluded from activation before any of its slots are scanned`,
   };
   // @cpt-end:cpt-frontx-state-template-ai-extensions-extension-lifecycle:p1:inst-action-report-denial
   return { state: AiExtensionLifecycleState.DENIED, denial };

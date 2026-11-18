@@ -27,90 +27,24 @@ export interface TemplateEntry {
   version: string;
   targets: string[];
   previous?: PreviousOrigin;
-  /** The name's declared `excludedSubtrees`, recorded at register/upgrade
-   * time so `scaffold/delete-plan.ts` never depends on the origin still
-   * being resolvable to compute what is safe to delete — a vendored `path:`
-   * origin folder is transient by design (`QUICK_START` §4 vendors it into
-   * the project, and a developer may remove it once applied). OPTIONAL so
-   * an existing document written before this field existed still parses;
-   * an entry without it falls back to resolving the manifest live
-   * (`cpt-frontx-algo-cli-scaffolding-delete-plan`'s own
-   * `inst-dp-else-resolve-manifest`). Written by every path that creates or
-   * replaces an entry (`commands/register.ts`), carried forward unchanged by
-   * `commands/apply.ts` (re-recorded from the declaration the apply wrote
-   * under when the entry had no applied target yet; otherwise carried forward,
-   * or marked `exclusionsBackfilled` when that declaration differs), and re-recorded from the NEW payload's
-   * own declaration by `upgrade/commit.ts` — an upgrade can narrow or widen
-   * what a name excludes, and the recorded value must track whichever
-   * origin is now actually registered. */
+  /** Declarations recorded at register, apply or upgrade. Delete combines
+   * them with the current manifest to preserve excluded ground (FEATURE §1.1). */
   excludedSubtrees?: string[];
-  /** `true` when `excludedSubtrees` is NOT evidence of what the template
-   * declared when it wrote its applied `targets[]`: either it was BACKFILLED
-   * onto a legacy entry that already had applied targets (the CURRENT
-   * manifest's declaration, copied in by a no-op `register`/`upgrade` that
-   * touched no applied file), or a later `apply` wrote a further target under
-   * a declaration that differs from the recorded one, which one per-name value
-   * cannot describe alongside the earlier targets. (`apply` onto an entry with
-   * no applied target records its own declaration instead, so a `register`-time
-   * value never stands in for one: a `path:` manifest can change in between.)
-   * Every consumer that treats the
-   * recorded value as that evidence (the delete plan's other-owner ancestor
-   * exemption, the upgrade alias judgement) reads it as absent. Never set on
-   * an entry without applied targets (nothing was written yet), cleared by the
-   * next `apply` onto such an entry, and carried forward by `upgrade/commit.ts` on every later upgrade or restore
-   * (`UpgradePlan.priorHistoryUnproven`), since a later plan's empty skip list does not show that a
-   * file left behind by an earlier relinquishing upgrade is gone; it is also SET there when the
-   * candidate's declaration relinquishes a file the BASELINE payload listed inside the baseline
-   * boundary, or declares an excluded subtree the entry did not record at apply over ground the disk holds
-   * (`ClassifyResult.unprovenGroundPaths`; an origin edited in place no longer lists what it wrote)
-   * (`UpgradePlan.relinquishesWrittenGround`). OPTIONAL; a document carrying it is stamped
-   * `formatVersion` 2, since a build that predates it would drop the mark and read the
-   * declaration as evidence again. */
+  /** The recorded declaration cannot establish what earlier writes excluded.
+   * Apply, register and upgrade maintain this mark for delete and upgrade.
+   * Requires formatVersion 2 or later (composed-provenance FEATURE §1.1). */
   exclusionsBackfilled?: true;
-  /** Project-relative ground (directory roots, canonical, no trailing separator)
-   * that a MARKED entry (`exclusionsBackfilled`) declared excluded beneath one
-   * of its targets, kept after the target is DELETED or the declaration is
-   * narrowed. The mark guards an old file left in
-   * relinquished ground only while the entry still has the target the ground
-   * sits under; once `delete` removes that target the mark has nothing left to
-   * guard, so `delete` records the ground here and every OTHER template's
-   * delete plan keeps preserving what it finds beneath it (a nested template
-   * applied there later, or an alias of it). Recorded when the entry is marked (the roots of the declarations that changed, or every declaration in play once the entry was already marked, under
-   * every target, `project-state/retained-ground.ts`) as well as by `delete`, and never narrowed, so a later
-   * declaration cannot take the location with it; the entry's own `delete` preserves what lies beneath, at or above its target.
-   * Carried forward by every apply,
-   * upgrade and restore of the entry; dropped only by `unregister` (`register --replace` carries it: it
-   * records ground on disk, not lineage). Never
-   * read as proof of authorship: it only widens what a deletion preserves.
-   * OPTIONAL. A document carrying it is stamped `formatVersion` 2, so a build that
-   * predates it refuses the document instead of dropping the field; a document without it
-   * means "nothing retained". */
+  /** Project-relative directory roots, without a trailing slash, retained
+   * across target or declaration changes. Delete preserves this ground.
+   * Requires formatVersion 2 or later (composed-provenance FEATURE §1.1). */
   relinquishedGround?: string[];
-  /** Target-relative declarations (as `excludedSubtrees`, canonical, no
-   * trailing separator) that EVERY write of this MARKED entry's files was made
-   * under: the evidence, kept after the mark made `excludedSubtrees` useless as
-   * evidence, that those regions were never the entry's ground, so a template
-   * nested there is not an old file of the entry's (the upgrade's retained-ground
-   * judgement, the delete plan's other-owner ancestor exemption).
-   * Derived ONLY from recorded state at the moment an unmarked entry is marked
-   * (`recorded ∩ declaration now in play`) and afterwards only NARROWED to what
-   * each later apply, upgrade and restore also excluded
-   * (`project-state/retained-ground.ts`); never read from the current origin's
-   * manifest, which is mutable. Absent for a legacy or no-op-backfilled entry,
-   * for one marked by a build that did not write it, and once nothing remains:
-   * absent means "nothing proven", the conservative reading, and no later write
-   * creates it. Cleared by the next `apply` onto an entry with no applied target.
-   * OPTIONAL. A document carrying it is stamped `formatVersion` 2, so a build that
-   * predates it refuses the document (`its formatVersion is not 1`) before it can
-   * ignore the field and drop it on a rewrite. */
+  /** Target-relative manifest declarations, with a trailing slash, excluded
+   * by every write of a marked entry. Apply and upgrade narrow the proof
+   * used by upgrade and delete. Requires formatVersion 2 or later (FEATURE §1.1). */
   provenExcludedSubtrees?: string[];
-  /** Post-commit work of the upgrade/restore that produced this entry
-   * (plan-ai-recovery r9 §2.3): written in the SAME atomic write as the new
-   * origin/version, advanced only after an effect is verified (`done` carries
-   * the verified effect hash), and removed only by verified finalization. While
-   * present the transition is not complete: no noop/success may be reported for
-   * the name and no ordinary writer may change this entry. A document carrying
-   * it is stamped `formatVersion` 3. */
+  /** Upgrade or restore records outstanding tasks alongside the new origin.
+   * Recovery advances them after verification and clears the finalized
+   * record. Requires formatVersion 3 (composed-provenance FEATURE §1.1). */
   pendingPostCommit?: PendingPostCommit;
 }
 
@@ -126,11 +60,8 @@ export interface PendingPostCommit {
 }
 
 export interface ProjectStateDocument {
-  /** `2` exactly when an entry carries `exclusionsBackfilled`, `relinquishedGround` or
-   * `provenExcludedSubtrees` (a build that predates them would drop the protection they
-   * record, so it must refuse the document), `1` otherwise; derived on every write
-   * (`project-state/io.ts`'s `requiredFormatVersion`). `3` once an entry has carried
-   * `pendingPostCommit`, and never lowered again (plan-ai-recovery r9 §2). */
+  /** Once a document records post-commit work it stays at 3. Otherwise,
+   * ownership protection fields require 2 and all other documents use 1. */
   formatVersion: 1 | 2 | 3;
   templates: Record<string, TemplateEntry>;
   projectOwnedRoots: string[];

@@ -1,6 +1,7 @@
 import { defineConfig } from 'tsup';
+import { tsupInventoryOptions } from '../../scripts/audit-production-inventory.mjs';
 
-export default defineConfig({
+export default defineConfig(({ outDir }) => ({
   entry: {
     index: 'src/index.ts',
     cli: 'src/cli.ts',
@@ -9,5 +10,6 @@ export default defineConfig({
   dts: true,
   clean: true,
   sourcemap: true,
+  ...tsupInventoryOptions(outDir),
   splitting: false,
-});
+}));

@@ -19,11 +19,13 @@
 // assertions rest on: the candidate-content case keeps the list byte-identical
 // and changes only a file's bytes, and every case checks the bytes on disk and
 // the recorded version afterwards.
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { craftTarball } from '../../__test-utils__/crafted-tarball.js';
 import { createInvokeUpgradeCommand, type SpawnFn } from '../invoke-upgrade-command.js';
@@ -38,9 +40,9 @@ let sandbox: string;
 
 beforeAll(async () => {
   // `FRONTX_TEST_SCRATCH` lets a runner keep every artifact inside its own scratch tree.
-  root = await mkdtemp(path.join(process.env.FRONTX_TEST_SCRATCH ?? tmpdir(), 'frontx-approval-binding-'));
+  root = await mkdtemp(path.join(process.env.FRONTX_TEST_SCRATCH ?? tmpdir(), 'frontx approval-binding-'));
   buildDir = path.join(root, 'build');
-  execFileSync('npx', ['tsup', '--no-config', 'src/cli.ts', '--format', 'esm', '--out-dir', buildDir, '--silent'], {
+  execFileSync(process.execPath, [createRequire(import.meta.url).resolve('tsup/dist/cli-default.js'), '--no-config', 'src/cli.ts', '--format', 'esm', '--out-dir', buildDir, '--silent'], {
     cwd: cliPackageRoot,
     stdio: 'pipe',
   });
@@ -54,6 +56,7 @@ beforeEach(async () => {
   await writeFile(path.join(root, 'standin.mjs'), STANDIN, 'utf-8');
   sandbox = await mkdtemp(path.join(root, 'case-'));
   await mkdir(path.join(sandbox, 'home'), { recursive: true });
+  await mkdir(path.join(sandbox, 'tmp'));
 });
 
 afterEach(async () => {
@@ -96,8 +99,12 @@ function env(serve: string): NodeJS.ProcessEnv {
   return {
     PATH: process.env.PATH ?? '',
     HOME: path.join(sandbox, 'home'),
+    USERPROFILE: path.join(sandbox, 'home'),
+    TEMP: path.join(sandbox, 'tmp'),
+    TMP: path.join(sandbox, 'tmp'),
+    TMPDIR: path.join(sandbox, 'tmp'),
     FRONTX_INVENTORY_ROOT: path.join(sandbox, 'inventory'),
-    NODE_OPTIONS: `--import=${path.join(root, 'standin.mjs')}`,
+    NODE_OPTIONS: `--import=${pathToFileURL(path.join(root, 'standin.mjs')).href}`,
     STANDIN_SERVE: serve,
     STANDIN_STAGE: sandbox,
   };
@@ -193,7 +200,7 @@ describe('AI orchestration applies exactly what was reviewed (built CLI, real or
     const { project, source } = await preparedProject();
     const { result, reviewed } = await orchestrate(project, source);
 
-    expect(result, JSON.stringify(result)).toMatchObject({ status: 'applied' });
+    expect(result, JSON.stringify(result)).toMatchObject({ status: 'applied', targetVersion: '1.1.0' });
     expect(reviewed).toHaveLength(1);
     expect(await read(project, 'app/README.md')).toBe(V2['README.md']);
     expect(await read(project, 'app/CHANGELOG.md')).toBe(V2['CHANGELOG.md']);

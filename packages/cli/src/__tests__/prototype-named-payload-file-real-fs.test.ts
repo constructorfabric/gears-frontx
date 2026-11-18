@@ -11,6 +11,8 @@
 // restore), and checks the narrowed-subtree and local-fetch bundle builders
 // directly. A nested `dir/__proto__` was never affected (the key is the whole
 // path); only a top-level file is.
+import { createRequire } from 'node:module';
+import { sandboxEnv } from './support/sandbox-env';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -32,7 +34,7 @@ beforeAll(async () => {
   // The CLI's per-user mutex lives under HOME, which it never creates.
   await mkdir(path.join(sandbox, 'home'));
   buildDir = path.join(sandbox, 'build');
-  execFileSync('npx', ['tsup', '--no-config', 'src/cli.ts', '--format', 'esm', '--out-dir', buildDir, '--silent'], {
+  execFileSync(process.execPath, [createRequire(import.meta.url).resolve('tsup/dist/cli-default.js'), '--no-config', 'src/cli.ts', '--format', 'esm', '--out-dir', buildDir, '--silent'], {
     cwd: packageRoot,
     stdio: 'pipe',
   });
@@ -63,7 +65,7 @@ describe('top-level prototype-named payload files', () => {
       const r = spawnSync(process.execPath, [path.join(buildDir, 'cli.js'), ...args, '--json'], {
         cwd: project,
         encoding: 'utf-8',
-        env: { PATH: process.env.PATH ?? '', HOME: path.join(sandbox, 'home'), FRONTX_INVENTORY_ROOT: path.join(sandbox, 'inv') },
+        env: { PATH: process.env.PATH ?? '', ...sandboxEnv(path.join(sandbox, 'home')), FRONTX_INVENTORY_ROOT: path.join(sandbox, 'inv') },
       });
       return JSON.parse(r.stdout.trim()) as { ok: boolean; data?: Record<string, unknown> };
     });

@@ -27,7 +27,7 @@ export interface InventoryError {
   message: string;
   /**
    * The dictionary code the underlying failure reported, when it reported one
-   * (`cpt-frontx-adr-uniform-cli-json-envelope`'s vocabulary). Optional
+   * (`cpt-frontx-adr-cli-machine-readable-output`'s vocabulary). Optional
    * because not every inventory failure originates from a coded one — a
    * source-spec that will not parse is refused here, not by a resolver.
    *

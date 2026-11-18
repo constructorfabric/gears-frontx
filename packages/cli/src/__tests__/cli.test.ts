@@ -153,8 +153,9 @@ async function confirmedUpgrade(args: string[], deps: CliDeps): ReturnType<typeo
 }
 
 const memoryId = (i: number) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`;
-function memoryTransition(projectRoot: string, intent: TransitionIntent, events: string[], phase: TransitionReceipt['phase'] = 'prepared', id = memoryId(99)): Transition {
-  const receipt: TransitionReceipt = { schemaVersion: 1, id, projectRoot, inventoryRoot: '/inventory', intent, phase };
+type ReceiptFields = Partial<Pick<TransitionReceipt, 'phase' | 'inventoryRoot' | 'completion'>>;
+function memoryTransition(projectRoot: string, intent: TransitionIntent, events: string[], fields: ReceiptFields = {}, id = memoryId(99)): Transition {
+  const receipt: TransitionReceipt = { schemaVersion: 1, id, projectRoot, inventoryRoot: '/inventory', intent, phase: 'prepared', ...fields };
   return {
     receipt,
     receiptPath: `/receipts/${id}.json`,
@@ -164,13 +165,13 @@ function memoryTransition(projectRoot: string, intent: TransitionIntent, events:
     },
   };
 }
-function memoryScope(events: string[] = [], pending: { intent: TransitionIntent; phase?: TransitionReceipt['phase'] }[] = [], modes: string[] = []): WithMutationScopeFn {
+function memoryScope(events: string[] = [], pending: ({ intent: TransitionIntent } & ReceiptFields)[] = [], modes: string[] = []): WithMutationScopeFn {
   return async (projectRoot, mode, body) => {
     modes.push(mode);
     return body({
       projectRoot,
       inventoryRoot: '/inventory',
-      pending: pending.map((p, i) => memoryTransition(projectRoot, p.intent, events, p.phase, memoryId(i))),
+      pending: pending.map(({ intent, ...fields }, i) => memoryTransition(projectRoot, intent, events, fields, memoryId(i))),
       beginTransition: (intent) => {
         events.push(`begin:${intent.name}:${JSON.parse(intent.fromEntry).version}:${intent.tasks.inventory}:${intent.tasks.ai}`);
         return memoryTransition(projectRoot, intent, events);
@@ -2268,16 +2269,24 @@ describe('mutation boundary and upgrade --recover', () => {
 
   it('refuses an orphan pending post-commit entry before a writer can plan, and permits the normal path', async () => {
     const pendingEntry = { ...entry, pendingPostCommit: { intentId: '00000000-0000-4000-8000-000000000001', inventory: 'pending' as const, ai: 'not-required' as const } };
-    const { readProjectStateFn, writeProjectStateFn } = seededProjectState({ formatVersion: 3, templates: { foo: pendingEntry }, projectOwnedRoots: [] });
+    const { readProjectStateFn, writeProjectStateFn } = seededProjectState({ formatVersion: 3, templates: { 'foo bar': pendingEntry }, projectOwnedRoots: [] });
     const { deps } = makeDeps({ readProjectStateFn, writeProjectStateFn });
-    const outcome = await run(['ownership', 'add', 'docs', '--json'], deps);
-    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
-    expect(JSON.parse(outcome.stdout ?? '')).toMatchObject({
-      ok: false,
-      error: { code: 'RECOVERY_REQUIRED', message: expect.stringContaining('manual recovery is required') },
-    });
-    expect(JSON.stringify(JSON.parse(outcome.stdout ?? ''))).toContain('cannot repair this orphaned state automatically');
-    expect(readProjectStateFn).toHaveBeenCalledTimes(1);
+    const { intentId } = pendingEntry.pendingPostCommit;
+    for (const args of [['ownership', 'add', 'docs'], ['upgrade', 'other', '--recover'], ['upgrade', 'foo bar', '--recover']]) {
+      const outcome = await run([...args, '--json'], deps);
+      expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
+      const envelope = JSON.parse(outcome.stdout ?? '');
+      expect(envelope.error.message).toContain('template name "foo bar" as one argument and --recover');
+      expect(envelope.error.message).toContain('Reservation path in the active inventory (original root unknown)');
+      expect(envelope).toMatchObject({ ok: false, error: {
+        code: 'RECOVERY_REQUIRED', message: expect.stringContaining('verified, consistent backup'),
+        details: { template: 'foo bar', intentId, pendingPostCommit: pendingEntry.pendingPostCommit,
+          statePath: path.join(process.cwd(), '.frontx', 'project.json'),
+          receiptPath: path.join(process.cwd(), '.frontx', 'operations', intentId + '.json'),
+          reservationPath: path.join('/inventory', '.frontx-operations', 'reservations', intentId + '.json') },
+      } });
+    }
+    expect(deps.fetchFn).not.toHaveBeenCalled();
     expect(writeProjectStateFn).not.toHaveBeenCalled();
 
     const normal = makeDeps({ readProjectStateFn: vi.fn(async () => null) as ReadProjectStateFn });
@@ -2308,19 +2317,54 @@ describe('mutation boundary and upgrade --recover', () => {
     expect(writeProjectStateFn).not.toHaveBeenCalled();
   });
 
-  it('keeps the records when the entry changed in a way the transition cannot explain', async () => {
-    const { readProjectStateFn, writeProjectStateFn } = seededProjectState({ formatVersion: 1, templates: { foo: entry }, projectOwnedRoots: [] });
+  it('reports both matching receipts without picking one to release', async () => {
     const events: string[] = [];
-    // The recorded transition went v8 -> v9; the project is at v2 with v1 as previous.
-    const unrelated = intentFor({ origin: 'github:acme/foo@v8.0.0' }, {
-      from: { origin: 'github:acme/foo@v8.0.0', version: '8.0.0' },
-      to: { origin: 'github:acme/foo@v9.0.0', version: '9.0.0' },
-    });
-    const { deps } = makeDeps({ readProjectStateFn, writeProjectStateFn, withMutationScope: scopeWith([unrelated], events, []) });
+    const intent = intentFor(null);
+    const { deps } = makeDeps({ withMutationScope: scopeWith([intent, intent], events, []) });
     const outcome = await run(['upgrade', 'foo', '--recover', '--json'], deps);
-    expect(outcome.exitCode).toBe(EXIT_USER_ERROR);
-    expect(JSON.parse(outcome.stdout ?? '')).toMatchObject({ ok: false, error: { code: 'RECOVERY_REQUIRED' } });
+    expect(JSON.parse(outcome.stdout ?? '')).toMatchObject({ ok: false, error: { code: 'RECOVERY_REQUIRED',
+      details: { receipts: [`/receipts/${memoryId(0)}.json`, `/receipts/${memoryId(1)}.json`] } } });
     expect(events).toEqual([]);
+    expect(deps.writeProjectStateFn).not.toHaveBeenCalled();
+  });
+
+  it.each(['preparing', 'preparing-drift', 'before-clear', 'after-clear', 'still-pending', 'terminal-drift'] as const)(
+    'checks the recorded terminal or initial state before release (%s)', async (scenario) => {
+      const preparing = scenario.startsWith('preparing');
+      const record = { intentId: memoryId(0), inventory: 'not-required' as const, ai: scenario === 'still-pending' ? 'pending' as const : 'not-required' as const };
+      const current = !preparing && scenario !== 'after-clear' ? { ...entry, pendingPostCommit: record } : entry;
+      const expected = await canonical(scenario.endsWith('drift') ? { ...entry, targets: [] } : entry);
+      const fields: ReceiptFields = preparing ? { phase: 'preparing' } : { phase: 'finalizing', completion: { result: 'committed', entry: expected } };
+      const events: string[] = [];
+      const { deps } = makeDeps({ ...seededProjectState({ formatVersion: 3, templates: { foo: current }, projectOwnedRoots: [] }),
+        withMutationScope: memoryScope(events, [{ intent: { ...intentFor(null), fromEntry: expected }, ...fields }]) });
+      const result = JSON.parse((await run(['upgrade', 'foo', '--recover', '--json'], deps)).stdout ?? '');
+      if (scenario.endsWith('drift') || scenario === 'still-pending') {
+        expect(result).toMatchObject({ ok: false, error: { code: 'RECOVERY_REQUIRED' } });
+        expect(events).toEqual([]);
+      } else {
+        expect(result).toMatchObject({ ok: true, data: { outcome: preparing ? 'cancelled' : 'recovered' } });
+        expect(events).toEqual([preparing ? 'finalize:cancelled' : 'finalize:committed']);
+      }
+      expect(deps.writeProjectStateFn).toHaveBeenCalledTimes(scenario === 'before-clear' ? 1 : 0);
+      expect(deps.fetchFn).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['to', 'previous', 'inventoryRoot'] as const)('keeps a committed receipt when %s differs, before fetching', async (mismatch) => {
+    const pendingPostCommit = { intentId: memoryId(0), inventory: 'pending' as const, ai: 'not-required' as const };
+    const current = { ...entry, pendingPostCommit };
+    if (mismatch === 'to') current.version = '3.0.0';
+    if (mismatch === 'previous') current.previous = { ...entry.previous, version: '0.5.0' };
+    const events: string[] = [];
+    const { deps } = makeDeps({ ...seededProjectState({ formatVersion: 3, templates: { foo: current }, projectOwnedRoots: [] }),
+      withMutationScope: memoryScope(events, [{ intent: intentFor(null), inventoryRoot: mismatch === 'inventoryRoot' ? '/original' : '/inventory' }]) });
+    const outcome = await run(['upgrade', 'foo', '--recover', '--json'], deps);
+    expect(JSON.parse(outcome.stdout ?? '')).toMatchObject({ ok: false, error: { code: 'RECOVERY_REQUIRED',
+      ...(mismatch === 'inventoryRoot' && { details: { inventoryRoot: '/original' } }) } });
+    expect(events).toEqual([]);
+    expect(deps.writeProjectStateFn).not.toHaveBeenCalled();
+    expect(deps.fetchFn).not.toHaveBeenCalled();
   });
 
   it('a committed transition with no pending task is finalized without any effect', async () => {
@@ -2790,6 +2834,17 @@ describe('dispatch: delete (cpt-frontx-flow-cli-scaffolding-delete-target)', () 
   // for a problem in the caller's own tree, and no parseable answer for a machine
   // caller. The real-filesystem coverage of the check itself lives in
   // `fs-containment.test.ts`; this pins how its refusal is REPORTED.
+  it('reports a delete enumeration failure in JSON', async () => {
+    const { readProjectStateFn } = seededProjectState({
+      formatVersion: 1, templates: { foo: { origin: 'path:gone', version: '1.0.0', targets: ['app'], excludedSubtrees: [] } },
+      projectOwnedRoots: [],
+    });
+    const { deps } = makeDeps({ readProjectStateFn, listTargetFilesFn: async () => { throw new Error('cannot enumerate directory'); } });
+    const result = await run(['delete', 'app', '--dry-run', '--json'], deps);
+    expect(result.exitCode).toBe(EXIT_INTERNAL_ERROR);
+    expect(JSON.parse(result.stdout ?? '')).toMatchObject({ error: { code: 'INTERNAL', message: 'cannot enumerate directory' } });
+  });
+
   it('reports a containment violation as an INVALID_PATH envelope with the user-error exit, not an internal error', async () => {
     const { readProjectStateFn } = seededProjectState({
       formatVersion: 1,
@@ -2816,7 +2871,8 @@ describe('dispatch: delete (cpt-frontx-flow-cli-scaffolding-delete-target)', () 
     const parsed: unknown = JSON.parse(outcome.stdout ?? '');
     expect(parsed).toMatchObject({
       ok: false,
-      error: { code: 'INVALID_PATH', details: { path: '/outside/state/project.json' } },
+      error: { code: 'INVALID_PATH', message: expect.stringContaining('All 1 planned file(s) were removed'),
+        details: { path: '/outside/state/project.json', target: 'packages/app', deletedPaths: ['packages/app/src/index.ts'] } },
     });
   });
 

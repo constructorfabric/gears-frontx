@@ -18,7 +18,7 @@ import type { AiReviewSnapshot } from '../operations/ai-review';
 // (the forward and restore flows). They are declared in one place so the
 // four never disagree about what a plan is.
 import type { ContentItem } from '../scaffold/types';
-import type { PreviousOrigin } from '../project-state/types';
+import type { PreviousOrigin, ReadProjectStateFn, WriteProjectStateFn } from '../project-state/types';
 import type { ErrorCode } from '../envelope';
 
 export type { ContentItem, PreviousOrigin };
@@ -92,10 +92,7 @@ export interface RetainedGroundHolder {
 
 // An origin plus the version it reports — the pair the project state store
 // records, and the pair a plan names on both ends of the transition.
-export interface OriginVersion {
-  origin: string;
-  version: string;
-}
+export type OriginVersion = PreviousOrigin;
 
 // The validated operation plan `inst-val-return-pass` returns and
 // `inst-com-*` consumes: `{ from, to, targets[], operations[], skipped[] }`.
@@ -192,9 +189,11 @@ export interface ResolvedPayload {
   excludedSubtrees: string[];
 }
 
+type UpgradeErrorCode<Code extends ErrorCode> = Code;
+
 export type ResolvePayloadResult =
   | { ok: true; payload: ResolvedPayload }
-  | { ok: false; code: Extract<ErrorCode, 'ORIGIN_UNAVAILABLE' | 'INVALID_MANIFEST'>; message: string };
+  | { ok: false; code: UpgradeErrorCode<'ORIGIN_UNAVAILABLE' | 'INVALID_MANIFEST'>; message: string };
 
 // Resolves ONE origin to its payload, without adopting anything into the
 // project or the registered inventory slot. The one seam both the baseline's
@@ -293,8 +292,7 @@ export type PresentUpgradePlanFn = (plan: UpgradePlan) => Promise<'approved' | '
 // (`../adapters/fs-upgrade-io.ts`'s own header), mapped to `INVALID_PATH`
 // only once it reaches `cli.ts`'s `run()`, never surfaced as a
 // `CommitOutcome` this type union has to carry.
-export type UpgradeRefusalCode = Extract<
-  ErrorCode,
+export type UpgradeRefusalCode = UpgradeErrorCode<
   | 'TEMPLATE_NOT_REGISTERED'
   | 'TARGET_NOT_APPLIED'
   | 'NOTHING_TO_RESTORE'
@@ -326,6 +324,6 @@ export interface UpgradeRefusal {
 // `null`, which is exactly the distinction `inst-cls-if-not-regular` must
 // refuse fail-closed on. Kept here, where their existing importers already
 // find them, rather than moved and forcing an unrelated churn.
-export type ReadProjectFileFn = (absolutePath: string) => Promise<string | null>;
-export type WriteProjectFileFn = (absolutePath: string, content: string) => Promise<void>;
+export type ReadProjectFileFn = ReadProjectStateFn;
+export type WriteProjectFileFn = WriteProjectStateFn;
 export type RemoveProjectFileFn = (absolutePath: string) => Promise<void>;

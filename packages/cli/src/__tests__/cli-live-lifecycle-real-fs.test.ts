@@ -44,11 +44,13 @@
 // directory and every template live under one `mkdtemp` sandbox removed in
 // `afterAll` after ordinary vitest passes/failures; that is best effort and
 // gives no guarantee on SIGKILL, host crash or a failed removal. The CLI
-// subprocess env is closed, but the one-off `npx tsup` build inherits the
+// subprocess env is closed, but the one-off tsup build inherits the
 // parent environment, PATH and installed toolchain, so the build is not
 // hermetic and not a proof of the published package. The ONLY network seam is the CLI's own TEST-ONLY offline hook `FRONTX_TEST_LOCAL_SOURCE_DIR`
 // (served for `install`/`update-local` of a `github:` spec); it is set only
 // on those calls, and `GITHUB_TOKEN` is never passed through.
+import { createRequire } from 'node:module';
+import { sandboxEnv } from './support/sandbox-env';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -70,8 +72,8 @@ beforeAll(async () => {
   await mkdir(path.join(sandbox, 'home'));
   buildDir = path.join(sandbox, 'build');
   execFileSync(
-    'npx',
-    ['tsup', '--no-config', 'src/cli.ts', '--format', 'esm', '--out-dir', buildDir, '--silent'],
+    process.execPath,
+    [createRequire(import.meta.url).resolve('tsup/dist/cli-default.js'), '--no-config', 'src/cli.ts', '--format', 'esm', '--out-dir', buildDir, '--silent'],
     { cwd: packageRoot, stdio: 'pipe' },
   );
 }, 180_000);
@@ -108,7 +110,7 @@ function frontxOnce(cwd: string, inventory: string, args: string[], extraEnv: Re
     // inventory, no real home.
     env: {
       PATH: process.env.PATH ?? '',
-      HOME: path.join(sandbox, 'home'),
+      ...sandboxEnv(path.join(sandbox, 'home')),
       FRONTX_INVENTORY_ROOT: inventory,
       ...extraEnv,
     },

@@ -39,6 +39,12 @@ describe('classifyPathStrict', () => {
   });
   const classify = (raw: string) => createFsClassifyPathStrictFn(root)(raw);
 
+  it.skipIf(path.sep !== '/')('preserves a literal backslash in a POSIX symlink target', () => {
+    const target = String.raw`vendor\name`;
+    w(target);
+    fs.symlinkSync(target, path.join(root, 'link'));
+    expect(classify('link')).toMatchObject({ kind: 'present', canonical: target });
+  });
   it('C1 present directory', () => {
     w('vendor/t/a.txt');
     expect(classify('vendor/t')).toMatchObject({ kind: 'present', canonical: 'vendor/t' });

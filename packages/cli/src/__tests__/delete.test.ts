@@ -1,5 +1,5 @@
 // @cpt-flow:cpt-frontx-flow-cli-scaffolding-delete-target:p1
-// @cpt-state:cpt-frontx-state-cli-scaffolding-delete-op:p1
+// @cpt-state:cpt-frontx-state-cli-scaffolding-delete-op:p2
 import { describe, expect, it, vi } from 'vitest';
 import { deleteTarget } from '../commands/delete';
 import type { ConfirmDeletionFn, DeleteCommandFlags, DeleteOutcome } from '../commands/delete';
@@ -129,6 +129,67 @@ async function confirmed(invoke: (flags: DeleteCommandFlags) => Promise<DeleteOu
 }
 
 describe('deleteTarget (cpt-frontx-flow-cli-scaffolding-delete-target)', () => {
+  it('refuses invalid recorded identities before listing files or reviewing a bundle', async () => {
+    const state = fakeProjectState({
+      formatVersion: 1, templates: { 'bad/../name': entry(['app']) }, projectOwnedRoots: [],
+    });
+    const list = vi.fn(async () => []);
+    const remove = vi.fn(async () => {});
+    expect(await deleteTarget('app', '/repo', { jsonMode: true, yes: false, dryRun: true }, fakeInventory(),
+      identityCanonicalize, list, noUnenumerableEntries, neverCalledReadFileFn, remove, noopAssertPathWithinRoot,
+      state.read, state.write, neverConfirm(), remove)).toMatchObject({ ok: false, code: 'PROJECT_INVALID' });
+    expect(list).not.toHaveBeenCalled();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it.each(['second removal', 'state write', 'invalid state'] as const)(
+    'reports progress after %s fails and finishes on a newly reviewed retry',
+    async (failure) => {
+      const initial: ProjectStateDocument = {
+        formatVersion: 1, templates: { demo: entry(['app'], { excludedSubtrees: [] }) }, projectOwnedRoots: [],
+      };
+      const state = fakeProjectState(initial);
+      const files = new Set(['a', 'b', 'c']);
+      const bundle = vi.fn(async () => {});
+      let failing = true;
+      const remove = vi.fn(async (absolute: string) => {
+        const name = absolute.slice('/repo/app/'.length);
+        if (failing && failure === 'second removal' && name === 'b') throw new Error('busy');
+        expect(files.delete(name)).toBe(true);
+      });
+      const write = vi.fn(async (...args: Parameters<WriteProjectStateFn>) => {
+        expect(files.size).toBe(0);
+        if (failing && failure === 'state write') throw new Error('disk full');
+        await state.write(...args);
+      });
+      const invoke = (flags: DeleteCommandFlags) => deleteTarget(
+        'app', '/repo', flags, fakeInventory(), identityCanonicalize, async () => [...files],
+        noUnenumerableEntries, neverCalledReadFileFn, remove, noopAssertPathWithinRoot,
+        async (file) => failing && failure === 'invalid state' && files.size === 0 ? '{' : state.read(file),
+        write, neverConfirm(), bundle,
+      );
+
+      const result = await confirmed(invoke);
+      const partial = failure === 'second removal';
+      expect(result).toMatchObject({
+        ok: false, code: failure === 'invalid state' ? 'PROJECT_INVALID' : 'INTERNAL',
+        message: expect.stringContaining(partial ? 'stopped partway' : 'All 3 planned file(s) were removed'),
+        details: { target: 'app', deletedPaths: partial ? ['app/a'] : ['app/a', 'app/b', 'app/c'],
+          ...(partial ? { failedPath: 'app/b' } : {}) },
+      });
+      expect([...files]).toEqual(partial ? ['b', 'c'] : []);
+      expect(write).toHaveBeenCalledTimes(failure === 'state write' ? 1 : 0);
+      expect(state.written()).toEqual(initial);
+      expect(bundle).not.toHaveBeenCalled();
+
+      failing = false;
+      expect(await confirmed(invoke)).toMatchObject({ ok: true, outcome: 'deleted' });
+      expect(files.size).toBe(0);
+      expect(state.written().templates.demo.targets).toEqual([]);
+      expect(bundle).toHaveBeenCalledOnce();
+    },
+  );
+
   it('refuses TARGET_NOT_APPLIED and deletes/reads nothing', async () => {
     const { read, write } = fakeProjectState({ formatVersion: 1, templates: {}, projectOwnedRoots: [] });
     const { remove, removed } = fakeRemoveFile();

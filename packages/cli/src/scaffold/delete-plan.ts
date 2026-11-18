@@ -35,14 +35,8 @@ import { classifierFromCanonicalize, registeredLocalOriginRaws } from './strict-
 import type { ClassifyPathStrictFn } from './strict-path';
 import type { ErrorCode } from '../envelope';
 
-// Narrow port over `TemplateInventory` — this algorithm needs only
-// `lookup`, to read the owning template's installed manifest for its
-// declared `excludedSubtrees` (the project state store's own `TemplateEntry`
-// carries no such field — `commands/ownership.ts`'s `OwnershipInventoryPort`
-// makes the identical join for the identical reason). A fresh, local port
-// rather than an import of that one: this module lives in `scaffold/`, one
-// layer below `commands/`, and must not take an upward dependency on it for
-// a two-method shape this simple.
+// lookup supplies the installed manifest's current declaration for the union
+// with the owning project's recorded excludedSubtrees.
 export interface DeletePlanInventoryPort {
   lookup(name: string): InventoryEntry | undefined;
 }
@@ -142,9 +136,8 @@ function deriveLocalOriginFolder(origin: string, canonicalizeFn: CanonicalizeTar
 
 /**
  * cpt-frontx-algo-cli-scaffolding-delete-plan — the deletion plan for one
- * already-canonicalized `<target>`: its effective ownership (the six-term
- * subtraction `effective-ownership.ts` fixes, shared verbatim with
- * `apply`), minus every nested target belonging to a DIFFERENT registered
+ * recorded target spelling: its effective ownership, with every registered local
+ * origin protected, minus every nested target belonging to a DIFFERENT registered
  * template, enumerated against what actually exists on disk. Refuses with
  * `TARGET_NOT_APPLIED` when `<target>` matches no registered template's
  * `targets[]` array.
@@ -246,7 +239,6 @@ export async function computeDeletionPlan(
   // preserved file is named in the list the developer confirms, while a
   // deleted one is gone).
   let currentDeclaredExclusions: string[] | undefined;
-  const recordedDeclaredExclusions: string[] | undefined = ownerEntry.excludedSubtrees;
 
   // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-resolve-current-manifest
   // Any reason the CURRENT manifest cannot supply a declaration — genuinely
@@ -260,10 +252,7 @@ export async function computeDeletionPlan(
   // Absent` distinguishes the two DIFFERENT reasons the call below can fail
   // to supply content — a clean `undefined` return (the origin folder is
   // genuinely gone, or the inventory holds no entry for it) versus a THROW
-  // (something real stands there but is not a regular file) — because only
-  // the refusal below's remedy depends on which one happened: re-registering
-  // an origin that is merely unreadable can still repair the entry, but
-  // re-registering one that no longer resolves at all cannot.
+  // (something real stands there but is not a regular file).
   let currentManifestContent: string | undefined;
   let originConfirmedAbsent = false;
   try {
@@ -289,11 +278,7 @@ export async function computeDeletionPlan(
   // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-if-current-manifest-valid
 
   // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-read-recorded-declaration
-  // Read unconditionally, never gated on whether the CURRENT source above
-  // supplied one — the whole point of the union below is that NEITHER
-  // source alone decides; `recordedDeclaredExclusions` was already assigned
-  // from `ownerEntry.excludedSubtrees` above this step's own read, since
-  // that value needs no computation of its own, only a name.
+  const recordedDeclaredExclusions: string[] | undefined = ownerEntry.excludedSubtrees;
   // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-read-recorded-declaration
 
   // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-else-refuse-unestablished
@@ -301,23 +286,12 @@ export async function computeDeletionPlan(
     // Neither source could establish a declaration: the current manifest
     // could not be read (or no longer validates against the four-field
     // contract) AND no declaration was recorded at registration/upgrade.
-    // Refused rather than folded to `[]` — a plan computed from an
-    // exclusion set silently emptied by an inconclusive answer would state
-    // a blast radius nobody verified. The remedy named is whichever one can
-    // actually run: an origin confirmed genuinely absent cannot be
-    // re-registered (there is nothing left to resolve), so this entry's
-    // `targets[]` can never yield a computable deletion plan by ANY route
-    // short of forgetting the registration — `unregister` is built to allow
-    // exactly that for exactly this state (`cpt-frontx-algo-composed-
-    // provenance-unregister`'s own orphan-drop clause). An origin that is
-    // merely unreadable (a FIFO, a permission refusal, ...) may still be
-    // fixed and re-registered, so that remedy is named instead.
+    // Missing content may be restored or fetched again. Orphan-drop also preserves every file.
     const message = originConfirmedAbsent
-      ? `Aborted — "${ownerName}"'s declared excludedSubtrees could not be established: its origin can no ` +
-        'longer be resolved at all (its origin folder is gone, or its installed content is no longer in the ' +
-        'local inventory), and no declaration was recorded at registration, so re-registering it cannot help ' +
-        `either. Run "frontx unregister ${ownerName}" to drop this unusable registration instead — every file ` +
-        'on disk is left untouched, only the registration is removed; nothing deleted.'
+      ? `Aborted — "${ownerName}"'s declared excludedSubtrees could not be established: the current origin is unavailable ` +
+        'and no declaration was recorded. ' +
+        (ownerEntry.origin.startsWith('path:') ? 'Restore the local origin' : 'Fetch the recorded remote origin again') +
+        ` and re-register it to keep the template, or run "frontx unregister ${ownerName}" to drop the unusable registration. Nothing deleted.`
       : `Aborted — "${ownerName}"'s declared excludedSubtrees could not be established: its current origin ` +
         'manifest could not be read (or no longer validates against the four-field contract), and no ' +
         `declaration was recorded at registration. Re-register it ("frontx register ${ownerEntry.origin} ` +

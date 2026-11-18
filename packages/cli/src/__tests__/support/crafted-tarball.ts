@@ -98,6 +98,11 @@ export function craftTarball(files: Record<string, string>, sha: string): Crafte
   return { sha, bytes: zlib.gzipSync(Buffer.concat(chunks)) };
 }
 
+export function tarballRequestRef(input: string | URL | Request): string {
+  const url = new URL(input instanceof Request ? input.url : input);
+  return decodeURIComponent(url.pathname.split('/').pop() ?? '');
+}
+
 /**
  * A `fetch` that serves each tarball under the ref it is keyed by — the `@ref`
  * of a `github:owner/repo@ref` source-spec is the last segment of the tarball
@@ -111,7 +116,7 @@ export function tarballFetch(tarballs: Record<string, CraftedTarball>): typeof f
     byRef.set(tarball.sha, tarball.bytes);
   }
   return (async (url: string | URL | Request) => {
-    const bytes = byRef.get(String(url).split('/').pop() ?? '');
+    const bytes = byRef.get(tarballRequestRef(url));
     if (bytes === undefined) return new Response('not found', { status: 404, statusText: 'Not Found' });
     return new Response(new Uint8Array(bytes), { status: 200 });
   }) as typeof fetch;

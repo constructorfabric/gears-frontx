@@ -1,5 +1,5 @@
 // @cpt-flow:cpt-frontx-flow-cli-scaffolding-delete-target:p1
-// @cpt-state:cpt-frontx-state-cli-scaffolding-delete-op:p1
+// @cpt-state:cpt-frontx-state-cli-scaffolding-delete-op:p2
 //
 // Approval of a `delete` is bound to the plan that was reviewed: a plan that
 // differs when the deletion is about to run stops the command and presents the
