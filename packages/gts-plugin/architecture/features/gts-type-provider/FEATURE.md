@@ -134,7 +134,7 @@ User-facing interactions that start with an actor (human or external system) and
 
 ### Register an Application Schema or Instance
 
-- [ ] `p1` - **ID**: `cpt-frontx-flow-gts-type-provider-register-application-type`
+- [x] `p1` - **ID**: `cpt-frontx-flow-gts-type-provider-register-application-type`
 
 **Actor**: `cpt-frontx-actor-project-developer`
 
@@ -147,14 +147,14 @@ User-facing interactions that start with an actor (human or external system) and
 - An instance that fails validation raises an error and both stores are as they were; an instance offered under a type identifier or over a registered type is refused.
 
 **Steps**:
-1. [ ] - `p1` - Actor offers a schema through `registerSchema`, or a schema or an instance through `register`, at runtime through the type-substrate port. - `inst-ras-offer`
-2. [ ] - `p1` - Provider handles the offer through `cpt-frontx-algo-gts-type-provider-runtime-registration-v2`, which writes a schema through `cpt-frontx-algo-gts-type-provider-schema-write` and an instance through `cpt-frontx-algo-gts-type-provider-instance-write`. - `inst-ras-register`
-3. [ ] - `p1` - **IF** the write refuses the offer or the instance fails validation, the provider raises the error those algorithms describe and the actor's registration is rejected. - `inst-ras-reject`
-4. [ ] - `p1` - **RETURN** the registration complete; the schema or instance is on the store pair every compatible provider instance in the realm reads. - `inst-ras-return`
+1. [x] - `p1` - Actor offers a schema through `registerSchema`, or a schema or an instance through `register`, at runtime through the type-substrate port. - `inst-ras-offer`
+2. [x] - `p1` - Provider handles the offer through `cpt-frontx-algo-gts-type-provider-runtime-registration-v2`, which writes a schema through `cpt-frontx-algo-gts-type-provider-schema-write` and an instance through `cpt-frontx-algo-gts-type-provider-instance-write`. - `inst-ras-register`
+3. [x] - `p1` - **IF** the write refuses the offer or the instance fails validation, the provider raises the error those algorithms describe and the actor's registration is rejected. - `inst-ras-reject`
+4. [x] - `p1` - **RETURN** the registration complete; the schema or instance is on the store pair every compatible provider instance in the realm reads. - `inst-ras-return`
 
 ### Construct the Provider
 
-- [ ] `p1` - **ID**: `cpt-frontx-flow-gts-type-provider-construct-provider`
+- [x] `p1` - **ID**: `cpt-frontx-flow-gts-type-provider-construct-provider`
 
 **Actor**: `cpt-frontx-actor-project-developer`
 
@@ -165,14 +165,14 @@ User-facing interactions that start with an actor (human or external system) and
 - A built-in schema is refused or a built-in lifecycle stage instance is rejected; construction raises an error and no provider is returned.
 
 **Steps**:
-1. [ ] - `p1` - Actor constructs the provider, with `isolated: true` when it asks for a private store pair. - `inst-cp-construct`
-2. [ ] - `p1` - Provider obtains its store pair and writes the built-in schemas and lifecycle stage instances through `cpt-frontx-algo-gts-type-provider-infra-registration-v2`. - `inst-cp-register`
-3. [ ] - `p1` - **IF** the registration aborts, the actor receives the error and no provider. - `inst-cp-abort`
-4. [ ] - `p1` - **RETURN** the ready provider, injectable into the registry factory. - `inst-cp-return`
+1. [x] - `p1` - Actor constructs the provider, with `isolated: true` when it asks for a private store pair. - `inst-cp-construct`
+2. [x] - `p1` - Provider obtains its store pair and writes the built-in schemas and lifecycle stage instances through `cpt-frontx-algo-gts-type-provider-infra-registration-v2`. - `inst-cp-register`
+3. [x] - `p1` - **IF** the registration aborts, the actor receives the error and no provider. - `inst-cp-abort`
+4. [x] - `p1` - **RETURN** the ready provider, injectable into the registry factory. - `inst-cp-return`
 
 ### Read a Schema or Validate an Instance
 
-- [ ] `p1` - **ID**: `cpt-frontx-flow-gts-type-provider-read-and-validate`
+- [x] `p1` - **ID**: `cpt-frontx-flow-gts-type-provider-read-and-validate`
 
 **Actor**: `cpt-frontx-actor-project-developer`
 
@@ -184,9 +184,9 @@ User-facing interactions that start with an actor (human or external system) and
 - `validateInstance` returns a failure result whose first error message carries the store key.
 
 **Steps**:
-1. [ ] - `p1` - Actor calls `getSchema` with a type identifier or `validateInstance` with an instance identifier through the type-substrate port. - `inst-rv-call`
-2. [ ] - `p1` - Provider handles the call through `cpt-frontx-algo-gts-type-provider-runtime-registration-v2` (`inst-rrv2-get-schema`, `inst-rrv2-validate`). - `inst-rv-handle`
-3. [ ] - `p1` - **RETURN** the copy of the held content, or undefined, for `getSchema`; the structured validation result for `validateInstance`. - `inst-rv-return`
+1. [x] - `p1` - Actor calls `getSchema` with a type identifier or `validateInstance` with an instance identifier through the type-substrate port. - `inst-rv-call`
+2. [x] - `p1` - Provider handles the call through `cpt-frontx-algo-gts-type-provider-runtime-registration-v2` (`inst-rrv2-get-schema`, `inst-rrv2-validate`). - `inst-rv-handle`
+3. [x] - `p1` - **RETURN** the copy of the held content, or undefined, for `getSchema`; the structured validation result for `validateInstance`. - `inst-rv-return`
 
 ## 3. Processes / Business Logic (CDSL)
 
@@ -194,7 +194,7 @@ Internal system functions and procedures that do not interact with actors direct
 
 ### Infrastructure Registration Into a Shared or Private Store Pair
 
-- [ ] `p1` - **ID**: `cpt-frontx-algo-gts-type-provider-infra-registration-v2`
+- [x] `p1` - **ID**: `cpt-frontx-algo-gts-type-provider-infra-registration-v2`
 
 **Input**: The construction argument. Its `isolated` property is `true` when the caller asks for a private store pair; absent or `false`, the instance shares.
 
@@ -204,8 +204,8 @@ Internal system functions and procedures that do not interact with actors direct
 1. [x] - `p1` - Load the full set of ecosystem infrastructure schema definitions from the declared schema sources and the set of default lifecycle stage instances (`init`, `activated`, `deactivated`, `destroyed`) from the declared instance sources. Each concrete action schema (`mount_ext`, `unmount_ext`, `load_ext`) is self-contained — it re-declares every property the base action schema (`action.v1`) would otherwise provide — and closed: it is a final type and closes as `cpt-frontx-algo-gts-type-provider-type-closure` describes, and its own `payload` is closed too, so an undeclared field on either is rejected at validation. The base action schema (`action.v1`) stays open, and checks `type` against the action family (`gts.frontx.mfes.comm.action.v1~*`), not against `/$id`: it also checks the action of every lifecycle hook's actions chain, inside a domain or an extension, and the GTS library resolves `/$id` to the type of the instance being validated at any depth, which there is the domain or extension type. Each concrete action schema checks its own `type` with `/$id`. `mount_ext` and `unmount_ext` each declare an optional `history` property — a strictly typed enum of `none`, `replace`, and `push` — rejected when present with any other value. - `inst-irv2-load`
 2. [x] - `p1` - **IF** the provider is constructed with `isolated: true`, create a private store pair for this provider instance. A private pair holds the same fields a realm entry holds. It touches no realm slot and no key index, and logs no join. - `inst-irv2-private`
 3. [x] - `p1` - **ELSE** obtain the store pair through the realm store rendezvous (`cpt-frontx-algo-gts-type-provider-realm-store-rendezvous`), passing it the loaded built-in sets. - `inst-irv2-shared`
-4. [ ] - `p1` - **FOR EACH** built-in schema, write it through the schema write (`cpt-frontx-algo-gts-type-provider-schema-write`). When the pair already holds the same content, the write changes nothing and logs nothing, so every construction after the first on a store is a silent no-op: - `inst-irv2-schemas`
-   1. [ ] - `p1` - **IF** the schema write refuses the schema, abort construction with the error of `inst-sw-refuse`. No provider is returned. - `inst-irv2-schema-refuse`
+4. [x] - `p1` - **FOR EACH** built-in schema, write it through the schema write (`cpt-frontx-algo-gts-type-provider-schema-write`). When the pair already holds the same content, the write changes nothing and logs nothing, so every construction after the first on a store is a silent no-op: - `inst-irv2-schemas`
+   1. [x] - `p1` - **IF** the schema write refuses the schema, abort construction with the error of `inst-sw-refuse`. No provider is returned. - `inst-irv2-schema-refuse`
 5. [x] - `p1` - **FOR EACH** built-in lifecycle stage instance, write it through the instance write (`cpt-frontx-algo-gts-type-provider-instance-write`), which validates it before it becomes visible: - `inst-irv2-stages`
    1. [x] - `p1` - **IF** the instance write rejects it, abort construction with an error that names the instance and the reported reason. Nothing invalid is left in either store. - `inst-irv2-stage-reject`
 6. [x] - `p1` - **RETURN** the provider, ready, with its store pair. - `inst-irv2-return`
@@ -370,21 +370,21 @@ Internal system functions and procedures that do not interact with actors direct
 
 ### Well-Known Identifier Resolution
 
-- [ ] `p1` - **ID**: `cpt-frontx-algo-gts-type-provider-well-known-ids`
+- [x] `p1` - **ID**: `cpt-frontx-algo-gts-type-provider-well-known-ids`
 
 **Input**: None; each resolver takes no argument.
 
 **Output**: The provider's own GTS identifier for a framework well-known lifecycle action type or lifecycle stage type.
 
 **Steps**:
-1. [ ] - `p1` - Resolve this plugin's own GTS action-type ID for the framework's well-known `load_ext` lifecycle action - `inst-tr-04`
-2. [ ] - `p1` - Resolve this plugin's own GTS action-type ID for the framework's well-known `mount_ext` lifecycle action - `inst-tr-05`
-3. [ ] - `p1` - Resolve this plugin's own GTS action-type ID for the framework's well-known `unmount_ext` lifecycle action - `inst-tr-06`
-4. [ ] - `p1` - Resolve this plugin's own GTS type ID for the framework's well-known `init` lifecycle stage - `inst-tr-07`
-5. [ ] - `p1` - Resolve this plugin's own GTS type ID for the framework's well-known `activated` lifecycle stage - `inst-tr-08`
-6. [ ] - `p1` - Resolve this plugin's own GTS type ID for the framework's well-known `deactivated` lifecycle stage - `inst-tr-09`
-7. [ ] - `p1` - Resolve this plugin's own GTS type ID for the framework's well-known `destroyed` lifecycle stage - `inst-tr-10`
-8. [ ] - `p1` - **RETURN** the identifier the called resolver resolves. - `inst-tr-11`
+1. [x] - `p1` - Resolve this plugin's own GTS action-type ID for the framework's well-known `load_ext` lifecycle action - `inst-tr-04`
+2. [x] - `p1` - Resolve this plugin's own GTS action-type ID for the framework's well-known `mount_ext` lifecycle action - `inst-tr-05`
+3. [x] - `p1` - Resolve this plugin's own GTS action-type ID for the framework's well-known `unmount_ext` lifecycle action - `inst-tr-06`
+4. [x] - `p1` - Resolve this plugin's own GTS type ID for the framework's well-known `init` lifecycle stage - `inst-tr-07`
+5. [x] - `p1` - Resolve this plugin's own GTS type ID for the framework's well-known `activated` lifecycle stage - `inst-tr-08`
+6. [x] - `p1` - Resolve this plugin's own GTS type ID for the framework's well-known `deactivated` lifecycle stage - `inst-tr-09`
+7. [x] - `p1` - Resolve this plugin's own GTS type ID for the framework's well-known `destroyed` lifecycle stage - `inst-tr-10`
+8. [x] - `p1` - **RETURN** the identifier the called resolver resolves. - `inst-tr-11`
 
 ### Runtime Registration Against the Store Pair
 
@@ -407,7 +407,7 @@ Internal system functions and procedures that do not interact with actors direct
 
 ### Provider Initialization State Machine
 
-- [ ] `p1` - **ID**: `cpt-frontx-state-gts-type-provider-init`
+- [x] `p1` - **ID**: `cpt-frontx-state-gts-type-provider-init`
 
 **States**: UNINITIALIZED, INFRA_SCHEMAS_REGISTERED, READY, ABORTED
 
@@ -416,8 +416,8 @@ Internal system functions and procedures that do not interact with actors direct
 **Transitions**:
 1. [x] - `p1` - **FROM** UNINITIALIZED **TO** INFRA_SCHEMAS_REGISTERED **WHEN** every ecosystem infrastructure schema has been written to the store pair. - `inst-pi-01`
 2. [x] - `p1` - **FROM** INFRA_SCHEMAS_REGISTERED **TO** READY **WHEN** every default lifecycle stage instance has been written, each validated against its schema before it became visible. - `inst-pi-02`
-3. [ ] - `p1` - **FROM** UNINITIALIZED **TO** ABORTED **WHEN** the schema write refuses a built-in schema (`inst-irv2-schema-refuse`). Construction raises the error of `inst-sw-refuse` and no provider is returned. - `inst-pi-03`
-4. [ ] - `p1` - **FROM** INFRA_SCHEMAS_REGISTERED **TO** ABORTED **WHEN** the instance write rejects a lifecycle stage instance. Construction raises an error that names the instance and the reported reason (`inst-irv2-stage-reject`), no provider is returned, and nothing invalid is left in either store. - `inst-pi-04`
+3. [x] - `p1` - **FROM** UNINITIALIZED **TO** ABORTED **WHEN** the schema write refuses a built-in schema (`inst-irv2-schema-refuse`). Construction raises the error of `inst-sw-refuse` and no provider is returned. - `inst-pi-03`
+4. [x] - `p1` - **FROM** INFRA_SCHEMAS_REGISTERED **TO** ABORTED **WHEN** the instance write rejects a lifecycle stage instance. Construction raises an error that names the instance and the reported reason (`inst-irv2-stage-reject`), no provider is returned, and nothing invalid is left in either store. - `inst-pi-04`
 
 READY and ABORTED are final: a provider that reached READY stays ready for its lifetime, and construction that reached ABORTED holds no provider.
 
@@ -425,7 +425,7 @@ READY and ABORTED are final: a provider that reached READY stays ready for its l
 
 ### Infrastructure Schema Ownership
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-gts-type-provider-infra-schema-ownership`
+- [x] `p1` - **ID**: `cpt-frontx-dod-gts-type-provider-infra-schema-ownership`
 
 The provider **MUST** register all ecosystem infrastructure schemas and default lifecycle stage instances in the internal GTS store at construction time, and **MUST** validate every lifecycle stage instance against its registered schema before the provider is considered ready. Construction **MUST** fail if any lifecycle stage instance does not satisfy its schema. No solution-specific schemas are registered by the provider at construction. Validating an action **MUST** check its own leaf schema alone: the base action schema (`action.v1`) is consulted only when a concrete action schema's own `$ref` names it. Every concrete action schema the provider registers **MUST** be self-contained and closed, rejecting an undeclared field on itself or on its own `payload`; the base action schema stays open.
 
@@ -445,7 +445,7 @@ The provider **MUST** register all ecosystem infrastructure schemas and default 
 
 ### Type Validation and Hierarchy Resolution
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-gts-type-provider-type-validation`
+- [x] `p1` - **ID**: `cpt-frontx-dod-gts-type-provider-type-validation`
 
 The provider **MUST** validate registered instances against their schemas and resolve type hierarchy by GTS prefix-matching when invoked through the type-substrate port, returning a structured validation result for every call. The prefix check is a known gap under `cpt-frontx-constraint-gts-plugin-delegates-gts-interpretation`, tracked in https://github.com/constructorfabric/gears-frontx/issues/671.
 
@@ -537,7 +537,7 @@ The manifest type and the MFE entry type **MUST** be final, **MUST** list exactl
 
 ### Public Surface
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-gts-type-provider-public-surface`
+- [x] `p1` - **ID**: `cpt-frontx-dod-gts-type-provider-public-surface`
 
 The package entry point **MUST** export exactly these, each because consumers outside the package use it in production:
 - `GtsPlugin` and its default instance `gtsPlugin`, the object injected at registry construction. The constructor takes one optional argument whose one property is `isolated`. A runtime or a build-time validator that must keep type knowledge of its own constructs its instance with `isolated: true`, and the default instance always shares.
@@ -598,7 +598,7 @@ Every other symbol of the package, the built-in schema loader `loadSchemas` and 
 - [x] A rejected candidate under a new identifier is refused within the registration latency threshold of `cpt-frontx-nfr-runtime-performance`.
 - [x] `new GtsPlugin({ isolated: true })` starts from the built-in set alone, sees no realm registration, and leaves the realm slot and key index untouched.
 - [x] The default instance `gtsPlugin` shares the realm store pair, and the port gains no method.
-- [ ] The package entry point exports exactly `GtsPlugin`, `gtsPlugin`, `JSONSchema`, `FRONTX_ACTION_LOAD_EXT`, `FRONTX_ACTION_MOUNT_EXT`, `FRONTX_ACTION_UNMOUNT_EXT` and `loadLifecycleStages`, and the provider's constructor takes one optional argument whose one property is `isolated`.
+- [x] The package entry point exports exactly `GtsPlugin`, `gtsPlugin`, `JSONSchema`, `FRONTX_ACTION_LOAD_EXT`, `FRONTX_ACTION_MOUNT_EXT`, `FRONTX_ACTION_UNMOUNT_EXT` and `loadLifecycleStages`, and the provider's constructor takes one optional argument whose one property is `isolated`.
 - [ ] For each final type (the domain, actions chain, lifecycle hook, lifecycle stage, manifest and MFE entry types, and the `mount_ext`, `unmount_ext` and `load_ext` action types), an instance that carries a property the type and its base types do not list is rejected.
 - [ ] An instance of the domain type carrying an unknown property at its top level is rejected, and so is one whose `lifecycle` item, a reference to the final lifecycle hook type, carries a property the hook type does not list.
 - [ ] An instance of the actions chain type carrying an unknown property at its top level is rejected, and so is one whose `next` or `fallback`, a reference to the actions chain type, carries a property the chain type does not list, and one whose `action` is a concrete action type carrying a property that concrete type does not declare; the `action` object, which references the open base action type, is not closed by the chain type.

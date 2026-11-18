@@ -57,8 +57,9 @@ import { REFERENCE_CHECK, describeFailure, writeInstance, writeSchema } from './
 export interface GtsPluginOptions {
   /**
    * Give this instance a private store pair that follows the same write rules
-   * and never touches the realm slot. Use it for tests that need to start
-   * from the built-in set alone. The default instance is never isolated.
+   * and never touches the realm slot. A runtime or a build-time validator that
+   * must keep type knowledge of its own constructs its instance with this
+   * option. The default instance always shares.
    */
   isolated?: boolean;
 }
@@ -80,11 +81,11 @@ const createLibraryStore = (): GtsStore => new GtsStore({ allowEntityUpdates: tr
  * The gtsPlugin singleton constant is the default instance. Instances share
  * one store with every compatible copy in the realm, so a second
  * `new GtsPlugin()` starts from what has already been registered, not from the
- * built-in set. Tests that need a fresh store construct
+ * built-in set. A caller that must keep type knowledge of its own constructs
  * `new GtsPlugin({ isolated: true })`.
  *
  * Production wiring uses the `gtsPlugin` singleton. Construct the class directly
- * only in tests, or when a caller needs a private store.
+ * only when a caller needs a private store.
  */
 // @cpt-flow:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1
 // @cpt-state:cpt-frontx-state-gts-type-provider-init:p1
@@ -106,6 +107,7 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
     const lifecycleStages = loadLifecycleStages();
     // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-load
 
+    // @cpt-begin:cpt-frontx-flow-gts-type-provider-construct-provider:p1:inst-cp-construct
     const inputs = copyKeyInputs();
     if (options.isolated) {
       // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-private
@@ -118,10 +120,19 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
       this.token = joinPair(this.pair);
       // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-shared
     }
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-construct-provider:p1:inst-cp-construct
 
+    // @cpt-begin:cpt-frontx-flow-gts-type-provider-construct-provider:p1:inst-cp-register
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-schemas
     for (const schema of schemas) {
+      // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-schema-refuse
+      // A refused schema throws here; construction aborts and no provider is returned.
+      // @cpt-begin:cpt-frontx-flow-gts-type-provider-construct-provider:p1:inst-cp-abort
+      // @cpt-begin:cpt-frontx-state-gts-type-provider-init:p1:inst-pi-03
       writeSchema(this.pair, this.token, createJsonEntity(schema));
+      // @cpt-end:cpt-frontx-state-gts-type-provider-init:p1:inst-pi-03
+      // @cpt-end:cpt-frontx-flow-gts-type-provider-construct-provider:p1:inst-cp-abort
+      // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-schema-refuse
     }
     // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-schemas
 
@@ -134,10 +145,15 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
       // A rejected stage aborts construction. The error already names the
       // instance and the reason, and nothing invalid stays in either store.
       // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-stage-reject
+      // @cpt-begin:cpt-frontx-state-gts-type-provider-init:p1:inst-pi-04
+      // @cpt-begin:cpt-frontx-flow-gts-type-provider-construct-provider:p1:inst-cp-abort
       writeInstance(this.pair, this.token, createJsonEntity(instance));
+      // @cpt-end:cpt-frontx-flow-gts-type-provider-construct-provider:p1:inst-cp-abort
+      // @cpt-end:cpt-frontx-state-gts-type-provider-init:p1:inst-pi-04
       // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-stage-reject
     }
     // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-stages
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-construct-provider:p1:inst-cp-register
 
     // @cpt-begin:cpt-frontx-state-gts-type-provider-init:p1:inst-pi-02
     // Transition: INFRA_SCHEMAS_REGISTERED → READY (all lifecycle instances validated)
@@ -145,6 +161,9 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
 
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-return
     // Provider is now READY with all infrastructure schemas and lifecycle instances registered.
+    // @cpt-begin:cpt-frontx-flow-gts-type-provider-construct-provider:p1:inst-cp-return
+    // The constructed provider is injectable into the registry factory.
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-construct-provider:p1:inst-cp-return
     // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-return
 
     // @cpt-begin:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-01
@@ -167,21 +186,35 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
    */
   registerSchema(schema: JSONSchema): void {
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-schema-classify
+    // @cpt-begin:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-offer
     const entity: JsonEntity = createJsonEntity(schema);
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-offer
+    // @cpt-begin:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-reject
     if (!entity.isSchema) {
       throw new Error(
         `GTS schema '${entity.id || '(no identifier)'}' refused: the GTS library reads it as an instance, not a schema.`
       );
     }
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-reject
     // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-schema-classify
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-schema-write
+    // @cpt-begin:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-register
     writeSchema(this.pair, this.token, entity);
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-register
+    // @cpt-begin:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-return
+    // The schema is on the store pair every compatible provider instance reads.
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-return
     // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-schema-write
   }
 
   getSchema(typeId: string): JSONSchema | undefined {
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-get-schema
+    // @cpt-begin:cpt-frontx-flow-gts-type-provider-read-and-validate:p1:inst-rv-call
+    // @cpt-begin:cpt-frontx-flow-gts-type-provider-read-and-validate:p1:inst-rv-handle
     const entity = this.pair.store.get(typeId);
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-read-and-validate:p1:inst-rv-handle
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-read-and-validate:p1:inst-rv-call
+    // @cpt-begin:cpt-frontx-flow-gts-type-provider-read-and-validate:p1:inst-rv-return
     if (!entity) return undefined;
     if (!entity.content || typeof entity.content !== 'object') {
       return undefined;
@@ -189,6 +222,7 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
     // A copy, so a caller's change never reaches a stored entity that other
     // runtimes on the pair read. Non-JSON content cannot be copied and is returned as given.
     return copyContent(entity.content);
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-read-and-validate:p1:inst-rv-return
     // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-get-schema
   }
 
@@ -234,15 +268,28 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
     // callback between them, so calls on one pair never interleave.
     // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-synchronous
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-register-schema
+    // @cpt-begin:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-offer
     const jsonEntity: JsonEntity = createJsonEntity(entity);
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-offer
     if (jsonEntity.isSchema) {
+      // @cpt-begin:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-register
+      // @cpt-begin:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-reject
       writeSchema(this.pair, this.token, jsonEntity);
+      // @cpt-end:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-reject
+      // @cpt-end:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-register
       return;
     }
     // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-register-schema
     // @cpt-begin:cpt-frontx-algo-mfe-host-communication-history-intent:p1:inst-hi-admit-strict
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-register-instance
+    // @cpt-begin:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-register
+    // @cpt-begin:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-reject
     writeInstance(this.pair, this.token, jsonEntity);
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-reject
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-register
+    // @cpt-begin:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-return
+    // The schema or instance is on the store pair every compatible provider instance reads.
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-return
     // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-register-instance
     // @cpt-end:cpt-frontx-algo-mfe-host-communication-history-intent:p1:inst-hi-admit-strict
   }
@@ -253,7 +300,9 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-validate
     // @cpt-begin:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-05
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-schema-validation:p1:inst-sv-01
+    // @cpt-begin:cpt-frontx-flow-gts-type-provider-read-and-validate:p1:inst-rv-call
     const result = this.pair.store.validateInstance(instanceId, REFERENCE_CHECK);
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-read-and-validate:p1:inst-rv-call
     const subject = { id: instanceId, entity: this.pair.store.get(instanceId) };
     // @cpt-end:cpt-frontx-algo-gts-type-provider-schema-validation:p1:inst-sv-01
     // @cpt-end:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-05
@@ -274,7 +323,9 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
       // @cpt-end:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-06b
       // @cpt-begin:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-06c
       // @cpt-begin:cpt-frontx-algo-gts-type-provider-schema-validation:p1:inst-sv-04
+      // @cpt-begin:cpt-frontx-flow-gts-type-provider-read-and-validate:p1:inst-rv-return
       return unknownTypeResult;
+      // @cpt-end:cpt-frontx-flow-gts-type-provider-read-and-validate:p1:inst-rv-return
       // @cpt-end:cpt-frontx-algo-gts-type-provider-schema-validation:p1:inst-sv-04
       // @cpt-end:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-06c
     }
@@ -289,7 +340,9 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
       // @cpt-end:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-10
       // @cpt-begin:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-11
       // @cpt-begin:cpt-frontx-algo-gts-type-provider-schema-validation:p1:inst-sv-02a
+      // @cpt-begin:cpt-frontx-flow-gts-type-provider-read-and-validate:p1:inst-rv-return
       return { valid: true, errors: [] };
+      // @cpt-end:cpt-frontx-flow-gts-type-provider-read-and-validate:p1:inst-rv-return
       // @cpt-end:cpt-frontx-algo-gts-type-provider-schema-validation:p1:inst-sv-02a
       // @cpt-end:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-11
       // @cpt-end:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-09
@@ -318,7 +371,9 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
     // @cpt-end:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-08b
     // @cpt-begin:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-08c
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-schema-validation:p1:inst-sv-04
+    // @cpt-begin:cpt-frontx-flow-gts-type-provider-read-and-validate:p1:inst-rv-return
     return failureResult;
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-read-and-validate:p1:inst-rv-return
     // @cpt-end:cpt-frontx-algo-gts-type-provider-schema-validation:p1:inst-sv-04
     // @cpt-end:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-08c
     // @cpt-end:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-08
@@ -367,11 +422,13 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
    *
    * @returns The GTS action-type ID for `load_ext`
    */
-  // @cpt-begin:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-04
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-04
   resolveLoadExtActionId(): string {
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-11
     return FRONTX_ACTION_LOAD_EXT;
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-11
   }
-  // @cpt-end:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-04
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-04
 
   /**
    * Resolve this plugin's GTS action-type ID for the framework's well-known
@@ -379,11 +436,13 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
    *
    * @returns The GTS action-type ID for `mount_ext`
    */
-  // @cpt-begin:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-05
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-05
   resolveMountExtActionId(): string {
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-11
     return FRONTX_ACTION_MOUNT_EXT;
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-11
   }
-  // @cpt-end:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-05
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-05
 
   /**
    * Resolve this plugin's GTS action-type ID for the framework's well-known
@@ -391,11 +450,13 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
    *
    * @returns The GTS action-type ID for `unmount_ext`
    */
-  // @cpt-begin:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-06
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-06
   resolveUnmountExtActionId(): string {
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-11
     return FRONTX_ACTION_UNMOUNT_EXT;
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-11
   }
-  // @cpt-end:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-06
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-06
 
   /**
    * Resolve this plugin's GTS type ID for the framework's well-known `init`
@@ -404,11 +465,13 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
    *
    * @returns The GTS type ID for the `init` lifecycle stage
    */
-  // @cpt-begin:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-07
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-07
   resolveLifecycleStageInitId(): string {
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-11
     return FRONTX_LIFECYCLE_STAGE_INIT;
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-11
   }
-  // @cpt-end:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-07
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-07
 
   /**
    * Resolve this plugin's GTS type ID for the framework's well-known
@@ -416,11 +479,13 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
    *
    * @returns The GTS type ID for the `activated` lifecycle stage
    */
-  // @cpt-begin:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-08
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-08
   resolveLifecycleStageActivatedId(): string {
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-11
     return FRONTX_LIFECYCLE_STAGE_ACTIVATED;
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-11
   }
-  // @cpt-end:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-08
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-08
 
   /**
    * Resolve this plugin's GTS type ID for the framework's well-known
@@ -428,11 +493,13 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
    *
    * @returns The GTS type ID for the `deactivated` lifecycle stage
    */
-  // @cpt-begin:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-09
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-09
   resolveLifecycleStageDeactivatedId(): string {
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-11
     return FRONTX_LIFECYCLE_STAGE_DEACTIVATED;
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-11
   }
-  // @cpt-end:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-09
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-09
 
   /**
    * Resolve this plugin's GTS type ID for the framework's well-known
@@ -440,11 +507,13 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
    *
    * @returns The GTS type ID for the `destroyed` lifecycle stage
    */
-  // @cpt-begin:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-10
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-10
   resolveLifecycleStageDestroyedId(): string {
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-11
     return FRONTX_LIFECYCLE_STAGE_DESTROYED;
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-11
   }
-  // @cpt-end:cpt-frontx-algo-gts-type-provider-typof-resolution:p1:inst-tr-10
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-well-known-ids:p1:inst-tr-10
 }
 
 /**
