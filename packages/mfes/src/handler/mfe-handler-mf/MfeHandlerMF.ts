@@ -247,6 +247,18 @@ interface SharedDepListLoadContext {
   readonly assetBase: string;
   readonly resolveAssetUrl: (location: string) => string;
   readonly dynamicImports: ListDynamicImportRewrites;
+  /**
+   * Requests one own chunk named by a list's `ownChunks` through the
+   * handler source-text cache, by location against the asset base; the
+   * text never enters the realm cache.
+   */
+  readonly fetchOwnChunk: (location: string) => Promise<unknown>;
+  /**
+   * The load's prefetched own-chunk text promises by absolute URL, held
+   * until the chain build takes each one (so the shared handler cache's
+   * eviction cannot cost a second request) and then dropped.
+   */
+  readonly ownChunkTexts: Map<string, Promise<string>>;
 }
 
 /**
@@ -286,9 +298,10 @@ interface ChainBuildState {
   /**
    * Single concurrency budget for every chunk-source fetch this build
    * issues — see {@link FetchBudget} for why the bound has to be build-wide
-   * rather than per fan-out batch.
+   * rather than per fan-out batch. Present only on the path without a
+   * fetch list; a fetch-list load's chain build is unbounded.
    */
-  readonly fetchBudget: FetchBudget;
+  readonly fetchBudget: FetchBudget | undefined;
   /**
    * Filenames this build has already raised a dependency-cycle diagnostic
    * for, so the same cycle is reported once per build however many branches
@@ -341,10 +354,10 @@ function describeSharedDepCycle(pending: ReadonlyMap<string, string>): string {
 
 /** Start a fresh chain build (see {@link ChainBuildState}). */
 // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-build-failure-scope
-function createChainBuildState(): ChainBuildState {
+function createChainBuildState(bounded: boolean): ChainBuildState {
   return {
     failed: false,
-    fetchBudget: new FetchBudget(MAX_CONCURRENT_FETCHES),
+    fetchBudget: bounded ? new FetchBudget(MAX_CONCURRENT_FETCHES) : undefined,
     reportedCycles: new Set<string>(),
   };
 }
@@ -871,7 +884,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // Fresh per-build failure token for this chain build (see
     // `ChainBuildState`) — scoped to this one expose-chunk build, not to
     // `loadState`, which lives for the whole page-lifetime load.
-    const build = createChainBuildState();
+    const build = createChainBuildState(sharedDepLists === undefined);
 
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-css
     // Collect CSS paths from exposeAssets (sync injected at mount; async lazy).
@@ -1461,6 +1474,27 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       loadCache,
       ledger
     );
+    // An own chunk of the list's `ownChunks` is requested by location
+    // against the asset base through the handler source-text cache, never
+    // the realm cache; the chain build joins this entry. Once the load
+    // has failed no request is issued for it.
+    const ownChunkTexts = new Map<string, Promise<string>>();
+    const fetchOwnChunk = (location: string): Promise<unknown> => {
+      if (typeof (location as unknown) !== 'string') {
+        return Promise.reject(
+          new MfeLoadError(
+            `fetch-list ownChunks entry ${JSON.stringify(location)} is not a string.`,
+            entryId
+          )
+        );
+      }
+      const failed = requests.failure();
+      if (failed !== undefined) return Promise.reject(failed.error);
+      const url = MfeHandlerMF.resolveChunkUrl(baseUrl, location);
+      const text = this.fetchSourceText(url, ledger);
+      ownChunkTexts.set(url, text);
+      return text;
+    };
     const ctx = loader.createContext();
     const listDocBytesBefore = loader.bytesFetched;
     const list = await requests.guard(
@@ -1477,6 +1511,8 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       entryId,
       assetBase,
       resolveAssetUrl,
+      fetchOwnChunk,
+      ownChunkTexts,
       dynamicImports: {
         loaderUrl: () => {
           if (unitLoaderUrl === undefined) {
@@ -1501,7 +1537,8 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         ctx,
         list,
         resolveAssetUrl,
-        sharedDepLists.dynamicImports
+        sharedDepLists.dynamicImports,
+        fetchOwnChunk
       )
     );
     this.loadDiagnostics.summarize(
@@ -1556,7 +1593,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     if (token.startsWith('list:')) {
       const key = token.slice('list:'.length);
       return loader
-        .resolveDependent(ctx, key, resolveAssetUrl, sharedDepLists.dynamicImports)
+        .resolveDependent(
+          ctx,
+          key,
+          resolveAssetUrl,
+          sharedDepLists.dynamicImports,
+          sharedDepLists.fetchOwnChunk
+        )
         .then(() => {
           const blob = loader.blobForKey(ctx, key);
           if (blob === undefined) {
@@ -1630,7 +1673,8 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       shared.ctx,
       key,
       shared.resolveAssetUrl,
-      shared.dynamicImports
+      shared.dynamicImports,
+      shared.fetchOwnChunk
     );
   }
 
@@ -2273,11 +2317,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // to a canonical shared base). Use as-is to ensure sourceTextCache dedup.
     const chunkUrl = MfeHandlerMF.resolveChunkUrl(loadState.baseUrl, filename);
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-fanout-bounded
-    // Admission to the build's single fetch budget. The slot is held across
+    // Admission to the build's single fetch budget — present only on the
+    // whole-package path; a fetch-list load's build is unbounded. The slot
+    // is held across
     // this one fetch and released the moment it settles — never across the
     // dependency recursion below, which would deadlock any graph deeper
     // than the budget's width.
-    await build.fetchBudget.acquire();
+    await build.fetchBudget?.acquire();
     let source: string;
     try {
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-if-failed-after-fetch
@@ -2296,12 +2342,18 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
           ? loadState.entrySource
           : undefined;
       if (seeded !== undefined) loadState.entrySource = undefined;
+      // An own chunk the list's `ownChunks` prefetched is taken from the
+      // load's own map, not looked up in the shared handler cache.
+      const prefetchedTexts = loadState.sharedDepLists?.ownChunkTexts;
+      const prefetched = prefetchedTexts?.get(chunkUrl);
+      if (prefetched !== undefined) prefetchedTexts?.delete(chunkUrl);
+      const taken = seeded ?? prefetched;
       source =
-        seeded !== undefined
-          ? await seeded
+        taken !== undefined
+          ? await taken
           : await this.fetchSourceText(chunkUrl, loadState.attemptLedger);
     } finally {
-      build.fetchBudget.release();
+      build.fetchBudget?.release();
     }
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-fanout-bounded
 
@@ -2325,8 +2377,9 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // serially one at a time — a sibling's entire recursive subtree does
     // not block the next sibling from starting. The fan-out itself is
     // deliberately unbounded: what must be bounded is the number of
-    // FETCHES in flight for this build, and that bound lives on the
-    // build's own `fetchBudget` (see {@link FetchBudget}) rather than on a
+    // FETCHES in flight for this build, and where it applies (the
+    // whole-package path only) it lives on the build's own `fetchBudget`
+    // (see {@link FetchBudget}) rather than on a
     // pool opened per sibling group, which would multiply the width by the
     // graph's bushiness. Cross-sibling / cross-load dedup for a shared
     // filename still holds because `createBlobUrlChain`'s check-then-set
@@ -2523,7 +2576,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // later, otherwise-independent, lazy import on the same already-mounted
     // MFE — each call here gets its own token instead of sharing one on
     // `loadState`.
-    const build = createChainBuildState();
+    const build = createChainBuildState(loadState.sharedDepLists === undefined);
 
     await this.createBlobUrlChain(
       loadState,
@@ -2571,9 +2624,14 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * source-text cache dedups it); anything else resolves against `baseUrl`.
    */
   private static resolveChunkUrl(baseUrl: string, filename: string): string {
-    return filename.startsWith('http://') || filename.startsWith('https://')
-      ? filename
-      : baseUrl + filename;
+    if (/^https?:\/\//i.test(filename)) {
+      try {
+        return new URL(filename).href;
+      } catch {
+        return filename;
+      }
+    }
+    return baseUrl + filename;
   }
 
   /**

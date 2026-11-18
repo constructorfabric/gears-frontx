@@ -156,6 +156,16 @@ export interface SharedDepFetchList {
    */
   items: SharedDepListItem[];
   /**
+   * Every one of the microfrontend's own chunks the exposed module or
+   * lazy target reaches statically — each a path relative to
+   * `metaData.publicPath` or an absolute `http(s)` URL, with no content
+   * identity because own chunks are not shared. The runtime requests them
+   * in the same flat batch as the missing list items, by location only;
+   * an own chunk missing here is a producer defect and is still fetched
+   * when the chain build reaches it.
+   */
+  ownChunks: string[];
+  /**
    * Lazy-target lists: for every literal dynamic-import target in the
    * code this list covers — an MFE lazy chunk, a shell lazy chunk, a
    * literal `import()` inside a shared chunk — the reference to that

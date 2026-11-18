@@ -50,14 +50,17 @@ describe('SharedDepFetchList', () => {
         { location: 'a.js', contentHash: HEX64, answers: ['a'], imports: ['b'] },
         { location: 'b.js', contentHash: HEX64, answers: ['b'], imports: [] },
       ],
+      ownChunks: ['assets/own-a.js', 'https://cdn.test/own-b.js'],
     };
     expect(list.items).toHaveLength(2);
+    expect(list.ownChunks).toEqual(['assets/own-a.js', 'https://cdn.test/own-b.js']);
   });
 
   it('carries lazy-target lists keyed by the lazy target, each a document reference', () => {
     const delta: SharedDepFileRef = { location: 'lazy-1.list.json', contentHash: HEX64 };
     const list: SharedDepFetchList = {
       items: [],
+      ownChunks: [],
       lazy: { './lazy/Panel.js': delta },
     };
     expect(list.lazy?.['./lazy/Panel.js']).toEqual(delta);
@@ -67,6 +70,7 @@ describe('SharedDepFetchList', () => {
     const delta: SharedDepFileRef = { location: 'loc-en.list.json', contentHash: HEX64 };
     const list: SharedDepFetchList = {
       items: [],
+      ownChunks: [],
       patterns: { './locales/en.json.js': delta },
     };
     expect(list.patterns?.['./locales/en.json.js']).toEqual(delta);
@@ -74,14 +78,14 @@ describe('SharedDepFetchList', () => {
 
   it('carries opaque-import report entries with file and line', () => {
     const report: SharedDepOpaqueImport = { file: 'app.js', line: 42, expression: 'expr' };
-    const list: SharedDepFetchList = { items: [], opaqueImports: [report] };
+    const list: SharedDepFetchList = { items: [], ownChunks: [], opaqueImports: [report] };
     expect(list.opaqueImports?.[0].file).toBe('app.js');
     expect(list.opaqueImports?.[0].line).toBe(42);
   });
 
   it('may record the producer that emitted it', () => {
     const producer: SharedDepProducer = { name: 'unit-producer', version: '1.0.0' };
-    const list: SharedDepFetchList = { items: [], producer };
+    const list: SharedDepFetchList = { items: [], ownChunks: [], producer };
     expect(list.producer?.name).toBe('unit-producer');
   });
 
@@ -100,12 +104,14 @@ describe('SharedDepFetchList', () => {
   it('closes over every imported edge — each is answered by an item on the list or its parent chain', () => {
     const parent: SharedDepFetchList = {
       items: [{ location: 'react.js', contentHash: HEX64_B, answers: ['react'], imports: [] }],
+      ownChunks: [],
     };
     const list: SharedDepFetchList = {
       items: [
         { location: 'a.js', contentHash: HEX64, answers: ['a'], imports: ['react', 'b', { item: 'c'.repeat(64) }] },
         { location: 'b.js', contentHash: 'c'.repeat(64), answers: ['b'], imports: [] },
       ],
+      ownChunks: [],
     };
     const answered = new Set(
       [...parent.items, ...list.items].flatMap((i) => i.answers),
