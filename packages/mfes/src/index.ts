@@ -4,8 +4,6 @@ export type {
   MfManifestAssets,
   MfManifestShared,
   MfManifestMetaData,
-  MfManifestRemoteEntry,
-  MfManifestBuildInfo,
 } from './manifest/mf-manifest';
 
 // Lazy-import ABI runtime registry (Phase 5)

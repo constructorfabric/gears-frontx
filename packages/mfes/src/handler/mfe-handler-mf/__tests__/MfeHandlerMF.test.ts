@@ -61,6 +61,7 @@ vi.mock('../mf-dynamic-module-ops', async (importOriginal) => {
 
 import { createHash } from 'node:crypto';
 import { MfeHandlerMF } from '../MfeHandlerMF';
+import { newHandler, registerManifest } from './helpers/registered-manifest';
 import { LruCache } from '../LruCache';
 import { SharedDepListLoader } from '../SharedDepListLoader';
 import { SharedAssetUrlResolver } from '../SharedAssetUrlResolver';
@@ -79,7 +80,7 @@ import {
 
 // The shared-dependency source-text cache is REALM-shared
 // (`RealmSharedDepTextCacheProvider.getCache`, `RealmSharedDepTextCacheProvider.ts`) — every
-// `new MfeHandlerMF(...)` in this file, no matter the test, resolves to
+// `newHandler(...)` in this file, no matter the test, resolves to
 // the SAME cache slot on `globalThis`, rather than each getting its own
 // fresh `LruCache`. Without this reset, an earlier test's cached shared-dep
 // source text (or fetch call) would leak into a later test that declares
@@ -110,14 +111,10 @@ function buildManifest(
   shared: MfManifestShared[] = []
 ): MfManifest {
   return {
-    id: MANIFEST_ID,
-    name: 'testMfe',
+    // One id names one registered manifest; manifests that differ in
+    // publicPath are distinct registered manifests.
+    id: `${MANIFEST_ID}@${publicPath}`,
     metaData: {
-      name: 'testMfe',
-      type: 'app',
-      buildInfo: { buildVersion: '1.0.0', buildName: 'testMfe' },
-      remoteEntry: { name: 'remoteEntry.js', path: '', type: 'module' },
-      globalName: 'testMfe',
       publicPath,
     },
     shared,
@@ -133,10 +130,10 @@ function buildEntry(
     requiredProperties: [],
     actions: [],
     domainActions: [],
-    manifest,
+    manifest: registerManifest(manifest),
     exposedModule: './lifecycle',
     exposeAssets: {
-      js: { sync: [exposeChunk], async: [] },
+      js: { sync: [exposeChunk] },
       css: { sync: [], async: [] },
     },
   };
@@ -309,7 +306,7 @@ describe('MfeHandlerMF — unresolved publicPath placeholder guard', () => {
       // retries: 0 — the guard's rejection is deterministic and must not be
       // masked by RetryHandler's exponential-backoff retries (default 2
       // retries would add seconds of real delay per assertion here).
-      const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+      const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
       const entry = buildEntry(buildManifest(placeholder));
 
       // Fetch must never be reached — the guard fires before any network
@@ -329,7 +326,7 @@ describe('MfeHandlerMF — unresolved publicPath placeholder guard', () => {
   );
 
   it('does not reject a concrete resolved publicPath at the guard step', async () => {
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const entry = buildEntry(buildManifest('http://localhost:3099/'));
 
     // A concrete publicPath passes the guard and proceeds to fetch the
@@ -362,7 +359,6 @@ function sharedDep(
     name,
     version: opts.version ?? '1.0.0',
     chunkPath,
-    unwrapKey: null,
     ...(opts.contentHash !== undefined ? { contentHash: opts.contentHash } : {}),
   };
 }
@@ -404,7 +400,7 @@ describe('MfeHandlerMF - relative publicPath resolves to an absolute base', () =
     blobModuleStub.current = {
       default: { mount: (): void => {}, unmount: (): void => {} },
     };
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     try {
       const lifecycles = [];
       for (const [publicPath, extensionId, loadShared = shared] of loads) {
@@ -433,7 +429,7 @@ describe('MfeHandlerMF - relative publicPath resolves to an absolute base', () =
   ) {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     try {
-      const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+      const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
       const error = await handler
         .load(buildEntry(buildManifest(publicPath, shared)), extensionId)
         .then(() => undefined, (reason: unknown) => reason);
@@ -662,8 +658,9 @@ describe('MfeHandlerMF - relative publicPath resolves to an absolute base', () =
     );
   });
 
-  // An inline manifest skips schema validation, so a field may hold any JSON
-  // value; the handler refuses it by name instead of resolving 'undefined'.
+  // The handler trusts a registered manifest unvalidated, so a field may hold
+  // any JSON value; it refuses a non-string by name instead of resolving
+  // 'undefined'.
   it('rejects a chunkPath that is not a string with an MfeLoadError naming the dependency', async () => {
     const dep = { ...sharedDep('dep', 'x.js'), chunkPath: undefined } as unknown as MfManifestShared;
     const error = await rejectionOf(PUBLIC_PATH, 'ext-non-string-chunk-path', [dep]);
@@ -754,7 +751,7 @@ describe('MfeHandlerMF — concurrent dependency fetch', () => {
       .spyOn(globalThis, 'fetch')
       .mockImplementation(fetchImpl as typeof fetch);
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     await handler.load(entry, 'ext-concurrent-shared').catch(() => {
       // The expose chunk resolves with an empty module (no lifecycle
       // exports), so load() rejects downstream of the assertion below —
@@ -806,7 +803,7 @@ describe('MfeHandlerMF — concurrent dependency fetch', () => {
       .spyOn(globalThis, 'fetch')
       .mockImplementation(fetchImpl as typeof fetch);
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     // The blob URL chain (what this test targets) fully resolves before
     // `load()` reaches `importBlobModule` — dynamic `import()` of a `blob:`
     // URL isn't supported under Node/vitest's module loader, so the load
@@ -862,7 +859,7 @@ describe('MfeHandlerMF — concurrent dependency fetch', () => {
       .spyOn(globalThis, 'fetch')
       .mockImplementation(fetchImpl as typeof fetch);
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     await handler.load(entry, 'ext-sibling-dispatch-order').catch(() => {});
 
     const dispatchB = events.indexOf('dispatch:sibling-b.js');
@@ -907,7 +904,7 @@ describe('MfeHandlerMF — concurrent dependency fetch', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const minted = captureMintedSources();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const loadState = buildLoadState();
 
     const startedAt = Date.now();
@@ -978,7 +975,7 @@ describe('MfeHandlerMF — concurrent dependency fetch', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const minted = captureMintedSources();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const loadState = buildLoadState();
 
     const startedAt = Date.now();
@@ -1034,7 +1031,7 @@ describe('MfeHandlerMF — concurrent dependency fetch', () => {
       .spyOn(globalThis, 'fetch')
       .mockImplementation(() => new Promise<Response>(() => {}));
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0, timeout: 50 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0, timeout: 50 });
 
     const start = Date.now();
     await expect(handler.load(entry, 'ext-timeout')).rejects.toThrow(MfeLoadError);
@@ -1081,7 +1078,7 @@ describe('MfeHandlerMF — concurrent dependency fetch', () => {
     const lifecycle = { mount: (): void => {}, unmount: (): void => {} };
     blobModuleStub.current = { default: lifecycle };
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, {
+    const handler = newHandler(ENTRY_BASE_ID, {
       retries: 1,
       timeout: 50,
     });
@@ -1112,7 +1109,7 @@ describe('MfeHandlerMF — concurrent dependency fetch', () => {
       .spyOn(globalThis, 'fetch')
       .mockImplementation(() => new Promise<Response>(() => {}));
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, {
+    const handler = newHandler(ENTRY_BASE_ID, {
       retries: 0,
       timeout: 80,
     });
@@ -1189,7 +1186,7 @@ describe('MfeHandlerMF — concurrent dependency fetch', () => {
         }
       }) as typeof fetch);
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const loadState = buildLoadState();
 
     const blobUrl = await resolveLazy(handler, './root.js', loadState);
@@ -1232,7 +1229,7 @@ describe('MfeHandlerMF — concurrent dependency fetch', () => {
         return fetchImpl(input);
       }) as typeof fetch);
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const loadState = buildLoadState();
 
     await expect(resolveLazy(handler, './root.js', loadState)).rejects.toThrow(
@@ -1258,7 +1255,7 @@ describe('MfeHandlerMF — concurrent dependency fetch', () => {
       .spyOn(globalThis, 'fetch')
       .mockImplementation(fetchImpl as typeof fetch);
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0, timeout: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0, timeout: 0 });
 
     const start = Date.now();
     // The chain build itself completes; `load()` still rejects downstream at
@@ -1284,7 +1281,7 @@ describe('MfeHandlerMF — concurrent dependency fetch', () => {
 
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     await expect(handler.load(entry, 'ext-dup-shared-name')).rejects.toThrow(
       /declares 'dup-dep' more than once/
     );
@@ -1337,7 +1334,7 @@ describe('MfeHandlerMF — lazy-import failure isolation', () => {
         return Promise.reject(new TypeError(`unmocked fetch: ${url}`));
       }) as typeof fetch);
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
 
     // Hand-built per-load state, mirroring what `loadExposedModuleIsolated`
     // builds internally. The failure signal is per chain build, never on
@@ -1402,7 +1399,7 @@ describe('MfeHandlerMF — lazy-import failure isolation', () => {
       .spyOn(globalThis, 'fetch')
       .mockImplementation(fetchImpl as typeof fetch);
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const loadState = buildLoadState();
 
     await expect(resolveLazy(handler, './broken.js', loadState)).rejects.toThrow(
@@ -1477,7 +1474,7 @@ describe('MfeHandlerMF — lazy-import failure isolation', () => {
       .spyOn(globalThis, 'fetch')
       .mockImplementation(fetchImpl as typeof fetch);
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const loadState = buildLoadState();
 
     const buildA = resolveLazy(handler, './abandon-root.js', loadState);
@@ -1530,7 +1527,7 @@ describe('MfeHandlerMF — an unbuilt dependency at rewrite time', () => {
     ).rewriteModuleImports(source, loadState, chunkFilename);
 
   it('fails the load with a diagnostic naming the referring chunk and the dependency that was never built', () => {
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const loadState = buildLoadState();
 
     let thrown: unknown;
@@ -1639,7 +1636,7 @@ describe('MfeHandlerMF — per-load isolation invariant over every fixture', () 
       const minted = captureMintedSources();
       blobModuleStub.current = { default: { mount: (): void => {}, unmount: (): void => {} } };
 
-      const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+      const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
       const entry = buildEntry(buildManifest(PUBLIC_PATH, fixture.shared));
 
       try {
@@ -1685,7 +1682,7 @@ describe('MfeHandlerMF — per-load isolation invariant over every fixture', () 
       .spyOn(globalThis, 'fetch')
       .mockImplementation(fetchImpl as typeof fetch);
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const entry = buildEntry(
       buildManifest(PUBLIC_PATH, [
         sharedDep('react', 'shared/react.js'),
@@ -1725,7 +1722,7 @@ describe('MfeHandlerMF — deterministic failures are not retried', () => {
       .spyOn(globalThis, 'fetch')
       .mockImplementation(fetchImpl as typeof fetch);
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 2 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 2 });
     const entry = buildEntry(buildManifest(PUBLIC_PATH));
 
     const startedAt = Date.now();
@@ -1778,7 +1775,7 @@ describe('MfeHandlerMF — deterministic failures are not retried', () => {
     async (_label, publicPath, shared, message) => {
       const fetchSpy = vi.spyOn(globalThis, 'fetch');
       try {
-        const handler = new MfeHandlerMF(ENTRY_BASE_ID);
+        const handler = newHandler(ENTRY_BASE_ID);
         const entry = buildEntry(buildManifest(publicPath, shared));
 
         const startedAt = Date.now();
@@ -1805,7 +1802,7 @@ describe('MfeHandlerMF — deterministic failures are not retried', () => {
         return Promise.reject(new TypeError('network error for test'));
       }) as unknown as typeof fetch);
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 1 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 1 });
     const entry = buildEntry(buildManifest(PUBLIC_PATH));
 
     await expect(handler.load(entry, 'ext-retryable')).rejects.toThrow(
@@ -1905,7 +1902,7 @@ describe('MfeHandlerMF — shared-dep cross-MFE cache key (issue #621)', () => {
     const minted = captureMintedSources();
     stubSuccessfulImport();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const manifestA = {
       ...buildManifest(PUBLIC_PATH_A, [
         sharedDep('dep-x', 'shared/dep-x.js'),
@@ -1961,7 +1958,7 @@ describe('MfeHandlerMF — shared-dep cross-MFE cache key (issue #621)', () => {
       .mockImplementation(fetchImpl as typeof fetch);
     stubSuccessfulImport();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     // The declared hash must match the served bytes: F-010 admission
     // verifies text against a well-formed contentHash before caching it
     // under the hash key.
@@ -2013,7 +2010,7 @@ describe('MfeHandlerMF — shared-dep cross-MFE cache key (issue #621)', () => {
       .mockImplementation(fetchImpl as typeof fetch);
     stubSuccessfulImport();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const manifestA = buildManifest(PUBLIC_PATH_A, [
       sharedDep('dep-x', 'shared/dep-x.js', { contentHash: '6657467c596bb6a5668bce58bbd363b4345d1da83976e25c24774c5bf64ee316' }),
     ]);
@@ -2061,7 +2058,7 @@ describe('MfeHandlerMF — shared-dep cross-MFE cache key (issue #621)', () => {
       .mockImplementation(fetchImpl as typeof fetch);
     stubSuccessfulImport();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const manifestA = buildManifest(PUBLIC_PATH_A, [
       sharedDep('dep-z', 'shared/dep-z.js', { contentHash: 'abcd' }),
     ]);
@@ -2109,7 +2106,7 @@ describe('MfeHandlerMF — shared-dep cross-MFE cache key (issue #621)', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     stubSuccessfulImport();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const manifestA = {
       ...buildManifest(PUBLIC_PATH_A, [sharedDep('dep-y', 'shared/dep-y.js')]),
       id: 'mock.mfe.mf_manifest.v1~test.notice-a.v1',
@@ -2175,7 +2172,7 @@ describe('MfeHandlerMF — shared-dep cross-MFE cache key (issue #621)', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     stubSuccessfulImport();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const manifestFor = (i: number): MfManifest => ({
       ...buildManifest(`http://localhost:5${String(i).padStart(3, '0')}/mfe/`, [
         sharedDep(`dep-bound-${i}`, `shared/dep-bound-${i}.js`),
@@ -2246,7 +2243,7 @@ describe('MfeHandlerMF — shared-dep cross-MFE cache key (issue #621)', () => {
       )
       .mockImplementation((source: string) => source);
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const entry = buildEntry(
       buildManifest(PUBLIC_PATH, [
         sharedDep('dep-a', 'shared/dep-a.js'),
@@ -2293,7 +2290,7 @@ describe('MfeHandlerMF — shared-dep cross-MFE cache key (issue #621)', () => {
       .mockImplementation(fetchImpl as typeof fetch);
     stubSuccessfulImport();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const entry = buildEntry(
       buildManifest(PUBLIC_PATH, [sharedDep('dep-w', 'shared/dep-w.js')])
     );
@@ -2360,7 +2357,7 @@ describe('MfeHandlerMF — undeclared shared-dep specifier diagnostic (warn, nev
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     stubSuccessfulImport();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const entry = buildEntry(
       buildManifest(PUBLIC_PATH, [
         sharedDep('@reduxjs/toolkit', 'shared/dep-toolkit.js'),
@@ -2400,7 +2397,7 @@ describe('MfeHandlerMF — undeclared shared-dep specifier diagnostic (warn, nev
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     stubSuccessfulImport();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const entry = buildEntry(
       buildManifest(PUBLIC_PATH, [sharedDep('dep-poly', 'shared/dep-poly.js')])
     );
@@ -2435,7 +2432,7 @@ describe('MfeHandlerMF — undeclared shared-dep specifier diagnostic (warn, nev
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     stubSuccessfulImport();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const entry = buildEntry(
       buildManifest(PUBLIC_PATH, [
         sharedDep('dep-scoped', 'shared/dep-scoped.js'),
@@ -2485,7 +2482,7 @@ describe('MfeHandlerMF — undeclared shared-dep specifier diagnostic (warn, nev
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     stubSuccessfulImport();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const entry = buildEntry(
       buildManifest(PUBLIC_PATH, [sharedDep('dep-repro', 'shared/dep-repro.js')])
     );
@@ -2532,7 +2529,7 @@ describe('MfeHandlerMF — undeclared shared-dep specifier diagnostic (warn, nev
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     stubSuccessfulImport();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const entry = buildEntry(
       buildManifest(PUBLIC_PATH, [
         sharedDep('@reduxjs/toolkit', 'shared/toolkit.js'),
@@ -2576,7 +2573,7 @@ describe('MfeHandlerMF — undeclared shared-dep specifier diagnostic (warn, nev
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     stubSuccessfulImport();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const entry = buildEntry(
       buildManifest(PUBLIC_PATH, [
         sharedDep('dep-leaf', 'shared/dep-leaf.js'),
@@ -2611,7 +2608,7 @@ describe('MfeHandlerMF — undeclared shared-dep specifier diagnostic (warn, nev
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     stubSuccessfulImport();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const entry = buildEntry(
       buildManifest(PUBLIC_PATH, [
         sharedDep('dep-dynamic', 'shared/dep-dynamic.js'),
@@ -2653,7 +2650,7 @@ describe('MfeHandlerMF — undeclared shared-dep specifier diagnostic (warn, nev
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     stubSuccessfulImport();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const entry = buildEntry(
       buildManifest(PUBLIC_PATH, [
         sharedDep('react', 'shared/react.js'),
@@ -2688,7 +2685,7 @@ describe('MfeHandlerMF — undeclared shared-dep specifier diagnostic (warn, nev
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     stubSuccessfulImport();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const entry = buildEntry(
       buildManifest(PUBLIC_PATH, [
         sharedDep('dep-relative', 'shared/dep-relative.js'),
@@ -2722,7 +2719,7 @@ describe('MfeHandlerMF — undeclared shared-dep specifier diagnostic (warn, nev
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     stubSuccessfulImport();
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const entry = buildEntry(
       buildManifest(PUBLIC_PATH, [
         sharedDep('dep-fragment', 'shared/dep-fragment.js'),
@@ -2809,7 +2806,7 @@ describe('MfeHandlerMF - stylesheet wrapper keeps the mount contract', () => {
       },
     };
     try {
-      return await new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+      return await newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
         entry,
         extensionId
       );
@@ -2978,7 +2975,7 @@ describe('MfeHandlerMF — lazy dependent-list key resolution (sharedBase ≠ pu
       if (text === undefined) throw new Error(`404 ${url}`);
       return text;
     };
-    const handler = new MfeHandlerMF(ENTRY, { retries: 0 });
+    const handler = newHandler(ENTRY, { retries: 0 });
     const loader = new SharedDepListLoader(fetchText, ENTRY, new Map() as never);
     const ctx = loader.createContext();
     ctx.dependentLists.set('../app/chunks/lazy.js', {
@@ -3018,7 +3015,7 @@ describe('MfeHandlerMF — lazy dependent-list key resolution (sharedBase ≠ pu
       const fetchText = async (): Promise<string> => {
         throw new Error('must not fetch');
       };
-      const handler = new MfeHandlerMF(ENTRY, { retries: 0 });
+      const handler = newHandler(ENTRY, { retries: 0 });
       const loader = new SharedDepListLoader(fetchText, ENTRY, new Map() as never);
       const ctx = loader.createContext();
       ctx.dependentLists.set('../app/chunks/other.js', { items: [] });

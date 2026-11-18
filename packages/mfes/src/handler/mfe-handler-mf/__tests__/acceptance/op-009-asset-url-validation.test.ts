@@ -21,7 +21,7 @@ vi.mock('../../mf-dynamic-module-ops', async (importOriginal) => {
   };
 });
 
-import { MfeHandlerMF } from '../../MfeHandlerMF';
+import { newHandler } from '../helpers/registered-manifest';
 import { MfeLoadError } from '../../../../errors';
 import {
   buildEntry,
@@ -67,7 +67,7 @@ async function expectRejected(manifest: MfManifest): Promise<unknown> {
   const fetchSpy = vi
     .spyOn(globalThis, 'fetch')
     .mockImplementation(router as typeof fetch);
-  const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+  const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
   try {
     const outcome = await handler
       .load(buildEntry(manifest), 'ext-op009')

@@ -36,6 +36,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MfManifest, MfManifestShared } from '../../src/manifest/mf-manifest';
 import type { MfeEntryMF } from '../../src/types/mfe-entry-mf';
+import type { TypeSystemPlugin } from '../../src/type-substrate';
 
 /**
  * Opt-in stub for `importBlobModule`, identical in spirit to
@@ -128,7 +129,6 @@ function sharedDep(
     name,
     version: opts.version ?? '1.0.0',
     chunkPath,
-    unwrapKey: null,
     ...(opts.contentHash !== undefined ? { contentHash: opts.contentHash } : {}),
   };
 }
@@ -140,29 +140,31 @@ function buildManifest(
 ): MfManifest {
   return {
     id,
-    name: 'testMfe',
     metaData: {
-      name: 'testMfe',
-      type: 'app',
-      buildInfo: { buildVersion: '1.0.0', buildName: 'testMfe' },
-      remoteEntry: { name: 'remoteEntry.js', path: '', type: 'module' },
-      globalName: 'testMfe',
       publicPath,
     },
     shared,
   };
 }
 
+// The registry the handlers under test are registered into: an entry names its
+// manifest by id, and the handler reads the manifest from this type system.
+const registeredManifests = new Map<string, unknown>();
+const registryTypeSystem = {
+  getSchema: (typeId: string): unknown => registeredManifests.get(typeId),
+} as unknown as TypeSystemPlugin;
+
 function buildEntry(manifest: MfManifest, id: string): MfeEntryMF {
+  registeredManifests.set(manifest.id, manifest);
   return {
     id,
     requiredProperties: [],
     actions: [],
     domainActions: [],
-    manifest,
+    manifest: manifest.id,
     exposedModule: './lifecycle',
     exposeAssets: {
-      js: { sync: ['assets/lifecycle.js'], async: [] },
+      js: { sync: ['assets/lifecycle.js'] },
       css: { sync: [], async: [] },
     },
   };
@@ -732,6 +734,7 @@ describe('Realm-shared shared-dependency source-text cache across two independen
       timeout: 50,
     });
     const entryA = buildEntry(manifestA, 'entry-a-p2-release');
+    handlerA.attachTypeSystem(registryTypeSystem);
     const cache = realmCacheOf(handlerA);
 
     // Attempt 1 joins/publishes P1, times out at ~50ms, identity-releases
@@ -940,6 +943,8 @@ describe('Realm-shared shared-dependency source-text cache across two independen
 
       const entryA = buildEntry(manifestA, 'entry-a-staggered');
       const entryB = buildEntry(manifestB, 'entry-b-staggered');
+      handlerA.attachTypeSystem(registryTypeSystem);
+      handlerB.attachTypeSystem(registryTypeSystem);
 
       blobModuleStub.current = {
         default: { mount: (): void => {}, unmount: (): void => {} },

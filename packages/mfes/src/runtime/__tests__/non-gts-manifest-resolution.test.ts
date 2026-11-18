@@ -1,7 +1,7 @@
 /**
  * Non-GTS consumer: manifest references resolved through the registry's plugin.
  *
- * An entry may name its manifest by id instead of carrying the document. The
+ * An entry names its manifest by id. The
  * handler that loads it holds no plugin of its own — the host application
  * constructs it (`new MfeHandlerMF(entryBaseTypeId)`) before any registry
  * exists — so the id only resolves if the registry hands the handler its type
@@ -46,13 +46,7 @@ const PUBLIC_PATH = 'http://localhost:3099/';
 function buildManifest(): MfManifest {
   return {
     id: MANIFEST_ID,
-    name: 'widgetMfe',
     metaData: {
-      name: 'widgetMfe',
-      type: 'app',
-      buildInfo: { buildVersion: '1.0.0', buildName: 'widgetMfe' },
-      remoteEntry: { name: 'remoteEntry.js', path: '', type: 'module' },
-      globalName: 'widgetMfe',
       publicPath: PUBLIC_PATH,
     },
     shared: [],
@@ -69,7 +63,7 @@ function buildEntry(): MfeEntryMF {
     manifest: MANIFEST_ID,
     exposedModule: './lifecycle',
     exposeAssets: {
-      js: { sync: ['assets/lifecycle.js'], async: [] },
+      js: { sync: ['assets/lifecycle.js'] },
       css: { sync: [], async: [] },
     },
   };

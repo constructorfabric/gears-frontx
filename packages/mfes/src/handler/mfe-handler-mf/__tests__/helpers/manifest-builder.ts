@@ -1,8 +1,8 @@
 /**
  * Shared manifest fixture builders for `mfe-handler-mf` test suites —
  * the `MfManifest`/`MfeEntryMF` shapes a `load()` call consumes,
- * exercising the `requires` / `entryLists` / `sharedChunkRule` /
- * `sharedBase` fields.
+ * exercising the `entryLists` / `sharedBase` fields. An entry references its
+ * manifest by id, so `buildEntry` registers the manifest it is given.
  */
 import { createHash } from 'node:crypto';
 
@@ -11,6 +11,7 @@ import type {
   MfManifestShared,
 } from '../../../../manifest/mf-manifest';
 import type { MfeEntryMF } from '../../../../types/mfe-entry-mf';
+import { registerManifest } from './registered-manifest';
 import type { SharedDepEntryListRefs } from '../../../../unit-format/fetch-list';
 
 export const MANIFEST_ID = 'mock.mfe.mf_manifest.v1~test.manifest.v1';
@@ -38,8 +39,6 @@ export function unitIdentityKey(
 
 export interface SharedDepOptions {
   version?: string;
-  requires?: string[];
-  sharedChunkRule?: string;
   chunkPath?: string;
   contentHash?: string;
 }
@@ -53,16 +52,9 @@ export function sharedDep(
     name,
     version: options.version ?? '1.0.0',
     chunkPath: options.chunkPath ?? `shared/${name}.js`,
-    unwrapKey: null,
   };
   if (options.contentHash !== undefined) {
     entry.contentHash = options.contentHash;
-  }
-  if (options.requires !== undefined) {
-    entry.requires = options.requires;
-  }
-  if (options.sharedChunkRule !== undefined) {
-    entry.sharedChunkRule = options.sharedChunkRule;
   }
   return entry;
 }
@@ -79,13 +71,7 @@ export function buildManifest(
 ): MfManifest {
   return {
     id: MANIFEST_ID,
-    name: 'testMfe',
     metaData: {
-      name: 'testMfe',
-      type: 'app',
-      buildInfo: { buildVersion: '1.0.0', buildName: 'testMfe' },
-      remoteEntry: { name: 'remoteEntry.js', path: '', type: 'module' },
-      globalName: 'testMfe',
       publicPath: PUBLIC_PATH,
       ...options.metaData,
     },
@@ -106,10 +92,10 @@ export function buildEntry(
     requiredProperties: [],
     actions: [],
     domainActions: [],
-    manifest,
+    manifest: registerManifest(manifest),
     exposedModule,
     exposeAssets: {
-      js: { sync: ['assets/lifecycle.js'], async: [] },
+      js: { sync: ['assets/lifecycle.js'] },
       css: { sync: [], async: [] },
     },
   };

@@ -23,6 +23,7 @@ vi.mock('../../mf-dynamic-module-ops', async (importOriginal) => {
 });
 
 import { MfeHandlerMF } from '../../MfeHandlerMF';
+import { newHandler } from '../helpers/registered-manifest';
 import type { SharedDepTextCache } from '../../RealmSharedDepTextCacheProvider';
 import {
   buildEntry,
@@ -49,8 +50,7 @@ describe('acceptance: F-026 dedup and race nits', () => {
       name: 'react',
       version: '1.0.0',
       chunkPath: 'shared/react.js',
-      unwrapKey: null,
-      contentHash:
+        contentHash:
         'a'.repeat(64),
     };
     const router = createFetchRouter({
@@ -65,7 +65,7 @@ describe('acceptance: F-026 dedup and race nits', () => {
       .spyOn(globalThis, 'fetch')
       .mockImplementation(router as typeof fetch);
     stubSuccessfulImport(blobModuleStub);
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const manifest = buildManifest([dep, { ...dep }]);
     try {
       await handler
@@ -85,7 +85,7 @@ describe('acceptance: F-026 dedup and race nits', () => {
   });
 
   it('F-026: an in-flight (unsettled) entry contributes zero bytes — a later large admission must not evict it as if it were sized', async () => {
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, {
+    const handler = newHandler(ENTRY_BASE_ID, {
       retries: 0,
       sharedDepTextCacheMaxBytes: 64,
     } as ConstructorParameters<typeof MfeHandlerMF>[1]);

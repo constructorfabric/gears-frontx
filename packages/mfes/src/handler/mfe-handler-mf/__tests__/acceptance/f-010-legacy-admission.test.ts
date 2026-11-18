@@ -22,6 +22,7 @@ vi.mock('../../mf-dynamic-module-ops', async (importOriginal) => {
 });
 
 import { MfeHandlerMF } from '../../MfeHandlerMF';
+import { newHandler } from '../helpers/registered-manifest';
 import type { SharedDepTextCache } from '../../RealmSharedDepTextCacheProvider';
 import { MfeLoadError } from '../../../../errors';
 import {
@@ -52,8 +53,7 @@ describe('acceptance: F-010 legacy chunkPath cache admission', () => {
       name: 'react',
       version: '1.0.0',
       chunkPath: 'shared/react.js',
-      unwrapKey: null,
-      contentHash: declaredHash,
+        contentHash: declaredHash,
     };
     const router = createFetchRouter({
       [`${PUBLIC_PATH}assets/lifecycle.js`]: {
@@ -65,7 +65,7 @@ describe('acceptance: F-010 legacy chunkPath cache admission', () => {
       .spyOn(globalThis, 'fetch')
       .mockImplementation(router as typeof fetch);
     stubSuccessfulImport(blobModuleStub);
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const manifest = buildManifest([dep]);
 
     try {
