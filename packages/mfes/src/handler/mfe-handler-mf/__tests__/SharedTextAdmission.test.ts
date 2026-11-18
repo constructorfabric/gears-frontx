@@ -6,20 +6,19 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { SharedTextAdmission } from '../SharedTextAdmission';
-import type { AttemptSourceTextLedger } from '../AttemptSourceTextLedger';
+import { AttemptSourceTextLedger } from '../AttemptSourceTextLedger';
 import type { SharedDepTextCache } from '../RealmSharedDepTextCacheProvider';
 
 const KEY = 'k';
 
 function setup() {
   const map = new Map<string, Promise<string>>();
-  const cache = map as unknown as SharedDepTextCache;
+  const cache: SharedDepTextCache = map;
   const recorded: Array<{ key: string; promise: Promise<string> }> = [];
-  const ledger = {
-    record: vi.fn((_c: unknown, key: string, promise: Promise<string>) => {
-      recorded.push({ key, promise });
-    }),
-  } as unknown as AttemptSourceTextLedger;
+  const ledger = new AttemptSourceTextLedger();
+  vi.spyOn(ledger, 'record').mockImplementation((_c, key, promise) => {
+    recorded.push({ key, promise });
+  });
   return { map, cache, ledger, recorded };
 }
 

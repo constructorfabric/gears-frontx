@@ -37,6 +37,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MfManifest, MfManifestShared } from '../../src/manifest/mf-manifest';
 import type { MfeEntryMF } from '../../src/types/mfe-entry-mf';
 import type { TypeSystemPlugin } from '../../src/type-substrate';
+import { createFakeTypeSystem } from '../../src/handler/mfe-handler-mf/__tests__/helpers/registered-manifest';
 
 /**
  * Opt-in stub for `importBlobModule`, identical in spirit to
@@ -150,9 +151,8 @@ function buildManifest(
 // The registry the handlers under test are registered into: an entry names its
 // manifest by id, and the handler reads the manifest from this type system.
 const registeredManifests = new Map<string, unknown>();
-const registryTypeSystem = {
-  getSchema: (typeId: string): unknown => registeredManifests.get(typeId),
-} as unknown as TypeSystemPlugin;
+const registryTypeSystem: TypeSystemPlugin =
+  createFakeTypeSystem(registeredManifests);
 
 function buildEntry(manifest: MfManifest, id: string): MfeEntryMF {
   registeredManifests.set(manifest.id, manifest);
