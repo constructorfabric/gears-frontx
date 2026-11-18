@@ -2,7 +2,7 @@
  * Scenario coverage for the `./unit-loader` sanctioned subpath
  * (`cpt-frontx-algo-unit-format-contract-loader-surface`):
  *
- *  - the subpath yields exactly the list loader, verified fetcher,
+ *  - the subpath yields exactly the list loader, shared-unit fetcher,
  *    asset-URL resolver and realm cache provider, and its module graph
  *    reaches no registry, orchestrating handler or mediator module;
  *  - two loader copies agree on one versioned realm cache slot and
@@ -17,17 +17,17 @@ import {
   RealmSharedDepTextCacheProvider,
   SharedAssetUrlResolver,
   SharedDepListLoader,
-  VerifiedUnitFetcher,
+  SharedUnitFetcher,
 } from '../index';
 import { RealmSharedDepTextCacheProvider as InternalRealmProvider } from '../../handler/mfe-handler-mf/RealmSharedDepTextCacheProvider';
 import { SharedAssetUrlResolver as InternalSharedAssetUrlResolver } from '../../handler/mfe-handler-mf/SharedAssetUrlResolver';
 import { SharedDepListLoader as InternalSharedDepListLoader } from '../../handler/mfe-handler-mf/SharedDepListLoader';
-import { VerifiedUnitFetcher as InternalVerifiedUnitFetcher } from '../../handler/mfe-handler-mf/VerifiedUnitFetcher';
+import { SharedUnitFetcher as InternalSharedUnitFetcher } from '../../handler/mfe-handler-mf/SharedUnitFetcher';
 
 describe('unit-loader subpath surface', () => {
   it('exports exactly the loader capability classes', () => {
     expect(SharedDepListLoader).toBe(InternalSharedDepListLoader);
-    expect(VerifiedUnitFetcher).toBe(InternalVerifiedUnitFetcher);
+    expect(SharedUnitFetcher).toBe(InternalSharedUnitFetcher);
     expect(SharedAssetUrlResolver).toBe(InternalSharedAssetUrlResolver);
     expect(RealmSharedDepTextCacheProvider).toBe(InternalRealmProvider);
   });
@@ -42,7 +42,7 @@ describe('unit-loader subpath surface', () => {
       'RealmSharedDepTextCacheProvider',
       'SharedAssetUrlResolver',
       'SharedDepListLoader',
-      'VerifiedUnitFetcher',
+      'SharedUnitFetcher',
     ]);
   });
 

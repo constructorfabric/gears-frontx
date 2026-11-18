@@ -16,7 +16,7 @@
  * Fetch-list documents are type-system-neutral JSON build artifacts:
  * these interfaces are their only typing source and no list schema
  * exists in any type system. The runtime performs no structural
- * validation of a list — trust rests on hash verification plus
+ * validation of a list — correctness rests on the producer's
  * build-time conformance — and reads the fields it needs at the point
  * of use.
  *
@@ -57,7 +57,7 @@ export interface SharedDepProducer {
 
 /**
  * A content-addressed file reference: the location a document is fetched
- * from and the SHA-256 it is verified against. Carried by a list
+ * from and the content identity it is admitted under. Carried by a list
  * document wherever it names a dependent list document, and by the
  * manifest wherever it names an entry's list document — the same
  * location/identity pair the manifest's graph-file reference uses.
@@ -72,15 +72,15 @@ export interface SharedDepFileRef {
   location: string;
   /**
    * Content identity (SHA-256 hex digest, 64 lowercase hex characters)
-   * of the document's bytes. Every fetched document is verified against
-   * this before it is used or cached.
+   * of the document's bytes. The fetched document is admitted to the realm
+   * cache as fetched, under the key this identity fixes.
    */
   contentHash: string;
 }
 
 /**
  * One shared chunk on a fetch list — one file the runtime fetches,
- * verifies and mints for the load. Items are listed by content identity:
+ * admits and mints for the load. Items are listed by content identity:
  * two lists naming the same `contentHash` name the same bytes and share
  * one realm-cache entry (`cpt-frontx-adr-shared-dep-cache-reach`).
  */
@@ -93,9 +93,8 @@ export interface SharedDepListItem {
   location: string;
   /**
    * Content identity (SHA-256 hex digest, 64 lowercase hex characters)
-   * of the chunk's bytes. The fetched text is verified against this
-   * before it is used or admitted to the realm cache, and reuse is
-   * keyed on it.
+   * of the chunk's bytes. The fetched text is admitted to the realm
+   * cache as fetched, and reuse is keyed on this identity.
    */
   contentHash: string;
   /**

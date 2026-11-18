@@ -1959,9 +1959,8 @@ describe('MfeHandlerMF — shared-dep cross-MFE cache key (issue #621)', () => {
     stubSuccessfulImport();
 
     const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
-    // The declared hash must match the served bytes: F-010 admission
-    // verifies text against a well-formed contentHash before caching it
-    // under the hash key.
+    // The declared hashes name distinct realm cache keys, so text is not
+    // shared between the two manifests.
     const manifestA = buildManifest(PUBLIC_PATH_A, [
       sharedDep('dep-x', 'shared/dep-x.js', { contentHash: '6657467c596bb6a5668bce58bbd363b4345d1da83976e25c24774c5bf64ee316' }),
     ]);
@@ -1998,8 +1997,7 @@ describe('MfeHandlerMF — shared-dep cross-MFE cache key (issue #621)', () => {
       [`${PUBLIC_PATH_B}assets/lifecycle.js`]: {
         body: 'import "dep-x";\nexport default {};',
       },
-      // Distinct bytes on B so its declared hash legitimately differs —
-      // F-010 verifies text against the declared hash before admission.
+      // Distinct bytes on B, matching its distinct declared hash.
       [`${PUBLIC_PATH_B}shared/dep-x.js`]: {
         body: 'export const depx = 2;',
       },
@@ -2028,54 +2026,6 @@ describe('MfeHandlerMF — shared-dep cross-MFE cache key (issue #621)', () => {
         1
       );
       expect(fetchesFor(callCounts, `${PUBLIC_PATH_B}shared/dep-x.js`)).toBe(
-        1
-      );
-    } finally {
-      blobModuleStub.current = undefined;
-      fetchSpy.mockRestore();
-    }
-  });
-
-  it('does not reuse cached shared-dep text across manifests when their declared contentHash is malformed', async () => {
-    // Malformed hash (4 chars instead of 64 hex) to verify isWellFormedContentHash guard.
-    const routes = {
-      [`${PUBLIC_PATH_A}assets/lifecycle.js`]: {
-        body: 'import "dep-z";\nexport default {};',
-      },
-      [`${PUBLIC_PATH_A}shared/dep-z.js`]: {
-        body: 'export const depz = 1;',
-      },
-      [`${PUBLIC_PATH_B}assets/lifecycle.js`]: {
-        body: 'import "dep-z";\nexport default {};',
-      },
-      [`${PUBLIC_PATH_B}shared/dep-z.js`]: {
-        body: 'export const depz = 1;',
-      },
-    };
-    const { fetchImpl, callCounts } = createFetchRouter(routes);
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockImplementation(fetchImpl as typeof fetch);
-    stubSuccessfulImport();
-
-    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
-    const manifestA = buildManifest(PUBLIC_PATH_A, [
-      sharedDep('dep-z', 'shared/dep-z.js', { contentHash: 'abcd' }),
-    ]);
-    const manifestB = buildManifest(PUBLIC_PATH_B, [
-      sharedDep('dep-z', 'shared/dep-z.js', { contentHash: 'abcd' }),
-    ]);
-
-    try {
-      await handler.load(buildEntry(manifestA), 'ext-malformed-hash-a');
-      await handler.load(buildEntry(manifestB), 'ext-malformed-hash-b');
-
-      // Both manifests declare the same malformed contentHash, but the guard
-      // rejects it, so each load must fetch its own text rather than reuse.
-      expect(fetchesFor(callCounts, `${PUBLIC_PATH_A}shared/dep-z.js`)).toBe(
-        1
-      );
-      expect(fetchesFor(callCounts, `${PUBLIC_PATH_B}shared/dep-z.js`)).toBe(
         1
       );
     } finally {

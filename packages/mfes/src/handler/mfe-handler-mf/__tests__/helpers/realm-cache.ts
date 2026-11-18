@@ -3,7 +3,7 @@
  *
  * The realm cache lives on a `Symbol.for` rendezvous slot whose protocol
  * version is baked into the symbol description. Suites reset it per test
- * so verified text never leaks between tests under an identical key.
+ * so cached text never leaks between tests under an identical key.
  */
 
 /**

@@ -19,7 +19,7 @@ export const ENTRY_BASE_ID = 'mock.mfe.entry.v1~';
 export const ENTRY_ID = `${ENTRY_BASE_ID}test.entry.v1`;
 export const PUBLIC_PATH = 'http://localhost:3099/';
 
-/** SHA-256 hex digest of `text` — the same identity the runtime verifies. */
+/** SHA-256 hex digest of `text` — a declared content identity (the runtime only uses it as a sharing key). */
 export function sha256Hex(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex');
 }
