@@ -171,7 +171,9 @@ export interface SharedDepFetchList {
    * literal `import()` inside a shared chunk — the reference to that
    * target's own {@link SharedDepFetchList} document, holding only what
    * the target needs beyond its parent chain's lists. Keyed by the lazy
-   * target's chunk location relative to the shared base. On first use
+   * target's chunk location relative to the base that chunk resolves
+   * against: `metaData.publicPath` for an own chunk, the shared base for a
+   * shared unit. On first use
    * the target's list is fetched and its missing items are fetched in
    * one parallel batch and minted into the same load; concurrent
    * resolutions of one target are deduplicated.
@@ -179,11 +181,13 @@ export interface SharedDepFetchList {
   lazy?: Record<string, SharedDepFileRef>;
   /**
    * Pattern-import lists: for a dynamic import whose argument is a
-   * statically bounded pattern (a template literal with a fixed prefix
-   * and suffix, e.g. ``import(`./locales/${lang}.json`)``), one list
-   * document per file matching the pattern, keyed by the matching
-   * file's location relative to the shared base. At runtime the call is
-   * resolved to its concrete file and that file's list is fetched like
+   * statically bounded pattern (a template literal with at least one
+   * substitution and non-empty fixed text before its first or after its
+   * last substitution, e.g. ``import(`./locales/${lang}.json`)``), one
+   * list document per file matching the pattern, keyed by the matching
+   * file's location relative to the base it resolves against (the shared
+   * base for a shared unit). At runtime the call is resolved to its
+   * concrete file and that file's list is fetched like
    * a lazy target's.
    */
   patterns?: Record<string, SharedDepFileRef>;

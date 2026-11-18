@@ -160,60 +160,7 @@ describe('SharedDepListLoader', () => {
     expect(second).toBe(0);
   });
 
-  it('dependentListKeyCandidates maps an asset-base filename to the shared-base location when sharedBase ≠ publicPath', () => {
-    const candidates = SharedDepListLoader.dependentListKeyCandidates(
-      'chunks/lazy.js',
-      'https://mfe.test/app/',
-      'https://mfe.test/shared/',
-    );
-    expect(candidates).toContain('chunks/lazy.js');
-    expect(candidates).toContain('https://mfe.test/app/chunks/lazy.js');
-    expect(candidates).toContain('../app/chunks/lazy.js');
-    // Same base: the filename is the shared-base location itself.
-    const same = SharedDepListLoader.dependentListKeyCandidates(
-      'chunks/lazy.js',
-      'https://mfe.test/app/',
-      'https://mfe.test/app/',
-    );
-    expect(same).toContain('chunks/lazy.js');
-  });
-
-  it('resolves a lazy list keyed by its shared-base location when sharedBase ≠ publicPath', async () => {
-    // publicPath base 'https://mfe.test/app/' vs shared base
-    // 'https://mfe.test/shared/': the producer keys the lazy record by
-    // the chunk's location relative to the shared base.
-    const SHARED = 'https://mfe.test/shared/';
-    const resolveShared = (location: string): string =>
-      new URL(location, SHARED).href;
-    const lazyItem = item2('units/lazydep.js', "export const l=1;", ['pkg-lazy']);
-    const lazyList: SharedDepFetchList = { items: [lazyItem], ownChunks: [] };
-    const lazyText = JSON.stringify(lazyList);
-    const lazyRef: SharedDepFileRef = {
-      location: 'lists/lazy.json',
-      contentHash: hash(lazyText),
-    };
-    const files = new Map([
-      [resolveShared(lazyItem.location), "export const l=1;"],
-      [resolveShared(lazyRef.location), lazyText],
-    ]);
-    const { fetchText, calls } = fetchSpy(files);
-    const l = new SharedDepListLoader(fetchText, 'e', new Map() as never);
-    const ctx = l.createContext();
-    ctx.dependentLists.set('../app/chunks/lazy.js', lazyRef);
-    const key = SharedDepListLoader.dependentListKeyCandidates(
-      'chunks/lazy.js',
-      'https://mfe.test/app/',
-      SHARED,
-    ).find((candidate) => ctx.dependentLists.has(candidate));
-    expect(key).toBe('../app/chunks/lazy.js');
-    await l.resolveDependent(ctx, key!, resolveShared);
-    expect(calls.sort()).toEqual(
-      [resolveShared('lists/lazy.json'), resolveShared(lazyItem.location)].sort(),
-    );
-    expect(ctx.specifierToBlob.get('pkg-lazy')).toMatch(/^blob:/);
-  });
-
-  it('resolves a relative dynamic import to a dependent-list token', () => {
+  it('resolves a relative specifier to the location a dependent list is keyed by', () => {
     const record = { item: item2('chunks/main.js', 'x', [], []), text: 'x' };
     const l = new SharedDepListLoader(async () => '', 'e', new Map() as never);
     const ctx = l.createContext();
