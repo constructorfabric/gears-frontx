@@ -43,10 +43,10 @@ description: Specifies the GTS default type-system provider that implements the 
 
 <!-- /toc -->
 
-- [ ] `p1` - **ID**: `cpt-frontx-featstatus-gts-type-provider`
+- [x] `p1` - **ID**: `cpt-frontx-featstatus-gts-type-provider`
 ## 1. Feature Context
 
-- [ ] `p2` - `cpt-frontx-feature-gts-type-provider`
+- [x] `p2` - `cpt-frontx-feature-gts-type-provider`
 
 ### 1.1 Overview
 

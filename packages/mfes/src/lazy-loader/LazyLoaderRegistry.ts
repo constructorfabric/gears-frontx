@@ -10,7 +10,6 @@
  * @packageDocumentation
  */
 // @cpt-algo:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1
-// @cpt-dod:cpt-frontx-dod-mfe-loading-lazy-abi-isolation:p1
 
 /**
  * Resolver function for a single per-load lazy chunk.
@@ -70,15 +69,15 @@ export class LazyLoaderRegistry {
     const resolver = this.resolvers.get(id);
     if (!resolver) {
       // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-if-unknown
+      // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-unknown-fail
       return Promise.reject(
         new Error(`__frontx_lazy: no resolver registered for loader id '${id}'`)
       );
+      // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-unknown-fail
       // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-if-unknown
     }
-    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-when-exercised
     // First exercise of __frontx_lazy(path): route to this load's resolver so
     // the lazy chunk joins the parent load's isolated blob URL chain.
     return resolver(path);
-    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-when-exercised
   }
 }

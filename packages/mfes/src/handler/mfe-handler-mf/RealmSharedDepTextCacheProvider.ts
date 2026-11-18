@@ -224,9 +224,7 @@ export class RealmSharedDepTextCacheProvider {
     // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-if-empty
 
     // @cpt-begin:cpt-frontx-algo-unit-format-contract-loader-surface:p1:inst-loader-slot-adopt
-    // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-if-version-known
     if (RealmSharedDepTextCacheProvider.isRecognizedEntry(existing)) {
-      // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-adopt
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-trusted-coordination
       // Adopted whichever same-realm code published it: no cross-copy
       // authentication is attempted here, because independently loaded
@@ -240,9 +238,7 @@ export class RealmSharedDepTextCacheProvider {
       return existing.cache;
       // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-return-cache
       // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-trusted-coordination
-      // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-adopt
     }
-    // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-if-version-known
     // @cpt-end:cpt-frontx-algo-unit-format-contract-loader-surface:p1:inst-loader-slot-adopt
 
     // @cpt-begin:cpt-frontx-algo-unit-format-contract-loader-surface:p1:inst-loader-slot-versioned
