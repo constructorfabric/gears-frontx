@@ -3,7 +3,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "Schema for mount_ext extension actions. Self-contained and closed: re-declares every property action.v1 would otherwise provide and rejects any undeclared field, on itself and on its own payload (cpt-frontx-dod-gts-type-provider-infra-schema-ownership).",
   "type": "object",
-  "additionalProperties": false,
+  "unevaluatedProperties": false,
   "properties": {
     "type": {
       "x-gts-type-ref": "/$id",

@@ -2,6 +2,7 @@
   "$id": "gts://gts.frontx.mfes.ext.domain.v1~",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
+  "unevaluatedProperties": false,
   "properties": {
     "id": {
       "x-gts-instance-ref": "/$id",
