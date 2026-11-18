@@ -319,7 +319,6 @@ describe('occupant value — no exposure on any interface', () => {
         registry.getExtension(EXTENSION_ID),
         registry.getDomain(DOMAIN_ID),
         registry.getExtensionsForDomain(DOMAIN_ID),
-        registry.getRegisteredPackages(),
         registry.getDomainProperty(DOMAIN_ID, PROPERTY_ID),
       ],
       childBridge: bridge,

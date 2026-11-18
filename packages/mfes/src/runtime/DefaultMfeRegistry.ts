@@ -41,7 +41,6 @@ import { RuntimeBridgeFactory } from './RuntimeBridgeFactory';
 import { DefaultRuntimeBridgeFactory } from './DefaultRuntimeBridgeFactory';
 import { LoadExtHandler } from './LoadExtHandler';
 import { EntryTypeNotHandledError, DomainUnregisteringError, DomainValidationError } from '../errors';
-import { extractGtsPackage } from '../gts/extract-package';
 import { DefaultExtensionMounter } from './DefaultExtensionMounter';
 import { ExtensionReleaserProvider } from './ExtensionReleaserProvider';
 import { MountExtActionHandler } from './MountExtActionHandler';
@@ -286,11 +285,6 @@ export class DefaultMfeRegistry extends MfeRegistry {
    * addition to `relinkInboundBridge(null)` on the child side.
    */
   private readonly linkRevokersByBridge = new WeakMap<ChildMfeBridge, LinkRevoker>();
-
-  /**
-   * GTS package to extension ID mappings.
-   */
-  private readonly packages = new Map<string, Set<string>>();
 
   /**
    * Set at the start of `dispose()`. A disposed registry refuses every hand-over across a
@@ -1391,7 +1385,9 @@ export class DefaultMfeRegistry extends MfeRegistry {
 
       // Developer-invoked registration of an Extension value: delegates entry
       // type-validation, handler resolution, and entry storage to the manager.
+      // @cpt-begin:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-05
       await this.extensionManager.registerExtension(extension);
+      // @cpt-end:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-05
       // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-05
 
       // @cpt-begin:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-algo-ra-present-extension
@@ -1411,19 +1407,6 @@ export class DefaultMfeRegistry extends MfeRegistry {
       this.advertisableTargets.add(extension.id);
       this.propagateAdvertisementUpward(extension.id);
       // @cpt-end:cpt-frontx-algo-mfe-host-communication-registration-propagation:p2:inst-compose-advertisement
-
-      try {
-        // @cpt-begin:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-05
-        // Store the admitted extension in the registry's internal map keyed by id.
-        const packageId = extractGtsPackage(extension.id);
-        if (!this.packages.has(packageId)) {
-          this.packages.set(packageId, new Set<string>());
-        }
-        this.packages.get(packageId)!.add(extension.id);
-        // @cpt-end:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-05
-      } catch {
-        // Not a valid GTS ID — skip package tracking.
-      }
     });
   }
 
@@ -1443,19 +1426,6 @@ export class DefaultMfeRegistry extends MfeRegistry {
 
       this.retractPropagatedTarget(extensionId);
       this.advertisableTargets.delete(extensionId);
-
-      try {
-        const packageId = extractGtsPackage(extensionId);
-        const extensionSet = this.packages.get(packageId);
-        if (extensionSet) {
-          extensionSet.delete(extensionId);
-          if (extensionSet.size === 0) {
-            this.packages.delete(packageId);
-          }
-        }
-      } catch {
-        // Not a valid GTS ID — no package tracking to clean up.
-      }
     });
   }
 
@@ -1655,26 +1625,6 @@ export class DefaultMfeRegistry extends MfeRegistry {
     return extensionStates.map(state => withoutRoute(state.extension));
   }
 
-  getRegisteredPackages(): string[] {
-    return Array.from(this.packages.keys());
-  }
-
-  getExtensionsForPackage(packageId: string): Omit<Extension, 'route'>[] {
-    const extensionIdSet = this.packages.get(packageId);
-    if (!extensionIdSet) {
-      return [];
-    }
-
-    const extensions: Omit<Extension, 'route'>[] = [];
-    for (const extensionId of extensionIdSet) {
-      const extension = this.getExtension(extensionId);
-      if (extension) {
-        extensions.push(extension);
-      }
-    }
-    return extensions;
-  }
-
   setTheme(cssVars: Record<string, string>): void {
     this.mountManager.setTheme(cssVars);
   }
@@ -1732,7 +1682,6 @@ export class DefaultMfeRegistry extends MfeRegistry {
     // inbound link (`releaseExtensionBridge` -> `MountManager.releaseExtension`).
     this.extensionManager.clear();
     this.operationSerializer.clear();
-    this.packages.clear();
     this.handlers.length = 0;
 
     this.occupancyCoordinatorsByDomain.clear();

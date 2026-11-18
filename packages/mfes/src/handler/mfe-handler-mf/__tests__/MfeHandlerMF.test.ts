@@ -2968,7 +2968,10 @@ describe('MfeHandlerMF — lazy dependent-list key resolution (sharedBase ≠ pu
       const handler = newHandler(ENTRY, { retries: 0 });
       const loader = new SharedDepListLoader(fetchText, ENTRY, new Map() as never);
       const ctx = loader.createContext();
-      ctx.dependentLists.set('../app/chunks/other.js', { items: [] });
+      ctx.dependentLists.set('../app/chunks/other.js', {
+        location: 'lists/other.json',
+        contentHash: 'a'.repeat(64),
+      });
       await (
         handler as unknown as {
           ensureLazySharedDepList: (

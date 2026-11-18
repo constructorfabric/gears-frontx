@@ -190,23 +190,6 @@ export abstract class MfeRegistry {
    */
   abstract getMounter(domainId: string): ExtensionMounter;
 
-  /**
-   * Get all registered GTS packages.
-   *
-   * @returns Array of GTS package strings in discovery order.
-   */
-  abstract getRegisteredPackages(): string[];
-
-  /**
-   * Get all extensions registered for a specific GTS package.
-   * The registration is returned without its declared `route`; only the
-   * injected router receives it.
-   *
-   * @param packageId - GTS package string (e.g., 'frontx.demo')
-   * @returns Array of extensions in the package (empty if package not tracked)
-   */
-  abstract getExtensionsForPackage(packageId: string): Omit<Extension, 'route'>[];
-
   // --- Theme ---
 
   /**

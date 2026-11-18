@@ -14,15 +14,16 @@
  * being stripped, so this script asserts its presence in the artifacts
  * (same reasoning as scripts/verify-guard-configs.ts at the repo root).
  *
- * The CJS build is one bundle per entry (`index.cjs`, `unit-loader.cjs`).
+ * The CJS build is one bundle per entry; only `index.cjs` reaches the
+ * blob import (`unit-loader.cjs` ships the shared-unit fetcher and the
+ * resolver, which never evaluate a module).
  * The ESM build preserves modules (`ecosystem_package_build_output`): the
  * import lives in the emitted module of the trust kernel itself,
  * `handler/mfe-handler-mf/mf-dynamic-module-ops.js`. For each format the
  * script checks that the file exists, that both pragmas sit inside an
  * `import(` call's leading comments (not merely somewhere in the file),
- * and — for ESM — that the module is reached from `index.js` and
- * `unit-loader.js` through relative imports, so the checked file is the
- * one each entry ships.
+ * and — for ESM — that the module is reached from `index.js` through
+ * relative imports, so the checked file is the one the entry ships.
  *
  * Wired into `npm run build` after tsup; fails the build on any miss.
  */
@@ -35,14 +36,9 @@ const distDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const PRAGMAS = ['webpackIgnore: true', '@vite-ignore'];
 const ESM_ENTRY = 'index.js';
 const ESM_KERNEL = 'handler/mfe-handler-mf/mf-dynamic-module-ops.js';
-const CJS_FILES = ['index.cjs', 'unit-loader.cjs'];
+const CJS_FILES = ['index.cjs'];
 const FILES = [ESM_KERNEL, ...CJS_FILES];
-// The `./unit-loader` subpath ships the mint path, which reaches the same
-// trust-kernel module, so its entries get the same reachability check.
-const ESM_REACH_CHECKS = [
-  [ESM_ENTRY, ESM_KERNEL],
-  ['unit-loader.js', ESM_KERNEL],
-];
+const ESM_REACH_CHECKS = [[ESM_ENTRY, ESM_KERNEL]];
 
 /** `import(` followed by its run of leading block comments. */
 const DYNAMIC_IMPORT_COMMENTS = /\bimport\(((?:\s*\/\*[\s\S]*?\*\/)+)/g;

@@ -10,7 +10,6 @@ import type {
   SharedDepFetchList,
   SharedDepOpaqueImport,
   SharedDepEntryListRefs,
-  SharedDepBootData,
   SharedDepProducer,
   SharedDepImportEdge,
 } from '../index';
@@ -121,28 +120,12 @@ describe('SharedDepFetchList', () => {
   });
 });
 
-describe('manifest and boot-data carriers', () => {
+describe('manifest carrier', () => {
   it('maps each entry to its fetch-list document reference', () => {
     const refs: SharedDepEntryListRefs = {
       './lifecycle': { location: 'lifecycle.list.json', contentHash: HEX64 },
       './admin': { location: 'admin.list.json', contentHash: HEX64 },
     };
     expect(refs['./lifecycle'].contentHash).toBe(HEX64);
-  });
-
-  it('embeds the shell boot list and its lazy lists inline in boot data', () => {
-    const lazyList: SharedDepFetchList = {
-      items: [{ location: 'lazy-dep.js', contentHash: HEX64_B, answers: ['lazy-dep'], imports: ['react'] }],
-    };
-    const boot: SharedDepBootData = {
-      list: {
-        items: [{ location: 'react.js', contentHash: HEX64, answers: ['react'], imports: [] }],
-        lazy: { './lazy/Panel.js': { location: 'unused-when-inline', contentHash: HEX64 } },
-      },
-      lazyLists: { './lazy/Panel.js': lazyList },
-    };
-    expect(boot.list.items).toHaveLength(1);
-    expect(Object.keys(boot.lazyLists)).toEqual(Object.keys(boot.list.lazy ?? {}));
-    expect(boot.lazyLists['./lazy/Panel.js'].items[0].answers).toContain('lazy-dep');
   });
 });

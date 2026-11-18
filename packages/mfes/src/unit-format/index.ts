@@ -1,12 +1,11 @@
 /**
  * `@gears-frontx/mfes/unit-format` — the shared-dependency unit format
- * contract surface: the TypeScript interfaces that are the single typing
+ * contract surface: the TypeScript types that are the single typing
  * source for the per-entry flat fetch lists a producing build emits and
- * the runtime reads, and the `UnitFormatConformance` suite every
- * producing build must pass
- * (`cpt-frontx-feature-unit-format-contract`, DESIGN §3.3).
+ * the runtime reads (`cpt-frontx-feature-unit-format-contract`,
+ * DESIGN §3.3).
  *
- * Contract types only live in this subpath; the root barrel is unchanged.
+ * Types only live in this subpath; the root barrel is unchanged.
  *
  * @packageDocumentation
  */
@@ -19,7 +18,4 @@ export type {
   SharedDepOpaqueImport,
   SharedDepFetchList,
   SharedDepEntryListRefs,
-  SharedDepBootData,
 } from './fetch-list';
-export type { UnitFormatViolationRule, UnitFormatViolation } from './UnitFormatViolation';
-export { UnitFormatConformance } from './UnitFormatConformance';
