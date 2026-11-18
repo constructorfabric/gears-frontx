@@ -25,7 +25,8 @@ vi.mock('../../mf-dynamic-module-ops', async (importOriginal) => {
   };
 });
 
-import { MfeHandlerMF, SOURCE_TEXT_CACHE_CAPACITY } from '../../MfeHandlerMF';
+import { SOURCE_TEXT_CACHE_CAPACITY } from '../../MfeHandlerMF';
+import { newHandler } from '../helpers/registered-manifest';
 import { DynamicModuleOps } from '../../mf-dynamic-module-ops';
 import { SharedDepSha256 } from '../../SharedDepSha256';
 import { RealmSharedDepTextCacheProvider } from '../../RealmSharedDepTextCacheProvider';
@@ -177,7 +178,7 @@ function entryWith(manifest: MfManifest, jsSync: string[]): MfeEntryMF {
   return {
     ...buildEntry(manifest),
     exposeAssets: {
-      js: { sync: jsSync, async: [] },
+      js: { sync: jsSync },
       css: { sync: [], async: [] },
     },
   };
@@ -193,7 +194,7 @@ describe('acceptance: concurrent entry module request', () => {
   it('requests the entry with the list at high priority, issues the item batch on list verification, and mints the entry after its items', async () => {
     const net = controlledFetch();
     const minted = captureMintedSources();
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const loading = handler.load(buildEntry(listManifest()), 'ext-a');
 
     await until(() => net.issued.length === 2, 'both initial requests');
@@ -270,7 +271,7 @@ describe('acceptance: concurrent entry module request', () => {
         return Promise.resolve(blobModuleStub.current);
       },
     );
-    const loading = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+    const loading = newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
       buildEntry(listManifest(doc)),
       'ext-multi',
     );
@@ -305,7 +306,7 @@ describe('acceptance: concurrent entry module request', () => {
 
   it('issues the item batch without waiting for the entry and requests only the entry when every shared text is resident', async () => {
     const net = controlledFetch();
-    const first = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+    const first = newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
       buildEntry(listManifest()),
       'ext-b1',
     );
@@ -321,7 +322,7 @@ describe('acceptance: concurrent entry module request', () => {
     // A second handler: the list and the item are resident in the realm
     // cache, so only the entry is requested; nothing is fetched twice.
     const before = net.issued.length;
-    const second = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+    const second = newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
       buildEntry(listManifest()),
       'ext-b2',
     );
@@ -337,7 +338,7 @@ describe('acceptance: concurrent entry module request', () => {
     net.respondAlways(ENTRY_URL, ENTRY_TEXT);
     net.respondAlways(LIST_URL, LIST_DOC);
     net.respondAlways(ITEM_URL, ITEM_TEXT);
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     await handler.load(buildEntry(listManifest()), 'ext-s1');
     const afterFirst = [...net.issued];
     expect(afterFirst.filter((u) => u === ENTRY_URL)).toHaveLength(1);
@@ -353,7 +354,7 @@ describe('acceptance: concurrent entry module request', () => {
       ),
     ).toBeUndefined();
     const before = net.issued.length;
-    await new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+    await newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
       buildEntry(listManifest()),
       'ext-s3',
     );
@@ -365,7 +366,7 @@ describe('acceptance: concurrent entry module request', () => {
     const minted = captureMintedSources();
     const run = async (id: string): Promise<void> => {
       const before = net.issued.length;
-      const loading = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+      const loading = newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
         buildEntry(listManifest()),
         id,
       );
@@ -413,7 +414,7 @@ describe('acceptance: concurrent entry module request', () => {
     for (const item of items) {
       net.respondAlways(`${PUBLIC_PATH}${item.location}`, item.text);
     }
-    await new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+    await newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
       buildEntry(listManifest(doc)),
       'ext-many',
     );
@@ -423,7 +424,7 @@ describe('acceptance: concurrent entry module request', () => {
   it('requests an absolute entry URL once, as-is, and completes the load', async () => {
     const absolute = 'https://cdn.example.test/assets/lifecycle.js';
     const net = controlledFetch();
-    const loading = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+    const loading = newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
       entryWith(listManifest(), [absolute]),
       'ext-abs',
     );
@@ -443,7 +444,7 @@ describe('acceptance: concurrent entry module request', () => {
     // proves it was neither retried nor raced.
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const net = controlledFetch();
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 2 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 2 });
     const error = await settle(
       handler.load(entryWith(listManifest(), []), 'ext-empty'),
     );
@@ -456,7 +457,7 @@ describe('acceptance: concurrent entry module request', () => {
   it('issues no early entry request for a legacy chunkPath manifest', async () => {
     const SHARED_URL = `${PUBLIC_PATH}shared/react.js`;
     const net = controlledFetch();
-    const loading = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+    const loading = newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
       buildEntry(buildManifest([sharedDep('react')])),
       'ext-legacy',
     );
@@ -475,7 +476,7 @@ describe('acceptance: concurrent entry module request', () => {
     net.respondAlways(ENTRY_URL, ENTRY_TEXT);
     net.respondAlways(LIST_URL, LIST_DOC);
     net.respondAlways(ITEM_URL, ITEM_TEXT);
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     type LoadState = { entrySource?: Promise<string> };
     const states: LoadState[] = [];
     const chain = (
@@ -505,7 +506,7 @@ describe('acceptance: concurrent entry module request', () => {
 
     it('retries once when the entry fails on attempt 1, requesting the entry again and joining the in-flight list', async () => {
       const net = controlledFetch();
-      const loading = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 1 }).load(
+      const loading = newHandler(ENTRY_BASE_ID, { retries: 1 }).load(
         buildEntry(listManifest()),
         'ext-retry',
       );
@@ -525,7 +526,7 @@ describe('acceptance: concurrent entry module request', () => {
 
     it('fails an attempt whose entry hangs with the timeout error and releases the entry so a later load requests it again', async () => {
       const net = controlledFetch();
-      const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+      const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
       const settled = settle(handler.load(buildEntry(listManifest()), 'ext-hang'));
       await until(() => net.issued.length === 2, 'both initial requests');
       await vi.advanceTimersByTimeAsync(30001);
@@ -540,7 +541,7 @@ describe('acceptance: concurrent entry module request', () => {
 
     it('does not let a late rejection of an abandoned attempt evict the retry\'s entry', async () => {
       const net = controlledFetch();
-      const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 1 });
+      const handler = newHandler(ENTRY_BASE_ID, { retries: 1 });
       const loading = handler.load(buildEntry(listManifest()), 'ext-late');
       await until(() => net.issued.length === 2, 'both initial requests');
       await vi.advanceTimersByTimeAsync(30001);
@@ -583,7 +584,7 @@ describe('acceptance: concurrent entry module request', () => {
       const net = controlledFetch();
       const hex = vi.spyOn(SharedDepSha256, 'hex');
       const settled = settle(
-        new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+        newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
           buildEntry(listManifest()),
           'ext-d',
         ),
@@ -604,7 +605,7 @@ describe('acceptance: concurrent entry module request', () => {
     it('fails with the entry network error arriving after the list verified, and a late item failure is not unhandled', async () => {
       const net = controlledFetch();
       const settled = settle(
-        new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+        newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
           buildEntry(listManifest()),
           'ext-e',
         ),
@@ -627,7 +628,7 @@ describe('acceptance: concurrent entry module request', () => {
       const net = controlledFetch();
       const hex = vi.spyOn(SharedDepSha256, 'hex');
       const settled = settle(
-        new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+        newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
           buildEntry(listManifest()),
           'ext-last',
         ),
@@ -652,7 +653,7 @@ describe('acceptance: concurrent entry module request', () => {
     it('fails with the list document error and discards the entry outcome', async () => {
       const net = controlledFetch();
       const settled = settle(
-        new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+        newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
           buildEntry(listManifest()),
           'ext-f',
         ),
@@ -673,7 +674,7 @@ describe('acceptance: concurrent entry module request', () => {
       const net = controlledFetch();
       const hex = vi.spyOn(SharedDepSha256, 'hex');
       const settled = settle(
-        new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+        newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
           buildEntry(listManifest()),
           'ext-g',
         ),
@@ -693,7 +694,7 @@ describe('acceptance: concurrent entry module request', () => {
     it('names the request that failed first when both fail', async () => {
       const entryFirst = controlledFetch();
       const a = settle(
-        new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+        newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
           buildEntry(listManifest()),
           'ext-both-1',
         ),
@@ -707,7 +708,7 @@ describe('acceptance: concurrent entry module request', () => {
 
       const listFirst = controlledFetch();
       const b = settle(
-        new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+        newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
           buildEntry(listManifest()),
           'ext-both-2',
         ),
@@ -731,7 +732,7 @@ describe('acceptance: concurrent entry module request', () => {
         return digest;
       });
       const settled = settle(
-        new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+        newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
           buildEntry(listManifest()),
           'ext-drain',
         ),
@@ -751,7 +752,7 @@ describe('acceptance: concurrent entry module request', () => {
       // rejecting afterwards must not make B re-request it.
       const net = controlledFetch();
       const a = settle(
-        new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+        newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
           buildEntry(listManifest()),
           'ext-join-a',
         ),
@@ -761,7 +762,7 @@ describe('acceptance: concurrent entry module request', () => {
       await issuedUrl(net, ITEM_URL);
 
       const b = settle(
-        new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+        newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
           buildEntry(listManifest()),
           'ext-join-b',
         ),
@@ -785,7 +786,7 @@ describe('acceptance: concurrent entry module request', () => {
       async (_order, delivery) => {
         const net = controlledFetch();
         const settled = settle(
-          new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+          newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
             buildEntry(listManifest()),
             'ext-tie',
           ),
@@ -828,7 +829,7 @@ describe('acceptance: concurrent entry module request', () => {
         },
       );
       const settled = settle(
-        new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+        newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
           buildEntry(listManifest()),
           'ext-gate',
         ),
@@ -844,7 +845,7 @@ describe('acceptance: concurrent entry module request', () => {
 
     it('fails two loads sharing one in-flight entry request with the same error and issues no further request', async () => {
       const net = controlledFetch();
-      const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+      const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
       const a = settle(handler.load(buildEntry(listManifest()), 'ext-share-a'));
       await until(() => net.issued.length === 2, 'load A requests');
       const b = settle(handler.load(buildEntry(listManifest()), 'ext-share-b'));
@@ -862,7 +863,7 @@ describe('acceptance: concurrent entry module request', () => {
     it('fails with an error naming the list document when the entry succeeded and the list fails', async () => {
       const net = controlledFetch();
       const settled = settle(
-        new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 }).load(
+        newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
           buildEntry(listManifest()),
           'ext-list-last',
         ),

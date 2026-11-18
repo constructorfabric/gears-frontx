@@ -91,8 +91,8 @@ export interface MfeEntryLifecycle<TBridge = ChildMfeBridge> {
  * matches entries against `handledBaseTypeId` through its own TypeSystemPlugin.
  * The handler receives that same plugin at registration
  * ({@link MfeHandler.attachTypeSystem}) for a different job: resolving the
- * references its own load path owns — a manifest named by id rather than
- * carried inline — against what the type system holds.
+ * references its own load path owns — the manifest an entry names by id —
+ * against what the type system holds.
  */
 export abstract class MfeHandler<TEntry extends MfeEntry = MfeEntry, TBridge extends ChildMfeBridge = ChildMfeBridge> {
   /**

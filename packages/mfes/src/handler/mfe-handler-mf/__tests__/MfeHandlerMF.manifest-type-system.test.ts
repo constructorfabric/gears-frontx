@@ -1,8 +1,8 @@
 /**
  * MfeHandlerMF — manifest references named by id.
  *
- * An entry may carry its manifest inline or name it by id, the id being a
- * manifest the type system holds. The handler's own cache only answers for
+ * An entry names its manifest by id, the id being a manifest the type
+ * system holds. The handler's own cache only answers for
  * remotes some earlier load already pulled in, so without the type system a
  * first load of an id-referencing entry cannot resolve at all.
  *
@@ -16,12 +16,12 @@
  * context only.
  */
 // @cpt-dod:cpt-frontx-dod-mfe-isolation-manifest-reference-resolution:p1
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { MfeHandlerMF } from '../MfeHandlerMF';
 import { MfeLoadError } from '../../../errors';
 import type { MfeEntryMF } from '../../../types/mfe-entry-mf';
 import type { MfManifest } from '../../../manifest/mf-manifest';
-import type { TypeSystemPlugin } from '../../../type-substrate';
+import { createFakeTypeSystem } from './helpers/registered-manifest';
 
 const MANIFEST_ID = 'mock.mfe.mf_manifest.v1~test.manifest.v1';
 const ENTRY_BASE_ID = 'mock.mfe.entry.v1~';
@@ -35,13 +35,7 @@ const RIVAL_PUBLIC_PATH = 'http://localhost:4099/';
 function buildManifest(publicPath: string = PUBLIC_PATH): MfManifest {
   return {
     id: MANIFEST_ID,
-    name: 'testMfe',
     metaData: {
-      name: 'testMfe',
-      type: 'app',
-      buildInfo: { buildVersion: '1.0.0', buildName: 'testMfe' },
-      remoteEntry: { name: 'remoteEntry.js', path: '', type: 'module' },
-      globalName: 'testMfe',
       publicPath,
     },
     shared: [],
@@ -58,36 +52,13 @@ function buildEntry(manifestRef: string): MfeEntryMF {
     manifest: manifestRef,
     exposedModule: './lifecycle',
     exposeAssets: {
-      js: { sync: ['assets/lifecycle.js'], async: [] },
+      js: { sync: ['assets/lifecycle.js'] },
       css: { sync: [], async: [] },
     },
   };
 }
 
-function createFakePlugin(registered: Map<string, unknown>): TypeSystemPlugin {
-  return {
-    name: 'FakePlugin',
-    version: '1.0.0',
-    registerSchema(): void {},
-    getSchema(typeId: string): unknown {
-      return registered.get(typeId);
-    },
-    register(): void {},
-    isTypeOf(typeId: string, baseTypeId: string): boolean {
-      return typeId === baseTypeId || typeId.startsWith(baseTypeId);
-    },
-    validateInstance() {
-      return { valid: true, errors: [] };
-    },
-    resolveLoadExtActionId: () => 'mock.action.v1~load_ext.v1~',
-    resolveMountExtActionId: () => 'mock.action.v1~mount_ext.v1~',
-    resolveUnmountExtActionId: () => 'mock.action.v1~unmount_ext.v1~',
-    resolveLifecycleStageInitId: () => 'mock.stage.v1~init.v1',
-    resolveLifecycleStageActivatedId: () => 'mock.stage.v1~activated.v1',
-    resolveLifecycleStageDeactivatedId: () => 'mock.stage.v1~deactivated.v1',
-    resolveLifecycleStageDestroyedId: () => 'mock.stage.v1~destroyed.v1',
-  };
-}
+const createFakePlugin = createFakeTypeSystem;
 
 describe('MfeHandlerMF — manifest named by id', () => {
   it('resolves the manifest from the attached type system when its own cache has never seen the id', async () => {
@@ -182,6 +153,96 @@ describe('MfeHandlerMF — manifest named by id', () => {
     );
 
     expect(fetchSpy).toHaveBeenCalledWith(`${PUBLIC_PATH}assets/lifecycle.js`);
+    fetchSpy.mockRestore();
+  });
+
+  it('accepts a registry answer that carries only id, metaData and shared', async () => {
+    // The closed contract has no manifest `name`: id, metaData and shared are
+    // what makes an answer a manifest.
+    const answer = {
+      id: MANIFEST_ID,
+      metaData: { publicPath: PUBLIC_PATH },
+      shared: [],
+    } satisfies MfManifest;
+    const plugin = createFakePlugin(new Map([[MANIFEST_ID, answer]]));
+    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    handler.attachTypeSystem(plugin);
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockRejectedValue(new TypeError('network error for test'));
+
+    await expect(handler.load(buildEntry(MANIFEST_ID), 'ext-nameless')).rejects.toThrow(
+      MfeLoadError
+    );
+    expect(fetchSpy).toHaveBeenCalledWith(`${PUBLIC_PATH}assets/lifecycle.js`);
+    fetchSpy.mockRestore();
+  });
+
+  it('does not cache an answer that is not a manifest, and reads the registry again on the next load', async () => {
+    const registered = new Map<string, unknown>([[MANIFEST_ID, { id: MANIFEST_ID, kind: 'not-a-manifest' }]]);
+    const plugin = createFakePlugin(registered);
+    const getSchemaSpy = vi.spyOn(plugin, 'getSchema');
+    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    handler.attachTypeSystem(plugin);
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockRejectedValue(new TypeError('network error for test'));
+
+    const firstError = await handler
+      .load(buildEntry(MANIFEST_ID), 'ext-retry-1')
+      .then(() => null, (e: unknown) => e);
+    expect(firstError).toBeInstanceOf(MfeLoadError);
+    expect((firstError as MfeLoadError).message).toContain(MANIFEST_ID);
+    expect((firstError as MfeLoadError).message).toMatch(/not registered/);
+    expect(getSchemaSpy).toHaveBeenCalledTimes(1);
+
+    // The registry now holds the real manifest: the next load finds it,
+    // which it could not had the earlier answer been cached.
+    registered.set(MANIFEST_ID, buildManifest());
+    await expect(handler.load(buildEntry(MANIFEST_ID), 'ext-retry-2')).rejects.toThrow(
+      MfeLoadError
+    );
+    expect(getSchemaSpy).toHaveBeenCalledTimes(2);
+    expect(fetchSpy).toHaveBeenCalledWith(`${PUBLIC_PATH}assets/lifecycle.js`);
+    fetchSpy.mockRestore();
+  });
+
+  it('fails an entry whose manifest is not registered without advising an inline manifest', async () => {
+    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    handler.attachTypeSystem(createFakePlugin(new Map()));
+
+    const error = await handler
+      .load(buildEntry('mock.mfe.mf_manifest.v1~absent.v1'), 'ext-unregistered')
+      .then(() => null, (e: unknown) => e);
+
+    expect(error).toBeInstanceOf(MfeLoadError);
+    expect((error as MfeLoadError).message).toContain('mock.mfe.mf_manifest.v1~absent.v1');
+    expect((error as MfeLoadError).message).not.toMatch(/inline/i);
+  });
+
+  it('type-check lane enforces MfeEntryMF.manifest as a string id, rejecting an inline object', () => {
+    // Compile-time assertions only: `type-check:test` fails when the field is
+    // anything but `string`.
+    expectTypeOf<MfeEntryMF['manifest']>().toEqualTypeOf<string>();
+    expectTypeOf<MfManifest>().not.toExtend<MfeEntryMF['manifest']>();
+  });
+
+  it('does not retry an unresolved manifest reference: the registry is read once', async () => {
+    const plugin = createFakePlugin(new Map());
+    const getSchemaSpy = vi.spyOn(plugin, 'getSchema');
+    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 2 });
+    handler.attachTypeSystem(plugin);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const started = Date.now();
+
+    await expect(
+      handler.load(buildEntry('mock.mfe.mf_manifest.v1~never.v1'), 'ext-no-retry')
+    ).rejects.toThrow(MfeLoadError);
+
+    expect(getSchemaSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    // A retry would wait out RetryHandler's backoff (about a second).
+    expect(Date.now() - started).toBeLessThan(500);
     fetchSpy.mockRestore();
   });
 });

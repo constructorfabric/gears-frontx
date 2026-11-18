@@ -20,7 +20,7 @@ vi.mock('../../mf-dynamic-module-ops', async (importOriginal) => {
   };
 });
 
-import { MfeHandlerMF } from '../../MfeHandlerMF';
+import { newHandler } from '../helpers/registered-manifest';
 import {
   buildEntry,
   buildManifest,
@@ -70,7 +70,7 @@ describe('acceptance: list-document fetch priority', () => {
       },
     });
     try {
-      await new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 })
+      await newHandler(ENTRY_BASE_ID, { retries: 0 })
         .load(buildEntry(manifest), 'ext-priority')
         .catch(() => undefined);
     } finally {

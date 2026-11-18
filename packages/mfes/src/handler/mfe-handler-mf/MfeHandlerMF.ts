@@ -519,8 +519,8 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   );
 
   /**
-   * Per-handler diagnostics accumulator (F-011): byte-agreement and
-   * sharedChunkRule reports deduplicated once per page, per-load
+   * Per-handler diagnostics accumulator (F-011): byte-agreement
+   * reports deduplicated once per page, per-load
    * bytes/fallback/realm totals. Instance-held; assigned in the
    * constructor.
    */
@@ -775,12 +775,12 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     extensionId: string,
     ledger?: AttemptSourceTextLedger
   ): Promise<MfeEntryLifecycle<ChildMfeBridge>> {
-    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-register-entry
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-resolve-registered-manifest
     const manifest = await this.resolveManifest(entry.manifest);
-    this.manifestCache.cacheManifest(manifest);
-    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-register-entry
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-resolve-registered-manifest
 
     // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-trigger-load
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-read-contract-fields
     const { moduleFactory, stylesheetPaths, baseUrl } = await this.loadExposedModuleIsolated(
       manifest,
       entry.exposedModule,
@@ -789,6 +789,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       extensionId,
       ledger
     );
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-read-contract-fields
     // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-trigger-load
 
     const loadedModule = moduleFactory();
@@ -964,8 +965,8 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   /** `publicPath` resolved to an absolute URL, against the document if relative. */
   private resolvePublicPathUrl(publicPath: string, entryId: string): URL {
     // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid
-    // A manifest that skipped schema validation (an inline one) may carry
-    // any JSON value here, and `new URL(undefined, base)` would resolve it.
+    // The handler trusts registered manifests (see {@link resolveManifest});
+    // a non-string here would be resolved by `new URL(undefined, base)`.
     if (typeof (publicPath as unknown) !== 'string') {
       throw MfeHandlerMF.manifestDataRejection(
         `manifest.metaData.publicPath ${String(publicPath)} is not a string.`,
@@ -1079,8 +1080,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
           'manifest.metaData.publicPath.',
         entryId
       );
-    // A manifest that skipped schema validation (an inline one) may carry
-    // any JSON value here.
+    // A non-string value is rejected rather than coerced.
     if (typeof (chunkPath as unknown) !== 'string') {
       throw rejection();
     }
@@ -1123,8 +1123,8 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * that resolution point does not exist here — see the file header comment).
    *
    * The handler has no channel to recover the real origin at this point:
-   * `manifest` arrives either inlined in `MfeEntryMF` or looked up by ID from
-   * an in-process cache (see {@link resolveManifest}), with no fetch
+   * `manifest` is looked up by the ID the `MfeEntryMF` carries, from an
+   * in-process cache or the registry (see {@link resolveManifest}), with no fetch
    * response / page-relative context carried alongside it. Resolving
    * `"auto"` to a concrete origin is therefore the responsibility of
    * whatever produces the `MfManifest` (e.g. a build-time manifest
@@ -1282,53 +1282,40 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   }
 
   /**
-   * Resolve manifest from reference.
-   *
-   * Accepts an inline MfManifest object (caches it) or a string type ID
+   * Resolve the registered manifest an entry references by its identifier
    * (looks up from cache, then from the registry-supplied type system).
    * Schema validation is the type system plugin's responsibility — the
    * handler trusts registered manifests are valid.
    */
-  private async resolveManifest(manifestRef: string | MfManifest): Promise<MfManifest> {
-    // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-manifest-inline
-    if (typeof manifestRef === 'object' && manifestRef !== null) {
-      this.manifestCache.cacheManifest(manifestRef);
-      return manifestRef;
+  private async resolveManifest(manifestRef: string): Promise<MfManifest> {
+    // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-manifest-by-id
+    const cached = this.manifestCache.getManifest(manifestRef);
+    if (cached) {
+      return cached;
     }
-    // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-manifest-inline
 
-    if (typeof manifestRef === 'string') {
-      // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-manifest-by-id
-      const cached = this.manifestCache.getManifest(manifestRef);
-      if (cached) {
-        return cached;
-      }
+    // The entry carries the manifest's id, not the document — so the cache
+    // only answers for remotes some earlier load already pulled in. The
+    // plugin arrives at registration, so an unregistered handler has none and
+    // stops here.
+    const fromTypeSystem = this.typeSystem?.getSchema(manifestRef);
+    if (isMfManifest(fromTypeSystem)) {
+      this.manifestCache.cacheManifest(fromTypeSystem);
+      return fromTypeSystem;
+    }
+    // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-manifest-by-id
 
-      // A string reference names a manifest the type system holds — the entry
-      // carries the id, not the document — so the cache only answers for
-      // remotes some earlier load already pulled in. The plugin arrives at
-      // registration, so an unregistered handler has none and stops here.
-      const fromTypeSystem = this.typeSystem?.getSchema(manifestRef);
-      if (isMfManifest(fromTypeSystem)) {
-        this.manifestCache.cacheManifest(fromTypeSystem);
-        return fromTypeSystem;
-      }
-      // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-manifest-by-id
-
-      // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-manifest-unresolved-raise
-      throw new MfeLoadError(
-        `Manifest '${manifestRef}' not found. Provide the manifest inline in MfeEntryMF, ` +
-          'ensure another entry from the same remote was loaded first, or register the ' +
-          'manifest with the type system of the registry this handler is registered into.',
+    // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-manifest-unresolved-raise
+    // Deterministic: the registry answers the same on every attempt, so the
+    // failure is not retried.
+    throw DeterministicLoadFailure.mark(
+      new MfeLoadError(
+        `Manifest '${manifestRef}' not found: it is not registered with the type ` +
+          'system of the registry this handler is registered into.',
         manifestRef
-      );
-      // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-manifest-unresolved-raise
-    }
-
-    throw new MfeLoadError(
-      'Manifest reference must be a string (type ID) or MfManifest object',
-      'invalid-manifest-ref'
+      )
     );
+    // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-manifest-unresolved-raise
   }
 
   // ---- Shared dep blob URL construction ----
@@ -3053,7 +3040,6 @@ function isMfManifest(value: unknown): value is MfManifest {
   if (typeof value !== 'object' || value === null) return false;
   return (
     'id' in value && typeof value.id === 'string' &&
-    'name' in value && typeof value.name === 'string' &&
     'metaData' in value && typeof value.metaData === 'object' && value.metaData !== null &&
     'shared' in value && Array.isArray(value.shared)
   );

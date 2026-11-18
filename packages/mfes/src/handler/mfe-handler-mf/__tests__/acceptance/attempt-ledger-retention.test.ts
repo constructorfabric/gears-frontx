@@ -21,7 +21,7 @@ vi.mock('../../mf-dynamic-module-ops', async (importOriginal) => {
   };
 });
 
-import { MfeHandlerMF } from '../../MfeHandlerMF';
+import { newHandler } from '../helpers/registered-manifest';
 import { AttemptSourceTextLedger } from '../../AttemptSourceTextLedger';
 import { LazyLoaderRegistry } from '../../../../lazy-loader/LazyLoaderRegistry';
 import {
@@ -75,7 +75,7 @@ describe('attempt ledger retention', () => {
     );
     const register = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
 
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     await handler.load(
       buildEntry(buildManifest([])),
       'ext-ledger-retention',

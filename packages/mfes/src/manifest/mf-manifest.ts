@@ -9,17 +9,15 @@
  */
 // @cpt-dod:cpt-frontx-dod-mfe-loading-manifest-field-discovery:p1
 
-/**
- * Asset file lists for a module or shared dependency.
- */
 import type { SharedDepEntryListRefs } from '../unit-format/fetch-list';
 
+/**
+ * Asset locations of one exposed module, carried by `MfeEntryMF.exposeAssets`.
+ */
 export interface MfManifestAssets {
   js: {
-    /** Synchronous JS chunks loaded eagerly at module evaluation time. */
+    /** Synchronous JS chunks; the first element is the entry module. */
     sync: string[];
-    /** Asynchronous (lazy) JS chunks. */
-    async: string[];
   };
   css: {
     /** Synchronous CSS files injected at mount time. */
@@ -60,11 +58,6 @@ export interface MfManifestShared {
    */
   chunkPath: string;
   /**
-   * Named export key to unwrap the module from the chunk.
-   * Null when the chunk exports the module directly (no unwrap needed).
-   */
-  unwrapKey: string | null;
-  /**
    * Optional content hash of this entry's emitted chunk, published by the
    * producing build. When present, the runtime's cross-MFE shared-dep
    * source-text cache keys reuse on this hash rather than on name@version
@@ -73,52 +66,6 @@ export interface MfManifestShared {
    * Absent for producing builds that have not adopted it.
    */
   contentHash?: string;
-  /**
-   * Optional package-level bare requirements for this shared dependency:
-   * every external package the package's units need, declared as bare
-   * package names. When present, the runtime checks the union of every
-   * entry's `requires` against the manifest's `shared[]` set before any
-   * shared-dependency fetch, failing with an error naming any missing
-   * package
-   * (`cpt-frontx-algo-mfe-loading-manifest-discovery`,
-   * `inst-md-requires-closure`).
-   * Absent for producing builds that have not adopted it; the runtime
-   * then falls back to the heuristic undeclared-specifier diagnostic.
-   * Entries MUST be bare package names (e.g. `'react'`, `'@scope/pkg'`),
-   * not version specifiers, subpath specifiers (e.g.
-   * `'react/jsx-runtime'`), or paths.
-   */
-  requires?: string[];
-  /**
-   * Optional identifier of the production rule that produced this shared
-   * entry (which fixes, among other things, its chunk naming), recorded
-   * for rollout compatibility (see `cpt-frontx-adr-shared-dep-reuse`).
-   * When present, mismatch warnings compare only same-rule entries, and
-   * old-vs-new mismatches are summarized once per page. Absent for
-   * producing builds that have not adopted it; the runtime treats an
-   * absent value as the default/legacy rule.
-   */
-  sharedChunkRule?: string;
-}
-
-/**
- * RemoteEntry descriptor from `MfManifestMetaData.remoteEntry`.
- */
-export interface MfManifestRemoteEntry {
-  /** Filename of the remote entry (e.g. 'remoteEntry.js'). */
-  name: string;
-  /** Path prefix relative to publicPath. Empty string means publicPath root. */
-  path: string;
-  /** Module type: 'module' (ESM) or 'global' (IIFE/UMD). */
-  type: string;
-}
-
-/**
- * Build information from `MfManifestMetaData.buildInfo`.
- */
-export interface MfManifestBuildInfo {
-  buildVersion: string;
-  buildName: string;
 }
 
 /**
@@ -126,20 +73,6 @@ export interface MfManifestBuildInfo {
  * Contains everything needed to locate and load remote chunks.
  */
 export interface MfManifestMetaData {
-  /** MFE application/library name. */
-  name: string;
-  /** Application type (e.g. 'app', 'lib'). */
-  type: string;
-  /** Build metadata. */
-  buildInfo: MfManifestBuildInfo;
-  /** Remote entry file descriptor. */
-  remoteEntry: MfManifestRemoteEntry;
-  /**
-   * Global variable name used by the MF 2.0 runtime, when emitted.
-   * Optional to match the `mf_manifest.v1` GTS schema, which does not
-   * require this field.
-   */
-  globalName?: string;
   /**
    * Public URL base path for all chunk assets.
    * All relative chunk paths in shared[].assets and expose assets are
@@ -160,7 +93,7 @@ export interface MfManifestMetaData {
   publicPath: string;
   /**
    * Optional shared-file base location for resolving shared-file
-   * locations — graph-file locations, unit, pack and whole-package
+   * locations — fetch-list document, list-item and whole-package
    * `chunkPath` locations — separate from the asset base location
    * (`publicPath`). When present, every shared-file location the manifest
    * carries resolves against this value by the same rules as
@@ -181,7 +114,7 @@ export interface MfManifestMetaData {
 /**
  * MFE manifest — package-level metadata for an MFE package.
  *
- * Contains metaData (publicPath, remoteEntry descriptor) and shared[]
+ * Contains metaData (publicPath, sharedBase) and shared[]
  * (standalone ESM deps with resolved versions and chunkPaths).
  *
  * Per-module expose chunk paths are stored separately on MfeEntryMF.exposeAssets.
@@ -191,11 +124,9 @@ export interface MfManifestMetaData {
 export interface MfManifest {
   /** The GTS type ID for this manifest. */
   id: string;
-  /** Human-readable MFE name, matches metaData.name. */
-  name: string;
-  /** Package-level metadata: publicPath, remoteEntry descriptor, etc. */
+  /** Package-level metadata: the asset base and shared base locations. */
   metaData: MfManifestMetaData;
-  /** Shared dependency declarations with chunk paths and unwrap keys. */
+  /** Shared dependency declarations with chunk paths. */
   shared: MfManifestShared[];
   /**
    * Fetch-list document per exposed entry: keyed by the exposed module
@@ -207,7 +138,7 @@ export interface MfManifest {
    * per load in dependency order — with no graph discovery
    * (`cpt-frontx-adr-shared-dep-reuse`). Absent for producing builds
    * that have not adopted fetch lists; the runtime then falls back to
-   * the legacy `chunkPath` entries of `shared[]`.
+   * the whole-package `chunkPath` entries of `shared[]`.
    */
   entryLists?: SharedDepEntryListRefs;
 }
