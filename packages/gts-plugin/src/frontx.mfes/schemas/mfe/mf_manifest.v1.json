@@ -2,154 +2,76 @@
   "$id": "gts://gts.frontx.mfes.mfe.mf_manifest.v1~",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
+  "unevaluatedProperties": false,
   "properties": {
     "id": {
       "x-gts-instance-ref": "/$id"
     },
-    "name": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Human-readable MFE name, matches metaData.name."
-    },
     "metaData": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
-        "name": { "type": "string", "minLength": 1 },
-        "type": { "type": "string", "minLength": 1 },
-        "buildInfo": {
-          "type": "object",
-          "properties": {
-            "buildVersion": { "type": "string" },
-            "buildName": { "type": "string" }
-          },
-          "required": ["buildVersion", "buildName"]
+        "publicPath": {
+          "type": "string",
+          "description": "Public URL base path for all chunk assets: the entry module, its stylesheets, the own chunks and each shared[].chunkPath resolve against it (e.g. 'http://localhost:3001/' or '/'). A relative value resolves against the host document's base URL. Fetch-list document and list-item locations also resolve against it when metaData.sharedBase is absent."
         },
-        "remoteEntry": {
-          "type": "object",
-          "properties": {
-            "name": { "type": "string", "minLength": 1 },
-            "path": { "type": "string" },
-            "type": { "type": "string", "enum": ["module", "global"] }
-          },
-          "required": ["name", "path", "type"]
-        },
-        "globalName": { "type": "string" },
-        "publicPath": { "type": "string" },
         "sharedBase": {
           "type": "string",
-          "description": "Optional shared-file base location for resolving shared-file locations — graph-file locations, unit, pack and whole-package chunkPath locations — separate from the asset base location (publicPath). When present, every shared-file location the manifest carries resolves against this value by the same rules as a shared[].chunkPath resolves against publicPath; when absent, shared-file locations resolve relative to the asset base location instead. Without it, URLs resolve relative to the MFE. See cpt-frontx-adr-shared-dep-reuse."
+          "description": "Optional shared-file base location for resolving fetch-list document and list-item locations, separate from the asset base location (publicPath). When present, those locations resolve against this value by the same rules as shared[].chunkPath resolves against publicPath; when absent, they resolve against publicPath. See cpt-frontx-adr-shared-dep-reuse."
         }
       },
-      "required": ["name", "type", "buildInfo", "remoteEntry", "publicPath"]
+      "required": ["publicPath"]
     },
     "shared": {
       "type": "array",
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "name": {
             "type": "string",
-            "minLength": 1,
-            "description": "npm package name (e.g. 'react', '@gears-frontx/mfes')."
+            "pattern": "^[^:]+$",
+            "description": "npm package name (e.g. 'react', '@gears-frontx/mfes'). Contains no ':'."
           },
           "version": {
             "type": "string",
-            "minLength": 1,
-            "description": "Concrete version resolved from node_modules (e.g. '19.2.4'). Identifies the package input only — it does not imply identical source text across MFEs. Cross-MFE reuse of shared source text is governed by the declared content identity ('graphFile.contentHash', or the legacy 'contentHash' of an emitted chunk) together with 'sharedChunkRule', not by 'version' alone."
+            "pattern": "^[^:@]+$",
+            "description": "Concrete version resolved from node_modules (e.g. '19.2.4'). Contains neither ':' nor '@'. Identifies the package input only; it does not imply identical source text across MFEs."
           },
           "chunkPath": {
             "type": "string",
             "minLength": 1,
-            "description": "The standalone ESM file for this dependency: an http(s) URL, or a path relative to metaData.publicPath that stays under it (e.g. 'shared/react.js'). The canonical rules, including the values that fail the load, are defined by @gears-frontx/mfes: MfManifestShared.chunkPath and the mfe-loading FEATURE (cpt-frontx-algo-mfe-loading-manifest-discovery, inst-md-resolve-chunk-path)."
-          },
-          "unwrapKey": {
-            "description": "Named export key to unwrap the module from the chunk. Null when the chunk exports the module directly.",
-            "oneOf": [
-              { "type": "string", "minLength": 1 },
-              { "type": "null" }
-            ]
+            "description": "The standalone ESM file for this dependency: an http(s) URL, or a path relative to metaData.publicPath that stays under it (e.g. 'shared/react.js'). The location rules, including the values that fail the load, are defined by cpt-frontx-adr-mfe-asset-discovery and the mfe-loading FEATURE (cpt-frontx-algo-mfe-loading-manifest-discovery, inst-md-resolve-chunk-path)."
           },
           "contentHash": {
             "type": "string",
             "pattern": "^[0-9a-f]{64}$",
-            "description": "Optional sha256 hex digest (64 lowercase hex characters) of this entry's emitted chunk, published by the producing build. This is the legacy per-chunk content identity of a chunkPath entry; a unit-format entry's content identity lives at 'graphFile.contentHash' and is the expected hash of the graph file itself."
-          },
-          "graphFile": {
-            "type": "object",
-            "properties": {
-              "location": {
-                "type": "string",
-                "minLength": 1,
-                "description": "Location of this shared package's graph file — one content-addressed graph file per package@version, emitted next to its units by the producing build. An http(s) URL, or a path resolved against metaData.sharedBase when declared, otherwise against metaData.publicPath, by the same rules as chunkPath. See cpt-frontx-adr-shared-dep-reuse and cpt-frontx-adr-mfe-asset-discovery."
-              },
-              "contentHash": {
-                "type": "string",
-                "pattern": "^[0-9a-f]{64}$",
-                "description": "Expected SHA-256 hex digest (64 lowercase hex characters) of the graph file 'location' points at. The runtime verifies the fetched graph file against this declared hash before use; the graph file in turn lists each unit's content hash."
-              }
-            },
-            "required": ["location", "contentHash"],
-            "additionalProperties": false,
-            "description": "Optional reference to this shared package's graph file, by location and content identity. Absent for producing builds that have not adopted graph files (legacy chunkPath entries)."
-          },
-          "requires": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "pattern": "^(@[a-z0-9][a-z0-9._~-]*/)?[a-z0-9][a-z0-9._~-]*$"
-            },
-            "description": "Optional package-level requirements of this shared entry, from the build metafile: every external package the package's units need, as bare npm package names only (e.g. 'react', '@scope/pkg') — no version specifiers, no subpaths, no paths. When present the runtime checks the closure against the manifest's shared set before fetching and fails naming missing packages; when absent, today's heuristic warning applies."
-          },
-          "sharedChunkRule": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Optional identifier of the production rule that produced this shared entry (which fixes, among other things, its chunk naming). When present, mismatch warnings compare only same-rule entries, and old-vs-new mismatches are summarized once per page. Absent for producing builds that have not adopted it; the runtime treats an absent value as the default/legacy rule. See cpt-frontx-adr-shared-dep-reuse."
+            "description": "Optional sha256 hex digest (64 lowercase hex characters) of this entry's file, declared by the producing build. It is the key under which the entry's text is shared across loads. See cpt-frontx-adr-mfe-asset-discovery."
           }
         },
-        "required": ["name", "version", "chunkPath", "unwrapKey"]
+        "required": ["name", "version", "chunkPath"]
       }
     },
-    "entryRoots": {
+    "entryLists": {
       "type": "object",
+      "description": "Optional fetch-list document per exposed module, keyed by the exposed module name (e.g. './lifecycle'), matching the exposedModule of the MFE entry that references this manifest. When the entry being loaded carries a list, its shared dependencies are loaded through the list. See cpt-frontx-adr-shared-dep-reuse.",
       "additionalProperties": {
-        "type": "array",
-        "items": { "$ref": "#/$defs/reachabilityRoot" }
-      },
-      "description": "Optional reachability roots per exposed entry: which shared code each exposed entry reaches directly, keyed by the exposed module name (e.g. './lifecycle'), matching the exposedModule of the MFE entry referencing this manifest. Each root is either a shared package name resolved against shared[], or a unit identifier. The runtime closes the roots over the packages' graph files to determine the reachable unit set before fetching; absent roots fall back to fetch-all, reported by the diagnostics hook. See cpt-frontx-adr-mfe-asset-discovery."
-    },
-    "lazyChunkRoots": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "array",
-        "items": { "$ref": "#/$defs/reachabilityRoot" }
-      },
-      "description": "Optional reachability roots per lazily loaded chunk: which shared code each lazy chunk reaches directly, keyed by the chunk path relative to the asset base location. On lazy load the runtime fetches and mints only units missing from the load's memo, which is extended, never rewritten. See cpt-frontx-adr-lazy-import-resolution."
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "location": {
+            "type": "string",
+            "description": "Location of the fetch-list document: a path relative to the shared base location, or an absolute http(s) URL."
+          },
+          "contentHash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "sha256 hex digest (64 lowercase hex characters) of the fetch-list document, declared by the producing build. It is the key under which the document's text is shared."
+          }
+        },
+        "required": ["location", "contentHash"]
+      }
     }
   },
-  "required": ["id", "name", "metaData", "shared"],
-  "$defs": {
-    "reachabilityRoot": {
-      "description": "A reachability root: either a bare shared package name (resolved against shared[]) or a unit identifier — package name, package version, and the module paths the unit contains.",
-      "oneOf": [
-        {
-          "type": "string",
-          "pattern": "^(@[a-z0-9][a-z0-9._~-]*/)?[a-z0-9][a-z0-9._~-]*$"
-        },
-        {
-          "type": "object",
-          "properties": {
-            "name": { "type": "string", "minLength": 1 },
-            "version": { "type": "string", "minLength": 1 },
-            "modulePaths": {
-              "type": "array",
-              "items": { "type": "string", "minLength": 1 },
-              "minItems": 1
-            }
-          },
-          "required": ["name", "version", "modulePaths"],
-          "additionalProperties": false
-        }
-      ]
-    }
-  }
+  "required": ["id", "metaData", "shared"]
 }

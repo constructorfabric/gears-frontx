@@ -38,7 +38,7 @@ import lifecycleDestroyedInstance from './frontx.mfes/instances/lifecycle/destro
 
 /**
  * Load all core MFE schema JSON files.
- * Returns 13 schemas: 8 core + 2 MF-specific + 3 extension action schemas.
+ * Returns 13 schemas: the 4 abstract base types, then the 9 final types.
  *
  * Application-specific derived schemas (e.g. theme, language, extension_screen)
  * are not part of this set; the application registers them with its own type
@@ -47,25 +47,48 @@ import lifecycleDestroyedInstance from './frontx.mfes/instances/lifecycle/destro
  * @returns Array of JSON schemas for core MFE types
  */
 // @cpt-algo:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1
+// @cpt-algo:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1
+// @cpt-algo:cpt-frontx-algo-gts-type-provider-type-closure:p1
+// @cpt-dod:cpt-frontx-dod-gts-type-provider-closed-types:p1
 export function loadSchemas(): JSONSchema[] {
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-type-closure:p1:inst-tc-kinds
   return [
-    // Core types (8)
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-type-closure:p1:inst-tc-abstract-open
+    // Abstract base types: open for derivation, no closure keyword at their top level.
     entrySchema as JSONSchema,
-    domainSchema as JSONSchema,
     extensionSchema as JSONSchema,
     actionSchema as JSONSchema,
-    actionsChainSchema as JSONSchema,
     sharedPropertySchema as JSONSchema,
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-type-closure:p1:inst-tc-abstract-open
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-type-closure:p1:inst-tc-final-closed
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-type-closure:p1:inst-tc-nested-closed
+    // Final types: each closes at its top level with `unevaluatedProperties: false`.
+    // Their inline objects are closed in the same files; a `$ref` to a final type is
+    // closed by that type, one to an abstract base stays open.
+    domainSchema as JSONSchema,
+    actionsChainSchema as JSONSchema,
     lifecycleStageSchema as JSONSchema,
     lifecycleHookSchema as JSONSchema,
-    // MF-specific types (2)
-    manifestSchema as JSONSchema,
-    entryMfSchema as JSONSchema,
-    // Extension action schemas (3) — self-contained, closed leaves; require payload.subject
     loadExtActionSchema as JSONSchema,
     mountExtActionSchema as JSONSchema,
     unmountExtActionSchema as JSONSchema,
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-final
+    // The closed manifest and MFE entry contracts, as final types.
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-manifest-fields
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-formats
+    manifestSchema as JSONSchema,
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-formats
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-manifest-fields
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-entry-fields
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-manifest-ref
+    entryMfSchema as JSONSchema,
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-manifest-ref
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-entry-fields
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-final
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-type-closure:p1:inst-tc-nested-closed
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-type-closure:p1:inst-tc-final-closed
   ];
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-type-closure:p1:inst-tc-kinds
 }
 
 /**

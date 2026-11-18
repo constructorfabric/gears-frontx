@@ -276,12 +276,18 @@ export function writeInstance(pair: StorePair, token: WriterToken, entity: JsonE
   // @cpt-end:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-validate
 
   // @cpt-begin:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-if-invalid
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-type-closure:p1:inst-tc-return
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-if-invalid
   if (failure !== undefined) {
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-restore
     restoreMirror(pair, id);
     // @cpt-end:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-restore
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-reject
     raiseInvalid(pair, entity, failure);
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-reject
   }
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-if-invalid
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-type-closure:p1:inst-tc-return
   // @cpt-end:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-if-invalid
 
   // @cpt-begin:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-return-same
@@ -314,7 +320,9 @@ export function writeInstance(pair: StorePair, token: WriterToken, entity: JsonE
   const candidate = copy === entity.content ? entity : createJsonEntity(copy);
   store.register(candidate);
   scratch.register(candidate);
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-return
   pair.writers.set(id, token);
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-return
   // @cpt-end:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-commit
   // @cpt-begin:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-return
   // Both stores hold the same entities again.

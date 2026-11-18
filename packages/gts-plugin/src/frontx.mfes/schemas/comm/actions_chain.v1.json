@@ -2,6 +2,7 @@
   "$id": "gts://gts.frontx.mfes.comm.actions_chain.v1~",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
+  "unevaluatedProperties": false,
   "properties": {
     "action": {
       "type": "object",
