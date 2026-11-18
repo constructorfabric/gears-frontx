@@ -73,7 +73,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 
 ### 2.3 [GTS Default Type-System Provider](../packages/gts-plugin/architecture/features/gts-type-provider/) - HIGH
 
-- [ ] `p1` - **ID**: `cpt-frontx-feature-gts-type-provider`
+- [x] `p1` - **ID**: `cpt-frontx-feature-gts-type-provider`
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/gts-plugin/architecture/features/gts-type-provider/FEATURE.md).
 

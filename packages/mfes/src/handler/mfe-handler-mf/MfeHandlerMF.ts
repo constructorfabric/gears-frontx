@@ -480,7 +480,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * published it (`cpt-frontx-adr-shared-dep-cache-reach`
    * records this as an accepted consequence, not a gap to close).
    */
-  // @cpt-dod:cpt-frontx-dod-mfe-isolation-realm-shared-dep-text-cache:p1
   // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-hold-reference
   private readonly sharedDepTextCache: SharedDepTextCache;
   // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-hold-reference
@@ -564,8 +563,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-return-cached
       // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-if-cached
     }
-    // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-else-new-load
-    // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-per-attempt-budget
     // The timeout wraps the ATTEMPT, inside the retry loop — every retry of
     // a failed attempt is raced against its own fresh budget rather than
     // sharing the first attempt's, so a load's worst-case wall clock is the
@@ -616,7 +613,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         return result;
       });
     // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-if-deterministic-failure
-    // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-per-attempt-budget
     // @cpt-begin:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-isolated
     MfeHandlerMF.loadCache.set(extensionId, promise);
     // @cpt-end:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-isolated
@@ -629,7 +625,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       }
     });
     // @cpt-end:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-load-failed-retry
-    // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-else-new-load
     // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-resolve-manifest
     // Manifest resolved inside loadInternal()
     // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-resolve-manifest
@@ -696,8 +691,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * between attempts — on the order of 90+ seconds, not the 30 seconds the
    * `timeout` field name alone would suggest.
    */
-  // @cpt-algo:cpt-frontx-algo-mfe-loading-attempt-timeout:p1
-  // @cpt-dod:cpt-frontx-dod-mfe-loading-attempt-timeout:p1
   private withLoadTimeout<T>(
     attempt: Promise<T>,
     entryId: string,
@@ -844,7 +837,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     }
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-expose-chunk
 
-    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-run-manifest-discovery
     // Build shared dep blob URLs first (leaves first, dependency order).
     // Each dep's standalone ESM may import other shared deps as bare specifiers;
     // those are rewritten to already-resolved blob URLs before creating the blob.
@@ -861,7 +853,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       exposeChunkFilename,
       ledger
     );
-    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-run-manifest-discovery
 
     // @cpt-begin:cpt-frontx-state-mfe-isolation-load-blob-state:p1:inst-blob-building
     const loadState: LoadBlobState = {
@@ -1354,6 +1345,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         ledger
       );
     }
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-whole-package-path
     const sources = await this.fetchSharedDepSources(manifest, baseUrl, entryId, ledger);
     const sharedNames = new Set(manifest.shared.map((d) => d.name));
     return {
@@ -1364,6 +1356,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         extensionId
       ),
     };
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-whole-package-path
   }
 
   /**
@@ -1418,7 +1411,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-unit-fields
     const resolveAssetUrl = (location: string): string =>
       SharedAssetUrlResolver.resolve(location, assetBase, entryId);
-    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-reachable-units
     // The entry's list document opens the critical path to the extension's
     // mount: it is requested with high priority, so the lists of every
     // extension loading at startup go out together and first. The items it
@@ -1469,7 +1461,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       loadCache,
       ledger
     );
-    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-reachable-units
     const ctx = loader.createContext();
     const listDocBytesBefore = loader.bytesFetched;
     const list = await requests.guard(
@@ -1649,19 +1640,19 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * on {@link buildSharedDepBlobUrls} for why this is preferred over
    * re-keying `sources`/`sharedDepBlobUrls` to `name@version`.
    */
-  // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-assert-unique-names
+  // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-assert-unique-names
   private assertUniqueSharedDepNames(
     manifest: MfManifest,
     entryId: string
   ): void {
     const seen = new Set<string>();
     for (const dep of manifest.shared) {
-      // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-duplicate-name
+      // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-if-duplicate-name
       if (seen.has(dep.name)) {
         // The second argument is `MfeLoadError.entryTypeId` — the entry
         // being loaded, as at every other throw site in this file — while
         // the manifest is named in the message text.
-        // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-raise-duplicate-name
+        // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-raise-duplicate-name
         throw new MfeLoadError(
           `manifest.shared of '${manifest.id}' declares ` +
             `'${dep.name}' more than once. Shared dependency names must be ` +
@@ -1670,13 +1661,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
             'overwrites the earlier entry.',
           entryId
         );
-        // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-raise-duplicate-name
+        // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-raise-duplicate-name
       }
-      // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-duplicate-name
+      // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-if-duplicate-name
       seen.add(dep.name);
     }
   }
-  // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-assert-unique-names
+  // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-assert-unique-names
 
   /**
    * Fetch standalone ESM source text for each shared dep.
@@ -1707,7 +1698,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     ledger?: AttemptSourceTextLedger
   ): Promise<Map<string, string>> {
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-for-each-shared
-    // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-for-each-dep
     // Every URL is derived before the first fetch, so a chunkPath that is
     // neither an http(s) URL nor a relative path fails the load with nothing
     // fetched.
@@ -1774,7 +1764,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       // check, and records the entry on the attempt's ledger so a timeout
       // releases it. The text is admitted as fetched; the declared hash is
       // only the sharing key.
-      // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-else-fetch
       // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-shared-dep
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-fetch-and-cache
       const textPromise = new SharedTextAdmission(this.sharedDepTextCache, ledger).admit(
@@ -1784,7 +1773,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       );
       // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-fetch-and-cache
       // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-shared-dep
-      // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-else-fetch
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-cache-hit
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-retrieve-cached
       // Whether `textPromise` was just published above or was already
@@ -1796,7 +1784,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-cache-hit
       return { name: dep.name, text };
     });
-    // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-for-each-dep
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-for-each-shared
 
     // Deterministic error surfacing: report the first failure in the
@@ -1840,7 +1827,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 
     while (pending.size > 0) {
       const before = pending.size;
-      // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-for-each-resolved
       for (const [name, source] of pending) {
         if (this.isDepReadyToResolve(name, source, sharedNames, blobUrls)) {
           blobUrls.set(
@@ -1879,7 +1865,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     return blobUrls;
     // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-return-map
   }
-      // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-for-each-resolved
   // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-resolve-order
 
   private isDepReadyToResolve(
@@ -2304,7 +2289,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-return-failed-after-fetch
       }
       // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-if-failed-after-fetch
-      // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-fetch-source
       // The entry chunk's text is this load's own early request, taken
       // directly rather than looked up by URL (`inst-md-fetch-entry-concurrent`).
       const seeded =
@@ -2316,7 +2300,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         seeded !== undefined
           ? await seeded
           : await this.fetchSourceText(chunkUrl, loadState.attemptLedger);
-      // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-fetch-source
     } finally {
       build.fetchBudget.release();
     }
@@ -2517,7 +2500,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     relPath: string,
     loadState: LoadBlobState
   ): Promise<string> {
-    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-resolve-relative-path
     // Compiled-chunk dynamic imports are sibling-relative: Rollup emits
     // paths like `./LayoutElements-hash.js` against the importing chunk's
     // directory. The entry chunk lives in `loadState.entryChunkFilename`
@@ -2529,7 +2511,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       loadState.entryChunkFilename,
       relPath
     );
-    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-resolve-relative-path
 
     // inst-lai-lazy-roots: fetch and mint the shared-dep units this lazy
     // chunk's declared roots reach before its own chain is built, so its
@@ -2544,14 +2525,12 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // `loadState`.
     const build = createChainBuildState();
 
-    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-fetch-lazy-chunk
     await this.createBlobUrlChain(
       loadState,
       filename,
       build,
       new Set([loadState.entryChunkFilename])
     );
-    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-fetch-lazy-chunk
 
     // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-return-lazy-blob
     const blobUrl = loadState.blobUrlMap.get(filename);

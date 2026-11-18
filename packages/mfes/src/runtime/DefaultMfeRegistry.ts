@@ -1376,19 +1376,19 @@ export class DefaultMfeRegistry extends MfeRegistry {
       }
       // @cpt-end:cpt-frontx-algo-mfe-registry-domain-unregister-closes-admission:p1:inst-algo-du-reject-registration
 
-      // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-05
       // An already-registered id is refused before anything is changed or
       // presented to the router; the registered extension stays as it is.
+      // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-05
       if (this.extensionManager.getExtensionState(extension.id)) {
         throw new Error(`Extension '${extension.id}' is already registered.`);
       }
+      // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-05
 
       // Developer-invoked registration of an Extension value: delegates entry
       // type-validation, handler resolution, and entry storage to the manager.
       // @cpt-begin:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-05
       await this.extensionManager.registerExtension(extension);
       // @cpt-end:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-05
-      // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-05
 
       // @cpt-begin:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-algo-ra-present-extension
       // The call above already registered a routed extension with the

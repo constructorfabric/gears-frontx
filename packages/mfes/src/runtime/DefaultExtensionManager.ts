@@ -189,7 +189,11 @@ export class DefaultExtensionManager extends ExtensionManager {
     }
     // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-contract-match
 
+    // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-type-validate
+    // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-type-validate-reject
     validateExtensionType(this.typeSystem, domainState.domain, extension);
+    // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-type-validate-reject
+    // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-type-validate
 
     const lifecycleValidation = validateExtensionLifecycleHooks(
       extension,

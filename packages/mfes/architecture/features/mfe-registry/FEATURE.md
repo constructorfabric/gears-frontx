@@ -128,8 +128,8 @@ User-facing interactions that start with an actor (human or external system) and
 5. [x] - `p1` - **IF** a router is injected and the domain declaration carries `route`, the registry registers the domain with it through `registerDomain(domainId, route, declaresUnmount)` before the domain becomes durable (`cpt-frontx-algo-mfe-registry-router-admission`) - `inst-flow-rvm-router-domain`
    1. [x] - `p1` - **IF** the router rejects the domain, the registry throws the router's error, the domain is left registered nowhere in the registry, and the flow ends - `inst-flow-rvm-router-domain-reject`
 6. [x] - `p1` - Developer calls `registry.registerExtension` with an `Extension` value; **IF** the extension id is already registered, registry throws before anything is changed or presented to a router, the registered extension is left unchanged, and the flow ends - `inst-flow-rvm-05`
-   1. [ ] - `p1` - Registry validates the extension's entry through `typeSystem` against the registered type schemas - `inst-flow-rvm-type-validate`
-   2. [ ] - `p1` - **IF** type validation fails, registry rejects the extension with the validation error, the extension is not placed into its extension domain, and the flow ends - `inst-flow-rvm-type-validate-reject`
+   1. [x] - `p1` - Registry validates the extension's entry through `typeSystem` against the registered type schemas - `inst-flow-rvm-type-validate`
+   2. [x] - `p1` - **IF** type validation fails, registry rejects the extension with the validation error, the extension is not placed into its extension domain, and the flow ends - `inst-flow-rvm-type-validate-reject`
 7. [ ] - `p1` - Registry invokes handler resolution: **FOR EACH** registered handler ordered by descending priority, evaluate `typeSystem.isTypeOf(extension.entry.typeId, handler.handledBaseTypeId)` - `inst-flow-rvm-06`
    1. [ ] - `p1` - **IF** `isTypeOf` returns true, select this handler and stop evaluation - `inst-flow-rvm-06a`
 8. [ ] - `p1` - **IF** no handler matched, registry rejects the extension and flow ends - `inst-flow-rvm-07`

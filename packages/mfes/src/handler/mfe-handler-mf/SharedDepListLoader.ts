@@ -194,7 +194,6 @@ export class SharedDepListLoader {
   ): Promise<number> {
     this.registerList(ctx, list);
     const bytesBefore = this.fetchedBytes;
-    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-reachable-units
     const missing: SharedDepListItem[] = [];
     const queuedHashes = new Set<string>();
     for (const item of list.items) {
@@ -224,8 +223,7 @@ export class SharedDepListLoader {
     const records = settled.map(
       (r) => (r as PromiseFulfilledResult<SharedDepListRecord>).value,
     );
-    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-reachable-units
-    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-pack-fallback-v2
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-list-items
     SharedDepListMinter.mint(
       records,
       new Map([...ctx.itemByLocation.values()].map((i) => [i.location, i])),
@@ -236,7 +234,7 @@ export class SharedDepListLoader {
       this.entryId,
       dynamicImports,
     );
-    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-pack-fallback-v2
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-list-items
     return this.fetchedBytes - bytesBefore;
   }
 
