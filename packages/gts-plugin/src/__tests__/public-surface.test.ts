@@ -5,18 +5,10 @@
  */
 import { describe, expect, it } from 'vitest';
 import * as entry from '../index';
+import entrySource from '../index.ts?raw';
 import { GtsPlugin } from '../plugin';
-// The construction argument's type is internal: the entry point must not export it. A type export
-// is invisible at runtime, so type-check:test guards it: the expectation below fails to compile if it appears.
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-expect-error GtsPluginOptions is not exported from the package entry point
-import type { GtsPluginOptions } from '../index';
-
-/** Keeps the guarded import referenced. */
-export type OptionsGuard = GtsPluginOptions;
-
 describe('public surface', () => {
-  it('exports exactly the production surface; the loader stays internal and the options type is not exported (type-level guard above)', () => {
+  it('exports exactly the production surface; the loader stays internal and the options type is not exported', () => {
     expect(Object.keys(entry).sort()).toEqual(
       [
         'FRONTX_ACTION_LOAD_EXT',
@@ -28,6 +20,10 @@ describe('public surface', () => {
       ].sort()
     );
     expect(Object.keys(entry)).not.toContain('loadSchemas');
+  });
+
+  it('does not export the construction options type (a type export is invisible at runtime, so the entry source text is checked)', () => {
+    expect(entrySource).not.toContain('GtsPluginOptions');
   });
 
   it('keeps the provider to the port methods, with the isolation option as its only addition', () => {

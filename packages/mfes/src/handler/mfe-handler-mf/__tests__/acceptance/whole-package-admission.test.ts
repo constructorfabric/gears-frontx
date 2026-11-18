@@ -23,7 +23,10 @@ vi.mock('../../mf-dynamic-module-ops', async (importOriginal) => {
 
 import { MfeHandlerMF } from '../../MfeHandlerMF';
 import { newHandler } from '../helpers/registered-manifest';
-import type { SharedDepTextCache } from '../../RealmSharedDepTextCacheProvider';
+import {
+  RealmSharedDepTextCacheProvider,
+  type SharedDepTextCache,
+} from '../../RealmSharedDepTextCacheProvider';
 import {
   buildEntry,
   buildManifest,
@@ -39,10 +42,10 @@ import type { MfManifestShared } from '../../../../manifest/mf-manifest';
 beforeEach(resetRealmSharedDepTextCache);
 afterEach(resetRealmSharedDepTextCache);
 
-function realmCache(handler: MfeHandlerMF): SharedDepTextCache {
-  return (
-    handler as unknown as { sharedDepTextCache: SharedDepTextCache }
-  ).sharedDepTextCache;
+// A handler adopts the realm-shared cache the provider publishes; asking the
+// provider again returns that same cache.
+function realmCache(_handler: MfeHandlerMF): SharedDepTextCache {
+  return RealmSharedDepTextCacheProvider.getCache();
 }
 
 describe('acceptance: whole-package entries are admitted as fetched', () => {
