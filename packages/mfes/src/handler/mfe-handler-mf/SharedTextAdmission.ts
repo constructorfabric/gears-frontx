@@ -65,11 +65,14 @@ export class SharedTextAdmission {
     fetchText: (url: string) => Promise<string>,
   ): Promise<string> {
     const cache = this.cache;
+    // @cpt-begin:cpt-frontx-flow-unit-format-contract-host-admission:p1:inst-host-concurrent-join
     const joined = cache.get(key);
+    // @cpt-end:cpt-frontx-flow-unit-format-contract-host-admission:p1:inst-host-concurrent-join
     if (joined === undefined) {
       return this.issueFetch(key, url, fetchText);
     }
     this.ledger?.record(cache, key, joined);
+    // @cpt-begin:cpt-frontx-flow-unit-format-contract-host-admission:p1:inst-host-concurrent-join
     // A joined fetch that rejects is retried once from this load's own
     // URL: the issuer's eviction (registered first) has already removed
     // the rejected generation, so the retry publishes or joins a fresh one.
@@ -81,6 +84,7 @@ export class SharedTextAdmission {
       }
       return this.issueFetch(key, url, fetchText);
     });
+    // @cpt-end:cpt-frontx-flow-unit-format-contract-host-admission:p1:inst-host-concurrent-join
   }
 
   private issueFetch(
