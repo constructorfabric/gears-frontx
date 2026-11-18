@@ -1,14 +1,14 @@
 /**
  * Sanctioned subpath `@gears-frontx/mfes/unit-loader`: the list loader a
  * host-side boot chunk (or any runtime copy that is not the orchestrating
- * `MfeHandlerMF`) uses to read a fetch list, fetch and verify its items,
+ * `MfeHandlerMF`) uses to read a fetch list, fetch its items,
  * realm-cache them, and mint per-load `blob:` URLs — and nothing else.
  *
  * The surface is exactly the loader capability classes:
  * `SharedDepListLoader` (list read, one-parallel-batch fetch,
  * dependency-order mint, lazy/pattern dependent-list resolution),
- * `VerifiedUnitFetcher` (the fetch → SHA-256 verify → realm-cache admit
- * → evict-on-reject discipline), `SharedAssetUrlResolver` (shared-file
+ * `SharedUnitFetcher` (the fetch → realm-cache admit as fetched →
+ * evict-on-reject discipline), `SharedAssetUrlResolver` (shared-file
  * `location` → fetch URL validation), and
  * `RealmSharedDepTextCacheProvider` (the realm-wide, version-namespaced
  * content-identity cache compatible copies of this package converge
@@ -25,12 +25,9 @@
  * its own package `exports` subpath beside `./unit-format` and adds
  * nothing to the root barrel.
  *
- * @cpt-dod:cpt-frontx-dod-unit-format-contract-loader-surface:p1
- *
  * @packageDocumentation
  */
 
-// @cpt-begin:cpt-frontx-algo-unit-format-contract-loader-surface:p1:inst-loader-surface-classes
 // @cpt-begin:cpt-frontx-algo-unit-format-contract-loader-surface:p1:inst-loader-surface-no-orchestration
 // List loader: read an entry's flat fetch list (from a document
 // reference or inline boot data), fetch every item missing from the
@@ -46,11 +43,11 @@ export type {
   ListDynamicImportRewrites,
 } from '../handler/mfe-handler-mf/SharedDepListMinter';
 
-// Verified fetch: fetch → SHA-256 verify → realm-cache admit →
-// evict-on-reject, deduping verified text by content identity through
-// the realm cache. `fetchText` is injected; `cache` and `ledger` default
-// to the realm rendezvous and no ledger.
-export { VerifiedUnitFetcher } from '../handler/mfe-handler-mf/VerifiedUnitFetcher';
+// Shared-unit fetch: fetch → realm-cache admit as fetched under
+// `chunk:<contentHash>` → evict-on-reject, deduping text by declared
+// content identity through the realm cache. The fetch function and a
+// label are injected; the cache is the realm rendezvous.
+export { SharedUnitFetcher } from '../handler/mfe-handler-mf/SharedUnitFetcher';
 export type { AttemptSourceTextLedger } from '../handler/mfe-handler-mf/AttemptSourceTextLedger';
 
 // Shared-asset URL validation: shared-file `location` → absolute fetch
@@ -79,4 +76,3 @@ export type {
 } from '../unit-format/fetch-list';
 export type { MfManifest } from '../manifest/mf-manifest';
 // @cpt-end:cpt-frontx-algo-unit-format-contract-loader-surface:p1:inst-loader-surface-no-orchestration
-// @cpt-end:cpt-frontx-algo-unit-format-contract-loader-surface:p1:inst-loader-surface-classes

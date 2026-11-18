@@ -61,6 +61,19 @@ describe('SharedDepListLoader', () => {
     expect(ctx2.specifierToBlob.get('pkg-a')).not.toBe(ctx.specifierToBlob.get('pkg-a'));
   });
 
+  it('admits fetched item text as fetched under its declared identity, whatever its bytes', async () => {
+    const a = item2('chunks/a.js', 'export const a=1;', ['pkg-a']);
+    const served = 'export const a=2; // not the bytes the hash names';
+    const files = new Map([[resolve(a.location), served]]);
+    const { fetchText } = fetchSpy(files);
+    const cache = new Map<string, Promise<string>>();
+    const l = new SharedDepListLoader(fetchText, 'e', cache as never);
+    const ctx = l.createContext();
+    await l.loadList(ctx, { items: [a] }, resolve);
+    await expect(cache.get(`chunk:${a.contentHash}`)).resolves.toBe(served);
+    expect(ctx.specifierToBlob.get('pkg-a')).toMatch(/^blob:/);
+  });
+
   it('fetches one payload per contentHash when two locations share it; both resolve', async () => {
     const text = 'export const a=1;';
     const a = item2('chunks/a.js', text, ['pkg-a']);

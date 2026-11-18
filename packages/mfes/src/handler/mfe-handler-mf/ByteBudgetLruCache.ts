@@ -1,5 +1,5 @@
 /**
- * Byte-budget LRU cache for realm-shared verified source text.
+ * Byte-budget LRU cache for realm-shared source text.
  *
  * Ported from `salvage/issue-718-impl-20261105` with two review fixes:
  * byte accounting is in UTF-8 BYTES (`TextEncoder`), not UTF-16 code
@@ -14,7 +14,7 @@
  * once for the whole realm, never multiplied by handler count or by
  * compatible package-copy count — evicting least-recently-used FULFILLED
  * entries when admitted bytes would exceed the budget. Bytes are
- * accounted when text is fulfilled and verified, since an in-flight
+ * accounted when text is fulfilled, since an in-flight
  * fetch has no size yet; a rejected promise counts nothing toward the
  * budget (`cpt-frontx-adr-shared-dep-cache-reach`, ADR-0035).
  *
@@ -52,7 +52,7 @@ export interface RealmSharedDepTextCacheDiagnostics {
  * fulfilled it holds the UTF-8 byte length of the resolved text — the
  * measure the byte budget accounts
  * (`cpt-frontx-adr-shared-dep-cache-reach`: "Bytes are accounted when
- * text is fulfilled and verified, since an in-flight fetch has no size
+ * text is fulfilled, since an in-flight fetch has no size
  * yet"). `bytes === 0` also marks an entry in-flight (or genuinely
  * empty), which is what exempts it from eviction: an unsettled fetch
  * has no bytes to reclaim.
@@ -63,7 +63,7 @@ interface ByteBudgetCacheEntry {
 }
 
 /**
- * Byte-budget LRU cache for realm-shared verified source text.
+ * Byte-budget LRU cache for realm-shared source text.
  *
  * Stores `Promise<string>` values — both in-flight and fulfilled. When
  * a promise fulfills, the text's UTF-8 byte length is used for budget

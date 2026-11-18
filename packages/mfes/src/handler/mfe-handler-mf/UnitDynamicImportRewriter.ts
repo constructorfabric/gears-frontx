@@ -7,7 +7,7 @@
  * module of the same package or a shared package/subpath — is rewritten
  * to `__frontx_lazy('<token>')`, the same lazy-import ABI the compiled
  * chunk path uses (ADR-0022). The token routes through the per-load
- * resolver registered in `LazyLoaderRegistry`, which fetches, verifies
+ * resolver registered in `LazyLoaderRegistry`, which fetches, admits
  * and mints the target unit on demand and returns its blob URL to the
  * generated loader stub's guarded `import(u)` — keeping the trust
  * kernel (`mf-dynamic-module-ops.ts`) the sole site that ever writes

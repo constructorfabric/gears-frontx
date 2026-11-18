@@ -70,7 +70,7 @@ const SHARED_DEP_TEXT_CACHE_KEY = Symbol.for(
  * Realm-wide bound, not per-handler and not per-copy: neither the number of
  * compatible copies coexisting in a realm, nor the number of handlers each
  * constructs, multiplies this cache's footprint. Bounds retained BYTES of
- * verified source text (ADR-0035, finding F-012) — see
+ * shared source text (ADR-0035, finding F-012) — see
  * `ByteBudgetLruCache`. The budget is set by the `MfeLoaderConfig` of the
  * FIRST handler to publish the realm entry (or by this default when none
  * configures one); later handlers adopt the published cache unchanged —

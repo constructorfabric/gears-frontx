@@ -33,7 +33,7 @@ import type {
   SharedDepListItem,
 } from '../../unit-format/fetch-list';
 
-/** A fetched, verified list item ready to mint. */
+/** A fetched list item ready to mint. */
 export interface SharedDepListRecord {
   readonly item: SharedDepListItem;
   readonly text: string;

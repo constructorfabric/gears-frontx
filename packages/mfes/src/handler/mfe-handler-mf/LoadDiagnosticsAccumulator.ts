@@ -52,7 +52,7 @@ export class LoadDiagnosticsAccumulator {
         : undefined;
     console.warn(
       `[MfeHandlerMF] shared-dependency diagnostics for manifest ` +
-        `'${manifestId}': fetched ${bytesFetched} bytes of verified ` +
+        `'${manifestId}': fetched ${bytesFetched} bytes of ` +
         `unit text; realm cache holds ${diag?.bytes ?? 0} bytes in ` +
         `${diag?.entries ?? 0} entries (budget ${diag?.budget ?? 0}, ` +
         `evictions ${diag?.evictions ?? 0}).`,

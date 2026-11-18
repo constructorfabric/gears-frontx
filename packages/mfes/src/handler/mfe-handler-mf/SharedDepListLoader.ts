@@ -4,7 +4,7 @@
  * (`cpt-frontx-adr-shared-dep-reuse`). Reads an entry's
  * {@link SharedDepFetchList} — from a fetched list document or inline
  * boot data — fetches every item missing from the realm text cache in
- * one parallel batch through `VerifiedUnitFetcher` +
+ * one parallel batch through `SharedTextAdmission` +
  * `SharedAssetUrlResolver`, and mints per load in dependency order
  * through `SharedDepListMinter`. There is no runtime graph discovery.
  *
@@ -28,7 +28,7 @@ import {
   RealmSharedDepTextCacheProvider,
   type SharedDepTextCache,
 } from './RealmSharedDepTextCacheProvider';
-import { VerifiedUnitFetcher } from './VerifiedUnitFetcher';
+import { SharedTextAdmission } from './SharedTextAdmission';
 import {
   SharedDepListMinter,
   type ListDynamicImportRewrites,
@@ -70,11 +70,8 @@ export interface SharedDepListContext {
 }
 
 export class SharedDepListLoader {
-  private readonly fetchVerified: (
-    url: string,
-    contentHash: string,
-    cacheKey: string,
-  ) => Promise<string>;
+  private readonly admission: SharedTextAdmission;
+  private readonly fetchText: (url: string) => Promise<string>;
 
   private readonly encoder = new TextEncoder();
   private fetchedBytes = 0;
@@ -85,16 +82,12 @@ export class SharedDepListLoader {
     cache: SharedDepTextCache = RealmSharedDepTextCacheProvider.getCache(),
     ledger?: AttemptSourceTextLedger,
   ) {
-    this.fetchVerified = new VerifiedUnitFetcher(
-      async (url) => {
-        const text = await fetchText(url);
-        this.fetchedBytes += this.encoder.encode(text).length;
-        return text;
-      },
-      entryId,
-      cache,
-      ledger,
-    ).fetchVerified;
+    this.fetchText = async (url) => {
+      const text = await fetchText(url);
+      this.fetchedBytes += this.encoder.encode(text).length;
+      return text;
+    };
+    this.admission = new SharedTextAdmission(cache, ledger);
   }
 
   /**
@@ -119,10 +112,10 @@ export class SharedDepListLoader {
   }
 
   /**
-   * Fetch and verify a list document, then JSON-parse it. The runtime
-   * performs no structural validation — trust rests on hash
-   * verification plus build-time conformance
-   * (`inst-read-point-of-use`); a document that is not an object with an
+   * Fetch a list document, admit it to the realm cache as fetched under
+   * its declared identity, then JSON-parse it. The runtime performs no
+   * structural validation — correctness rests on the producer's
+   * conformance (`inst-read-point-of-use`); a document that is not an object with an
    * `items` array fails the load naming the producer it records.
    */
   async fetchListDocument(
@@ -130,10 +123,10 @@ export class SharedDepListLoader {
     resolveAssetUrl: (location: string) => string,
   ): Promise<SharedDepFetchList> {
     const url = resolveAssetUrl(ref.location);
-    const text = await this.fetchVerified(
+    const text = await this.admission.admit(
+      SharedTextAdmission.listKey(ref.contentHash),
       url,
-      ref.contentHash,
-      `list:${ref.contentHash}`,
+      this.fetchText,
     );
     let parsed: unknown;
     try {
@@ -231,10 +224,10 @@ export class SharedDepListLoader {
     }
     const settled = await Promise.allSettled(
       missing.map(async (item): Promise<SharedDepListRecord> => {
-        const text = await this.fetchVerified(
+        const text = await this.admission.admit(
+          SharedTextAdmission.chunkKey(item.contentHash),
           resolveAssetUrl(item.location),
-          item.contentHash,
-          `chunk:${item.contentHash}`,
+          this.fetchText,
         );
         return { item, text };
       }),

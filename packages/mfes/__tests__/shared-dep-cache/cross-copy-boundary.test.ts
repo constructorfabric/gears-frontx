@@ -283,9 +283,8 @@ describe('Realm-shared shared-dependency source-text cache across two independen
     vi.resetModules();
     const copyB = await loadCopy();
 
-    // The declared hash must match the served bytes: F-010 admission
-    // verifies text against a well-formed contentHash before caching it
-    // under the hash key.
+    // The declared hash is only the sharing key: text is admitted as
+    // fetched under it.
     const contentHash =
       '6657467c596bb6a5668bce58bbd363b4345d1da83976e25c24774c5bf64ee316';
     const fetchCalls: string[] = [];

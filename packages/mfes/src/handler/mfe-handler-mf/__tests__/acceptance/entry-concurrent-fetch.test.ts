@@ -1,7 +1,7 @@
 /**
  * Acceptance: for a fetch-list load, the entry module's source is requested
  * with the list document (high priority, before the list resolves), the item
- * batch is issued as soon as the list verifies, a failure of either
+ * batch is issued as soon as the list arrives, a failure of either
  * concurrent request fails the load with the request's own error, discards
  * the other outcome and issues no further request for the load, the entry
  * text is downloaded once per load and is never requested again while
@@ -28,8 +28,8 @@ vi.mock('../../mf-dynamic-module-ops', async (importOriginal) => {
 import { SOURCE_TEXT_CACHE_CAPACITY } from '../../MfeHandlerMF';
 import { newHandler } from '../helpers/registered-manifest';
 import { DynamicModuleOps } from '../../mf-dynamic-module-ops';
-import { SharedDepSha256 } from '../../SharedDepSha256';
 import { RealmSharedDepTextCacheProvider } from '../../RealmSharedDepTextCacheProvider';
+import { SharedDepListLoader } from '../../SharedDepListLoader';
 import { MfeLoadError } from '../../../../errors';
 import type { MfManifest } from '../../../../manifest/mf-manifest';
 import type { MfeEntryMF } from '../../../../types/mfe-entry-mf';
@@ -153,14 +153,31 @@ const issuedUrl = (net: Net, url: string): Promise<void> =>
   until(() => net.issued.includes(url), `${url} to be requested`);
 
 /**
- * Observable "the verification of the nth fetched text finished": the work a
- * load does after a response is pure continuation of that digest, so once the
- * digest settled and a turn passed, any request it was going to issue was.
+ * Let the continuation of a delivered response run: the work a load does
+ * after a response is pure continuation of it, so once a few turns passed,
+ * any request it was going to issue was.
  */
-async function verified(hex: { mock: { results: { value: unknown }[] } }, n: number) {
-  await until(() => hex.mock.results.length >= n, `verification #${String(n)}`);
-  await hex.mock.results[n - 1].value;
+async function drained() {
   await turn();
+  await turn();
+}
+
+/**
+ * Fail the entry after the list document resolved and the load went on to
+ * its item batch, but before the batch's requests are issued: the entry's
+ * failure is delivered when `loadList` is entered, and `loadList` proceeds
+ * only once the load has recorded it. The batch it then issues is the
+ * failed load's gated one.
+ */
+function failEntryBeforeItemBatch(net: Net): void {
+  const realLoadList = SharedDepListLoader.prototype.loadList;
+  vi.spyOn(SharedDepListLoader.prototype, 'loadList').mockImplementation(
+    async function (this: SharedDepListLoader, ...args) {
+      net.status404(ENTRY_URL);
+      await turn();
+      return realLoadList.apply(this, args);
+    },
+  );
 }
 
 function listManifest(listDoc = LIST_DOC, shared = [sharedDep('react')]) {
@@ -191,7 +208,7 @@ const settle = (loading: Promise<unknown>): Promise<unknown> =>
   );
 
 describe('acceptance: concurrent entry module request', () => {
-  it('requests the entry with the list at high priority, issues the item batch on list verification, and mints the entry after its items', async () => {
+  it('requests the entry with the list at high priority, issues the item batch on list arrival, and mints the entry after its items', async () => {
     const net = controlledFetch();
     const minted = captureMintedSources();
     const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
@@ -205,7 +222,7 @@ describe('acceptance: concurrent entry module request', () => {
 
     net.ok(LIST_URL, LIST_DOC);
     await issuedUrl(net, ITEM_URL);
-    // Item batch issued on list verification, without the entry response.
+    // Item batch issued on list arrival, without the entry response.
     expect(net.issued).toEqual([ENTRY_URL, LIST_URL, ITEM_URL]);
     expect(net.inits.get(ITEM_URL)).toBeUndefined();
     expect(await minted.sources()).toEqual([]);
@@ -582,7 +599,6 @@ describe('acceptance: concurrent entry module request', () => {
 
     it('fails with the entry request error, issues no item request and discards the list outcome', async () => {
       const net = controlledFetch();
-      const hex = vi.spyOn(SharedDepSha256, 'hex');
       const settled = settle(
         newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
           buildEntry(listManifest()),
@@ -597,12 +613,12 @@ describe('acceptance: concurrent entry module request', () => {
       expect((error as MfeLoadError).entryTypeId).toBe(ENTRY_URL);
       // The list resolving afterwards is discarded: no item is requested.
       net.ok(LIST_URL, LIST_DOC);
-      await verified(hex, 1);
+      await drained();
       expect(net.issued).toEqual([ENTRY_URL, LIST_URL]);
       expect(unhandled).toEqual([]);
     });
 
-    it('fails with the entry network error arriving after the list verified, and a late item failure is not unhandled', async () => {
+    it('fails with the entry network error arriving after the list arrived, and a late item failure is not unhandled', async () => {
       const net = controlledFetch();
       const settled = settle(
         newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
@@ -626,7 +642,6 @@ describe('acceptance: concurrent entry module request', () => {
 
     it('fails with the entry error when the entry fails last, after the list and its items completed', async () => {
       const net = controlledFetch();
-      const hex = vi.spyOn(SharedDepSha256, 'hex');
       const settled = settle(
         newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
           buildEntry(listManifest()),
@@ -638,7 +653,7 @@ describe('acceptance: concurrent entry module request', () => {
       await issuedUrl(net, ITEM_URL);
       const minted = captureMintedSources();
       net.ok(ITEM_URL, ITEM_TEXT);
-      await verified(hex, 2);
+      await drained();
       // The item is minted: the list and its items completed.
       expect(await minted.sources()).toEqual([ITEM_TEXT]);
       net.status404(ENTRY_URL);
@@ -666,27 +681,6 @@ describe('acceptance: concurrent entry module request', () => {
       expect((error as MfeLoadError).entryTypeId).toBe(LIST_URL);
       net.fail(ENTRY_URL, new TypeError('offline'));
       await turn();
-      expect(net.issued).toEqual([ENTRY_URL, LIST_URL]);
-      expect(unhandled).toEqual([]);
-    });
-
-    it('fails with the integrity error when the list document fails verification', async () => {
-      const net = controlledFetch();
-      const hex = vi.spyOn(SharedDepSha256, 'hex');
-      const settled = settle(
-        newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
-          buildEntry(listManifest()),
-          'ext-g',
-        ),
-      );
-      await until(() => net.issued.length === 2, 'both initial requests');
-      net.ok(LIST_URL, '{"items":[]}');
-      const error = await settled;
-      expect(error).toBeInstanceOf(MfeLoadError);
-      expect((error as MfeLoadError).message).toContain('content-identity');
-      expect((error as MfeLoadError).entryTypeId).toBe(ENTRY_ID);
-      net.ok(ENTRY_URL, ENTRY_TEXT);
-      await verified(hex, 1);
       expect(net.issued).toEqual([ENTRY_URL, LIST_URL]);
       expect(unhandled).toEqual([]);
     });
@@ -721,16 +715,9 @@ describe('acceptance: concurrent entry module request', () => {
       expect(unhandled).toEqual([]);
     });
 
-    it('issues no item request when the entry fails while the list document is being verified', async () => {
+    it('issues no item request when the entry fails after the list document resolved and before the item batch', async () => {
       const net = controlledFetch();
-      // The entry's failure is delivered the moment the list's digest is
-      // asked for, so it lands while the list's verification completes.
-      const realHex = SharedDepSha256.hex.bind(SharedDepSha256);
-      vi.spyOn(SharedDepSha256, 'hex').mockImplementation((text: string) => {
-        const digest = realHex(text);
-        net.status404(ENTRY_URL);
-        return digest;
-      });
+      failEntryBeforeItemBatch(net);
       const settled = settle(
         newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
           buildEntry(listManifest()),
@@ -813,21 +800,11 @@ describe('acceptance: concurrent entry module request', () => {
       const published: string[] = [];
       const realm = RealmSharedDepTextCacheProvider.getCache();
       const realSet = realm.set.bind(realm);
+      failEntryBeforeItemBatch(net);
       vi.spyOn(realm, 'set').mockImplementation((key, value) => {
         published.push(key);
         realSet(key, value);
       });
-      // The entry's failure is delivered right after the list's digest is
-      // computed: the load is already resuming with the verified list, so
-      // the item request it goes on to make is the gated one.
-      const realHex = SharedDepSha256.hex.bind(SharedDepSha256);
-      vi.spyOn(SharedDepSha256, 'hex').mockImplementation(
-        async (text: string) => {
-          const digest = await realHex(text);
-          net.status404(ENTRY_URL);
-          return digest;
-        },
-      );
       const settled = settle(
         newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
           buildEntry(listManifest()),

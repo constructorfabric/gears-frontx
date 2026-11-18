@@ -53,7 +53,7 @@ import { DeterministicLoadFailure } from './DeterministicLoadFailure';
 import { SharedAssetUrlResolver } from './SharedAssetUrlResolver';
 import { FetchBudget } from './FetchBudget';
 import { ManifestCache } from './ManifestCache';
-import { SharedDepSha256 } from './SharedDepSha256';
+import { SharedTextAdmission } from './SharedTextAdmission';
 import { SharedDepListLoader, type SharedDepListContext } from './SharedDepListLoader';
 import { SharedDepListMinter, type ListDynamicImportRewrites } from './SharedDepListMinter';
 import { LoadDiagnosticsAccumulator } from './LoadDiagnosticsAccumulator';
@@ -320,21 +320,6 @@ function isDeterministicFailureSentinel(
     value !== null &&
     DETERMINISTIC_FAILURE in (value as object)
   );
-}
-
-/**
- * Whether `hash` is a well-formed lowercase-hex SHA-256 digest — the shape
- * `contentHash` is expected to carry. The JSON Schema for the manifest
- * currently accepts any non-empty string in that field, so a malformed
- * value (truncated, uppercase, non-hex, or otherwise not a 64-hex-digit
- * digest) can still reach the runtime; trusting it verbatim as a cross-MFE
- * cache key would let two builds with different bytes collide under a
- * hash that was never actually computed correctly. A value that fails this
- * check is treated the same as no declared hash at all — the cache key
- * falls back to the resolved chunk URL instead.
- */
-function isWellFormedContentHash(hash: string): boolean {
-  return /^[0-9a-f]{64}$/.test(hash);
 }
 
 /**
@@ -1384,7 +1369,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 
   /**
    * The fetch-list path: the entry's list document is fetched and
-   * verified, every item missing from the realm text cache is fetched
+   * admitted as fetched, every item missing from the realm text cache is fetched
    * in one parallel batch, and the items mint per load in dependency
    * order (`cpt-frontx-adr-shared-dep-reuse`). No graph discovery. The entry
    * chunk's source is requested concurrently with the list document and
@@ -1766,26 +1751,26 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     const settled = await boundedMap(resolvedDeps, async ({ dep, absoluteUrl }) => {
       let cacheKey: string;
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-hash-declared
-      if (dep.contentHash !== undefined && isWellFormedContentHash(dep.contentHash)) {
+      if (dep.contentHash !== undefined) {
         // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-compute-key-hash
-        cacheKey = `${dep.name}@${dep.version}@${dep.contentHash}`;
+        cacheKey = SharedTextAdmission.wholePackageKey(dep.name, dep.version, dep.contentHash);
         // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-compute-key-hash
       } else {
         // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-else-no-hash
+        // @cpt-begin:cpt-frontx-algo-unit-format-contract-shared-text-admission:p1:inst-if-no-identity
+        // @cpt-begin:cpt-frontx-algo-unit-format-contract-shared-text-admission:p1:inst-admit-whole-package-by-location
         // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-compute-key-fallback
-        cacheKey = `${dep.name}@${dep.version}@${absoluteUrl}`;
+        cacheKey = SharedTextAdmission.wholePackageKey(dep.name, dep.version, absoluteUrl);
         // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-compute-key-fallback
+        // @cpt-end:cpt-frontx-algo-unit-format-contract-shared-text-admission:p1:inst-admit-whole-package-by-location
+        // @cpt-end:cpt-frontx-algo-unit-format-contract-shared-text-admission:p1:inst-if-no-identity
         // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-emit-adoption-notice
         const noticeKey = `${dep.name}@${dep.version}@${manifest.id}`;
         if (!this.sharedDepAdoptionNoticesEmitted.has(noticeKey)) {
           this.sharedDepAdoptionNoticesEmitted.set(noticeKey, true);
-          const reason =
-            dep.contentHash === undefined
-              ? 'carries no contentHash'
-              : `declares a malformed contentHash ('${dep.contentHash}')`;
           console.warn(
             `Shared dependency '${dep.name}@${dep.version}' declared by ` +
-              `manifest '${manifest.id}' ${reason}. ` +
+              `manifest '${manifest.id}' carries no contentHash. ` +
               'Cross-MFE reuse is disabled for this dependency; its source ' +
               "text will be keyed on this manifest's own resolved chunk " +
               'URL rather than shared with other microfrontends declaring ' +
@@ -1797,74 +1782,26 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       }
       // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-hash-declared
 
-      // Captured once, into a local, rather than read again as
-      // `this.sharedDepTextCache` at eviction/record time below: `cache`
-      // is the exact cache object this fetch's promise is (or was)
-      // registered in — the realm-shared cache, or this copy's local
-      // fallback if the realm rendezvous fell back
-      // (`RealmSharedDepTextCacheProvider.getCache`) — so the eviction-on-rejection
-      // callback and the ledger both operate on the cache that actually
-      // received THIS promise, never a value the field might read
-      // differently by the time the callback runs.
-      const cache = this.sharedDepTextCache;
-      // Checked against whichever cache this copy resolved at construction
-      // — the realm-shared cache every compatible independently loaded
-      // copy converges on, or this copy's own local fallback
+      // The realm cache this copy resolved at construction — the
+      // realm-shared cache every compatible independently loaded copy
+      // converges on, or this copy's own local fallback
       // (`cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous`).
-      let textPromise = cache.get(cacheKey);
+      // `SharedTextAdmission` answers from a resident or in-flight entry
+      // under `cacheKey`, otherwise publishes this fetch's in-flight promise
+      // before awaiting it, evicts it on rejection under the identity
+      // check, and records the entry on the attempt's ledger so a timeout
+      // releases it. The text is admitted as fetched; the declared hash is
+      // only the sharing key.
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-else-fetch
-      if (textPromise === undefined) {
-        // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-shared-dep
-        // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-fetch-and-cache
-        // Stored under `cacheKey` in `cache` — the realm-shared cache when
-        // this copy's rendezvous resolved to one — before awaiting it, so
-        // a concurrent caller from ANY compatible copy that computes the
-        // same key finds this in-flight promise already published rather
-        // than issuing its own fetch, however the concurrent calls are
-        // interleaved.
-        textPromise = this.fetchSourceText(absoluteUrl, ledger);
-        // F-010: text cached under a declared contentHash key must first
-        // verify against that hash — unverified bytes are never admitted
-        // under the hash identity. The verifying promise rejects on
-        // mismatch and the eviction-on-rejection below removes it.
-        if (
-          dep.contentHash !== undefined &&
-          isWellFormedContentHash(dep.contentHash)
-        ) {
-          const declaredHash = dep.contentHash;
-          textPromise = textPromise.then(async (text) => {
-            const actual = await SharedDepSha256.hex(text);
-            if (actual !== declaredHash) {
-              throw new MfeLoadError(
-                `shared-dep chunk '${absoluteUrl}' for '${dep.name}@${dep.version}' ` +
-                  `failed content-identity verification: expected ${declaredHash}, ` +
-                  `got ${actual}.`,
-                entryId
-              );
-            }
-            return text;
-          });
-        }
-        // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-fetch-and-cache
-        // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-shared-dep
-        // Evict on rejection so a transient failure doesn't poison every
-        // future load that shares this name@version. Identity check prevents
-        // clobbering a later retry promise under the same key. `cache` (not
-        // `this.sharedDepTextCache`) is the cache this exact promise was
-        // published into, matching the ledger's own identity-checked
-        // release discipline.
-        const rejectedPromise = textPromise;
-        rejectedPromise.catch(() => {
-          if (cache.get(cacheKey) === rejectedPromise) {
-            cache.delete(cacheKey);
-          }
-        });
-        cache.set(cacheKey, textPromise);
-      }
-      // Record the shared-dep entry this attempt is waiting on — whether it
-      // registered it just now or joined one a previous load left in the
-      // cache — so a timeout releases it and the retry re-fetches.
-      ledger?.record(cache, cacheKey, textPromise);
+      // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-shared-dep
+      // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-fetch-and-cache
+      const textPromise = new SharedTextAdmission(this.sharedDepTextCache, ledger).admit(
+        cacheKey,
+        absoluteUrl,
+        (url) => this.fetchSourceText(url, ledger)
+      );
+      // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-fetch-and-cache
+      // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-shared-dep
       // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-else-fetch
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-cache-hit
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-retrieve-cached
