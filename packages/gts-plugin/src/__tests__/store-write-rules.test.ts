@@ -272,6 +272,31 @@ describe('instances: the last valid write stands', () => {
   });
 });
 
+describe('built-in schemas', () => {
+  it('a schema the write refuses aborts construction, shared or isolated', async () => {
+    vi.resetModules();
+    let armed = false;
+    vi.doMock('../loader', async (importOriginal) => {
+      const original = await importOriginal<typeof import('../loader')>();
+      return {
+        ...original,
+        loadSchemas: () => [
+          ...original.loadSchemas(),
+          ...(armed ? [{ $id: 'gts://not-a-gts-identifier', $schema: 'http://json-schema.org/draft-07/schema#' }] : []),
+        ],
+      };
+    });
+    try {
+      const { GtsPlugin: BrokenPlugin } = await import('../plugin');
+      armed = true;
+      expect(() => new BrokenPlugin({ isolated: true })).toThrow(/refused/);
+      expect(() => new BrokenPlugin()).toThrow(/refused/);
+    } finally {
+      vi.doUnmock('../loader');
+    }
+  });
+});
+
 describe('built-in lifecycle stages', () => {
   it('are validated before they become visible: an invalid stage aborts construction and enters neither store', async () => {
     vi.resetModules();
