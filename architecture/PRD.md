@@ -1,4 +1,5 @@
 ---
+version: 1.1.0
 description: "Product requirements of the FrontX ecosystem: the three-layer approach, shared actors and vocabulary, and requirements that bind every member equally."
 ---
 
@@ -28,6 +29,7 @@ description: "Product requirements of the FrontX ecosystem: the three-layer appr
   - [7.1 Public API Surface](#71-public-api-surface)
   - [7.2 External Integration Contracts](#72-external-integration-contracts)
 - [8. Use Cases](#8-use-cases)
+  - [8.1 Ecosystem Journeys](#81-ecosystem-journeys)
 - [9. Acceptance Criteria](#9-acceptance-criteria)
 - [10. Dependencies](#10-dependencies)
 - [11. Assumptions](#11-assumptions)
@@ -65,6 +67,10 @@ Across both groups, three needs recur: stable, narrow contracts an AI agent can 
 - **Accounted member governance** — every FrontX-owned workspace package is classified in the layer model, and every classified member owns local architecture artifacts or visible debt with a removal criterion. Target: 100% classified, 100% with a local PRD/DESIGN/FEATURE chain or path-scoped debt entry; Timeframe: maintain on every accepted release.
 
 ### 1.4 Glossary
+
+Revision 1.1.0 adds the cross-layer published-build interoperability requirement.
+Existing requirements retain their identifiers and meaning. Member requirements
+for building deliveries and selecting MFE versions remain in their member PRDs.
 
 | Term | Definition |
 |------|------------|
@@ -135,7 +141,7 @@ Runtime vocabulary used by the requirements below is owned by the members that i
 
 ## 3. Operational Concept & Environment
 
-The ecosystem operates as a set of products that Template Developers and Project Developers use, together with AI agents, across two recurring activities: publishing templates and the AI capabilities bundled with them, and scaffolding and evolving projects from those templates. These activities run in ordinary developer environments and require nothing beyond standard project defaults.
+The ecosystem operates as a set of products that Template Developers and Project Developers use, together with AI agents, across publishing templates and their bundled AI capabilities, and scaffolding, building, delivering and evolving projects from those templates. These activities run in ordinary developer environments and require nothing beyond standard project defaults.
 
 ### 3.1 Module-Specific Environment Constraints
 
@@ -155,7 +161,7 @@ Externally hosted, versioned generators of project content. What a template prod
 
 #### Projects orchestration
 
-The units that act on a project's lifecycle across the other two layers — creating, assembling, and upgrading projects, and giving AI agents the fluency to do so. Each lifecycle or AI capability is owned by the PRD of the member that implements it, located through the [DESIGN's member pointers](./DESIGN.md#member-pointers). Root governance classifies every FrontX-owned workspace package into the layer model and accounts for each member's artifact chain (§5.1).
+The units that act on a project's lifecycle across the other two layers — creating, assembling, building, delivering and upgrading projects, and giving AI agents the fluency to do so. Each lifecycle or AI capability is owned by the PRD of the member that implements it, located through the [DESIGN's member pointers](./DESIGN.md#member-pointers). Root governance classifies every FrontX-owned workspace package into the layer model and accounts for each member's artifact chain (§5.1).
 
 ### 4.2 Out of Scope
 
@@ -166,13 +172,13 @@ The units that act on a project's lifecycle across the other two layers — crea
 - FrontX does not include specific authentication or authorization implementations.
 - FrontX does not include specific layout choices — which extension domains exist, what they are called, or what microfrontends occupy them.
 - FrontX does not include specific shared application state schemas, such as theme, language, or user-locale schemas.
-- FrontX does not include specific build-tooling configurations.
+- FrontX does not dictate application-specific build-tooling configurations. FrontX supplies the reusable build capabilities required by its supported template contracts; consumers own application profiles, source locations and publication policy.
 - FrontX does not include specific AI workflows, skills, or guidelines tied to a particular application domain.
 - FrontX is not a host for application-domain business logic of any kind.
 
 ## 5. Functional Requirements
 
-The requirements below bind every published member equally; no member can own them. Every member-specific requirement is owned by the member's own PRD §5; the members and their artifacts are located through the [DESIGN's member pointers](./DESIGN.md#member-pointers).
+The requirements below govern the ecosystem and its cross-layer contracts; no single member owns them. Every member-specific requirement is owned by the member's own PRD §5; the members and their artifacts are located through the [DESIGN's member pointers](./DESIGN.md#member-pointers).
 
 ### 5.1 Ecosystem-Level Requirements
 
@@ -216,6 +222,25 @@ The ecosystem **MUST** classify every FrontX-owned workspace package as exactly 
 
 **Actors**: `cpt-frontx-actor-project-developer`, `cpt-frontx-actor-template-developer`
 
+#### Published-build interoperability across layers
+
+- [ ] `p1` - **ID**: `cpt-frontx-fr-published-build-interoperability`
+
+The ecosystem **MUST** maintain a versioned, project-independent published-build
+contract shared by supported templates, project build/delivery orchestration
+and runtime consumers. A concrete published build must be identifiable and
+resolvable with its registration information and complete required resources.
+Its identity must remain distinguishable from type-contract versions and
+delivery revisions. Changes must respect independent member versioning and
+declared compatibility commitments.
+
+**Rationale**: A producer and a runtime can evolve independently only when a
+published build retains the same meaning across their boundaries. At the first
+release of this capability, a conforming build must be consumable by two
+different host deliveries without consumer-specific interpretation.
+
+**Actors**: `cpt-frontx-actor-project-developer`, `cpt-frontx-actor-template-developer`
+
 ## 6. Non-Functional Requirements
 
 ### 6.1 NFR Inclusions
@@ -254,7 +279,7 @@ The ecosystem **MUST** avoid a fixed architectural ceiling and express concrete 
 
 ### 7.1 Public API Surface
 
-Each public surface is owned by the PRD of the member that publishes it, in that member's own §7.1; a member whose surface deliberately sits below actor altitude states that there as well. The root restates none of them. Every surface carries the same breaking-change policy: a major version bump for any incompatible change; minor and patch versions preserve backward compatibility.
+Each public surface is owned by the PRD of the member that publishes it, in that member's own §7.1; a member whose surface deliberately sits below actor altitude states that there as well. The root restates none of them. Every surface follows the independent-version and active-channel compatibility policy in §6.1 (`cpt-frontx-nfr-evolvability`), including its pre-1.0 distinction.
 
 ### 7.2 External Integration Contracts
 
@@ -271,6 +296,8 @@ The ecosystem's contract to templates and its AI-tooling contracts are owned by 
 **Compatibility**: Published packages follow semantic versioning; consuming applications rely on the platform's evolvability commitments (`cpt-frontx-nfr-evolvability`).
 
 ## 8. Use Cases
+
+### 8.1 Ecosystem Journeys
 
 Member-level use cases are owned by each member's own PRD §8, located through the [DESIGN's member pointers](./DESIGN.md#member-pointers). The use case below is the cross-layer journey only the root can own.
 
@@ -312,6 +339,8 @@ Member-level use cases are owned by each member's own PRD §8, located through t
 - The root layer model and member artifact ownership remain accurate.
 
 ## 9. Acceptance Criteria
+
+- [ ] The supported template, build/delivery and runtime boundaries exchange the same concrete published-build identity and complete registration/resource information across two different host deliveries, without application-domain knowledge — verifiable via `cpt-frontx-fr-published-build-interoperability`. Member PRDs own detailed build and runtime outcomes.
 
 - [ ] The three layers are each delivered by identified members whose own PRDs state their requirements — published libraries, externally hosted templates under the CLI-owned contract, and projects-orchestration units — verifiable via the member PRD links located through the [DESIGN's member pointers](./DESIGN.md#member-pointers); membership is a property, not a list this criterion fixes a count against.
 - [ ] The layer-level requirements hold across every member: any UI framework, versioned evolution, no architectural ceiling — verifiable via `cpt-frontx-fr-ui-framework-agnostic`, `cpt-frontx-fr-versioned-platform-evolution`, and `cpt-frontx-fr-no-architectural-ceiling`.

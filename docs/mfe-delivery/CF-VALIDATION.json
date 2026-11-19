@@ -1,0 +1,544 @@
+{
+  "date_utc": "2026-11-13T16:22:30.067000+00:00",
+  "scope": "Documentation only; native independent review unavailable; no functional acceptance execution",
+  "checkout_base": "cfc9e3758fbceab374fac9ae25d1f1db53f298ca",
+  "upstream_main_rechecked": "51cac14845d318de18c450f1ad8065aa5b14cdbe",
+  "upstream_base_files_compared": [
+    "architecture/PRD.md",
+    "packages/cli/architecture/PRD.md",
+    "packages/mfes/architecture/PRD.md",
+    "architecture/DESIGN.md",
+    "CONTRIBUTING.md"
+  ],
+  "base_files_equal": true,
+  "normalization": "Absolute child-workspace prefix replaced by repository-relative paths. No findings omitted.",
+  "document_fingerprints": {
+    "architecture/PRD.md": "b4137b4d5791e8d26b90299d36ea1fd3905c83577a530f60aea689e8d91bd777",
+    "packages/cli/architecture/PRD.md": "0c112f1c10ab5829aae3ae16e8ee93537254d04573fdc91a49fc1496d6049aba",
+    "packages/mfes/architecture/PRD.md": "52d6ef9b2e6876838518da4c856f29df554deaa5b2f346b7f1a528098cc04b04",
+    "docs/mfe-delivery/RESEARCH.md": "6d91eb8533ec8663306f8fc2f83aacb6e43e32b8f4acc8782d60a09b31285c48",
+    "docs/mfe-delivery/source-ledger.json": "f4599a4acc1d8dae34925a1140de5314bf9d584e0dd7b339f1f31780ba7119ad",
+    "docs/mfe-delivery/VALIDATION.md": "3a2afa5df1a2b8e6a1cf50acdb84949e761bbb8fd1cd569945ee2b9d3f57bcaa"
+  },
+  "commands": [
+    {
+      "argv": [
+        "cfs",
+        "--json",
+        "validate",
+        "--artifact",
+        "architecture/PRD.md"
+      ],
+      "exit_code": 0,
+      "result": {
+        "status": "PASS",
+        "artifacts_validated": 1,
+        "error_count": 0,
+        "warning_count": 0,
+        "next_step": "Deterministic validation passed. Now perform semantic validation: review content quality against checklist.md criteria.",
+        "errors": [],
+        "warnings": []
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "cfs",
+        "--json",
+        "validate-toc",
+        "architecture/PRD.md"
+      ],
+      "exit_code": 0,
+      "result": {
+        "status": "PASS",
+        "files_validated": 1,
+        "error_count": 0,
+        "warning_count": 0,
+        "results": [
+          {
+            "file": "architecture/PRD.md",
+            "status": "PASS",
+            "error_count": 0,
+            "warning_count": 0,
+            "artifact_kind": "PRD"
+          }
+        ]
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "cfs",
+        "--json",
+        "check-language",
+        "architecture/PRD.md"
+      ],
+      "exit_code": 0,
+      "result": {
+        "status": "PASS",
+        "allowed_languages": [
+          "en"
+        ],
+        "files_scanned": 1,
+        "violation_count": 0
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "cfs",
+        "--json",
+        "validate",
+        "--artifact",
+        "packages/cli/architecture/PRD.md"
+      ],
+      "exit_code": 0,
+      "result": {
+        "status": "PASS",
+        "artifacts_validated": 1,
+        "error_count": 0,
+        "warning_count": 0,
+        "next_step": "Deterministic validation passed. Now perform semantic validation: review content quality against checklist.md criteria.",
+        "errors": [],
+        "warnings": []
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "cfs",
+        "--json",
+        "validate-toc",
+        "packages/cli/architecture/PRD.md"
+      ],
+      "exit_code": 0,
+      "result": {
+        "status": "PASS",
+        "files_validated": 1,
+        "error_count": 0,
+        "warning_count": 0,
+        "results": [
+          {
+            "file": "packages/cli/architecture/PRD.md",
+            "status": "PASS",
+            "error_count": 0,
+            "warning_count": 0,
+            "artifact_kind": "PRD"
+          }
+        ]
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "cfs",
+        "--json",
+        "check-language",
+        "packages/cli/architecture/PRD.md"
+      ],
+      "exit_code": 0,
+      "result": {
+        "status": "PASS",
+        "allowed_languages": [
+          "en"
+        ],
+        "files_scanned": 1,
+        "violation_count": 0
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "cfs",
+        "--json",
+        "validate",
+        "--artifact",
+        "packages/mfes/architecture/PRD.md"
+      ],
+      "exit_code": 0,
+      "result": {
+        "status": "PASS",
+        "artifacts_validated": 1,
+        "error_count": 0,
+        "warning_count": 0,
+        "next_step": "Deterministic validation passed. Now perform semantic validation: review content quality against checklist.md criteria.",
+        "errors": [],
+        "warnings": []
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "cfs",
+        "--json",
+        "validate-toc",
+        "packages/mfes/architecture/PRD.md"
+      ],
+      "exit_code": 0,
+      "result": {
+        "status": "PASS",
+        "files_validated": 1,
+        "error_count": 0,
+        "warning_count": 0,
+        "results": [
+          {
+            "file": "packages/mfes/architecture/PRD.md",
+            "status": "PASS",
+            "error_count": 0,
+            "warning_count": 0,
+            "artifact_kind": "PRD"
+          }
+        ]
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "cfs",
+        "--json",
+        "check-language",
+        "packages/mfes/architecture/PRD.md"
+      ],
+      "exit_code": 0,
+      "result": {
+        "status": "PASS",
+        "allowed_languages": [
+          "en"
+        ],
+        "files_scanned": 1,
+        "violation_count": 0
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "cfs",
+        "--json",
+        "validate",
+        "--local-only"
+      ],
+      "exit_code": 0,
+      "result": {
+        "status": "PASS",
+        "artifacts_validated": 89,
+        "error_count": 0,
+        "warning_count": 7,
+        "suppressed_count": 45,
+        "code_files_scanned": 334,
+        "code_files_excluded": 0,
+        "to_code_ids_total": 258,
+        "code_ids_found": 284,
+        "coverage": "258/258",
+        "next_step": "Deterministic validation passed. Now perform semantic validation: review content quality against checklist.md criteria.",
+        "errors": [],
+        "warnings": [
+          {
+            "type": "toc",
+            "message": "Heading `Instrument An Application` jumps from H2 to H4, skipping intermediate level(s)",
+            "line": 424,
+            "code": "toc-heading-depth-jump",
+            "severity": "warning",
+            "location": "packages/telemetry/architecture/PRD.md:424",
+            "heading_text": "Instrument An Application",
+            "from_level": 2,
+            "to_level": 4,
+            "artifact_kind": "PRD",
+            "reasons": [
+              "An intermediate heading level was skipped, leaving a gap in the section tree",
+              "A heading was demoted or promoted without adjusting the ones around it"
+            ],
+            "fixing_prompt": "studio: Open `packages/telemetry/architecture/PRD.md:424`: heading depth jumps (h2 -> h4), skipping a level. Insert the intermediate heading, or lift this one, so the section tree a retriever walks has no gaps. | Probable causes: An intermediate heading level was skipped, leaving a gap in the section tree; A heading was demoted or promoted without adjusting the ones around it"
+          },
+          {
+            "type": "toc",
+            "message": "Heading `Deep link resolves to a not-yet-mounted extension's screen, level by level` jumps from H2 to H4, skipping intermediate level(s)",
+            "line": 299,
+            "code": "toc-heading-depth-jump",
+            "severity": "warning",
+            "location": "packages/routing/architecture/PRD.md:299",
+            "heading_text": "Deep link resolves to a not-yet-mounted extension's screen, level by level",
+            "from_level": 2,
+            "to_level": 4,
+            "artifact_kind": "PRD",
+            "reasons": [
+              "An intermediate heading level was skipped, leaving a gap in the section tree",
+              "A heading was demoted or promoted without adjusting the ones around it"
+            ],
+            "fixing_prompt": "studio: Open `packages/routing/architecture/PRD.md:299`: heading depth jumps (h2 -> h4), skipping a level. Insert the intermediate heading, or lift this one, so the section tree a retriever walks has no gaps. | Probable causes: An intermediate heading level was skipped, leaving a gap in the section tree; A heading was demoted or promoted without adjusting the ones around it"
+          },
+          {
+            "type": "toc",
+            "message": "Heading `Swap the router engine of a microfrontend` jumps from H2 to H4, skipping intermediate level(s)",
+            "line": 218,
+            "code": "toc-heading-depth-jump",
+            "severity": "warning",
+            "location": "packages/routing-tanstack/architecture/PRD.md:218",
+            "heading_text": "Swap the router engine of a microfrontend",
+            "from_level": 2,
+            "to_level": 4,
+            "artifact_kind": "PRD",
+            "reasons": [
+              "An intermediate heading level was skipped, leaving a gap in the section tree",
+              "A heading was demoted or promoted without adjusting the ones around it"
+            ],
+            "fixing_prompt": "studio: Open `packages/routing-tanstack/architecture/PRD.md:218`: heading depth jumps (h2 -> h4), skipping a level. Insert the intermediate heading, or lift this one, so the section tree a retriever walks has no gaps. | Probable causes: An intermediate heading level was skipped, leaving a gap in the section tree; A heading was demoted or promoted without adjusting the ones around it"
+          },
+          {
+            "type": "toc",
+            "message": "Heading `Application Developer registers the application's own types` jumps from H2 to H4, skipping intermediate level(s)",
+            "line": 211,
+            "code": "toc-heading-depth-jump",
+            "severity": "warning",
+            "location": "packages/gts-plugin/architecture/PRD.md:211",
+            "heading_text": "Application Developer registers the application's own types",
+            "from_level": 2,
+            "to_level": 4,
+            "artifact_kind": "PRD",
+            "reasons": [
+              "An intermediate heading level was skipped, leaving a gap in the section tree",
+              "A heading was demoted or promoted without adjusting the ones around it"
+            ],
+            "fixing_prompt": "studio: Open `packages/gts-plugin/architecture/PRD.md:211`: heading depth jumps (h2 -> h4), skipping a level. Insert the intermediate heading, or lift this one, so the section tree a retriever walks has no gaps. | Probable causes: An intermediate heading level was skipped, leaving a gap in the section tree; A heading was demoted or promoted without adjusting the ones around it"
+          },
+          {
+            "type": "toc",
+            "message": "Heading `Application Developer declares a service once and every unit calls it` jumps from H2 to H4, skipping intermediate level(s)",
+            "line": 167,
+            "code": "toc-heading-depth-jump",
+            "severity": "warning",
+            "location": "packages/api/architecture/PRD.md:167",
+            "heading_text": "Application Developer declares a service once and every unit calls it",
+            "from_level": 2,
+            "to_level": 4,
+            "artifact_kind": "PRD",
+            "reasons": [
+              "An intermediate heading level was skipped, leaving a gap in the section tree",
+              "A heading was demoted or promoted without adjusting the ones around it"
+            ],
+            "fixing_prompt": "studio: Open `packages/api/architecture/PRD.md:167`: heading depth jumps (h2 -> h4), skipping a level. Insert the intermediate heading, or lift this one, so the section tree a retriever walks has no gaps. | Probable causes: An intermediate heading level was skipped, leaving a gap in the section tree; A heading was demoted or promoted without adjusting the ones around it"
+          },
+          {
+            "type": "toc",
+            "message": "Heading `Template Developer bundles a template with AI extensions` jumps from H2 to H4, skipping intermediate level(s)",
+            "line": 311,
+            "code": "toc-heading-depth-jump",
+            "severity": "warning",
+            "location": "packages/cyber-pilot-kit-frontx/architecture/PRD.md:311",
+            "heading_text": "Template Developer bundles a template with AI extensions",
+            "from_level": 2,
+            "to_level": 4,
+            "artifact_kind": "PRD",
+            "reasons": [
+              "An intermediate heading level was skipped, leaving a gap in the section tree",
+              "A heading was demoted or promoted without adjusting the ones around it"
+            ],
+            "fixing_prompt": "studio: Open `packages/cyber-pilot-kit-frontx/architecture/PRD.md:311`: heading depth jumps (h2 -> h4), skipping a level. Insert the intermediate heading, or lift this one, so the section tree a retriever walks has no gaps. | Probable causes: An intermediate heading level was skipped, leaving a gap in the section tree; A heading was demoted or promoted without adjusting the ones around it"
+          },
+          {
+            "type": "toc",
+            "message": "Heading `Kit Developer describes a component and changes it` jumps from H2 to H4, skipping intermediate level(s)",
+            "line": 411,
+            "code": "toc-heading-depth-jump",
+            "severity": "warning",
+            "location": "packages/ui-kit/architecture/PRD.md:411",
+            "heading_text": "Kit Developer describes a component and changes it",
+            "from_level": 2,
+            "to_level": 4,
+            "artifact_kind": "PRD",
+            "reasons": [
+              "An intermediate heading level was skipped, leaving a gap in the section tree",
+              "A heading was demoted or promoted without adjusting the ones around it"
+            ],
+            "fixing_prompt": "studio: Open `packages/ui-kit/architecture/PRD.md:411`: heading depth jumps (h2 -> h4), skipping a level. Insert the intermediate heading, or lift this one, so the section tree a retriever walks has no gaps. | Probable causes: An intermediate heading level was skipped, leaving a gap in the section tree; A heading was demoted or promoted without adjusting the ones around it"
+          }
+        ]
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "result": "",
+      "stderr": ""
+    }
+  ],
+  "earlier_prerequisite_check": {
+    "date_utc": "2026-11-13T15:27:23.827791+00:00",
+    "command": {
+      "argv": [
+        "cfs",
+        "--json",
+        "validate-kits",
+        "--verbose"
+      ],
+      "exit_code": 0,
+      "result": {
+        "status": "PASS",
+        "kits_validated": 2,
+        "error_count": 0,
+        "warning_count": 4,
+        "templates_checked": 5,
+        "self_check_results": [
+          {
+            "kit": "sdlc",
+            "kind": "ADR",
+            "example_path": ".cf-studio/config/kits/sdlc/artifacts/ADR/examples/example.md",
+            "example_paths": [
+              ".cf-studio/config/kits/sdlc/artifacts/ADR/examples/example.md"
+            ],
+            "examples_checked": 1,
+            "status": "PASS"
+          },
+          {
+            "kit": "sdlc",
+            "kind": "DECOMPOSITION",
+            "example_path": ".cf-studio/config/kits/sdlc/artifacts/DECOMPOSITION/examples/example.md",
+            "example_paths": [
+              ".cf-studio/config/kits/sdlc/artifacts/DECOMPOSITION/examples/example.md"
+            ],
+            "examples_checked": 1,
+            "status": "PASS",
+            "warning_count": 1,
+            "warnings": [
+              {
+                "type": "toc",
+                "message": "Document has no frontmatter/description block at the top",
+                "line": 1,
+                "code": "toc-missing-description",
+                "severity": "warning",
+                "path": ".cf-studio/config/kits/sdlc/artifacts/DECOMPOSITION/examples/example.md",
+                "location": ".cf-studio/config/kits/sdlc/artifacts/DECOMPOSITION/examples/example.md:1",
+                "artifact_kind": "DECOMPOSITION",
+                "reasons": [
+                  "The document has no short description under its top heading for retrieval to rank on"
+                ],
+                "fixing_prompt": "studio: Add a short description under the top heading of `.cf-studio/config/kits/sdlc/artifacts/DECOMPOSITION/examples/example.md`: retrieval ranks a document on it before any section is read. | Probable causes: The document has no short description under its top heading for retrieval to rank on"
+              }
+            ]
+          },
+          {
+            "kit": "sdlc",
+            "kind": "DESIGN",
+            "example_path": ".cf-studio/config/kits/sdlc/artifacts/DESIGN/examples/example.md",
+            "example_paths": [
+              ".cf-studio/config/kits/sdlc/artifacts/DESIGN/examples/example.md"
+            ],
+            "examples_checked": 1,
+            "status": "PASS",
+            "warning_count": 1,
+            "warnings": [
+              {
+                "type": "toc",
+                "message": "Document has no frontmatter/description block at the top",
+                "line": 1,
+                "code": "toc-missing-description",
+                "severity": "warning",
+                "path": ".cf-studio/config/kits/sdlc/artifacts/DESIGN/examples/example.md",
+                "location": ".cf-studio/config/kits/sdlc/artifacts/DESIGN/examples/example.md:1",
+                "artifact_kind": "DESIGN",
+                "reasons": [
+                  "The document has no short description under its top heading for retrieval to rank on"
+                ],
+                "fixing_prompt": "studio: Add a short description under the top heading of `.cf-studio/config/kits/sdlc/artifacts/DESIGN/examples/example.md`: retrieval ranks a document on it before any section is read. | Probable causes: The document has no short description under its top heading for retrieval to rank on"
+              }
+            ]
+          },
+          {
+            "kit": "sdlc",
+            "kind": "FEATURE",
+            "example_path": ".cf-studio/config/kits/sdlc/artifacts/FEATURE/examples/example.md",
+            "example_paths": [
+              ".cf-studio/config/kits/sdlc/artifacts/FEATURE/examples/example.md"
+            ],
+            "examples_checked": 1,
+            "status": "PASS",
+            "warning_count": 1,
+            "warnings": [
+              {
+                "type": "toc",
+                "message": "Document has no frontmatter/description block at the top",
+                "line": 1,
+                "code": "toc-missing-description",
+                "severity": "warning",
+                "path": ".cf-studio/config/kits/sdlc/artifacts/FEATURE/examples/example.md",
+                "location": ".cf-studio/config/kits/sdlc/artifacts/FEATURE/examples/example.md:1",
+                "artifact_kind": "FEATURE",
+                "reasons": [
+                  "The document has no short description under its top heading for retrieval to rank on"
+                ],
+                "fixing_prompt": "studio: Add a short description under the top heading of `.cf-studio/config/kits/sdlc/artifacts/FEATURE/examples/example.md`: retrieval ranks a document on it before any section is read. | Probable causes: The document has no short description under its top heading for retrieval to rank on"
+              }
+            ],
+            "suppressed_count": 8
+          },
+          {
+            "kit": "sdlc",
+            "kind": "PRD",
+            "example_path": ".cf-studio/config/kits/sdlc/artifacts/PRD/examples/example.md",
+            "example_paths": [
+              ".cf-studio/config/kits/sdlc/artifacts/PRD/examples/example.md"
+            ],
+            "examples_checked": 1,
+            "status": "PASS",
+            "warning_count": 1,
+            "warnings": [
+              {
+                "type": "toc",
+                "message": "Document has no frontmatter/description block at the top",
+                "line": 1,
+                "code": "toc-missing-description",
+                "severity": "warning",
+                "path": ".cf-studio/config/kits/sdlc/artifacts/PRD/examples/example.md",
+                "location": ".cf-studio/config/kits/sdlc/artifacts/PRD/examples/example.md:1",
+                "artifact_kind": "PRD",
+                "reasons": [
+                  "The document has no short description under its top heading for retrieval to rank on"
+                ],
+                "fixing_prompt": "studio: Add a short description under the top heading of `.cf-studio/config/kits/sdlc/artifacts/PRD/examples/example.md`: retrieval ranks a document on it before any section is read. | Probable causes: The document has no short description under its top heading for retrieval to rank on"
+              }
+            ]
+          }
+        ],
+        "kits": [
+          {
+            "kit": "sdlc",
+            "path": ".cf-studio/config/kits/sdlc",
+            "status": "PASS",
+            "error_count": 0,
+            "kinds": [
+              "ADR",
+              "DECOMPOSITION",
+              "DESIGN",
+              "FEATURE",
+              "PRD"
+            ]
+          },
+          {
+            "kit": "cyber-pilot-kit-frontx",
+            "path": "packages/cyber-pilot-kit-frontx",
+            "status": "PASS",
+            "error_count": 0
+          }
+        ]
+      },
+      "stderr": ""
+    }
+  },
+  "semantic_review": {
+    "scope": "Changed requirements and directly affected existing context",
+    "reviewer": "author inline pass, separate from authoring; not independent",
+    "must_have_items_walked": 46,
+    "must_not_have_items_walked": 10,
+    "remaining_identified_findings": [],
+    "closed_findings": [
+      "CF-DOC-01",
+      "CF-DOC-02",
+      "CF-DOC-03",
+      "CF-DOC-04"
+    ]
+  }
+}

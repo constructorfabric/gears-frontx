@@ -1,0 +1,1368 @@
+{
+  "research_date": "2026-11-13",
+  "branch_base": "cfc9e3758fbceab374fac9ae25d1f1db53f298ca",
+  "acquisition": "GitHub commit/tree/contents APIs with Git blob verification; Bitbucket raw source API with SHA256 snapshots",
+  "sources": [
+    {
+      "repository": "constructorfabric/gears-frontx",
+      "commit": "51cac14845d318de18c450f1ad8065aa5b14cdbe",
+      "path": "README.md",
+      "git_blob_sha": "968f90ccf80c4541b3bfae139772f2f00c22018f",
+      "sha256": "70aa4c4cf830571952da1989a9560ca31804bd0f8da25b686018062b026e3e18",
+      "url": "https://github.com/constructorfabric/gears-frontx/blob/51cac14845d318de18c450f1ad8065aa5b14cdbe/README.md"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx",
+      "commit": "51cac14845d318de18c450f1ad8065aa5b14cdbe",
+      "path": "architecture/ADR/0001-artifact-versioning-and-distribution.md",
+      "git_blob_sha": "885de83a71e8d95d856a86b6ddc0d3794190bd35",
+      "sha256": "74827361bb8be2c4f2705c84817db8c93059ae7da806f36ee53230207c773d49",
+      "url": "https://github.com/constructorfabric/gears-frontx/blob/51cac14845d318de18c450f1ad8065aa5b14cdbe/architecture/ADR/0001-artifact-versioning-and-distribution.md"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx",
+      "commit": "51cac14845d318de18c450f1ad8065aa5b14cdbe",
+      "path": "architecture/DESIGN.md",
+      "git_blob_sha": "c18f52a5787258a06742a58b14350ace1d47f120",
+      "sha256": "52b0602ffab4cbb94580647a79aabced70e97a6c5d9946dca305324f7ec2c75b",
+      "url": "https://github.com/constructorfabric/gears-frontx/blob/51cac14845d318de18c450f1ad8065aa5b14cdbe/architecture/DESIGN.md"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx",
+      "commit": "51cac14845d318de18c450f1ad8065aa5b14cdbe",
+      "path": "architecture/PRD.md",
+      "git_blob_sha": "e27404d427121a897c749bf493c5d97568c177ef",
+      "sha256": "bf8a9a823daa2707b4f8c28e31300762b69301ca0dc0895918bf4a2aa7027118",
+      "url": "https://github.com/constructorfabric/gears-frontx/blob/51cac14845d318de18c450f1ad8065aa5b14cdbe/architecture/PRD.md"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx",
+      "commit": "51cac14845d318de18c450f1ad8065aa5b14cdbe",
+      "path": "packages/cli/architecture/DESIGN.md",
+      "git_blob_sha": "0af2c8e0a04bfd0a41139c745830c457d79dff1d",
+      "sha256": "1bb4f0fd25cacf44fcc59289eb7b7333fe143145da185c3f5b66053674d0741f",
+      "url": "https://github.com/constructorfabric/gears-frontx/blob/51cac14845d318de18c450f1ad8065aa5b14cdbe/packages/cli/architecture/DESIGN.md"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx",
+      "commit": "51cac14845d318de18c450f1ad8065aa5b14cdbe",
+      "path": "packages/cli/architecture/PRD.md",
+      "git_blob_sha": "286aee3e22b9e64906b525bbc5df736a30e24a71",
+      "sha256": "66e669e174e73c79519f593c38ca25ecd6717efa274ff4be0a9fa4ccf308b000",
+      "url": "https://github.com/constructorfabric/gears-frontx/blob/51cac14845d318de18c450f1ad8065aa5b14cdbe/packages/cli/architecture/PRD.md"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx",
+      "commit": "51cac14845d318de18c450f1ad8065aa5b14cdbe",
+      "path": "packages/cli/package.json",
+      "git_blob_sha": "f7400a89b10b602ef04baa66cc8796ad73feea85",
+      "sha256": "056449180731d71e67ee5e9bb3bff830fac4b742e36327733da1441bd8a2d002",
+      "url": "https://github.com/constructorfabric/gears-frontx/blob/51cac14845d318de18c450f1ad8065aa5b14cdbe/packages/cli/package.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx",
+      "commit": "51cac14845d318de18c450f1ad8065aa5b14cdbe",
+      "path": "packages/cli/src/index.ts",
+      "git_blob_sha": "80f51d2f21a32c790ea9180853e9cc08378b42a2",
+      "sha256": "c43d355ceb2e8de956818a2b0237bb2b0bfdf1aab095967abaef741cb1cea054",
+      "url": "https://github.com/constructorfabric/gears-frontx/blob/51cac14845d318de18c450f1ad8065aa5b14cdbe/packages/cli/src/index.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx",
+      "commit": "51cac14845d318de18c450f1ad8065aa5b14cdbe",
+      "path": "packages/cli/src/manifest/types.ts",
+      "git_blob_sha": "eac4c27661a0c85f4a2a1b2b1d222d9d65595bc5",
+      "sha256": "e2e945cc604c7915ded3f06082e9e46b458f798e34d0251c81dbf2ae5aeb1608",
+      "url": "https://github.com/constructorfabric/gears-frontx/blob/51cac14845d318de18c450f1ad8065aa5b14cdbe/packages/cli/src/manifest/types.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx",
+      "commit": "51cac14845d318de18c450f1ad8065aa5b14cdbe",
+      "path": "packages/cli/src/manifest/validate-contract.ts",
+      "git_blob_sha": "9c5b24a4793df3aa811c78454afb5cd32a5990c6",
+      "sha256": "f3b11c7b0d1d7bb444e10b5f76fd6dd7ed315e175cb87bb278cf9812bc006a2f",
+      "url": "https://github.com/constructorfabric/gears-frontx/blob/51cac14845d318de18c450f1ad8065aa5b14cdbe/packages/cli/src/manifest/validate-contract.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx",
+      "commit": "51cac14845d318de18c450f1ad8065aa5b14cdbe",
+      "path": "packages/cyber-pilot-kit-frontx/guidelines/ecosystem-boundaries.md",
+      "git_blob_sha": "0435c3b1cc840b70807dd4cf117bc35a77a83f53",
+      "sha256": "75174360a1c5dbc887e3c4721a73e23387915602f9f066a9308c3a5cdb75fd0f",
+      "url": "https://github.com/constructorfabric/gears-frontx/blob/51cac14845d318de18c450f1ad8065aa5b14cdbe/packages/cyber-pilot-kit-frontx/guidelines/ecosystem-boundaries.md"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx",
+      "commit": "51cac14845d318de18c450f1ad8065aa5b14cdbe",
+      "path": "packages/mfes/architecture/DESIGN.md",
+      "git_blob_sha": "eab26c21483e564fc146a683d754bac3cf2c401f",
+      "sha256": "1bae1ab4cb13427ade7a822fec429c26e39118d25fe1839dc9263404559848fd",
+      "url": "https://github.com/constructorfabric/gears-frontx/blob/51cac14845d318de18c450f1ad8065aa5b14cdbe/packages/mfes/architecture/DESIGN.md"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx",
+      "commit": "51cac14845d318de18c450f1ad8065aa5b14cdbe",
+      "path": "packages/mfes/architecture/PRD.md",
+      "git_blob_sha": "545695001adeedca9a45c87badb93280cef5f309",
+      "sha256": "f2a0ad0c7f8075e77e0cd1dc43e532fd536cd10a00c6f78f1a40a32a655ff99b",
+      "url": "https://github.com/constructorfabric/gears-frontx/blob/51cac14845d318de18c450f1ad8065aa5b14cdbe/packages/mfes/architecture/PRD.md"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx",
+      "commit": "51cac14845d318de18c450f1ad8065aa5b14cdbe",
+      "path": "packages/mfes/src/handler/mfe-handler-mf/MfeHandlerMF.ts",
+      "git_blob_sha": "e27629f91710bc794efb67b5c08b49e7375979ab",
+      "sha256": "4d147a56b12057e64d2bf636bc89bc2db935a10174435b16298dabb8e011f737",
+      "url": "https://github.com/constructorfabric/gears-frontx/blob/51cac14845d318de18c450f1ad8065aa5b14cdbe/packages/mfes/src/handler/mfe-handler-mf/MfeHandlerMF.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx",
+      "commit": "51cac14845d318de18c450f1ad8065aa5b14cdbe",
+      "path": "packages/mfes/src/manifest/mf-manifest.ts",
+      "git_blob_sha": "5eec0fe30b2f298a04b7241e5b7308aed2a62f01",
+      "sha256": "673603af3b642bb9d2f178157b4ec1eee3193deef637d43c4f9bb36e616283d6",
+      "url": "https://github.com/constructorfabric/gears-frontx/blob/51cac14845d318de18c450f1ad8065aa5b14cdbe/packages/mfes/src/manifest/mf-manifest.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx",
+      "commit": "51cac14845d318de18c450f1ad8065aa5b14cdbe",
+      "path": "packages/mfes/src/types/mfe-entry-mf.ts",
+      "git_blob_sha": "ac68d56d90675bac7d0cd6187be940b2555e5246",
+      "sha256": "47a77172f5c2e3d729dd3abe6410034164af2c9f33b54573f01f30320de280b2",
+      "url": "https://github.com/constructorfabric/gears-frontx/blob/51cac14845d318de18c450f1ad8065aa5b14cdbe/packages/mfes/src/types/mfe-entry-mf.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "package.json",
+      "git_blob_sha": "3f246311fa1d9d00266bb980ee69f75f47f37977",
+      "sha256": "4c51cd983260fda737038055473a7488077967bfd49742a21e361824a6649b2e",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/package.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-dashboard/host/vite.config.ts",
+      "git_blob_sha": "a22eddba894c401c6c2ecb355efda368d5d180c9",
+      "sha256": "ecd53ef30edf418595a457013df9b4818421c4db182cbd566257bfe2ad091832",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-dashboard/host/vite.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-dashboard/package.json",
+      "git_blob_sha": "974f4037c874f3574b39f368136581017c3cb289",
+      "sha256": "b4c74d9a8b1ba10657223e91ab3774b59c6f32ef414be7f6b976ccb3d749bd49",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-dashboard/package.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-dashboard/preview/vite.config.ts",
+      "git_blob_sha": "b1d04eb5de4e107664387e30c1c252c78e5a74b3",
+      "sha256": "02db05eb685c09305879b729854c58ae2dea3f7f2071f3d701290bbd03f92df5",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-dashboard/preview/vite.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-dashboard/src-app/mfe_packages/dashboard/package.json",
+      "git_blob_sha": "54af4a9b3384db6bf1a86aaf69449281897830e6",
+      "sha256": "4f0701a5363e86ed82ae3f3230af0ccf809f5c3f8a25352fa11f9dad46b59cfd",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-dashboard/src-app/mfe_packages/dashboard/package.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-dashboard/src-app/mfe_packages/widgets/build-bundles.mjs",
+      "git_blob_sha": "59f5854a1356cd647078094269f06fb557ce8f86",
+      "sha256": "1074e5ad7c527176e51c30c53a76f269933d976edc5121eafb00bb0efc604a11",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-dashboard/src-app/mfe_packages/widgets/build-bundles.mjs"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-dashboard/src-app/mfe_packages/widgets/package.json",
+      "git_blob_sha": "b92c4a627ac459b382fe528a16a7f8d67a4bf65a",
+      "sha256": "fc6f88d8ef39b7f34e937e9a479b228f35a14600a2ef4de051723aad063bc930",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-dashboard/src-app/mfe_packages/widgets/package.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-dashboard/src-app/mfe_packages/widgets/vite.bundle.config.ts",
+      "git_blob_sha": "84365a477f827390cffb3308a3389b7ee971aebe",
+      "sha256": "2cb3486166bac40d6ec5d49b43117ed1adcb6ed4b09dc4c914e9e8f1086e20b9",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-dashboard/src-app/mfe_packages/widgets/vite.bundle.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-dashboard/vitest.config.ts",
+      "git_blob_sha": "9768ff7046157094e980868d11f317dab56a5780",
+      "sha256": "7a66ba60836804225d7f5a2e8163bc3d77718b6a3d7b9ee2d7d78b01fb658cc8",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-dashboard/vitest.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-design-guardrails/frontx-template.json",
+      "git_blob_sha": "73d5014bdbb96b01ee9b30b930e55a067f1c68e2",
+      "sha256": "9d10414da8fde60306fc52fbe9cccbc6e51c3b695a33922d0f39edbc27432e17",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-design-guardrails/frontx-template.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-design-guardrails/src-app/verify_packages/design-verify/package.json",
+      "git_blob_sha": "241808d3f67ac8e3f2baccba701a9cf428e8c096",
+      "sha256": "83e2c8d7ecb18c705615ecbb3843919ae6d7226b3d658fb5f45424fe1179092f",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-design-guardrails/src-app/verify_packages/design-verify/package.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-design-guardrails/src-app/verify_packages/design-verify/vitest.config.ts",
+      "git_blob_sha": "fca9a0f1cd5ab789d4732d46834dabd7dbd32b5f",
+      "sha256": "dbd20f108284d573b851b38b92cc056a95653e8ef609a36d5cd0441c15892c99",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-design-guardrails/src-app/verify_packages/design-verify/vitest.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/frontx-template.json",
+      "git_blob_sha": "7fd01040f1ef1e0f4f14c6f6ad2eb1355730c4a9",
+      "sha256": "924ca988c4c68d45a66c39bf161e59964766a1d9dc3780ed02f1357d8208af0d",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/frontx-template.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/package.json",
+      "git_blob_sha": "6aff0a8cec01f1507cbff9d68a69df24b487bc88",
+      "sha256": "46b03543e1364793525a65f2539a7e2237c09c69d654e075254953ae806f1992",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/package.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/src-app/mfe_packages/_blank-mfe/package.json",
+      "git_blob_sha": "c7e8ac739a27b0fc34c36283a202c8e97adac598",
+      "sha256": "27c3a633b34bc98ceab00e4cf21333e6699a7be2fc7b6f53c90b51825f26d7ae",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/src-app/mfe_packages/_blank-mfe/package.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/src-app/mfe_packages/_blank-mfe/src/vite-env.d.ts",
+      "git_blob_sha": "11f02fe2a0061d6e6e1f271b21da95423b448b32",
+      "sha256": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/src-app/mfe_packages/_blank-mfe/src/vite-env.d.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/src-app/mfe_packages/_blank-mfe/vite.config.ts",
+      "git_blob_sha": "b6b80dda8b2e7c313f4f576e2dc8551f47199e1f",
+      "sha256": "e03d49dd5ef3e4388bad7412ec905df7eeffdb3e120fbe149130037713e29ece",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/src-app/mfe_packages/_blank-mfe/vite.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/src-app/mfe_packages/_blank-mfe/vitest.config.ts",
+      "git_blob_sha": "ae318df544f208b8726cff289cc3bf47517d4291",
+      "sha256": "855b90e8ad47b0e367d941eac200e5ab5110a543c7b66dd672bb44361c14c172",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/src-app/mfe_packages/_blank-mfe/vitest.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/src-app/mfe_packages/demo-mfe/package.json",
+      "git_blob_sha": "ffd3f855e79092f82d16c22c9952f608269f75a3",
+      "sha256": "c3ad3b13b35dffd97dd1a631882b79fea02e32383797ede1311213021a3d61ee",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/src-app/mfe_packages/demo-mfe/package.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/src-app/mfe_packages/demo-mfe/src/vite-env.d.ts",
+      "git_blob_sha": "11f02fe2a0061d6e6e1f271b21da95423b448b32",
+      "sha256": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/src-app/mfe_packages/demo-mfe/src/vite-env.d.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/src-app/mfe_packages/demo-mfe/vite.config.ts",
+      "git_blob_sha": "8294aa4ab4b215b6742d04e9a91baeb85d43c6cb",
+      "sha256": "1c734b4b43e9d93fc60d489aa5c8a6f669d71af86b04665af31fa3e24c9e4a7e",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/src-app/mfe_packages/demo-mfe/vite.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/src-app/mfe_packages/demo-mfe/vitest.config.ts",
+      "git_blob_sha": "ae318df544f208b8726cff289cc3bf47517d4291",
+      "sha256": "855b90e8ad47b0e367d941eac200e5ab5110a543c7b66dd672bb44361c14c172",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/src-app/mfe_packages/demo-mfe/vitest.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/src-app/mfe_packages/widgets-fixture-a/package.json",
+      "git_blob_sha": "e67310b99b60a6f783117c6f08faa97f85638d74",
+      "sha256": "3e32a75df47a7cde17719b15d76c16c27dff24f97d011f23ffb10b701521def1",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/src-app/mfe_packages/widgets-fixture-a/package.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/src-app/mfe_packages/widgets-fixture-a/src/mfe-packages.shared-deps-routing.vite-config.test.ts",
+      "git_blob_sha": "07b6edb14a68ef02ab99793706fdf32ed5f8735a",
+      "sha256": "dae429a4cdbecadc871bc88de1a58b50f8792efefa2419f0f26301743ba451e1",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/src-app/mfe_packages/widgets-fixture-a/src/mfe-packages.shared-deps-routing.vite-config.test.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/src-app/mfe_packages/widgets-fixture-a/src/shared-deps.vite-config.test.ts",
+      "git_blob_sha": "2ba6b6320091e49eca1e034ed9f7f8dfb298706c",
+      "sha256": "c35f023681381db5ca6c95aad981b1c73adac4859204f858ac8cd7b31d0a6dde",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/src-app/mfe_packages/widgets-fixture-a/src/shared-deps.vite-config.test.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/src-app/mfe_packages/widgets-fixture-a/src/vite-env.d.ts",
+      "git_blob_sha": "11f02fe2a0061d6e6e1f271b21da95423b448b32",
+      "sha256": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/src-app/mfe_packages/widgets-fixture-a/src/vite-env.d.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/src-app/mfe_packages/widgets-fixture-a/vite.config.ts",
+      "git_blob_sha": "e78b3e4ef3e0c2bcb1ee8e305d33ff20ba435808",
+      "sha256": "b453baa24a4feb21510648caff8ae7721baac9caaad5fefb2fe8372a329c2def",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/src-app/mfe_packages/widgets-fixture-a/vite.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/src-app/mfe_packages/widgets-fixture-a/vitest.config.ts",
+      "git_blob_sha": "8af87a7c689b1490060b184df52c5fc6a84ce95c",
+      "sha256": "ca48999f29f0284ac1bd023a33cf30863387ba9c536ae61babe885af47c1dab7",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/src-app/mfe_packages/widgets-fixture-a/vitest.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/src-app/mfe_packages/widgets-fixture-b/package.json",
+      "git_blob_sha": "3a78c3492570e6934721a1a01fe810f041b8ce29",
+      "sha256": "4e56ba9f52eae44e96986aff54e7cc23fe1c9b4272c9187e3ae959732786e39b",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/src-app/mfe_packages/widgets-fixture-b/package.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/src-app/mfe_packages/widgets-fixture-b/src/vite-env.d.ts",
+      "git_blob_sha": "11f02fe2a0061d6e6e1f271b21da95423b448b32",
+      "sha256": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/src-app/mfe_packages/widgets-fixture-b/src/vite-env.d.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/src-app/mfe_packages/widgets-fixture-b/vite.config.ts",
+      "git_blob_sha": "0dee0cde95adfe7d7e699dbdf2ee5e9c7cc1a50f",
+      "sha256": "483ea65506671afa38760981e53ebe808ce397c6ebcd10123d78216e635a6322",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/src-app/mfe_packages/widgets-fixture-b/vite.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-mfe/src-app/vitest.mfe.base.ts",
+      "git_blob_sha": "93181d3a5610c24eb59a16857e1b5269365e811f",
+      "sha256": "76171d24a421ac474e78cd09e5adb12fea83d1aaa732af717d80653d9482100f",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-mfe/src-app/vitest.mfe.base.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/README.md",
+      "git_blob_sha": "785dedae2a10c9bc74ba5ea063d1ef40ccec7399",
+      "sha256": "41fa3e94c9706b891229530539965253fc186d12778f970e1cf392705362a7f2",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/README.md"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/content-hash.test.ts",
+      "git_blob_sha": "a6fdd10a0a336ed0197ce69c2f65446e0f273a35",
+      "sha256": "7f6412adbb9950d743f3c40abaeb2db5cab54b4ab11bb432e5756479e9cd9b03",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/content-hash.test.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/expose-css-guard.test.ts",
+      "git_blob_sha": "3a2ab4eb67085a84b0136621890fd64d9464acc5",
+      "sha256": "11a27dcfc97903cc2ade894e5cbfa1f035241fe0394a224336b602b6e121918a",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/expose-css-guard.test.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/exposes-from-root.test.ts",
+      "git_blob_sha": "163a5cd0b751ae9a7716d4fe69c4beebf812a88e",
+      "sha256": "1b139dcb5efced9dd893acbd76f4121d88d64cb94bd61c0ff7c2f91f28db422e",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/exposes-from-root.test.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/exposes-from-root/index.html",
+      "git_blob_sha": "c7c848392d995c7e4b5292c2e631be72d3f5b719",
+      "sha256": "04755656467ca0a65a5199cfc01865958e22b4afc8e0f19610856a7a5fd7ddc0",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/exposes-from-root/index.html"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/exposes-from-root/mfe.json",
+      "git_blob_sha": "71b48a1f0df20ec7a48221a7e254f318b4d51f37",
+      "sha256": "a2cccad680de8c642bf8bc51aee41c281a2c8cc6470c9d7e9f2f0d786f0f0f2a",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/exposes-from-root/mfe.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/exposes-from-root/src/greeting.js",
+      "git_blob_sha": "ff828b241c1de3a96e22f2162e57b8e9693c2d28",
+      "sha256": "1119e5f424cdc3c1ffc3a8afe917c7c9a1aac8ab1ba0a8b7e997689dad2c4fa3",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/exposes-from-root/src/greeting.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/exposes-from-root/src/lifecycle.js",
+      "git_blob_sha": "83d20ffa968d920834cc1cf722fb0702aab76b4f",
+      "sha256": "355f36b18de77caad60d757022646952dd1c9188fce558015d734297813e35f2",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/exposes-from-root/src/lifecycle.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/exposes-from-root/vite.config.mjs",
+      "git_blob_sha": "81ed3eb62082ed933609e4f6d37e05f5dcb5748f",
+      "sha256": "a8a9ee966533d3d0b7372d6c8ec637955405f85fff0fc5831e42b1a7f580b2a9",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/exposes-from-root/vite.config.mjs"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/index.html",
+      "git_blob_sha": "c024a35fb3e681c2a347d6beb589390368781ecd",
+      "sha256": "96bd5327254e665af3eacd0f7dc27e983debd3d75f5ce2f29cfcd5752bc8efff",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/index.html"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/mfe.json",
+      "git_blob_sha": "5efc570b50900486e4c8b897b0fada1d72f43e9b",
+      "sha256": "dc07893ff046c2a68573065f3beebdc1849eb3b2cf89f49705f5daf416d3a8b1",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/mfe.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/reused-plugin-builds.mjs",
+      "git_blob_sha": "dad9366d5bdcbfdb5547ad2a241bbd036b2f1a83",
+      "sha256": "3ef51d6906e37fa408e3759f6f1a6cbace1a00f2a31e823d159f136c67c01a66",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/reused-plugin-builds.mjs"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/common.css",
+      "git_blob_sha": "2bea3639083d35ecab8144348fbc59d1f1c0daec",
+      "sha256": "4475044e5e551853afa6ad5f36aa237db8933fe9015df1f4df5e8aca79cd37a1",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/common.css"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/empty.css",
+      "git_blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/empty.css"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/kit-toaster.js",
+      "git_blob_sha": "db2aba885ee6ed933b88ea232e36092b5bf8ae8d",
+      "sha256": "9aeb42a0bcbc7ecc356c843ad8d85ef777551a0742a806c6266f7ac4cdf922e8",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/kit-toaster.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/kit-zero.css",
+      "git_blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/kit-zero.css"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lazy-dep.css",
+      "git_blob_sha": "1abafc1b3490946747c093d2ba4ee42418355e5c",
+      "sha256": "8121291067a179c3795aaf1fe0c399c8ea1c0c9a4b58e81f8feaa112706fa29d",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lazy-dep.css"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lazy-dep.js",
+      "git_blob_sha": "295407122b300f20fbdb609c341e080993f674e7",
+      "sha256": "6c42323d308b325c219cb32df2982b7216e30658c7c69ca5e250355050088b65",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lazy-dep.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lazy-other.css",
+      "git_blob_sha": "8b5c7d81f709e30057a4f409fb0b3951d8997850",
+      "sha256": "89176ea3878ef586d01b201a19462df5613d99169b76dce1e9f1af85ff70e515",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lazy-other.css"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lazy-other.js",
+      "git_blob_sha": "aa08c2b9a00b0786f13aaa7bfd5d52eda200b15f",
+      "sha256": "e1b1c24bdc6137e11b851068c7869b803322f348a9b07a21284c902f489daa68",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lazy-other.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lazy-panel.css",
+      "git_blob_sha": "5cc4e62db71b11e39577ec0a1185f81b4620b6f6",
+      "sha256": "184cbda3b4867742f666247452c1138b638e23f10bc4099bcb10ebcbfbd4d63b",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lazy-panel.css"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lazy-panel.js",
+      "git_blob_sha": "471b1736f8e7eede96ffa2240f6662aca616c45f",
+      "sha256": "03def40f29fe6138d594e836aad1ffcff7b2f1391251df7960c1e912911a4485",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lazy-panel.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lazy-plain.js",
+      "git_blob_sha": "d243c39b2aa6784a6e5dba6913968b39f78f7a28",
+      "sha256": "b5c7bb173ea5530edd937d624e6437d3f42e6942513c71bb22649abc89c1194f",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lazy-plain.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lazy-toaster.js",
+      "git_blob_sha": "2b023be69b748dbcfbf65d7331cbb1099f156432",
+      "sha256": "35bccf4a593e64079ce99cc313a1437b237b33696b78d47d1027d6702c23b428",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lazy-toaster.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-a.js",
+      "git_blob_sha": "99cf48e3395aa3fb3dbbf3f7bb2830e6f52f0dd4",
+      "sha256": "fa9cbdcc2ad63b1fbfe442b6ba8ef9e19a1e1ff5a9d9413ce2e037244a7c8f31",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-a.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-b.js",
+      "git_blob_sha": "e599d7d4eae72f62550c1610e6aab6e2df9c11a6",
+      "sha256": "0948453d89f0eb8f6cdbbb9da2f395cacaf80f121ca3c87c9408d7c0140c8aec",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-b.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-c.js",
+      "git_blob_sha": "aa134e792a068e01de7bcc4ce4e7f632fab6e2a9",
+      "sha256": "94e8f33c5eda10fd594bb477c32d9ce36778d3bb4a685cd03250397e2a3b7c24",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-c.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-d.js",
+      "git_blob_sha": "cb165a1e52bc07444248ccf28493cf6fc96bc7be",
+      "sha256": "2647e58a1440029cd9272adcbf8d5045c5d7076874298039c25b61c8787dec2d",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-d.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-e.js",
+      "git_blob_sha": "6cfa2ce1fe8085ea61e026f4bc665c55eff3dc58",
+      "sha256": "62fb0e9fbb7255963d09c0c1c7099b4d3bb5df94ef53b60c0f8364fa8f3b0d5d",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-e.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-f.js",
+      "git_blob_sha": "5d37103f5d21c2514a4830f545000e17e3e1b760",
+      "sha256": "f28e194b0e979a3469c1800e9afa320650c9642119da9a1d81641eaf99c15048",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-f.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-g.js",
+      "git_blob_sha": "48bc8d9b9869ef4c6c932a26094498140a2ecbf2",
+      "sha256": "3a315a882f4ef2e23746e70620682139221181b9045d1bec613290148661c32e",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-g.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-h.js",
+      "git_blob_sha": "835dce8ef8a4a92681fbddd69153afe2b910833e",
+      "sha256": "89bb4d57be38110a8211e6f344fe49d45d6f87bee7f29b781e173357f02e4fad",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-h.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-i.js",
+      "git_blob_sha": "835dce8ef8a4a92681fbddd69153afe2b910833e",
+      "sha256": "89bb4d57be38110a8211e6f344fe49d45d6f87bee7f29b781e173357f02e4fad",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-i.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-j.js",
+      "git_blob_sha": "e6b39661e90828e04019bb0e90ca829a1b5ba4a4",
+      "sha256": "7e646cb19d8961643629b40f2166bc6485dce5c869fcda79c097f9e32556a338",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-j.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-k.js",
+      "git_blob_sha": "cda07c61f10b148fb351ee8a07dea7e0e59dc694",
+      "sha256": "53512e1976ed96c3242ffc23a58f00e29e612387026a536f731c77551caa9a7c",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-k.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-l.js",
+      "git_blob_sha": "70355d3da979269acba8ee0a91358865eb9e1e04",
+      "sha256": "f37c2ce2c0516f9f82019d989ed29343ade9a792604dcfb55ffc1c8a3db562f5",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-l.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-m.js",
+      "git_blob_sha": "c83766ce2cccf0b7f447a505e75095b25b6ade74",
+      "sha256": "b12b0af511b96c73f50eed1de151c6feb2b1e9d4234d803458c4b1f6856d6292",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-m.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-n.js",
+      "git_blob_sha": "c773a56dc92a5d27801d8aca961da0f4001cfc25",
+      "sha256": "05e6ca37cd528b8fa949fc02893fd887dd4a4ca8b66d09cc93ef87c615b42e9e",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-n.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-o.js",
+      "git_blob_sha": "e14fa301b6befbee0e57b808fe0e704dfe1a0db8",
+      "sha256": "bb659eb22ff5ce431c9e8f48e09def831e1cd81627b7496f3b981b93bf79d5aa",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-o.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-p.js",
+      "git_blob_sha": "3afbac28dd173e34c08cdbfe7198ff7607dc0427",
+      "sha256": "b1e2e864ab92d5b28cccfcc1140393d061416d0859c59cc3c56b8401b52dc7e4",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-p.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-q.js",
+      "git_blob_sha": "4a909a8d72ec322f3fea20be1bb2fb374879042f",
+      "sha256": "530084f26c42b30f555310e48266cac968c9432e1f7b827e2c5e54b01520d5ca",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-q.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-r.js",
+      "git_blob_sha": "870f2c46495c38a7b8c55a153717c606e9208eae",
+      "sha256": "96ac51bc3465a6981988c0244e7ac5792673afd64acbf30521f0a9e322289578",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-r.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-s.js",
+      "git_blob_sha": "48bc8d9b9869ef4c6c932a26094498140a2ecbf2",
+      "sha256": "3a315a882f4ef2e23746e70620682139221181b9045d1bec613290148661c32e",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-s.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-t.js",
+      "git_blob_sha": "c09bbb9511a15bde66f5eb2b370b8e65e201f53b",
+      "sha256": "f2d1c239449f1a2434cf69e55b09d6818c519dd5d990d3ebdac377e455e09d92",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-t.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-u.js",
+      "git_blob_sha": "477d50c3afaa4eced9b4eb1e5b758ef5ad2b035b",
+      "sha256": "1286a7a5225ec34e0a0c87f35d78f3965f07127adcdeb375a4a2c72aea6ebc7c",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-u.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-v.js",
+      "git_blob_sha": "477d50c3afaa4eced9b4eb1e5b758ef5ad2b035b",
+      "sha256": "1286a7a5225ec34e0a0c87f35d78f3965f07127adcdeb375a4a2c72aea6ebc7c",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-v.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-w.js",
+      "git_blob_sha": "c625fe1bdff45ac1cd1445b21b7077b17998883d",
+      "sha256": "894002ce0a35fb67e8c7833602e57611782a5c4cdb138530ffed37f7d2cc7356",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-w.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-x.js",
+      "git_blob_sha": "3a9eebaead949db17e22b3650a6c309cfda47060",
+      "sha256": "d4217c6783a5f8d78586cb7a7c65f8ce7724b5e8ffc03bf2e39d867bb2613180",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-x.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-y.js",
+      "git_blob_sha": "e75e5e6242b78872db813e6e3ad27336c6363dac",
+      "sha256": "6b8250a7846fbfafd9da0da2cbd9b930d0c255d1b0fe86c2a7e3d38682f1fa60",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/lifecycle-y.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/own-a.css",
+      "git_blob_sha": "ed8609a4a1d567291e1aa56dbff1505fd6f67a15",
+      "sha256": "2590de71c25892ba08d1297a44d1a656e92f047da1a8df5353fd923a07db2820",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/own-a.css"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/own-b.css",
+      "git_blob_sha": "b0d98df26cd3f0ad09164c37027a182c61e4d2d1",
+      "sha256": "70f12005aa9c3127a7c869fa5ee466d7d8f94c3d11d34ff9cf83713eee795938",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/own-b.css"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/own-o.css",
+      "git_blob_sha": "381479f736ee65a408599ddac8cd251825254603",
+      "sha256": "c87d86fee4a41660f872c545466a68d7926eac13f230f25b3a33127200601d62",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/own-o.css"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/raw-only.css",
+      "git_blob_sha": "41556b7e463d4968279f25c2124ae4f3415ba1f2",
+      "sha256": "31633b4a89c701cf25ce4aa951566657c939063880c9c4f81a687592e0bd33d4",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/raw-only.css"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/shared-badge.js",
+      "git_blob_sha": "1afba7f31c5895f4db147b09b8aae7cf13b901d4",
+      "sha256": "61f9a73b1273dc3f421ef316a9e936b6b2acf1aa61e1506221c7228fc1595ee4",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/shared-badge.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/shared.js",
+      "git_blob_sha": "36501db27e36aa14594cddfdd835e7e60610b398",
+      "sha256": "eccc02b4b77474583af7b897f54d233fe1212abcc905f2587cfe10307a6558ab",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/shared.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/shared.module.css",
+      "git_blob_sha": "3a981956873168d863e5b2db5060d5d58d5ca1c8",
+      "sha256": "058bb020dfce5805073ab97731463d342732251e9fa60aab7712d6bc2153b0b2",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/shared.module.css"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/shared.pcss",
+      "git_blob_sha": "3b53181d8c0f0cc9b061a721fd735a3b3bc0fb37",
+      "sha256": "e71bfe553b74d5456d1e8491cff351cb8e125090a599e4ba899cddf15c7383ef",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/shared.pcss"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/theme-l.css",
+      "git_blob_sha": "2f4b62d32a584587ee2d91fc07fc3248791ede3d",
+      "sha256": "fd37f17ae758d71c6b8a8e26c79f69f8052cf6915b2064ca35536462770507ba",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/theme-l.css"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/theme-m.css",
+      "git_blob_sha": "318778261c2c7f15dec8c7d327e1f9d10ce82c70",
+      "sha256": "91c045027838babf9d2cb59a30c31b556a40a8ab5878e13c36862a384583f7d0",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/theme-m.css"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/theme-n.css",
+      "git_blob_sha": "942eae859911569c6d0c224caa5fd503acef9626",
+      "sha256": "4bc465e9de43e3c81770d4ea70fde2b2608c290d4dea88b5e52749fbd94ee956",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/theme-n.css"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/theme-n.js",
+      "git_blob_sha": "b12c5117f90e4401a81e8206bb753514242c3702",
+      "sha256": "7609135b30004650722a54ae552a2a1e1ce044cd6c8c02a3ddb7c5e04344ee87",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/theme-n.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/theme.css",
+      "git_blob_sha": "daf4c13cb3005bd89a7e72910b4cb2b91bd1c342",
+      "sha256": "0fc1a3d877ed8d3ed17b639104691ab81ec890a4dc3df725c348096baa2cc63b",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/theme.css"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/toolbar.js",
+      "git_blob_sha": "4fa0e5c3606f8649ca3e3de9f2fa89fc762203c5",
+      "sha256": "504574e28cd16659a4a62252296bbff7d0eb1e14d1a3732df8d86d6ff14e8ff5",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/toolbar.js"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/src/url-only.css",
+      "git_blob_sha": "aca019fb70f1487767b2b79962c4836485c1dca2",
+      "sha256": "dfd112673daebaf8a4175b77f18c50430f858ce9ba2d53f187ffb93a6bdf8c0f",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/src/url-only.css"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/fixtures/shared-chunk-css/vite.config.mjs",
+      "git_blob_sha": "8c6d0d3fa66ab6c3701515e713b88b29be73ad90",
+      "sha256": "c93c8593b3f18b5fafcb6637da6fa0592e2c838037e8bde332fbb447b0f0cd4c",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/fixtures/shared-chunk-css/vite.config.mjs"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/lazy-import-transform.test.ts",
+      "git_blob_sha": "09bc8e2ae1d6ad20a4608ef4eb09693ef983c77f",
+      "sha256": "2e047256dd939f8bb172a6135ee5d5ff14b00817a082f5e3e7282abf7f7c2bf4",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/lazy-import-transform.test.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/shared-chunk-css.test.ts",
+      "git_blob_sha": "c9624e4e5dc2df00bf3f9c8b35b1aa1e0b1e2d70",
+      "sha256": "ae62dbaf3725a30fb0fc990f1c2037482e47923e95499c4e525caff5796b9da0",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/shared-chunk-css.test.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/shared-dep-cycle-guard.test.ts",
+      "git_blob_sha": "2590dd96ce3d219cade034656b962c31ee0ee10e",
+      "sha256": "9ca667a848a9d5f16e409071be1544b7a7bd7213e453412f0492ed5b01016f41",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/shared-dep-cycle-guard.test.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/build/shared-import-guard.test.ts",
+      "git_blob_sha": "da612f3f995eeedd0eb00df7d5a797cade0821ae",
+      "sha256": "9168daf5b99107b74c19669f3270bf0e9f28cf78d4fc395703aa04d9a0293a93",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/build/shared-import-guard.test.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/mfe-build-failure-message.test.ts",
+      "git_blob_sha": "17858209802e10915c4758af5103244cde377a5b",
+      "sha256": "cd7ce8f324e06e7eb85a1e214de8295b08b444999d332993399a4821216581d5",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/mfe-build-failure-message.test.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/mfe-manifest-gts-ids.test.ts",
+      "git_blob_sha": "31ed456bbc2879b4e2b1b227327ae3859cc2d4b0",
+      "sha256": "2bac60997be024f98bc6adfa3ce4fd697982470d4943cde6793dc11c2547d8c0",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/mfe-manifest-gts-ids.test.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/__tests__/vitest-shared.test.ts",
+      "git_blob_sha": "1c0f064aec8fe412faf9df6dc51fc1af9c8339b6",
+      "sha256": "c21a79cee674bd553e596b5688d9b8eba3cfaf79d512481f482d703d68111402",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/__tests__/vitest-shared.test.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/frontx-template.json",
+      "git_blob_sha": "84b13cc823c536779be81b982fe882ea4df9a2e9",
+      "sha256": "87f05d912fa0e6653ec341d33f2ee22b23e0f83b97a950356459b259be65cf56",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/frontx-template.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/package-lock.json",
+      "git_blob_sha": "8ed403b04b96e2513278dfe788b71774d90461a0",
+      "sha256": "8e460d644f8d6468f6456cf038fc7e6bfcaf86acbf5e7d36260c696dd805bd2e",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/package-lock.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/package.json",
+      "git_blob_sha": "a234ad97a417900bf8eada3e2fcc103df43406d4",
+      "sha256": "e7f36982458bd85ae5ca6f3ac3d1cc3bda3899a4eb1ec12df430cdae5ac16404",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/package.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/packages/auth/package.json",
+      "git_blob_sha": "ffda656f1e269451b0007ac33538118c1b81a7f9",
+      "sha256": "025b76c8ea636913a906f6d57b10204ae0285d5925da84846b522980bd25a4ac",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/packages/auth/package.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/packages/framework/__tests__/buildGuard.test.ts",
+      "git_blob_sha": "64afb79a7a62a858857a2e5d3e7f66aba22c9406",
+      "sha256": "d6e532d378c47971e4607509c927fa5d9a29b192715f90851c56b5e53fb9a1f3",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/packages/framework/__tests__/buildGuard.test.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/packages/framework/package.json",
+      "git_blob_sha": "0cc461b22a07c852d03ede544c53e64be44f880e",
+      "sha256": "d1e70898c140e48258c45f6fed105fa565588f7d707971281b49a9f58e2524c9",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/packages/framework/package.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/packages/framework/vitest.config.ts",
+      "git_blob_sha": "5f84421cf5a2b418ac4a695a01e0646fbee12f50",
+      "sha256": "40f9a05348b838dd1c7018164168f0ce84bccc3d4405a24fc52115dfe3114c90",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/packages/framework/vitest.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/packages/i18n/package.json",
+      "git_blob_sha": "90e679c587566cc5765e6ae873442af77939aed1",
+      "sha256": "4cf95cae3063b4972af687d05a114ac521f946b3ad2ffef5f78768974269aa74",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/packages/i18n/package.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/packages/i18n/vitest.config.ts",
+      "git_blob_sha": "5f84421cf5a2b418ac4a695a01e0646fbee12f50",
+      "sha256": "40f9a05348b838dd1c7018164168f0ce84bccc3d4405a24fc52115dfe3114c90",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/packages/i18n/vitest.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/packages/react/package.json",
+      "git_blob_sha": "a8a11f0ec2e30b2f12c7a8a611de7cf8f78a7b0b",
+      "sha256": "3686eb474fad23fba0a23d431a7097f0c1a3266299f17eda5d025580ce33d415",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/packages/react/package.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/packages/react/vitest.config.ts",
+      "git_blob_sha": "e3e780b43da1106428fd57bff5173cfc183cf75c",
+      "sha256": "c8a75a4fa683154d19fe720bfc372658e976e3cab4f9d8923a9e09121c7691b1",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/packages/react/vitest.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/packages/state/package.json",
+      "git_blob_sha": "744508c6669dfaf64fa60cdd402b287b0c001fc4",
+      "sha256": "126f039fea2e82fe9f0c8591aa4dae39a231297bdb3de76947c869a0147f9fc4",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/packages/state/package.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/packages/state/vitest.config.ts",
+      "git_blob_sha": "5f84421cf5a2b418ac4a695a01e0646fbee12f50",
+      "sha256": "40f9a05348b838dd1c7018164168f0ce84bccc3d4405a24fc52115dfe3114c90",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/packages/state/vitest.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/packages/studio/package.json",
+      "git_blob_sha": "a65aaf46182909f957821d52fd1f2e4fe84b1ef9",
+      "sha256": "58ac82f0d46c5733345c60a52499b91ce6073ae65f56096406c5ba7b28157d97",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/packages/studio/package.json"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/packages/studio/vitest.config.ts",
+      "git_blob_sha": "62c9ef5635af8d0b857fd51ef1a922ce1757537a",
+      "sha256": "5ab82e49d2985968afd0261e2634331732802a109d096910e29b02ee295438b5",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/packages/studio/vitest.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/public/vite.svg",
+      "git_blob_sha": "55cd915691d740a2adcc69f49f3a7348041d13f3",
+      "sha256": "367231ddeaeb2865e4e2a527c0a5f6b36bfaa03249435781fc22cbc427ceb424",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/public/vite.svg"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/scripts/build-mfes.ts",
+      "git_blob_sha": "5418f2aa2de8b48535f7e5ac17affe56aafef3cb",
+      "sha256": "5201de9a2d124022b8d0302d61ae93ce79d5c9ee080d4148b07936448057cc11",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/scripts/build-mfes.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/scripts/generate-mfe-manifests.ts",
+      "git_blob_sha": "f2e656b374718880d32dd659a023ee51fc0f39ef",
+      "sha256": "c20e48c6967d97d65e3c926c6863b462cc78d63656d958ea3f8c3373b47812a1",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/scripts/generate-mfe-manifests.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/scripts/layout-dist.ts",
+      "git_blob_sha": "a60cbd346adbd9ee64d6197c331658615d81e880",
+      "sha256": "afde332dc3f97dd2f5a42a012301fe6afe558d6b7ce212dee1e019b3b3fe5fbb",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/scripts/layout-dist.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/scripts/lib/mfe-tools.ts",
+      "git_blob_sha": "acbe597d45cec0119ed32973ac88ca66af9cd064",
+      "sha256": "bdd31cd41f995bd21278f1b437696322d5e05036d64af5d7ef91f147d186aeea",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/scripts/lib/mfe-tools.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/src/build/mf-gts.ts",
+      "git_blob_sha": "481e73788e8eba4e37a79d264c83974be7fee03f",
+      "sha256": "47814f2f5730940a5b7fb348beeb8e4be9bf2f93819a9063873a5923574c74ca",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/src/build/mf-gts.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/src-app/app/mfe/bootstrap.ts",
+      "git_blob_sha": "5b7ab1235ee83a93238f82cda5d690efc6090663",
+      "sha256": "ada5075d740005fcbb77815a6ba0b0e3a4b94b2d4d847ce3e72b2c7a94b35ac2",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/src-app/app/mfe/bootstrap.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/src-app/vite-env.d.ts",
+      "git_blob_sha": "11f02fe2a0061d6e6e1f271b21da95423b448b32",
+      "sha256": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/src-app/vite-env.d.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/src-app/vitest.config.ts",
+      "git_blob_sha": "122f2deeb92a9155b72a482e54d72d9c234347e6",
+      "sha256": "4372939142eee76e8dfb0880112a9d90e7d1f52358a9971d28f7cc8dc620d3cd",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/src-app/vitest.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/src-app/vitest.mfe.base.ts",
+      "git_blob_sha": "c02c0d94dd6611cb838bb66d809d02fe3fe53f3c",
+      "sha256": "b592370607a1219238bd7974aa3cf0aed8d7f3c51af1bee49e2b2d8cf3a64937",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/src-app/vitest.mfe.base.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/vite.config.ts",
+      "git_blob_sha": "228d2c8a01d36fa80f197fae641805e0309ee1bf",
+      "sha256": "71d3b92514313527ea9cc38afdfb0bf69358cb2d515eb2cdbb0927367695fde1",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/vite.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/vitest.config.ts",
+      "git_blob_sha": "ddd25c6db4a7fcc08da154071e85b93ce4fd2e1b",
+      "sha256": "be4f12dd439efb0025e598cfc0f9d4a3fc895ddf27d160789793fb9fe7bb81c9",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/vitest.config.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/vitest.setup.ts",
+      "git_blob_sha": "3bbaab411f4e471641676b250a3611a0cadb18de",
+      "sha256": "6ac6ea6b58fa47699fc197ac915513f5fb5981cc280cab2d460e0b93064d44a3",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/vitest.setup.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "template-shell/vitest.shared.ts",
+      "git_blob_sha": "578d90d61c9306390537b5e8d44f369fa5265fd3",
+      "sha256": "37b2ac218a5aee388ddf0142413c53f087940fc2634f6086248bea04b08a6e00",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/template-shell/vitest.shared.ts"
+    },
+    {
+      "repository": "constructorfabric/gears-frontx-templates",
+      "commit": "764d14d3b21fc7089320dfb7a25b56f28952737c",
+      "path": "vitest.config.mjs",
+      "git_blob_sha": "016be9948faae50f734faf09cdb7fa79c8a54b25",
+      "sha256": "4feeeaf6354018947683dc031c1d23113a4e8ecef0300e69811f76ee2c10d6ca",
+      "url": "https://github.com/constructorfabric/gears-frontx-templates/blob/764d14d3b21fc7089320dfb7a25b56f28952737c/vitest.config.mjs"
+    },
+    {
+      "repository": "virtuozzocore/vhp-frontend",
+      "commit": "583cd4bbdf713f691762737e5172d43d57ea91ab",
+      "path": "pnpm-lock.yaml",
+      "sha256": "9dacd20529b75449dee3229c7946622f54df6b2e721cf6fb67963b73ac18a240",
+      "url": "https://bitbucket.org/virtuozzocore/vhp-frontend/src/583cd4bbdf713f691762737e5172d43d57ea91ab/pnpm-lock.yaml"
+    },
+    {
+      "repository": "virtuozzocore/vhp-frontend",
+      "commit": "583cd4bbdf713f691762737e5172d43d57ea91ab",
+      "path": "package.json",
+      "sha256": "07992a2e8805c1787bb2ce137bd04bbdf45b7bf53225b103e69813b91ae7690a",
+      "url": "https://bitbucket.org/virtuozzocore/vhp-frontend/src/583cd4bbdf713f691762737e5172d43d57ea91ab/package.json"
+    },
+    {
+      "repository": "virtuozzocore/vhp-frontend",
+      "commit": "583cd4bbdf713f691762737e5172d43d57ea91ab",
+      "path": "AGENTS.md",
+      "sha256": "1f14ccb33b7448799079f23e32d1aa4b5daef2293fcfa3b2e34e5850f551ea82",
+      "url": "https://bitbucket.org/virtuozzocore/vhp-frontend/src/583cd4bbdf713f691762737e5172d43d57ea91ab/AGENTS.md"
+    },
+    {
+      "repository": "virtuozzocore/vhp-frontend",
+      "commit": "583cd4bbdf713f691762737e5172d43d57ea91ab",
+      "path": "bitbucket-pipelines.yml",
+      "sha256": "297b86ad4c5337bad313ea3d3dd63f27040a943738af92bcd50ee4eae9f82bff",
+      "url": "https://bitbucket.org/virtuozzocore/vhp-frontend/src/583cd4bbdf713f691762737e5172d43d57ea91ab/bitbucket-pipelines.yml"
+    },
+    {
+      "repository": "virtuozzocore/vhp-frontend",
+      "commit": "583cd4bbdf713f691762737e5172d43d57ea91ab",
+      "path": "apps/platform/project.json",
+      "sha256": "ef53ed6dcd651275f5f532e6ee6b8589ce2939337296bf133cd2c66f7ae3d403",
+      "url": "https://bitbucket.org/virtuozzocore/vhp-frontend/src/583cd4bbdf713f691762737e5172d43d57ea91ab/apps/platform/project.json"
+    },
+    {
+      "repository": "virtuozzocore/vhp-frontend",
+      "commit": "583cd4bbdf713f691762737e5172d43d57ea91ab",
+      "path": "apps/platform/vite.config.ts",
+      "sha256": "31947a847055424438e98272b6689b565ffb7007e881eb7d615757065f19775d",
+      "url": "https://bitbucket.org/virtuozzocore/vhp-frontend/src/583cd4bbdf713f691762737e5172d43d57ea91ab/apps/platform/vite.config.ts"
+    },
+    {
+      "repository": "virtuozzocore/vhp-frontend",
+      "commit": "583cd4bbdf713f691762737e5172d43d57ea91ab",
+      "path": "apps/tenant-management-mfe/project.json",
+      "sha256": "8f71a90a115719b5398a066ed1640c3e25b10f29f6b0db99af75e8e84eacba3f",
+      "url": "https://bitbucket.org/virtuozzocore/vhp-frontend/src/583cd4bbdf713f691762737e5172d43d57ea91ab/apps/tenant-management-mfe/project.json"
+    },
+    {
+      "repository": "virtuozzocore/vhp-frontend",
+      "commit": "583cd4bbdf713f691762737e5172d43d57ea91ab",
+      "path": "apps/tenant-management-mfe/vite.config.ts",
+      "sha256": "0302c47651fca88f5bb192f80bc2304807fdc93ee4040f21debccf6993320df5",
+      "url": "https://bitbucket.org/virtuozzocore/vhp-frontend/src/583cd4bbdf713f691762737e5172d43d57ea91ab/apps/tenant-management-mfe/vite.config.ts"
+    },
+    {
+      "repository": "virtuozzocore/vhp-frontend",
+      "commit": "583cd4bbdf713f691762737e5172d43d57ea91ab",
+      "path": "apps/platform/lib/mfe-manifests-generator.ts",
+      "sha256": "ff93df2dc87a1220072249dd6e760cad68f9ec585e81f4ab9dc1db418f9954c1",
+      "url": "https://bitbucket.org/virtuozzocore/vhp-frontend/src/583cd4bbdf713f691762737e5172d43d57ea91ab/apps/platform/lib/mfe-manifests-generator.ts"
+    },
+    {
+      "repository": "virtuozzocore/vhp-frontend",
+      "commit": "583cd4bbdf713f691762737e5172d43d57ea91ab",
+      "path": "apps/platform/lib/vite-plugin-mfe-tools.ts",
+      "sha256": "340d96dfb4b0886fe03c10c6938a39906440f20919b560cd23d21d35157bdaeb",
+      "url": "https://bitbucket.org/virtuozzocore/vhp-frontend/src/583cd4bbdf713f691762737e5172d43d57ea91ab/apps/platform/lib/vite-plugin-mfe-tools.ts"
+    },
+    {
+      "repository": "virtuozzocore/vhp-frontend",
+      "commit": "583cd4bbdf713f691762737e5172d43d57ea91ab",
+      "path": "apps/platform/src/app/mfe/MfeBootstrapContext.tsx",
+      "sha256": "47c1be4c183d546bdd5c90e813b474389b74465bdca49f806be05638557c067f",
+      "url": "https://bitbucket.org/virtuozzocore/vhp-frontend/src/583cd4bbdf713f691762737e5172d43d57ea91ab/apps/platform/src/app/mfe/MfeBootstrapContext.tsx"
+    },
+    {
+      "repository": "virtuozzocore/vhp-frontend",
+      "commit": "583cd4bbdf713f691762737e5172d43d57ea91ab",
+      "path": "apps/platform/src/app/mfe/bootstrap.ts",
+      "sha256": "86fa92914f096225850e47a0c58129a77725d8c179f4d1ba9f718821b26ee3a9",
+      "url": "https://bitbucket.org/virtuozzocore/vhp-frontend/src/583cd4bbdf713f691762737e5172d43d57ea91ab/apps/platform/src/app/mfe/bootstrap.ts"
+    },
+    {
+      "repository": "virtuozzocore/vhp-frontend",
+      "commit": "583cd4bbdf713f691762737e5172d43d57ea91ab",
+      "path": "packages/tooling/package.json",
+      "sha256": "9348a38f1ddacbbe85819690a8e03bda191bbb30c46402b273323966c3053803",
+      "url": "https://bitbucket.org/virtuozzocore/vhp-frontend/src/583cd4bbdf713f691762737e5172d43d57ea91ab/packages/tooling/package.json"
+    },
+    {
+      "repository": "virtuozzocore/vhp-frontend",
+      "commit": "583cd4bbdf713f691762737e5172d43d57ea91ab",
+      "path": "packages/tooling/src/vite/mf-gts.ts",
+      "sha256": "09f6c56389370d362b2235434a0d1d4cfeae70a3da4ebb21edccdbb508080614",
+      "url": "https://bitbucket.org/virtuozzocore/vhp-frontend/src/583cd4bbdf713f691762737e5172d43d57ea91ab/packages/tooling/src/vite/mf-gts.ts"
+    },
+    {
+      "repository": "virtuozzocore/vhp-frontend",
+      "commit": "583cd4bbdf713f691762737e5172d43d57ea91ab",
+      "path": "packages/tooling/src/vite/config.ts",
+      "sha256": "138be2abdd3b56f728178ae2acb11a5311eb29341bc78b765e0bf4e54850e07f",
+      "url": "https://bitbucket.org/virtuozzocore/vhp-frontend/src/583cd4bbdf713f691762737e5172d43d57ea91ab/packages/tooling/src/vite/config.ts"
+    },
+    {
+      "repository": "virtuozzocore/vhp-frontend",
+      "commit": "583cd4bbdf713f691762737e5172d43d57ea91ab",
+      "path": "patches/@module-federation__vite@1.15.5.patch",
+      "sha256": "356e87b99f14d5ed9ea82eea6889f6410e0b2afcbee455977cbd04954bd2f761",
+      "url": "https://bitbucket.org/virtuozzocore/vhp-frontend/src/583cd4bbdf713f691762737e5172d43d57ea91ab/patches/@module-federation__vite@1.15.5.patch"
+    }
+  ],
+  "producer_dependencies": [
+    {
+      "name": "@module-federation/vite",
+      "version": "1.20.5",
+      "gitHead": "e8e951543ae07e47e85582be8143d627fa190008",
+      "tarball": "https://registry.npmjs.org/@module-federation/vite/-/vite-1.20.5.tgz",
+      "integrity": "sha512-RUonpW3aYgmVR9DCVdUzgHBgGA2BdEy67DMgobCtOS46/G+T5Xgm4WQvFOE1f3IDIRb15TZo45rsRwrAqn1csg==",
+      "integrity_verified_before_reading": true,
+      "local_source_root": ".cf-studio/.cache/research/federation",
+      "source_files": [
+        {
+          "path": "index.js",
+          "sha256": "bfda3143c75649c5c45ec990f1259d21a71adc82621e5d272f6190d47f5dee27"
+        },
+        {
+          "path": "metadata.json",
+          "sha256": "12d75d7040ac8cca59fc754f66d6b33ac2e0b7ca9edf8c3ce31e34ecdc0b170b"
+        },
+        {
+          "path": "ssrEntryLoader-Ccr0zMrr.js",
+          "sha256": "1a7597ff27d692d72d5050423798bd3a6fe22026e83d09825c0c401b2b5b77b1"
+        }
+      ]
+    },
+    {
+      "name": "@module-federation/vite",
+      "version": "1.15.5",
+      "gitHead": "7b9a911cca6508119bf84adfef777559b7af2cef",
+      "tarball": "https://registry.npmjs.org/@module-federation/vite/-/vite-1.15.5.tgz",
+      "integrity": "sha512-TfnZPnakXRLp1237MvDl+8UWhdv3BVvryZuw6bdcXM5rPM2Wn0d1pm5dv8xaiUj0f6BkjGHG7w/5EQQ4nVp13g==",
+      "integrity_verified_before_reading": true,
+      "consumer_patch": "patches/@module-federation__vite@1.15.5.patch",
+      "local_source_root": ".cf-studio/.cache/research/federation-consumer",
+      "source_files": [
+        {
+          "path": "lib/index.cjs",
+          "sha256": "7a62cf74d6b835434d12ec16db3afb4abe96eaccd78fbdf6ba3f16d33665d587"
+        },
+        {
+          "path": "lib/index.mjs",
+          "sha256": "b889e4cc29f8723eb15dfd6f5f0ef0970b66d71c1ab4ee993ba0ba39e5541865"
+        },
+        {
+          "path": "metadata.json",
+          "sha256": "ba694dfcf5d64fa46a59d538781c72bf06e753d721645bb0c071d437e897f6db"
+        }
+      ]
+    }
+  ]
+}
