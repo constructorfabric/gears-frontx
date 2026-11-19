@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-06-04
 description: "Decides that lazily imported chunks resolve through a runtime lazy-import ABI inherited from the parent load, staying inside the same isolated graph."
 ---
