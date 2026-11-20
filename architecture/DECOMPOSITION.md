@@ -73,7 +73,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 
 ### 2.3 [GTS Default Type-System Provider](../packages/gts-plugin/architecture/features/gts-type-provider/) - HIGH
 
-- [x] `p1` - **ID**: `cpt-frontx-feature-gts-type-provider`
+- [ ] `p1` - **ID**: `cpt-frontx-feature-gts-type-provider`
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/gts-plugin/architecture/features/gts-type-provider/FEATURE.md).
 
@@ -411,7 +411,7 @@ F24 unit-format-contract         (foundation — defines the contract F5's load 
 
 **Dependency Rationale**:
 
-- `cpt-frontx-feature-mfe-loading` requires `cpt-frontx-feature-unit-format-contract`: the load path reads fetch-list documents in the contract's document format and value formats, and admits fetched shared files to the realm cache under the contract's key forms.
+- `cpt-frontx-feature-mfe-loading` requires `cpt-frontx-feature-unit-format-contract`: the load path reads the manifest's unit table and fetch lists in the contract's format and value formats, and admits fetched shared files to the realm cache under the contract's key forms.
 - `cpt-frontx-feature-mfe-isolation` requires `cpt-frontx-feature-unit-format-contract`: the realm cache's keys and entries follow the contract's key forms and value formats.
 - `cpt-frontx-feature-gts-type-provider` requires `cpt-frontx-feature-type-substrate-port`: the GTS provider implements the opaque type-substrate port the runtime defines.
 - `cpt-frontx-feature-mfe-registry` requires `cpt-frontx-feature-type-substrate-port`: the registry façade is built with the type-system provider injected through the port contract.
