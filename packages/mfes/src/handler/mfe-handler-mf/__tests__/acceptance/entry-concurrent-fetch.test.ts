@@ -1,12 +1,12 @@
 /**
- * Acceptance: for a fetch-list load, the entry module's source is requested
- * with the list document (high priority, before the list resolves), the item
- * batch is issued as soon as the list arrives, a failure of either
- * concurrent request fails the load with the request's own error, discards
- * the other outcome and issues no further request for the load, the entry
- * text is downloaded once per load and is never requested again while
- * resident, and the entry is minted and evaluated only after the shared
- * items it reaches (`inst-md-fetch-entry-concurrent`,
+ * Acceptance: for a fetch-list load, the entry module's source (high
+ * priority) and the list's missing units are requested together in one
+ * round straight from the manifest-held list, before any response; a
+ * failure of either request fails the load with the request's own error,
+ * discards the other outcome and issues no further request for the load,
+ * the entry text is downloaded once per load and is never requested again
+ * while resident, and the entry is minted and evaluated only after the
+ * shared units it reaches (`inst-md-fetch-entry-concurrent`,
  * `inst-md-concurrent-failure`).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -33,6 +33,7 @@ import { SharedDepListLoader } from '../../SharedDepListLoader';
 import { MfeLoadError } from '../../../../errors';
 import type { MfManifest } from '../../../../manifest/mf-manifest';
 import type { MfeEntryMF } from '../../../../types/mfe-entry-mf';
+import type { SharedDepUnit } from '../../../../unit-format/fetch-list';
 import {
   buildEntry,
   buildManifest,
@@ -40,7 +41,9 @@ import {
   ENTRY_ID,
   PUBLIC_PATH,
   sharedDep,
+  listOf,
   sha256Hex,
+  unitOf,
 } from '../helpers/manifest-builder';
 import { jsResponse } from '../helpers/fetch-router';
 import { stubSuccessfulImport } from '../helpers/blob-module-stub';
@@ -61,17 +64,7 @@ afterEach(() => {
 const ITEM_TEXT = 'export const r = 1;\n';
 const ENTRY_TEXT =
   'import { r } from "react";\nexport default { mount() { return r; }, unmount() {} };\n';
-const LIST_DOC = JSON.stringify({
-  items: [
-    {
-      location: 'shared/react/index.abc.js',
-      contentHash: sha256Hex(ITEM_TEXT),
-      answers: ['react'],
-      imports: [],
-    },
-  ],
-});
-const LIST_URL = `${PUBLIC_PATH}shared/react.list.json`;
+const REACT = unitOf('shared/react/index.abc.js', ITEM_TEXT, ['react']);
 const ITEM_URL = `${PUBLIC_PATH}shared/react/index.abc.js`;
 const ENTRY_URL = `${PUBLIC_PATH}assets/lifecycle.js`;
 
@@ -163,11 +156,10 @@ async function drained() {
 }
 
 /**
- * Fail the entry after the list document resolved and the load went on to
- * its item batch, but before the batch's requests are issued: the entry's
- * failure is delivered when `loadList` is entered, and `loadList` proceeds
- * only once the load has recorded it. The batch it then issues is the
- * failed load's gated one.
+ * Fail the entry after the load went on to its unit batch, but before the
+ * batch's requests are issued: the entry's failure is delivered when
+ * `loadList` is entered, and `loadList` proceeds only once the load has
+ * recorded it. The batch it then issues is the failed load's gated one.
  */
 function failEntryBeforeItemBatch(net: Net): void {
   const realLoadList = SharedDepListLoader.prototype.loadList;
@@ -180,14 +172,13 @@ function failEntryBeforeItemBatch(net: Net): void {
   );
 }
 
-function listManifest(listDoc = LIST_DOC, shared = [sharedDep('react')]) {
+function listManifest(
+  units: SharedDepUnit[] = [REACT],
+  shared = [sharedDep('react')],
+) {
   return buildManifest(shared, {
-    entryLists: {
-      './lifecycle': {
-        location: 'shared/react.list.json',
-        contentHash: sha256Hex(listDoc),
-      },
-    },
+    units,
+    lists: { './lifecycle': listOf(units) },
   });
 }
 
@@ -201,6 +192,12 @@ function entryWith(manifest: MfManifest, jsSync: string[]): MfeEntryMF {
   };
 }
 
+/** Narrow a settled load's error to `MfeLoadError`, failing the test otherwise. */
+function asLoadError(error: unknown): MfeLoadError {
+  if (!(error instanceof MfeLoadError)) throw new Error('expected an MfeLoadError');
+  return error;
+}
+
 const settle = (loading: Promise<unknown>): Promise<unknown> =>
   loading.then(
     () => undefined,
@@ -208,66 +205,43 @@ const settle = (loading: Promise<unknown>): Promise<unknown> =>
   );
 
 describe('acceptance: concurrent entry module request', () => {
-  it('requests the entry with the list at high priority, issues the item batch on list arrival, and mints the entry after its items', async () => {
+  it('requests the entry at high priority together with the unit, before any response, and mints the entry after its units', async () => {
     const net = controlledFetch();
     const minted = captureMintedSources();
     const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const loading = handler.load(buildEntry(listManifest()), 'ext-a');
 
-    await until(() => net.issued.length === 2, 'both initial requests');
-    // Both requests are out before either resolves; the item is not yet known.
-    expect(net.issued).toEqual([ENTRY_URL, LIST_URL]);
+    await until(() => net.issued.length === 2, 'both round requests');
+    // One round, out before either resolves, with no list document.
+    expect(net.issued).toEqual([ENTRY_URL, ITEM_URL]);
     expect(net.inits.get(ENTRY_URL)).toEqual({ priority: 'high' });
-    expect(net.inits.get(LIST_URL)).toEqual({ priority: 'high' });
-
-    net.ok(LIST_URL, LIST_DOC);
-    await issuedUrl(net, ITEM_URL);
-    // Item batch issued on list arrival, without the entry response.
-    expect(net.issued).toEqual([ENTRY_URL, LIST_URL, ITEM_URL]);
     expect(net.inits.get(ITEM_URL)).toBeUndefined();
     expect(await minted.sources()).toEqual([]);
 
     net.ok(ENTRY_URL, ENTRY_TEXT);
     await turn();
-    // The entry response alone mints nothing: its item is still unminted.
+    // The entry response alone mints nothing: its unit is still unminted.
     expect(await minted.sources()).toEqual([]);
 
     net.ok(ITEM_URL, ITEM_TEXT);
     await loading;
     const sources = await minted.sources();
     minted.restore();
-    expect(net.issued).toEqual([ENTRY_URL, LIST_URL, ITEM_URL]);
+    expect(net.issued).toEqual([ENTRY_URL, ITEM_URL]);
     expect(sources[0]).toBe(ITEM_TEXT);
     expect(sources[sources.length - 1]).toMatch(/from\s*["']blob:/);
     expect(sources[sources.length - 1]).not.toMatch(/from\s*["']react["']/);
   });
 
-  it('mints a multi-item list dependency-first and evaluates the entry after the last mint, requesting only items missing from the realm cache, once each', async () => {
+  it('mints a multi-unit list dependency-first and evaluates the entry after the last mint, requesting only items missing from the realm cache, once each', async () => {
     const depText = 'export const a = 1;\n';
     const pkgBText = 'import { a } from "dep-a";\nexport const b = a;\n';
     const pkgCText = 'export const c = 3;\n';
-    const doc = JSON.stringify({
-      items: [
-        {
-          location: 'shared/b/index.js',
-          contentHash: sha256Hex(pkgBText),
-          answers: ['pkg-b'],
-          imports: ['dep-a'],
-        },
-        {
-          location: 'shared/a/index.js',
-          contentHash: sha256Hex(depText),
-          answers: ['dep-a'],
-          imports: [],
-        },
-        {
-          location: 'shared/c/index.js',
-          contentHash: sha256Hex(pkgCText),
-          answers: ['pkg-c'],
-          imports: [],
-        },
-      ],
-    });
+    const units = [
+      unitOf('shared/b/index.js', pkgBText, ['pkg-b'], ['dep-a']),
+      unitOf('shared/a/index.js', depText, ['dep-a']),
+      unitOf('shared/c/index.js', pkgCText, ['pkg-c']),
+    ];
     const entryText =
       'import { b } from "pkg-b";\nimport { c } from "pkg-c";\n' +
       'export default { mount() { return [b, c]; }, unmount() {} };\n';
@@ -289,14 +263,12 @@ describe('acceptance: concurrent entry module request', () => {
       },
     );
     const loading = newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
-      buildEntry(listManifest(doc)),
+      buildEntry(listManifest(units)),
       'ext-multi',
     );
-    await issuedUrl(net, LIST_URL);
-    net.ok(LIST_URL, doc);
     await until(
       () => net.issued.includes(A_URL) && net.issued.includes(B_URL),
-      'the item batch',
+      'the unit batch',
     );
     net.ok(B_URL, pkgBText);
     net.ok(ENTRY_URL, entryText);
@@ -305,9 +277,9 @@ describe('acceptance: concurrent entry module request', () => {
     const sources = await minted.sources();
     minted.restore();
 
-    // The batch holds only the missing items, each once.
+    // The batch holds only the missing units, each once.
     expect(net.issued.filter((u) => u.includes('/shared/')).sort()).toEqual(
-      [LIST_URL, A_URL, B_URL].sort(),
+      [A_URL, B_URL].sort(),
     );
     expect(net.count(C_URL)).toBe(0);
     // Dependency first, then its dependent, and the entry last.
@@ -321,23 +293,21 @@ describe('acceptance: concurrent entry module request', () => {
     expect(await mintedAtImport).toHaveLength(sources.length);
   });
 
-  it('issues the item batch without waiting for the entry and requests only the entry when every shared text is resident', async () => {
+  it('requests only the entry when every shared text is resident', async () => {
     const net = controlledFetch();
     const first = newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
       buildEntry(listManifest()),
       'ext-b1',
     );
-    await until(() => net.issued.length === 2, 'both initial requests');
-    net.ok(LIST_URL, LIST_DOC);
-    await issuedUrl(net, ITEM_URL);
-    // The entry request is out and still unanswered when the batch goes out.
-    expect(net.issued).toEqual([ENTRY_URL, LIST_URL, ITEM_URL]);
+    await until(() => net.issued.length === 2, 'both round requests');
+    // The entry request is out and still unanswered when the unit goes out.
+    expect(net.issued).toEqual([ENTRY_URL, ITEM_URL]);
     net.ok(ITEM_URL, ITEM_TEXT);
     net.ok(ENTRY_URL, ENTRY_TEXT);
     await first;
 
-    // A second handler: the list and the item are resident in the realm
-    // cache, so only the entry is requested; nothing is fetched twice.
+    // A second handler: the unit is resident in the realm cache, so only
+    // the entry is requested; nothing is fetched twice.
     const before = net.issued.length;
     const second = newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
       buildEntry(listManifest()),
@@ -353,7 +323,6 @@ describe('acceptance: concurrent entry module request', () => {
   it('requests no entry again on the same handler while its text is resident, and never admits the entry to the realm cache', async () => {
     const net = controlledFetch();
     net.respondAlways(ENTRY_URL, ENTRY_TEXT);
-    net.respondAlways(LIST_URL, LIST_DOC);
     net.respondAlways(ITEM_URL, ITEM_TEXT);
     const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     await handler.load(buildEntry(listManifest()), 'ext-s1');
@@ -364,7 +333,7 @@ describe('acceptance: concurrent entry module request', () => {
     expect(net.issued).toEqual(afterFirst);
 
     // The entry is never admitted to the realm cache: a second handler
-    // finds the list and the item resident, yet still requests the entry.
+    // finds the unit resident, yet still requests the entry.
     expect(
       RealmSharedDepTextCacheProvider.getCache().get(
         `chunk:${sha256Hex(ENTRY_TEXT)}`,
@@ -388,16 +357,14 @@ describe('acceptance: concurrent entry module request', () => {
         id,
       );
       await until(() => net.issued.length > before, `${id} first request`);
-      if (net.issued.slice(before).includes(LIST_URL)) {
-        net.ok(LIST_URL, LIST_DOC);
-        await issuedUrl(net, ITEM_URL);
+      if (net.issued.slice(before).includes(ITEM_URL)) {
         net.ok(ITEM_URL, ITEM_TEXT);
       }
       net.ok(ENTRY_URL, ENTRY_TEXT);
       await loading;
     };
     await run('ext-c1');
-    // Run 2: list and item are resident, so it issues only the entry.
+    // Run 2: the unit is resident, so it issues only the entry.
     const before = net.issued.length;
     await run('ext-c2');
     expect(net.issued.slice(before)).toEqual([ENTRY_URL]);
@@ -417,22 +384,16 @@ describe('acceptance: concurrent entry module request', () => {
       text: `export const v${String(i)} = ${String(i)};\n`,
       location: `shared/many/${String(i)}.js`,
     }));
-    const doc = JSON.stringify({
-      items: items.map((item, i) => ({
-        location: item.location,
-        contentHash: sha256Hex(item.text),
-        answers: [`many-${String(i)}`],
-        imports: [],
-      })),
-    });
+    const units = items.map((item, i) =>
+      unitOf(item.location, item.text, [`many-${String(i)}`]),
+    );
     const net = controlledFetch();
     net.respondAlways(ENTRY_URL, 'export default { mount() {}, unmount() {} };\n');
-    net.respondAlways(LIST_URL, doc);
     for (const item of items) {
       net.respondAlways(`${PUBLIC_PATH}${item.location}`, item.text);
     }
     await newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
-      buildEntry(listManifest(doc)),
+      buildEntry(listManifest(units)),
       'ext-many',
     );
     expect(net.count(ENTRY_URL)).toBe(1);
@@ -445,8 +406,6 @@ describe('acceptance: concurrent entry module request', () => {
       entryWith(listManifest(), [absolute]),
       'ext-abs',
     );
-    await issuedUrl(net, LIST_URL);
-    net.ok(LIST_URL, LIST_DOC);
     await issuedUrl(net, ITEM_URL);
     net.ok(ITEM_URL, ITEM_TEXT);
     net.ok(absolute, ENTRY_TEXT);
@@ -466,8 +425,8 @@ describe('acceptance: concurrent entry module request', () => {
       handler.load(entryWith(listManifest(), []), 'ext-empty'),
     );
     expect(error).toBeInstanceOf(MfeLoadError);
-    expect((error as MfeLoadError).message).toContain('exposeAssets.js.sync is empty');
-    expect((error as MfeLoadError).entryTypeId).toBe(ENTRY_ID);
+    expect(asLoadError(error).message).toContain('exposeAssets.js.sync is empty');
+    expect(asLoadError(error).entryTypeId).toBe(ENTRY_ID);
     expect(net.issued).toEqual([]);
   });
 
@@ -491,7 +450,6 @@ describe('acceptance: concurrent entry module request', () => {
   it('does not keep the entry request on the per-load state once the entry chunk was built', async () => {
     const net = controlledFetch();
     net.respondAlways(ENTRY_URL, ENTRY_TEXT);
-    net.respondAlways(LIST_URL, LIST_DOC);
     net.respondAlways(ITEM_URL, ITEM_TEXT);
     const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     type LoadState = { entrySource?: Promise<string> };
@@ -521,20 +479,18 @@ describe('acceptance: concurrent entry module request', () => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     });
 
-    it('retries once when the entry fails on attempt 1, requesting the entry again and joining the in-flight list', async () => {
+    it('retries once when the entry fails on attempt 1, requesting the entry again and joining the in-flight unit', async () => {
       const net = controlledFetch();
       const loading = newHandler(ENTRY_BASE_ID, { retries: 1 }).load(
         buildEntry(listManifest()),
         'ext-retry',
       );
-      await until(() => net.issued.length === 2, 'both initial requests');
+      await until(() => net.issued.length === 2, 'both round requests');
       net.status404(ENTRY_URL);
       await vi.advanceTimersByTimeAsync(1000);
       await until(() => net.count(ENTRY_URL) === 2, 'the retried entry request');
-      expect(net.count(LIST_URL)).toBe(1);
+      expect(net.count(ITEM_URL)).toBe(1);
       net.ok(ENTRY_URL, ENTRY_TEXT);
-      net.ok(LIST_URL, LIST_DOC);
-      await issuedUrl(net, ITEM_URL);
       net.ok(ITEM_URL, ITEM_TEXT);
       await loading;
       expect(net.count(ENTRY_URL)).toBe(2);
@@ -545,12 +501,12 @@ describe('acceptance: concurrent entry module request', () => {
       const net = controlledFetch();
       const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
       const settled = settle(handler.load(buildEntry(listManifest()), 'ext-hang'));
-      await until(() => net.issued.length === 2, 'both initial requests');
+      await until(() => net.issued.length === 2, 'both round requests');
       await vi.advanceTimersByTimeAsync(30001);
       const error = await settled;
       expect(error).toBeInstanceOf(MfeLoadError);
-      expect((error as MfeLoadError).message).toContain('timed out');
-      expect((error as MfeLoadError).entryTypeId).toBe(ENTRY_ID);
+      expect(asLoadError(error).message).toContain('timed out');
+      expect(asLoadError(error).entryTypeId).toBe(ENTRY_ID);
 
       void handler.load(buildEntry(listManifest()), 'ext-hang-2');
       await until(() => net.count(ENTRY_URL) === 2, 'the entry requested again');
@@ -560,7 +516,7 @@ describe('acceptance: concurrent entry module request', () => {
       const net = controlledFetch();
       const handler = newHandler(ENTRY_BASE_ID, { retries: 1 });
       const loading = handler.load(buildEntry(listManifest()), 'ext-late');
-      await until(() => net.issued.length === 2, 'both initial requests');
+      await until(() => net.issued.length === 2, 'both round requests');
       await vi.advanceTimersByTimeAsync(30001);
       await vi.advanceTimersByTimeAsync(1000);
       await until(() => net.count(ENTRY_URL) === 2, 'the retried entry request');
@@ -568,10 +524,8 @@ describe('acceptance: concurrent entry module request', () => {
       net.fail(ENTRY_URL, new TypeError('late'), 0);
       await turn();
       net.ok(ENTRY_URL, ENTRY_TEXT, 1);
-      await until(() => net.count(LIST_URL) >= 2, 'the retried list request');
-      net.ok(LIST_URL, LIST_DOC, 1);
-      await issuedUrl(net, ITEM_URL);
-      net.ok(ITEM_URL, ITEM_TEXT);
+      await until(() => net.count(ITEM_URL) >= 2, 'the retried unit request');
+      net.ok(ITEM_URL, ITEM_TEXT, 1);
       await loading;
 
       // The retry's entry stays resident: a later load requests nothing
@@ -584,7 +538,7 @@ describe('acceptance: concurrent entry module request', () => {
     });
   });
 
-  describe('failure of either concurrent request', () => {
+  describe('failure of either request of the round', () => {
     const unhandled: unknown[] = [];
     const onUnhandled = (reason: unknown): void => {
       unhandled.push(reason);
@@ -597,7 +551,7 @@ describe('acceptance: concurrent entry module request', () => {
       process.off('unhandledRejection', onUnhandled);
     });
 
-    it('fails with the entry request error, issues no item request and discards the list outcome', async () => {
+    it('fails with the entry request error, issues no further request and discards the unit outcome', async () => {
       const net = controlledFetch();
       const settled = settle(
         newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
@@ -605,20 +559,20 @@ describe('acceptance: concurrent entry module request', () => {
           'ext-d',
         ),
       );
-      await until(() => net.issued.length === 2, 'both initial requests');
+      await until(() => net.issued.length === 2, 'both round requests');
       net.status404(ENTRY_URL);
       const error = await settled;
       expect(error).toBeInstanceOf(MfeLoadError);
-      expect((error as MfeLoadError).message).toContain(ENTRY_URL);
-      expect((error as MfeLoadError).entryTypeId).toBe(ENTRY_URL);
-      // The list resolving afterwards is discarded: no item is requested.
-      net.ok(LIST_URL, LIST_DOC);
+      expect(asLoadError(error).message).toContain(ENTRY_URL);
+      expect(asLoadError(error).entryTypeId).toBe(ENTRY_URL);
+      // The unit resolving afterwards is discarded.
+      net.ok(ITEM_URL, ITEM_TEXT);
       await drained();
-      expect(net.issued).toEqual([ENTRY_URL, LIST_URL]);
+      expect(net.issued).toEqual([ENTRY_URL, ITEM_URL]);
       expect(unhandled).toEqual([]);
     });
 
-    it('fails with the entry network error arriving after the list arrived, and a late item failure is not unhandled', async () => {
+    it('fails with the entry network error arriving after the unit arrived', async () => {
       const net = controlledFetch();
       const settled = settle(
         newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
@@ -626,21 +580,19 @@ describe('acceptance: concurrent entry module request', () => {
           'ext-e',
         ),
       );
-      await until(() => net.issued.length === 2, 'both initial requests');
-      net.ok(LIST_URL, LIST_DOC);
-      await issuedUrl(net, ITEM_URL);
+      await until(() => net.issued.length === 2, 'both round requests');
+      net.ok(ITEM_URL, ITEM_TEXT);
+      await drained();
       net.fail(ENTRY_URL, new TypeError('offline'));
       const error = await settled;
       expect(error).toBeInstanceOf(MfeLoadError);
-      expect((error as MfeLoadError).message).toContain(ENTRY_URL);
-      expect((error as MfeLoadError).entryTypeId).toBe(ENTRY_URL);
-      net.fail(ITEM_URL, new TypeError('offline too'));
-      await turn();
-      expect(net.issued).toEqual([ENTRY_URL, LIST_URL, ITEM_URL]);
+      expect(asLoadError(error).message).toContain(ENTRY_URL);
+      expect(asLoadError(error).entryTypeId).toBe(ENTRY_URL);
+      expect(net.issued).toEqual([ENTRY_URL, ITEM_URL]);
       expect(unhandled).toEqual([]);
     });
 
-    it('fails with the entry error when the entry fails last, after the list and its items completed', async () => {
+    it('fails with the entry error when the entry fails last, after the unit completed and minted', async () => {
       const net = controlledFetch();
       const settled = settle(
         newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
@@ -648,24 +600,22 @@ describe('acceptance: concurrent entry module request', () => {
           'ext-last',
         ),
       );
-      await until(() => net.issued.length === 2, 'both initial requests');
-      net.ok(LIST_URL, LIST_DOC);
-      await issuedUrl(net, ITEM_URL);
+      await until(() => net.issued.length === 2, 'both round requests');
       const minted = captureMintedSources();
       net.ok(ITEM_URL, ITEM_TEXT);
       await drained();
-      // The item is minted: the list and its items completed.
+      // The unit is minted: the list completed.
       expect(await minted.sources()).toEqual([ITEM_TEXT]);
       net.status404(ENTRY_URL);
       const error = await settled;
       minted.restore();
       expect(error).toBeInstanceOf(MfeLoadError);
-      expect((error as MfeLoadError).message).toContain(ENTRY_URL);
-      expect((error as MfeLoadError).entryTypeId).toBe(ENTRY_URL);
+      expect(asLoadError(error).message).toContain(ENTRY_URL);
+      expect(asLoadError(error).entryTypeId).toBe(ENTRY_URL);
       expect(unhandled).toEqual([]);
     });
 
-    it('fails with the list document error and discards the entry outcome', async () => {
+    it('fails with an error naming the unit and discards the entry outcome', async () => {
       const net = controlledFetch();
       const settled = settle(
         newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
@@ -673,15 +623,15 @@ describe('acceptance: concurrent entry module request', () => {
           'ext-f',
         ),
       );
-      await until(() => net.issued.length === 2, 'both initial requests');
-      net.status404(LIST_URL);
+      await until(() => net.issued.length === 2, 'both round requests');
+      net.status404(ITEM_URL);
       const error = await settled;
       expect(error).toBeInstanceOf(MfeLoadError);
-      expect((error as MfeLoadError).message).toContain(LIST_URL);
-      expect((error as MfeLoadError).entryTypeId).toBe(LIST_URL);
+      expect(asLoadError(error).message).toContain(ITEM_URL);
+      expect(asLoadError(error).entryTypeId).toBe(ITEM_URL);
       net.fail(ENTRY_URL, new TypeError('offline'));
       await turn();
-      expect(net.issued).toEqual([ENTRY_URL, LIST_URL]);
+      expect(net.issued).toEqual([ENTRY_URL, ITEM_URL]);
       expect(unhandled).toEqual([]);
     });
 
@@ -693,29 +643,29 @@ describe('acceptance: concurrent entry module request', () => {
           'ext-both-1',
         ),
       );
-      await until(() => entryFirst.issued.length === 2, 'both initial requests');
+      await until(() => entryFirst.issued.length === 2, 'both round requests');
       entryFirst.status404(ENTRY_URL);
-      await turn();
-      entryFirst.status404(LIST_URL);
-      expect(((await a) as MfeLoadError).entryTypeId).toBe(ENTRY_URL);
+      await drained();
+      entryFirst.status404(ITEM_URL);
+      expect(asLoadError(await a).entryTypeId).toBe(ENTRY_URL);
       vi.restoreAllMocks();
 
-      const listFirst = controlledFetch();
+      const unitFirst = controlledFetch();
       const b = settle(
         newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
           buildEntry(listManifest()),
           'ext-both-2',
         ),
       );
-      await until(() => listFirst.issued.length === 2, 'both initial requests');
-      listFirst.status404(LIST_URL);
-      await turn();
-      listFirst.status404(ENTRY_URL);
-      expect(((await b) as MfeLoadError).entryTypeId).toBe(LIST_URL);
+      await until(() => unitFirst.issued.length === 2, 'both round requests');
+      unitFirst.status404(ITEM_URL);
+      await drained();
+      unitFirst.status404(ENTRY_URL);
+      expect(asLoadError(await b).entryTypeId).toBe(ITEM_URL);
       expect(unhandled).toEqual([]);
     });
 
-    it('issues no item request when the entry fails after the list document resolved and before the item batch', async () => {
+    it('issues no unit request when the entry fails before the unit batch', async () => {
       const net = controlledFetch();
       failEntryBeforeItemBatch(net);
       const settled = settle(
@@ -724,18 +674,16 @@ describe('acceptance: concurrent entry module request', () => {
           'ext-drain',
         ),
       );
-      await until(() => net.issued.length === 2, 'both initial requests');
-      net.ok(LIST_URL, LIST_DOC);
       const error = await settled;
       await turn();
       expect(error).toBeInstanceOf(MfeLoadError);
-      expect((error as MfeLoadError).entryTypeId).toBe(ENTRY_URL);
-      expect(net.issued).toEqual([ENTRY_URL, LIST_URL]);
+      expect(asLoadError(error).entryTypeId).toBe(ENTRY_URL);
+      expect(net.issued).toEqual([ENTRY_URL]);
     });
 
     it('issues no retry request for a joined fetch that rejects after the load failed', async () => {
-      // Load A (its own handler) issues the item; load B joins A's in-flight
-      // item through the realm cache, then fails on its entry. A's item
+      // Load A (its own handler) issues the unit; load B joins A's in-flight
+      // unit through the realm cache, then fails on its entry. A's unit
       // rejecting afterwards must not make B re-request it.
       const net = controlledFetch();
       const a = settle(
@@ -744,9 +692,7 @@ describe('acceptance: concurrent entry module request', () => {
           'ext-join-a',
         ),
       );
-      await until(() => net.issued.length === 2, 'load A initial requests');
-      net.ok(LIST_URL, LIST_DOC);
-      await issuedUrl(net, ITEM_URL);
+      await until(() => net.issued.length === 2, 'load A round requests');
 
       const b = settle(
         newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
@@ -756,7 +702,7 @@ describe('acceptance: concurrent entry module request', () => {
       );
       await until(() => net.count(ENTRY_URL) === 2, 'load B entry request');
       net.status404(ENTRY_URL, 1);
-      expect(((await b) as MfeLoadError).entryTypeId).toBe(ENTRY_URL);
+      expect(asLoadError(await b).entryTypeId).toBe(ENTRY_URL);
 
       net.fail(ITEM_URL, new TypeError('offline'));
       await a;
@@ -766,8 +712,8 @@ describe('acceptance: concurrent entry module request', () => {
     });
 
     it.each([
-      ['entry first', [ENTRY_URL, LIST_URL]],
-      ['list first', [LIST_URL, ENTRY_URL]],
+      ['entry first', [ENTRY_URL, ITEM_URL]],
+      ['unit first', [ITEM_URL, ENTRY_URL]],
     ])(
       'names one error when both requests fail in the same drain (%s), the one recorded first',
       async (_order, delivery) => {
@@ -778,24 +724,22 @@ describe('acceptance: concurrent entry module request', () => {
             'ext-tie',
           ),
         );
-        await until(() => net.issued.length === 2, 'both initial requests');
+        await until(() => net.issued.length === 2, 'both round requests');
         // Both responses are delivered in one synchronous burst, so both
         // rejections settle within the same drain.
         for (const url of delivery) net.status404(url);
-        const error = (await settled) as MfeLoadError;
+        const error = asLoadError(await settled);
         await turn();
         expect(error).toBeInstanceOf(MfeLoadError);
-        // The entry's rejection reaches the load first (its chain is the
-        // shorter), so it is the failure recorded first and the one named,
-        // whichever response was delivered first.
-        expect(error.entryTypeId).toBe(ENTRY_URL);
-        expect(error.message).toContain(ENTRY_URL);
-        expect(net.issued).toEqual([ENTRY_URL, LIST_URL]);
+        // One error names the load: the failure recorded first.
+        expect([ENTRY_URL, ITEM_URL]).toContain(error.entryTypeId);
+        expect(error.message).toContain(error.entryTypeId);
+        expect(net.issued).toEqual([ENTRY_URL, ITEM_URL]);
         expect(unhandled).toEqual([]);
       },
     );
 
-    it('never publishes a failed load\'s gated item request to the realm cache', async () => {
+    it('never publishes a failed load\'s gated unit request to the realm cache', async () => {
       const net = controlledFetch();
       const published: string[] = [];
       const realm = RealmSharedDepTextCacheProvider.getCache();
@@ -811,12 +755,10 @@ describe('acceptance: concurrent entry module request', () => {
           'ext-gate',
         ),
       );
-      await until(() => net.issued.length === 2, 'both initial requests');
-      net.ok(LIST_URL, LIST_DOC);
       const error = await settled;
       await turn();
       expect(error).toBeInstanceOf(MfeLoadError);
-      expect(net.issued).toEqual([ENTRY_URL, LIST_URL]);
+      expect(net.issued).toEqual([ENTRY_URL]);
       expect(published).not.toContain(`chunk:${sha256Hex(ITEM_TEXT)}`);
     });
 
@@ -833,28 +775,28 @@ describe('acceptance: concurrent entry module request', () => {
       expect(errA).toBeInstanceOf(MfeLoadError);
       expect(errB).toBe(errA);
       expect(net.count(ENTRY_URL)).toBe(1);
-      expect(net.issued).toEqual([ENTRY_URL, LIST_URL]);
+      expect(net.issued).toEqual([ENTRY_URL, ITEM_URL]);
       expect(unhandled).toEqual([]);
     });
 
-    it('fails with an error naming the list document when the entry succeeded and the list fails', async () => {
+    it('fails with an error naming the unit when the entry succeeded and the unit fails', async () => {
       const net = controlledFetch();
       const settled = settle(
         newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
           buildEntry(listManifest()),
-          'ext-list-last',
+          'ext-unit-last',
         ),
       );
-      await until(() => net.issued.length === 2, 'both initial requests');
+      await until(() => net.issued.length === 2, 'both round requests');
       net.ok(ENTRY_URL, ENTRY_TEXT);
       await turn();
-      net.status404(LIST_URL);
-      const error = (await settled) as MfeLoadError;
+      net.status404(ITEM_URL);
+      const error = asLoadError(await settled);
       await turn();
       expect(error).toBeInstanceOf(MfeLoadError);
-      expect(error.message).toContain(LIST_URL);
-      expect(error.entryTypeId).toBe(LIST_URL);
-      expect(net.issued).toEqual([ENTRY_URL, LIST_URL]);
+      expect(error.message).toContain(ITEM_URL);
+      expect(error.entryTypeId).toBe(ITEM_URL);
+      expect(net.issued).toEqual([ENTRY_URL, ITEM_URL]);
       expect(unhandled).toEqual([]);
     });
   });

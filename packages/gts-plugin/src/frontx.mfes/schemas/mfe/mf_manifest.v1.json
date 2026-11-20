@@ -13,11 +13,11 @@
       "properties": {
         "publicPath": {
           "type": "string",
-          "description": "Public URL base path for all chunk assets: the entry module, its stylesheets, the own chunks and each shared[].chunkPath resolve against it (e.g. 'http://localhost:3001/' or '/'). A relative value resolves against the host document's base URL. Fetch-list document and list-item locations also resolve against it when metaData.sharedBase is absent."
+          "description": "Public URL base path for all chunk assets: the entry module, its stylesheets, the own chunks and each shared[].chunkPath resolve against it (e.g. 'http://localhost:3001/' or '/'). A relative value resolves against the host document's base URL. Shared-unit locations also resolve against it when metaData.sharedBase is absent."
         },
         "sharedBase": {
           "type": "string",
-          "description": "Optional shared-file base location for resolving fetch-list document and list-item locations, separate from the asset base location (publicPath). When present, those locations resolve against this value by the same rules as shared[].chunkPath resolves against publicPath; when absent, they resolve against publicPath. See cpt-frontx-adr-shared-dep-reuse."
+          "description": "Optional shared-file base location for resolving unit locations, separate from the asset base location (publicPath). When present, those locations resolve against this value by the same rules as shared[].chunkPath resolves against publicPath; when absent, they resolve against publicPath. See cpt-frontx-adr-shared-dep-reuse."
         }
       },
       "required": ["publicPath"]
@@ -52,26 +52,106 @@
         "required": ["name", "version", "chunkPath"]
       }
     },
-    "entryLists": {
-      "type": "object",
-      "description": "Optional fetch-list document per exposed module, keyed by the exposed module name (e.g. './lifecycle'), matching the exposedModule of the MFE entry that references this manifest. When the entry being loaded carries a list, its shared dependencies are loaded through the list. See cpt-frontx-adr-shared-dep-reuse.",
-      "additionalProperties": {
+    "units": {
+      "type": "array",
+      "description": "The unit table: every shared chunk the manifest's lists reference, held once. See cpt-frontx-adr-shared-dep-reuse.",
+      "items": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
           "location": {
             "type": "string",
-            "description": "Location of the fetch-list document: a path relative to the shared base location, or an absolute http(s) URL."
+            "description": "Location of the unit's emitted source: a path relative to the shared base location, or an absolute http(s) URL.",
+            "minLength": 1
           },
           "contentHash": {
-            "type": "string",
-            "pattern": "^[0-9a-f]{64}$",
-            "description": "sha256 hex digest (64 lowercase hex characters) of the fetch-list document, declared by the producing build. It is the key under which the document's text is shared."
+            "$ref": "#/$defs/contentHash"
+          },
+          "answers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The bare specifiers this unit answers, package names and subpaths alike."
+          },
+          "imports": {
+            "type": "array",
+            "description": "Every import edge the runtime needs for dependency-order minting: a bare specifier, or an intra-package relative edge naming the supplying unit by content identity.",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "unit": {
+                      "$ref": "#/$defs/contentHash"
+                    }
+                  },
+                  "required": ["unit"]
+                }
+              ]
+            }
           }
         },
-        "required": ["location", "contentHash"]
+        "required": ["location", "contentHash", "answers", "imports"]
+      }
+    },
+    "lists": {
+      "type": "object",
+      "description": "Every fetch list, held once: keyed by the exposed module name (e.g. './lifecycle', matching the exposedModule of the MFE entry that references this manifest) for a module's list, and by the target's chunk location for a lazy target's or pattern-import matching file's list. See cpt-frontx-adr-shared-dep-reuse.",
+      "additionalProperties": {
+        "$ref": "#/$defs/fetchList"
       }
     }
   },
-  "required": ["id", "metaData", "shared"]
+  "required": ["id", "metaData", "shared"],
+  "$defs": {
+    "contentHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "sha256 hex digest (64 lowercase hex characters) declared by the producing build; the key under which a unit's text is shared."
+    },
+    "fetchList": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One flat fetch list: the content identities of the units it needs, the own chunks it reaches statically and the keys of the lazy-target and pattern-import lists it reaches.",
+      "properties": {
+        "units": {
+          "type": "array",
+          "description": "Content identities of the units this list delivers, each held by the manifest's unit table.",
+          "items": {
+            "$ref": "#/$defs/contentHash"
+          }
+        },
+        "ownChunks": {
+          "type": "array",
+          "description": "Locations of the microfrontend's own chunks the module or target reaches statically: a path relative to metaData.publicPath or an absolute http(s) URL, with no content identity.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "lazy": {
+          "type": "array",
+          "description": "Keys in lists of the lazy targets this list reaches: each the target's chunk location relative to the base that chunk resolves against.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "patterns": {
+          "type": "array",
+          "description": "Keys in lists of the pattern-import matching files this list reaches, under the same base rule as lazy.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": ["units", "ownChunks"]
+    }
+  }
 }

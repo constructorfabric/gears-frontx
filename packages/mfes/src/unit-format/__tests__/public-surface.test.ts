@@ -1,17 +1,13 @@
 /**
- * `./unit-format` exports exactly the seven fetch-list types and no runtime
- * value (`cpt-frontx-feature-unit-format-contract`, fetch-list DoD).
+ * `./unit-format` exports exactly the three unit-format types and no runtime
+ * value (`cpt-frontx-feature-unit-format-contract`, unit-format DoD).
  */
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import * as unitFormat from '../index';
 import type {
-  SharedDepEntryListRefs,
   SharedDepFetchList,
-  SharedDepFileRef,
   SharedDepImportEdge,
-  SharedDepListItem,
-  SharedDepOpaqueImport,
-  SharedDepProducer,
+  SharedDepUnit,
 } from '../index';
 import { exportedNames } from '../../__tests__/helpers/exported-names';
 
@@ -20,23 +16,20 @@ describe('./unit-format — exact surface', () => {
     expect(Object.keys(unitFormat)).toEqual([]);
   });
 
-  it('exports exactly the fetch-list types', () => {
+  it('exports exactly the unit-format types', () => {
     expect(exportedNames('unit-format/index.ts')).toEqual([
-      'SharedDepEntryListRefs',
       'SharedDepFetchList',
-      'SharedDepFileRef',
       'SharedDepImportEdge',
-      'SharedDepListItem',
-      'SharedDepOpaqueImport',
-      'SharedDepProducer',
+      'SharedDepUnit',
     ]);
   });
 
-  it('types a fetch list through its list items and file references', () => {
-    expectTypeOf<SharedDepFetchList['items']>().toEqualTypeOf<SharedDepListItem[]>();
-    expectTypeOf<SharedDepEntryListRefs>().toEqualTypeOf<Record<string, SharedDepFileRef>>();
-    expectTypeOf<SharedDepImportEdge>().not.toBeAny();
-    expectTypeOf<SharedDepOpaqueImport>().not.toBeAny();
-    expectTypeOf<SharedDepProducer>().not.toBeAny();
+  it('types a fetch list by content identities and the keys of the lists it reaches', () => {
+    expectTypeOf<SharedDepFetchList['units']>().toEqualTypeOf<string[]>();
+    expectTypeOf<SharedDepFetchList['ownChunks']>().toEqualTypeOf<string[]>();
+    expectTypeOf<NonNullable<SharedDepFetchList['lazy']>>().toEqualTypeOf<string[]>();
+    expectTypeOf<NonNullable<SharedDepFetchList['patterns']>>().toEqualTypeOf<string[]>();
+    expectTypeOf<SharedDepImportEdge>().toEqualTypeOf<string | { unit: string }>();
+    expectTypeOf<SharedDepUnit['imports']>().toEqualTypeOf<SharedDepImportEdge[]>();
   });
 });

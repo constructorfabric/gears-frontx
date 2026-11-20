@@ -9,7 +9,7 @@
  */
 // @cpt-dod:cpt-frontx-dod-mfe-loading-manifest-field-discovery:p1
 
-import type { SharedDepEntryListRefs } from '../unit-format/fetch-list';
+import type { SharedDepFetchList, SharedDepUnit } from '../unit-format/fetch-list';
 
 /**
  * Asset locations of one exposed module, carried by `MfeEntryMF.exposeAssets`.
@@ -93,7 +93,7 @@ export interface MfManifestMetaData {
   publicPath: string;
   /**
    * Optional shared-file base location for resolving shared-file
-   * locations — fetch-list document, list-item and whole-package
+   * locations — shared-unit and whole-package
    * `chunkPath` locations — separate from the asset base location
    * (`publicPath`). When present, every shared-file location the manifest
    * carries resolves against this value by the same rules as
@@ -129,16 +129,23 @@ export interface MfManifest {
   /** Shared dependency declarations with chunk paths. */
   shared: MfManifestShared[];
   /**
-   * Fetch-list document per exposed entry: keyed by the exposed module
-   * name (e.g. `'./lifecycle'`), each value the location and content
-   * identity of that entry's `SharedDepFetchList` document. When the
-   * entry being loaded carries a list, the runtime loads its shared
-   * dependencies through the list model — read the list, fetch every
-   * item missing from the realm text cache in one parallel batch, mint
-   * per load in dependency order — with no graph discovery
-   * (`cpt-frontx-adr-shared-dep-reuse`). Absent for producing builds
-   * that have not adopted fetch lists; the runtime then falls back to
-   * the whole-package `chunkPath` entries of `shared[]`.
+   * The unit table: every shared chunk the manifest's lists reference,
+   * held once — location, content identity, answered specifiers and import
+   * edges (`cpt-frontx-adr-shared-dep-reuse`). Absent for producing builds
+   * that emit no fetch lists.
    */
-  entryLists?: SharedDepEntryListRefs;
+  units?: SharedDepUnit[];
+  /**
+   * Every fetch list, held once: keyed by the exposed module name (e.g.
+   * `'./lifecycle'`) for a module's list, and by the target's chunk location
+   * for a lazy target's or pattern-import matching file's list. Each value is
+   * a flat {@link SharedDepFetchList}, which references units of the unit
+   * table by content identity and the lists it reaches by key. When the
+   * entry being loaded has a list, the runtime requests the entry module,
+   * every listed unit missing from the realm text cache and the list's
+   * `ownChunks` in one round and mints per load in dependency order, with no
+   * graph discovery. Absent for an exposed module that has none; the runtime
+   * then uses the whole-package `chunkPath` entries of `shared[]`.
+   */
+  lists?: Record<string, SharedDepFetchList>;
 }

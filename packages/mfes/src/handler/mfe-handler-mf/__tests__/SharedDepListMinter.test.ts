@@ -11,7 +11,7 @@ import {
   SharedDepListMinter,
   type SharedDepListRecord,
 } from '../SharedDepListMinter';
-import type { SharedDepListItem } from '../../../unit-format/fetch-list';
+import type { SharedDepUnit } from '../../../unit-format/fetch-list';
 
 const hash = (n: number): string => String(n).repeat(64).slice(0, 64);
 
@@ -19,8 +19,8 @@ const item = (
   location: string,
   n: number,
   answers: string[] = [],
-  imports: SharedDepListItem['imports'] = [],
-): SharedDepListItem => ({ location, contentHash: hash(n), answers, imports });
+  imports: SharedDepUnit['imports'] = [],
+): SharedDepUnit => ({ location, contentHash: hash(n), answers, imports });
 
 const maps = () => ({
   itemBlobByHash: new Map<string, string>(),
@@ -30,7 +30,7 @@ const maps = () => ({
 describe('SharedDepListMinter.mint', () => {
   it('mints a batch whose item is registered with an unminted item of another batch', () => {
     const other = item('shared/other.js', 2, ['other']);
-    const mine = item('shared/mine.js', 1, ['mine'], ['other', { item: hash(2) }]);
+    const mine = item('shared/mine.js', 1, ['mine'], ['other', { unit: hash(2) }]);
     const record: SharedDepListRecord = {
       item: mine,
       text: "import 'other';\nexport const m = 1;\n",
@@ -51,8 +51,8 @@ describe('SharedDepListMinter.mint', () => {
   });
 
   it('still reports a cycle among the batch\'s own records', () => {
-    const a = item('shared/a.js', 1, ['a'], [{ item: hash(2) }]);
-    const b = item('shared/b.js', 2, ['b'], [{ item: hash(1) }]);
+    const a = item('shared/a.js', 1, ['a'], [{ unit: hash(2) }]);
+    const b = item('shared/b.js', 2, ['b'], [{ unit: hash(1) }]);
     expect(() =>
       SharedDepListMinter.mint(
         [

@@ -1,7 +1,7 @@
 /**
  * Acceptance: a microfrontend load that starts while a host's
  * `SharedUnitFetcher` fetches are in flight joins the host's in-flight
- * entry for each list item whose content identity the host published, and
+ * entry for each list unit whose content identity the host published, and
  * issues no request of its own for it (`inst-host-concurrent-join`).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -27,7 +27,9 @@ import {
   ENTRY_BASE_ID,
   PUBLIC_PATH,
   sharedDep,
+  listOf as listNaming,
   sha256Hex,
+  unitOf,
 } from '../helpers/manifest-builder';
 import { stubSuccessfulImport } from '../helpers/blob-module-stub';
 import { controlledFetch, issuedAll, settleTurn } from '../helpers/controlled-fetch';
@@ -46,7 +48,6 @@ afterEach(() => {
 
 const ENTRY_TEXT =
   'import { r } from "react";\nexport default { mount() { return r; }, unmount() {} };\n';
-const LIST_URL = `${PUBLIC_PATH}shared/react.list.json`;
 const ENTRY_URL = `${PUBLIC_PATH}assets/lifecycle.js`;
 
 interface Unit {
@@ -63,28 +64,20 @@ const unit = (name: string): Unit => ({
   hostUrl: `https://host.test/shared/${name}/index.abc.js`,
 });
 
-function listOf(units: Record<string, Unit>): string {
-  return JSON.stringify({
-    items: Object.entries(units).map(([name, u]) => ({
-      location: `shared/${name}/index.abc.js`,
-      contentHash: sha256Hex(u.text),
-      answers: [name],
-      imports: [],
-    })),
-  });
+function unitsOf(units: Record<string, Unit>) {
+  return Object.entries(units).map(([name, u]) =>
+    unitOf(`shared/${name}/index.abc.js`, u.text, [name]),
+  );
 }
 
 let loads = 0;
-function startLoad(list: string) {
+function startLoad(units: Record<string, Unit>) {
+  const table = unitsOf(units);
   return newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
     buildEntry(
       buildManifest([sharedDep('react')], {
-        entryLists: {
-          './lifecycle': {
-            location: 'shared/react.list.json',
-            contentHash: sha256Hex(list),
-          },
-        },
+        units: table,
+        lists: { './lifecycle': listNaming(table) },
       }),
     ),
     `ext-host-join-${(loads += 1)}`,
@@ -105,15 +98,13 @@ describe('acceptance: host fill in flight, microfrontend load joins', () => {
     const hostText = host.fetch(react.hostUrl, sha256Hex(react.text));
     await issuedAll(net, [react.hostUrl]);
 
-    const list = listOf({ react });
-    const loading = startLoad(list);
-    await issuedAll(net, [ENTRY_URL, LIST_URL]);
-    net.ok(LIST_URL, list);
+    const loading = startLoad({ react });
+    await issuedAll(net, [ENTRY_URL]);
     net.ok(ENTRY_URL, ENTRY_TEXT);
     await settleAll();
 
-    // The list arrived and named the item the host has in flight: the
-    // load waits on the host's fetch rather than issuing its own.
+    // The list names the unit the host has in flight: the load waits on
+    // the host's fetch rather than issuing its own.
     expect(net.count(react.url)).toBe(0);
 
     net.ok(react.hostUrl, react.text);
@@ -123,7 +114,7 @@ describe('acceptance: host fill in flight, microfrontend load joins', () => {
     expect(net.count(react.hostUrl)).toBe(1);
   });
 
-  it('joins the host fetch of each list item', async () => {
+  it('joins the host fetch of each list unit', async () => {
     const net = controlledFetch();
     const units = { react: unit('react'), dom: unit('dom') };
     const host = new SharedUnitFetcher(async (url) => (await fetch(url)).text(), 'host');
@@ -132,10 +123,8 @@ describe('acceptance: host fill in flight, microfrontend load joins', () => {
     );
     await issuedAll(net, Object.values(units).map((u) => u.hostUrl));
 
-    const list = listOf(units);
-    const loading = startLoad(list);
-    await issuedAll(net, [ENTRY_URL, LIST_URL]);
-    net.ok(LIST_URL, list);
+    const loading = startLoad(units);
+    await issuedAll(net, [ENTRY_URL]);
     net.ok(ENTRY_URL, ENTRY_TEXT);
     await settleAll();
     for (const u of Object.values(units)) expect(net.count(u.url)).toBe(0);
@@ -151,14 +140,11 @@ describe('acceptance: host fill in flight, microfrontend load joins', () => {
     }
   });
 
-  it('control: with no host fetch the load fetches the item itself', async () => {
+  it('control: with no host fetch the load fetches the unit itself', async () => {
     const net = controlledFetch();
     const react = unit('react');
-    const list = listOf({ react });
-    const loading = startLoad(list);
-    await issuedAll(net, [ENTRY_URL, LIST_URL]);
-    net.ok(LIST_URL, list);
-    await issuedAll(net, [react.url]);
+    const loading = startLoad({ react });
+    await issuedAll(net, [ENTRY_URL, react.url]);
     net.ok(ENTRY_URL, ENTRY_TEXT);
     net.ok(react.url, react.text);
     await loading;

@@ -5,7 +5,7 @@
  * source text at mint time (`cpt-frontx-algo-unit-format-contract-fetch-list-schema-v2`).
  *
  * Dependency order comes from the list itself: a bare-specifier edge is
- * ordered before the item whose `answers` name it; an `{ item }` edge is
+ * ordered before the item whose `answers` name it; a `{ unit }` edge is
  * ordered before the item carrying that content identity. Edges an
  * earlier mint of the same load already satisfied add no ordering edge —
  * the existing blob answers them. A cycle among unminted items admits no
@@ -30,12 +30,12 @@ import { DynamicModuleOps } from './mf-dynamic-module-ops';
 import { UnitDynamicImportRewriter } from './UnitDynamicImportRewriter';
 import type {
   SharedDepFetchList,
-  SharedDepListItem,
+  SharedDepUnit,
 } from '../../unit-format/fetch-list';
 
 /** A fetched list item ready to mint. */
 export interface SharedDepListRecord {
-  readonly item: SharedDepListItem;
+  readonly item: SharedDepUnit;
   readonly text: string;
 }
 
@@ -67,7 +67,7 @@ export class SharedDepListMinter {
   /**
    * Resolve a relative specifier against the importing item's `location`
    * to the shared-base-relative location of the item that supplies it —
-   * the key {@link SharedDepListItem.location} and the list's `lazy` /
+   * the key {@link SharedDepUnit.location} and the list's `lazy` /
    * `patterns` records are keyed by.
    */
   static resolveLocation(fromLocation: string, specifier: string): string {
@@ -91,7 +91,7 @@ export class SharedDepListMinter {
    */
   static mint(
     records: readonly SharedDepListRecord[],
-    items: ReadonlyMap<string, SharedDepListItem>,
+    items: ReadonlyMap<string, SharedDepUnit>,
     maps: SharedDepListMintMaps,
     entryId: string,
     dynamicImports?: ListDynamicImportRewrites,
@@ -109,7 +109,7 @@ export class SharedDepListMinter {
         pending.has(item.contentHash),
     );
     // specifier -> record answering it, across the reachable set.
-    const answerer = new Map<string, SharedDepListItem>();
+    const answerer = new Map<string, SharedDepUnit>();
     for (const item of reachable) {
       for (const specifier of item.answers) {
         if (!answerer.has(specifier)) answerer.set(specifier, item);
@@ -121,7 +121,7 @@ export class SharedDepListMinter {
         const targetHash =
           typeof edge === 'string'
             ? answerer.get(edge)?.contentHash
-            : edge.item;
+            : edge.unit;
         if (
           targetHash !== undefined &&
           targetHash !== record.item.contentHash &&
