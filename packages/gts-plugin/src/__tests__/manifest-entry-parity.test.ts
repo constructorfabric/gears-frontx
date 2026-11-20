@@ -121,24 +121,18 @@ function schemaTrees(schemas: JSONSchema[]): { manifest: Node; entry: Node } {
     return { properties, required };
   };
 
-  // A `#/$defs/<name>` reference resolves against the schema being read.
-  const convert = (schema: Schema, root: Schema): Node => {
-    if (typeof schema.$ref === 'string' && schema.$ref.startsWith('#/$defs/')) {
-      const target = (root.$defs as Record<string, Schema> | undefined)?.[schema.$ref.slice('#/$defs/'.length)];
-      if (!target) throw new Error(`unresolved $ref ${schema.$ref}`);
-      return convert(target, root);
-    }
+  const convert = (schema: Schema): Node => {
     if (schema.properties || schema.allOf) {
       const { properties, required } = flatten(schema);
       const out: Record<string, { required: boolean; node: Node }> = {};
       for (const [name, prop] of Object.entries(properties)) {
-        out[name] = { required: required.has(name), node: convert(prop, root) };
+        out[name] = { required: required.has(name), node: convert(prop) };
       }
       return { kind: 'object', fields: out };
     }
-    if (schema.type === 'array') return { kind: 'array', items: convert((schema.items as Schema | undefined) ?? {}, root) };
+    if (schema.type === 'array') return { kind: 'array', items: convert((schema.items as Schema | undefined) ?? {}) };
     if (schema.type === 'object' && typeof schema.additionalProperties === 'object') {
-      return { kind: 'map', value: convert(schema.additionalProperties as Schema, root) };
+      return { kind: 'map', value: convert(schema.additionalProperties as Schema) };
     }
     return { kind: 'scalar' };
   };
@@ -149,8 +143,8 @@ function schemaTrees(schemas: JSONSchema[]): { manifest: Node; entry: Node } {
     return schema;
   };
   return {
-    manifest: convert(get('gts.frontx.mfes.mfe.mf_manifest.v1~'), get('gts.frontx.mfes.mfe.mf_manifest.v1~')),
-    entry: convert(get('gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~'), get('gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~')),
+    manifest: convert(get('gts.frontx.mfes.mfe.mf_manifest.v1~')),
+    entry: convert(get('gts.frontx.mfes.mfe.entry.v1~frontx.mfes.mfe.entry_mf.v1~')),
   };
 }
 
