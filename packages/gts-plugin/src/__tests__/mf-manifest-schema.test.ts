@@ -12,6 +12,7 @@
  * @cpt-algo:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1
  */
 import { beforeEach, describe, expect, it } from 'vitest';
+import mfManifestSchema from '../frontx.mfes/schemas/mfe/mf_manifest.v1.json';
 import { GtsPlugin } from '../plugin';
 import { resetRealm } from './realm-support';
 
@@ -216,6 +217,64 @@ describe('lists', () => {
     rejects(manifest({ lists: ['a.json'] }), TYPE);
     rejects(manifest({ lists: { './a': listOf({ lazy: { 'x.js': listOf() } }) } }), TYPE);
     rejects(manifest({ lists: { './a': listOf({ patterns: [1] }) } }), TYPE);
+  });
+});
+
+describe('registration cost', () => {
+  // The schema engine compiles a `$ref` target afresh for every value it
+  // validates, regex patterns included. A per-value format reached through
+  // `$ref` or `$defs` would therefore be recompiled for each hash in the unit
+  // table and lists, making registration cost grow with the manifest. Registration
+  // sits on the shell's critical path to the first mount, so the manifest schema
+  // declares every format inline.
+  const HASH_PATTERN = '^[0-9a-f]{64}$';
+
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+
+  const keysIn = (node: unknown, found: string[] = []): string[] => {
+    if (Array.isArray(node)) {
+      for (const item of node) keysIn(item, found);
+    } else if (isRecord(node)) {
+      for (const [key, value] of Object.entries(node)) {
+        found.push(key);
+        keysIn(value, found);
+      }
+    }
+    return found;
+  };
+
+  // Schema nodes that validate a content identity: a `contentHash` or `unit`
+  // property, and the string items of a `units` array.
+  const hashPositions = (node: unknown, out: unknown[] = []): unknown[] => {
+    if (Array.isArray(node)) {
+      for (const item of node) hashPositions(item, out);
+    } else if (isRecord(node)) {
+      const props = node.properties;
+      if (isRecord(props)) {
+        for (const [name, sub] of Object.entries(props)) {
+          if (name === 'contentHash' || name === 'unit') out.push(sub);
+          if (name === 'units' && isRecord(sub) && isRecord(sub.items) && sub.items.type === 'string') {
+            out.push(sub.items);
+          }
+        }
+      }
+      for (const value of Object.values(node)) hashPositions(value, out);
+    }
+    return out;
+  };
+
+  it('declares no $ref and no $defs in the manifest schema', () => {
+    const forbidden = keysIn(mfManifestSchema).filter((key) => key === '$ref' || key === '$defs');
+    expect(forbidden).toEqual([]);
+  });
+
+  it('inlines the content-hash pattern wherever a hash is validated', () => {
+    const positions = hashPositions(mfManifestSchema);
+    expect(positions.length).toBeGreaterThanOrEqual(4);
+    for (const position of positions) {
+      expect(isRecord(position) ? position.pattern : undefined).toBe(HASH_PATTERN);
+    }
   });
 });
 
