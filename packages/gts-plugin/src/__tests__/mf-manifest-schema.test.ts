@@ -74,7 +74,7 @@ describe('manifest fields', () => {
     expect(plugin.validateInstance(entity.id as string).valid).toBe(true);
   });
 
-  it.each(['id', 'metaData', 'shared'])('rejects a manifest without %s', (field) => {
+  it.each(['id', 'metaData'])('rejects a manifest without %s', (field) => {
     const entity = manifest();
     delete entity[field];
     rejects(entity, field === 'id' ? ANONYMOUS : REQUIRED);
@@ -89,21 +89,80 @@ describe('manifest fields', () => {
     rejects(manifest({ metaData: { publicPath: '/', sharedBase: 42 } }), TYPE);
   });
 
+  it('accepts a manifest without shared, units, lists or sharedBase', () => {
+    const entity = manifest();
+    delete entity.shared;
+    accepts(entity);
+  });
+
   it.each([
-    ['name', 'a-name'],
-    ['metaData', { publicPath: '/', name: 'x' }],
-    ['metaData', { publicPath: '/', type: 'app' }],
-    ['metaData', { publicPath: '/', buildInfo: { buildVersion: '1', buildName: 'x' } }],
-    ['metaData', { publicPath: '/', remoteEntry: { name: 'r.js', path: '', type: 'module' } }],
-    ['metaData', { publicPath: '/', globalName: 'g' }],
     ['entryRoots', { './lifecycle': ['react'] }],
     ['lazyChunkRoots', { 'chunks/a.js': ['react'] }],
   ])('rejects the removed field %s', (field, value) => {
     rejects(manifest({ [field as string]: value }), CLOSED);
   });
 
-  it.each(['unwrapKey', 'graphFile', 'requires', 'sharedChunkRule'])('rejects the removed shared[] field %s', (field) => {
-    rejects(manifest({ shared: [sharedEntry({ [field]: field === 'unwrapKey' ? null : 'x' })] }), CLOSED);
+  it.each(['graphFile', 'requires', 'sharedChunkRule'])('rejects the removed shared[] field %s', (field) => {
+    rejects(manifest({ shared: [sharedEntry({ [field]: 'x' })] }), CLOSED);
+  });
+});
+
+describe('fields older producers write', () => {
+  it.each([
+    ['name', 'blankMfe'],
+    ['remoteEntry', 'http://localhost:3099/assets/remoteEntry.js'],
+    ['metaData', { publicPath: 'auto', name: 'x' }],
+    ['metaData', { publicPath: 'auto', type: 'app' }],
+    ['metaData', { publicPath: 'auto', globalName: 'g' }],
+    ['metaData', { publicPath: 'auto', buildInfo: { buildVersion: '1', buildName: 'x' } }],
+    ['metaData', { publicPath: 'auto', remoteEntry: { name: 'r.js', path: '', type: 'module' } }],
+    ['metaData', { publicPath: 'auto', remoteEntry: { name: 'r.js', path: '', type: 'global' } }],
+  ])('accepts the field %s', (field, value) => {
+    accepts(manifest({ [field as string]: value }));
+  });
+
+  it.each([null, 'key'])('accepts shared[].unwrapKey %s', (unwrapKey) => {
+    accepts(manifest({ shared: [sharedEntry({ unwrapKey })] }));
+  });
+
+  it.each([
+    ['name', 1, TYPE],
+    ['remoteEntry', {}, TYPE],
+    ['metaData', { publicPath: '/', buildInfo: { buildVersion: '1', extra: 'x' } }, CLOSED],
+    ['metaData', { publicPath: '/', remoteEntry: { name: 'r.js', path: '', type: 'umd' } }, /Reason: [^\n]*(enum|one of|allowed)/i],
+    ['metaData', { publicPath: '/', remoteEntry: { name: 'r.js', other: 1 } }, CLOSED],
+    ['metaData', { publicPath: '/', other: 'x' }, CLOSED],
+  ])('rejects a malformed or undeclared shape under %s', (field, value, reason) => {
+    rejects(manifest({ [field as string]: value }), reason as RegExp);
+  });
+
+  it('rejects an undeclared top-level property next to the older-producer fields and leaves the store unchanged', () => {
+    const kept = manifest({ name: 'x' });
+    accepts(kept);
+    const bad = manifest({ name: 'x', remoteEntry: 'http://h/r.js', extra: 1 });
+    rejects(bad, CLOSED);
+    expect(plugin.validateInstance(bad.id as string).valid).toBe(false);
+    expect(plugin.validateInstance(kept.id as string).valid).toBe(true);
+  });
+
+  it('accepts an entry carrying exposeAssets.js.async and rejects any other undeclared exposeAssets property', () => {
+    const m = manifest();
+    accepts(m);
+    accepts(entry(m.id as string, { exposeAssets: { js: { sync: ['a.js'], async: ['b.js'] }, css: { sync: [], async: [] } } }));
+    rejects(
+      entry(m.id as string, { exposeAssets: { js: { sync: ['a.js'], other: [] }, css: { sync: [], async: [] } } }),
+      CLOSED
+    );
+    rejects(
+      entry(m.id as string, { exposeAssets: { js: { sync: ['a.js'], async: [1] }, css: { sync: [], async: [] } } }),
+      TYPE
+    );
+  });
+});
+
+describe('shared[] closed fields', () => {
+  it('is closed against any other shared[] property', () => {
+    rejects(manifest({ shared: [sharedEntry({ other: 1 })] }), CLOSED);
   });
 });
 
@@ -175,6 +234,15 @@ describe('units', () => {
     rejects(manifest({ units: [unitOf({ imports: [1] })] }), ONE_OF);
     rejects(manifest({ units: [unitOf({ imports: [{}] })] }), ONE_OF);
     rejects(manifest({ units: { a: unitOf() } }), TYPE);
+  });
+});
+
+describe('closed nested objects', () => {
+  it('rejects a property a units[] element, a lists value, metaData or a shared[] element does not list', () => {
+    rejects(manifest({ units: [unitOf({ extra: 1 })] }), CLOSED);
+    rejects(manifest({ lists: { './a': listOf({ extra: 1 }) } }), CLOSED);
+    rejects(manifest({ metaData: { publicPath: '/', extra: 1 } }), CLOSED);
+    rejects(manifest({ shared: [sharedEntry({ extra: 1 })] }), CLOSED);
   });
 });
 
@@ -279,10 +347,20 @@ describe('registration cost', () => {
 });
 
 describe('every contract field together', () => {
-  it('accepts a manifest and an entry that carry every contract field, the optional ones included', () => {
+  it('accepts a manifest and an entry that carry every contract field, the optional ones and the older-producer fields included', () => {
     const m = manifest({
-      metaData: { publicPath: 'https://cdn.example.com/mfe/', sharedBase: 'https://cdn.example.com/shared/' },
-      shared: [sharedEntry({ contentHash: HASH })],
+      name: 'demo',
+      remoteEntry: 'https://cdn.example.com/mfe/remoteEntry.js',
+      metaData: {
+        publicPath: 'https://cdn.example.com/mfe/',
+        sharedBase: 'https://cdn.example.com/shared/',
+        name: 'demo',
+        type: 'app',
+        globalName: 'demo',
+        buildInfo: { buildVersion: '1.0.0', buildName: 'demo' },
+        remoteEntry: { name: 'remoteEntry.js', path: '', type: 'module' },
+      },
+      shared: [sharedEntry({ contentHash: HASH, unwrapKey: null })],
       units: [unitOf()],
       lists: { './lifecycle': listOf({ lazy: ['assets/l.js'], patterns: ['locales/en.js'] }), 'assets/l.js': listOf(), 'locales/en.js': listOf() },
     });
@@ -290,7 +368,7 @@ describe('every contract field together', () => {
     accepts(
       entry(m.id as string, {
         optionalProperties: [],
-        exposeAssets: { js: { sync: ['a.js', 'b.js'] }, css: { sync: ['a.css'], async: ['b.css'] } },
+        exposeAssets: { js: { sync: ['a.js', 'b.js'], async: ['c.js'] }, css: { sync: ['a.css'], async: ['b.css'] } },
       })
     );
   });
@@ -332,10 +410,6 @@ describe('MFE entry', () => {
   it('requires a non-empty exposeAssets.js.sync', () => {
     rejects(entry(manifestId, { exposeAssets: { js: { sync: [] }, css: { sync: [], async: [] } } }), TOO_FEW);
     rejects(entry(manifestId, { exposeAssets: { js: {}, css: { sync: [], async: [] } } }), REQUIRED);
-  });
-
-  it('rejects exposeAssets.js.async', () => {
-    rejects(entry(manifestId, { exposeAssets: { js: { sync: ['a.js'], async: [] }, css: { sync: [], async: [] } } }), CLOSED);
   });
 
   it('requires both stylesheet lists', () => {

@@ -503,6 +503,68 @@ describe('router admission', () => {
     await registry.dispose();
   });
 
+  it('a router that admits a domain the type system then rejects releases the admission once, throws a DomainValidationError, and leaves nothing registered', async () => {
+    const plugin = createPlugin();
+    const router = createRouterSpy();
+    const registry = freshRegistry(plugin, router);
+    const original = plugin.register;
+    plugin.register = () => {
+      throw new Error('invalid domain declaration');
+    };
+
+    expect(() => registry.registerDomain(makeDomain(), new ConcurrentDomainFactory())).toThrow(DomainValidationError);
+    expect(router.releaseDomain).toHaveBeenCalledTimes(1);
+    expect(router.releaseDomain).toHaveBeenCalledWith(DOMAIN_ID);
+    expect(registry.getDomain(DOMAIN_ID)).toBeUndefined();
+
+    // Nothing remains: the corrected declaration registers.
+    plugin.register = original;
+    expect(() => registry.registerDomain(makeDomain(), new ConcurrentDomainFactory())).not.toThrow();
+    await registry.dispose();
+  });
+
+  it('a domain implementation factory that throws presents nothing to the router and registers nothing', async () => {
+    const plugin = createPlugin();
+    const router = createRouterSpy();
+    const registry = freshRegistry(plugin, router);
+    class ThrowingFactory extends ExtensionDomainImplementationFactory {
+      build(): never {
+        throw new Error('factory refuses');
+      }
+    }
+
+    expect(() => registry.registerDomain(makeDomain(), new ThrowingFactory())).toThrow('factory refuses');
+    expect(router.registerDomain).not.toHaveBeenCalled();
+    expect(router.releaseDomain).not.toHaveBeenCalled();
+    expect(registry.getDomain(DOMAIN_ID)).toBeUndefined();
+    expect(() => registry.registerDomain(makeDomain(), new ConcurrentDomainFactory())).not.toThrow();
+    await registry.dispose();
+  });
+
+  it('an extension whose domain contract matching fails is rejected before any router call and before anything is stored', async () => {
+    const plugin = createPlugin();
+    const router = createRouterSpy();
+    const registry = freshRegistry(plugin, router);
+    registry.registerDomain(makeDomain(), new ConcurrentDomainFactory());
+    const needy = `${ENTRY_ID}.needs`;
+    plugin.registerSchema({
+      $id: needy,
+      id: needy,
+      requiredProperties: ['cti.example.property~missing.v1'],
+      actions: [],
+      domainActions: [],
+    } as unknown as MockSchema);
+
+    await expect(
+      registry.registerExtension({ id: EXTENSION_ID, domain: DOMAIN_ID, entry: needy, route: EXTENSION_ROUTE } as Extension)
+    ).rejects.toThrow('Contract validation failed');
+
+    expect(router.registerExtension).not.toHaveBeenCalled();
+    expect(registry.getExtension(EXTENSION_ID)).toBeUndefined();
+    expect(registry.getExtensionsForDomain(DOMAIN_ID)).toHaveLength(0);
+    await registry.dispose();
+  });
+
   it('a registry built with no router presents nothing, releases nothing, and behaves exactly as without a router', async () => {
     const plugin = createPlugin();
     const registry = freshRegistry(plugin, undefined);

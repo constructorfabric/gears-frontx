@@ -184,7 +184,7 @@ const parity = (schemas: JSONSchema[] = loadSchemas(), edits: SourceEdit = {}): 
 describe('manifest and MFE entry types equal the runtime contract types', () => {
   it('reads a non-trivial field tree from the runtime types', () => {
     const { manifest, entry } = typeScriptTrees();
-    expect(manifest.kind === 'object' && Object.keys(manifest.fields).sort()).toEqual(['id', 'lists', 'metaData', 'shared', 'units']);
+    expect(manifest.kind === 'object' && Object.keys(manifest.fields).sort()).toEqual(['id', 'lists', 'metaData', 'name', 'remoteEntry', 'shared', 'units']);
     expect(entry.kind === 'object' && Object.keys(entry.fields)).toEqual(
       expect.arrayContaining(['id', 'requiredProperties', 'optionalProperties', 'actions', 'domainActions', 'manifest', 'exposedModule', 'exposeAssets'])
     );
@@ -209,13 +209,20 @@ describe('manifest and MFE entry types equal the runtime contract types', () => 
     expect(parity(loadSchemas(), edits).join('\n')).toContain('entry.extra: only in types');
   });
 
+  it('compares the older-producer fields like any other: dropping one from the types fails', () => {
+    const edits: SourceEdit = { [MANIFEST_FILE]: (t) => t.replace('  remoteEntry?: string;', '') };
+    expect(parity(loadSchemas(), edits).join('\n')).toContain('manifest.remoteEntry: only in schema');
+    const entryEdit: SourceEdit = { [MANIFEST_FILE]: (t) => t.replace('    async?: string[];', '') };
+    expect(parity(loadSchemas(), entryEdit).join('\n')).toContain('only in schema');
+  });
+
   it('fails when a schema loses a required flag or gains a field', () => {
     const mutated = structuredClone(loadSchemas()) as Schema[];
     const manifest = mutated.find((s) => String(s.$id).endsWith('mf_manifest.v1~')) as Schema;
-    manifest.required = (manifest.required as string[]).filter((r) => r !== 'shared');
+    manifest.required = (manifest.required as string[]).filter((r) => r !== 'metaData');
     (manifest.properties as Record<string, unknown>).extra = { type: 'string' };
     const out = parity(mutated as JSONSchema[]).join('\n');
-    expect(out).toContain('manifest.shared: required true vs false');
+    expect(out).toContain('manifest.metaData: required true vs false');
     expect(out).toContain('manifest.extra: only in schema');
   });
 });

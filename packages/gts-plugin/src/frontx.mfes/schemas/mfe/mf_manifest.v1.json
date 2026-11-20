@@ -7,6 +7,14 @@
     "id": {
       "x-gts-instance-ref": "/$id"
     },
+    "name": {
+      "type": "string",
+      "description": "Written by older producers; accepted and never read."
+    },
+    "remoteEntry": {
+      "type": "string",
+      "description": "Absolute location of the remote entry file. Written by older producers; accepted and never read."
+    },
     "metaData": {
       "type": "object",
       "additionalProperties": false,
@@ -18,6 +26,48 @@
         "sharedBase": {
           "type": "string",
           "description": "Optional shared-file base location for resolving unit locations, separate from the asset base location (publicPath). When present, those locations resolve against this value by the same rules as shared[].chunkPath resolves against publicPath; when absent, they resolve against publicPath. See cpt-frontx-adr-shared-dep-reuse."
+        },
+        "name": {
+          "type": "string",
+          "description": "Written by older producers; accepted and never read."
+        },
+        "type": {
+          "type": "string",
+          "description": "Written by older producers; accepted and never read."
+        },
+        "globalName": {
+          "type": "string",
+          "description": "Written by older producers; accepted and never read."
+        },
+        "buildInfo": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Written by older producers; accepted and never read.",
+          "properties": {
+            "buildVersion": {
+              "type": "string"
+            },
+            "buildName": {
+              "type": "string"
+            }
+          }
+        },
+        "remoteEntry": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Written by older producers; accepted and never read.",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "enum": ["module", "global"]
+            }
+          }
         }
       },
       "required": ["publicPath"]
@@ -47,10 +97,15 @@
             "type": "string",
             "pattern": "^[0-9a-f]{64}$",
             "description": "Optional sha256 hex digest (64 lowercase hex characters) of this entry's file, declared by the producing build. It is the key under which the entry's text is shared across loads. See cpt-frontx-adr-mfe-asset-discovery."
+          },
+          "unwrapKey": {
+            "type": ["string", "null"],
+            "description": "Written by older producers; accepted and never read."
           }
         },
         "required": ["name", "version", "chunkPath"]
-      }
+      },
+      "description": "Whole-package entries written by older producers; a current producer writes none. An absent shared is valid."
     },
     "units": {
       "type": "array",
@@ -149,5 +204,5 @@
       }
     }
   },
-  "required": ["id", "metaData", "shared"]
+  "required": ["id", "metaData"]
 }

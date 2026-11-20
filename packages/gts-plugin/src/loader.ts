@@ -74,6 +74,8 @@ export function loadSchemas(): JSONSchema[] {
     unmountExtActionSchema as JSONSchema,
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-final
     // The closed manifest and MFE entry contracts, as final types.
+    // The older-producer fields are optional properties of both schemas.
+    // @cpt-begin:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-older-producer-fields
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-manifest-fields
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-formats
     manifestSchema as JSONSchema,
@@ -84,6 +86,7 @@ export function loadSchemas(): JSONSchema[] {
     entryMfSchema as JSONSchema,
     // @cpt-end:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-manifest-ref
     // @cpt-end:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-entry-fields
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-older-producer-fields
     // @cpt-end:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-final
     // @cpt-end:cpt-frontx-algo-gts-type-provider-type-closure:p1:inst-tc-nested-closed
     // @cpt-end:cpt-frontx-algo-gts-type-provider-type-closure:p1:inst-tc-final-closed

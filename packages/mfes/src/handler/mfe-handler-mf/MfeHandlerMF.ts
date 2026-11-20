@@ -171,6 +171,14 @@ interface LoadBlobState {
   /** Shared dep blob URLs: package name → blob URL. Built before the expose chain. */
   readonly sharedDepBlobUrls: Map<string, string>;
   /**
+   * The specifiers the load declares: the manifest's unit `answers` on the
+   * fetch-list path, the declared `shared[]` names on the whole-package
+   * path. One that survives an own chunk's rewrite as a bare specifier
+   * fails the chain build; a well-formed package specifier outside the set
+   * is warned about.
+   */
+  readonly declaredSpecifiers: ReadonlySet<string>;
+  /**
    * Entry-chunk path (relative to `baseUrl`) for this load. Used as the
    * resolution base when `__frontx_lazy('<rel>')` is invoked at runtime:
    * Rollup emits dynamic-import paths relative to the importing chunk's
@@ -640,6 +648,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
               ledger
             );
           } catch (error) {
+            ledger.fail();
             if (DeterministicLoadFailure.is(error)) {
               // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-no-retry-deterministic
               return { [DETERMINISTIC_FAILURE]: error as Error };
@@ -912,6 +921,10 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       baseUrl,
       entryId,
       sharedDepBlobUrls,
+      declaredSpecifiers:
+        sharedDepLists !== undefined
+          ? sharedDepLists.ctx.declaredSpecifiers
+          : new Set((manifest.shared ?? []).map((d) => d.name)),
       entryChunkFilename: exposeChunkFilename,
       attemptLedger: ledger,
       sharedDepLists,
@@ -1402,9 +1415,19 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         ledger
       );
     }
+    // A manifest that holds a unit table or lists names every list its
+    // entries load: an exposed module without one is manifest data the
+    // handler refuses, not a whole-package load.
+    if (manifest.units !== undefined || manifest.lists !== undefined) {
+      throw MfeHandlerMF.manifestDataRejection(
+        `manifest "${manifest.id}" holds units or lists but no list for ` +
+          `exposed module "${exposedModule}" (lists["${exposedModule}"] is missing).`,
+        entryId
+      );
+    }
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-whole-package-path
     const sources = await this.fetchSharedDepSources(manifest, baseUrl, entryId, ledger);
-    const sharedNames = new Set(manifest.shared.map((d) => d.name));
+    const sharedNames = new Set((manifest.shared ?? []).map((d) => d.name));
     // The whole-package entries mint before the load's state exists, yet
     // their lazy calls resolve through that state once the load is built:
     // the resolver reads it through this holder, bound after the build.
@@ -1415,7 +1438,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       // The resolved fetch location, so the caller a call names and the
       // base it resolves against agree with the URL the entry came from.
       chunkPaths: new Map(
-        manifest.shared.map((d) => [
+        (manifest.shared ?? []).map((d) => [
           d.name,
           MfeHandlerMF.resolveSharedChunkUrl(d, baseUrl, entryId),
         ])
@@ -1641,7 +1664,9 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   /**
    * Refuse, before any request of the load, a fetch list reachable from
    * `entryList` — through the keys of its `lazy` and `patterns` arrays —
-   * that names a content identity the manifest's unit table does not hold
+   * that names a content identity the manifest's unit table does not hold,
+   * an own-chunk location that is not a non-empty string, or a list key that
+   * is not a non-empty string
    * (`cpt-frontx-flow-mfe-loading-on-demand-load`, `inst-if-manifest-invalid`).
    */
   private static assertListUnitsHeld(
@@ -1665,7 +1690,26 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
           );
         }
       }
+      // Own-chunk locations resolve like an `exposeAssets` entry: a
+      // non-empty string, a path against `publicPath` or an absolute
+      // http(s) URL. A refused one fails the load before any request.
+      for (const location of list.ownChunks) {
+        if (typeof (location as unknown) !== 'string' || location === '') {
+          throw MfeHandlerMF.manifestDataRejection(
+            `a fetch list of manifest "${manifest.id}" has ownChunks entry ` +
+              `${JSON.stringify(location)}, which is not a non-empty string.`,
+            entryId
+          );
+        }
+      }
       for (const key of [...(list.lazy ?? []), ...(list.patterns ?? [])]) {
+        if (typeof (key as unknown) !== 'string' || key === '') {
+          throw MfeHandlerMF.manifestDataRejection(
+            `a fetch list of manifest "${manifest.id}" names list key ` +
+              `${JSON.stringify(key)}, which is not a non-empty string.`,
+            entryId
+          );
+        }
         const nested = lists[key];
         if (nested !== undefined) pending.push(nested);
       }
@@ -1808,7 +1852,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     entryId: string
   ): void {
     const seen = new Set<string>();
-    for (const dep of manifest.shared) {
+    for (const dep of manifest.shared ?? []) {
       // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-if-duplicate-name
       if (seen.has(dep.name)) {
         // The second argument is `MfeLoadError.entryTypeId` — the entry
@@ -1865,7 +1909,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // fetched.
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-resolve-chunk-path
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-derive-url
-    const resolvedDeps = manifest.shared.map((dep) => ({
+    const resolvedDeps = (manifest.shared ?? []).map((dep) => ({
       dep,
       absoluteUrl: MfeHandlerMF.resolveSharedChunkUrl(dep, baseUrl, entryId),
     }));
@@ -2092,9 +2136,9 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-warn-undeclared-specifier
       console.warn(
         `shared-dep chunk '${depName}' imports '${specifier}', which is ` +
-          `not declared in manifest.shared[], for microfrontend ` +
+          `not declared by the manifest, for microfrontend ` +
           `'${extensionId}'. This specifier cannot resolve inside an ` +
-          'isolated module; declare it in manifest.shared[] if it should ' +
+          'isolated module; have the manifest declare it if it should ' +
           'be shared, or remove the import if it is unused. The load ' +
           'proceeds — this is a diagnostic only.'
       );
@@ -2591,6 +2635,42 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     rewritten = this.rewriteBareSpecifiers(rewritten, loadState.sharedDepBlobUrls);
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-lazy-specifiers
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-shared
+
+    // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-assert-own-no-bare-specifier
+    const ownSurvivor = SharedDepSpecifierScan.findSurvivingDeclared(
+      rewritten,
+      loadState.declaredSpecifiers
+    );
+    // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-assert-own-no-bare-specifier
+    // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-if-own-bare-specifier
+    if (ownSurvivor !== undefined) {
+      // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-raise-own-bare-specifier
+      build.failed = true;
+      throw DeterministicLoadFailure.mark(
+        new MfeLoadError(
+          `own chunk '${filename}' still imports the bare specifier ` +
+            `'${ownSurvivor}' after rewriting, for microfrontend ` +
+            `'${loadState.entryId}'. Every declared specifier must resolve ` +
+            'to a blob URL; no unit of the load answers it.',
+          loadState.entryId
+        )
+      );
+      // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-raise-own-bare-specifier
+    }
+    // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-if-own-bare-specifier
+    // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-warn-own-undeclared-specifier
+    for (const specifier of SharedDepSpecifierScan.findUndeclaredWellFormedSpecifiers(
+      rewritten,
+      loadState.declaredSpecifiers
+    )) {
+      console.warn(
+        `own chunk '${filename}' imports '${specifier}', which the ` +
+          `manifest does not declare, for microfrontend ` +
+          `'${loadState.entryId}'. This specifier cannot resolve inside an ` +
+          'isolated module. The load proceeds — this is a diagnostic only.'
+      );
+    }
+    // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-warn-own-undeclared-specifier
 
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-if-lazy-ref
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-inject-lazy-stub
@@ -3283,7 +3363,7 @@ function isMfManifest(value: unknown): value is MfManifest {
   return (
     'id' in value && typeof value.id === 'string' &&
     'metaData' in value && typeof value.metaData === 'object' && value.metaData !== null &&
-    'shared' in value && Array.isArray(value.shared)
+    (!('shared' in value) || value.shared === undefined || Array.isArray(value.shared))
   );
 }
 

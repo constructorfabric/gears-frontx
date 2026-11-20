@@ -5,18 +5,20 @@
  * rejects retries once from its own URL, and a rejected fetch is evicted
  * under the identity check.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MfeLoadError } from '../../../errors';
 import { RealmSharedDepTextCacheProvider } from '../RealmSharedDepTextCacheProvider';
 import { SharedUnitFetcher } from '../SharedUnitFetcher';
+import { resetRealmSharedDepTextCache } from './helpers/realm-cache';
 
 const HASH = 'a'.repeat(64);
 const KEY = `chunk:${HASH}`;
 const TEXT = 'export const a = 1;';
 
+beforeEach(resetRealmSharedDepTextCache);
 afterEach(() => {
-  RealmSharedDepTextCacheProvider.getCache().delete(KEY);
+  resetRealmSharedDepTextCache();
   vi.restoreAllMocks();
 });
 

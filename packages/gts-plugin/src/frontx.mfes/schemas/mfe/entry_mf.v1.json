@@ -22,7 +22,8 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "sync": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+            "sync": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+            "async": { "type": "array", "items": { "type": "string" }, "description": "Written by older producers; accepted and never read." }
           },
           "required": ["sync"]
         },

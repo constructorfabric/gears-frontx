@@ -10,11 +10,17 @@
  * the kernel keeps that file's audited surface from growing with a
  * diagnostic-only heuristic that has no safety property to review.
  *
- * The scan is heuristic and MUST NEVER be able to fail a load: it reads
- * chunk text without parsing it, so it cannot tell an ordinary string
- * literal from an actual import. Its only caller (`MfeHandlerMF`) passes its
- * result to `console.warn` and continues the load unconditionally — nothing
- * in this file throws.
+ * The undeclared-specifier scan is heuristic and MUST NEVER be able to fail a
+ * load: it reads chunk text without parsing it, so it cannot tell an ordinary
+ * string literal from an actual import. Its only callers pass its result to
+ * `console.warn` and continue the load unconditionally.
+ *
+ * The survivor check (`findSurvivingDeclared`) is the one member that can
+ * fail a load, and it is narrower: it looks only at import and export
+ * statements — a statement keyword at the start of the text or after a `;`
+ * or `}` — and only for the specifiers the caller names (the unit's own
+ * `imports` edges, or the declared names a chunk could import), so a string
+ * or a comment that merely contains `from "x"` never fails anything.
  *
  * @packageDocumentation
  */
@@ -35,32 +41,57 @@ export class SharedDepSpecifierScan {
   private static readonly GENERIC_IMPORT_SPECIFIER_PATTERN =
     /(from|import)(\s*["'])([^"']+)(["'])/g;
 
-/**
- * A specifier text is well-formed as a package module specifier when it
- * matches the grammar: an optional `@scope/` prefix (scope starting with
- * alphanumeric), a package name (starting with alphanumeric), and zero or
- * more `/`-separated subpath segments, where each segment uses only the
- * characters npm package names permit (letters, digits, `.`, `_`, `-`, `~`).
- * This double-checks both the shape (optionally scoped package name with
- * optional subpath) and the exclusions (no whitespace, quote, parenthesis,
- * colon, or line break). Already-rewritten `blob:`/`data:` specifiers fail
- * this grammar because they contain a colon. Excluding parentheses, quotes,
- * and whitespace/line breaks keeps ordinary code from being mistaken for
- * a specifier (see the file header and `inst-if-undeclared-specifier`).
- */
+  /**
+   * A specifier text is well-formed as a package module specifier when it
+   * matches the grammar: an optional `@scope/` prefix (scope starting with
+   * alphanumeric), a package name (starting with alphanumeric), and zero or
+   * more `/`-separated subpath segments, where each segment uses only the
+   * characters npm package names permit (letters, digits, `.`, `_`, `-`, `~`).
+   * This double-checks both the shape (optionally scoped package name with
+   * optional subpath) and the exclusions (no whitespace, quote, parenthesis,
+   * colon, or line break). Already-rewritten `blob:`/`data:` specifiers fail
+   * this grammar because they contain a colon. Excluding parentheses, quotes,
+   * and whitespace/line breaks keeps ordinary code from being mistaken for
+   * a specifier (see the file header and `inst-if-undeclared-specifier`).
+   */
   private static readonly WELL_FORMED_MODULE_SPECIFIER_PATTERN =
     /^(@[a-zA-Z0-9][a-zA-Z0-9._~-]*\/)?[a-zA-Z0-9][a-zA-Z0-9._~-]*(?:\/[a-zA-Z0-9._~-]+)*$/;
 
-/**
- * Find every specifier in `source`, in the two import forms above, that is
- * well-formed as a package module specifier and is NOT one of
- * `declaredNames`. Duplicates are reported once. Returns an empty array when
- * there is nothing to warn about.
- *
- * This function never throws for any input; a caller may use its result
- * only for diagnostics.
- */
+  /**
+   * Matches the specifier of an import or export statement: the statement
+   * keyword starts the text or follows `;` or `}`, and the quoted specifier
+   * is the first string literal after it.
+   */
+  private static readonly STATEMENT_SPECIFIER_PATTERN =
+    /(?:^|[;}])\s*(?:import|export)\b[^;'"`]*?["']([^"']+)["']/gm;
+
+  /**
+   * The first of `specifiers` that an import or export statement of `source`
+   * still names — a declared specifier that survived a rewrite. Text that
+   * only looks like an import (inside a string or a comment) does not count.
+   */
+  static findSurvivingDeclared(
+    source: string,
+    specifiers: ReadonlySet<string>,
+  ): string | undefined {
+    for (const match of source.matchAll(
+      SharedDepSpecifierScan.STATEMENT_SPECIFIER_PATTERN,
+    )) {
+      if (specifiers.has(match[1])) return match[1];
+    }
+    return undefined;
+  }
+
 // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-undeclared-specifier
+  /**
+   * Find every specifier in `source`, in the two import forms above, that is
+   * well-formed as a package module specifier and is NOT one of
+   * `declaredNames`. Duplicates are reported once. Returns an empty array when
+   * there is nothing to warn about.
+   *
+   * This function never throws for any input; a caller may use its result
+   * only for diagnostics.
+   */
   static findUndeclaredWellFormedSpecifiers(
     source: string,
     declaredNames: ReadonlySet<string>,

@@ -60,6 +60,7 @@ export class SharedTextAdmission {
     fetchText: (url: string) => Promise<string>,
   ): Promise<string> {
     const cache = this.cache;
+    // @cpt-begin:cpt-frontx-algo-unit-format-contract-shared-text-admission:p1:inst-reuse-resident
     // @cpt-begin:cpt-frontx-flow-unit-format-contract-host-admission:p1:inst-host-concurrent-join
     const joined = cache.get(key);
     // @cpt-end:cpt-frontx-flow-unit-format-contract-host-admission:p1:inst-host-concurrent-join
@@ -67,11 +68,15 @@ export class SharedTextAdmission {
       return this.issueFetch(key, url, fetchText);
     }
     this.ledger?.record(cache, key, joined);
+    // @cpt-end:cpt-frontx-algo-unit-format-contract-shared-text-admission:p1:inst-reuse-resident
+    // @cpt-begin:cpt-frontx-algo-unit-format-contract-shared-text-admission:p1:inst-join-retry-once
     // @cpt-begin:cpt-frontx-flow-unit-format-contract-host-admission:p1:inst-host-concurrent-join
     // A joined fetch that rejects is retried once from this load's own
     // URL: the issuer's eviction (registered first) has already removed
     // the rejected generation, so the retry publishes or joins a fresh one.
-    return joined.catch(() => {
+    // A load that has already failed retries nothing.
+    return joined.catch((error: unknown) => {
+      if (this.ledger?.hasFailed === true) throw error;
       const replacement = cache.get(key);
       if (replacement !== undefined) {
         this.ledger?.record(cache, key, replacement);
@@ -80,6 +85,7 @@ export class SharedTextAdmission {
       return this.issueFetch(key, url, fetchText);
     });
     // @cpt-end:cpt-frontx-flow-unit-format-contract-host-admission:p1:inst-host-concurrent-join
+    // @cpt-end:cpt-frontx-algo-unit-format-contract-shared-text-admission:p1:inst-join-retry-once
   }
 
   private issueFetch(
@@ -88,6 +94,13 @@ export class SharedTextAdmission {
     fetchText: (url: string) => Promise<string>,
   ): Promise<string> {
     const cache = this.cache;
+    // @cpt-begin:cpt-frontx-algo-unit-format-contract-shared-text-admission:p1:inst-fetch-on-miss
+    // A load that has already failed publishes no further in-flight entry.
+    if (this.ledger?.hasFailed === true) {
+      return Promise.reject(
+        new Error(`load already failed: '${url}' is not requested`),
+      );
+    }
     // Published under the key before it settles, so a concurrent caller
     // from ANY compatible copy computing the same key joins it.
     const textPromise = fetchText(url);
@@ -99,7 +112,13 @@ export class SharedTextAdmission {
     });
     // @cpt-end:cpt-frontx-algo-unit-format-contract-shared-text-admission:p1:inst-evict-on-reject
     cache.set(key, textPromise);
+    // @cpt-end:cpt-frontx-algo-unit-format-contract-shared-text-admission:p1:inst-fetch-on-miss
+    // @cpt-begin:cpt-frontx-algo-unit-format-contract-shared-text-admission:p1:inst-admit-as-fetched
+    // The text is returned as fetched and held under the key the declared
+    // identity fixes; nothing is compared against it and the handler's
+    // URL-keyed source-text cache never sees it.
     this.ledger?.record(cache, key, textPromise);
     return textPromise;
+    // @cpt-end:cpt-frontx-algo-unit-format-contract-shared-text-admission:p1:inst-admit-as-fetched
   }
 }

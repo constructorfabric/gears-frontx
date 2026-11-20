@@ -18,6 +18,8 @@ export interface MfManifestAssets {
   js: {
     /** Synchronous JS chunks; the first element is the entry module. */
     sync: string[];
+    /** Written by older producers; accepted and never read. */
+    async?: string[];
   };
   css: {
     /** Synchronous CSS files injected at mount time. */
@@ -66,6 +68,8 @@ export interface MfManifestShared {
    * Absent for producing builds that have not adopted it.
    */
   contentHash?: string;
+  /** Written by older producers; accepted and never read. */
+  unwrapKey?: string | null;
 }
 
 /**
@@ -109,6 +113,16 @@ export interface MfManifestMetaData {
    * (see `cpt-frontx-adr-mfe-asset-discovery`).
    */
   sharedBase?: string;
+  /** Written by older producers; accepted and never read. */
+  name?: string;
+  /** Written by older producers; accepted and never read. */
+  type?: string;
+  /** Written by older producers; accepted and never read. */
+  globalName?: string;
+  /** Written by older producers; accepted and never read. */
+  buildInfo?: { buildVersion?: string; buildName?: string };
+  /** Written by older producers; accepted and never read. */
+  remoteEntry?: { name?: string; path?: string; type?: 'module' | 'global' };
 }
 
 /**
@@ -126,8 +140,15 @@ export interface MfManifest {
   id: string;
   /** Package-level metadata: the asset base and shared base locations. */
   metaData: MfManifestMetaData;
-  /** Shared dependency declarations with chunk paths. */
-  shared: MfManifestShared[];
+  /**
+   * Whole-package entries with chunk paths, written by older producers; a
+   * manifest of a current producer carries none.
+   */
+  shared?: MfManifestShared[];
+  /** Written by older producers; accepted and never read. */
+  name?: string;
+  /** Absolute location of the remote entry file, written by older producers; accepted and never read. */
+  remoteEntry?: string;
   /**
    * The unit table: every shared chunk the manifest's lists reference,
    * held once — location, content identity, answered specifiers and import
@@ -145,7 +166,7 @@ export interface MfManifest {
    * every listed unit missing from the realm text cache and the list's
    * `ownChunks` in one round and mints per load in dependency order, with no
    * graph discovery. Absent for an exposed module that has none; the runtime
-   * then uses the whole-package `chunkPath` entries of `shared[]`.
+   * then uses the whole-package `chunkPath` entries of `shared[]`, when present.
    */
   lists?: Record<string, SharedDepFetchList>;
 }

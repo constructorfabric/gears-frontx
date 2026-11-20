@@ -166,6 +166,118 @@ describe('SharedDepListLoader', () => {
     expect(ctx.specifierToBlob.get('pkg-b')).toBe(ctx.specifierToBlob.get('pkg-a'));
   });
 
+  it('mints byte-identical units in different directories per directory when their relative edges bind different siblings', async () => {
+    // One importer text, two directories: the unhashed relative specifier
+    // `./sib.js` resolves to a different sibling in each.
+    const importerText = "import './sib.js';\nexport const x = 1;\n";
+    const sibP = item2('p@1/sib.js', 'export const s = "p";');
+    const sibQ = item2('q@1/sib.js', 'export const s = "q";');
+    const impP = item2('p@1/importer.js', importerText, ['pkg-p'], [{ unit: sibP.contentHash }]);
+    const impQ = item2('q@1/importer.js', importerText, ['pkg-q'], [{ unit: sibQ.contentHash }]);
+    const files = new Map([
+      [resolve(impP.location), importerText],
+      [resolve(sibP.location), 'export const s = "p";'],
+      [resolve(sibQ.location), 'export const s = "q";'],
+    ]);
+    const { fetchText, calls } = fetchSpy(files);
+    const l = new SharedDepListLoader(fetchText, 'e', new Map<string, Promise<string>>());
+    const ctx = l.createContext([impP, impQ, sibP, sibQ], {});
+    const bodies = new Map<string, string>();
+    const original = URL.createObjectURL;
+    let n = 0;
+    URL.createObjectURL = ((blob: Blob) => {
+      const url = `blob:test/${n++}`;
+      // jsdom's Blob has no `text()`, so the text comes back through FileReader.
+      const reader = new FileReader();
+      reader.onload = () => bodies.set(url, String(reader.result));
+      reader.readAsText(blob);
+      return url;
+    }) as typeof URL.createObjectURL;
+    try {
+      await l.loadList(ctx, listOf([impP, sibP, sibQ]), resolve);
+    } finally {
+      URL.createObjectURL = original;
+    }
+    await new Promise((r) => setTimeout(r, 20));
+    // The importer text is fetched once, minted once per directory.
+    expect(calls.filter((c) => c === resolve(impP.location))).toHaveLength(1);
+    const blobP = l.blobForKey(ctx, impP.location)!;
+    const blobQ = l.blobForKey(ctx, impQ.location)!;
+    expect(blobP).not.toBe(blobQ);
+    expect(bodies.get(blobP)).toContain(l.blobForKey(ctx, sibP.location)!);
+    expect(bodies.get(blobQ)).toContain(l.blobForKey(ctx, sibQ.location)!);
+  });
+
+  describe('twin units that mint per directory', () => {
+    const importerText = "import './sib.js';\nexport const x = 1;\n";
+    const sibP = item2('p@1/sib.js', 'export const s = "p";');
+    const sibQ = item2('q@1/sib.js', 'export const s = "q";');
+    const impP = item2('p@1/importer.js', importerText, ['pkg-p'], [{ unit: sibP.contentHash }]);
+    const impQ = item2('q@1/importer.js', importerText, ['pkg-q'], [{ unit: sibQ.contentHash }]);
+    const files = new Map([
+      [resolve(impP.location), importerText],
+      [resolve(sibP.location), 'export const s = "p";'],
+      [resolve(sibQ.location), 'export const s = "q";'],
+    ]);
+    const bodies = new Map<string, string>();
+    let restore: () => void;
+    const capture = (): void => {
+      const original = URL.createObjectURL;
+      let n = 0;
+      URL.createObjectURL = ((blob: Blob) => {
+        const url = `blob:twin/${n++}`;
+        const reader = new FileReader();
+        reader.onload = () => bodies.set(url, String(reader.result));
+        reader.readAsText(blob);
+        return url;
+      }) as typeof URL.createObjectURL;
+      restore = () => {
+        URL.createObjectURL = original;
+      };
+    };
+    const settle = (): Promise<void> => new Promise((r) => setTimeout(r, 20));
+
+    it('publishes each twin\'s own answers, not the combined set', async () => {
+      bodies.clear();
+      capture();
+      const l = new SharedDepListLoader(fetchSpy(files).fetchText, 'e', new Map<string, Promise<string>>());
+      const ctx = l.createContext([impP, impQ, sibP, sibQ], {});
+      try {
+        await l.loadList(ctx, listOf([impP, sibP, sibQ]), resolve);
+      } finally {
+        restore();
+      }
+      expect(ctx.specifierToBlob.get('pkg-p')).toBe(l.blobForKey(ctx, impP.location));
+      expect(ctx.specifierToBlob.get('pkg-q')).toBe(l.blobForKey(ctx, impQ.location));
+      expect(ctx.specifierToBlob.get('pkg-p')).not.toBe(ctx.specifierToBlob.get('pkg-q'));
+    });
+
+    it('defers a twin whose own sibling no list has delivered yet, and mints it with the later list', async () => {
+      bodies.clear();
+      capture();
+      const l = new SharedDepListLoader(fetchSpy(files).fetchText, 'e', new Map<string, Promise<string>>());
+      const ctx = l.createContext([impP, impQ, sibP, sibQ], {});
+      try {
+        await l.loadList(ctx, listOf([impP, sibP]), resolve);
+        await settle();
+        // q's twin waits: nothing half-rewritten was minted for it.
+        expect(l.blobForKey(ctx, impQ.location)).toBeUndefined();
+        expect(ctx.specifierToBlob.has('pkg-q')).toBe(false);
+        const first = l.blobForKey(ctx, impP.location)!;
+        expect(bodies.get(first)).toContain(l.blobForKey(ctx, sibP.location)!);
+
+        await l.loadList(ctx, listOf([impQ, sibQ]), resolve);
+        await settle();
+      } finally {
+        restore();
+      }
+      const second = l.blobForKey(ctx, impQ.location)!;
+      expect(second).toBeDefined();
+      expect(bodies.get(second)).toContain(l.blobForKey(ctx, sibQ.location)!);
+      expect(bodies.get(second)).not.toContain('./sib.js');
+    });
+  });
+
   it('loadList returns the bytes its batch actually transferred; cache joins count nothing', async () => {
     const a = item2('chunks/a.js', "export const a=1;", ['pkg-a']);
     const files = new Map([[resolve(a.location), "export const a=1;"]]);

@@ -24,6 +24,7 @@ export class SharedUnitFetcher {
    * @param fetchFn - turns a URL into a promise of its text
    * @param label - carried by the errors this fetcher raises
    */
+  // @cpt-begin:cpt-frontx-flow-unit-format-contract-host-admission:p1:inst-host-construct
   constructor(
     private readonly fetchFn: (url: string) => Promise<string>,
     private readonly label: string,
@@ -32,6 +33,7 @@ export class SharedUnitFetcher {
       RealmSharedDepTextCacheProvider.getCache(),
     );
   }
+  // @cpt-end:cpt-frontx-flow-unit-format-contract-host-admission:p1:inst-host-construct
 
   /**
    * Fetch the list item at `url` and admit its text to the realm cache
@@ -41,18 +43,24 @@ export class SharedUnitFetcher {
    */
   async fetch(url: string, contentHash: string): Promise<string> {
     try {
+      // @cpt-begin:cpt-frontx-flow-unit-format-contract-host-admission:p1:inst-host-fetch
+      // @cpt-begin:cpt-frontx-flow-unit-format-contract-host-admission:p1:inst-host-return
       return await this.admission.admit(
         SharedTextAdmission.chunkKey(contentHash),
         url,
         this.fetchFn,
       );
+      // @cpt-end:cpt-frontx-flow-unit-format-contract-host-admission:p1:inst-host-return
+      // @cpt-end:cpt-frontx-flow-unit-format-contract-host-admission:p1:inst-host-fetch
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
+      // @cpt-begin:cpt-frontx-flow-unit-format-contract-host-admission:p1:inst-host-return
       throw new MfeLoadError(
         `shared unit '${url}' could not be fetched: ${reason}`,
         this.label,
         error instanceof Error ? error : undefined,
       );
+      // @cpt-end:cpt-frontx-flow-unit-format-contract-host-admission:p1:inst-host-return
     }
   }
 }
