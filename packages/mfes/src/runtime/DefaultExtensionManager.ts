@@ -247,6 +247,7 @@ export class DefaultExtensionManager extends ExtensionManager {
     // method tracks it, so it must be released right here, before the
     // throw, or a corrected retry would collide with it in the router.
     // @cpt-begin:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-extension-type-register
+    // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-rejection-isolated
     try {
       this.typeSystem.register(extension);
     } catch (cause) {
@@ -268,6 +269,7 @@ export class DefaultExtensionManager extends ExtensionManager {
       throw cause;
       // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-extension-type-register-reject
     }
+    // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-rejection-isolated
     // @cpt-end:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-extension-type-register
     // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-router-extension
     // @cpt-end:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-router-admit

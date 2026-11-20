@@ -212,6 +212,7 @@ function buildLoadState(): {
   baseUrl: string;
   entryId: string;
   sharedDepBlobUrls: Map<string, string>;
+  declaredSpecifiers: ReadonlySet<string>;
   entryChunkFilename: string;
 } {
   return {
@@ -220,6 +221,7 @@ function buildLoadState(): {
     baseUrl: PUBLIC_PATH,
     entryId: ENTRY_ID,
     sharedDepBlobUrls: new Map<string, string>(),
+    declaredSpecifiers: new Set<string>(),
     entryChunkFilename: 'assets/lifecycle.js',
   };
 }
@@ -1342,6 +1344,7 @@ describe('MfeHandlerMF — lazy-import failure isolation', () => {
       baseUrl: PUBLIC_PATH,
       entryId: ENTRY_ID,
       sharedDepBlobUrls: new Map<string, string>(),
+      declaredSpecifiers: new Set<string>(),
       entryChunkFilename: 'assets/lifecycle.js',
     };
 
@@ -2285,7 +2288,7 @@ describe('MfeHandlerMF — undeclared shared-dep specifier diagnostic (warn, nev
   }): string[] {
     return warnSpy.mock.calls
       .map((args: unknown[]) => String(args[0]))
-      .filter((message: string) => message.includes('not declared in manifest.shared[]'));
+      .filter((message: string) => message.includes('not declared by the manifest'));
   }
 
   it('warns naming the chunk, specifier, and microfrontend when an undeclared specifier survives — the issue #621 symptom (react-redux surviving where only @reduxjs/toolkit is declared)', async () => {

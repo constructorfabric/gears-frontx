@@ -53,3 +53,55 @@ describe('SharedTextAdmission', () => {
     expect(recorded[1].promise).toBe(map.get(KEY));
   });
 });
+
+describe('SharedTextAdmission — a load that has already failed', () => {
+  it('retries nothing when the fetch it joined rejects', async () => {
+    const { map, cache } = setup();
+    const ledger = new AttemptSourceTextLedger();
+    const joinedPromise = Promise.reject<string>(new Error('first'));
+    joinedPromise.catch(() => undefined);
+    map.set(KEY, joinedPromise);
+    const fetchText = vi.fn(async () => 'own');
+    const result = new SharedTextAdmission(cache, ledger).admit(KEY, 'https://b.test/f.js', fetchText);
+    ledger.fail();
+    map.delete(KEY);
+    await expect(result).rejects.toThrow('first');
+    expect(fetchText).not.toHaveBeenCalled();
+  });
+
+  it('publishes no in-flight entry on a miss', async () => {
+    const { map, cache } = setup();
+    const ledger = new AttemptSourceTextLedger();
+    ledger.fail();
+    const fetchText = vi.fn(async () => 'own');
+    await expect(new SharedTextAdmission(cache, ledger).admit(KEY, 'https://b.test/f.js', fetchText)).rejects.toThrow(
+      'load already failed',
+    );
+    expect(fetchText).not.toHaveBeenCalled();
+    expect(map.has(KEY)).toBe(false);
+  });
+
+  it('keeps admitting after an attempt that succeeded: its lazy resolutions are not a failed load', async () => {
+    const { map, cache } = setup();
+    const ledger = new AttemptSourceTextLedger();
+    ledger.settle();
+    const fetchText = vi.fn(async () => 'own');
+    await expect(new SharedTextAdmission(cache, ledger).admit(KEY, 'https://b.test/f.js', fetchText)).resolves.toBe('own');
+    expect(map.has(KEY)).toBe(true);
+  });
+
+  it('answers from a resident entry with no new request', async () => {
+    const { map, cache } = setup();
+    map.set(KEY, Promise.resolve('resident'));
+    const fetchText = vi.fn(async () => 'own');
+    await expect(new SharedTextAdmission(cache).admit(KEY, 'https://b.test/f.js', fetchText)).resolves.toBe('resident');
+    expect(fetchText).not.toHaveBeenCalled();
+  });
+
+  it('admits the text as fetched under the key, whatever its bytes', async () => {
+    const { map, cache } = setup();
+    const text = 'export const x = 1; // not what any digest says';
+    await expect(new SharedTextAdmission(cache).admit(KEY, 'https://b.test/f.js', async () => text)).resolves.toBe(text);
+    await expect(map.get(KEY)).resolves.toBe(text);
+  });
+});

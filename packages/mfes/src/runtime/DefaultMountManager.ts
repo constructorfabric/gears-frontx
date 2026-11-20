@@ -184,11 +184,15 @@ export class DefaultMountManager extends MountManager {
         const lifecycle = await handler.load(entry, extensionState.extension.id);
         extensionState.lifecycle = lifecycle;
         extensionState.loadState = 'loaded';
+      // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-load-failure-isolated
       } catch (error) {
+        // Only this extension's state changes; every other extension, every
+        // domain and the shell are untouched.
         extensionState.loadState = 'error';
         extensionState.error = error instanceof Error ? error : new Error(String(error));
         throw error;
       }
+      // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-load-failure-isolated
     })().finally(() => {
       this.inFlightLoadsByExtension.delete(extensionId);
     });

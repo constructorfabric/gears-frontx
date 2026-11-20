@@ -26,7 +26,9 @@
  */
 
 import { MfeLoadError } from '../../errors';
+import { DeterministicLoadFailure } from './DeterministicLoadFailure';
 import { DynamicModuleOps } from './mf-dynamic-module-ops';
+import { SharedDepSpecifierScan } from './mf-shared-dep-specifier-scan';
 import { UnitDynamicImportRewriter } from './UnitDynamicImportRewriter';
 import type {
   SharedDepFetchList,
@@ -45,8 +47,26 @@ export interface SharedDepListRecord {
  * blob map `answers` are claimed in.
  */
 export interface SharedDepListMintMaps {
-  /** contentHash → blob URL, for every item minted for the load. */
+  /**
+   * Blob key → blob URL, for every item minted for the load. The key is
+   * the item's content identity, except for byte-identical units in
+   * different directories whose recorded edges differ: those mint per
+   * directory (see `blobKeyOf`).
+   */
   readonly itemBlobByHash: Map<string, string>;
+  /**
+   * Location → blob key for the units that mint per directory — the
+   * same bytes carried by twin units whose edges resolve to different
+   * siblings. A unit absent here is keyed by its content identity.
+   */
+  readonly blobKeyOf?: ReadonlyMap<string, string>;
+  /**
+   * The specifiers the load declares: every `answers` entry of the
+   * manifest's unit table. One that survives a minted unit's rewrite as a
+   * bare specifier fails the load; a well-formed package specifier outside
+   * this set is warned about.
+   */
+  readonly declaredSpecifiers?: ReadonlySet<string>;
   /** specifier → blob URL; the map the expose chain rewrites against. */
   readonly specifierToBlob: Map<string, string>;
 }
@@ -96,7 +116,32 @@ export class SharedDepListMinter {
     entryId: string,
     dynamicImports?: ListDynamicImportRewrites,
   ): void {
-    const pending = new Map(records.map((r) => [r.item.contentHash, r]));
+    const keyOf = (item: SharedDepUnit): string =>
+      maps.blobKeyOf?.get(item.location) ?? item.contentHash;
+    // A twin unit (one that mints per directory) is minted only once every
+    // `{ unit }` edge of its own resolves to an item this load has minted or
+    // this batch mints; until then it waits for a later batch, so it is
+    // never minted with a relative specifier left unrewritten.
+    const holds = (hash: string, ready: readonly SharedDepListRecord[]): boolean =>
+      [...items.values()].some(
+        (item) =>
+          item.contentHash === hash &&
+          (maps.itemBlobByHash.has(keyOf(item)) ||
+            ready.some((r) => keyOf(r.item) === keyOf(item))),
+      );
+    let ready = [...records];
+    for (let changed = true; changed; ) {
+      changed = false;
+      ready = ready.filter((record) => {
+        if (maps.blobKeyOf?.has(record.item.location) !== true) return true;
+        const resolvable = record.item.imports.every(
+          (edge) => typeof edge === 'string' || holds(edge.unit, ready),
+        );
+        if (!resolvable) changed = true;
+        return resolvable;
+      });
+    }
+    const pending = new Map(ready.map((r) => [keyOf(r.item), r]));
     const minted = new Map<string, string>();
     // Only what this batch can order against: items the load already
     // minted and this batch's own records. An item another, still
@@ -105,8 +150,7 @@ export class SharedDepListMinter {
     // never comes.
     const reachable = [...items.values()].filter(
       (item) =>
-        maps.itemBlobByHash.has(item.contentHash) ||
-        pending.has(item.contentHash),
+        maps.itemBlobByHash.has(keyOf(item)) || pending.has(keyOf(item)),
     );
     // specifier -> record answering it, across the reachable set.
     const answerer = new Map<string, SharedDepUnit>();
@@ -115,30 +159,47 @@ export class SharedDepListMinter {
         if (!answerer.has(specifier)) answerer.set(specifier, item);
       }
     }
+    // A content identity carried by twin units that mint per directory
+    // resolves, for an importer, to the twin in the importer's own
+    // directory; any other identity has one key.
+    const dirOf = (location: string): string =>
+      location.slice(0, location.lastIndexOf('/') + 1);
+    const keyForHash = (hash: string, fromLocation: string): string => {
+      const twins = reachable.filter((item) => item.contentHash === hash);
+      const local = twins.find(
+        (item) => dirOf(item.location) === dirOf(fromLocation),
+      );
+      const chosen = local ?? twins[0];
+      return chosen === undefined ? hash : keyOf(chosen);
+    };
     const depsOf = (record: SharedDepListRecord): Set<string> => {
       const deps = new Set<string>();
+      const self = keyOf(record.item);
       for (const edge of record.item.imports) {
-        const targetHash =
+        const targetKey =
           typeof edge === 'string'
-            ? answerer.get(edge)?.contentHash
-            : edge.unit;
+            ? (() => {
+                const answering = answerer.get(edge);
+                return answering === undefined ? undefined : keyOf(answering);
+              })()
+            : keyForHash(edge.unit, record.item.location);
         if (
-          targetHash !== undefined &&
-          targetHash !== record.item.contentHash &&
-          pending.has(targetHash)
+          targetKey !== undefined &&
+          targetKey !== self &&
+          pending.has(targetKey)
         ) {
-          deps.add(targetHash);
+          deps.add(targetKey);
         }
       }
       return deps;
     };
-    const blobOf = (hash: string): string | undefined =>
-      minted.get(hash) ?? maps.itemBlobByHash.get(hash);
-    // location → contentHash over the load's combined item set; built
+    const blobOf = (key: string): string | undefined =>
+      minted.get(key) ?? maps.itemBlobByHash.get(key);
+    // location → blob key over the load's combined item set; built
     // once rather than per record.
-    const locationToHash = new Map<string, string>();
+    const locationToKey = new Map<string, string>();
     for (const item of reachable) {
-      locationToHash.set(item.location, item.contentHash);
+      locationToKey.set(item.location, keyOf(item));
     }
 
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-serialised
@@ -176,19 +237,58 @@ export class SharedDepListMinter {
             if (!specifier.startsWith('./') && !specifier.startsWith('../')) {
               return whole as string;
             }
-            const targetHash = locationToHash.get(
+            const targetKey = locationToKey.get(
               SharedDepListMinter.resolveLocation(
                 record.item.location,
                 specifier,
               ),
             );
             const blob =
-              targetHash === undefined ? undefined : blobOf(targetHash);
+              targetKey === undefined ? undefined : blobOf(targetKey);
             return blob === undefined
               ? (whole as string)
               : `${kind}${gap}${blob}${quote}`;
           },
         );
+        // @cpt-begin:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-unresolved-specifiers
+        if (maps.declaredSpecifiers !== undefined) {
+          // Only the unit's own bare `imports` edges can survive: they are
+          // what its text was rewritten against.
+          const survivor = SharedDepSpecifierScan.findSurvivingDeclared(
+            rewritten,
+            new Set(
+              record.item.imports.filter(
+                (edge): edge is string =>
+                  typeof edge === 'string' && maps.declaredSpecifiers!.has(edge),
+              ),
+            ),
+          );
+          if (survivor !== undefined) {
+            throw DeterministicLoadFailure.mark(
+              new MfeLoadError(
+                `shared unit '${record.item.location}' still imports the ` +
+                  `bare specifier '${survivor}' after rewriting, for ` +
+                  `microfrontend '${entryId}'. Every specifier a unit of ` +
+                  'the manifest answers must resolve to a blob URL; no ' +
+                  'unit on the load answers it.',
+                entryId,
+              ),
+            );
+          }
+          for (const specifier of SharedDepSpecifierScan.findUndeclaredWellFormedSpecifiers(
+            rewritten,
+            maps.declaredSpecifiers,
+          )) {
+            console.warn(
+              `shared unit '${record.item.location}' imports ` +
+                `'${specifier}', which no unit of the manifest answers, ` +
+                `for microfrontend '${entryId}'. This specifier cannot ` +
+                'resolve inside an isolated module. The load proceeds — ' +
+                'this is a diagnostic only.',
+            );
+          }
+        }
+        // @cpt-end:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-unresolved-specifiers
         if (dynamicImports !== undefined) {
           // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-shared-dynamic-imports
           rewritten = UnitDynamicImportRewriter.rewrite(
@@ -214,10 +314,12 @@ export class SharedDepListMinter {
         const names = [...pending.values()]
           .map((r) => `'${r.item.location}' (${r.item.contentHash.slice(0, 12)}…)`)
           .join(', ');
-        throw new MfeLoadError(
-          'circular shared-dependency items: no minting order exists over ' +
-            `${names}.`,
-          entryId,
+        throw DeterministicLoadFailure.mark(
+          new MfeLoadError(
+            'circular shared-dependency items: no minting order exists over ' +
+              `${names}.`,
+            entryId,
+          ),
         );
       }
     }

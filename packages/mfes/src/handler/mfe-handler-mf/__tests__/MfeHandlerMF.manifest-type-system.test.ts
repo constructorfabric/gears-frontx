@@ -178,6 +178,24 @@ describe('MfeHandlerMF — manifest named by id', () => {
     fetchSpy.mockRestore();
   });
 
+  it('accepts a registry answer that carries only id and metaData, and refuses one whose shared is not an array', async () => {
+    const answer = { id: MANIFEST_ID, metaData: { publicPath: PUBLIC_PATH } } satisfies MfManifest;
+    const plugin = createFakePlugin(new Map<string, unknown>([[MANIFEST_ID, answer]]));
+    const handler = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    handler.attachTypeSystem(plugin);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('network error for test'));
+    await expect(handler.load(buildEntry(MANIFEST_ID), 'ext-no-shared')).rejects.toThrow(MfeLoadError);
+    expect(fetchSpy).toHaveBeenCalledWith(`${PUBLIC_PATH}assets/lifecycle.js`);
+    fetchSpy.mockClear();
+
+    const strict = createFakePlugin(new Map<string, unknown>([[MANIFEST_ID, { ...answer, shared: 'react' }]]));
+    const other = new MfeHandlerMF(ENTRY_BASE_ID, { retries: 0 });
+    other.attachTypeSystem(strict);
+    await expect(other.load(buildEntry(MANIFEST_ID), 'ext-bad-shared')).rejects.toThrow(/not registered/);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
   it('does not cache an answer that is not a manifest, and reads the registry again on the next load', async () => {
     const registered = new Map<string, unknown>([[MANIFEST_ID, { id: MANIFEST_ID, kind: 'not-a-manifest' }]]);
     const plugin = createFakePlugin(registered);

@@ -1,7 +1,7 @@
 ---
 status: accepted
 date: 2026-11-17
-description: "Decides that each microfrontend load discovers what it reads and fetches — its assets, its own chunks and the shared-dependency code its exposed module needs — from the registered MFE entry and the registered manifest it references, read from the registry, whose closed contract lists every field the runtime reads with its value format; the manifest holds every shared unit once and a fetch list per exposed module and per lazy target, so a load requests its entry module, the shared units missing from the realm cache and the own chunks its list names together in one round; shared text is reused under the content identity its producer declares."
+description: "Decides that each microfrontend load discovers what it reads and fetches — its assets, its own chunks and the shared-dependency code its exposed module needs — from the registered MFE entry and the registered manifest it references, read from the registry, whose closed contract lists every field the runtime reads with its value format; the manifest holds every shared unit once and a fetch list per exposed module and per lazy target, so a load requests its entry module, the shared units missing from the realm cache and the own chunks its list names together in one round; shared text is reused under the content identity its producer declares; the contract accepts the fields older producers write as known-but-ignored, so a current shell loads microfrontends built by older producers, and a manifest or entry that fails registration or loading disables only its own microfrontend."
 ---
 
 # MFE Asset Discovery
@@ -39,6 +39,8 @@ Shared-dependency code is delivered as content-identified units, named on one fe
 
 The description is also a contract between independent producers and the runtime. If the runtime reads a field that the contract does not list, producers cannot know the field exists, and a field can come into use without ever being part of the contract.
 
+Producers and shells are built and updated independently. A product updates the runtime package in one shell or one microfrontend at a time, and microfrontends built by an older producer stay deployed beside a current shell. Updating one of them must not take the whole product down: a current shell has to register and load a microfrontend an older producer built, and a microfrontend whose description the contract rejects has to cost only itself.
+
 How should the runtime obtain the information it needs to locate a microfrontend's assets, and determine before fetching exactly which shared code one load must fetch — so that the source of that information is a stable, closed, declared contract rather than a bundler's internal artifact, and the shared code a load needs is known before any of it is fetched?
 
 ## Decision Drivers
@@ -52,6 +54,7 @@ How should the runtime obtain the information it needs to locate a microfrontend
 * Robust, low-ambiguity extraction — obtaining locating facts must not rely on pattern-matching compiled output, where minification or bundler-version drift can silently change the shapes being matched.
 * Producer/consumer symmetry — producers and the runtime share one contract shape.
 * A closed contract — every field the runtime reads must be listed in the contract, and the type system's manifest and MFE entry types must reject anything else, so a field cannot be in use without being in the contract.
+* Older producers stay loadable — a current shell registers and loads microfrontends whose manifest and MFE entry an older producer wrote, and one microfrontend's failure never reaches the shell or the other microfrontends (`cpt-frontx-fr-mfe-load-failure-handling`).
 * Contained public surface — discovery's public footprint is the one `cpt-frontx-adr-shared-dep-cache-reach` states (`cpt-frontx-constraint-mfes-realm-shared-dep-cache`).
 
 ## Considered Options
@@ -71,7 +74,7 @@ Shared-code reachability:
 
 Manifest schema strictness:
 
-* **Closed manifest schema** — the schema lists every field and rejects unknown properties on every object.
+* **Closed manifest schema** — the schema lists every field, including those older producers write and the runtime ignores, and rejects unknown properties on every object.
 * **Open manifest schema** — the schema lists the required fields and tolerates further properties.
 
 ## Decision Outcome
@@ -93,7 +96,11 @@ A load with a fetch list therefore costs one round, and a lazy target costs one 
 
 Which cache holds shared text, under which key, and which cache holds the microfrontend's own code, is decided in `cpt-frontx-adr-shared-dep-cache-reach`, together with the reach and byte budget of the realm cache.
 
-**Whole-package entries.** A manifest may declare shared entries without a fetch list for the exposed module. In that case the load uses whole-package entries: each `shared` entry names the one file that holds the package (`chunkPath`), and the runtime fetches every declared entry. This case exists because shared code can be described without fetch lists. It does not reverse the rejection of **fetch every declared shared entry** as the delivery model: when a fetch list exists, the runtime fetches only what it names. A `shared` entry may carry a `contentHash`, which keys whole-package entry reuse as `cpt-frontx-adr-shared-dep-reuse` decides.
+**Whole-package entries.** A manifest that holds neither `units` nor `lists` loads through `shared[]` and the whole-package path (a manifest that holds either names a fetch list for every exposed module, and a load of an exposed module it names none for is refused as manifest data, naming the missing key): each `shared` entry names the one file that holds the package (`chunkPath`), and the runtime fetches every declared entry. `shared` is optional; a manifest without it declares no whole-package entries, and a load of such a manifest without a fetch list fetches the entry module and the own chunks it finds by walking the chunk graph. This is the compatibility path for microfrontends built by older producers, which describe shared code only as whole-package entries. It does not reverse the rejection of **fetch every declared shared entry** as the delivery model: when a fetch list exists, the runtime fetches only what it names. A `shared` entry may carry a `contentHash`, which keys whole-package entry reuse as `cpt-frontx-adr-shared-dep-reuse` decides. The producer of this contract writes `units` and `lists` and writes no `shared` entries and no whole-package files.
+
+**Compatibility scope.** The fields the contract accepts as known-but-ignored are the fields the manifests that older producers' builds actually write carry, checked against real build output as well as against the older contract's schema text. A current shell loads microfrontends built by older producers: their manifest and MFE entry register and load, and the fields they carry that the runtime does not read are accepted and ignored. A shell older than the producer is not supported: an older shell does not read `units` or `lists`, and the contract promises it nothing.
+
+**Failure scope.** A manifest or MFE entry that the type system rejects at registration, or that fails the load, disables only that microfrontend: the extension is not registered or its `loadState` becomes `error`, and the shell, the domains and every other microfrontend keep working.
 
 **Unresolved specifiers.** This decision owns one rule for every load path — list items, own chunks and whole-package entries, on the exposed module's load and on a lazy target's first use alike. A declared shared-dependency name that survives rewriting fails the load — on a lazy target's first use, that lazy import — with an `MfeLoadError` naming the chunk, the specifier and the microfrontend. An undeclared bare specifier that survives rewriting produces a console warning naming the same three.
 
@@ -112,7 +119,7 @@ A relative `sharedBase` resolves against the resolved `publicPath` directory; on
 
 **Trust.** The runtime treats a registered MFE entry and the manifest it references as admitted input; authenticating them is outside the package. The manifest names the origin of a microfrontend's code. A microfrontend's own code — its entry module, its stylesheets, its further chunks, its lazy chunks and the own chunks a fetch list names — carries no content identity, because it is not shared. It is trusted by the locations the MFE entry and the manifest name, with no origin or containment check, so absolute URLs are accepted.
 
-**Closed contract.** The type system's manifest and MFE entry types accept exactly the fields listed below; any other property is rejected.
+**Closed contract.** The type system's manifest and MFE entry types accept exactly the fields listed below; any other property is rejected. The fields marked as older-producer fields are part of the contract as known-but-ignored: the runtime reads none of them, and the closure still rejects every property the table does not list. A manifest without `units`, `lists` or `metaData.sharedBase` is valid.
 
 | Contract | Field | Required | Read by the runtime to |
 |---|---|---|---|
@@ -129,22 +136,27 @@ A relative `sharedBase` resolves against the resolved `publicPath` directory; on
 | Manifest | `lists.<module>.units` | yes, in each list | name the units, by `contentHash`, the module needs |
 | Manifest | `lists.<module>.ownChunks` | yes, in each list | name the own chunks the module reaches statically |
 | Manifest | `lists.<key>.lazy`, `lists.<key>.patterns` | no | name, as arrays of keys of `lists`, the lazy targets and the pattern-import matching files the list reaches; a key is the target's chunk location relative to the base that chunk resolves against |
-| Manifest | `shared` | yes | declare the shared entries |
-| Manifest | `shared[].name`, `shared[].version` | yes | name each shared entry, rewrite bare specifiers and key whole-package entry reuse |
-| Manifest | `shared[].chunkPath` | yes | locate a whole-package entry |
+| Manifest | `shared` | no | declare the shared entries of the whole-package path |
+| Manifest | `shared[].name`, `shared[].version` | yes, in each entry | name each shared entry, rewrite bare specifiers and key whole-package entry reuse |
+| Manifest | `shared[].chunkPath` | yes, in each entry | locate a whole-package entry |
 | Manifest | `shared[].contentHash` | no | key a whole-package entry's reuse |
+| Manifest | `name`, `remoteEntry`, `metaData.name`, `metaData.type`, `metaData.globalName` | no | none: older-producer fields, accepted and ignored; each a string |
+| Manifest | `metaData.buildInfo` | no | none: an older-producer field, accepted and ignored; an object whose `buildVersion` and `buildName` are strings |
+| Manifest | `metaData.remoteEntry` | no | none: an older-producer field, accepted and ignored; an object whose `name` and `path` are strings and whose `type` is `module` or `global` |
+| Manifest | `shared[].unwrapKey` | no | none: an older-producer field, accepted and ignored; a string or null |
 | MFE entry | `id` | yes | identify the entry and name it in diagnostics |
 | MFE entry | `manifest` | yes | reference the registered manifest by its identifier |
 | MFE entry | `exposedModule` | yes | name the exposed module, which keys `lists` |
 | MFE entry | `exposeAssets` | yes | hold the entry module and stylesheet locations |
 | MFE entry | `exposeAssets.js.sync` | yes, non-empty | locate the entry module; only its first element is read |
+| MFE entry | `exposeAssets.js.async` | no | none: an older-producer field, accepted and ignored; an array of strings |
 | MFE entry | `exposeAssets.css.sync`, `exposeAssets.css.async` | yes | locate the exposed module's stylesheets |
 
 The MFE entry contract also includes the base entry fields it inherits, and they are part of the contract: `id` (required), `requiredProperties` (required), `optionalProperties` (optional), `actions` (required) and `domainActions` (required).
 
 Value formats are part of the contract and are enforced by the type system: a package `name` contains no colon, a `version` contains neither `:` nor `@`, and every `contentHash`, in the unit table and in a list's `units`, is 64 lowercase hexadecimal characters.
 
-A manifest or MFE entry that carries any property outside this contract, lacks a required field or holds a value outside its format is rejected, and the type system validates the whole manifest, the unit table and the lists included, when it is registered. The contract is stated by the table above and realized twice — by the runtime's manifest and MFE entry types and by the type system's manifest and MFE entry types — and the two list the same fields with the same required flags. A field enters the contract in one change that adds it to this table, to the runtime's types and to the type system's types; the runtime reads nothing else.
+A manifest or MFE entry that carries any property outside this contract, lacks a required field or holds a value outside its format is rejected, and the type system validates the whole manifest, the unit table and the lists included, when it is registered. The contract is stated by the table above and realized twice — by the runtime's manifest and MFE entry types and by the type system's manifest and MFE entry types — and the two list the same fields with the same required flags, the older-producer fields among them: the runtime's types carry them as optional fields they never read. A field enters the contract in one change that adds it to this table, to the runtime's types and to the type system's types; the runtime reads nothing else.
 
 **Discovery path.** The manifest-driven path is the only discovery path, and code outside the package admits text to the realm cache only through the shared-unit fetcher on `./unit-loader`, as `cpt-frontx-adr-shared-dep-cache-reach` decides.
 
@@ -167,7 +179,10 @@ Because producers and the runtime share the contract, compatibility of its shape
 * Bad, because correct sharing rests on producers: the runtime reuses text under the content identity its producer declares, so a load relies on each producer declaring the identity of the file it publishes.
 * Bad, because a microfrontend's own code carries no content identity and is trusted by the locations the MFE entry and the manifest name, with no origin or containment check.
 * Bad, because the round has no concurrency limit, so a long fetch list relies on the platform's connection limits to pace its requests.
-* Neutral, because a manifest whose exposed module has no fetch list uses its whole-package entries, which are fetched in full.
+* Good, because the contract accepts the fields older producers write, so a current shell registers and loads microfrontends built by older producers and updating the runtime package in one shell or one microfrontend does not take the product down.
+* Good, because a manifest or MFE entry that fails registration or loading disables only its own microfrontend.
+* Bad, because the contract carries fields the runtime ignores, and a shell older than the producer is not supported.
+* Neutral, because a manifest whose exposed module has no fetch list uses its whole-package entries, which are fetched in full, and a manifest may omit `shared`.
 
 ### Confirmation
 
@@ -178,11 +193,14 @@ The runtime package's own tests confirm runtime behaviour:
 * a lazy target's own chunk, its listed units that the load's map and the realm cache lack and its listed own chunks are all requested in one round on first use;
 * shared units are minted leaves-first, and the entry module is evaluated after every shared unit it reaches is minted;
 * with `metaData.sharedBase` set and different from `metaData.publicPath`, the shared units are requested under `sharedBase`, while the own chunks, the entry module and stylesheets, and each `chunkPath` are requested under `publicPath`;
+* a manifest and MFE entry that carry the fields older producers write, and a manifest that omits `units`, `lists` and `metaData.sharedBase`, register and load through `shared[]` with none of those fields read;
+* a manifest that omits `shared` and has no fetch list for the exposed module loads its entry module and own chunks without whole-package entries;
+* a load that fails leaves the shell and every other microfrontend working;
 * a manifest without a fetch list for the exposed module falls back to its whole-package entries, issues no early entry-module request, and fetches those entries and the own chunks it finds by walking the chunk graph under the fixed concurrency limit;
 * a shared-unit or `chunkPath` location, absolute or relative, that carries a percent-encoded dot or a forbidden character, names another scheme or names a directory fails the load before any request, and so does a relative one that climbs out of its base; an absolute http(s) URL is accepted for every location kind; a `metaData.sharedBase` value that does not resolve to an http(s) URL fails the load before any request; and a relative `sharedBase` resolves against the resolved `publicPath` directory;
 * on the exposed module's load and on a lazy target's first use, for list items, own chunks and whole-package entries alike, a declared shared name that survives rewriting fails the load naming the chunk, the specifier and the microfrontend, and an undeclared bare specifier that survives produces a warning naming the same three.
 
-The type system's tests confirm that its manifest and MFE entry types accept every field in the table above, the unit table and the lists included, together with the inherited base entry fields, and reject a manifest or MFE entry that carries any other property, lacks a required field, has an empty `exposeAssets.js.sync`, or holds a `name`, `version` or `contentHash` outside its value format. A parity check confirms that the runtime's manifest and MFE entry types and the type system's types list the same fields with the same required flags. Absence of shared text from the handler's source-text cache, the per-load diagnostic and the retry behaviour are confirmed under `cpt-frontx-adr-shared-dep-cache-reach`. Conformance of the manifest's unit table and lists to the format contract is verified in each producer's own tests, as `cpt-frontx-adr-shared-dep-reuse` decides.
+The type system's tests confirm that its manifest and MFE entry types accept every field in the table above, the unit table, the lists and the older-producer fields included, together with the inherited base entry fields, and reject a manifest or MFE entry that carries any other property, lacks a required field, has an empty `exposeAssets.js.sync`, or holds a `name`, `version` or `contentHash` outside its value format. A parity check confirms that the runtime's manifest and MFE entry types and the type system's types list the same fields with the same required flags. Absence of shared text from the handler's source-text cache, the per-load diagnostic and the retry behaviour are confirmed under `cpt-frontx-adr-shared-dep-cache-reach`. Conformance of the manifest's unit table and lists to the format contract is verified in each producer's own tests, as `cpt-frontx-adr-shared-dep-reuse` decides.
 
 ## Pros and Cons of the Options
 
@@ -287,7 +305,7 @@ In the present instantiation, the runtime's manifest type is defined in `package
 * INT — applicable and addressed above (INT-ADR-001/002): the MFE entry and the manifest are the integration contract between a microfrontend and the runtime; compatibility follows `cpt-frontx-nfr-evolvability`, at major version 0 a contract change takes no contract-version bump, and a manifest or MFE entry carrying a field outside the contract is rejected. The type system's tests and the parity check confirm the manifest and MFE entry contracts; conformance to the manifest's list format owned by `cpt-frontx-adr-shared-dep-reuse` is verified in each producer's own tests.
 * DATA — applicable and addressed above (DATA-ADR-001): the two closed contracts fix the shape of the discovery data; the field list, whether each field is required, its value format and the runtime's use of it are stated above, and the fetch-list format is decided in `cpt-frontx-adr-shared-dep-reuse`.
 * SEC — applicable and addressed above: the runtime treats a registered MFE entry and its manifest as admitted input, and authenticating them is outside the package. The content identity of every shared unit, and of every whole-package entry that declares a `contentHash`, is the producer's declaration, admitted with the manifest data and used as the sharing key; it is not a grant of trust in code. A microfrontend's own code is trusted by the locations the MFE entry and the manifest name, with no origin or containment check; shared-file locations that must stay inside their base are validated before any request (`cpt-frontx-nfr-security`); a whole-package entry without a `contentHash` is shared only under its absolute location. Code-admission trust and isolation are decided in `cpt-frontx-adr-mfe-load-isolation`.
-* REL — applicable and addressed above: a manifest that carries no fetch list for an exposed module uses its whole-package entries rather than failing. A load that joins another load's in-flight fetch which then rejects retries once from its own URL, and a failed load admits no text after the failure and issues no further request, text admitted before the failure stays in the realm cache, and the in-flight entries it published are released under the identity check (`cpt-frontx-adr-shared-dep-cache-reach`).
+* REL — applicable and addressed above: a manifest that carries no fetch list for an exposed module uses its whole-package entries rather than failing, and a microfrontend whose manifest or entry is rejected or whose load fails disables only itself. A load that joins another load's in-flight fetch which then rejects retries once from its own URL, and a failed load admits no text after the failure and issues no further request, text admitted before the failure stays in the realm cache, and the in-flight entries it published are released under the identity check (`cpt-frontx-adr-shared-dep-cache-reach`).
 * PERF — applicable and addressed above: a load with a fetch list costs one round — the entry module at high fetch priority, the missing shared units and the own chunks together, with no concurrency limit — and each lazy target one more on first use, within the budget of `cpt-frontx-nfr-runtime-performance`; transfer is governed by `cpt-frontx-nfr-resource-efficiency`, and the per-load diagnostic is decided in `cpt-frontx-adr-shared-dep-cache-reach`.
 * OPS — Not applicable because this is a library mechanism; no deployed-service operational procedure is governed by this decision.
 * MAINT — applicable and addressed above: the contract table, the runtime's types and the type system's types change together in one change and are held equal by a parity check, and the "read nothing outside the contract" rule keeps the contract from drifting.

@@ -49,8 +49,20 @@ export interface SharedDepListContext {
   readonly lists: Readonly<Record<string, SharedDepFetchList>>;
   /** specifier → blob URL — the map the expose chain rewrites against. */
   readonly specifierToBlob: Map<string, string>;
-  /** contentHash → blob URL, every item minted for the load. */
+  /** blob key → blob URL, every item minted for the load. */
   readonly itemBlobByHash: Map<string, string>;
+  /**
+   * Location → blob key for units that mint per directory: byte-identical
+   * units (one content identity) in different directories whose recorded
+   * edges differ, so their relative specifiers bind different siblings
+   * and one shared blob would bind the wrong one. Every other unit is
+   * keyed by its content identity.
+   */
+  readonly blobKeyOf: Map<string, string>;
+  /** Every specifier a unit of the manifest's table answers. */
+  readonly declaredSpecifiers: ReadonlySet<string>;
+  /** Every table unit carrying a content identity that mints per directory. */
+  readonly twinsByHash: Map<string, SharedDepUnit[]>;
   /**
    * contentHash → list item, the load's combined item set; its `answers`
    * are those of every table unit carrying the content identity.
@@ -129,10 +141,31 @@ export class SharedDepListLoader {
         answers: [...(answersByHash.get(hash) ?? unit.answers)],
       });
     }
+    // Twin units whose edges differ mint per directory.
+    const carriers = new Map<string, SharedDepUnit[]>();
+    for (const unit of units) {
+      const group = carriers.get(unit.contentHash) ?? [];
+      group.push(unit);
+      carriers.set(unit.contentHash, group);
+    }
+    const blobKeyOf = new Map<string, string>();
+    const twinsByHash = new Map<string, SharedDepUnit[]>();
+    for (const [hash, group] of carriers) {
+      const edges = new Set(group.map((unit) => JSON.stringify(unit.imports)));
+      if (edges.size < 2) continue;
+      twinsByHash.set(hash, group);
+      for (const unit of group) {
+        const dir = unit.location.slice(0, unit.location.lastIndexOf('/') + 1);
+        blobKeyOf.set(unit.location, `${hash}@${dir}`);
+      }
+    }
     return {
       lists,
       specifierToBlob: new Map(),
       itemBlobByHash: new Map(),
+      blobKeyOf,
+      declaredSpecifiers: new Set(units.flatMap((unit) => unit.answers)),
+      twinsByHash,
       itemByHash,
       itemByLocation,
       dependentLists: new Map(),
@@ -180,11 +213,21 @@ export class SharedDepListLoader {
     const bytesBefore = this.fetchedBytes;
     const missing: SharedDepUnit[] = [];
     const queuedHashes = new Set<string>();
+    const keyOf = (unit: SharedDepUnit): string =>
+      ctx.blobKeyOf.get(unit.location) ?? unit.contentHash;
     for (const hash of list.units) {
       // Every hash a list names is held by the table: the load checked it
       // before its first request.
       const item = ctx.itemByHash.get(hash);
-      if (item === undefined || ctx.itemBlobByHash.has(item.contentHash)) continue;
+      if (item === undefined) continue;
+      const twins = ctx.twinsByHash.get(hash);
+      if (
+        twins !== undefined
+          ? twins.every((twin) => ctx.itemBlobByHash.has(keyOf(twin)))
+          : ctx.itemBlobByHash.has(item.contentHash)
+      ) {
+        continue;
+      }
       // One fetch per content identity: the same contentHash emitted
       // under two locations is one payload. Every location stays
       // registered on `ctx`, so both still resolve and mint.
@@ -227,9 +270,17 @@ export class SharedDepListLoader {
     if (failure) throw failure.reason;
     // A concurrent batch of the same load may have minted an item while
     // this one fetched: an existing per-load map entry is never replaced.
+    // A content identity that mints per directory yields one record per
+    // twin from the one fetched text.
     const records = settled
       .map((r) => (r as PromiseFulfilledResult<SharedDepListRecord>).value)
-      .filter((record) => !ctx.itemBlobByHash.has(record.item.contentHash));
+      .flatMap((record): SharedDepListRecord[] => {
+        const twins = ctx.twinsByHash.get(record.item.contentHash);
+        return twins === undefined
+          ? [record]
+          : twins.map((twin) => ({ item: twin, text: record.text }));
+      })
+      .filter((record) => !ctx.itemBlobByHash.has(keyOf(record.item)));
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-list-items
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-serialised
     SharedDepListMinter.mint(
@@ -237,6 +288,8 @@ export class SharedDepListLoader {
       new Map([...ctx.itemByLocation.values()].map((i) => [i.location, i])),
       {
         itemBlobByHash: ctx.itemBlobByHash,
+        blobKeyOf: ctx.blobKeyOf,
+        declaredSpecifiers: ctx.declaredSpecifiers,
         specifierToBlob: ctx.specifierToBlob,
       },
       this.entryId,
@@ -307,6 +360,8 @@ export class SharedDepListLoader {
     const item = ctx.itemByLocation.get(key);
     return item === undefined
       ? undefined
-      : ctx.itemBlobByHash.get(item.contentHash);
+      : ctx.itemBlobByHash.get(
+          ctx.blobKeyOf.get(item.location) ?? item.contentHash,
+        );
   }
 }

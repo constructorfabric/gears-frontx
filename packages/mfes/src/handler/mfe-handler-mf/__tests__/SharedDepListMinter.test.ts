@@ -107,3 +107,92 @@ describe('SharedDepListMinter.resolveLocation', () => {
     ).toBe('https://cdn.test/shared/react/deep.js');
   });
 });
+
+describe('SharedDepListMinter.mint — relative edges and bare specifiers', () => {
+  it('resolves each relative import against the importing item\'s own location, so a nested unit binds its own siblings', () => {
+    const sibling = item('pkg@1/dist/sub/s.js', 2);
+    const parent = item('pkg@1/dist/o.js', 3);
+    const importer = item('pkg@1/dist/sub/m.js', 1, [], [{ unit: hash(2) }, { unit: hash(3) }]);
+    const target = maps();
+    SharedDepListMinter.mint(
+      [
+        { item: importer, text: "import './s.js';\nimport { o } from '../o.js';\nexport const m = 1;\n" },
+        { item: sibling, text: 'export const s = 1;\n' },
+        { item: parent, text: 'export const o = 1;\n' },
+      ],
+      new Map([importer, sibling, parent].map((i) => [i.location, i])),
+      target,
+      'entry',
+    );
+    expect(target.itemBlobByHash.get(hash(1))).toMatch(/^blob:/);
+    expect(target.itemBlobByHash.get(hash(2))).toMatch(/^blob:/);
+    expect(target.itemBlobByHash.get(hash(3))).toMatch(/^blob:/);
+  });
+
+  it('rewrites a subpath specifier to the unit answering that subpath, not the package root', () => {
+    const root = item('react/index.js', 2, ['react']);
+    const jsx = item('react/jsx-runtime.js', 3, ['react/jsx-runtime']);
+    const user = item('lib/index.js', 1, ['lib'], ['react', 'react/jsx-runtime']);
+    const target = maps();
+    const sources: string[] = [];
+    const original = URL.createObjectURL;
+    URL.createObjectURL = ((blob: Blob) => {
+      const reader = new FileReader();
+      reader.onload = () => sources.push(String(reader.result));
+      reader.readAsText(blob);
+      return original.call(URL, blob);
+    }) as typeof URL.createObjectURL;
+    try {
+      SharedDepListMinter.mint(
+        [
+          { item: user, text: "import { a } from 'react';\nimport { b } from 'react/jsx-runtime';\n" },
+          { item: root, text: 'export const a = 1;\n' },
+          { item: jsx, text: 'export const b = 1;\n' },
+        ],
+        new Map([user, root, jsx].map((i) => [i.location, i])),
+        target,
+        'entry',
+      );
+    } finally {
+      URL.createObjectURL = original;
+    }
+    const blobOfRoot = target.specifierToBlob.get('react');
+    const blobOfJsx = target.specifierToBlob.get('react/jsx-runtime');
+    expect(blobOfRoot).toBeDefined();
+    expect(blobOfJsx).toBeDefined();
+    expect(blobOfRoot).not.toBe(blobOfJsx);
+    return new Promise<void>((resolve) =>
+      setTimeout(() => {
+        const minted = sources.find((s) => s.includes('import { a }'))!;
+        expect(minted).toContain(`from '${blobOfRoot!}'`);
+        expect(minted).toContain(`from '${blobOfJsx!}'`);
+        expect(minted).not.toMatch(/from\s*['"]react/);
+        resolve();
+      }, 20),
+    );
+  });
+
+  it('fails a batch whose unminted items form an import cycle, naming the chunks on the cycle and the microfrontend', () => {
+    const a = item('shared/a.js', 1, ['a'], ['b']);
+    const b = item('shared/b.js', 2, ['b'], ['a']);
+    let thrown: unknown;
+    try {
+      SharedDepListMinter.mint(
+        [
+          { item: a, text: "import 'b';\nexport const a = 1;\n" },
+          { item: b, text: "import 'a';\nexport const b = 1;\n" },
+        ],
+        new Map([a, b].map((i) => [i.location, i])),
+        maps(),
+        'the-microfrontend',
+      );
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(MfeLoadError);
+    const message = (thrown as MfeLoadError).message;
+    expect(message).toContain('shared/a.js');
+    expect(message).toContain('shared/b.js');
+    expect(message).toContain('the-microfrontend');
+  });
+});

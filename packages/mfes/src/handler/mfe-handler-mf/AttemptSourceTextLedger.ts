@@ -80,6 +80,24 @@ export class AttemptSourceTextLedger {
   }
   // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-record-cache
 
+  private failed = false;
+
+  /**
+   * Whether the load this ledger records has already failed — its attempt
+   * raised, or its budget expired and its entries were released — so
+   * nothing is retried or published on its behalf any more. An attempt that
+   * succeeded has not failed: its later lazy resolutions admit text as usual.
+   */
+  get hasFailed(): boolean {
+    return this.failed;
+  }
+
+  /** Record that the load failed. */
+  fail(): void {
+    this.failed = true;
+  }
+
+  // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-drop-record-on-settle
   /**
    * The attempt this ledger belongs to has settled: drop every entry and
    * accept none further, so the ledger — which the per-load state keeps
@@ -87,7 +105,6 @@ export class AttemptSourceTextLedger {
    * the bounded caches. Nothing is removed from any cache: a settled attempt
    * has no abandoned wait to release.
    */
-  // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-drop-record-on-settle
   settle(): void {
     this.closed = true;
     this.entries.length = 0;
@@ -100,6 +117,7 @@ export class AttemptSourceTextLedger {
   // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-abandoned-source-text
   release(): void {
     this.closed = true;
+    this.failed = true;
     for (const entry of this.entries) {
       if (entry.settled) {
         continue;
