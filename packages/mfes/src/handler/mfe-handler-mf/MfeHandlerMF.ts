@@ -55,6 +55,7 @@ import { FetchBudget } from './FetchBudget';
 import { ManifestCache } from './ManifestCache';
 import { SharedTextAdmission } from './SharedTextAdmission';
 import { SharedDepListLoader, type SharedDepListContext } from './SharedDepListLoader';
+import type { SharedDepFetchList } from '../../unit-format/fetch-list';
 import { SharedDepListMinter, type ListDynamicImportRewrites } from './SharedDepListMinter';
 import { UnitDynamicImportRewriter } from './UnitDynamicImportRewriter';
 import { LoadDiagnosticsAccumulator } from './LoadDiagnosticsAccumulator';
@@ -214,8 +215,8 @@ interface LoadBlobState {
    */
   readonly sharedDepLists?: SharedDepListLoadContext;
   /**
-   * This load's own request for the entry chunk's source text, issued with
-   * the list document on the fetch-list path
+   * This load's own request for the entry chunk's source text, issued in
+   * the round of the list's units and own chunks on the fetch-list path
    * (`inst-md-fetch-entry-concurrent`). The build of the entry chunk takes
    * its text from this promise, so the entry is downloaded once however many
    * other texts the handler's source-text handling admits meanwhile. A
@@ -258,8 +259,8 @@ interface SharedDepListLoadContext {
   readonly entryId: string;
   /**
    * The shared asset base (`metaData.sharedBase` resolved, or the load's
-   * own base URL when absent): the base fetch-list documents and list
-   * items resolve against, and the base the `lazy`/`patterns` record keys
+   * own base URL when absent): the base list
+   * units resolve against, and the base the `lazy`/`patterns` record keys
    * of a shared unit are expressed against — an own chunk's key is
    * relative to the asset base instead.
    */
@@ -1360,7 +1361,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * Per-load fresh blob URLs ensure isolated module instances.
    *
    * On the fetch-list path the entry chunk's source request is started here,
-   * with the list document's, and its promise is returned as `entrySource`
+   * in the round of the list's units and own chunks, and its promise is returned as `entrySource`
    * for the load to hand to the entry chunk's build; the legacy `chunkPath`
    * path starts no entry request and returns none.
    */
@@ -1390,13 +1391,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // fast on a same-name collision is the smaller, targeted fix.
     this.assertUniqueSharedDepNames(manifest, entryId);
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-unit-fields
-    const entryListRef = manifest.entryLists?.[exposedModule];
-    if (entryListRef !== undefined) {
+    const entryList = manifest.lists?.[exposedModule];
+    if (entryList !== undefined) {
       return this.buildListSharedDepBlobUrls(
         manifest,
         baseUrl,
         entryId,
-        entryListRef,
+        entryList,
         exposeChunkFilename,
         ledger
       );
@@ -1452,19 +1453,19 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   }
 
   /**
-   * The fetch-list path: the entry's list document is fetched and
-   * admitted as fetched, every item missing from the realm text cache is fetched
-   * in one parallel batch, and the items mint per load in dependency
-   * order (`cpt-frontx-adr-shared-dep-reuse`). No graph discovery. The entry
-   * chunk's source is requested concurrently with the list document and
-   * returned as `entrySource`; once either concurrent request fails, the load
-   * issues no further request.
+   * The fetch-list path: the exposed module's list is read from the
+   * registered manifest, and in one round the entry chunk's source, every
+   * list unit missing from the realm text cache and the list's own chunks
+   * are requested together; the units mint per load in dependency order
+   * (`cpt-frontx-adr-shared-dep-reuse`). No graph discovery. The entry
+   * chunk's source is returned as `entrySource`; once any request of the
+   * round fails, the load issues no further request.
    */
   private async buildListSharedDepBlobUrls(
     manifest: MfManifest,
     baseUrl: string,
     entryId: string,
-    entryListRef: { location: string; contentHash: string },
+    entryList: SharedDepFetchList,
     exposeChunkFilename: string,
     ledger?: AttemptSourceTextLedger
   ): Promise<{
@@ -1503,16 +1504,20 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-unit-fields
     const resolveAssetUrl = (location: string): string =>
       SharedAssetUrlResolver.resolve(location, assetBase, entryId);
-    // The entry's list document opens the critical path to the extension's
-    // mount: it is requested with high priority, so the lists of every
-    // extension loading at startup go out together and first. The items it
-    // names keep the default priority.
-    const listDocumentUrl = resolveAssetUrl(entryListRef.location);
+    // Every unit location is a manifest field: a refused one fails the load
+    // before any request of it.
+    for (const unit of manifest.units ?? []) resolveAssetUrl(unit.location);
+    // Every content identity the exposed module's list names, and those of
+    // every lazy and pattern list it reaches, is held by the unit table: a
+    // list naming one the table lacks is refused before any request of the
+    // load.
+    MfeHandlerMF.assertListUnitsHeld(manifest, entryList, entryId);
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-entry-concurrent
-    // The entry module's source is requested in the same step as the list
-    // document: both locations are known from the manifest alone, so the
-    // entry request waits for neither the list, the item batch nor any
-    // minting. It is the last file the mount waits on, hence high priority.
+    // The entry module's source is requested in the same round as the
+    // list's units and own chunks: every location is known from the
+    // manifest alone, so the entry request waits for neither the unit batch
+    // nor any minting. It is the last file the mount waits on, hence high
+    // priority.
     const entrySource = this.fetchSourceText(
       MfeHandlerMF.resolveChunkUrl(baseUrl, exposeChunkFilename),
       ledger,
@@ -1543,11 +1548,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         const failed = requests.failure();
         if (failed !== undefined) return Promise.reject(failed.error);
         // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-concurrent-failure
-        return this.fetchSourceText(
-          url,
-          ledger,
-          url === listDocumentUrl ? 'high' : undefined
-        );
+        return this.fetchSourceText(url, ledger);
       },
       entryId,
       loadCache,
@@ -1589,12 +1590,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       });
       return text;
     };
-    const ctx = loader.createContext();
-    const listDocBytesBefore = loader.bytesFetched;
-    const list = await requests.guard(
-      loader.fetchListDocument(entryListRef, resolveAssetUrl)
-    );
-    const listDocBytes = loader.bytesFetched - listDocBytesBefore;
+    const ctx = loader.createContext(manifest.units ?? [], manifest.lists ?? {});
     // The dynamic-import machinery closes over `sharedDepLists`: the
     // resolver mints dependent lists on demand through the same load's
     // context; the stub URL mints on first rewritten call.
@@ -1628,7 +1624,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     const itemBytes = await requests.guard(
       loader.loadList(
         ctx,
-        list,
+        entryList,
         resolveAssetUrl,
         sharedDepLists.dynamicImports,
         fetchOwnChunk
@@ -1636,10 +1632,44 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     );
     this.loadDiagnostics.summarize(
       manifest.id,
-      listDocBytes + itemBytes,
+      itemBytes,
       this.sharedDepTextCache
     );
     return { urls: ctx.specifierToBlob, sharedDepLists, entrySource };
+  }
+
+  /**
+   * Refuse, before any request of the load, a fetch list reachable from
+   * `entryList` — through the keys of its `lazy` and `patterns` arrays —
+   * that names a content identity the manifest's unit table does not hold
+   * (`cpt-frontx-flow-mfe-loading-on-demand-load`, `inst-if-manifest-invalid`).
+   */
+  private static assertListUnitsHeld(
+    manifest: MfManifest,
+    entryList: SharedDepFetchList,
+    entryId: string
+  ): void {
+    const held = new Set((manifest.units ?? []).map((unit) => unit.contentHash));
+    const lists = manifest.lists ?? {};
+    const visited = new Set<SharedDepFetchList>();
+    const pending = [entryList];
+    for (let list = pending.pop(); list !== undefined; list = pending.pop()) {
+      if (visited.has(list)) continue;
+      visited.add(list);
+      for (const hash of list.units) {
+        if (!held.has(hash)) {
+          throw MfeHandlerMF.manifestDataRejection(
+            `a fetch list of manifest "${manifest.id}" names content identity ` +
+              `${hash}, which the manifest's unit table does not hold.`,
+            entryId
+          );
+        }
+      }
+      for (const key of [...(list.lazy ?? []), ...(list.patterns ?? [])]) {
+        const nested = lists[key];
+        if (nested !== undefined) pending.push(nested);
+      }
+    }
   }
 
   /**
@@ -1692,8 +1722,8 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-shared-no-list-fail
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-if-shared-caller
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-if-no-list
-    // A shared-unit target requests no own chunk: its list item joins the
-    // list's second round.
+    // A shared-unit target requests no own chunk: its unit joins the
+    // list's round.
     return loader
       .resolveDependent(
         ctx,
@@ -2794,11 +2824,11 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   }
 
   /**
-   * The fetch-list rounds of a lazy target of the microfrontend's own
-   * code: the target's list document and its own chunk are requested
-   * together, before either arrives, and the list's second-round batch
-   * follows the document. A target matching no list loads with the units
-   * the per-load map already holds, after one warning per handler.
+   * The one round of a lazy target of the microfrontend's own code: the
+   * target's own chunk, the units its list names that are missing and the
+   * list's own chunks are all requested together, before any response
+   * arrives. A target matching no list loads with the units the per-load
+   * map already holds, after one warning per handler.
    */
   private async fetchLazyTargetLists(
     filename: string,
@@ -2830,10 +2860,8 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-else-own-caller
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-if-no-list
     // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-fetch-lazy-chunk
-    // First round: the list document and the own chunk go out in one
-    // step, neither waiting for the other. The list's second round (its
-    // missing shared units and `ownChunks`) starts on the document's
-    // arrival inside the same resolution.
+    // One round: the own chunk, the list's missing shared units and its
+    // `ownChunks` go out in one step, none waiting for another.
     const lists = shared.loader.resolveDependent(
       shared.ctx,
       key,

@@ -1,7 +1,7 @@
 /**
  * Schema tests for the closed manifest and MFE entry contracts
  * (`cpt-frontx-adr-mfe-asset-discovery`, `cpt-frontx-algo-gts-type-provider-manifest-entry-types`):
- * the manifest fields, their value formats, `entryLists`, `metaData.sharedBase`,
+ * the manifest fields, their value formats, `units`, `lists`, `metaData.sharedBase`,
  * the entry's `exposeAssets` and its `manifest` instance reference, and the
  * removal of every field outside the contract.
  *
@@ -55,6 +55,7 @@ const TYPE = /Reason: [^\n]*not of type/;
 const MIN_LENGTH = /Reason: [^\n]*minimum length/;
 const TOO_FEW = /Reason: [^\n]*Too few items/;
 const NOT_FOUND = /Reason: [^\n]*not found in registry/;
+const ONE_OF = /Reason: [^\n]*oneof/i;
 const ANONYMOUS = /Reason: [^\n]*no type identifier/;
 const rejects = (entity: unknown, reason: RegExp) => {
   expect(() => plugin.register(entity)).toThrow(reason);
@@ -135,22 +136,86 @@ describe('shared[] value formats', () => {
   });
 });
 
-describe('entryLists', () => {
-  it('accepts values carrying a location and a 64-hex contentHash, keyed by any module name', () => {
-    accepts(manifest({ entryLists: { './lifecycle': { location: 'lists/a.json', contentHash: HASH } } }));
-    accepts(manifest({ entryLists: {} }));
+const unitOf = (extra: Record<string, unknown> = {}): Record<string, unknown> => ({
+  location: 'shared/a.js',
+  contentHash: HASH,
+  answers: ['a'],
+  imports: [],
+  ...extra,
+});
+const listOf = (extra: Record<string, unknown> = {}): Record<string, unknown> => ({
+  units: [HASH],
+  ownChunks: ['assets/a.js'],
+  ...extra,
+});
+
+describe('units', () => {
+  it('accepts units carrying location, a 64-hex contentHash, answers and imports of strings or { unit } edges', () => {
+    accepts(manifest({ units: [unitOf(), unitOf({ imports: ['react', { unit: HASH }] })] }));
+    accepts(manifest({ units: [] }));
   });
 
-  it('rejects a value without location or contentHash, or with a malformed hash', () => {
-    rejects(manifest({ entryLists: { './a': { contentHash: HASH } } }), REQUIRED);
-    rejects(manifest({ entryLists: { './a': { location: 'a.json' } } }), REQUIRED);
-    rejects(manifest({ entryLists: { './a': { location: 'a.json', contentHash: 'nope' } } }), PATTERN);
-    rejects(manifest({ entryLists: { './a': { location: 'a.json', contentHash: 'A'.repeat(64) } } }), PATTERN);
+  it('rejects a unit that lacks a required field', () => {
+    for (const field of ['location', 'contentHash', 'answers', 'imports']) {
+      const unit = unitOf();
+      delete unit[field];
+      rejects(manifest({ units: [unit] }), REQUIRED);
+    }
   });
 
-  it('rejects a value that is not an object, and a list that is not keyed', () => {
-    rejects(manifest({ entryLists: { './a': 'a.json' } }), TYPE);
-    rejects(manifest({ entryLists: ['a.json'] }), TYPE);
+  it('rejects a malformed contentHash in a unit or in an import edge', () => {
+    rejects(manifest({ units: [unitOf({ contentHash: 'nope' })] }), PATTERN);
+    rejects(manifest({ units: [unitOf({ contentHash: 'A'.repeat(64) })] }), PATTERN);
+    rejects(manifest({ units: [unitOf({ imports: [{ unit: 'nope' }] })] }), ONE_OF);
+  });
+
+  it('rejects a unit that is not an object, an import edge that is neither a string nor { unit }, and units that are not an array', () => {
+    rejects(manifest({ units: ['a.js'] }), TYPE);
+    rejects(manifest({ units: [unitOf({ imports: [1] })] }), ONE_OF);
+    rejects(manifest({ units: [unitOf({ imports: [{}] })] }), ONE_OF);
+    rejects(manifest({ units: { a: unitOf() } }), TYPE);
+  });
+});
+
+describe('lists', () => {
+  it('accepts lists keyed by any module name or lazy-target location, naming the lists they reach by key', () => {
+    accepts(manifest({ lists: { './lifecycle': listOf() } }));
+    accepts(manifest({ lists: {} }));
+    accepts(
+      manifest({
+        lists: {
+          './lifecycle': listOf({ lazy: ['assets/l.js'], patterns: ['locales/en.js'] }),
+          'assets/l.js': listOf({ lazy: ['assets/m.js'] }),
+          'assets/m.js': listOf(),
+          'locales/en.js': listOf(),
+        },
+      })
+    );
+  });
+
+  it('rejects a list without units or ownChunks', () => {
+    rejects(manifest({ lists: { './a': { ownChunks: [] } } }), REQUIRED);
+    rejects(manifest({ lists: { './a': { units: [] } } }), REQUIRED);
+    rejects(manifest({ lists: { 'assets/l.js': { units: [] } } }), REQUIRED);
+  });
+
+  it('rejects a malformed content identity in a list', () => {
+    rejects(manifest({ lists: { './a': listOf({ units: ['nope'] }) } }), PATTERN);
+    rejects(manifest({ lists: { './a': listOf({ units: ['A'.repeat(64)] }) } }), PATTERN);
+  });
+
+  it('rejects an empty location, in a unit or in a list', () => {
+    rejects(manifest({ units: [unitOf({ location: '' })] }), MIN_LENGTH);
+    rejects(manifest({ lists: { './a': listOf({ ownChunks: [''] }) } }), MIN_LENGTH);
+    rejects(manifest({ lists: { './a': listOf({ lazy: [''] }) } }), MIN_LENGTH);
+    rejects(manifest({ lists: { './a': listOf({ patterns: [''] }) } }), MIN_LENGTH);
+  });
+
+  it('rejects a value that is not an object, lists that are not keyed, and lazy or patterns that are not arrays of keys', () => {
+    rejects(manifest({ lists: { './a': 'a.json' } }), TYPE);
+    rejects(manifest({ lists: ['a.json'] }), TYPE);
+    rejects(manifest({ lists: { './a': listOf({ lazy: { 'x.js': listOf() } }) } }), TYPE);
+    rejects(manifest({ lists: { './a': listOf({ patterns: [1] }) } }), TYPE);
   });
 });
 
@@ -159,7 +224,8 @@ describe('every contract field together', () => {
     const m = manifest({
       metaData: { publicPath: 'https://cdn.example.com/mfe/', sharedBase: 'https://cdn.example.com/shared/' },
       shared: [sharedEntry({ contentHash: HASH })],
-      entryLists: { './lifecycle': { location: 'lists/a.json', contentHash: HASH } },
+      units: [unitOf()],
+      lists: { './lifecycle': listOf({ lazy: ['assets/l.js'], patterns: ['locales/en.js'] }), 'assets/l.js': listOf(), 'locales/en.js': listOf() },
     });
     accepts(m);
     accepts(

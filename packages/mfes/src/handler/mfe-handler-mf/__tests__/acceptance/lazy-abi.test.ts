@@ -1,11 +1,11 @@
 /**
  * Acceptance: the lazy-import ABI on a fetch-list load and on a
  * whole-package load (`cpt-frontx-algo-mfe-loading-lazy-import-abi`,
- * `cpt-frontx-dod-mfe-loading-lazy-abi-isolation`): a lazy target's list
- * document and own chunk go out together, the list's second round is one
- * flat batch ahead of any mint, distinct targets download in parallel,
- * every literal and bounded-pattern import of a shared unit reaches the
- * ABI, and a target without a list follows the no-list rule.
+ * `cpt-frontx-dod-mfe-loading-lazy-abi-isolation`): a lazy target's own
+ * chunk, its list's missing units and its list's own chunks go out in one
+ * round ahead of any mint, distinct targets download in parallel, every
+ * literal and bounded-pattern import of a shared unit reaches the ABI, and
+ * a target without a list follows the no-list rule.
  */
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { stubbedDynamicModuleOps } from '../helpers/blob-module-stub';
@@ -29,14 +29,18 @@ import { SharedTextAdmission } from '../../SharedTextAdmission';
 import { LazyLoaderRegistry } from '../../../../lazy-loader/LazyLoaderRegistry';
 import { MfeLoadError } from '../../../../errors';
 import type { MfManifest } from '../../../../manifest/mf-manifest';
+import type { SharedDepUnit } from '../../../../unit-format/fetch-list';
 import {
   buildEntry,
   buildManifest,
   ENTRY_BASE_ID,
   ENTRY_ID,
+  listOf,
+  type NestedList,
   PUBLIC_PATH,
   sharedDep,
   sha256Hex,
+  unitOf,
 } from '../helpers/manifest-builder';
 import { stubSuccessfulImport } from '../helpers/blob-module-stub';
 import { resetRealmSharedDepTextCache } from '../helpers/realm-cache';
@@ -66,53 +70,34 @@ const REACT_TEXT = 'export const r = 1;\n';
 const REACT_LOCATION = 'shared/react/index.abc.js';
 const url = (relative: string): string => `${PUBLIC_PATH}${relative}`;
 const ENTRY_URL = url('assets/lifecycle.js');
-const LIST_URL = url('shared/react.list.json');
 const OWN_TEXT = 'export const o = 2;\n';
 
-interface ListItem {
-  location: string;
-  contentHash: string;
-  answers: string[];
-  imports: string[];
-}
-
-const item = (
+const unit = (
   location: string,
   text: string,
   answers: string[] = [],
-): ListItem => ({
-  location,
-  contentHash: sha256Hex(text),
-  answers,
-  imports: [],
-});
+): SharedDepUnit => unitOf(location, text, answers);
 
-const ref = (location: string, doc: string) => ({
-  location,
-  contentHash: sha256Hex(doc),
-});
-
-/** A fetch-list document, serialised with the producer's fields. */
-const listDocument = (fields: {
-  items?: ListItem[];
-  ownChunks?: string[];
-  lazy?: Record<string, { location: string; contentHash: string }>;
-  patterns?: Record<string, { location: string; contentHash: string }>;
-}): string =>
-  JSON.stringify({ items: [], ownChunks: [], ...fields });
+const REACT = unit(REACT_LOCATION, REACT_TEXT, ['react']);
 
 const entrySource = (...lazyTargets: string[]): string =>
   'import { r } from "react";\n' +
   lazyTargets.map((t) => `export const l_${t.replace(/\W/g, '_')} = () => __frontx_lazy('${t}');\n`).join('') +
   'export default { mount() { return r; }, unmount() {} };\n';
 
+/** The exposed module's list: the react unit plus `extra`. */
+const baseList = (extra: Partial<NestedList> = {}): NestedList =>
+  listOf([REACT], extra);
+
 function manifestFor(
-  doc: string,
+  units: SharedDepUnit[],
+  list: NestedList,
   metaData: Partial<MfManifest['metaData']> = {},
 ): MfManifest {
   return buildManifest([sharedDep('react')], {
     metaData,
-    entryLists: { './lifecycle': ref('shared/react.list.json', doc) },
+    units,
+    lists: { './lifecycle': list },
   });
 }
 
@@ -128,12 +113,13 @@ const registeredResolvers = (
 ): Resolver[] => spy.mock.calls.map((call) => call[0]);
 
 /**
- * Load a fetch-list MFE whose expose list is `doc` and whose entry module
- * is `entry`, answering the first-round and second-round requests.
+ * Load a fetch-list MFE whose manifest holds `units` and whose expose list
+ * is `list`, with entry module `entry`, answering the one round's requests.
  */
 async function loadFetchListMfe(
   net: ControlledFetch,
-  doc: string,
+  units: SharedDepUnit[],
+  list: NestedList,
   entry: string,
   options: {
     metaData?: Partial<MfManifest['metaData']>;
@@ -142,26 +128,18 @@ async function loadFetchListMfe(
   } = {},
 ): Promise<void> {
   const loading = newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
-    buildEntry(manifestFor(doc, options.metaData)),
+    buildEntry(manifestFor(units, list, options.metaData)),
     nextExtensionId(),
   );
-  await issuedAll(net, [ENTRY_URL]);
-  net.ok(LIST_URL, doc);
   const items = options.items ?? [[url(REACT_LOCATION), REACT_TEXT]];
-  await issuedAll(net, items.map(([u]) => u));
-  for (const [u, text] of items) net.ok(u, text);
   const ownChunks = options.ownChunks ?? [];
-  await issuedAll(net, ownChunks.map(([u]) => u));
+  // One round: the entry, the units and the own chunks are all out.
+  await issuedAll(net, [ENTRY_URL, ...items.map(([u]) => u), ...ownChunks.map(([u]) => u)]);
+  for (const [u, text] of items) net.ok(u, text);
   for (const [u, text] of ownChunks) net.ok(u, text);
   net.ok(ENTRY_URL, entry);
   await loading;
 }
-
-const baseDoc = (extra: Parameters<typeof listDocument>[0] = {}): string =>
-  listDocument({
-    items: [item(REACT_LOCATION, REACT_TEXT, ['react'])],
-    ...extra,
-  });
 
 /** The no-list warnings among `warn`'s calls (the load diagnostic is not one). */
 const noListWarnings = (warn: { mock: { calls: unknown[][] } }): string[] =>
@@ -175,74 +153,65 @@ const lazyAbiArguments = (source: string): string[] =>
   );
 
 describe('acceptance: lazy target first use on a fetch-list load', () => {
-  it('requests the target\'s list document and its own chunk before either arrives', async () => {
-    const lazyDoc = listDocument({});
-    const doc = baseDoc({
-      lazy: { 'assets/lazy.js': ref('shared/lazy.list.json', lazyDoc) },
-    });
+  it('requests the target\'s own chunk in one round, with no list document', async () => {
+    const list = baseList({ lazy: { 'assets/lazy.js': listOf([]) } });
     const net = controlledFetch();
     const register = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
-    await loadFetchListMfe(net, doc, entrySource('./lazy.js'));
+    await loadFetchListMfe(net, [REACT], list, entrySource('./lazy.js'));
     const [resolve] = registeredResolvers(register);
+    const before = net.issued.length;
     const resolving = resolve!('./lazy.js');
-    await issuedAll(net, [url('shared/lazy.list.json'), url('assets/lazy.js')]);
-    net.ok(url('shared/lazy.list.json'), lazyDoc);
+    await issuedAll(net, [url('assets/lazy.js')]);
+    await settleTurn();
+    expect(net.issued.slice(before)).toEqual([url('assets/lazy.js')]);
     net.ok(url('assets/lazy.js'), 'export const z = 1;\n');
     expect(await resolving).toMatch(/^blob:/);
     expect(net.count(url('assets/lazy.js'))).toBe(1);
   });
 
-  it('requests a shared-unit target\'s list alone first and its list item with the second round', async () => {
+  it('requests a shared-unit target\'s unit in the one round, with no own chunk and no list document', async () => {
     const lazyText = 'export const s = 1;\n';
-    const lazyItem = item('shared/react/lazyshared.js', lazyText);
-    const lazyDoc = listDocument({ items: [lazyItem] });
+    const lazyUnit = unit('shared/react/lazyshared.js', lazyText);
     const reactText = "export const r = 1;\nexport const load = () => import('./lazyshared.js');\n";
-    const doc = listDocument({
-      items: [item(REACT_LOCATION, reactText, ['react'])],
-      lazy: {
-        'shared/react/lazyshared.js': ref('shared/lazyshared.list.json', lazyDoc),
-      },
+    const reactUnit = unit(REACT_LOCATION, reactText, ['react']);
+    const list = listOf([reactUnit], {
+      lazy: { 'shared/react/lazyshared.js': listOf([lazyUnit]) },
     });
     const net = controlledFetch();
     const register = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
-    await loadFetchListMfe(net, doc, entrySource(), {
+    await loadFetchListMfe(net, [reactUnit, lazyUnit], list, entrySource(), {
       items: [[url(REACT_LOCATION), reactText]],
     });
     const argument = lazyAbiArguments((await minted.sources()).join('\n'))[0]!;
     const [unitResolver] = registeredResolvers(register);
     const before = net.issued.length;
     const resolving = unitResolver!(argument);
-    await issuedAll(net, [url('shared/lazyshared.list.json')]);
-    await settleTurn();
-    // Only the list document: no own chunk is requested for a shared unit.
-    expect(net.issued.slice(before)).toEqual([url('shared/lazyshared.list.json')]);
-    net.ok(url('shared/lazyshared.list.json'), lazyDoc);
     await issuedAll(net, [url('shared/react/lazyshared.js')]);
+    await settleTurn();
+    // Only the unit: no own chunk is requested for a shared unit.
+    expect(net.issued.slice(before)).toEqual([url('shared/react/lazyshared.js')]);
     net.ok(url('shared/react/lazyshared.js'), lazyText);
     expect(await resolving).toMatch(/^blob:/);
   });
 
-  it('requests every missing shared unit and every ownChunks entry in one unbounded batch before any mint', async () => {
+  it('requests the own chunk, every missing shared unit and every ownChunks entry in one unbounded round before any mint', async () => {
     const texts = Array.from({ length: 8 }, (_v, i) => `export const u${String(i)} = ${String(i)};\n`);
-    const items = texts.map((t, i) => item(`shared/u${String(i)}.js`, t, [`pkg-u${String(i)}`]));
+    const units = texts.map((t, i) => unit(`shared/u${String(i)}.js`, t, [`pkg-u${String(i)}`]));
     const own = ['assets/d0.js', 'assets/d1.js', 'assets/d2.js'];
-    const lazyDoc = listDocument({ items, ownChunks: own });
-    const doc = baseDoc({
-      lazy: { 'assets/lazy.js': ref('shared/lazy.list.json', lazyDoc) },
+    const list = baseList({
+      lazy: { 'assets/lazy.js': listOf(units, { ownChunks: own }) },
     });
     const net = controlledFetch();
     const register = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
-    await loadFetchListMfe(net, doc, entrySource('./lazy.js'));
+    await loadFetchListMfe(net, [REACT, ...units], list, entrySource('./lazy.js'));
     const [resolve] = registeredResolvers(register);
     const resolving = resolve!('./lazy.js');
-    await issuedAll(net, [url('shared/lazy.list.json'), url('assets/lazy.js')]);
-    net.ok(url('shared/lazy.list.json'), lazyDoc);
-    const batch = [...items.map((i) => url(i.location)), ...own.map(url)];
-    await issuedAll(net, batch);
-    // The whole batch is in flight together, none answered, nothing minted.
-    expect(batch.length).toBeGreaterThan(6);
+    const round = [url('assets/lazy.js'), ...units.map((i) => url(i.location)), ...own.map(url)];
+    await issuedAll(net, round);
+    // The whole round is in flight together, none answered, nothing minted.
+    expect(round.length).toBeGreaterThan(6);
     const mintedBefore = (await minted.sources()).length;
-    items.forEach((i, n) => net.ok(url(i.location), texts[n]!));
+    units.forEach((i, n) => net.ok(url(i.location), texts[n]!));
     own.forEach((o) => net.ok(url(o), OWN_TEXT));
     expect((await minted.sources()).length).toBe(mintedBefore);
     net.ok(url('assets/lazy.js'), 'export const z = 1;\n');
@@ -250,47 +219,33 @@ describe('acceptance: lazy target first use on a fetch-list load', () => {
   });
 
   it('finds an own lazy chunk\'s list under its publicPath-relative location and a shared unit\'s under its sharedBase-relative location', async () => {
-    const lazyDoc = listDocument({});
     const sharedText = "export const s = 1;\nexport const go = () => import('./deep.js');\n";
     const deepText = 'export const deep = 1;\n';
-    const deepDoc = listDocument({ items: [item('react/deep.js', deepText)] });
-    const doc = listDocument({
-      items: [item('react/index.abc.js', sharedText, ['react'])],
+    const sharedUnit = unit('react/index.abc.js', sharedText, ['react']);
+    const deepUnit = unit('react/deep.js', deepText);
+    const list = listOf([sharedUnit], {
       lazy: {
         // Own chunk: relative to publicPath. Shared unit: relative to sharedBase.
-        'assets/lazy.js': ref('lazy.list.json', lazyDoc),
-        'react/deep.js': ref('deep.list.json', deepDoc),
+        'assets/lazy.js': listOf([]),
+        'react/deep.js': listOf([deepUnit]),
       },
     });
     const net = controlledFetch();
     const register = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const sharedBaseManifest = buildManifest([sharedDep('react')], {
+    await loadFetchListMfe(net, [sharedUnit, deepUnit], list, entrySource('./lazy.js'), {
       metaData: { sharedBase: './shared/' },
-      entryLists: { './lifecycle': ref('react.list.json', doc) },
+      items: [[url('shared/react/index.abc.js'), sharedText]],
     });
-    const loading = newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
-      buildEntry(sharedBaseManifest),
-      nextExtensionId(),
-    );
-    await issuedAll(net, [ENTRY_URL, url('shared/react.list.json')]);
-    net.ok(url('shared/react.list.json'), doc);
-    await issuedAll(net, [url('shared/react/index.abc.js')]);
-    net.ok(url('shared/react/index.abc.js'), sharedText);
-    net.ok(ENTRY_URL, entrySource('./lazy.js'));
-    await loading;
     const resolvers = registeredResolvers(register);
     const unitArgument = lazyAbiArguments((await minted.sources()).join('\n')).find((a) => a.includes('./deep.js'))!;
     const own = resolvers.at(-1)!;
-    const unit = resolvers[0]!;
+    const unitResolver = resolvers[0]!;
     const ownResolving = own('./lazy.js');
-    await issuedAll(net, [url('shared/lazy.list.json'), url('assets/lazy.js')]);
-    net.ok(url('shared/lazy.list.json'), lazyDoc);
+    await issuedAll(net, [url('assets/lazy.js')]);
     net.ok(url('assets/lazy.js'), 'export const z = 1;\n');
     await ownResolving;
-    const unitResolving = unit(unitArgument);
-    await issuedAll(net, [url('shared/deep.list.json')]);
-    net.ok(url('shared/deep.list.json'), deepDoc);
+    const unitResolving = unitResolver(unitArgument);
     await issuedAll(net, [url('shared/react/deep.js')]);
     net.ok(url('shared/react/deep.js'), deepText);
     expect(await unitResolving).toMatch(/^blob:/);
@@ -298,34 +253,31 @@ describe('acceptance: lazy target first use on a fetch-list load', () => {
   });
 
   it('downloads two distinct lazy targets in parallel and mints their units one at a time', async () => {
-    const aDoc = listDocument({ items: [item('shared/a.js', 'export const a=1;\n', ['pkg-a'])] });
-    const bDoc = listDocument({ items: [item('shared/b.js', 'export const b=1;\n', ['pkg-b'])] });
-    const doc = baseDoc({
+    const aUnit = unit('shared/a.js', 'export const a=1;\n', ['pkg-a']);
+    const bUnit = unit('shared/b.js', 'export const b=1;\n', ['pkg-b']);
+    const list = baseList({
       lazy: {
-        'assets/a.js': ref('shared/a.list.json', aDoc),
-        'assets/b.js': ref('shared/b.list.json', bDoc),
+        'assets/a.js': listOf([aUnit]),
+        'assets/b.js': listOf([bUnit]),
       },
     });
     const net = controlledFetch();
     const register = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
-    await loadFetchListMfe(net, doc, entrySource('./a.js', './b.js'));
+    await loadFetchListMfe(net, [REACT, aUnit, bUnit], list, entrySource('./a.js', './b.js'));
     const [resolve] = registeredResolvers(register);
     const a = resolve!('./a.js');
     const b = resolve!('./b.js');
     // Both targets' requests are in flight at once, no response delivered.
     await issuedAll(net, [
-      url('shared/a.list.json'),
       url('assets/a.js'),
-      url('shared/b.list.json'),
+      url('shared/a.js'),
       url('assets/b.js'),
+      url('shared/b.js'),
     ]);
-    net.ok(url('shared/b.list.json'), bDoc);
-    net.ok(url('shared/a.list.json'), aDoc);
-    await issuedAll(net, [url('shared/a.js'), url('shared/b.js')]);
     net.ok(url('assets/a.js'), 'export const A = 1;\n');
     net.ok(url('assets/b.js'), 'export const B = 1;\n');
-    net.ok(url('shared/a.js'), 'export const a=1;\n');
     net.ok(url('shared/b.js'), 'export const b=1;\n');
+    net.ok(url('shared/a.js'), 'export const a=1;\n');
     const [blobA, blobB] = await Promise.all([a, b]);
     expect(blobA).not.toBe(blobB);
     // Minting is one synchronous step per target: every minted module
@@ -336,23 +288,19 @@ describe('acceptance: lazy target first use on a fetch-list load', () => {
   });
 
   it('issues each request once and mints each unit once for concurrent resolutions of one target', async () => {
-    const lazyDoc = listDocument({ items: [item('shared/a.js', 'export const a=1;\n', ['pkg-a'])] });
-    const doc = baseDoc({
-      lazy: { 'assets/a.js': ref('shared/a.list.json', lazyDoc) },
-    });
+    const aUnit = unit('shared/a.js', 'export const a=1;\n', ['pkg-a']);
+    const list = baseList({ lazy: { 'assets/a.js': listOf([aUnit]) } });
     const net = controlledFetch();
     const register = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
-    await loadFetchListMfe(net, doc, entrySource('./a.js'));
+    await loadFetchListMfe(net, [REACT, aUnit], list, entrySource('./a.js'));
     const [resolve] = registeredResolvers(register);
     const first = resolve!('./a.js');
     const second = resolve!('./a.js');
-    await issuedAll(net, [url('shared/a.list.json'), url('assets/a.js')]);
-    net.ok(url('shared/a.list.json'), lazyDoc);
-    await issuedAll(net, [url('shared/a.js')]);
+    await issuedAll(net, [url('shared/a.js'), url('assets/a.js')]);
     net.ok(url('shared/a.js'), 'export const a=1;\n');
     net.ok(url('assets/a.js'), 'export const A = 1;\n');
     expect(await first).toBe(await second);
-    for (const u of ['shared/a.list.json', 'assets/a.js', 'shared/a.js']) {
+    for (const u of ['assets/a.js', 'shared/a.js']) {
       expect(net.count(url(u))).toBe(1);
     }
     const sources = await minted.sources();
@@ -360,11 +308,10 @@ describe('acceptance: lazy target first use on a fetch-list load', () => {
   });
 
   it('warns once per handler for an own lazy chunk with no list, naming chunk and entry, and loads it', async () => {
-    const doc = baseDoc();
     const net = controlledFetch();
     const register = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    await loadFetchListMfe(net, doc, entrySource('./nolist.js', './other.js'));
+    await loadFetchListMfe(net, [REACT], baseList(), entrySource('./nolist.js', './other.js'));
     const [resolve] = registeredResolvers(register);
     const before = net.issued.length;
     const resolving = resolve!('./nolist.js');
@@ -385,19 +332,17 @@ describe('acceptance: lazy target first use on a fetch-list load', () => {
 
   it('fails a shared unit\'s lazy call with no list naming target and entry, minting and fetching nothing', async () => {
     const reactText = "export const r = 1;\nexport const load = () => import('./missing.js');\n";
-    const doc = listDocument({
-      items: [item(REACT_LOCATION, reactText, ['react'])],
-    });
+    const reactUnit = unit(REACT_LOCATION, reactText, ['react']);
     const net = controlledFetch();
     const register = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
-    await loadFetchListMfe(net, doc, entrySource(), {
+    await loadFetchListMfe(net, [reactUnit], listOf([reactUnit]), entrySource(), {
       items: [[url(REACT_LOCATION), reactText]],
     });
     const argument = lazyAbiArguments((await minted.sources()).join('\n'))[0]!;
-    const [unit] = registeredResolvers(register);
+    const [unitResolver] = registeredResolvers(register);
     const issuedBefore = net.issued.length;
     const mintedBefore = (await minted.sources()).length;
-    const error = await unit!(argument).then(
+    const error = await unitResolver!(argument).then(
       () => undefined,
       (e: unknown) => e,
     );
@@ -409,16 +354,14 @@ describe('acceptance: lazy target first use on a fetch-list load', () => {
     expect((await minted.sources()).length).toBe(mintedBefore);
   });
 
-  it('rewrites every literal and bounded-pattern import of a list item and leaves a fully opaque import native, bytes unchanged', async () => {
+  it('rewrites every literal and bounded-pattern import of a list unit and leaves a fully opaque import native, bytes unchanged', async () => {
     const reactText =
       "export const a = () => import('./a.js');\n" +
       'export const p = (n) => import(`./locales/${n}.js`);\n' +
       'export const o = (x) => import(x);\n';
-    const doc = listDocument({
-      items: [item(REACT_LOCATION, reactText, ['react'])],
-    });
+    const reactUnit = unit(REACT_LOCATION, reactText, ['react']);
     const net = controlledFetch();
-    await loadFetchListMfe(net, doc, entrySource(), {
+    await loadFetchListMfe(net, [reactUnit], listOf([reactUnit]), entrySource(), {
       items: [[url(REACT_LOCATION), reactText]],
     });
     const source = (await minted.sources()).find((s) => s.includes('./locales/'))!;
@@ -436,22 +379,18 @@ describe('acceptance: lazy target first use on a fetch-list load', () => {
   });
 
   it('fails a lazily reached unit\'s import without blocking a later independent lazy import', async () => {
-    const badDoc = listDocument({ items: [item('shared/bad.js', 'export const bad=1;\n', ['pkg-bad'])] });
-    const doc = baseDoc({
-      lazy: { 'assets/bad.js': ref('shared/bad.list.json', badDoc) },
-    });
+    const badUnit = unit('shared/bad.js', 'export const bad=1;\n', ['pkg-bad']);
+    const list = baseList({ lazy: { 'assets/bad.js': listOf([badUnit]) } });
     const net = controlledFetch();
     const register = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    await loadFetchListMfe(net, doc, entrySource('./bad.js', './good.js'));
+    await loadFetchListMfe(net, [REACT, badUnit], list, entrySource('./bad.js', './good.js'));
     const [resolve] = registeredResolvers(register);
     const bad = resolve!('./bad.js').then(
       () => undefined,
       (e: unknown) => e,
     );
-    await issuedAll(net, [url('shared/bad.list.json'), url('assets/bad.js')]);
-    net.ok(url('shared/bad.list.json'), badDoc);
-    await issuedAll(net, [url('shared/bad.js')]);
+    await issuedAll(net, [url('assets/bad.js'), url('shared/bad.js')]);
     net.ok(url('assets/bad.js'), 'export const b = 1;\n');
     net.fail(url('shared/bad.js'));
     expect(await bad).toBeInstanceOf(MfeLoadError);
@@ -551,17 +490,17 @@ const chunkTag = (sources: string[], marker: string): string => {
 
 describe('acceptance: the calling chunk\'s base and the load\'s retained state', () => {
   it('resolves an own chunk\'s lazy call against that chunk\'s directory, not the entry\'s', async () => {
-    const lazyDoc = listDocument({});
     const innerText = "export const inner = () => __frontx_lazy('./deep.js');\n";
-    const doc = baseDoc({
+    const list = baseList({
       ownChunks: ['assets/sub/inner.js'],
-      lazy: { 'assets/sub/deep.js': ref('shared/deep.list.json', lazyDoc) },
+      lazy: { 'assets/sub/deep.js': listOf([]) },
     });
     const net = controlledFetch();
     const register = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
     await loadFetchListMfe(
       net,
-      doc,
+      [REACT],
+      list,
       'import "./sub/inner.js";\n' + entrySource(),
       { ownChunks: [[url('assets/sub/inner.js'), innerText]] },
     );
@@ -571,79 +510,72 @@ describe('acceptance: the calling chunk\'s base and the load\'s retained state',
     const resolving = resolve!(`${tag}./deep.js`);
     // The list is found under the chunk-relative key and the chunk itself
     // is requested beside its caller.
-    await issuedAll(net, [url('shared/deep.list.json'), url('assets/sub/deep.js')]);
-    net.ok(url('shared/deep.list.json'), lazyDoc);
+    await issuedAll(net, [url('assets/sub/deep.js')]);
     net.ok(url('assets/sub/deep.js'), 'export const d = 1;\n');
     expect(await resolving).toMatch(/^blob:/);
   });
 
-  it('requests an own chunk two lazy deltas share once and keeps no request for it afterwards', async () => {
+  it('requests an own chunk two lazy lists share once and keeps no request for it afterwards', async () => {
     const sharedOwn = url('assets/shared-own.js');
-    const deltaFor = (name: string): string =>
-      listDocument({ ownChunks: ['assets/shared-own.js'], items: [] }).replace(
-        '"ownChunks"',
-        `"note":"${name}","ownChunks"`,
-      );
-    const aDoc = deltaFor('a');
-    const bDoc = deltaFor('b');
-    const cDoc = deltaFor('c');
-    const doc = baseDoc({
+    const withOwn = (): NestedList =>
+      listOf([], { ownChunks: ['assets/shared-own.js'] });
+    const list = baseList({
       lazy: {
-        'assets/a.js': ref('shared/a.list.json', aDoc),
-        'assets/b.js': ref('shared/b.list.json', bDoc),
-        'assets/c.js': ref('shared/c.list.json', cDoc),
+        'assets/a.js': withOwn(),
+        'assets/b.js': withOwn(),
+        'assets/c.js': withOwn(),
       },
     });
     const net = controlledFetch();
     const register = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
-    await loadFetchListMfe(net, doc, entrySource('./a.js', './b.js', './c.js'));
+    await loadFetchListMfe(net, [REACT], list, entrySource('./a.js', './b.js', './c.js'));
     const [resolve] = registeredResolvers(register);
     const a = resolve!('./a.js');
     const b = resolve!('./b.js');
-    await issuedAll(net, [url('shared/a.list.json'), url('shared/b.list.json')]);
-    net.ok(url('shared/a.list.json'), aDoc);
-    net.ok(url('shared/b.list.json'), bDoc);
-    await issuedAll(net, [sharedOwn]);
+    await issuedAll(net, [url('assets/a.js'), url('assets/b.js'), sharedOwn]);
     const importer = 'import "./shared-own.js";\nexport const x = 1;\n';
     net.ok(sharedOwn, OWN_TEXT);
     net.ok(url('assets/a.js'), importer);
     net.ok(url('assets/b.js'), importer);
     await Promise.all([a, b]);
-    // A later delta naming the minted chunk requests nothing for it.
+    // A later list naming the minted chunk requests nothing for it.
     const c = resolve!('./c.js');
-    await issuedAll(net, [url('shared/c.list.json')]);
-    net.ok(url('shared/c.list.json'), cDoc);
+    await issuedAll(net, [url('assets/c.js')]);
     net.ok(url('assets/c.js'), importer);
     await c;
     expect(net.count(sharedOwn)).toBe(1);
   });
 
-  it('mints each target\'s items contiguously: no mint of one batch waits on another', async () => {
-    const mk = (tag: string): { text: string; it: ListItem }[] =>
+  it('mints each target\'s units contiguously: no mint of one batch waits on another', async () => {
+    const mk = (tag: string): { text: string; it: SharedDepUnit }[] =>
       [1, 2].map((n) => {
         const text = `export const ${tag}${String(n)} = ${String(n)};\n`;
-        return { text, it: item(`shared/${tag}${String(n)}.js`, text, [`pkg-${tag}${String(n)}`]) };
+        return { text, it: unit(`shared/${tag}${String(n)}.js`, text, [`pkg-${tag}${String(n)}`]) };
       });
     const aItems = mk('a');
     const bItems = mk('b');
-    const aDoc = listDocument({ items: aItems.map((i) => i.it) });
-    const bDoc = listDocument({ items: bItems.map((i) => i.it) });
-    const doc = baseDoc({
+    const list = baseList({
       lazy: {
-        'assets/a.js': ref('shared/a.list.json', aDoc),
-        'assets/b.js': ref('shared/b.list.json', bDoc),
+        'assets/a.js': listOf(aItems.map((i) => i.it)),
+        'assets/b.js': listOf(bItems.map((i) => i.it)),
       },
     });
+    const all = [...aItems, ...bItems];
     const net = controlledFetch();
     const register = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
-    await loadFetchListMfe(net, doc, entrySource('./a.js', './b.js'));
+    await loadFetchListMfe(
+      net,
+      [REACT, ...all.map((i) => i.it)],
+      list,
+      entrySource('./a.js', './b.js'),
+    );
     const [resolve] = registeredResolvers(register);
     const targets = [resolve!('./a.js'), resolve!('./b.js')];
-    await issuedAll(net, [url('shared/a.list.json'), url('shared/b.list.json')]);
-    net.ok(url('shared/a.list.json'), aDoc);
-    net.ok(url('shared/b.list.json'), bDoc);
-    const all = [...aItems, ...bItems];
-    await issuedAll(net, all.map((i) => url(i.it.location)));
+    await issuedAll(net, [
+      url('assets/a.js'),
+      url('assets/b.js'),
+      ...all.map((i) => url(i.it.location)),
+    ]);
     net.ok(url('assets/a.js'), 'export const A = 1;\n');
     net.ok(url('assets/b.js'), 'export const B = 1;\n');
     for (const i of all) net.ok(url(i.it.location), i.text);
@@ -658,27 +590,23 @@ describe('acceptance: the calling chunk\'s base and the load\'s retained state',
 
   it('resolves a shared unit\'s pattern call through the patterns record', async () => {
     const enText = 'export const en = 1;\n';
-    const enDoc = listDocument({ items: [item('shared/react/locales/en.js', enText)] });
+    const enUnit = unit('shared/react/locales/en.js', enText);
     const reactText =
       'export const load = (n) => import(`./locales/${n}.js`);\n';
-    const doc = listDocument({
-      items: [item(REACT_LOCATION, reactText, ['react'])],
-      patterns: {
-        'shared/react/locales/en.js': ref('shared/en.list.json', enDoc),
-      },
+    const reactUnit = unit(REACT_LOCATION, reactText, ['react']);
+    const list = listOf([reactUnit], {
+      patterns: { 'shared/react/locales/en.js': listOf([enUnit]) },
     });
     const net = controlledFetch();
     const register = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
-    await loadFetchListMfe(net, doc, entrySource(), {
+    await loadFetchListMfe(net, [reactUnit, enUnit], list, entrySource(), {
       items: [[url(REACT_LOCATION), reactText]],
     });
     const prefix = lazyAbiArguments((await minted.sources()).join('\n'))[0]!;
     expect(prefix).toBe('rel:shared/react/index.abc.js\n');
-    const [unit] = registeredResolvers(register);
+    const [unitResolver] = registeredResolvers(register);
     // The runtime-computed path the rewritten call passes.
-    const resolving = unit!(`${prefix}./locales/en.js`);
-    await issuedAll(net, [url('shared/en.list.json')]);
-    net.ok(url('shared/en.list.json'), enDoc);
+    const resolving = unitResolver!(`${prefix}./locales/en.js`);
     await issuedAll(net, [url('shared/react/locales/en.js')]);
     net.ok(url('shared/react/locales/en.js'), enText);
     expect(await resolving).toMatch(/^blob:/);
@@ -686,21 +614,17 @@ describe('acceptance: the calling chunk\'s base and the load\'s retained state',
 
   it('adds nothing to the per-load map for a failed unit and lets the same target retry', async () => {
     const badText = 'export const bad = 1;\n';
-    const badDoc = listDocument({ items: [item('shared/bad.js', badText, ['pkg-bad'])] });
-    const doc = baseDoc({
-      lazy: { 'assets/bad.js': ref('shared/bad.list.json', badDoc) },
-    });
+    const badUnit = unit('shared/bad.js', badText, ['pkg-bad']);
+    const list = baseList({ lazy: { 'assets/bad.js': listOf([badUnit]) } });
     const net = controlledFetch();
     const register = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
-    await loadFetchListMfe(net, doc, entrySource('./bad.js'));
+    await loadFetchListMfe(net, [REACT, badUnit], list, entrySource('./bad.js'));
     const [resolve] = registeredResolvers(register);
     const first = resolve!('./bad.js').then(
       () => undefined,
       (e: unknown) => e,
     );
-    await issuedAll(net, [url('shared/bad.list.json'), url('assets/bad.js')]);
-    net.ok(url('shared/bad.list.json'), badDoc);
-    await issuedAll(net, [url('shared/bad.js')]);
+    await issuedAll(net, [url('assets/bad.js'), url('shared/bad.js')]);
     net.ok(url('assets/bad.js'), 'export const b = 1;\n');
     net.fail(url('shared/bad.js'));
     expect(await first).toBeInstanceOf(MfeLoadError);

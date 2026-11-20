@@ -1,9 +1,9 @@
 /**
  * `@gears-frontx/mfes/unit-format` — the shared-dependency unit format
  * contract surface: the TypeScript types that are the single typing
- * source for the per-entry flat fetch lists a producing build emits and
- * the runtime reads (`cpt-frontx-feature-unit-format-contract`,
- * DESIGN §3.3).
+ * source for the manifest's unit table and flat fetch lists, which a
+ * producing build records and the runtime reads
+ * (`cpt-frontx-feature-unit-format-contract`, DESIGN §3.3).
  *
  * Types only live in this subpath; the root barrel is unchanged.
  *
@@ -11,11 +11,7 @@
  */
 
 export type {
-  SharedDepProducer,
+  SharedDepUnit,
   SharedDepImportEdge,
-  SharedDepFileRef,
-  SharedDepListItem,
-  SharedDepOpaqueImport,
   SharedDepFetchList,
-  SharedDepEntryListRefs,
 } from './fetch-list';

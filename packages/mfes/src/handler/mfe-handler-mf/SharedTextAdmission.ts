@@ -26,12 +26,7 @@ import type { SharedDepTextCache } from './RealmSharedDepTextCacheProvider';
 
 export class SharedTextAdmission {
   // @cpt-begin:cpt-frontx-algo-unit-format-contract-shared-text-admission:p1:inst-derive-key
-  /** Realm cache key of a fetch-list document. */
-  static listKey(contentHash: string): string {
-    return `list:${contentHash}`;
-  }
-
-  /** Realm cache key of a list item. */
+  /** Realm cache key of a list unit. */
   static chunkKey(contentHash: string): string {
     return `chunk:${contentHash}`;
   }

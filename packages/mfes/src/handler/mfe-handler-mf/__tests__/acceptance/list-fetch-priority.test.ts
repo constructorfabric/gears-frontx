@@ -1,8 +1,7 @@
 /**
- * Acceptance: the entry's list document is requested with high fetch
- * priority — it opens the critical path to an extension's mount, so the
- * lists of every extension loading at startup are requested together and
- * first — while the items the list names keep the default priority.
+ * Acceptance: the entry module is requested with high fetch priority — it
+ * is the last file an extension's mount waits on — while the units the
+ * manifest-held list names keep the default priority.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { stubbedDynamicModuleOps } from '../helpers/blob-module-stub';
@@ -27,7 +26,8 @@ import {
   ENTRY_BASE_ID,
   PUBLIC_PATH,
   sharedDep,
-  sha256Hex,
+  listOf,
+  unitOf,
 } from '../helpers/manifest-builder';
 import { createFetchRouter } from '../helpers/fetch-router';
 import { resetRealmSharedDepTextCache } from '../helpers/realm-cache';
@@ -36,22 +36,12 @@ beforeEach(resetRealmSharedDepTextCache);
 afterEach(resetRealmSharedDepTextCache);
 
 const ITEM_TEXT = 'export const r = 1;\n';
-const LIST_DOC = JSON.stringify({
-  items: [
-    {
-      location: 'shared/react/index.abc.js',
-      contentHash: sha256Hex(ITEM_TEXT),
-      answers: ['react'],
-      imports: [],
-    },
-  ],
-});
+const REACT = unitOf('shared/react/index.abc.js', ITEM_TEXT, ['react']);
 
-describe('acceptance: list-document fetch priority', () => {
-  it('requests the entry list document with priority high and the items with the default priority', async () => {
+describe('acceptance: entry module fetch priority', () => {
+  it('requests the entry module with priority high and the list units with the default priority', async () => {
     const router = createFetchRouter({
       [`${PUBLIC_PATH}assets/lifecycle.js`]: { body: 'export default {};' },
-      [`${PUBLIC_PATH}shared/react.list.json`]: { body: LIST_DOC },
       [`${PUBLIC_PATH}shared/react/index.abc.js`]: { body: ITEM_TEXT },
     });
     const inits = new Map<string, RequestInit | undefined>();
@@ -62,12 +52,8 @@ describe('acceptance: list-document fetch priority', () => {
         return router(input);
       }) as typeof fetch);
     const manifest = buildManifest([sharedDep('react')], {
-      entryLists: {
-        './lifecycle': {
-          location: 'shared/react.list.json',
-          contentHash: sha256Hex(LIST_DOC),
-        },
-      },
+      units: [REACT],
+      lists: { './lifecycle': listOf([REACT]) },
     });
     try {
       await newHandler(ENTRY_BASE_ID, { retries: 0 })
@@ -76,7 +62,7 @@ describe('acceptance: list-document fetch priority', () => {
     } finally {
       fetchSpy.mockRestore();
     }
-    expect(inits.get(`${PUBLIC_PATH}shared/react.list.json`)).toEqual({ priority: 'high' });
+    expect(inits.get(`${PUBLIC_PATH}assets/lifecycle.js`)).toEqual({ priority: 'high' });
     expect(inits.has(`${PUBLIC_PATH}shared/react/index.abc.js`)).toBe(true);
     expect(inits.get(`${PUBLIC_PATH}shared/react/index.abc.js`)).toBeUndefined();
   });

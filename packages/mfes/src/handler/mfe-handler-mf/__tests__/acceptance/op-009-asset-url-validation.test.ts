@@ -1,6 +1,5 @@
 /**
- * Acceptance: OP-009 — shared-file locations (fetch-list documents,
- * list items) and `metaData.sharedBase` are validated by the same rules
+ * Acceptance: OP-009 — shared-file locations (unit table locations) and `metaData.sharedBase` are validated by the same rules
  * as `chunkPath`: protocol-relative `//host`, non-http(s) schemes, and
  * `..` escapes out of the asset base fail the load with `MfeLoadError`
  * before any fetch.
@@ -29,7 +28,8 @@ import {
   ENTRY_BASE_ID,
   PUBLIC_PATH,
   sharedDep,
-  sha256Hex,
+  listOf,
+  unitOf,
 } from '../helpers/manifest-builder';
 import { createFetchRouter } from '../helpers/fetch-router';
 import { resetRealmSharedDepTextCache } from '../helpers/realm-cache';
@@ -38,24 +38,13 @@ import type { MfManifest } from '../../../../manifest/mf-manifest';
 beforeEach(resetRealmSharedDepTextCache);
 afterEach(resetRealmSharedDepTextCache);
 
-const LIST_DOC = JSON.stringify({
-  items: [
-    {
-      location: 'shared/react/index.abc.js',
-      contentHash: sha256Hex('export const r = 1;\n'),
-      answers: ['react'],
-      imports: [],
-    },
-  ],
-});
-
-/** A manifest whose entry list ref carries `location`. */
+/** A manifest whose unit table carries a unit at `location`. */
 function manifestWithList(location: string, sharedBase?: string): MfManifest {
+  const unit = unitOf(location, 'export const r = 1;\n', ['react']);
   return buildManifest([sharedDep('react')], {
     ...(sharedBase !== undefined ? { metaData: { sharedBase } } : {}),
-    entryLists: {
-      './lifecycle': { location, contentHash: sha256Hex(LIST_DOC) },
-    },
+    units: [unit],
+    lists: { './lifecycle': listOf([unit]) },
   });
 }
 
@@ -80,40 +69,40 @@ async function expectRejected(manifest: MfManifest): Promise<unknown> {
 }
 
 describe('acceptance: OP-009 shared-file location validation', () => {
-  it('OP-009: a protocol-relative list location fails the load', async () => {
+  it('OP-009: a protocol-relative unit location fails the load', async () => {
     await expectRejected(
-      manifestWithList('//evil.example.com/react.list.json'),
+      manifestWithList('//evil.example.com/react.js'),
     );
   });
 
-  it('OP-009: a list location climbing out of the asset base fails the load', async () => {
-    await expectRejected(manifestWithList('../escape/react.list.json'));
+  it('OP-009: a unit location climbing out of the asset base fails the load', async () => {
+    await expectRejected(manifestWithList('../escape/react.js'));
   });
 
   it('OP-009: a non-http(s) sharedBase fails the load', async () => {
     await expectRejected(
-      manifestWithList('react.list.json', 'javascript:alert(1)'),
+      manifestWithList('react.js', 'javascript:alert(1)'),
     );
   });
 
   it('OP-009: a protocol-relative sharedBase fails the load', async () => {
     await expectRejected(
-      manifestWithList('react.list.json', '//evil.example.com/shared/'),
+      manifestWithList('react.js', '//evil.example.com/shared/'),
     );
   });
 
   it('OP-009: a sharedBase containing a backslash or space fails the load', async () => {
     await expectRejected(
-      manifestWithList('react.list.json', 'shared\\evil/'),
+      manifestWithList('react.js', 'shared\\evil/'),
     );
     await expectRejected(
-      manifestWithList('react.list.json', 'shared dir/'),
+      manifestWithList('react.js', 'shared dir/'),
     );
   });
 
-  it('OP-009: a list location with percent-encoded dot segments fails the load', async () => {
+  it('OP-009: a unit location with percent-encoded dot segments fails the load', async () => {
     await expectRejected(
-      manifestWithList('shared/%2e%2e/escape/react.list.json'),
+      manifestWithList('shared/%2e%2e/escape/react.js'),
     );
   });
 
@@ -121,7 +110,7 @@ describe('acceptance: OP-009 shared-file location validation', () => {
     // Base 'http://localhost:3099/dir/' — '/shared/x' resolves to the
     // origin root, outside the base, so containment rejects it.
     await expectRejected(
-      manifestWithList('/shared/react.list.json', 'http://localhost:3099/dir/'),
+      manifestWithList('/shared/react.js', 'http://localhost:3099/dir/'),
     );
   });
 
@@ -130,7 +119,26 @@ describe('acceptance: OP-009 shared-file location validation', () => {
     // '../dir-evil/x' climbs to '…/dir-evil/x', which must NOT satisfy a
     // naive '/dir' prefix check.
     await expectRejected(
-      manifestWithList('../dir-evil/react.list.json', 'http://localhost:3099/dir'),
+      manifestWithList('../dir-evil/react.js', 'http://localhost:3099/dir'),
     );
+  });
+
+  it('a list naming a content identity the unit table lacks fails the load before any request', async () => {
+    const unit = unitOf('shared/react.js', 'export const r = 1;\n', ['react']);
+    const missing = unitOf('shared/other.js', 'export const o = 2;\n', ['other']);
+    const manifest = buildManifest([sharedDep('react')], {
+      units: [unit],
+      lists: { './lifecycle': listOf([unit, missing]) },
+    });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    try {
+      const error = await newHandler(ENTRY_BASE_ID, { retries: 0 })
+        .load(buildEntry(manifest), 'ext-op009-hash')
+        .then(() => undefined, (e: unknown) => e);
+      expect(error).toBeInstanceOf(MfeLoadError);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 });

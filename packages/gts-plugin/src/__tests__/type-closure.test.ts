@@ -124,9 +124,18 @@ describe('final types reject an unknown property in each inline object', () => {
     rejects(manifest({ shared: [{ name: 'a', version: '1', chunkPath: 'a.js', unknown: 1 }] }));
   });
 
-  it('each manifest entryLists value', () => {
-    accepts(manifest({ entryLists: { './a': { location: 'a.json', contentHash: HASH }, './b': { location: 'b.json', contentHash: HASH } } }));
-    rejects(manifest({ entryLists: { './a': { location: 'a.json', contentHash: HASH, unknown: 1 } } }));
+  it('each manifest units element and unit import edge', () => {
+    const unit = (extra: Obj = {}): Obj => ({ location: 'a.js', contentHash: HASH, answers: ['a'], imports: [], ...extra });
+    accepts(manifest({ units: [unit(), unit({ imports: ['b', { unit: HASH }] })] }));
+    rejects(manifest({ units: [unit({ unknown: 1 })] }));
+    rejects(manifest({ units: [unit({ imports: [{ unit: HASH, unknown: 1 }] })] }), /oneof/i);
+  });
+
+  it('each manifest lists value', () => {
+    const list = (extra: Obj = {}): Obj => ({ units: [HASH], ownChunks: [], ...extra });
+    accepts(manifest({ lists: { './a': list(), 'assets/lazy.js': list({ lazy: ['x.js'], patterns: ['y.js'] }) } }));
+    rejects(manifest({ lists: { './a': list({ unknown: 1 }) } }));
+    rejects(manifest({ lists: { 'assets/lazy.js': list({ unknown: 1 }) } }));
   });
 
   it.each(['exposeAssets', 'js', 'css'])('entry exposeAssets %s', (where) => {

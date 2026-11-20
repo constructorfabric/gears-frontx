@@ -2,14 +2,14 @@
  * List-driven shared-dependency loader: the runtime half of the
  * per-entry flat fetch-list model
  * (`cpt-frontx-adr-shared-dep-reuse`). Reads an entry's
- * {@link SharedDepFetchList} — from a fetched list document —
- * fetches every item missing from the realm text cache in
+ * {@link SharedDepFetchList} — held in the registered manifest —
+ * fetches every unit missing from the realm text cache in
  * one parallel batch through `SharedTextAdmission` +
  * `SharedAssetUrlResolver`, and mints per load in dependency order
  * through `SharedDepListMinter`. There is no runtime graph discovery.
  *
- * Lazy-target and pattern lists load on first use: the target's delta
- * list is fetched, its items missing
+ * Lazy-target and pattern lists load on first use: the target's nested
+ * list names its units, those missing
  * from the realm cache are fetched in one parallel batch and minted
  * into the same load — the per-load maps are extended, never replaced —
  * and concurrent resolutions of one target are deduplicated. A failed
@@ -22,7 +22,6 @@
  * @internal
  */
 
-import { MfeLoadError } from '../../errors';
 import type { AttemptSourceTextLedger } from './AttemptSourceTextLedger';
 import {
   RealmSharedDepTextCacheProvider,
@@ -36,8 +35,7 @@ import {
 } from './SharedDepListMinter';
 import type {
   SharedDepFetchList,
-  SharedDepFileRef,
-  SharedDepListItem,
+  SharedDepUnit,
 } from '../../unit-format/fetch-list';
 
 /**
@@ -47,19 +45,24 @@ import type {
  * and the dedupe/serialization machinery lazy resolutions share.
  */
 export interface SharedDepListContext {
+  /** Every fetch list of the manifest, by key. */
+  readonly lists: Readonly<Record<string, SharedDepFetchList>>;
   /** specifier → blob URL — the map the expose chain rewrites against. */
   readonly specifierToBlob: Map<string, string>;
   /** contentHash → blob URL, every item minted for the load. */
   readonly itemBlobByHash: Map<string, string>;
-  /** contentHash → list item, the load's combined item set. */
-  readonly itemByHash: Map<string, SharedDepListItem>;
+  /**
+   * contentHash → list item, the load's combined item set; its `answers`
+   * are those of every table unit carrying the content identity.
+   */
+  readonly itemByHash: Map<string, SharedDepUnit>;
   /** shared-base-relative location → list item. */
-  readonly itemByLocation: Map<string, SharedDepListItem>;
+  readonly itemByLocation: Map<string, SharedDepUnit>;
   /**
    * Dependent-list lookup keyed by the `lazy`/`patterns` record key —
-   * the `SharedDepFileRef` of the list document to fetch.
+   * the nested list of that lazy target or pattern match.
    */
-  readonly dependentLists: Map<string, SharedDepFileRef>;
+  readonly dependentLists: Map<string, SharedDepFetchList>;
   /** One in-flight resolution per dependent-list key. */
   readonly pending: Map<string, Promise<void>>;
 }
@@ -93,80 +96,58 @@ export class SharedDepListLoader {
     return this.fetchedBytes;
   }
 
-  /** Fresh per-load context. */
-  createContext(): SharedDepListContext {
+  /**
+   * Fresh per-load context over the manifest's unit table and lists:
+   * every unit is registered once, so a list's content identities and the
+   * relative specifiers of a minted unit resolve against it, and a unit
+   * minted under a content identity answers the specifiers of every table
+   * unit carrying that identity.
+   */
+  createContext(
+    units: readonly SharedDepUnit[],
+    lists: Readonly<Record<string, SharedDepFetchList>>,
+  ): SharedDepListContext {
+    const itemByHash = new Map<string, SharedDepUnit>();
+    const itemByLocation = new Map<string, SharedDepUnit>();
+    const answersByHash = new Map<string, Set<string>>();
+    for (const unit of units) {
+      const answers = answersByHash.get(unit.contentHash) ?? new Set<string>();
+      for (const specifier of unit.answers) answers.add(specifier);
+      answersByHash.set(unit.contentHash, answers);
+      if (!itemByHash.has(unit.contentHash)) {
+        itemByHash.set(unit.contentHash, unit);
+      }
+      // Every location registers: the same content identity emitted
+      // under another package's directory is a distinct location — a
+      // minted unit's relative specifier resolves against its own
+      // location and must find the twin's location too.
+      itemByLocation.set(unit.location, unit);
+    }
+    for (const [hash, unit] of itemByHash) {
+      itemByHash.set(hash, {
+        ...unit,
+        answers: [...(answersByHash.get(hash) ?? unit.answers)],
+      });
+    }
     return {
+      lists,
       specifierToBlob: new Map(),
       itemBlobByHash: new Map(),
-      itemByHash: new Map(),
-      itemByLocation: new Map(),
+      itemByHash,
+      itemByLocation,
       dependentLists: new Map(),
       pending: new Map(),
     };
   }
 
-  /**
-   * Fetch a list document, admit it to the realm cache as fetched under
-   * its declared identity, then JSON-parse it. The runtime performs no
-   * structural validation — correctness rests on the producer's
-   * conformance (`inst-read-point-of-use`); a document that is not an object with an
-   * `items` array fails the load naming the producer it records.
-   */
-  async fetchListDocument(
-    ref: SharedDepFileRef,
-    resolveAssetUrl: (location: string) => string,
-  ): Promise<SharedDepFetchList> {
-    const url = resolveAssetUrl(ref.location);
-    const text = await this.admission.admit(
-      SharedTextAdmission.listKey(ref.contentHash),
-      url,
-      this.fetchText,
-    );
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      throw new MfeLoadError(
-        `fetch-list document '${ref.location}' is not JSON.`,
-        this.entryId,
-      );
-    }
-    const list = parsed as SharedDepFetchList;
-    if (
-      typeof list !== 'object' ||
-      list === null ||
-      !Array.isArray(list.items)
-    ) {
-      const producer = (list as SharedDepFetchList)?.producer;
-      const label =
-        producer !== undefined
-          ? `${producer.name}@${producer.version}`
-          : 'unknown producer';
-      throw new MfeLoadError(
-        `fetch-list document '${ref.location}' carries no 'items' array ` +
-          `(producer ${label}).`,
-        this.entryId,
-      );
-    }
-    return list;
-  }
-
-  /** Register a list's items and dependent-list records on `ctx`. */
+  /** Register the lazy and pattern lists `list` names, by key, on `ctx`. */
   registerList(ctx: SharedDepListContext, list: SharedDepFetchList): void {
-    for (const item of list.items) {
-      if (!ctx.itemByHash.has(item.contentHash)) {
-        ctx.itemByHash.set(item.contentHash, item);
-      }
-      // Every location registers: the same content identity emitted
-      // under another package's directory is a distinct location —
-      // a minted item's relative specifier resolves against its own
-      // item's location and must find the twin's location too.
-      ctx.itemByLocation.set(item.location, item);
-    }
-    for (const record of [list.lazy, list.patterns]) {
-      if (record === undefined) continue;
-      for (const [key, ref] of Object.entries(record)) {
-        if (!ctx.dependentLists.has(key)) ctx.dependentLists.set(key, ref);
+    for (const keys of [list.lazy, list.patterns]) {
+      for (const key of keys ?? []) {
+        const nested = ctx.lists[key];
+        if (nested !== undefined && !ctx.dependentLists.has(key)) {
+          ctx.dependentLists.set(key, nested);
+        }
       }
     }
   }
@@ -197,20 +178,22 @@ export class SharedDepListLoader {
   ): Promise<number> {
     this.registerList(ctx, list);
     const bytesBefore = this.fetchedBytes;
-    const missing: SharedDepListItem[] = [];
+    const missing: SharedDepUnit[] = [];
     const queuedHashes = new Set<string>();
-    for (const item of list.items) {
-      if (ctx.itemBlobByHash.has(item.contentHash)) continue;
+    for (const hash of list.units) {
+      // Every hash a list names is held by the table: the load checked it
+      // before its first request.
+      const item = ctx.itemByHash.get(hash);
+      if (item === undefined || ctx.itemBlobByHash.has(item.contentHash)) continue;
       // One fetch per content identity: the same contentHash emitted
       // under two locations is one payload. Every location stays
-      // registered on `ctx` (registerList ran above), so both still
-      // resolve and mint.
+      // registered on `ctx`, so both still resolve and mint.
       if (queuedHashes.has(item.contentHash)) continue;
       queuedHashes.add(item.contentHash);
       missing.push(item);
     }
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-reachable-units
-    // One flat batch, no concurrency limit: every missing list item and
+    // One flat batch, no concurrency limit: every missing list unit and
     // every own chunk the list names, all requested before any response
     // arrives. Own chunks go through the caller's handler source-text
     // fetch, by location, and never enter the realm cache; the chain build
@@ -267,9 +250,9 @@ export class SharedDepListLoader {
   /**
    * Resolve a dependent-list key — a `lazy` or `patterns` record key, a
    * lazy target's chunk location relative to the base that chunk resolves
-   * against — on first use: fetch the target's delta list document, then
-   * fetch in one flat batch and mint its missing items inside the same
-   * load. The document request is issued in this call, never behind
+   * against — on first use: fetch in one flat batch the units
+   * its list names that are missing and mint them inside the same
+   * load. The round is issued in this call, never behind
    * another target's rounds, so distinct targets download in parallel; a
    * mint is one synchronous step, so minting never overlaps. Concurrent
    * resolutions of one key share one in-flight batch; a rejected batch is
@@ -285,15 +268,14 @@ export class SharedDepListLoader {
   ): Promise<void> {
     // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-lazy-roots
     // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-parallel-targets
-    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-second-round
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-admit-fetched-units
     let pending = ctx.pending.get(key);
     if (pending === undefined) {
       const batch = async (): Promise<void> => {
-        const target = ctx.dependentLists.get(key);
-        if (target === undefined) return;
-        const list = await this.fetchListDocument(target, resolveAssetUrl);
-        // Register BEFORE minting so edges into the delta's own items
-        // resolve, then mint only what is still unminted.
+        const list = ctx.dependentLists.get(key);
+        if (list === undefined) return;
+        // One round: the target's missing units and own chunks go out
+        // together, then only what is still unminted mints.
         await this.loadList(
           ctx,
           list,
@@ -309,7 +291,7 @@ export class SharedDepListLoader {
         if (ctx.pending.get(key) === tracked) ctx.pending.delete(key);
       });
     }
-    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-second-round
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-admit-fetched-units
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-parallel-targets
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-lazy-roots
     return pending;
