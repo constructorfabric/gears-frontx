@@ -24,10 +24,27 @@ from whether the working directory already holds applied templates - a
 | Move an applied template to a newer version | `frontx upgrade <projectRoot> <targetVersion>` directly, or its `--json` form, which emits the change set for review and reads a decision back before anything is applied |
 | Understand the ecosystem - runtime substrate, type system, API surface, package boundaries | This document and the guidelines it ships with |
 | Check that a template is publishable | The `frontx` executable directly - `frontx validate <templateDir>` |
+| See how a new page or screen will look before it is built, and choose among drawn options | The route above that builds it - `frontx_project_scaffolding` first for a new project or a new unit - with the page proposal step below taken before that page is built, with no further ask. The base kit draws no proposal itself |
 
 If the request matches none of these, say so and name the capabilities above.
 Do not route it to the closest one; a capability applied to a request it does
 not serve produces a confident wrong answer.
+
+The page proposal step is a skill in an applied template's bundle under
+`.frontx/ai/<template-identity>/`, read from disk - a bundle scaffolding has just
+applied counts, activated or not. It builds nothing and never replaces or precedes
+the route that builds: it applies when a new page or screen is about to be built,
+on whatever route builds it. When no applied bundle offers it, build without it
+and do not report its absence as a missing capability. A person who asked to see
+the page or options first gets the step with no further ask. Otherwise, for new
+pages or screens whose look the person has neither seen nor described, offer it
+once, in one short line covering them all, in the person's own language - every
+text the step shows them is in that language too; never offer again for a screen
+already offered or declined. Take the step only if the person accepts; a refusal,
+no answer, or a wish to build at once means build now, without waiting or asking
+again. Make no offer when the person already gave a design, a mockup or an exact
+description, or when the change is small - a fix, one more field, a text change.
+Only the person chooses an option; never pick one for them.
 
 <!-- frontx:routing:end -->
 
