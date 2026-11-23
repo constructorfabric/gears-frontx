@@ -67,7 +67,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 
 ### 2.2 [MFE Registry & Handler Resolution](../packages/mfes/architecture/features/mfe-registry/) - HIGH
 
-- [ ] `p1` - **ID**: `cpt-frontx-feature-mfe-registry`
+- [x] `p1` - **ID**: `cpt-frontx-feature-mfe-registry`
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/mfes/architecture/features/mfe-registry/FEATURE.md).
 
@@ -82,7 +82,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 
 ### 2.4 [MFE Discovery & Lazy-Import Loading](../packages/mfes/architecture/features/mfe-loading/) - HIGH
 
-- [ ] `p1` - **ID**: `cpt-frontx-feature-mfe-loading`
+- [x] `p1` - **ID**: `cpt-frontx-feature-mfe-loading`
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/mfes/architecture/features/mfe-loading/FEATURE.md).
 
@@ -107,7 +107,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 
 ### 2.7 [MFE Runtime Isolation](../packages/mfes/architecture/features/mfe-isolation/) - HIGH
 
-- [ ] `p1` - **ID**: `cpt-frontx-feature-mfe-isolation`
+- [x] `p1` - **ID**: `cpt-frontx-feature-mfe-isolation`
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/mfes/architecture/features/mfe-isolation/FEATURE.md).
 
@@ -116,7 +116,7 @@ The installed SDLC kit currently defines feature-entry identifiers only in DECOM
 
 ### 2.8 [Shared-Dependency Unit Format Contract](../packages/mfes/architecture/features/unit-format-contract/) - MEDIUM
 
-- [ ] `p1` - **ID**: `cpt-frontx-feature-unit-format-contract`
+- [x] `p1` - **ID**: `cpt-frontx-feature-unit-format-contract`
 
 **Owner**: Member-owned compatibility anchor only; behavior is defined in [FEATURE.md](../packages/mfes/architecture/features/unit-format-contract/FEATURE.md).
 

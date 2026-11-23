@@ -145,6 +145,24 @@ describe('fields older producers write', () => {
     expect(plugin.validateInstance(kept.id as string).valid).toBe(true);
   });
 
+  it.each([
+    ['a name carrying a colon', sharedEntry({ name: 'scope:react', unwrapKey: null })],
+    ['a version carrying an at sign', sharedEntry({ version: '19.2.4@x', unwrapKey: null })],
+    ['a version carrying a colon', sharedEntry({ version: 'npm:19.2.4', unwrapKey: null })],
+  ])('rejects an older-producer manifest whose shared entry has %s, and leaves every other manifest valid', (_label, shared) => {
+    const kept = manifest({ name: 'kept', shared: [sharedEntry({ unwrapKey: null })] });
+    accepts(kept);
+    const bad = manifest({ name: 'bad', remoteEntry: 'http://h/r.js', shared: [shared] });
+    rejects(bad, PATTERN);
+    // Only the manifest that breaks the formats is unregistered: an entry that
+    // references it has no manifest to load, while another microfrontend's
+    // manifest and entry stay registered.
+    expect(plugin.validateInstance(bad.id as string).valid).toBe(false);
+    expect(plugin.validateInstance(kept.id as string).valid).toBe(true);
+    accepts(entry(kept.id as string));
+    rejects(entry(bad.id as string), NOT_FOUND);
+  });
+
   it('accepts an entry carrying exposeAssets.js.async and rejects any other undeclared exposeAssets property', () => {
     const m = manifest();
     accepts(m);

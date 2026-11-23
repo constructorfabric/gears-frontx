@@ -68,8 +68,13 @@ export interface SharedDepListContext {
    * are those of every table unit carrying the content identity.
    */
   readonly itemByHash: Map<string, SharedDepUnit>;
-  /** shared-base-relative location → list item. */
-  readonly itemByLocation: Map<string, SharedDepUnit>;
+  /**
+   * Resolved URL → list item: locations are compared by the URL they
+   * resolve to, never by their spelling.
+   */
+  readonly itemByUrl: Map<string, SharedDepUnit>;
+  /** The URL a unit location resolves to (the shared asset URL rules). */
+  readonly resolveUrl: (location: string) => string;
   /**
    * Dependent-list lookup keyed by the `lazy`/`patterns` record key —
    * the nested list of that lazy target or pattern match.
@@ -102,7 +107,7 @@ export class SharedDepListLoader {
 
   /**
    * UTF-8 bytes this loader's `fetchText` actually transferred so far —
-   * realm cache joins and deduplicated repeats count nothing (F-011).
+   * realm cache joins and deduplicated repeats count nothing.
    */
   get bytesFetched(): number {
     return this.fetchedBytes;
@@ -113,14 +118,16 @@ export class SharedDepListLoader {
    * every unit is registered once, so a list's content identities and the
    * relative specifiers of a minted unit resolve against it, and a unit
    * minted under a content identity answers the specifiers of every table
-   * unit carrying that identity.
+   * unit carrying that identity. `resolveUrl` turns a unit location into
+   * the absolute URL its file is fetched from.
    */
   createContext(
     units: readonly SharedDepUnit[],
     lists: Readonly<Record<string, SharedDepFetchList>>,
+    resolveUrl: (location: string) => string,
   ): SharedDepListContext {
     const itemByHash = new Map<string, SharedDepUnit>();
-    const itemByLocation = new Map<string, SharedDepUnit>();
+    const itemByUrl = new Map<string, SharedDepUnit>();
     const answersByHash = new Map<string, Set<string>>();
     for (const unit of units) {
       const answers = answersByHash.get(unit.contentHash) ?? new Set<string>();
@@ -133,7 +140,7 @@ export class SharedDepListLoader {
       // under another package's directory is a distinct location — a
       // minted unit's relative specifier resolves against its own
       // location and must find the twin's location too.
-      itemByLocation.set(unit.location, unit);
+      itemByUrl.set(resolveUrl(unit.location), unit);
     }
     for (const [hash, unit] of itemByHash) {
       itemByHash.set(hash, {
@@ -167,7 +174,8 @@ export class SharedDepListLoader {
       declaredSpecifiers: new Set(units.flatMap((unit) => unit.answers)),
       twinsByHash,
       itemByHash,
-      itemByLocation,
+      itemByUrl,
+      resolveUrl,
       dependentLists: new Map(),
       pending: new Map(),
     };
@@ -200,7 +208,7 @@ export class SharedDepListLoader {
    *
    * Returns the UTF-8 bytes this call's batch actually transferred —
    * cache-joined items count nothing — for the per-load diagnostics
-   * summary (F-011).
+   * summary.
    */
   async loadList(
     ctx: SharedDepListContext,
@@ -243,11 +251,17 @@ export class SharedDepListLoader {
     // later joins the same in-flight entry, so it issues no second request.
     const itemRequests = missing.map(
       async (item): Promise<SharedDepListRecord> => {
+        // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-admit-under-declared-identity
+        // @cpt-begin:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-text-realm-blob-perload
+        // The raw text is kept in the realm cache under the key its declared
+        // identity derives; the blobs minted from it stay per load.
         const text = await this.admission.admit(
           SharedTextAdmission.chunkKey(item.contentHash),
           resolveAssetUrl(item.location),
           this.fetchText,
         );
+        // @cpt-end:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-text-realm-blob-perload
+        // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-admit-under-declared-identity
         return { item, text };
       },
     );
@@ -280,12 +294,14 @@ export class SharedDepListLoader {
           ? [record]
           : twins.map((twin) => ({ item: twin, text: record.text }));
       })
+      // @cpt-begin:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-memo-extendable
       .filter((record) => !ctx.itemBlobByHash.has(keyOf(record.item)));
+    // @cpt-end:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-memo-extendable
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-list-items
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-serialised
     SharedDepListMinter.mint(
       records,
-      new Map([...ctx.itemByLocation.values()].map((i) => [i.location, i])),
+      new Map([...ctx.itemByUrl.values()].map((i) => [i.location, i])),
       {
         itemBlobByHash: ctx.itemBlobByHash,
         blobKeyOf: ctx.blobKeyOf,
@@ -293,6 +309,7 @@ export class SharedDepListLoader {
         specifierToBlob: ctx.specifierToBlob,
       },
       this.entryId,
+      resolveAssetUrl,
       dynamicImports,
     );
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-serialised
@@ -357,7 +374,7 @@ export class SharedDepListLoader {
    * `__frontx_lazy` resolver returns.
    */
   blobForKey(ctx: SharedDepListContext, key: string): string | undefined {
-    const item = ctx.itemByLocation.get(key);
+    const item = ctx.itemByUrl.get(ctx.resolveUrl(key));
     return item === undefined
       ? undefined
       : ctx.itemBlobByHash.get(

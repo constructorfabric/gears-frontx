@@ -10,15 +10,18 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MfeHandlerMF } from '../../MfeHandlerMF';
-import type { SharedDepTextCache } from '../../RealmSharedDepTextCacheProvider';
 import { ENTRY_BASE_ID } from '../helpers/manifest-builder';
-import { resetRealmSharedDepTextCache } from '../helpers/realm-cache';
+import type { SharedDepTextCache } from '../../RealmSharedDepTextCacheProvider';
+import { realmSharedDepTextCache, resetRealmSharedDepTextCache } from '../helpers/realm-cache';
 
 beforeEach(resetRealmSharedDepTextCache);
 afterEach(resetRealmSharedDepTextCache);
 
-const cacheOf = (handler: MfeHandlerMF): SharedDepTextCache =>
-  (handler as unknown as { sharedDepTextCache: SharedDepTextCache }).sharedDepTextCache;
+/** The realm cache once a handler configured with `maxBytes` has been constructed. */
+const cacheAfter = (maxBytes?: number): SharedDepTextCache => {
+  handlerWith(maxBytes);
+  return realmSharedDepTextCache();
+};
 const handlerWith = (maxBytes?: number): MfeHandlerMF =>
   new MfeHandlerMF(ENTRY_BASE_ID, {
     retries: 0,
@@ -28,7 +31,7 @@ const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve,
 
 describe('acceptance: the realm cache byte budget', () => {
   it('enforces the default of 4,194,304 bytes: a text of exactly that size stays, one byte more is not retained', async () => {
-    const cache = cacheOf(handlerWith());
+    const cache = cacheAfter();
     cache.set('fits@1@h', Promise.resolve('a'.repeat(4_194_304)));
     await settle();
     expect(cache.get('fits@1@h')).toBeDefined();
@@ -38,7 +41,7 @@ describe('acceptance: the realm cache byte budget', () => {
   });
 
   it('evicts least-recently-used entries until the retained UTF-8 bytes fit', async () => {
-    const cache = cacheOf(handlerWith(100));
+    const cache = cacheAfter(100);
     for (const key of ['a', 'b', 'c']) {
       cache.set(key, Promise.resolve(key.repeat(40)));
       await settle();
@@ -49,7 +52,7 @@ describe('acceptance: the realm cache byte budget', () => {
   });
 
   it('counts UTF-8 bytes, not characters', async () => {
-    const cache = cacheOf(handlerWith(10));
+    const cache = cacheAfter(10);
     // Five two-byte characters: ten bytes fit, one more character does not.
     cache.set('fits', Promise.resolve('é'.repeat(5)));
     await settle();
@@ -60,8 +63,8 @@ describe('acceptance: the realm cache byte budget', () => {
   });
 
   it('applies the budget of the first handler that publishes the cache; a later handler with another budget adopts it unchanged', async () => {
-    const first = cacheOf(handlerWith(64));
-    const second = cacheOf(handlerWith(10_000));
+    const first = cacheAfter(64);
+    const second = cacheAfter(10_000);
     expect(second).toBe(first);
     second.set('a', Promise.resolve('x'.repeat(40)));
     await settle();
@@ -73,7 +76,7 @@ describe('acceptance: the realm cache byte budget', () => {
   });
 
   it('does not retain a single text larger than the whole budget, and the caller still receives it', async () => {
-    const cache = cacheOf(handlerWith(8));
+    const cache = cacheAfter(8);
     const text = 'x'.repeat(64);
     const admitted = Promise.resolve(text);
     cache.set('big', admitted);
@@ -96,7 +99,7 @@ describe('acceptance: tests that touch the realm slot clear it', () => {
     });
   // A test touches the slot when it reads, seeds or resets the realm cache itself:
   // it imports the provider as a value, the slot's symbol, or reaches the handler's cache.
-  const touchesSlot = /import\s+\{[^}]*\bRealmSharedDepTextCacheProvider\b[^}]*\}\s+from|SHARED_DEP_TEXT_CACHE_SYMBOL|\bsharedDepTextCache\b/;
+  const touchesSlot = /import\s+\{[^}]*\bRealmSharedDepTextCacheProvider\b[^}]*\}\s+from|SHARED_DEP_TEXT_CACHE_SYMBOL|\brealmSharedDepTextCache\b/;
   const hooks = {
     beforeEach: /beforeEach\([\s\S]{0,300}?resetRealmSharedDepTextCache/,
     afterEach: /afterEach\([\s\S]{0,300}?resetRealmSharedDepTextCache/,

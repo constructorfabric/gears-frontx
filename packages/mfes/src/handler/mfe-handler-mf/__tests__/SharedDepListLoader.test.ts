@@ -57,8 +57,8 @@ describe('SharedDepListLoader', () => {
     const files = new Map([[resolve(a.location), "export const a=1;"], [resolve(b.location), "export const b=2;"]]);
     const { fetchText, calls } = fetchSpy(files);
     const cache = new Map<string, Promise<string>>();
-    const l = new SharedDepListLoader(fetchText, 'e', cache as never);
-    const ctx = l.createContext([a, b], {});
+    const l = new SharedDepListLoader(fetchText, 'e', cache);
+    const ctx = l.createContext([a, b], {}, resolve);
     await l.loadList(ctx, listOf([a, b]), resolve);
     // One batch: every item fetch issued before any resolved (all
     // dispatched synchronously in one microtask turn).
@@ -67,8 +67,8 @@ describe('SharedDepListLoader', () => {
     expect(ctx.specifierToBlob.get('pkg-b')).toMatch(/^blob:/);
     // Second load through the same realm cache issues no request.
     const { fetchText: fetch2, calls: calls2 } = fetchSpy(files);
-    const l2 = new SharedDepListLoader(fetch2, 'e', cache as never);
-    const ctx2 = l2.createContext([a, b], {});
+    const l2 = new SharedDepListLoader(fetch2, 'e', cache);
+    const ctx2 = l2.createContext([a, b], {}, resolve);
     await l2.loadList(ctx2, listOf([a, b]), resolve);
     expect(calls2).toEqual([]);
     // Per-load isolation: distinct blob URLs per load.
@@ -81,8 +81,8 @@ describe('SharedDepListLoader', () => {
     const files = new Map([[resolve(a.location), served]]);
     const { fetchText } = fetchSpy(files);
     const cache = new Map<string, Promise<string>>();
-    const l = new SharedDepListLoader(fetchText, 'e', cache as never);
-    const ctx = l.createContext([a], {});
+    const l = new SharedDepListLoader(fetchText, 'e', cache);
+    const ctx = l.createContext([a], {}, resolve);
     await l.loadList(ctx, listOf([a]), resolve);
     await expect(cache.get(`chunk:${a.contentHash}`)).resolves.toBe(served);
     expect(ctx.specifierToBlob.get('pkg-a')).toMatch(/^blob:/);
@@ -95,13 +95,13 @@ describe('SharedDepListLoader', () => {
     const files = new Map([[resolve(a.location), text]]);
     const { fetchText, calls } = fetchSpy(files);
     const l = new SharedDepListLoader(fetchText, 'e', new Map<string, Promise<string>>());
-    const ctx = l.createContext([a, twin], {});
+    const ctx = l.createContext([a, twin], {}, resolve);
     await l.loadList(ctx, listOf([a, twin]), resolve);
     // One fetch for the shared content identity, not one per location.
     expect(calls).toEqual([resolve(a.location)]);
     // Both locations stay registered and resolve to the minted blob.
-    expect(ctx.itemByLocation.get(a.location)?.contentHash).toBe(a.contentHash);
-    expect(ctx.itemByLocation.get(twin.location)?.contentHash).toBe(a.contentHash);
+    expect(ctx.itemByUrl.get(resolve(a.location))?.contentHash).toBe(a.contentHash);
+    expect(ctx.itemByUrl.get(resolve(twin.location))?.contentHash).toBe(a.contentHash);
     expect(l.blobForKey(ctx, twin.location)).toBe(
       ctx.itemBlobByHash.get(a.contentHash),
     );
@@ -118,7 +118,7 @@ describe('SharedDepListLoader', () => {
     const { fetchText, calls } = fetchSpy(files);
     const l = new SharedDepListLoader(fetchText, 'e', new Map<string, Promise<string>>());
     const lists = { main: listOf([main], { lazy: ['chunks/lazy.js'] }), 'chunks/lazy.js': listOf([lazyItem]) };
-    const ctx = l.createContext([main, lazyItem], lists);
+    const ctx = l.createContext([main, lazyItem], lists, resolve);
     await l.loadList(ctx, lists.main, resolve);
     const before = calls.length;
     await Promise.all([
@@ -145,7 +145,7 @@ describe('SharedDepListLoader', () => {
     const { fetchText, calls } = fetchSpy(files);
     const l = new SharedDepListLoader(fetchText, 'e', new Map<string, Promise<string>>());
     const lists = { main: listOf([main], { patterns: ['locales/en.js'] }), 'locales/en.js': listOf([en]) };
-    const ctx = l.createContext([main, en], lists);
+    const ctx = l.createContext([main, en], lists, resolve);
     await l.loadList(ctx, lists.main, resolve);
     await l.resolveDependent(ctx, 'locales/en.js', resolve);
     expect(calls).toContain(resolve(en.location));
@@ -159,7 +159,7 @@ describe('SharedDepListLoader', () => {
     const { fetchText, calls } = fetchSpy(new Map([[resolve(a.location), text]]));
     const l = new SharedDepListLoader(fetchText, 'e', new Map<string, Promise<string>>());
     // The list names the content identity once, however many table units carry it.
-    const ctx = l.createContext([a, twin], {});
+    const ctx = l.createContext([a, twin], {}, resolve);
     await l.loadList(ctx, listOf([a]), resolve);
     expect(calls).toEqual([resolve(a.location)]);
     expect(ctx.specifierToBlob.get('pkg-a')).toMatch(/^blob:/);
@@ -181,7 +181,7 @@ describe('SharedDepListLoader', () => {
     ]);
     const { fetchText, calls } = fetchSpy(files);
     const l = new SharedDepListLoader(fetchText, 'e', new Map<string, Promise<string>>());
-    const ctx = l.createContext([impP, impQ, sibP, sibQ], {});
+    const ctx = l.createContext([impP, impQ, sibP, sibQ], {}, resolve);
     const bodies = new Map<string, string>();
     const original = URL.createObjectURL;
     let n = 0;
@@ -241,7 +241,7 @@ describe('SharedDepListLoader', () => {
       bodies.clear();
       capture();
       const l = new SharedDepListLoader(fetchSpy(files).fetchText, 'e', new Map<string, Promise<string>>());
-      const ctx = l.createContext([impP, impQ, sibP, sibQ], {});
+      const ctx = l.createContext([impP, impQ, sibP, sibQ], {}, resolve);
       try {
         await l.loadList(ctx, listOf([impP, sibP, sibQ]), resolve);
       } finally {
@@ -256,7 +256,7 @@ describe('SharedDepListLoader', () => {
       bodies.clear();
       capture();
       const l = new SharedDepListLoader(fetchSpy(files).fetchText, 'e', new Map<string, Promise<string>>());
-      const ctx = l.createContext([impP, impQ, sibP, sibQ], {});
+      const ctx = l.createContext([impP, impQ, sibP, sibQ], {}, resolve);
       try {
         await l.loadList(ctx, listOf([impP, sibP]), resolve);
         await settle();
@@ -283,19 +283,19 @@ describe('SharedDepListLoader', () => {
     const files = new Map([[resolve(a.location), "export const a=1;"]]);
     const cache = new Map<string, Promise<string>>();
     const { fetchText } = fetchSpy(files);
-    const l = new SharedDepListLoader(fetchText, 'e', cache as never);
-    const first = await l.loadList(l.createContext([a], {}), listOf([a]), resolve);
+    const l = new SharedDepListLoader(fetchText, 'e', cache);
+    const first = await l.loadList(l.createContext([a], {}, resolve), listOf([a]), resolve);
     expect(first).toBe(new TextEncoder().encode("export const a=1;").length);
     // Second load through the same realm cache issues no request.
-    const l2 = new SharedDepListLoader(fetchText, 'e', cache as never);
-    const second = await l2.loadList(l2.createContext([a], {}), listOf([a]), resolve);
+    const l2 = new SharedDepListLoader(fetchText, 'e', cache);
+    const second = await l2.loadList(l2.createContext([a], {}, resolve), listOf([a]), resolve);
     expect(second).toBe(0);
   });
 
   it('resolves a relative specifier to the location a dependent list is keyed by', () => {
     const record = { item: item2('chunks/main.js', 'x', [], []), text: 'x' };
     const l = new SharedDepListLoader(async () => '', 'e', new Map<string, Promise<string>>());
-    const ctx = l.createContext([], {});
+    const ctx = l.createContext([], {}, resolve);
     ctx.dependentLists.set('chunks/lazy.js', { units: [], ownChunks: [] });
     const token = SharedDepListMinter.resolveLocation(record.item.location, './lazy.js');
     expect(ctx.dependentLists.has(token)).toBe(true);
@@ -307,14 +307,14 @@ describe('SharedDepListLoader', () => {
       const files = new Map([[resolve(a.location), 'export const a=1;']]);
       const { fetchText, calls } = fetchSpy(files);
       const cache = new Map<string, Promise<string>>();
-      const l = new SharedDepListLoader(fetchText, 'e', cache as never);
+      const l = new SharedDepListLoader(fetchText, 'e', cache);
       const ownCalls: string[] = [];
       const fetchOwn = vi.fn(async (location: string): Promise<unknown> => {
         ownCalls.push(location);
         return 'export const o=1;';
       });
       const pending = l.loadList(
-        l.createContext([a], {}),
+        l.createContext([a], {}, resolve),
         listOf([a], { ownChunks: ['assets/x.js', 'assets/y.js', 'assets/x.js'] }),
         resolve,
         undefined,
@@ -335,7 +335,7 @@ describe('SharedDepListLoader', () => {
       const l = new SharedDepListLoader(fetchText, 'e', new Map<string, Promise<string>>());
       await expect(
         l.loadList(
-          l.createContext([a], {}),
+          l.createContext([a], {}, resolve),
           listOf([a], { ownChunks: ['assets/x.js'] }),
           resolve,
           undefined,
@@ -350,7 +350,7 @@ describe('SharedDepListLoader', () => {
       const lazyItem = item2('chunks/lazy.js', 'export const l=1;', ['pkg-lazy']);
       const { fetchText } = fetchSpy(new Map([[resolve(lazyItem.location), 'export const l=1;']]));
       const l = new SharedDepListLoader(fetchText, 'e', new Map<string, Promise<string>>());
-      const ctx = l.createContext([lazyItem], {});
+      const ctx = l.createContext([lazyItem], {}, resolve);
       ctx.dependentLists.set('chunks/lazy.js', listOf([lazyItem], { ownChunks: ['assets/lz.js'] }));
       const fetchOwn = vi.fn(async (): Promise<unknown> => 'export const o=1;');
       await l.resolveDependent(ctx, 'chunks/lazy.js', resolve, undefined, fetchOwn);

@@ -1,16 +1,27 @@
 /**
- * Comment/string/regex-aware scan for the dynamic `import(...)` calls of
- * emitted unit source that the mint-time rewrite turns into the
- * lazy-import ABI (`UnitDynamicImportRewriter`).
+ * Comment/string/regex-aware scan for the import forms of emitted unit
+ * source: the dynamic `import(...)` calls the mint-time rewrite turns
+ * into the lazy-import ABI (`UnitDynamicImportRewriter`), and the static
+ * `import` and `export ... from` specifiers the mint-time rewrite binds
+ * to blob URLs and its survivor checks inspect, and the `import.meta.url`
+ * token sequences the mint-time rewrite replaces. One walk reports all
+ * three, so a text is lexed once however many rewrites and checks read it.
  *
- * Two shapes reach the ABI: a literal call — the first argument is one
- * string literal or a template literal with no substitution — and a statically bounded pattern — the first argument
+ * Two shapes of dynamic call reach the ABI: a literal call — the first
+ * argument is one string literal or a template literal with no
+ * substitution — and a statically bounded pattern — the first argument
  * is one template literal with at least one substitution and non-empty
  * fixed text before its first or after its last substitution. Anything
  * else (`import(expr)`, a concatenation, a template with no fixed text)
  * is fully opaque and is not reported. An optional second argument
  * (import attributes) and a trailing comma are tolerated; only the first
- * argument is read. The scan lives in the `./unit-format` contract
+ * argument is read. A static record is the specifier string of an
+ * `import "x"`, `import ... from "x"` or `export ... from "x"` statement;
+ * a string literal, an `import(...)` call, `import.meta` or a comment
+ * is never one. A meta-URL record spans the `import`, `meta` and `url`
+ * words of `import.meta.url` or `import.meta?.url` with any whitespace
+ * and comments between them; a longer word (`import.meta.urlx`), a member
+ * (`o.import.meta.url`), a string and a comment are never one. The scan lives in the `./unit-format` contract
  * directory but is NOT re-exported through `index.ts`: the public
  * contract surface stays the fetch-list types.
  *
@@ -19,10 +30,12 @@
  * literals and regex literals, so `import(` inside a string, comment or
  * regex cannot false-positive, an `import` separated from its `(` only by
  * whitespace and comments cannot slip through, and a member call such as
- * `obj.import(x)` is never read as a dynamic import. A `/` is read as a
- * regex opener when the last significant code character cannot end an
- * operand (start of input or one of `(,=:[!&|?{};+-*%^~<>` or the
- * `return` keyword); anything else is a division.
+ * `obj.import(x)` is never read as a dynamic import. A `/` divides when
+ * the last significant token ends an operand — an identifier or number
+ * that is not one of the keywords after which an expression starts, a
+ * string, a template, a regex, `]`, a `)` that does not close the head of
+ * an `if`, `while`, `for` or `with`, or a postfix `++`/`--` — and opens a
+ * regex otherwise.
  *
  * One class per file (`runtime_style`).
  *
@@ -58,29 +71,186 @@ type FirstArgument =
   | { kind: 'literal'; specifier: string; end: number }
   | { kind: 'pattern'; argStart: number; end: number };
 
+/**
+ * A located static import or export specifier: the string literal of
+ * `import "x"`, `import ... from "x"` or `export ... from "x"`.
+ */
+export interface StaticImportRecord {
+  readonly kind: 'import' | 'export';
+  /** The specifier's runtime value. */
+  readonly specifier: string;
+  /** Index of the specifier literal's opening quote. */
+  readonly start: number;
+  /** Index just past the specifier literal's closing quote. */
+  readonly end: number;
+}
+
+/** A located `import.meta.url` token sequence. */
+export interface ImportMetaUrlRecord {
+  /** Index of the `import` keyword. */
+  readonly start: number;
+  /** Index just past the `url` word. */
+  readonly end: number;
+}
+
+/** Everything one walk of a text reports. */
+export interface UnitScan {
+  readonly calls: DynamicImportCall[];
+  readonly imports: StaticImportRecord[];
+  readonly metaUrls: ImportMetaUrlRecord[];
+}
+
+/**
+ * Keywords after which an expression starts, so a following `/` opens a
+ * regex rather than divides.
+ */
+const EXPRESSION_KEYWORDS: ReadonlySet<string> = new Set([
+  'return',
+  'typeof',
+  'void',
+  'delete',
+  'in',
+  'of',
+  'instanceof',
+  'else',
+  'case',
+  'do',
+  'throw',
+  'new',
+  'yield',
+  'await',
+]);
+
+/** Keywords whose parenthesised head, once closed, is followed by a statement. */
+const CONTROL_HEAD_KEYWORDS: ReadonlySet<string> = new Set([
+  'if',
+  'while',
+  'for',
+  'with',
+]);
+
+/** First words of an `export` that declares rather than re-exports. */
+const EXPORT_DECLARATION_KEYWORDS: ReadonlySet<string> = new Set([
+  'const',
+  'let',
+  'var',
+  'function',
+  'class',
+  'async',
+  'default',
+]);
+
 export class DynamicImportScan {
   protected constructor() {}
 
   /** Every literal and bounded-pattern dynamic-import call, in source order. */
   static scanCalls(source: string): DynamicImportCall[] {
+    return DynamicImportScan.scan(source).calls;
+  }
+
+  /**
+   * Every static import and re-export specifier, in source order: the
+   * specifier literal of `import "x"`, `import ... from "x"` and
+   * `export ... from "x"`.
+   */
+  static scanImports(source: string): StaticImportRecord[] {
+    return DynamicImportScan.scan(source).imports;
+  }
+
+  /**
+   * Every record of the text — dynamic calls, static specifiers and
+   * `import.meta.url` sequences — from one walk, in source order.
+   */
+  static scan(source: string): UnitScan {
+    return DynamicImportScan.walk(source);
+  }
+
+  private static isIdentifierChar(c: string): boolean {
+    const k = c.charCodeAt(0);
+    return (
+      (k >= 97 && k <= 122) ||
+      (k >= 65 && k <= 90) ||
+      (k >= 48 && k <= 57) ||
+      k === 95 ||
+      k === 36 ||
+      k >= 0x80
+    );
+  }
+
+  private static isDigit(c: string | undefined): boolean {
+    if (c === undefined) return false;
+    const k = c.charCodeAt(0);
+    return k >= 48 && k <= 57;
+  }
+
+  /** The characters `\s` matches. */
+  private static isWhitespace(c: string): boolean {
+    const k = c.charCodeAt(0);
+    return (
+      k === 32 ||
+      (k >= 9 && k <= 13) ||
+      (k >= 0xa0 &&
+        (k === 0xa0 ||
+          k === 0x1680 ||
+          (k >= 0x2000 && k <= 0x200a) ||
+          k === 0x2028 ||
+          k === 0x2029 ||
+          k === 0x202f ||
+          k === 0x205f ||
+          k === 0x3000 ||
+          k === 0xfeff))
+    );
+  }
+
+  private static walk(source: string): UnitScan {
     const calls: DynamicImportCall[] = [];
+    const imports: StaticImportRecord[] = [];
+    const metaUrls: ImportMetaUrlRecord[] = [];
     const n = source.length;
-    const isWordChar = (c: string): boolean => /[\w$]/.test(c);
     // Frames: the top-level code, a template literal's text, and the code
     // of a `${...}` substitution (with its own brace depth, so a `}` that
     // closes an object literal does not end the substitution).
     type Frame = { type: 'code' | 'template'; depth: number };
     const stack: Frame[] = [{ type: 'code', depth: 0 }];
     const top = (): Frame => stack[stack.length - 1];
-    // The last two significant code characters, for the regex/division and
-    // member-access heuristics.
-    let prev = '';
-    let prev2 = '';
-    const significant = (c: string): void => {
-      prev2 = prev;
-      prev = c;
+    // Whether the last significant token ends an operand, so that a `/`
+    // divides; whether it was a single `.`, so that a following word is a
+    // member name; the last word, for the head of a control statement; and
+    // for each open parenthesis whether it opened such a head.
+    let afterOperand = false;
+    let afterDot = false;
+    let lastWord = '';
+    const parens: boolean[] = [];
+    const token = (endsOperand: boolean): void => {
+      afterOperand = endsOperand;
+      afterDot = false;
+      lastWord = '';
     };
     let i = 0;
+    // Reads the word at `i`: advances past it and updates the token state;
+    // an `import` or `export` that is not a member is read as an import form.
+    const readWord = (): void => {
+      const wordStart = i;
+      i = DynamicImportScan.skipWord(source, i);
+      // Only a word of at most ten characters (`instanceof`) can be a
+      // keyword this scan tests for, so a longer one is not copied out.
+      const word = i - wordStart <= 10 ? source.slice(wordStart, i) : '_';
+      const member = afterDot;
+      if (!member && (word === 'import' || word === 'export')) {
+        i = DynamicImportScan.readImportForm(
+          source,
+          wordStart,
+          word,
+          stack.length === 1,
+          calls,
+          imports,
+          metaUrls
+        );
+      }
+      afterOperand = member || !EXPRESSION_KEYWORDS.has(word);
+      afterDot = false;
+      lastWord = member ? '' : word;
+    };
     while (i < n) {
       const c = source[i];
       if (top().type === 'template') {
@@ -91,18 +261,32 @@ export class DynamicImportScan {
         if (c === '`') {
           stack.pop();
           // A closed template ends an operand: a following `/` divides.
-          significant('`');
+          token(true);
           i += 1;
           continue;
         }
         if (c === '$' && source[i + 1] === '{') {
           stack.push({ type: 'code', depth: 0 });
-          prev = '';
-          prev2 = '';
+          token(false);
           i += 2;
           continue;
         }
         i += 1;
+        continue;
+      }
+      const k = source.charCodeAt(i);
+      if (k === 32 || k === 10 || k === 9 || k === 13) {
+        i += 1;
+        continue;
+      }
+      if (
+        (k >= 97 && k <= 122) ||
+        (k >= 65 && k <= 90) ||
+        (k >= 48 && k <= 57) ||
+        k === 95 ||
+        k === 36
+      ) {
+        readWord();
         continue;
       }
       if (c === '/' && source[i + 1] === '/') {
@@ -118,7 +302,7 @@ export class DynamicImportScan {
       }
       if (c === "'" || c === '"') {
         i = DynamicImportScan.skipString(source, i);
-        significant(c);
+        token(true);
         continue;
       }
       if (c === '`') {
@@ -127,23 +311,18 @@ export class DynamicImportScan {
         continue;
       }
       if (c === '/') {
-        const next = source[i + 1];
-        if (
-          prev === '' ||
-          '(,=:[!&|?{};+-*%^~<>'.includes(prev) ||
-          (next !== '/' && next !== '*' && DynamicImportScan.afterKeyword(source, i))
-        ) {
+        if (afterOperand) {
+          token(false);
+          i += 1;
+        } else {
           i = DynamicImportScan.skipRegex(source, i);
-          significant('/');
-          continue;
+          token(true);
         }
-        significant('/');
-        i += 1;
         continue;
       }
       if (c === '{') {
         top().depth += 1;
-        significant(c);
+        token(false);
         i += 1;
         continue;
       }
@@ -156,51 +335,262 @@ export class DynamicImportScan {
           i += 1;
           continue;
         }
-        significant(c);
+        token(false);
         i += 1;
         continue;
       }
-      if (/\s/.test(c)) {
+      if (DynamicImportScan.isWhitespace(c)) {
         i += 1;
         continue;
       }
-      if (c === 'i' && source.startsWith('import', i)) {
-        const before = i > 0 ? source[i - 1] : '';
-        const memberAccess = prev === '.' && prev2 !== '.';
-        if (!isWordChar(before) && before !== '.' && !memberAccess) {
-          const open = DynamicImportScan.skipTrivia(source, i + 'import'.length);
-          if (source[open] === '(') {
-            const first = DynamicImportScan.firstArgument(source, open + 1);
-            if (first !== undefined) {
-              const close = DynamicImportScan.callEnd(source, first.end);
-              if (close !== undefined) {
-                calls.push(
-                  first.kind === 'literal'
-                    ? {
-                        kind: 'literal',
-                        start: i,
-                        closeParen: close,
-                        specifier: first.specifier,
-                      }
-                    : {
-                        kind: 'pattern',
-                        start: i,
-                        closeParen: close,
-                        argStart: first.argStart,
-                        argEnd: first.end,
-                      }
-                );
-              }
-            }
-          }
-          i = open;
+      if (c === '(') {
+        parens.push(!afterDot && CONTROL_HEAD_KEYWORDS.has(lastWord));
+        token(false);
+        i += 1;
+        continue;
+      }
+      if (c === ')') {
+        token(!(parens.pop() ?? false));
+        i += 1;
+        continue;
+      }
+      if (c === ']') {
+        token(true);
+        i += 1;
+        continue;
+      }
+      if ((c === '+' || c === '-') && source[i + 1] === c) {
+        // A postfix `++`/`--` leaves the operand it follows an operand; a
+        // prefix one starts an expression.
+        token(afterOperand);
+        i += 2;
+        continue;
+      }
+      if (c === '.') {
+        if (source[i + 1] === '.' && source[i + 2] === '.') {
+          token(false);
+          i += 3;
           continue;
         }
+        token(false);
+        afterDot = true;
+        i += 1;
+        continue;
       }
-      significant(c);
+      if (c === '#') {
+        // A private name's `#` is part of the member name that follows: it
+        // leaves a preceding `.` in force, so `o.#import(x)` stays a member.
+        i += 1;
+        continue;
+      }
+      if (DynamicImportScan.isIdentifierChar(c)) {
+        readWord();
+        continue;
+      }
+      token(false);
       i += 1;
     }
-    return calls;
+    return { calls, imports, metaUrls };
+  }
+
+  /**
+   * The end of the identifier or number starting at `start`: an
+   * identifier runs over identifier characters; a number also takes its
+   * decimal point and exponent sign.
+   */
+  private static skipWord(source: string, start: number): number {
+    const n = source.length;
+    let i = start;
+    const numeric = DynamicImportScan.isDigit(source[start]);
+    while (i < n) {
+      const k = source.charCodeAt(i);
+      if (
+        (k >= 97 && k <= 122) ||
+        (k >= 65 && k <= 90) ||
+        (k >= 48 && k <= 57) ||
+        k === 95 ||
+        k === 36 ||
+        k >= 0x80
+      ) {
+        i += 1;
+        continue;
+      }
+      const c = source[i];
+      if (DynamicImportScan.isIdentifierChar(c)) {
+        i += 1;
+      } else if (numeric && c === '.' && DynamicImportScan.isDigit(source[i + 1])) {
+        i += 1;
+      } else if (
+        numeric &&
+        (c === '+' || c === '-') &&
+        /[eE]/.test(source[i - 1]) &&
+        !/^0[xX]/.test(source.slice(start, i)) &&
+        DynamicImportScan.isDigit(source[i + 1])
+      ) {
+        i += 1;
+      } else {
+        break;
+      }
+    }
+    return i;
+  }
+
+  /**
+   * Read what an `import` or `export` keyword at `keywordStart` begins:
+   * a dynamic call, collected into `calls`, or a static specifier,
+   * collected into `imports` when the keyword sits in top-level code.
+   * Returns the index to continue scanning from, just past the keyword.
+   */
+  private static readImportForm(
+    source: string,
+    keywordStart: number,
+    keyword: 'import' | 'export',
+    topLevel: boolean,
+    calls: DynamicImportCall[],
+    imports: StaticImportRecord[],
+    metaUrls: ImportMetaUrlRecord[]
+  ): number {
+    const afterKeyword = keywordStart + keyword.length;
+    const open = DynamicImportScan.skipTrivia(source, afterKeyword);
+    if (keyword === 'export') {
+      const record = topLevel
+        ? DynamicImportScan.staticRecord(source, afterKeyword, 'export')
+        : undefined;
+      if (record !== undefined) imports.push(record);
+      return afterKeyword;
+    }
+    if (source[open] === '(') {
+      const first = DynamicImportScan.firstArgument(source, open + 1);
+      if (first !== undefined) {
+        const close = DynamicImportScan.callEnd(source, first.end);
+        if (close !== undefined) {
+          calls.push(
+            first.kind === 'literal'
+              ? {
+                  kind: 'literal',
+                  start: keywordStart,
+                  closeParen: close,
+                  specifier: first.specifier,
+                }
+              : {
+                  kind: 'pattern',
+                  start: keywordStart,
+                  closeParen: close,
+                  argStart: first.argStart,
+                  argEnd: first.end,
+                }
+          );
+        }
+      }
+      return afterKeyword;
+    }
+    if (source[open] === '.') {
+      const end = DynamicImportScan.metaUrlEnd(source, open);
+      if (end !== undefined) metaUrls.push({ start: keywordStart, end });
+      return afterKeyword;
+    }
+    const record = topLevel
+      ? DynamicImportScan.staticRecord(source, afterKeyword, 'import')
+      : undefined;
+    if (record !== undefined) imports.push(record);
+    return afterKeyword;
+  }
+
+  /**
+   * The end of `import.meta.url` / `import.meta?.url` whose `.` after
+   * `import` sits at `dot`, or `undefined` when the words that follow are
+   * not exactly `meta` and `url`.
+   */
+  private static metaUrlEnd(source: string, dot: number): number | undefined {
+    const wordAt = (position: number): { word: string; end: number } => {
+      const end = DynamicImportScan.skipWord(source, position);
+      return { word: source.slice(position, end), end };
+    };
+    let i = DynamicImportScan.skipTrivia(source, dot + 1);
+    const meta = wordAt(i);
+    if (meta.word !== 'meta') return undefined;
+    i = DynamicImportScan.skipTrivia(source, meta.end);
+    if (source[i] === '?' && source[i + 1] === '.') i += 2;
+    else if (source[i] === '.') i += 1;
+    else return undefined;
+    i = DynamicImportScan.skipTrivia(source, i);
+    const url = wordAt(i);
+    return url.word === 'url' ? url.end : undefined;
+  }
+
+  /**
+   * The specifier of the static statement whose keyword ends at
+   * `position`: a bare string (`import "x"`), or a clause of names,
+   * `*`, `as`, commas and one brace group followed by `from` and a
+   * string. Anything else — an expression, a declaration, `import.meta`,
+   * a clause that never reaches `from "x"` — is no static specifier.
+   */
+  private static staticRecord(
+    source: string,
+    position: number,
+    kind: 'import' | 'export'
+  ): StaticImportRecord | undefined {
+    const n = source.length;
+    let i = DynamicImportScan.skipTrivia(source, position);
+    const asRecord = (open: number): StaticImportRecord | undefined => {
+      const end = DynamicImportScan.skipString(source, open);
+      const specifier = DynamicImportScan.decodeString(
+        source.slice(open + 1, end - 1)
+      );
+      return specifier === undefined
+        ? undefined
+        : { kind, specifier, start: open, end };
+    };
+    const isQuote = (c: string | undefined): boolean => c === "'" || c === '"';
+    if (kind === 'import' && isQuote(source[i])) return asRecord(i);
+    let closedBraces = false;
+    let first = true;
+    while (i < n) {
+      const c = source[i];
+      if (c === '{' && !closedBraces) {
+        let j = i + 1;
+        for (;;) {
+          j = DynamicImportScan.skipTrivia(source, j);
+          const d = source[j];
+          if (d === '}') break;
+          if (isQuote(d)) {
+            j = DynamicImportScan.skipString(source, j);
+          } else if (d === ',') {
+            j += 1;
+          } else if (d !== undefined && DynamicImportScan.isIdentifierChar(d)) {
+            j = DynamicImportScan.skipWord(source, j);
+          } else {
+            return undefined;
+          }
+        }
+        closedBraces = true;
+        first = false;
+        i = DynamicImportScan.skipTrivia(source, j + 1);
+        continue;
+      }
+      if ((c === ',' || c === '*') && !closedBraces) {
+        first = false;
+        i = DynamicImportScan.skipTrivia(source, i + 1);
+        continue;
+      }
+      if (c !== undefined && DynamicImportScan.isIdentifierChar(c)) {
+        const end = DynamicImportScan.skipWord(source, i);
+        const word = source.slice(i, end);
+        const next = DynamicImportScan.skipTrivia(source, end);
+        if (word === 'from' && isQuote(source[next])) return asRecord(next);
+        if (
+          closedBraces ||
+          (kind === 'export' && first && EXPORT_DECLARATION_KEYWORDS.has(word))
+        ) {
+          return undefined;
+        }
+        first = false;
+        i = next;
+        continue;
+      }
+      return undefined;
+    }
+    return undefined;
   }
 
   /** Index after the whitespace and comments starting at `position`. */
@@ -208,7 +598,7 @@ export class DynamicImportScan {
     const n = source.length;
     let i = position;
     for (;;) {
-      while (i < n && /\s/.test(source[i])) i += 1;
+      while (i < n && DynamicImportScan.isWhitespace(source[i])) i += 1;
       if (source[i] === '/' && source[i + 1] === '/') {
         i += 2;
         while (i < n && source[i] !== '\n') i += 1;
@@ -456,19 +846,5 @@ export class DynamicImportScan {
       }
     }
     return out;
-  }
-
-  /**
-   * Whether the word ending just before `position` is `return` — the one
-   * keyword after which a `/` opens a regex rather than divides (the
-   * other expression keywords a regex may follow are covered by their
-   * trailing significant character: `(`, `,`, `:` ...).
-   */
-  private static afterKeyword(source: string, position: number): boolean {
-    let j = position;
-    while (j > 0 && /\s/.test(source[j - 1])) j -= 1;
-    const end = j;
-    while (j > 0 && /[\w$]/.test(source[j - 1])) j -= 1;
-    return source.slice(j, end) === 'return';
   }
 }

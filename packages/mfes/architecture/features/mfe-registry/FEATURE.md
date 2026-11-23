@@ -38,11 +38,11 @@ description: Specifies the abstract MfeRegistry facade built by a factory that o
 
 <!-- /toc -->
 
-- [ ] `p1` - **ID**: `cpt-frontx-featstatus-mfe-registry`
+- [x] `p1` - **ID**: `cpt-frontx-featstatus-mfe-registry`
 
 ## 1. Feature Context
 
-- [ ] `p2` - `cpt-frontx-feature-mfe-registry`
+- [x] `p2` - `cpt-frontx-feature-mfe-registry`
 
 ### 1.1 Overview
 
@@ -97,7 +97,7 @@ User-facing interactions that start with an actor (human or external system) and
 
 ### Register Domain and Extension, Validate, and Mount
 
-- [ ] `p1` - **ID**: `cpt-frontx-flow-mfe-registry-register-validate-mount`
+- [x] `p1` - **ID**: `cpt-frontx-flow-mfe-registry-register-validate-mount`
 
 **Actor**: `cpt-frontx-actor-project-developer`
 
@@ -109,7 +109,7 @@ User-facing interactions that start with an actor (human or external system) and
 
 **Error Scenarios**:
 - Extension entry type validation fails — the registry rejects the extension and it is not placed into its extension domain.
-- No registered handler matches the extension's declared base type — the registry rejects with a handler-not-found error.
+- The registry has registered handlers and none matches the extension's declared base type — the registry rejects with a handler-not-found error. A registry built with no handlers performs no such check at registration, and a load of its extensions fails for want of a handler.
 - Domain contract matching fails — the extension is rejected before load.
 - The domain or extension id is already registered — the registry rejects the registration before anything is changed or presented to a router, and the registered domain or extension is left unchanged.
 - The injected router rejects a domain or extension registration (for example, a routed-domain route that collides with another routed domain live in the page) — the registry rejects with the router's error and nothing of that registration is left in the registry.
@@ -119,32 +119,32 @@ User-facing interactions that start with an actor (human or external system) and
 - The entry fails type validation, or the manifest it references is rejected by the type system or registered nowhere — only this microfrontend is disabled: the registration is rejected, and the registry, every other registered extension and domain, every mounted extension and the shell are unchanged and keep working.
 
 **Steps**:
-1. [ ] - `p1` - Developer obtains a registry instance by calling `createMfeRegistryFactory().build` with an injected `TypeSystemPlugin`; the registry factory's configuration carries, as an optional field, a router conforming to the abstract router - `inst-flow-rvm-01`
-2. [ ] - `p1` - Developer calls `registry.registerDomain` with an `ExtensionDomain` declaration and an `ExtensionDomainImplementationFactory` - `inst-flow-rvm-02`
-3. [ ] - `p1` - Registry checks that the domain id is not already registered, then synchronously constructs the domain implementation via the factory; the domain declaration is validated and registered through `typeSystem.register` only after the router admits it (step 5), or directly when no router is injected - `inst-flow-rvm-03`
-4. [ ] - `p1` - Registry handles each failure of step 3 before the flow continues - `inst-flow-rvm-04`
-   1. [ ] - `p1` - **IF** the domain id is already registered **THEN** registry throws before anything is changed or presented to a router, the already-registered domain is left unchanged, and the flow ends - `inst-flow-rvm-04a`
-   2. [ ] - `p1` - **IF** constructing the domain implementation fails **THEN** registry throws before presenting anything to a router, nothing of this call is registered, and the flow ends - `inst-flow-rvm-04b`
-   3. [ ] - `p1` - **IF** `typeSystem.register` fails **THEN** registry releases the router admission, if any, throws a `DomainValidationError`, nothing of this call is left registered, and the flow ends (`inst-domain-type-register` in `cpt-frontx-algo-mfe-registry-router-admission`) - `inst-flow-rvm-04c`
+1. [x] - `p1` - Developer obtains a registry instance by calling `createMfeRegistryFactory().build` with an injected `TypeSystemPlugin`; the registry factory's configuration carries, as an optional field, a router conforming to the abstract router - `inst-flow-rvm-01`
+2. [x] - `p1` - Developer calls `registry.registerDomain` with an `ExtensionDomain` declaration and an `ExtensionDomainImplementationFactory` - `inst-flow-rvm-02`
+3. [x] - `p1` - Registry checks that the domain id is not already registered, then synchronously constructs the domain implementation via the factory; the domain declaration is validated and registered through `typeSystem.register` only after the router admits it (step 5), or directly when no router is injected - `inst-flow-rvm-03`
+4. [x] - `p1` - Registry handles each failure of step 3 before the flow continues - `inst-flow-rvm-04`
+   1. [x] - `p1` - **IF** the domain id is already registered **THEN** registry throws before anything is changed or presented to a router, the already-registered domain is left unchanged, and the flow ends - `inst-flow-rvm-04a`
+   2. [x] - `p1` - **IF** constructing the domain implementation fails **THEN** registry throws before presenting anything to a router, nothing of this call is registered, and the flow ends - `inst-flow-rvm-04b`
+   3. [x] - `p1` - **IF** `typeSystem.register` fails **THEN** registry releases the router admission, if any, throws a `DomainValidationError`, nothing of this call is left registered, and the flow ends (`inst-domain-type-register` in `cpt-frontx-algo-mfe-registry-router-admission`) - `inst-flow-rvm-04c`
 5. [x] - `p1` - **IF** a router is injected and the domain declaration carries `route`, the registry registers the domain with it through `registerDomain(domainId, route, declaresUnmount)` before the domain becomes durable (`cpt-frontx-algo-mfe-registry-router-admission`) - `inst-flow-rvm-router-domain`
    1. [x] - `p1` - **IF** the router rejects the domain, the registry throws the router's error, the domain is left registered nowhere in the registry, and the flow ends - `inst-flow-rvm-router-domain-reject`
 6. [x] - `p1` - Developer calls `registry.registerExtension` with an `Extension` value; **IF** the extension id is already registered, registry throws before anything is changed or presented to a router, the registered extension is left unchanged, and the flow ends - `inst-flow-rvm-05`
-   1. [x] - `p1` - Registry validates the extension's entry through `typeSystem` against the registered type schemas - `inst-flow-rvm-type-validate`
-   2. [x] - `p1` - **IF** type validation fails, registry rejects the extension with the validation error, the extension is not placed into its extension domain, and the flow ends - `inst-flow-rvm-type-validate-reject`
-7. [ ] - `p1` - Registry invokes handler resolution: **FOR EACH** registered handler ordered by descending priority, evaluate `typeSystem.isTypeOf(extension.entry.typeId, handler.handledBaseTypeId)` - `inst-flow-rvm-06`
-   1. [ ] - `p1` - **IF** `isTypeOf` returns true, select this handler and stop evaluation - `inst-flow-rvm-06a`
-8. [ ] - `p1` - **IF** no handler matched, registry rejects the extension and flow ends - `inst-flow-rvm-07`
-9. [ ] - `p1` - Registry validates the extension's entry against its domain contract and checks cardinality - `inst-flow-rvm-08`
-10. [ ] - `p1` - **IF** contract matching or cardinality check fails, registry rejects the extension and flow ends - `inst-flow-rvm-09`
-11. [x] - `p1` - **IF** a router is injected and the admitted extension declaration carries `route`, the registry registers the extension with it through `registerExtension(extensionId, domainId, route)` before the extension becomes durable (`cpt-frontx-algo-mfe-registry-router-admission`) - `inst-flow-rvm-router-extension`
+7. [x] - `p1` - Registry validates the extension's entry against its domain contract; the domain's occupancy limit is not checked here, the domain's mount strategy enforces it at mount, and the strategy's cardinality matrix is checked once, at `registerDomain` - `inst-flow-rvm-08`
+8. [x] - `p1` - **IF** contract matching fails, registry rejects the extension and flow ends - `inst-flow-rvm-09`
+9. [x] - `p1` - Registry validates the extension's entry through `typeSystem` against the registered type schemas - `inst-flow-rvm-type-validate`
+   1. [x] - `p1` - **IF** type validation fails, registry rejects the extension with the validation error, the extension is not placed into its extension domain, and the flow ends - `inst-flow-rvm-type-validate-reject`
+10. [x] - `p1` - Registry checks that the registered handlers cover the entry's type: **FOR EACH** registered handler, evaluate `typeSystem.isTypeOf(extension.entry.typeId, handler.handledBaseTypeId)` until one answers true; priority does not matter here, because the handler that serves the load is chosen at load time by descending priority (`cpt-frontx-algo-mfe-registry-handler-resolution`). A registry built with no handlers, which the configuration permits, performs no check here - `inst-flow-rvm-06`
+    1. [x] - `p1` - **IF** `isTypeOf` returns true for a handler, the entry is covered and the evaluation stops - `inst-flow-rvm-06a`
+11. [x] - `p1` - **IF** the registry has registered handlers and none covers the entry's type, registry rejects the extension and flow ends - `inst-flow-rvm-07`
+12. [x] - `p1` - **IF** a router is injected and the admitted extension declaration carries `route`, the registry registers the extension with it through `registerExtension(extensionId, domainId, route)` before the extension becomes durable (`cpt-frontx-algo-mfe-registry-router-admission`) - `inst-flow-rvm-router-extension`
     1. [x] - `p1` - **IF** the router rejects the extension, the registry rejects with the router's error, the extension is left registered nowhere in the registry, and the flow ends - `inst-flow-rvm-router-extension-reject`
-12. [ ] - `p1` - Registry registers the extension with `typeSystem.register` after the router admits it, or directly when no router is injected or the declaration carries no `route` - `inst-flow-rvm-type-register`
-    1. [ ] - `p1` - **IF** `typeSystem.register` fails, registry releases the router admission, if any, once, rethrows the type system's error, nothing of the registration is left in the registry or the router, and the flow ends (`inst-extension-type-register` in `cpt-frontx-algo-mfe-registry-router-admission`) - `inst-flow-rvm-type-register-fail`
-13. [ ] - `p1` - Registry marks the extension as `ADMITTED` and stores the resolved handler reference - `inst-flow-rvm-10`
-14. [ ] - `p1` - On a load trigger, the registry initiates the extension's load through the actions-chain lifecycle — the load action (its type id resolved by the registry's type system) targeting the extension's domain and keyed by the extension instance ID is executed via the mediator, which dispatches it to the domain's load handler (load mechanics owned by `cpt-frontx-feature-mfe-loading`) - `inst-flow-rvm-11`
-15. [ ] - `p1` - A mount is requested only as a `mount_ext` actions chain (the `mount_ext` action's type id resolved by the registry's type system), restoration and opening included, executed through the same actions-chain mechanism; the extension mounts under its domain's mount strategy and the extension becomes `MOUNTED` (mount-strategy mechanics and the URL commands owned by `cpt-frontx-feature-extension-domain-governance`; the occupant value handed to the extension at mount owned by `cpt-frontx-feature-mfe-host-communication`) - `inst-flow-rvm-12`
-16. [x] - `p1` - A rejected registration, whatever rejected it — type validation of the entry, the rejection of the manifest the entry references, handler resolution, contract matching, cardinality, the router or the type system's own registration — disables only that microfrontend: nothing of it is stored, and the registry, the other registered extensions and domains, the mounted extensions and the shell are left as they were and keep working - `inst-flow-rvm-rejection-isolated`
-17. [ ] - `p1` - **RETURN** occupant active in domain - `inst-flow-rvm-13`
+13. [x] - `p1` - Registry registers the extension with `typeSystem.register` after the router admits it, or directly when no router is injected or the declaration carries no `route` - `inst-flow-rvm-type-register`
+    1. [x] - `p1` - **IF** `typeSystem.register` fails, registry releases the router admission, if any, once, rethrows the type system's error, nothing of the registration is left in the registry or the router, and the flow ends (`inst-extension-type-register` in `cpt-frontx-algo-mfe-registry-router-admission`) - `inst-flow-rvm-type-register-fail`
+14. [x] - `p1` - Registry marks the extension as `ADMITTED` and stores its state; no handler reference is stored, because the handler is resolved from the registered handlers when the extension loads - `inst-flow-rvm-10`
+15. [x] - `p1` - On a load trigger, the registry initiates the extension's load through the actions-chain lifecycle — the load action (its type id resolved by the registry's type system) targeting the extension's domain and keyed by the extension instance ID is executed via the mediator, which dispatches it to the domain's load handler (load mechanics owned by `cpt-frontx-feature-mfe-loading`) - `inst-flow-rvm-11`
+16. [x] - `p1` - A mount is requested only as a `mount_ext` actions chain (the `mount_ext` action's type id resolved by the registry's type system), restoration and opening included, executed through the same actions-chain mechanism; the extension mounts under its domain's mount strategy and the extension becomes `MOUNTED` (mount-strategy mechanics and the URL commands owned by `cpt-frontx-feature-extension-domain-governance`; the occupant value handed to the extension at mount owned by `cpt-frontx-feature-mfe-host-communication`) - `inst-flow-rvm-12`
+17. [x] - `p1` - A rejected registration, whatever rejected it — type validation of the entry, the rejection of the manifest the entry references, handler resolution, contract matching, the router or the type system's own registration — disables only that microfrontend: nothing of it is stored, and the registry, the other registered extensions and domains, the mounted extensions and the shell are left as they were and keep working - `inst-flow-rvm-rejection-isolated`
+18. [x] - `p1` - **RETURN** occupant active in domain - `inst-flow-rvm-13`
 
 ### Build Registry via Factory
 
@@ -171,7 +171,7 @@ User-facing interactions that start with an actor (human or external system) and
 
 ### Unregister Extension or Domain and Dispose the Registry
 
-- [ ] `p1` - **ID**: `cpt-frontx-flow-mfe-registry-unregister-dispose`
+- [x] `p1` - **ID**: `cpt-frontx-flow-mfe-registry-unregister-dispose`
 
 **Actor**: `cpt-frontx-actor-project-developer`
 
@@ -185,12 +185,12 @@ User-facing interactions that start with an actor (human or external system) and
 - A `registerExtension` call names a domain whose unregistration has begun — the call is rejected with a domain-unregistering error.
 
 **Steps**:
-1. [ ] - `p1` - Developer calls `registry.unregisterExtension` with an extension id - `inst-flow-ud-unregister-extension`
-   1. [ ] - `p1` - The registry unmounts the extension when it is mounted, triggers its `destroyed` stage, removes it (`inst-state-el-09`), and sends the router's release notification for an extension the router admitted (`inst-algo-ra-release-extension`) - `inst-flow-ud-extension-cleanup`
-2. [ ] - `p1` - Developer calls `registry.unregisterDomain` with a domain id; the registry closes the domain to new extension registration, drains the extensions it holds, removes the domain, and reopens the id for reuse (`cpt-frontx-algo-mfe-registry-domain-unregister-closes-admission`) - `inst-flow-ud-unregister-domain`
-   1. [ ] - `p1` - Once the domain is removed, the registry sends the router's release notification for a domain the router admitted (`inst-algo-ra-release-domain`) - `inst-flow-ud-domain-cleanup`
-3. [ ] - `p1` - Developer calls `registry.dispose`; the registry sends the release notifications for every admitted extension and then every admitted domain before clearing its own state (`inst-algo-ra-release-on-dispose`) - `inst-flow-ud-dispose`
-4. [ ] - `p1` - **IF** a release notification throws, the registry logs it and continues (`inst-algo-ra-release-failure`); none of these operations issues a command (`inst-algo-ra-cleanup-no-command`) - `inst-flow-ud-release-failure`
+1. [x] - `p1` - Developer calls `registry.unregisterExtension` with an extension id - `inst-flow-ud-unregister-extension`
+   1. [x] - `p1` - The registry unmounts the extension when it is mounted, triggers its `destroyed` stage, removes it (`inst-state-el-09`), and sends the router's release notification for an extension the router admitted (`inst-algo-ra-release-extension`) - `inst-flow-ud-extension-cleanup`
+2. [x] - `p1` - Developer calls `registry.unregisterDomain` with a domain id; the registry closes the domain to new extension registration, drains the extensions it holds, removes the domain, and reopens the id for reuse (`cpt-frontx-algo-mfe-registry-domain-unregister-closes-admission`) - `inst-flow-ud-unregister-domain`
+   1. [x] - `p1` - Once the domain is removed, the registry sends the router's release notification for a domain the router admitted (`inst-algo-ra-release-domain`) - `inst-flow-ud-domain-cleanup`
+3. [x] - `p1` - Developer calls `registry.dispose`; the registry sends the release notifications for every admitted extension and then every admitted domain before clearing its own state (`inst-algo-ra-release-on-dispose`) - `inst-flow-ud-dispose`
+4. [x] - `p1` - **IF** a release notification throws, the registry logs it and continues (`inst-algo-ra-release-failure`); none of these operations issues a command (`inst-algo-ra-cleanup-no-command`) - `inst-flow-ud-release-failure`
 
 ## 3. Processes / Business Logic (CDSL)
 
@@ -198,7 +198,7 @@ Internal system functions and procedures that do not interact with actors direct
 
 ### Handler Resolution by Declared Base Type
 
-- [ ] `p1` - **ID**: `cpt-frontx-algo-mfe-registry-handler-resolution`
+- [x] `p1` - **ID**: `cpt-frontx-algo-mfe-registry-handler-resolution`
 
 **Input**: `entryTypeId` (the declared type identifier of an `MfeEntry`), ordered list of registered `MfeHandler` instances sorted by descending priority
 
@@ -207,33 +207,33 @@ Internal system functions and procedures that do not interact with actors direct
 **Steps**:
 1. [x] - `p1` - Supply the registry's injected `TypeSystemPlugin` to each handler as it is registered, so a handler the developer constructed before any registry existed can resolve the references its own load path owns; matching itself stays with the registry - `inst-algo-hr-attach-type-system`
 2. [x] - `p1` - Sort the registered handler list by descending `handler.priority` — handlers with equal priority retain insertion order - `inst-algo-hr-01`
-3. [ ] - `p1` - **FOR EACH** handler in sorted order - `inst-algo-hr-02`
-   1. [ ] - `p1` - Evaluate `typeSystem.isTypeOf(entryTypeId, handler.handledBaseTypeId)` through the injected `TypeSystemPlugin` - `inst-algo-hr-02a`
+3. [x] - `p1` - **FOR EACH** handler in sorted order - `inst-algo-hr-02`
+   1. [x] - `p1` - Evaluate `typeSystem.isTypeOf(entryTypeId, handler.handledBaseTypeId)` through the injected `TypeSystemPlugin` - `inst-algo-hr-02a`
    2. [x] - `p1` - **IF** `isTypeOf` returns true, **RETURN** this handler as the match — stop iterating - `inst-algo-hr-02b`
-4. [x] - `p1` - **IF** no handler matched after iterating all handlers, **RETURN** resolution failure indicating no registered handler covers the given entry type - `inst-algo-hr-03`
+4. [x] - `p1` - **IF** no handler matched after iterating all handlers, **RETURN** resolution failure indicating no registered handler covers the given entry type; at registration this applies only when the registry has registered handlers - `inst-algo-hr-03`
 
 ### Extension Registration and Entry Storage
 
-- [ ] `p2` - **ID**: `cpt-frontx-algo-mfe-registry-register-extension`
+- [x] `p2` - **ID**: `cpt-frontx-algo-mfe-registry-register-extension`
 
 **Input**: `Extension` value containing an `MfeEntry` with a declared `typeId`
 
 **Output**: Registration outcome (success or rejection with reason)
 
 **Steps**:
-1. [ ] - `p1` - Validate the extension's entry via `typeSystem` against the registered type schemas - `inst-algo-re-01`
-2. [ ] - `p1` - **IF** validation fails, **RETURN** rejection with the validation error - `inst-algo-re-02`
-3. [ ] - `p1` - Invoke handler resolution (see `cpt-frontx-algo-mfe-registry-handler-resolution`) with the entry's `typeId` - `inst-algo-re-03`
-4. [ ] - `p1` - **IF** resolution fails, **RETURN** rejection with a handler-not-found error - `inst-algo-re-04`
-5. [ ] - `p1` - Validate the extension's entry against its domain's contract (subset-rule matching) and check the domain's cardinality for the new occupant - `inst-algo-re-contract-match`
-   1. [ ] - `p1` - **IF** contract matching fails or the cardinality check fails, **RETURN** rejection with the corresponding error, leaving nothing stored and nothing presented to a router - `inst-algo-re-contract-reject`
+1. [x] - `p1` - Validate the extension's entry against its domain's contract (subset-rule matching); the occupancy limit is enforced by the domain's mount strategy at mount, not here - `inst-algo-re-contract-match`
+   1. [x] - `p1` - **IF** contract matching fails, **RETURN** rejection with the contract error, leaving nothing stored and nothing presented to a router - `inst-algo-re-contract-reject`
+2. [x] - `p1` - Validate the extension's entry via `typeSystem` against the registered type schemas - `inst-algo-re-01`
+3. [x] - `p1` - **IF** validation fails, **RETURN** rejection with the validation error - `inst-algo-re-02`
+4. [x] - `p1` - Check that the registered handlers cover the entry's `typeId` (see `cpt-frontx-algo-mfe-registry-handler-resolution`); the handler that serves the load is resolved again, by descending priority, when the extension loads - `inst-algo-re-03`
+5. [x] - `p1` - **IF** the registry has registered handlers and none covers the entry's `typeId`, **RETURN** rejection with a handler-not-found error; a registry built with no handlers performs no check here, and a load of its extensions fails for want of a handler - `inst-algo-re-04`
 6. [x] - `p1` - **IF** a router is injected and the extension's declaration carries `route`, register the extension with it (`inst-algo-ra-present-extension` in `cpt-frontx-algo-mfe-registry-router-admission`) after every check above and before the storage below - `inst-algo-re-router-admit`
    1. [x] - `p1` - **IF** the router rejects the extension, **RETURN** rejection with the router's error, leaving nothing stored - `inst-algo-re-router-reject`
-7. [ ] - `p1` - Register the extension with `typeSystem.register` after the router admits it, or directly when no router is injected or the declaration carries no `route`, and before the storage below - `inst-algo-re-type-register`
-   1. [ ] - `p1` - **IF** `typeSystem.register` fails, release the router admission, if any, once and **RETURN** rejection with the type system's error, leaving nothing stored (`inst-extension-type-register` in `cpt-frontx-algo-mfe-registry-router-admission`) - `inst-algo-re-type-register-rollback`
-8. [x] - `p1` - Store the extension in the registry's internal map keyed by `extension.id`, associating it with the resolved handler - `inst-algo-re-05`
-9. [ ] - `p1` - Notify the extension's target domain that a new extension has been registered - `inst-algo-re-06`
-10. [ ] - `p1` - **RETURN** success - `inst-algo-re-07`
+7. [x] - `p1` - Register the extension with `typeSystem.register` after the router admits it, or directly when no router is injected or the declaration carries no `route`, and before the storage below - `inst-algo-re-type-register`
+   1. [x] - `p1` - **IF** `typeSystem.register` fails, release the router admission, if any, once and **RETURN** rejection with the type system's error, leaving nothing stored (`inst-extension-type-register` in `cpt-frontx-algo-mfe-registry-router-admission`) - `inst-algo-re-type-register-rollback`
+8. [x] - `p1` - Store the extension's state in the registry's internal map keyed by `extension.id`; no handler is stored with it - `inst-algo-re-05`
+9. [x] - `p1` - Record the extension in its target domain's set of extensions - `inst-algo-re-06`
+10. [x] - `p1` - Trigger the extension's `init` lifecycle stage without waiting for it, and **RETURN** success - `inst-algo-re-07`
 
 ### Router Admission and Release Notifications
 
@@ -295,25 +295,25 @@ Internal system functions and procedures that do not interact with actors direct
 
 ### MfeEntry Registration Lifecycle
 
-- [ ] `p2` - **ID**: `cpt-frontx-state-mfe-registry-entry-lifecycle`
+- [x] `p2` - **ID**: `cpt-frontx-state-mfe-registry-entry-lifecycle`
 
-**States**: UNREGISTERED, REGISTERED, HANDLER_RESOLVED, ADMITTED, MOUNTED, REJECTED. An extension instance's observable state is tracked as `loadState` (`idle`, `loading`, `loaded`, `error`) and `mountState` (`unmounted`, `mounting`, `mounted`, `error`): ADMITTED is an extension registered with `mountState` `unmounted`; MOUNTED is one with `mountState` `mounted`. REJECTED is reached only while registering, and a rejected extension is not registered.
+**States**: UNREGISTERED, REGISTERED, HANDLER_RESOLVED, ADMITTED, MOUNTED, REJECTED. An extension instance's observable state is tracked as `loadState` (`idle`, `loading`, `loaded`, `error`) and `mountState` (`unmounted`, `mounting`, `mounted`, `error`): ADMITTED is an extension registered with `mountState` `unmounted`; MOUNTED is one with `mountState` `mounted`. REJECTED is reached only while registering — by contract matching, type validation, handler coverage, the injected router or the type system's own registration — and a rejected extension is not registered; a registration runs those checks in that order.
 
 **Initial State**: UNREGISTERED
 
 **Transitions**:
-1. [ ] - `p1` - **FROM** UNREGISTERED **TO** REGISTERED **WHEN** `registerExtension` is called and type validation succeeds - `inst-state-el-01`
-2. [ ] - `p1` - **FROM** UNREGISTERED **TO** REJECTED **WHEN** `registerExtension` is called and type validation fails - `inst-state-el-02`
-3. [ ] - `p1` - **FROM** REGISTERED **TO** HANDLER_RESOLVED **WHEN** the registry finds a matching handler via `typeSystem.isTypeOf` - `inst-state-el-03`
-4. [ ] - `p1` - **FROM** REGISTERED **TO** REJECTED **WHEN** no registered handler matches the entry's declared base type - `inst-state-el-04`
-5. [ ] - `p1` - **FROM** HANDLER_RESOLVED **TO** ADMITTED **WHEN** domain contract matching succeeds, cardinality allows the occupant, and, where a router is injected, the router admits the registration - `inst-state-el-05`
-6. [ ] - `p1` - **FROM** HANDLER_RESOLVED **TO** REJECTED **WHEN** domain contract matching fails, cardinality is exceeded, or the injected router rejects the registration - `inst-state-el-06`
-7. [ ] - `p1` - **FROM** ADMITTED **TO** MOUNTED **WHEN** `handler.load` completes (`loadState` `loaded`) and the lifecycle is mounted under the domain's mount strategy (`mountState` `mounted`) - `inst-state-el-07`
-8. [ ] - `p1` - **FROM** ADMITTED **TO** ADMITTED **WHEN** `handler.load` fails (`loadState` `error`) or the mount fails (`mountState` `error`): the extension stays registered with the error recorded, and a later load or mount request attempts again - `inst-state-el-08`
+1. [x] - `p1` - **FROM** UNREGISTERED **TO** REGISTERED **WHEN** `registerExtension` is called, domain contract matching has succeeded and type validation succeeds - `inst-state-el-01`
+2. [x] - `p1` - **FROM** UNREGISTERED **TO** REJECTED **WHEN** `registerExtension` is called and type validation fails - `inst-state-el-02`
+3. [x] - `p1` - **FROM** REGISTERED **TO** HANDLER_RESOLVED **WHEN** the registry finds a registered handler that covers the entry's base type via `typeSystem.isTypeOf`, or has no registered handlers to check - `inst-state-el-03`
+4. [x] - `p1` - **FROM** REGISTERED **TO** REJECTED **WHEN** the registry has registered handlers and none matches the entry's declared base type - `inst-state-el-04`
+5. [x] - `p1` - **FROM** HANDLER_RESOLVED **TO** ADMITTED **WHEN**, where a router is injected, the router admits the registration and the type system registers the extension; its state is then stored - `inst-state-el-05`
+6. [x] - `p1` - **FROM** UNREGISTERED **TO** REJECTED **WHEN** `registerExtension` is called and domain contract matching fails, before type validation - `inst-state-el-06`
+7. [x] - `p1` - **FROM** ADMITTED **TO** MOUNTED **WHEN** `handler.load` completes (`loadState` `loaded`) and the lifecycle is mounted under the domain's mount strategy (`mountState` `mounted`) - `inst-state-el-07`
+8. [x] - `p1` - **FROM** ADMITTED **TO** ADMITTED **WHEN** `handler.load` fails (`loadState` `error`) or the mount fails (`mountState` `error`): the extension stays registered with the error recorded, and a later load or mount request attempts again - `inst-state-el-08`
 9. [x] - `p1` - **FROM** MOUNTED **TO** UNREGISTERED **WHEN** `unregisterExtension` is called — the extension is first unmounted exactly as an ordinary unmount unmounts it, which includes destroying its container once through the container hooks of the mount strategy that created it; only after that unmount has settled is the extension's `destroyed` lifecycle stage triggered, and only then is the extension removed from the registry - `inst-state-el-09`
 10. [x] - `p1` - The MOUNTED → UNREGISTERED transition is resource cleanup, not an occupancy action: the unmount it performs dispatches no `unmount_ext` and issues no command, so it has no effect on the URL; once the extension is removed, a router that admitted it receives its release notification (`inst-algo-ra-release-extension`) - `inst-state-el-10`
-11. [ ] - `p1` - **FROM** MOUNTED **TO** ADMITTED **WHEN** the extension is unmounted (`mountState` `unmounted`): it stays registered and a later mount request mounts it again - `inst-state-el-11`
-12. [ ] - `p1` - **FROM** ADMITTED **TO** UNREGISTERED **WHEN** `unregisterExtension` is called on an extension that is not mounted: its `destroyed` stage is triggered and it is removed from the registry - `inst-state-el-12`
+11. [x] - `p1` - **FROM** MOUNTED **TO** ADMITTED **WHEN** the extension is unmounted (`mountState` `unmounted`): it stays registered and a later mount request mounts it again - `inst-state-el-11`
+12. [x] - `p1` - **FROM** ADMITTED **TO** UNREGISTERED **WHEN** `unregisterExtension` is called on an extension that is not mounted: its `destroyed` stage is triggered and it is removed from the registry - `inst-state-el-12`
 
 ### Factory Cache Lifecycle
 
@@ -404,7 +404,7 @@ The system **MUST** resolve a handler for each registered `MfeEntry` by evaluati
 
 ### Register–Validate–Mount Sequence Ownership
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-registry-register-validate-mount`
+- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-registry-register-validate-mount`
 
 The system **MUST** own and orchestrate the complete register → type-validate → handler-resolve → domain-admit → router-admit (where a router is injected) → load-on-demand → mount sequence, rejecting any extension whose type validation, domain contract matching, or router admission fails before loading occurs, a rejection disabling only that extension and leaving the registry, every other registration and the shell working, and requesting every mount through a `mount_ext` actions chain.
 
@@ -460,7 +460,7 @@ The system **MUST** define the `MfeHandler` abstract class with `handledBaseType
 - [x] The package root exports exactly these error classes: `MfeError`, `MfeLoadError`, `DomainValidationError`, `ExtensionTypeError`, `UnsupportedLifecycleStageError`, `EntryTypeNotHandledError`, `DomainUnregisteringError`, `BridgeDisposedError`, `BridgeInactiveError` and `NoActionsChainHandlerError`; `NoHandlerForActionTargetError` is not exported.
 - [x] The package root exports only what consumers outside the package use, plus the error classes thrown to callers and the abstract router contract (`cpt-frontx-adr-mfe-runtime-public-surface`): a symbol used only inside the package or only by its tests is not exported.
 - [x] An extension with no matching handler is rejected with a handler-not-found error.
-- [x] An extension whose domain contract matching or cardinality check fails is rejected before any router call and before anything is stored.
+- [x] An extension whose domain contract matching fails is rejected before any router call and before anything is stored.
 - [x] With a router test double injected, the registry calls `connect` once, in its constructor and before any registration, with an executor that executes each chain through the registry's own `executeActionsChain` and with the registry's own type-system plugin.
 - [x] With a router test double injected, every domain and extension registration whose declaration carries `route` is registered with it through `registerDomain(domainId, route, declaresUnmount)` or `registerExtension(extensionId, domainId, route)` after the runtime's own checks pass and before the registration is durable, `declaresUnmount` being `true` exactly for a domain whose actions list the `unmount_ext` action type id; a declaration without `route` is not registered with it; a registration the double rejects throws the double's error unchanged and leaves no domain or extension state, no handler, no advertisement, and no `init` trigger in the registry.
 - [x] A domain and an extension that declare a `route` are registered with the router with that `route` unchanged; the runtime itself rejects no registration for the shape or uniqueness of a route.

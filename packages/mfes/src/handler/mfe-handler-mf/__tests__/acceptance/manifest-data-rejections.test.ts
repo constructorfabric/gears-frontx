@@ -19,13 +19,14 @@ vi.mock('../../mf-dynamic-module-ops', async (importOriginal) => {
 
 import { newHandler } from '../helpers/registered-manifest';
 import { MfeLoadError } from '../../../../errors';
-import { DeterministicLoadFailure } from '../../DeterministicLoadFailure';
+import { RetryableLoadError } from '../../RetryableLoadError';
 import { LazyLoaderRegistry } from '../../../../lazy-loader/LazyLoaderRegistry';
 import type { MfManifest } from '../../../../manifest/mf-manifest';
 import {
   buildEntry,
   buildManifest,
   ENTRY_BASE_ID,
+  jsonManifest,
   listOf,
   PUBLIC_PATH,
   sharedDep,
@@ -69,7 +70,7 @@ describe('acceptance: a manifest that names lists refuses what they cannot deliv
     const error = await load(manifest).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(MfeLoadError);
     expect(String((error as Error).message)).toContain('./lifecycle');
-    expect(DeterministicLoadFailure.is(error)).toBe(true);
+    expect(error).not.toBeInstanceOf(RetryableLoadError);
     expect(router.calls).toEqual([]);
   });
 
@@ -83,7 +84,7 @@ describe('acceptance: a manifest that names lists refuses what they cannot deliv
 
   it.each([
     ['an empty ownChunks entry', { ownChunks: [''] }],
-    ['a non-string ownChunks entry', { ownChunks: [42 as unknown as string] }],
+    ['a non-string ownChunks entry', { ownChunks: JSON.parse('[42]') }],
   ])('refuses %s of a reachable list before any request', async (_name, rest) => {
     const router = route('export default {};');
     const manifest = buildManifest([], {
@@ -93,7 +94,7 @@ describe('acceptance: a manifest that names lists refuses what they cannot deliv
     const error = await load(manifest).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(MfeLoadError);
     expect(String((error as Error).message)).toContain('ownChunks');
-    expect(DeterministicLoadFailure.is(error)).toBe(true);
+    expect(error).not.toBeInstanceOf(RetryableLoadError);
     expect(router.calls).toEqual([]);
   });
 
@@ -127,7 +128,7 @@ describe('acceptance: a declared specifier that survives a rewrite fails the loa
     expect(message).toContain('assets/lifecycle.js');
     expect(message).toContain("'lodash'");
     expect(message).toContain('mock.mfe.entry.v1~test.entry.v1');
-    expect(DeterministicLoadFailure.is(error)).toBe(true);
+    expect(error).not.toBeInstanceOf(RetryableLoadError);
     expect(router.calls.filter((c) => c.endsWith('assets/lifecycle.js'))).toHaveLength(1);
   });
 
@@ -147,7 +148,7 @@ describe('acceptance: a declared specifier that survives a rewrite fails the loa
     expect(message).toContain('shared/item/index.ghi.js');
     expect(message).toContain("'lodash'");
     expect(message).toContain('mock.mfe.entry.v1~test.entry.v1');
-    expect(DeterministicLoadFailure.is(error)).toBe(true);
+    expect(error).not.toBeInstanceOf(RetryableLoadError);
     expect(router.calls.length).toBeGreaterThan(0);
   });
 
@@ -204,7 +205,7 @@ describe('acceptance: a declared specifier that survives a rewrite fails the loa
 describe('acceptance: a whole-package manifest older producers wrote loads unmodified', () => {
   it('registers and loads a shared[] manifest carrying unwrapKey, name, remoteEntry and the metaData extras through the whole-package path', async () => {
     const LIB_TEXT = 'export const lib = 1;\n';
-    const manifest = {
+    const manifest = jsonManifest({
       id: 'mock.mfe.mf_manifest.v1~legacy.manifest.v1',
       name: 'legacy',
       remoteEntry: `${PUBLIC_PATH}assets/remoteEntry.js`,
@@ -217,7 +218,7 @@ describe('acceptance: a whole-package manifest older producers wrote loads unmod
         remoteEntry: { name: 'remoteEntry.js', path: '', type: 'module' },
       },
       shared: [{ ...sharedDep('legacy-lib'), unwrapKey: null }],
-    } as unknown as MfManifest;
+    });
     const router = route(
       'import { lib } from "legacy-lib";\nexport default { mount() { return lib; }, unmount() {} };\n',
       { 'shared/legacy-lib.js': LIB_TEXT }
@@ -249,7 +250,7 @@ describe('acceptance: a fetch list whose unminted items form an import cycle', (
     expect(message).toContain('shared/a.js');
     expect(message).toContain('shared/b.js');
     expect(message).toContain('mock.mfe.entry.v1~test.entry.v1');
-    expect(DeterministicLoadFailure.is(error)).toBe(true);
+    expect(error).not.toBeInstanceOf(RetryableLoadError);
     expect(router.calls.filter((c) => c.endsWith('shared/a.js'))).toHaveLength(1);
   });
 });

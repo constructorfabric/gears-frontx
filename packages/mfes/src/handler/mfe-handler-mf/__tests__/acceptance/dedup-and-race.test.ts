@@ -1,5 +1,5 @@
 /**
- * Acceptance: F-026 — dedup/race nits: a shared dependency name declared
+ * Acceptance: dedup/race nits: a shared dependency name declared
  * twice on one manifest is fetched once (no duplicate retry/fetch), and
  * an in-flight entry contributes no bytes to eviction pressure.
  */
@@ -24,7 +24,6 @@ vi.mock('../../mf-dynamic-module-ops', async (importOriginal) => {
 
 import { MfeHandlerMF } from '../../MfeHandlerMF';
 import { newHandler } from '../helpers/registered-manifest';
-import type { SharedDepTextCache } from '../../RealmSharedDepTextCacheProvider';
 import {
   buildEntry,
   buildManifest,
@@ -32,20 +31,14 @@ import {
   PUBLIC_PATH,
 } from '../helpers/manifest-builder';
 import { createFetchRouter } from '../helpers/fetch-router';
-import { resetRealmSharedDepTextCache } from '../helpers/realm-cache';
+import { realmSharedDepTextCache, resetRealmSharedDepTextCache } from '../helpers/realm-cache';
 import type { MfManifestShared } from '../../../../manifest/mf-manifest';
 
 beforeEach(resetRealmSharedDepTextCache);
 afterEach(resetRealmSharedDepTextCache);
 
-function realmCache(handler: MfeHandlerMF): SharedDepTextCache {
-  return (
-    handler as unknown as { sharedDepTextCache: SharedDepTextCache }
-  ).sharedDepTextCache;
-}
-
-describe('acceptance: F-026 dedup and race nits', () => {
-  it('F-026: a shared name declared twice on one manifest is fetched once, not retried per declaration', async () => {
+describe('acceptance: dedup and race nits', () => {
+  it('a shared name declared twice on one manifest is fetched once, not retried per declaration', async () => {
     const dep: MfManifestShared = {
       name: 'react',
       version: '1.0.0',
@@ -84,12 +77,12 @@ describe('acceptance: F-026 dedup and race nits', () => {
     }
   });
 
-  it('F-026: an in-flight (unsettled) entry contributes zero bytes — a later large admission must not evict it as if it were sized', async () => {
-    const handler = newHandler(ENTRY_BASE_ID, {
+  it('an in-flight (unsettled) entry contributes zero bytes — a later large admission must not evict it as if it were sized', async () => {
+    newHandler(ENTRY_BASE_ID, {
       retries: 0,
       sharedDepTextCacheMaxBytes: 64,
     } as ConstructorParameters<typeof MfeHandlerMF>[1]);
-    const cache = realmCache(handler);
+    const cache = realmSharedDepTextCache();
     let resolveInFlight!: (v: string) => void;
     const inFlight = new Promise<string>((r) => {
       resolveInFlight = r;

@@ -91,8 +91,7 @@ interface RendezvousEntry {
  * loaded copy of this package resolves to the exact same global symbol
  * registry key, and therefore the exact same backing array on `globalThis`,
  * regardless of which copy's module instance is executing. This mirrors the
- * existing `globalThis.__FRONTX_LAZY__` pattern (`LazyLoaderRegistry.ts`)
- * used for the identical reason.
+ * lazy-loader slot (`LazyLoaderRegistry.ts`) used for the identical reason.
  */
 const RENDEZVOUS_KEY = Symbol.for('@gears-frontx/mfes:mount-context:1');
 

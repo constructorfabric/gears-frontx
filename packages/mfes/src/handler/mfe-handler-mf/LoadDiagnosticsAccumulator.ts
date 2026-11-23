@@ -1,6 +1,5 @@
 /**
- * Per-handler shared-dependency load diagnostics accumulator
- * (finding F-011).
+ * Per-handler shared-dependency load diagnostics accumulator.
  *
  * Collects, across the loads one handler serves, deduplicated
  * once-per-page warnings (`warnOnce`) and the per-load summary
@@ -15,17 +14,13 @@
  * @internal
  */
 
-import { LruCache } from './LruCache';
+import { LruCache, SHARED_DEP_ADOPTION_NOTICE_CACHE_CAPACITY } from './LruCache';
 import type { SharedDepTextCache } from './RealmSharedDepTextCacheProvider';
-import type { RealmSharedDepTextCacheDiagnostics } from './ByteBudgetLruCache';
 
 export class LoadDiagnosticsAccumulator {
-  private readonly emitted = new LruCache<string, true>(64);
-  // Keyed by `name@version` — the pair a conflict or agreement is ABOUT.
-  // Keying by content hash made identical bytes the trigger (a warn on
-  // agreement) and left different bytes for the same name@version silent,
-  // which is the case that actually needs a diagnostic.
-
+  private readonly emitted = new LruCache<string, true>(
+    SHARED_DEP_ADOPTION_NOTICE_CACHE_CAPACITY,
+  );
 
   /** Emit `message` once per handler lifetime, deduplicated by `key`. */
   warnOnce(key: string, message: string): void {
@@ -35,27 +30,29 @@ export class LoadDiagnosticsAccumulator {
   }
 
   /**
-   * Per-load diagnostics summary: bytes fetched and realm cache totals
-   * (F-011).
+   * The per-load diagnostic, written once for the load at `console.warn`
+   * level: the bytes this load itself fetched and the realm cache's held
+   * bytes, entry count, budget and evictions, read through the cache's
+   * `getDiagnostics` operation. A cache that has no such operation — one
+   * another copy of the package published — gets a diagnostic that states
+   * the figures are unavailable.
    */
+  // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-emit-load-diagnostic
   summarize(
     manifestId: string,
     bytesFetched: number,
     realmCache: SharedDepTextCache,
   ): void {
-    const diagSource = realmCache as unknown as {
-      getDiagnostics?: () => RealmSharedDepTextCacheDiagnostics;
-    };
-    const diag =
-      typeof diagSource.getDiagnostics === 'function'
-        ? diagSource.getDiagnostics()
-        : undefined;
+    const diag = realmCache.getDiagnostics?.();
+    const realm =
+      diag === undefined
+        ? 'realm cache figures are unavailable (the adopted cache reports no diagnostics)'
+        : `realm cache holds ${diag.bytes} bytes in ${diag.entries} entries ` +
+          `(budget ${diag.budget}, evictions ${diag.evictions})`;
     console.warn(
       `[MfeHandlerMF] shared-dependency diagnostics for manifest ` +
-        `'${manifestId}': fetched ${bytesFetched} bytes of ` +
-        `unit text; realm cache holds ${diag?.bytes ?? 0} bytes in ` +
-        `${diag?.entries ?? 0} entries (budget ${diag?.budget ?? 0}, ` +
-        `evictions ${diag?.evictions ?? 0}).`,
+        `'${manifestId}': fetched ${bytesFetched} bytes of unit text; ${realm}.`,
     );
   }
+  // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-emit-load-diagnostic
 }

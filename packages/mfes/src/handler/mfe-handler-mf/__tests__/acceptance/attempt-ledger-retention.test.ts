@@ -43,9 +43,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const entriesOf = (ledger: AttemptSourceTextLedger): unknown[] =>
-  (ledger as unknown as { entries: unknown[] }).entries;
-
 describe('attempt ledger retention', () => {
   it('retains no entry after the load settles, including across a later lazy chunk resolution', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(((
@@ -65,12 +62,12 @@ describe('attempt ledger retention', () => {
 
     const ledgers = new Set<AttemptSourceTextLedger>();
     const record = AttemptSourceTextLedger.prototype.record;
-    let recordedWhileUnsettled = 0;
+    let recordCalls = 0;
     vi.spyOn(AttemptSourceTextLedger.prototype, 'record').mockImplementation(
       function (this: AttemptSourceTextLedger, ...args) {
         ledgers.add(this);
         record.apply(this, args);
-        recordedWhileUnsettled += entriesOf(this).length > 0 ? 1 : 0;
+        recordCalls += 1;
       },
     );
     const register = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
@@ -83,11 +80,9 @@ describe('attempt ledger retention', () => {
 
     // The attempt did record its waited-on entry while it was in flight, so
     // the emptiness asserted below is not vacuous.
-    expect(recordedWhileUnsettled).toBeGreaterThan(0);
+    expect(recordCalls).toBeGreaterThan(0);
     expect(ledgers.size).toBe(1);
     const [ledger] = [...ledgers];
-    expect(entriesOf(ledger)).toHaveLength(0);
-
     // The registry keeps the load's resolver, and through it the per-load
     // state, for the page lifetime; resolving a lazy chunk now records into
     // nothing.
@@ -95,6 +90,15 @@ describe('attempt ledger retention', () => {
     const resolver = register.mock.calls[0][0];
     const lazyUrl = await resolver('./lazy.js');
     expect(lazyUrl).toMatch(/^blob:/);
-    expect(entriesOf(ledger)).toHaveLength(0);
+
+    // A ledger that still held an unsettled entry, from the load or from the
+    // lazy chunk, would evict it from its cache on release; this one holds
+    // nothing, and takes nothing further.
+    const cache = new Map<string, Promise<string>>();
+    const hung = new Promise<string>(() => {});
+    cache.set('after-settle', hung);
+    ledger.record(cache, 'after-settle', hung);
+    ledger.release();
+    expect(cache.get('after-settle')).toBe(hung);
   });
 });

@@ -65,10 +65,12 @@ export class LoadExtHandler extends ActionHandler {
    * @param payload - Action payload containing the target extension subject
    */
   async handleAction(_actionTypeId: string, payload: Record<string, unknown> | undefined): Promise<void> {
+    // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-11
     assertLifecyclePayload(payload);
     const extensionId = payload.subject;
     await this.operationSerializer.serializeOperation(extensionId, () =>
       this.mountManager.loadExtension(extensionId)
     );
+    // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-11
   }
 }

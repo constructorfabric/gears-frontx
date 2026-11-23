@@ -28,32 +28,40 @@
  *
  * @packageDocumentation
  */
+// @cpt-dod:cpt-frontx-dod-mfe-loading-attempt-timeout:p1
+// @cpt-dod:cpt-frontx-dod-mfe-loading-one-round-load:p1
+// @cpt-dod:cpt-frontx-dod-mfe-loading-lazy-abi-isolation:p1
+// @cpt-dod:cpt-frontx-dod-mfe-loading-content-identity:p1
+// @cpt-dod:cpt-frontx-dod-mfe-isolation-unit-memo:p1
+// @cpt-dod:cpt-frontx-dod-mfe-isolation-shared-dep-diagnostics:p1
+// @cpt-dod:cpt-frontx-dod-mfe-isolation-handler-source-text-cache:p1
 // @cpt-dod:cpt-frontx-dod-mfe-isolation-blob-core:p1
 // @cpt-dod:cpt-frontx-dod-mfe-isolation-manifest-reference-resolution:p1
 // @cpt-state:cpt-frontx-state-mfe-isolation-module-lifecycle:p1
 // @cpt-state:cpt-frontx-state-mfe-loading-load-lifecycle:p1
 
 import type { MfeEntryMF } from '../../types/mfe-entry-mf';
-import type {
-  MfManifest,
-  MfManifestShared,
-} from '../../manifest/mf-manifest';
+import type { MfManifest } from '../../manifest/mf-manifest';
 import { LazyLoaderRegistry } from '../../lazy-loader/LazyLoaderRegistry';
 import { MfeHandler, MfeEntryLifecycle } from '../MfeHandler';
 import { ChildMfeBridge } from '../ChildMfeBridge';
 import { MfeLoadError } from '../../errors';
-import { RetryHandler } from './RetryHandler';
+import { RetryHandler, INITIAL_RETRY_DELAY_MS } from './RetryHandler';
+import { RetryableLoadError } from './RetryableLoadError';
 import { MfeBridgeFactoryDefault } from '../../bridge/MfeBridgeFactoryDefault';
 import { DynamicModuleOps } from './mf-dynamic-module-ops';
 import { SharedDepSpecifierScan } from './mf-shared-dep-specifier-scan';
-import { LruCache } from './LruCache';
+import { LruCache, SHARED_DEP_ADOPTION_NOTICE_CACHE_CAPACITY } from './LruCache';
 import { RealmSharedDepTextCacheProvider, DEFAULT_SHARED_DEP_TEXT_CACHE_MAX_BYTES, type SharedDepTextCache } from './RealmSharedDepTextCacheProvider';
 import { AttemptSourceTextLedger } from './AttemptSourceTextLedger';
-import { DeterministicLoadFailure } from './DeterministicLoadFailure';
 import { SharedAssetUrlResolver } from './SharedAssetUrlResolver';
-import { FetchBudget } from './FetchBudget';
+import { AssetBaseUrl } from './AssetBaseUrl';
+import { ImportMetaUrlRewriter } from './ImportMetaUrlRewriter';
+import { SourceSplice } from './SourceSplice';
+import { DynamicImportScan, type StaticImportRecord } from '../../unit-format/dynamic-import-scan';
+import { WholePackageLoader } from './WholePackageLoader';
+import { FetchBudget, MAX_CONCURRENT_FETCHES } from './FetchBudget';
 import { ManifestCache } from './ManifestCache';
-import { SharedTextAdmission } from './SharedTextAdmission';
 import { SharedDepListLoader, type SharedDepListContext } from './SharedDepListLoader';
 import type { SharedDepFetchList } from '../../unit-format/fetch-list';
 import { SharedDepListMinter, type ListDynamicImportRewrites } from './SharedDepListMinter';
@@ -61,67 +69,6 @@ import { UnitDynamicImportRewriter } from './UnitDynamicImportRewriter';
 import { LoadDiagnosticsAccumulator } from './LoadDiagnosticsAccumulator';
 
 const RUNTIME_STYLE_ID_PREFIX = '__frontx-mfe-runtime-style-';
-
-/**
- * Width of every bounded fan-out in this file: the number of chunk-source
- * fetches one chain build may have in flight at once (see
- * {@link FetchBudget}), and the number of concurrent invocations within one
- * {@link boundedMap} batch (the shared-dep source fetches of a single
- * manifest).
- *
- * The width is chosen to stay well short of the browser's per-origin
- * connection pool, so that added concurrency still shortens wall-clock time
- * instead of just queuing behind that pool, while an unbounded fan-out
- * risks minting page-lifetime blob URLs (see the never-revoke invariant on
- * {@link createBlobUrlChainInternal}) for work a failed load will never
- * use.
- */
-const MAX_CONCURRENT_FETCHES = 6;
-
-/**
- * Run `task` over `items` with at most {@link MAX_CONCURRENT_FETCHES}
- * concurrent in-flight invocations. Returns one settled result per item, in
- * the SAME order as `items` (not completion order) — callers that need
- * deterministic, declaration-order error reporting (rather than
- * first-to-reject-in-wall-clock-time) can scan the returned array in order
- * for the first `rejected` entry.
- *
- * Used for the flat shared-dep batch only. The recursive chunk graph fans
- * its siblings out unbounded and throttles the fetches themselves through
- * the build-scoped {@link FetchBudget} instead, because a per-batch pool
- * cannot bound a recursion (see that class).
- *
- * Each `task` invocation runs synchronously up to its first `await` before
- * the pool moves on to start the next one, so any synchronous check-then-set
- * a caller performs before its own first `await` (e.g. a cache lookup
- * followed by issuing a fetch) is preserved relative to that item's own
- * fetch — only the *waiting* is made concurrent, not the dispatch ordering
- * guarantees a caller already relies on.
- */
-async function boundedMap<T, R>(
-  items: readonly T[],
-  task: (item: T, index: number) => Promise<R>
-): Promise<PromiseSettledResult<R>[]> {
-  const results: PromiseSettledResult<R>[] = new Array(items.length);
-  let cursor = 0;
-
-  const worker = async (): Promise<void> => {
-    while (cursor < items.length) {
-      const index = cursor;
-      cursor += 1;
-      try {
-        const value = await task(items[index], index);
-        results[index] = { status: 'fulfilled', value };
-      } catch (error) {
-        results[index] = { status: 'rejected', reason: error };
-      }
-    }
-  };
-
-  const workerCount = Math.min(MAX_CONCURRENT_FETCHES, items.length);
-  await Promise.all(Array.from({ length: workerCount }, () => worker()));
-  return results;
-}
 
 /**
  * An in-progress {@link MfeHandlerMF.createBlobUrlChain} construction.
@@ -242,17 +189,6 @@ interface LoadBlobState {
 }
 
 /**
- * What the mint of a whole-package entry needs to route its dynamic
- * imports through the load's lazy-import ABI: the entry's `chunkPath` —
- * the location, against the asset base, its calls resolve against — by
- * package name, and the per-load loader stub.
- */
-interface WholePackageLazy {
-  readonly chunkPaths: ReadonlyMap<string, string>;
-  readonly loaderUrl: () => string;
-}
-
-/**
  * What a lazy chunk (or a literal `import()` inside a minted shared
  * item) needs to fetch and mint the items its dependent list carries:
  * the list loader, the per-load list context, the shared-file URL
@@ -327,15 +263,32 @@ interface SharedDepListLoadContext {
  * promise itself (a build awaiting a promise another build created still
  * sees that promise reject on its own terms).
  */
-interface ChainBuildState {
-  failed: boolean;
-  /**
-   * Single concurrency budget for every chunk-source fetch this build
-   * issues — see {@link FetchBudget} for why the bound has to be build-wide
-   * rather than per fan-out batch. Present only on the path without a
-   * fetch list; a fetch-list load's chain build is unbounded.
-   */
-  readonly fetchBudget: FetchBudget | undefined;
+class ChainBuildState {
+  private broken = false;
+
+  constructor(
+    /**
+     * Single concurrency budget for every chunk-source fetch this build
+     * issues — see {@link FetchBudget} for why the bound has to be build-wide
+     * rather than per fan-out batch. Present only on the whole-package path;
+     * a fetch-list load's chain build is unbounded.
+     */
+    readonly fetchBudget: FetchBudget | undefined,
+    /**
+     * Whether the chunks this build reaches carry native literal or pattern
+     * dynamic imports that must reach the load's lazy-import ABI: set for a
+     * walk started by a whole-package entry's call, whose chunks are shared
+     * text the build emitted no ABI calls into.
+     */
+    readonly rewriteNativeDynamicImports: boolean,
+    /**
+     * The ledger of the attempt this build runs in. Once that attempt has
+     * failed or been released on timeout, the build is failed too, so the
+     * abandoned work starts no further fetch.
+     */
+    private readonly ledger?: AttemptSourceTextLedger
+  ) {}
+
   /**
    * Filenames this build has already raised a dependency-cycle diagnostic
    * for, so the same cycle is reported once per build however many branches
@@ -344,101 +297,55 @@ interface ChainBuildState {
    * Build-scoped for the same reason `failed` is: a detected cycle is a
    * fact about one build's traversal, not about the load.
    */
-  readonly reportedCycles: Set<string>;
-  /**
-   * Whether the chunks this build reaches carry native literal or pattern
-   * dynamic imports that must reach the load's lazy-import ABI: set for a
-   * walk started by a whole-package entry's call, whose chunks are shared
-   * text the build emitted no ABI calls into.
-   */
-  readonly rewriteNativeDynamicImports: boolean;
-}
+  readonly reportedCycles = new Set<string>();
 
-/**
- * Sentinel wrapper carrying a deterministic failure out of the retry loop as
- * a fulfilment, so `RetryHandler` — which retries every rejection — makes no
- * further attempt. Unwrapped by `load()` into the original rejection.
- */
-const DETERMINISTIC_FAILURE = Symbol('frontx.deterministicFailure');
+  /** Whether this build, or the attempt it runs in, has failed. */
+  get failed(): boolean {
+    return this.broken || this.ledger?.hasFailed === true;
+  }
 
-interface DeterministicFailure {
-  readonly [DETERMINISTIC_FAILURE]: Error;
-}
-
-function isDeterministicFailureSentinel(
-  value: unknown
-): value is DeterministicFailure {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    DETERMINISTIC_FAILURE in (value as object)
-  );
-}
-
-/**
- * Name the shared dependencies left unresolved by a stalled dependency-order
- * pass, together with the imports among them that close the cycle.
- */
-function describeSharedDepCycle(pending: ReadonlyMap<string, string>): string {
-  const names = [...pending.keys()];
-  return names
-    .map((name) => {
-      const importsOthers = names.filter(
-        (other) => other !== name && DynamicModuleOps.sourceImports(pending.get(name) ?? '', other)
-      );
-      return importsOthers.length > 0
-        ? `'${name}' (imports ${importsOthers.map((o) => `'${o}'`).join(', ')})`
-        : `'${name}'`;
-    })
-    .join(', ');
+  set failed(value: boolean) {
+    this.broken = value;
+  }
 }
 
 /** Start a fresh chain build (see {@link ChainBuildState}). */
 // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-build-failure-scope
 function createChainBuildState(
   bounded: boolean,
-  rewriteNativeDynamicImports = false
+  rewriteNativeDynamicImports = false,
+  ledger?: AttemptSourceTextLedger
 ): ChainBuildState {
-  return {
-    failed: false,
-    fetchBudget: bounded ? new FetchBudget(MAX_CONCURRENT_FETCHES) : undefined,
-    reportedCycles: new Set<string>(),
+  return new ChainBuildState(
+    bounded ? new FetchBudget(MAX_CONCURRENT_FETCHES) : undefined,
     rewriteNativeDynamicImports,
-  };
+    ledger
+  );
 }
 // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-build-failure-scope
 
 /**
  * Max source-text entries retained. Expose-chunk entries evict oldest-first.
  *
- * Concurrent fan-out (see {@link boundedMap}) can insert up to
- * {@link MAX_CONCURRENT_FETCHES} entries from a single burst instead of one
- * at a time, which raises eviction odds under this capacity versus a
- * strictly-sequential insertion pattern. This is not a correctness break —
- * `LruCache.delete` only removes the map entry;
- * a caller already holding the evicted entry's promise still resolves it
- * (see {@link LruCache}) — but a too-small capacity can reduce the
- * cross-MFE cache hit rate for large expose chains. 256 comfortably covers
+ * Concurrent fan-out (see {@link MAX_CONCURRENT_FETCHES}) can insert several
+ * entries from a single burst instead of one at a time, which raises eviction
+ * odds under this capacity versus a strictly-sequential insertion pattern.
+ * This is not a correctness break — `LruCache.delete` only removes the map
+ * entry; a caller already holding the evicted entry's promise still resolves
+ * it (see {@link LruCache}) — but a too-small capacity can reduce the
+ * cross-MFE cache hit rate for large expose chains. The capacity covers
  * realistic per-load chunk counts (an expose chain rarely exceeds a few
  * dozen static-import chunks) with headroom for several concurrent loads'
- * worth of burst insertions; re-evaluate upward if a real MFE's static
- * import graph approaches this width.
+ * worth of burst insertions; raise it if a real MFE's static import graph
+ * approaches this width.
  */
 export const SOURCE_TEXT_CACHE_CAPACITY = 256;
-/**
- * Max adoption-notice ledger entries retained (keyed by name@version plus
- * the declaring manifest's id).
- *
- * Entries are bounded by the distinct (shared dep, manifest) pairs a host
- * actually observes without a declared `contentHash` — smaller in practice
- * than the realm shared-dependency cache's 128-entry bound (see
- * `SHARED_DEP_TEXT_CACHE_CAPACITY` in `RealmSharedDepTextCacheProvider.ts`),
- * since one manifest usually contributes only a handful of such pairs.
- * 64 keeps ample headroom while
- * still bounding a long-running host's memory instead of retaining one
- * string per pair for the handler's entire lifetime.
- */
-const SHARED_DEP_ADOPTION_NOTICE_CACHE_CAPACITY = 64;
+
+/** The per-attempt budget when the handler option `timeout` is absent. */
+const DEFAULT_TIMEOUT_MS = 30000;
+
+/** The retries after a failed attempt when the handler option `retries` is absent. */
+const DEFAULT_RETRIES = 2;
 
 /**
  * Configuration for MFE loading behavior.
@@ -447,9 +354,9 @@ interface MfeLoaderConfig {
   timeout?: number;
   retries?: number;
   /**
-   * Byte budget for the realm shared-dep text cache (finding F-012,
-   * ADR-0035). The FIRST handler to publish the realm entry sets it;
-   * later handlers adopt the published cache unchanged.
+   * Byte budget for the realm shared-dep text cache (ADR-0035). The FIRST
+   * handler to publish the realm entry sets it; later handlers adopt the
+   * published cache unchanged.
    */
   sharedDepTextCacheMaxBytes?: number;
 }
@@ -494,14 +401,17 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 
   readonly bridgeFactory: MfeBridgeFactoryDefault;
   private readonly manifestCache: ManifestCache;
-  private readonly config: MfeLoaderConfig;
+  private readonly config: Required<MfeLoaderConfig>;
   private readonly retryHandler: RetryHandler;
   // LRU-bounded so a long-running host that loads many distinct MFEs cannot
   // grow the cache without limit. Expose-chunk source text has no reuse
   // value after its load settles, so oldest-first eviction is acceptable.
   private readonly sourceTextCache = new LruCache<string, Promise<string>>(
     SOURCE_TEXT_CACHE_CAPACITY,
+    (text) => this.settledSourceTexts.has(text),
   );
+  /** The requests of `sourceTextCache` that have settled; only those may be evicted. */
+  private readonly settledSourceTexts = new WeakSet<Promise<string>>();
 
   /**
    * Reference to the realm-wide shared-dependency source-text cache,
@@ -524,13 +434,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * manifest's own resolved URL rather than shared cross-MFE
    * (`cpt-frontx-adr-shared-dep-reuse`).
    *
-   * The realm-wide bound is 128 resident MAPPINGS, not per handler and not
-   * per copy — see `RealmSharedDepTextCacheProvider.ts` — and bounds mapping
-   * count, not retained bytes: no byte ceiling is claimed on this cache's
-   * behalf. Its lifetime is the realm's page lifetime: a resident fulfilled
-   * value stays strongly reachable for as long as it survives eviction, and
-   * no handler discard, registry disposal, extension unmount, or extension
-   * unregistration clears or releases it — there is no retainer count.
+   * The realm-wide bound is a byte budget on the retained text, not per
+   * handler and not per copy — see `ByteBudgetLruCache` and
+   * `RealmSharedDepTextCacheProvider.ts`. Its lifetime is the realm's page
+   * lifetime: a resident fulfilled value stays strongly reachable for as long
+   * as it survives eviction, and no handler discard, registry disposal,
+   * extension unmount, or extension unregistration clears or releases it —
+   * there is no retainer count.
    *
    * The rendezvous this cache is reached through is TRUSTED same-realm
    * coordination state, not an authenticity or confidentiality boundary: a
@@ -543,27 +453,18 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-hold-reference
 
   /**
-   * Tracks which `name@version` + manifest id pairs have already received
-   * the adoption notice emitted when a shared-dep entry declares no
-   * `contentHash` (see `inst-emit-adoption-notice`). Scoped to the handler
-   * instance, so the notice fires at most once per pair across every load
-   * this handler serves — not once per load — while the pair's entry
-   * survives in this ledger.
-   *
-   * LRU-bounded for the same reason as `sourceTextCache` and
-   * `sharedDepTextCache`: an unbounded ledger would retain one string per
-   * pair for the handler's entire lifetime. Eviction here only means the
-   * pair may be renotified later; it never affects correctness of the load.
+   * The whole-package half of a load: fetches and mints the shared entries of
+   * a manifest that holds neither `units` nor `lists`. Scoped to the handler
+   * instance, so the adoption notice it emits for an entry without a
+   * `contentHash` fires at most once per pair across every load this handler
+   * serves.
    */
-  private readonly sharedDepAdoptionNoticesEmitted = new LruCache<string, true>(
-    SHARED_DEP_ADOPTION_NOTICE_CACHE_CAPACITY,
-  );
+  private readonly wholePackageLoader: WholePackageLoader;
 
   /**
-   * Per-handler diagnostics accumulator (F-011): byte-agreement
-   * reports deduplicated once per page, per-load
-   * bytes/fallback/realm totals. Instance-held; assigned in the
-   * constructor.
+   * Per-handler diagnostics accumulator: warnings deduplicated once per page
+   * and the per-load bytes and realm cache totals. Instance-held; assigned in
+   * the constructor.
    */
   private readonly loadDiagnostics: LoadDiagnosticsAccumulator;
 
@@ -576,17 +477,22 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     this.manifestCache = new ManifestCache();
     this.retryHandler = new RetryHandler();
     this.config = {
-      timeout: config.timeout ?? 30000,
-      retries: config.retries ?? 2,
+      timeout: config.timeout ?? DEFAULT_TIMEOUT_MS,
+      retries: config.retries ?? DEFAULT_RETRIES,
       sharedDepTextCacheMaxBytes:
         config.sharedDepTextCacheMaxBytes ??
         DEFAULT_SHARED_DEP_TEXT_CACHE_MAX_BYTES,
     };
     // The realm byte budget comes from this handler's config only when
     // this copy publishes the realm entry first; later handlers adopt the
-    // published cache unchanged (F-012, ADR-0035).
+    // published cache unchanged (ADR-0035).
     this.sharedDepTextCache = RealmSharedDepTextCacheProvider.getCache(
       this.config.sharedDepTextCacheMaxBytes
+    );
+    this.wholePackageLoader = new WholePackageLoader(
+      this.sharedDepTextCache,
+      (url, ledger) => this.fetchSharedText(url, ledger),
+      new LruCache<string, true>(SHARED_DEP_ADOPTION_NOTICE_CACHE_CAPACITY)
     );
     this.loadDiagnostics = new LoadDiagnosticsAccumulator();
   }
@@ -599,28 +505,29 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * distinct cache entries and distinct module evaluations.
    */
   // @cpt-flow:cpt-frontx-flow-mfe-isolation-load:p1
+  // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-register
+  // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-trigger-load
   async load(
     entry: MfeEntryMF,
     extensionId: string
   ): Promise<MfeEntryLifecycle<ChildMfeBridge>> {
-    // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-register
-    // Registry registration happens via MFE host framework
-    // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-register
-    // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-trigger-load
-    // Load action triggered by actor via MFE host
     // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-trigger-load
+    // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-register
     // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-check-cache
     const cached = MfeHandlerMF.loadCache.get(extensionId);
     // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-check-cache
+    // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-if-cached
     if (cached !== undefined) {
-    // Registry registration happens via MFE host framework
-    // Load action triggered by actor via MFE host
-      // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-if-cached
       // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-return-cached
+      // @cpt-begin:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-remount
+      // The same extension instance reuses its load-cache entry: no module
+      // is re-evaluated and no blob URL is minted.
       return cached;
+      // @cpt-end:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-remount
       // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-return-cached
-      // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-if-cached
     }
+    // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-if-cached
+    // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-else-new-load
     // The timeout wraps the ATTEMPT, inside the retry loop — every retry of
     // a failed attempt is raced against its own fresh budget rather than
     // sharing the first attempt's, so a load's worst-case wall clock is the
@@ -628,74 +535,49 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // Each attempt gets its own ledger of the source-text cache entries it
     // waits on, so a timeout releases exactly that attempt's entries and
     // the retry issues its own fetch (see `AttemptSourceTextLedger`).
-    // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-if-deterministic-failure
-    // A deterministic refusal (a dependency cycle in the microfrontend's own
-    // chunk graph, or manifest data the handler refuses) is settled as a
-    // FULFILLED sentinel rather than a rejection, so `RetryHandler` sees
-    // nothing to retry: no further attempt is made, no backoff is waited,
-    // and the fetches are not multiplied. The sentinel is unwrapped back into the original
-    // rejection immediately below, so callers of `load()` see exactly the
-    // error the attempt raised. Every other failure keeps rejecting and so
-    // keeps its retries.
-    const promise = this.retryHandler
-      .retry<MfeEntryLifecycle<ChildMfeBridge> | DeterministicFailure>(
-        async () => {
-          const ledger = new AttemptSourceTextLedger();
-          try {
-            return await this.withLoadTimeout(
-              this.loadInternal(entry, extensionId, ledger),
-              entry.id,
-              ledger
-            );
-          } catch (error) {
-            ledger.fail();
-            if (DeterministicLoadFailure.is(error)) {
-              // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-no-retry-deterministic
-              return { [DETERMINISTIC_FAILURE]: error as Error };
-              // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-no-retry-deterministic
-            }
-            throw error;
-          } finally {
-            // The attempt has settled: its record of waited-on entries is
-            // dropped, so the per-load state's reference to it retains no
-            // fetched text (`inst-lto-drop-record-on-settle`).
-            ledger.settle();
-          }
-        },
-        this.config.retries ?? 0,
-        1000
-      )
-      .then((result) => {
-        if (isDeterministicFailureSentinel(result)) {
-          throw result[DETERMINISTIC_FAILURE];
+    // Only a network failure or an expired budget is retried: every other
+    // failure is decided by data a repeat attempt cannot change and fails
+    // the load at once, without a backoff.
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-per-attempt-budget
+    const promise = this.retryHandler.retry(
+      async () => {
+        const ledger = new AttemptSourceTextLedger();
+        try {
+          return await this.withLoadTimeout(
+            this.loadInternal(entry, extensionId, ledger),
+            entry.id,
+            ledger
+          );
+        } catch (error) {
+          ledger.fail();
+          throw error;
+        } finally {
+          // The attempt has settled: its record of waited-on entries is
+          // dropped, so the per-load state's reference to it retains no
+          // fetched text (`inst-lto-drop-record-on-settle`).
+          ledger.settle();
         }
-        return result;
-      });
-    // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-if-deterministic-failure
+      },
+      this.config.retries,
+      INITIAL_RETRY_DELAY_MS,
+      (error) => RetryableLoadError.isBranded(error)
+    );
+    // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-per-attempt-budget
+    // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-else-new-load
     // @cpt-begin:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-isolated
     MfeHandlerMF.loadCache.set(extensionId, promise);
     // @cpt-end:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-isolated
     // On failure, evict so future calls can retry from scratch.
     // Identity check guards against racing with a newer successful load.
     // @cpt-begin:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-load-failed-retry
+    // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-evict-raise
     promise.catch(() => {
       if (MfeHandlerMF.loadCache.get(extensionId) === promise) {
         MfeHandlerMF.loadCache.delete(extensionId);
       }
     });
+    // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-evict-raise
     // @cpt-end:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-load-failed-retry
-    // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-resolve-manifest
-    // Manifest resolved inside loadInternal()
-    // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-resolve-manifest
-    // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-build-shared-blobs
-    // Shared blob URLs built inside loadInternal()
-    // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-build-shared-blobs
-    // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-build-expose-chain
-    // Expose blob URL chain built inside loadInternal()
-    // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-build-expose-chain
-    // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-actor-mount
-    // Actor mounts lifecycle via registry/extension domain
-    // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-actor-mount
     // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-return-lifecycle
     return promise;
     // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-return-lifecycle
@@ -704,51 +586,41 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   /**
    * Race a single load attempt against `this.config.timeout`.
    *
-   * `config.timeout` is consulted here rather than left unused: without a
-   * race against a timer, `RetryHandler.retry` only retries on a thrown
-   * error, so a load that hangs (network never resolves, a dependency
+   * Without a race against a timer, `RetryHandler.retry` only retries on a
+   * thrown error, so a load that hangs (network never resolves, a dependency
    * cycle, etc.) leaves the returned promise pending forever. Racing the
    * attempt against a timer converts that into BOUNDED FAILURE: after a
-   * known wall-clock budget the caller gets a diagnostic `MfeLoadError`
-   * instead of a promise that never settles.
+   * known wall-clock budget the caller gets a diagnostic `RetryableLoadError`
+   * (an `MfeLoadError`) instead of a promise that never settles; an expired
+   * budget is one of the two failures that are retried.
    *
    * The race is also a recovery path, not only a bound.
    * {@link fetchSourceText} stores the in-flight fetch promise in the
-   * handler-level, URL-keyed `sourceTextCache` (and
-   * {@link fetchSharedDepSources} does the same in the
-   * two-tier-keyed `sharedDepTextCache`) and evicts it only when
-   * that promise REJECTS, so a fetch that never settles would never be
-   * evicted and every retry would rejoin the same hung promise and expire
-   * against its own budget in turn. On expiry this method therefore
-   * releases the entries the abandoned attempt was waiting on, through
-   * that attempt's {@link AttemptSourceTextLedger} and under the same
-   * identity check the eviction-on-rejection uses, so the next attempt
-   * issues its own fetch and can actually succeed.
+   * handler-level, URL-keyed `sourceTextCache` (and the whole-package and
+   * list paths do the same in the realm `sharedDepTextCache`) and evicts it
+   * only when that promise REJECTS, so a fetch that never settles would never
+   * be evicted and every retry would rejoin the same hung promise and expire
+   * against its own budget in turn. On expiry this method therefore releases
+   * the entries the abandoned attempt was waiting on, through that attempt's
+   * {@link AttemptSourceTextLedger} and under the same identity check the
+   * eviction-on-rejection uses, so the next attempt issues its own fetch and
+   * can actually succeed. The release also marks the attempt failed, so the
+   * abandoned chain build starts no further fetch and publishes nothing.
    *
-   * Releasing those cache entries is not cancellation: this method still
-   * does not cancel the underlying fetch/blob-URL work in flight when the
-   * timer wins the race — there is no `AbortController`
-   * plumbed through this file (see the sibling {@link boundedMap} fan-out,
-   * which relies on a `ChainBuildState` token rather than cancellation
-   * for the same reason) — so a timed-out attempt's background work keeps
-   * running to completion and its results are simply never observed by
-   * this call.
+   * Releasing those cache entries is not cancellation: nothing is aborted —
+   * no `AbortController` is plumbed through this file — so a timed-out
+   * attempt's in-flight work runs to completion and its results are simply
+   * never observed by this call.
    *
-   * `this.config.timeout` is never `undefined` in practice — the
-   * constructor fills `config.timeout ?? 30000`, and `??` only substitutes
-   * `null`/`undefined`, so an explicit `0` (or any other falsy number)
-   * passed by a caller survives the constructor unchanged. A timeout of
-   * `0` is the conventional "disable the timeout" idiom, so it — and any
-   * other non-positive value — is treated as "no timeout" below rather
-   * than as a zero-delay timer that would fail every attempt immediately.
+   * A timeout of `0` is the conventional "disable the timeout" idiom, so it —
+   * and any other non-positive value — is treated as "no timeout" below
+   * rather than as a zero-delay timer that would fail every attempt
+   * immediately.
    *
-   * This method races ONE attempt, not one `load()` call. `RetryHandler`
-   * (see {@link RetryHandler.retry}) wraps every retry of a failed attempt
-   * in its own call to this method, so with the defaults (`timeout: 30000`,
-   * `retries: 2`) a single `load()` call's worst-case wall clock is roughly
-   * `timeout × (retries + 1)` plus `RetryHandler`'s exponential backoff
-   * between attempts — on the order of 90+ seconds, not the 30 seconds the
-   * `timeout` field name alone would suggest.
+   * This method races ONE attempt, not one `load()` call: `RetryHandler`
+   * wraps every retry of a failed attempt in its own call to this method, so
+   * a single `load()` call's worst-case wall clock is roughly
+   * `timeout × (retries + 1)` plus the backoff between attempts.
    */
   private withLoadTimeout<T>(
     attempt: Promise<T>,
@@ -759,7 +631,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     const timeoutMs = this.config.timeout;
     // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-read-budget
     // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-if-disabled
-    if (timeoutMs === undefined || timeoutMs <= 0) {
+    if (timeoutMs <= 0) {
       // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-return-unraced
       return attempt;
       // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-return-unraced
@@ -772,18 +644,12 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       timer = setTimeout(() => {
         // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-raise-timeout
         reject(
-          new MfeLoadError(
+          new RetryableLoadError(
             `MFE load for '${entryId}' timed out after ${timeoutMs}ms`,
             entryId
           )
         );
         // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-raise-timeout
-        // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-no-cancel
-        // Nothing is aborted here: the losing attempt's fetches and blob
-        // URL construction keep running to completion, their results
-        // simply never observed by this call (see this method's doc
-        // comment and the retention invariant of ADR-0004).
-        // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-no-cancel
         // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-abandoned-source-text
         // What IS given up is this attempt's claim on the source-text
         // cache entries it was waiting on: released (identity-checked,
@@ -797,7 +663,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 
     // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-race-attempt
     // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-return-attempt
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-no-cancel
+    // The race abandons the losing attempt's result and aborts nothing: its
+    // fetches and blob URL construction keep running to completion, their
+    // results simply never observed by this call (the retention invariant
+    // of ADR-0004).
     return Promise.race([attempt, timeout]).finally(() => clearTimeout(timer));
+    // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-no-cancel
     // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-return-attempt
     // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-race-attempt
   }
@@ -812,7 +684,9 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     ledger?: AttemptSourceTextLedger
   ): Promise<MfeEntryLifecycle<ChildMfeBridge>> {
     // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-resolve-registered-manifest
+    // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-resolve-manifest
     const manifest = await this.resolveManifest(entry.manifest);
+    // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-resolve-manifest
     // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-resolve-registered-manifest
 
     // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-trigger-load
@@ -830,12 +704,14 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 
     const loadedModule = moduleFactory();
 
+    // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-if-bad-lifecycle
     if (!this.isValidLifecycleModule(loadedModule)) {
       throw new MfeLoadError(
         `Module '${entry.exposedModule}' must implement MfeEntryLifecycle interface (mount/unmount)`,
         entry.id
       );
     }
+    // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-if-bad-lifecycle
 
     // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-return-lifecycle
     return this.wrapLifecycleWithStylesheets(
@@ -884,9 +760,9 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-public-path
 
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-expose-chunk
-    // Derive expose chunk filename directly from entry metadata — no regex needed.
+    // The entry module is the first element of the entry's own list.
     // Refused before any fetch: the refusal depends only on the manifest, so
-    // it is deterministic and not retried.
+    // it is not retried.
     const exposeChunkFilename = exposeAssets.js.sync[0];
     if (!exposeChunkFilename) {
       throw MfeHandlerMF.manifestDataRejection(
@@ -896,9 +772,16 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     }
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-expose-chunk
 
+    // The entry module's identity is its resolved URL, as for every chunk of
+    // the load, however `exposeAssets` spells it.
+    const entryKey = MfeHandlerMF.chunkKey(baseUrl, exposeChunkFilename);
+
     // Build shared dep blob URLs first (leaves first, dependency order).
     // Each dep's standalone ESM may import other shared deps as bare specifiers;
     // those are rewritten to already-resolved blob URLs before creating the blob.
+    // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-build-shared-blobs
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-run-manifest-discovery
+    // @cpt-begin:cpt-frontx-state-mfe-isolation-load-blob-state:p1:inst-blob-shared-failed
     const {
       urls: sharedDepBlobUrls,
       sharedDepLists,
@@ -913,6 +796,9 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       exposeChunkFilename,
       ledger
     );
+    // @cpt-end:cpt-frontx-state-mfe-isolation-load-blob-state:p1:inst-blob-shared-failed
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-run-manifest-discovery
+    // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-build-shared-blobs
 
     // @cpt-begin:cpt-frontx-state-mfe-isolation-load-blob-state:p1:inst-blob-building
     const loadState: LoadBlobState = {
@@ -925,7 +811,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         sharedDepLists !== undefined
           ? sharedDepLists.ctx.declaredSpecifiers
           : new Set((manifest.shared ?? []).map((d) => d.name)),
-      entryChunkFilename: exposeChunkFilename,
+      entryChunkFilename: entryKey,
       attemptLedger: ledger,
       sharedDepLists,
       entrySource,
@@ -934,35 +820,44 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     bindWholePackageLoad?.(loadState);
     if (sharedDepLists !== undefined) {
       sharedDepLists.ownChunkMinted.has = (location) =>
-        loadState.blobUrlMap.has(location);
+        loadState.blobUrlMap.has(MfeHandlerMF.chunkKey(baseUrl, location));
     }
 
     // Fresh per-build failure token for this chain build (see
     // `ChainBuildState`) — scoped to this one expose-chunk build, not to
     // `loadState`, which lives for the whole page-lifetime load.
-    const build = createChainBuildState(sharedDepLists === undefined);
+    const build = createChainBuildState(sharedDepLists === undefined, false, ledger);
 
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-css
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-collect-css
     // Collect CSS paths from exposeAssets (sync injected at mount; async lazy).
     const stylesheetPaths = [
       ...exposeAssets.css.sync,
       ...exposeAssets.css.async,
     ];
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-collect-css
     // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-css
 
     // Build blob URL chain for the expose chunk and all its static deps.
     // Bare specifiers within those chunks are rewritten to shared dep blob URLs.
-    await this.createBlobUrlChain(loadState, exposeChunkFilename, build);
+    // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-build-expose-chain
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-rewrite-expose-chunk
+    // @cpt-begin:cpt-frontx-state-mfe-isolation-load-blob-state:p1:inst-blob-failed
+    await this.createBlobUrlChain(loadState, entryKey, build);
+    // @cpt-end:cpt-frontx-state-mfe-isolation-load-blob-state:p1:inst-blob-failed
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-rewrite-expose-chunk
+    // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-build-expose-chain
 
-    const exposeBlobUrl = loadState.blobUrlMap.get(exposeChunkFilename);
+    const exposeBlobUrl = loadState.blobUrlMap.get(entryKey);
     if (!exposeBlobUrl) {
       throw new MfeLoadError(
-        `Failed to create blob URL for expose chunk '${exposeChunkFilename}'`,
+        `Failed to create blob URL for expose chunk '${entryKey}'`,
         entryId
       );
     }
 
     // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-import-expose
+    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-import-expose-chunk
     const exposeModule = await DynamicModuleOps.importBlobModule(exposeBlobUrl);
     // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-import-expose
 
@@ -970,11 +865,14 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // The expose chunk exports the lifecycle object as `default`. Fall back to
     // the full module if default is absent (non-MF ESM expose pattern).
     const moduleRecord = exposeModule as Record<string, unknown>;
+    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-import-expose-chunk
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-return
     return {
       moduleFactory: () => moduleRecord['default'] ?? exposeModule,
       stylesheetPaths,
       baseUrl,
     };
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-return
     // @cpt-end:cpt-frontx-state-mfe-isolation-load-blob-state:p1:inst-blob-complete
   }
 
@@ -991,7 +889,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * must be http(s): an opaque URL such as data:, blob: or javascript: has no
    * directory to join chunk paths under, and no other scheme serves the
    * chunks. The returned base always ends with '/' and carries no query or
-   * hash (`asDirectoryBase`).
+   * hash.
    */
   private resolvePublicPath(publicPath: string, entryId: string): string {
     const resolved = this.resolvePublicPathUrl(publicPath, entryId);
@@ -1003,7 +901,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       );
     }
     // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid
-    return MfeHandlerMF.asDirectoryBase(resolved);
+    return AssetBaseUrl.directory(resolved);
   }
 
   /** `publicPath` resolved to an absolute URL, against the document if relative. */
@@ -1019,12 +917,12 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     }
     // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid
     const value = publicPath === '' ? './' : publicPath;
-    const absolute = MfeHandlerMF.parseUrl(value);
+    const absolute = AssetBaseUrl.parse(value);
     if (absolute) {
       return absolute;
     }
     // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid
-    if (MfeHandlerMF.hasUrlScheme(value)) {
+    if (AssetBaseUrl.hasScheme(value)) {
       throw MfeHandlerMF.manifestDataRejection(
         `manifest.metaData.publicPath "${publicPath}" is not a valid URL.`,
         entryId
@@ -1038,7 +936,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         entryId
       );
     }
-    const resolved = MfeHandlerMF.parseUrl(value, document.baseURI);
+    const resolved = AssetBaseUrl.parse(value, document.baseURI);
     if (!resolved) {
       throw MfeHandlerMF.manifestDataRejection(
         `manifest.metaData.publicPath "${publicPath}" is not a valid URL.`,
@@ -1052,106 +950,14 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   /**
    * A load error for manifest data the handler refuses: an unresolvable or
    * non-http(s) `publicPath`, the unresolved `"auto"` placeholder, a
-   * shared `chunkPath` outside its rules, or an empty
-   * `exposeAssets.js.sync`. The refusal depends only on the
-   * manifest, so it is marked deterministic and the load is not retried.
+   * `sharedBase` or location outside its rules, or an empty
+   * `exposeAssets.js.sync`. The refusal depends only on the manifest, so it
+   * is not a network failure and the load is not retried.
    */
   private static manifestDataRejection(message: string, entryId: string): MfeLoadError {
     // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-manifest-invalid-fail
-    return DeterministicLoadFailure.mark(new MfeLoadError(message, entryId));
+    return new MfeLoadError(message, entryId);
     // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-manifest-invalid-fail
-  }
-
-  /** `new URL(value, base)`, or `undefined` where the constructor would throw. */
-  private static parseUrl(value: string, base?: string): URL | undefined {
-    try {
-      return new URL(value, base);
-    } catch {
-      return undefined;
-    }
-  }
-
-  /** Whether `value` starts with a URL scheme, so it is meant as an absolute URL. */
-  private static hasUrlScheme(value: string): boolean {
-    return /^[a-z][a-z\d+.-]*:/i.test(value);
-  }
-
-  /**
-   * `url` as a directory base: its pathname ends with '/', and the query and
-   * hash are dropped. Chunk URLs are built both by joining the base and a
-   * filename and by URL resolution against the base; only a directory base
-   * makes the two agree, and neither carries a query or hash of the base into
-   * the chunk URL.
-   */
-  private static asDirectoryBase(url: URL): string {
-    if (!url.pathname.endsWith('/')) {
-      url.pathname += '/';
-    }
-    url.search = '';
-    url.hash = '';
-    return url.href;
-  }
-
-  /**
-   * The absolute fetch URL of a shared dependency. `chunkPath` is an http(s)
-   * URL, taken as its parsed href so that equivalent spellings of one URL share
-   * one cache key and one fetch, or a path relative to publicPath
-   * (`MfManifestShared.chunkPath`), so a leading '/' is joined under `baseUrl`
-   * rather than resolved to the origin root. A protocol-relative value such as
-   * '//cdn/x.js', a URL scheme other than http(s), also behind leading '/'s,
-   * a backslash anywhere (URL parsing reads it as '/'), a space or a control
-   * character (URL parsing strips, drops or encodes it) and a value that is
-   * not a string at all fail the load. The relative case is then checked on
-   * the resolved URL, not on the raw string: it must stay under `baseUrl`, a
-   * directory with no query or hash (`asDirectoryBase`), so another origin
-   * and a '..' climb out of the base under URL resolution (a percent-encoded
-   * '%2e%2e' included) fail the load too. Either way the URL must name a
-   * file: a value that resolves to a directory, such as '/', '.', '?v=1' or
-   * '#x' (all the base itself), fails the load rather than fetching the
-   * directory as a module.
-   */
-  private static resolveSharedChunkUrl(
-    dep: MfManifestShared,
-    baseUrl: string,
-    entryId: string
-  ): string {
-    const { chunkPath } = dep;
-    // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid
-    const rejection = () =>
-      MfeHandlerMF.manifestDataRejection(
-        `manifest.shared "${dep.name}" chunkPath "${String(chunkPath)}" is neither ` +
-          'an http(s) URL of a file nor a file path that stays under ' +
-          'manifest.metaData.publicPath.',
-        entryId
-      );
-    // A non-string value is rejected rather than coerced.
-    if (typeof (chunkPath as unknown) !== 'string') {
-      throw rejection();
-    }
-    const isControlOrSpace = (char: string): boolean => {
-      const code = char.charCodeAt(0);
-      return code <= 0x20 || (code >= 0x7f && code <= 0x9f);
-    };
-    if ([...chunkPath].some((char) => isControlOrSpace(char) || char === '\\')) {
-      throw rejection();
-    }
-    if (/^https?:\/\//i.test(chunkPath)) {
-      const absolute = MfeHandlerMF.parseUrl(chunkPath);
-      if (!absolute || absolute.pathname.endsWith('/')) {
-        throw rejection();
-      }
-      return absolute.href;
-    }
-    const relativePath = chunkPath.replace(/^\/+/, '');
-    if (chunkPath.startsWith('//') || MfeHandlerMF.hasUrlScheme(relativePath)) {
-      throw rejection();
-    }
-    const url = MfeHandlerMF.parseUrl(relativePath, baseUrl);
-    if (!url?.href.startsWith(baseUrl) || url.pathname.endsWith('/')) {
-      throw rejection();
-    }
-    // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid
-    return url.href;
   }
 
   /**
@@ -1196,12 +1002,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-manifest-invalid
   }
 
-  // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-if-bad-lifecycle
-  // Lifecycle contract validation failure path
-  // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-if-bad-lifecycle
-  // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-evict-raise
-  // Evict cache and raise load error on bad lifecycle
-  // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-evict-raise
   // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-validate-lifecycle
   private isValidLifecycleModule(
     module: unknown
@@ -1235,10 +1035,12 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       // own mount would close it and a registry built there would come up as
       // a root. The link elements are appended before the MFE renders and
       // their loading is not awaited, so first paint does not wait on it.
+      // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-actor-mount
       mount: (container, bridge, mountContext) => {
         this.injectRemoteStylesheets(container, stylesheetPaths, baseUrl);
         return lifecycle.mount(container, bridge, mountContext);
       },
+      // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-actor-mount
       // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-wrap-mount-synchronous
       // @cpt-end:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-active
       // @cpt-begin:cpt-frontx-state-mfe-isolation-module-lifecycle:p1:inst-to-disposed
@@ -1350,14 +1152,12 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-manifest-by-id
 
     // @cpt-begin:cpt-frontx-flow-mfe-isolation-load:p1:inst-manifest-unresolved-raise
-    // Deterministic: the registry answers the same on every attempt, so the
-    // failure is not retried.
-    throw DeterministicLoadFailure.mark(
-      new MfeLoadError(
-        `Manifest '${manifestRef}' not found: it is not registered with the type ` +
-          'system of the registry this handler is registered into.',
-        manifestRef
-      )
+    // The registry answers the same on every attempt, so the failure is not
+    // retried.
+    throw new MfeLoadError(
+      `Manifest '${manifestRef}' not found: it is not registered with the type ` +
+        'system of the registry this handler is registered into.',
+      manifestRef
     );
     // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-manifest-unresolved-raise
   }
@@ -1366,17 +1166,16 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 
   // @cpt-algo:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1
   /**
-   * Build blob URLs for all shared dependencies from standalone ESM files.
-   *
-   * Processes shared deps in manifest order (must be dependency-ordered: leaves first).
-   * Each dep's standalone ESM may import other shared deps as bare specifiers —
-   * those are rewritten to already-resolved blob URLs before creating the blob.
-   * Per-load fresh blob URLs ensure isolated module instances.
+   * Build the load's shared-dependency blob URLs. A manifest that holds
+   * `units` or `lists` takes the fetch-list path, one round for the exposed
+   * module's list; a manifest that holds neither takes the whole-package
+   * path ({@link WholePackageLoader}), one standalone file per declared
+   * `shared[]` entry.
    *
    * On the fetch-list path the entry chunk's source request is started here,
-   * in the round of the list's units and own chunks, and its promise is returned as `entrySource`
-   * for the load to hand to the entry chunk's build; the legacy `chunkPath`
-   * path starts no entry request and returns none.
+   * in the round of the list's units and own chunks, and its promise is
+   * returned as `entrySource` for the load to hand to the entry chunk's
+   * build; the whole-package path starts no entry request and returns none.
    */
   private async buildSharedDepBlobUrls(
     manifest: MfManifest,
@@ -1392,19 +1191,18 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     entrySource?: Promise<string>;
     bindWholePackageLoad?: (loadState: LoadBlobState) => void;
   }> {
-    // `sources`/`sharedDepBlobUrls` are keyed by bare `dep.name`, while
-    // `sharedDepTextCache` is keyed by the more precise `name@version`. Two
-    // shared entries with the same name but different versions would
-    // silently overwrite one another in the name-keyed maps. Re-keying
-    // every map end-to-end to `name@version` would ripple through
-    // `rewriteBareSpecifiers` (which rewrites bare specifiers like
-    // `from "react"` — it needs the bare name, not a versioned key) and the
-    // static-import chain's shared-dep lookups, for a manifest this handler
-    // already documents ({@link resolveManifest}) that it trusts. Failing
-    // fast on a same-name collision is the smaller, targeted fix.
+    // `sources`/`sharedDepBlobUrls` are keyed by bare `dep.name`. Two shared
+    // entries with the same name but different versions would silently
+    // overwrite one another in the name-keyed maps, and re-keying every map
+    // to `name@version` would ripple through the bare-specifier rewrite,
+    // which needs the bare name. Failing fast on a same-name collision is
+    // the smaller, targeted fix.
     this.assertUniqueSharedDepNames(manifest, entryId);
+    // @cpt-begin:cpt-frontx-algo-unit-format-contract-fetch-list-schema:p1:inst-return-contract-output
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-unit-fields
     const entryList = manifest.lists?.[exposedModule];
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-unit-fields
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-if-fetch-list
     if (entryList !== undefined) {
       return this.buildListSharedDepBlobUrls(
         manifest,
@@ -1415,9 +1213,9 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         ledger
       );
     }
-    // A manifest that holds a unit table or lists names every list its
-    // entries load: an exposed module without one is manifest data the
-    // handler refuses, not a whole-package load.
+    // A manifest that holds units or lists names every list its entries
+    // load: an exposed module without one is manifest data the handler
+    // refuses, naming the missing key, and never a whole-package load.
     if (manifest.units !== undefined || manifest.lists !== undefined) {
       throw MfeHandlerMF.manifestDataRejection(
         `manifest "${manifest.id}" holds units or lists but no list for ` +
@@ -1425,54 +1223,22 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         entryId
       );
     }
-    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-whole-package-path
-    const sources = await this.fetchSharedDepSources(manifest, baseUrl, entryId, ledger);
-    const sharedNames = new Set((manifest.shared ?? []).map((d) => d.name));
-    // The whole-package entries mint before the load's state exists, yet
-    // their lazy calls resolve through that state once the load is built:
-    // the resolver reads it through this holder, bound after the build.
-    const holder: { loadState?: LoadBlobState } = {};
-    const urls = new Map<string, string>();
-    let unitLoaderUrl: string | undefined;
-    const lazy: WholePackageLazy = {
-      // The resolved fetch location, so the caller a call names and the
-      // base it resolves against agree with the URL the entry came from.
-      chunkPaths: new Map(
-        (manifest.shared ?? []).map((d) => [
-          d.name,
-          MfeHandlerMF.resolveSharedChunkUrl(d, baseUrl, entryId),
-        ])
-      ),
-      loaderUrl: () => {
-        if (unitLoaderUrl === undefined) {
-          const registry = LazyLoaderRegistry.ensureExposed();
-          const loaderId = registry.register((argument) =>
-            this.resolveWholePackageImport(argument, holder, baseUrl, entryId, urls)
-          );
-          unitLoaderUrl = URL.createObjectURL(
-            new Blob([DynamicModuleOps.buildLazyLoaderStubSource(loaderId)], {
-              type: 'text/javascript',
-            })
-          );
-        }
-        return unitLoaderUrl;
-      },
-    };
-    const minted = this.createBlobUrlsInDependencyOrder(
-      sources,
-      sharedNames,
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-if-fetch-list
+    // @cpt-end:cpt-frontx-algo-unit-format-contract-fetch-list-schema:p1:inst-return-contract-output
+    const wholePackage = await this.wholePackageLoader.load(
+      manifest,
+      baseUrl,
       entryId,
       extensionId,
-      lazy
+      ledger
     );
-    for (const [name, blob] of minted) urls.set(name, blob);
     return {
-      urls,
-      bindWholePackageLoad: (loadState) => {
-        holder.loadState = loadState;
-      },
+      urls: wholePackage.urls,
+      bindWholePackageLoad: (loadState) =>
+        wholePackage.bindLazyTarget((filename) =>
+          this.resolveLazyTarget(filename, loadState, true)
+        ),
     };
-    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-whole-package-path
   }
 
   /**
@@ -1498,22 +1264,14 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   }> {
     let assetBase = baseUrl;
     const sharedBase = manifest.metaData.sharedBase;
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-resolve-shared-base
     if (sharedBase !== undefined) {
-      if (
-        typeof (sharedBase as unknown) !== 'string' ||
-        sharedBase.startsWith('//') ||
-        [...sharedBase].some(
-          (char) => MfeHandlerMF.isControlOrSpace(char) || char === '\\'
-        )
-      ) {
-        throw MfeHandlerMF.manifestDataRejection(
-          `manifest.metaData.sharedBase "${String(sharedBase)}" does not ` +
-            'resolve to an http(s) URL — shared-file locations cannot be ' +
-            'resolved against it.',
-          entryId
-        );
-      }
-      const resolvedBase = MfeHandlerMF.parseUrl(sharedBase, baseUrl);
+      const resolvedBase =
+        typeof sharedBase === 'string' &&
+        !sharedBase.startsWith('//') &&
+        !AssetBaseUrl.hasUnsafeCharacter(sharedBase)
+          ? AssetBaseUrl.parse(sharedBase, baseUrl)
+          : undefined;
       if (resolvedBase === undefined || !/^https?:$/i.test(resolvedBase.protocol)) {
         throw MfeHandlerMF.manifestDataRejection(
           `manifest.metaData.sharedBase "${String(sharedBase)}" does not ` +
@@ -1522,14 +1280,16 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
           entryId
         );
       }
-      assetBase = MfeHandlerMF.asDirectoryBase(resolvedBase);
+      assetBase = AssetBaseUrl.directory(resolvedBase);
     }
-    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-read-unit-fields
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-resolve-shared-base
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-resolve-location
     const resolveAssetUrl = (location: string): string =>
       SharedAssetUrlResolver.resolve(location, assetBase, entryId);
     // Every unit location is a manifest field: a refused one fails the load
     // before any request of it.
     for (const unit of manifest.units ?? []) resolveAssetUrl(unit.location);
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-resolve-location
     // Every content identity the exposed module's list names, and those of
     // every lazy and pattern list it reaches, is held by the unit table: a
     // list naming one the table lacks is refused before any request of the
@@ -1571,7 +1331,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         const failed = requests.failure();
         if (failed !== undefined) return Promise.reject(failed.error);
         // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-concurrent-failure
-        return this.fetchSourceText(url, ledger);
+        return this.fetchSharedText(url, ledger);
       },
       entryId,
       loadCache,
@@ -1587,7 +1347,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       has: () => false,
     };
     const fetchOwnChunk = (location: string): Promise<unknown> => {
-      if (typeof (location as unknown) !== 'string') {
+      if (typeof location !== 'string') {
         return Promise.reject(
           new MfeLoadError(
             `fetch-list ownChunks entry ${JSON.stringify(location)} is not a string.`,
@@ -1597,8 +1357,15 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       }
       const failed = requests.failure();
       if (failed !== undefined) return Promise.reject(failed.error);
+      // An attempt that was released or failed issues no request of its own
+      // and publishes nothing: a fetch it started could never be recorded
+      // for release.
+      if (ledger?.hasFailed === true) {
+        return Promise.reject(MfeHandlerMF.endedAttempt(location, entryId));
+      }
       // A chunk the load already minted needs no text, and one already
-      // requested for it is joined rather than requested again.
+      // requested for it is joined rather than requested again; the two
+      // spellings of one URL name one chunk.
       if (ownChunkMinted.has(location)) return Promise.resolve(undefined);
       const url = MfeHandlerMF.resolveChunkUrl(baseUrl, location);
       const inFlight = ownChunkTexts.get(url);
@@ -1613,7 +1380,11 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       });
       return text;
     };
-    const ctx = loader.createContext(manifest.units ?? [], manifest.lists ?? {});
+    const ctx = loader.createContext(
+      manifest.units ?? [],
+      manifest.lists ?? {},
+      resolveAssetUrl
+    );
     // The dynamic-import machinery closes over `sharedDepLists`: the
     // resolver mints dependent lists on demand through the same load's
     // context; the stub URL mints on first rewritten call.
@@ -1653,11 +1424,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         fetchOwnChunk
       )
     );
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-load-diagnostic
     this.loadDiagnostics.summarize(
       manifest.id,
       itemBytes,
       this.sharedDepTextCache
     );
+    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-load-diagnostic
     return { urls: ctx.specifierToBlob, sharedDepLists, entrySource };
   }
 
@@ -1681,6 +1454,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     for (let list = pending.pop(); list !== undefined; list = pending.pop()) {
       if (visited.has(list)) continue;
       visited.add(list);
+      // @cpt-begin:cpt-frontx-algo-unit-format-contract-fetch-list-schema:p1:inst-emit-items
       for (const hash of list.units) {
         if (!held.has(hash)) {
           throw MfeHandlerMF.manifestDataRejection(
@@ -1690,11 +1464,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
           );
         }
       }
+      // @cpt-end:cpt-frontx-algo-unit-format-contract-fetch-list-schema:p1:inst-emit-items
       // Own-chunk locations resolve like an `exposeAssets` entry: a
       // non-empty string, a path against `publicPath` or an absolute
       // http(s) URL. A refused one fails the load before any request.
+      // @cpt-begin:cpt-frontx-algo-unit-format-contract-fetch-list-schema:p1:inst-emit-own-chunks
       for (const location of list.ownChunks) {
-        if (typeof (location as unknown) !== 'string' || location === '') {
+        if (typeof location !== 'string' || location === '') {
           throw MfeHandlerMF.manifestDataRejection(
             `a fetch list of manifest "${manifest.id}" has ownChunks entry ` +
               `${JSON.stringify(location)}, which is not a non-empty string.`,
@@ -1702,8 +1478,10 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
           );
         }
       }
+      // @cpt-end:cpt-frontx-algo-unit-format-contract-fetch-list-schema:p1:inst-emit-own-chunks
+      // @cpt-begin:cpt-frontx-algo-unit-format-contract-fetch-list-schema:p1:inst-emit-lazy-lists
       for (const key of [...(list.lazy ?? []), ...(list.patterns ?? [])]) {
-        if (typeof (key as unknown) !== 'string' || key === '') {
+        if (typeof key !== 'string' || key === '') {
           throw MfeHandlerMF.manifestDataRejection(
             `a fetch list of manifest "${manifest.id}" names list key ` +
               `${JSON.stringify(key)}, which is not a non-empty string.`,
@@ -1713,6 +1491,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         const nested = lists[key];
         if (nested !== undefined) pending.push(nested);
       }
+      // @cpt-end:cpt-frontx-algo-unit-format-contract-fetch-list-schema:p1:inst-emit-lazy-lists
     }
   }
 
@@ -1791,56 +1570,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-when-exercised
 
   /**
-   * The resolver behind every `__frontx_lazy(...)` call minted into a
-   * whole-package entry: the path resolves against the entry's
-   * `chunkPath`, which resolves against the asset base, and the target
-   * and the own chunks it reaches are found by walking the chunk graph
-   * from it (`inst-lai-walk-chunk-graph`). A bare specifier is the
-   * whole-package unit of that name in the per-load map.
-   */
-  private resolveWholePackageImport(
-    argument: string,
-    holder: { loadState?: LoadBlobState },
-    baseUrl: string,
-    entryId: string,
-    urls: ReadonlyMap<string, string>
-  ): Promise<string> {
-    const fail = (detail: string): Promise<string> =>
-      Promise.reject(new MfeLoadError(detail, entryId));
-    const split = UnitDynamicImportRewriter.splitCallerArgument(argument);
-    if (split === undefined) {
-      return fail(`__frontx_lazy: unresolvable argument '${argument}'`);
-    }
-    const { caller, path } = split;
-    if (!(path.startsWith('./') || path.startsWith('../'))) {
-      const unit = urls.get(path);
-      return unit === undefined
-        ? fail(
-            `__frontx_lazy: whole-package entry '${caller}' imports ` +
-              `'${path}', which names no whole-package unit of the load.`
-          )
-        : Promise.resolve(unit);
-    }
-    if (holder.loadState === undefined) {
-      return fail(
-        `__frontx_lazy: '${path}' was requested before the load of ` +
-          `'${entryId}' completed.`
-      );
-    }
-    const target = new URL(path, new URL(caller, baseUrl)).href;
-    const filename = target.startsWith(baseUrl)
-      ? target.slice(baseUrl.length)
-      : target;
-    return this.resolveLazyTarget(filename, holder.loadState, true);
-  }
-
-  /** Whether `char` is a space or control character a URL parse would mangle. */
-  private static isControlOrSpace(char: string): boolean {
-    const code = char.charCodeAt(0);
-    return code <= 0x20 || (code >= 0x7f && code <= 0x9f);
-  }
-
-  /**
    * Fail fast with a diagnostic when `manifest.shared` declares the same
    * package name more than once (regardless of version) — see the comment
    * on {@link buildSharedDepBlobUrls} for why this is preferred over
@@ -1874,307 +1603,6 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     }
   }
   // @cpt-end:cpt-frontx-flow-mfe-isolation-load:p1:inst-assert-unique-names
-
-  /**
-   * Fetch standalone ESM source text for each shared dep.
-   * sharedDepTextCache dedups on a two-tier key: when a `contentHash` is
-   * declared, the key is `name@version@contentHash` and reuse spans ALL
-   * MFEs — the first MFE to load react@19.2.4 at a given build hash fetches
-   * it from its server, and every other MFE declaring that same
-   * name@version@contentHash gets a cache hit regardless of their server
-   * URL. Without a declared `contentHash`, the key falls back to
-   * `name@version@<resolved chunk URL>`, so reuse is scoped to that one
-   * manifest's own URL instead of shared cross-MFE.
-   *
-   * A rejected shared-dep fetch surfaces only once every sibling in the
-   * batch has settled. Nothing is gained by aborting sooner: the batch is
-   * dispatched concurrently, so the fetches a short-circuit could skip are
-   * only those still queued behind the concurrency width, while the ones
-   * already issued cannot be cancelled (no `AbortController` is plumbed
-   * through this file — same reason the chain build uses a failure token
-   * rather than cancellation), and the shared-dep list is short by
-   * construction (the packages an MFE declares external). The failure
-   * reported is deterministic regardless: the first in the manifest's
-   * declaration order, not whichever fetch lost the wall-clock race.
-   */
-  private async fetchSharedDepSources(
-    manifest: MfManifest,
-    baseUrl: string,
-    entryId: string,
-    ledger?: AttemptSourceTextLedger
-  ): Promise<Map<string, string>> {
-    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-for-each-shared
-    // Every URL is derived before the first fetch, so a chunkPath that is
-    // neither an http(s) URL nor a relative path fails the load with nothing
-    // fetched.
-    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-resolve-chunk-path
-    // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-derive-url
-    const resolvedDeps = (manifest.shared ?? []).map((dep) => ({
-      dep,
-      absoluteUrl: MfeHandlerMF.resolveSharedChunkUrl(dep, baseUrl, entryId),
-    }));
-    // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-derive-url
-    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-resolve-chunk-path
-    // Fetches for each declared dep are dispatched concurrently, bounded by
-    // MAX_CONCURRENT_FETCHES, via `boundedMap` rather than a `for...of` loop
-    // with a trailing `await` that would serialize every dep behind the
-    // previous one's full round trip.
-    // Enumeration order governs cache-key precedence only (which
-    // declaration claims a given cache slot when several manifests declare
-    // the same shared dep), not fetch issuance/completion order. Each dep's
-    // cache-get → fetch → catch-eviction → cache-set sequence
-    // still runs synchronously relative to that dep's own fetch (no `await`
-    // separates them), which is what keeps the cross-MFE dedup race-free
-    // regardless of how the fetches are interleaved.
-    const settled = await boundedMap(resolvedDeps, async ({ dep, absoluteUrl }) => {
-      let cacheKey: string;
-      // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-hash-declared
-      if (dep.contentHash !== undefined) {
-        // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-compute-key-hash
-        cacheKey = SharedTextAdmission.wholePackageKey(dep.name, dep.version, dep.contentHash);
-        // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-compute-key-hash
-      } else {
-        // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-else-no-hash
-        // @cpt-begin:cpt-frontx-algo-unit-format-contract-shared-text-admission:p1:inst-if-no-identity
-        // @cpt-begin:cpt-frontx-algo-unit-format-contract-shared-text-admission:p1:inst-admit-whole-package-by-location
-        // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-compute-key-fallback
-        cacheKey = SharedTextAdmission.wholePackageKey(dep.name, dep.version, absoluteUrl);
-        // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-compute-key-fallback
-        // @cpt-end:cpt-frontx-algo-unit-format-contract-shared-text-admission:p1:inst-admit-whole-package-by-location
-        // @cpt-end:cpt-frontx-algo-unit-format-contract-shared-text-admission:p1:inst-if-no-identity
-        // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-emit-adoption-notice
-        const noticeKey = `${dep.name}@${dep.version}@${manifest.id}`;
-        if (!this.sharedDepAdoptionNoticesEmitted.has(noticeKey)) {
-          this.sharedDepAdoptionNoticesEmitted.set(noticeKey, true);
-          console.warn(
-            `Shared dependency '${dep.name}@${dep.version}' declared by ` +
-              `manifest '${manifest.id}' carries no contentHash. ` +
-              'Cross-MFE reuse is disabled for this dependency; its source ' +
-              "text will be keyed on this manifest's own resolved chunk " +
-              'URL rather than shared with other microfrontends declaring ' +
-              'the same name@version.'
-          );
-        }
-        // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-emit-adoption-notice
-        // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-else-no-hash
-      }
-      // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-hash-declared
-
-      // The realm cache this copy resolved at construction — the
-      // realm-shared cache every compatible independently loaded copy
-      // converges on, or this copy's own local fallback
-      // (`cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous`).
-      // `SharedTextAdmission` answers from a resident or in-flight entry
-      // under `cacheKey`, otherwise publishes this fetch's in-flight promise
-      // before awaiting it, evicts it on rejection under the identity
-      // check, and records the entry on the attempt's ledger so a timeout
-      // releases it. The text is admitted as fetched; the declared hash is
-      // only the sharing key.
-      // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-shared-dep
-      // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-fetch-and-cache
-      const textPromise = new SharedTextAdmission(this.sharedDepTextCache, ledger).admit(
-        cacheKey,
-        absoluteUrl,
-        (url) => this.fetchSourceText(url, ledger)
-      );
-      // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-fetch-and-cache
-      // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-fetch-shared-dep
-      // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-cache-hit
-      // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-retrieve-cached
-      // Whether `textPromise` was just published above or was already
-      // resident under `cacheKey` — in this copy's own fallback, or in the
-      // cache the realm shares with every other compatible independently
-      // loaded copy — this `await` is the sole retrieval step either way.
-      const text = await textPromise;
-      // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-retrieve-cached
-      // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-cache-hit
-      return { name: dep.name, text };
-    });
-    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-for-each-shared
-
-    // Deterministic error surfacing: report the first failure in the
-    // manifest's declaration order rather than whichever fetch happened to
-    // lose the race in wall-clock time.
-    const failure = settled.find(
-      (result): result is PromiseRejectedResult => result.status === 'rejected'
-    );
-    if (failure) {
-      throw failure.reason;
-    }
-
-    const sources = new Map<string, string>();
-    for (const result of settled) {
-      if (result.status === 'fulfilled') {
-        sources.set(result.value.name, result.value.text);
-      }
-    }
-    return sources;
-  }
-
-  /**
-   * Create blob URLs in dependency order: leaves first, dependents follow.
-   *
-   * The order is derived from the fetched sources themselves rather than
-   * from `manifest.shared[]`'s enumeration order. Shared dependencies that
-   * import one another circularly admit no such order, and minting them
-   * anyway would leave their bare specifiers unrewritten inside a blob that
-   * therefore cannot be instantiated at all — so that case fails the load
-   * with a diagnostic naming them.
-   */
-  // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-resolve-order
-  private createBlobUrlsInDependencyOrder(
-    sources: Map<string, string>,
-    sharedNames: Set<string>,
-    entryId: string,
-    extensionId: string,
-    lazy?: WholePackageLazy
-  ): Map<string, string> {
-    const blobUrls = new Map<string, string>();
-    const pending = new Map(sources);
-
-    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-serialised
-    // The whole-package entries mint leaves-first in this one synchronous
-    // call, so no other mint of the load interleaves with them.
-    while (pending.size > 0) {
-      const before = pending.size;
-      for (const [name, source] of pending) {
-        if (this.isDepReadyToResolve(name, source, sharedNames, blobUrls)) {
-          blobUrls.set(
-            name,
-            this.createRewrittenBlobUrl(
-              source,
-              blobUrls,
-              sharedNames,
-              name,
-              entryId,
-              extensionId,
-              lazy
-            )
-          );
-          pending.delete(name);
-        }
-      }
-      // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-shared-cycle
-      if (pending.size === before) {
-        // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-raise-shared-cycle
-        throw DeterministicLoadFailure.mark(
-          new MfeLoadError(
-            'circular shared dependencies: no dependency order exists over ' +
-              `${describeSharedDepCycle(pending)}. ` +
-              'Minting them anyway would leave those bare specifiers ' +
-              'unrewritten inside blobs that cannot be instantiated. ' +
-              'Rebuild the microfrontend so that its shared dependencies ' +
-              'do not import one another circularly.',
-            entryId
-          )
-        );
-        // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-raise-shared-cycle
-      }
-      // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-shared-cycle
-    }
-    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-serialised
-    // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-return-map
-    return blobUrls;
-    // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-return-map
-  }
-  // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-resolve-order
-
-  private isDepReadyToResolve(
-    name: string,
-    source: string,
-    sharedNames: Set<string>,
-    blobUrls: Map<string, string>
-  ): boolean {
-    return [...sharedNames].every(
-      (other) =>
-        other === name ||
-        blobUrls.has(other) ||
-        !DynamicModuleOps.sourceImports(source, other)
-    );
-  }
-
-  private createRewrittenBlobUrl(
-    source: string,
-    blobUrls: Map<string, string>,
-    sharedNames: Set<string>,
-    depName: string,
-    entryId: string,
-    extensionId: string,
-    lazy?: WholePackageLazy
-  ): string {
-    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-rewrite-specifiers
-    // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-rewrite-specifiers
-    const rewritten = this.rewriteBareSpecifiers(source, blobUrls);
-    // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-rewrite-specifiers
-    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-rewrite-specifiers
-    // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-assert-shared-dep-no-bare-specifier
-    const survivor = DynamicModuleOps.findSurvivingDeclaredSharedDepSpecifier(rewritten, sharedNames);
-    // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-assert-shared-dep-no-bare-specifier
-    // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-shared-dep-bare-specifier
-    if (survivor !== undefined) {
-      // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-raise-shared-dep-bare-specifier
-      throw DeterministicLoadFailure.mark(
-        new MfeLoadError(
-          `shared-dep chunk '${depName}' still imports the bare specifier ` +
-            `'${survivor}' after rewriting its declared shared ` +
-            `dependencies, for microfrontend '${extensionId}'. Every ` +
-            'declared shared-dependency name that survives rewriting must ' +
-            'resolve to a blob URL; this indicates a rewrite defect, UNLESS ' +
-            `'${survivor}' names '${depName}' itself — a chunk cannot ` +
-            "import its own not-yet-minted blob URL, so a shared dep that " +
-            'bare-imports its own package name is a producer-build problem, ' +
-            'not a rewrite defect in this handler.',
-          entryId
-        )
-      );
-      // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-raise-shared-dep-bare-specifier
-    }
-    // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-shared-dep-bare-specifier
-    // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-undeclared-specifier
-    const undeclared = SharedDepSpecifierScan.findUndeclaredWellFormedSpecifiers(rewritten, sharedNames);
-    for (const specifier of undeclared) {
-      // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-warn-undeclared-specifier
-      console.warn(
-        `shared-dep chunk '${depName}' imports '${specifier}', which is ` +
-          `not declared by the manifest, for microfrontend ` +
-          `'${extensionId}'. This specifier cannot resolve inside an ` +
-          'isolated module; have the manifest declare it if it should ' +
-          'be shared, or remove the import if it is unused. The load ' +
-          'proceeds — this is a diagnostic only.'
-      );
-      // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-warn-undeclared-specifier
-    }
-    // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-undeclared-specifier
-    // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-shared-blob
-    // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-create-dep-blob
-    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-shared-dynamic-imports
-    // Every literal and bounded-pattern dynamic import of the entry reaches
-    // the load's lazy-import ABI; the fetched bytes stay as they are.
-    const chunkPath = lazy?.chunkPaths.get(depName);
-    const minted =
-      lazy !== undefined && chunkPath !== undefined
-        ? UnitDynamicImportRewriter.rewrite(rewritten, lazy.loaderUrl, chunkPath)
-        : rewritten;
-    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-shared-dynamic-imports
-    const blob = new Blob([minted], { type: 'text/javascript' });
-    return URL.createObjectURL(blob);
-    // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-create-dep-blob
-    // @cpt-end:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-shared-blob
-  }
-
-  /**
-   * Apply all shared dep bare specifier rewrites to a source text.
-   */
-  private rewriteBareSpecifiers(
-    source: string,
-    sharedDepBlobUrls: Map<string, string>
-  ): string {
-    let rewritten = source;
-    for (const [name, blobUrl] of sharedDepBlobUrls) {
-      rewritten = DynamicModuleOps.rewriteBareSpecifier(rewritten, name, blobUrl);
-    }
-    return rewritten;
-  }
 
   // ---- Blob URL chain creation ----
 
@@ -2226,7 +1654,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * own lineage now contains "B", the ordinary ancestor check fires, and C
    * fails the chain build instead of joining B's promise. A detected cycle
    * is fatal here, exactly as it is for circular shared deps in
-   * {@link createBlobUrlsInDependencyOrder}: there is no order in which the
+   * the whole-package mint (`WholePackageLoader`): there is no order in which the
    * blob URLs on a cycle could be minted, and the alternative — leaving the
    * cycle-closing specifier pointing at a plain chunk URL — would evaluate
    * that module, and its whole origin-resolved subgraph, outside the load's
@@ -2402,7 +1830,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * abandoned the chunk — see `inst-settle-drop-inflight`). Dropping the unproductive entry helps the
    * NEXT requester, but not one that already joined the promise: that
    * joiner would resume, find no `blobUrlMap` entry for the filename, and
-   * fail its own load at {@link rewriteModuleImports} for a chunk nothing
+   * fail its own load at {@link relativeImportBlob} for a chunk nothing
    * ever tried to build on its behalf.
    *
    * So the joiner re-attempts the construction inside its OWN build. By the
@@ -2467,9 +1895,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         "origin URL would evaluate that module outside this load's " +
         'isolated graph. Rebuild the microfrontend so that its chunk graph ' +
         'is acyclic.';
-    return DeterministicLoadFailure.mark(
-      new MfeLoadError(message, loadState.entryId)
-    );
+    return new MfeLoadError(message, loadState.entryId);
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-diagnose-cycle
   }
 
@@ -2546,7 +1972,10 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-if-failed-after-fetch
 
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-parse-static-imports
-    const deps = this.parseStaticImportFilenames(source, filename);
+    // The chunk is read once: the dependencies, every rewrite and every
+    // survivor check below work from this scan's records.
+    const scan = DynamicImportScan.scan(source);
+    const deps = this.staticImportFilenames(scan.imports, filename, loadState.baseUrl);
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-parse-static-imports
 
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-for-each-dep
@@ -2613,32 +2042,39 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-if-failed-elsewhere
 
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-static
-    let rewritten = this.rewriteModuleImports(source, loadState, filename);
-    // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-static
-
-    // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-meta-url
-    // Phase 19: Replace import.meta.url with the real chunk base URL string.
-    // When a chunk is blob-URL'd, import.meta.url becomes a blob: URL, which
-    // breaks new URL("../path", import.meta.url) — blob: URLs have no directory
-    // component. Replacing with the HTTP base URL (directory of the chunk)
-    // restores correct relative URL resolution (e.g. in preload-helper.js).
-    // We target 'import.meta.url' specifically to leave import.meta.env intact.
-    rewritten = this.rewriteImportMetaUrl(rewritten, chunkUrl);
-    // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-meta-url
-
-    // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-shared
-    // Rewrite bare specifiers (from "react" → from "blob:xxx") using
-    // the pre-built shared dep blob URL map.
+    // Each static relative specifier binds to the blob of the chunk it
+    // names; a bare specifier binds to the pre-built shared dep blob URL
+    // map (from "react" → from "blob:xxx").
     // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-lazy-specifiers
     // A lazy target's chunks take the references the parent load's
     // per-load map holds, the same map the entry chunk took.
-    rewritten = this.rewriteBareSpecifiers(rewritten, loadState.sharedDepBlobUrls);
+    const replacements = new Map<string, string>();
+    for (const { specifier } of scan.imports) {
+      const blob = MfeHandlerMF.isRelativeSpecifier(specifier)
+        ? this.relativeImportBlob(specifier, loadState, filename)
+        : loadState.sharedDepBlobUrls.get(specifier);
+      if (blob !== undefined) replacements.set(specifier, blob);
+    }
+    const edits = DynamicModuleOps.specifierEdits(source, scan.imports, replacements);
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-lazy-specifiers
+    // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-static
+
+    // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-meta-url
+    // A blob-evaluated chunk's `import.meta.url` is a `blob:` URL, which breaks
+    // relative URL resolution; the chunk's resolved HTTP location restores it.
+    edits.push(...ImportMetaUrlRewriter.edits(scan.metaUrls, chunkUrl));
+    // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-meta-url
+
+    // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-shared
+    // The records no replacement names are what the rewrite left unbound.
+    const surviving = scan.imports.filter(
+      (record) => !replacements.has(record.specifier)
+    );
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-shared
 
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-assert-own-no-bare-specifier
     const ownSurvivor = SharedDepSpecifierScan.findSurvivingDeclared(
-      rewritten,
+      surviving,
       loadState.declaredSpecifiers
     );
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-assert-own-no-bare-specifier
@@ -2646,21 +2082,19 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     if (ownSurvivor !== undefined) {
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-raise-own-bare-specifier
       build.failed = true;
-      throw DeterministicLoadFailure.mark(
-        new MfeLoadError(
-          `own chunk '${filename}' still imports the bare specifier ` +
-            `'${ownSurvivor}' after rewriting, for microfrontend ` +
-            `'${loadState.entryId}'. Every declared specifier must resolve ` +
-            'to a blob URL; no unit of the load answers it.',
-          loadState.entryId
-        )
+      throw new MfeLoadError(
+        `own chunk '${filename}' still imports the bare specifier ` +
+          `'${ownSurvivor}' after rewriting, for microfrontend ` +
+          `'${loadState.entryId}'. Every declared specifier must resolve ` +
+          'to a blob URL; no unit of the load answers it.',
+        loadState.entryId
       );
       // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-raise-own-bare-specifier
     }
     // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-if-own-bare-specifier
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-warn-own-undeclared-specifier
     for (const specifier of SharedDepSpecifierScan.findUndeclaredWellFormedSpecifiers(
-      rewritten,
+      surviving,
       loadState.declaredSpecifiers
     )) {
       console.warn(
@@ -2686,11 +2120,11 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // native literal and pattern imports reach the ABI here, as they do in
     // a minted shared unit, so they stay inside the load's graph.
     if (build.rewriteNativeDynamicImports) {
-      rewritten = UnitDynamicImportRewriter.rewriteCalls(
-        rewritten,
-        '__frontx_lazy'
+      edits.push(
+        ...UnitDynamicImportRewriter.callEdits(scan.calls, '__frontx_lazy')
       );
     }
+    let rewritten = SourceSplice.apply(source, edits);
     // Every chunk of the load that references the ABI — a lazy target's
     // nested calls included — takes a `__frontx_lazy` that imports the same
     // per-load loader stub and tags each call with this chunk's own
@@ -2755,8 +2189,8 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-resolve-lazy-chunks
     // @cpt-end:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-if-lazy-exercised
 
-    // The stub uses `globalThis.__FRONTX_LAZY__.resolve` (exposed by
-    // {@link LazyLoaderRegistry}) to reach the host-side resolver. Returning
+    // The stub uses the `resolve` this copy publishes ({@link LazyLoaderRegistry})
+    // to reach the host-side resolver. Returning
     // a `Promise<Module>` mirrors the original `import()` semantic so the
     // caller's transformed code (`__frontx_lazy('./X').then(m => m.X)`) keeps
     // working unchanged. The source text is built in the audited trust
@@ -2817,7 +2251,10 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     const split = UnitDynamicImportRewriter.splitCallerArgument(argument);
     const caller = split?.caller ?? loadState.entryChunkFilename;
     const path = split?.path ?? argument;
-    return this.resolveLazyTarget(this.resolveRelativePath(caller, path), loadState);
+    return this.resolveLazyTarget(
+      MfeHandlerMF.chunkKey(loadState.baseUrl, path, caller),
+      loadState
+    );
   }
 
   /**
@@ -2875,19 +2312,23 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // later, otherwise-independent, lazy import on the same already-mounted
     // MFE — each call here gets its own token instead of sharing one on
     // `loadState`.
+    // @cpt-begin:cpt-frontx-state-mfe-isolation-load-blob-state:p1:inst-blob-lazy-failed
     const build = createChainBuildState(wholePackage, rewriteNativeDynamicImports);
+    // @cpt-end:cpt-frontx-state-mfe-isolation-load-blob-state:p1:inst-blob-lazy-failed
 
     // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-walk-chunk-graph
     // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-return-whole-package
     // On a whole-package load the chunk graph is walked from the target
     // under the build's fixed fetch budget, its bare specifiers binding to
     // the whole-package units the per-load map already holds.
+    // @cpt-begin:cpt-frontx-state-mfe-isolation-load-blob-state:p1:inst-blob-lazy-extend
     await this.createBlobUrlChain(
       loadState,
       filename,
       build,
       new Set([loadState.entryChunkFilename])
     );
+    // @cpt-end:cpt-frontx-state-mfe-isolation-load-blob-state:p1:inst-blob-lazy-extend
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-return-whole-package
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-walk-chunk-graph
 
@@ -2964,40 +2405,42 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   }
 
   /**
-   * Replace all `import.meta.url` references with the chunk's real base URL.
-   *
-   * The base URL is the directory containing the chunk (trailing slash included),
-   * derived by stripping the filename from the full chunk URL. This is the URL
-   * that relative `new URL("../x", import.meta.url)` calls should resolve against.
+   * The identity of a chunk within a load: its resolved URL — what a fetch
+   * of it requests, however its location is spelled — written relative to
+   * `baseUrl` when it lies under it. `importer` is the key of the chunk
+   * whose import names `location`; without one, `location` resolves against
+   * `baseUrl` itself. Two spellings of one URL (`./a.js` and `a.js`, an
+   * explicit default port) are one chunk, on the request side and the lookup
+   * side alike (`cpt-frontx-algo-unit-format-contract-fetch-list-schema`,
+   * `inst-location-identity`).
    */
-  private rewriteImportMetaUrl(source: string, chunkAbsoluteUrl: string): string {
-    // Derive the directory containing this chunk by stripping the filename.
-    // e.g. "http://localhost:3001/assets/preload-helper.js" → "http://localhost:3001/assets/"
-    const lastSlash = chunkAbsoluteUrl.lastIndexOf('/');
-    const chunkBaseUrl = lastSlash >= 0
-      ? chunkAbsoluteUrl.slice(0, lastSlash + 1)
-      : chunkAbsoluteUrl;
+  private static chunkKey(
+    baseUrl: string,
+    location: string,
+    importer?: string
+  ): string {
+    // @cpt-begin:cpt-frontx-algo-unit-format-contract-fetch-list-schema:p1:inst-location-identity
+    const from =
+      importer === undefined ? baseUrl : MfeHandlerMF.resolveChunkUrl(baseUrl, importer);
+    const href = new URL(location, from).href;
+    return href.startsWith(baseUrl) ? href.slice(baseUrl.length) : href;
+    // @cpt-end:cpt-frontx-algo-unit-format-contract-fetch-list-schema:p1:inst-location-identity
+  }
 
-    // Use a regex replacement targeting the exact token 'import.meta.url'
-    // (word-boundary anchored to avoid matching 'import.meta.url.something').
-    // JSON.stringify ensures the URL is properly quoted and special chars escaped.
-    return source.replace(/import\.meta\.url/g, JSON.stringify(chunkBaseUrl));
+  /** Absolute URL of the chunk a key or location names, as a fetch requests it. */
+  private static resolveChunkUrl(baseUrl: string, location: string): string {
+    return new URL(location, baseUrl).href;
   }
 
   /**
-   * Absolute URL of the chunk `filename` names: a portable shared chunk
-   * already carries an absolute http(s) URL and is used as-is (so the
-   * source-text cache dedups it); anything else resolves against `baseUrl`.
+   * The failure of a fetch asked for after its load attempt was released or
+   * failed: the attempt issues no request and publishes nothing.
    */
-  private static resolveChunkUrl(baseUrl: string, filename: string): string {
-    if (/^https?:\/\//i.test(filename)) {
-      try {
-        return new URL(filename).href;
-      } catch {
-        return filename;
-      }
-    }
-    return baseUrl + filename;
+  private static endedAttempt(url: string, entryId: string): MfeLoadError {
+    return new MfeLoadError(
+      `the load attempt ended before '${url}' was requested`,
+      entryId
+    );
   }
 
   /**
@@ -3040,10 +2483,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   // ---- Source text fetching and parsing ----
 
   /**
-   * Fetch the source text of a chunk. Uses an in-memory cache so each URL
-   * is fetched at most once across all loads. `priority` is the request's
-   * fetch priority; absent leaves the browser's default.
+   * Fetch the source text of one of the microfrontend's own chunks — its
+   * entry module, its further and lazy chunks and the own chunks a fetch
+   * list names. The handler's source-text cache holds only that own code,
+   * so each URL is fetched at most once across all loads. `priority` is the
+   * request's fetch priority; absent leaves the browser's default.
    */
+  // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-fetch-source
   private fetchSourceText(
     absoluteChunkUrl: string,
     ledger?: AttemptSourceTextLedger,
@@ -3056,16 +2502,81 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       ledger?.record(this.sourceTextCache, absoluteChunkUrl, cached);
       return cached;
     }
+    // An attempt that was released or failed issues no request and publishes
+    // nothing: a fetch it started could never be recorded for release, and a
+    // retry would rejoin it.
+    if (ledger?.hasFailed === true) {
+      return Promise.reject(MfeHandlerMF.endedAttempt(absoluteChunkUrl, absoluteChunkUrl));
+    }
 
-    const fetchPromise: Promise<string> = (priority === undefined
-      ? fetch(absoluteChunkUrl)
-      : fetch(absoluteChunkUrl, { priority })
-    )
+    const fetchPromise: Promise<string> = this.requestSourceText(
+      absoluteChunkUrl,
+      priority
+    ).catch((error: unknown) => {
+      // Only while the cache still holds THIS promise: a late rejection
+      // of an abandoned attempt must not evict a retry's newer one.
+      // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-generation-identity
+      if (this.sourceTextCache.get(absoluteChunkUrl) === fetchPromise) {
+        this.sourceTextCache.delete(absoluteChunkUrl);
+      }
+      // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-generation-identity
+      throw error;
+    });
+    // The entry stays in flight until it settles: a full cache never evicts
+    // a request someone is still waiting on.
+    const settled = (): void => {
+      this.settledSourceTexts.add(fetchPromise);
+    };
+    fetchPromise.then(settled, settled);
+
+    this.sourceTextCache.set(absoluteChunkUrl, fetchPromise);
+    ledger?.record(this.sourceTextCache, absoluteChunkUrl, fetchPromise);
+    return fetchPromise;
+  }
+  // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-fetch-source
+
+  /**
+   * Fetch the source text of a shared unit or a whole-package entry. The
+   * request neither reads nor populates the handler source-text cache: the
+   * realm cache alone holds shared text, so the realm byte budget bounds all
+   * of it. An attempt that was released or failed issues no request.
+   */
+  // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-whole-package-bypass-handler-cache
+  private fetchSharedText(
+    absoluteUrl: string,
+    ledger?: AttemptSourceTextLedger
+  ): Promise<string> {
+    if (ledger?.hasFailed === true) {
+      return Promise.reject(MfeHandlerMF.endedAttempt(absoluteUrl, absoluteUrl));
+    }
+    return this.requestSourceText(absoluteUrl);
+  }
+  // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-whole-package-bypass-handler-cache
+
+  /**
+   * One request for the text of `absoluteUrl`: a request that fails or a
+   * non-success status is a retryable failure; an HTML answer (an SPA dev
+   * server's fallback for an unknown path) is not a module and is refused.
+   */
+  private requestSourceText(
+    absoluteUrl: string,
+    priority?: 'high'
+  ): Promise<string> {
+    // The request starts inside a promise executor, so a `fetch` that throws
+    // synchronously (an invalid URL, a patched implementation) rejects the
+    // chain below instead of escaping it.
+    return new Promise<Response>((resolve) => {
+      resolve(
+        priority === undefined
+          ? fetch(absoluteUrl)
+          : fetch(absoluteUrl, { priority })
+      );
+    })
       .then((response) => {
         if (!response.ok) {
-          throw new MfeLoadError(
-            `HTTP ${response.status} fetching chunk source: ${absoluteChunkUrl}`,
-            absoluteChunkUrl
+          throw new RetryableLoadError(
+            `HTTP ${response.status} fetching chunk source: ${absoluteUrl}`,
+            absoluteUrl
           );
         }
         // SPA dev servers (e.g. Vite) return a 200 HTML document for unknown
@@ -3075,9 +2586,9 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         if (contentType.includes('text/html')) {
           throw new MfeLoadError(
             `Server returned HTML for chunk URL (Content-Type: ${contentType}). ` +
-              `The chunk does not exist at the expected path: ${absoluteChunkUrl}. ` +
+              `The chunk does not exist at the expected path: ${absoluteUrl}. ` +
               'Run "npm run generate:mfe-manifests" to synchronize chunk paths with the current MFE build.',
-            absoluteChunkUrl
+            absoluteUrl
           );
         }
         return response.text();
@@ -3087,173 +2598,57 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         // of the Content-Type header (some servers omit or misreport it).
         if (text.trimStart().startsWith('<')) {
           throw new MfeLoadError(
-            `Chunk response starts with "<" — server returned HTML instead of JavaScript: ${absoluteChunkUrl}. ` +
+            `Chunk response starts with "<" — server returned HTML instead of JavaScript: ${absoluteUrl}. ` +
               'Run "npm run generate:mfe-manifests" to synchronize chunk paths with the current MFE build.',
-            absoluteChunkUrl
+            absoluteUrl
           );
         }
         return text;
       })
-      .catch((error) => {
-        // Only while the cache still holds THIS promise: a late rejection
-        // of an abandoned attempt must not evict a retry's newer one.
-        // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-generation-identity
-        if (this.sourceTextCache.get(absoluteChunkUrl) === fetchPromise) {
-          this.sourceTextCache.delete(absoluteChunkUrl);
-        }
-        // @cpt-end:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-generation-identity
+      .catch((error: unknown) => {
         if (error instanceof MfeLoadError) {
           throw error;
         }
-        throw new MfeLoadError(
-          `Network error fetching chunk source: ${absoluteChunkUrl}: ${error instanceof Error ? error.message : String(error)}`,
-          absoluteChunkUrl,
+        throw new RetryableLoadError(
+          `Network error fetching chunk source: ${absoluteUrl}: ${error instanceof Error ? error.message : String(error)}`,
+          absoluteUrl,
           error instanceof Error ? error : undefined
         );
       });
-
-    this.sourceTextCache.set(absoluteChunkUrl, fetchPromise);
-    ledger?.record(this.sourceTextCache, absoluteChunkUrl, fetchPromise);
-    return fetchPromise;
   }
 
   /**
-   * Extract resolved filenames from static import statements.
+   * The resolved filenames of the relative static imports in `records`.
    *
-   * Matches all relative imports (both './' and '../' prefixed) and resolves
-   * them relative to the importing chunk's path. For example, a chunk at
-   * '__federation_shared_@gears-frontx/react.js' importing '../runtime.js' resolves
-   * to 'runtime.js' (relative to baseUrl).
+   * Every relative specifier (both './' and '../' prefixed) resolves
+   * relative to the importing chunk's path. For example, a chunk at
+   * '__federation_shared_@gears-frontx/react.js' importing '../runtime.js'
+   * resolves to 'runtime.js' (relative to baseUrl). A specifier inside a
+   * string or comment is never a record, so never a dependency.
    */
-  private parseStaticImportFilenames(
-    source: string,
-    chunkFilename: string
+  private staticImportFilenames(
+    records: readonly StaticImportRecord[],
+    chunkFilename: string,
+    baseUrl: string
   ): string[] {
-    const filenames: string[] = [];
-
-    // Named imports: import { x } from './dep.js'  /  export { x } from './dep.js'
-    const namedRegex = /from\s*['"](\.\.?\/[^'"]+)['"]/g;
-    let match;
-    while ((match = namedRegex.exec(source)) !== null) {
-      filenames.push(this.resolveRelativePath(chunkFilename, match[1]));
+    const filenames = new Set<string>();
+    for (const { specifier } of records) {
+      if (MfeHandlerMF.isRelativeSpecifier(specifier)) {
+        filenames.add(MfeHandlerMF.chunkKey(baseUrl, specifier, chunkFilename));
+      }
     }
-
-    filenames.push(
-      ...this.parseBareSideEffectImportFilenames(source, chunkFilename)
-    );
-
-    return [...new Set(filenames)];
+    return [...filenames];
   }
 
-  private parseBareSideEffectImportFilenames(
-    source: string,
-    chunkFilename: string
-  ): string[] {
-    const filenames: string[] = [];
-    let cursor = 0;
-
-    while (cursor < source.length) {
-      const importIndex = source.indexOf('import', cursor);
-      if (importIndex === -1) {
-        break;
-      }
-
-      if (!this.hasBareImportBoundary(source, importIndex)) {
-        cursor = importIndex + 'import'.length;
-        continue;
-      }
-
-      let specifierIndex = this.skipImportWhitespace(
-        source,
-        importIndex + 'import'.length
-      );
-      const quote = source[specifierIndex];
-      if (quote !== '"' && quote !== '\'') {
-        cursor = importIndex + 'import'.length;
-        continue;
-      }
-
-      specifierIndex += 1;
-      if (!this.isRelativeImportSpecifier(source, specifierIndex)) {
-        cursor = specifierIndex;
-        continue;
-      }
-
-      let specifierEnd = specifierIndex;
-      while (
-        specifierEnd < source.length &&
-        source[specifierEnd] !== quote
-      ) {
-        specifierEnd += 1;
-      }
-
-      if (specifierEnd >= source.length) {
-        break;
-      }
-
-      filenames.push(
-        this.resolveRelativePath(
-          chunkFilename,
-          source.slice(specifierIndex, specifierEnd)
-        )
-      );
-      cursor = specifierEnd + 1;
-    }
-
-    return filenames;
-  }
-
-  private hasBareImportBoundary(source: string, importIndex: number): boolean {
-    let boundaryIndex = importIndex - 1;
-    while (
-      boundaryIndex >= 0 &&
-      this.isBareImportWhitespace(source[boundaryIndex])
-    ) {
-      boundaryIndex -= 1;
-    }
-
-    return (
-      boundaryIndex < 0 ||
-      source[boundaryIndex] === ';' ||
-      source[boundaryIndex] === '\n'
-    );
-  }
-
-  private skipImportWhitespace(source: string, index: number): number {
-    let cursor = index;
-    while (
-      cursor < source.length &&
-      this.isImportWhitespace(source[cursor])
-    ) {
-      cursor += 1;
-    }
-    return cursor;
-  }
-
-  private isRelativeImportSpecifier(source: string, index: number): boolean {
-    return (
-      source[index] === '.' &&
-      (
-        source[index + 1] === '/' ||
-        (source[index + 1] === '.' && source[index + 2] === '/')
-      )
-    );
-  }
-
-  private isBareImportWhitespace(char: string): boolean {
-    return char === ' ' || char === '\t' || char === '\r';
-  }
-
-  private isImportWhitespace(char: string): boolean {
-    return this.isBareImportWhitespace(char) || char === '\n';
+  private static isRelativeSpecifier(specifier: string): boolean {
+    return specifier.startsWith('./') || specifier.startsWith('../');
   }
 
   /**
-   * Rewrite all relative imports in a module's source text.
+   * The blob URL a relative import specifier of a chunk binds to.
    *
-   * Handles both './' and '../' relative imports. Each relative specifier
-   * is resolved against the chunk's own path to produce a normalized key
-   * for the blobUrlMap lookup.
+   * Each relative specifier is resolved against the chunk's own path to
+   * produce a normalized key for the blobUrlMap lookup.
    *
    * A dependency missing from `blobUrlMap` has no sanctioned reading: it is
    * a chunk that was never built, and no case exists in which an absence is
@@ -3263,88 +2658,37 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
    * back a module that evaluates outside the load's isolated graph with its
    * own bare specifiers unrewritten — a far worse outcome than a
    * diagnostic, so it fails the load instead.
+   *
+   * Dynamic `import('<rel>')` calls are NOT bound here. A build-time AST
+   * transform converts every dynamic import to `__frontx_lazy('<rel>')`
+   * (ADR-0022); the loader stub injected by `createBlobUrlChainInternal`
+   * routes those calls through `resolveLazyChunk`, which mints per-load
+   * blob URLs that inherit the parent load's `sharedDepBlobUrls`. Eagerly
+   * binding `import(...)` here would either bypass that path (loading lazy
+   * chunks from origin with unrewritten bare specifiers — the failure mode
+   * ADR-0022 prevents) or eagerly resolve every lazy chunk into the static
+   * chain (defeating lazy semantics).
    */
-  private rewriteModuleImports(
-    source: string,
+  private relativeImportBlob(
+    relPath: string,
     loadState: LoadBlobState,
     chunkFilename: string
   ): string {
-    const resolve = (relPath: string): string => {
-      const resolved = this.resolveRelativePath(chunkFilename, relPath);
-      const blobUrl = loadState.blobUrlMap.get(resolved);
-      if (blobUrl) return blobUrl;
-      // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-raise-unbuilt-dep
-      throw new MfeLoadError(
-        `Chunk '${chunkFilename}' imports '${relPath}' (resolved to ` +
-          `'${resolved}'), which has no blob URL in this load — its ` +
-          'construction never completed. There is no sanctioned reason for ' +
-          'the absence: a detected dependency cycle fails the build where ' +
-          'it is detected. Refusing to rewrite the import to its origin ' +
-          "URL, which would evaluate that module outside the load's " +
-          'isolated module graph.',
-        loadState.entryId
-      );
-      // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-raise-unbuilt-dep
-    };
-
-    // Static imports: from './...' or from '../..'
-    let result = source.replace(
-      /from\s*'(\.\.?\/[^']+)'/g,
-      (_match, relPath: string) => `from '${resolve(relPath)}'`
+    const resolved = MfeHandlerMF.chunkKey(loadState.baseUrl, relPath, chunkFilename);
+    const blobUrl = loadState.blobUrlMap.get(resolved);
+    if (blobUrl) return blobUrl;
+    // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-raise-unbuilt-dep
+    throw new MfeLoadError(
+      `Chunk '${chunkFilename}' imports '${relPath}' (resolved to ` +
+        `'${resolved}'), which has no blob URL in this load — its ` +
+        'construction never completed. There is no sanctioned reason for ' +
+        'the absence: a detected dependency cycle fails the build where ' +
+        'it is detected. Refusing to rewrite the import to its origin ' +
+        "URL, which would evaluate that module outside the load's " +
+        'isolated module graph.',
+      loadState.entryId
     );
-    result = result.replace(
-      /from\s*"(\.\.?\/[^"]+)"/g,
-      (_match, relPath: string) => `from "${resolve(relPath)}"`
-    );
-
-    // Bare side-effect imports: import './dep.js'
-    result = result.replace(
-      /import\s*'(\.\.?\/[^']+)'\s*;?/g,
-      (_match, relPath: string) => `import '${resolve(relPath)}';`
-    );
-    result = result.replace(
-      /import\s*"(\.\.?\/[^"]+)"\s*;?/g,
-      (_match, relPath: string) => `import "${resolve(relPath)}";`
-    );
-
-    // Dynamic `import('<rel>')` calls are NOT rewritten here. A build-time
-    // AST transform converts every dynamic import to `__frontx_lazy('<rel>')`
-    // (ADR-0022);
-    // the loader stub injected by `createBlobUrlChainInternal` routes those
-    // calls through `resolveLazyChunk`, which mints per-load blob URLs that
-    // inherit the parent load's `sharedDepBlobUrls`. Eagerly rewriting
-    // `import(...)` here would either bypass that path (loading lazy chunks
-    // from origin with unrewritten bare specifiers — the failure mode
-    // ADR-0022 prevents) or eagerly resolve every lazy chunk into the
-    // static chain (defeating lazy semantics).
-
-    return result;
-  }
-
-  /**
-   * Resolve a relative import path against the importing chunk's filename.
-   *
-   * Uses URL resolution to correctly handle '../' traversals. For example:
-   *  - resolveRelativePath('__federation_shared_@gears-frontx/react.js', '../runtime.js')
-   *    → 'runtime.js'
-   *  - resolveRelativePath('expose-Widget1.js', './dep.js')
-   *    → 'dep.js'
-   */
-  private resolveRelativePath(
-    fromChunkFilename: string,
-    relativeSpecifier: string
-  ): string {
-    // When the importing chunk has an absolute URL (portable shared dep served
-    // from a canonical origin), resolve imports against that origin and return
-    // the full URL. This ensures deps of cross-origin portable chunks are
-    // fetched from the correct server, not the current MFE's baseUrl.
-    if (fromChunkFilename.startsWith('http://') || fromChunkFilename.startsWith('https://')) {
-      return new URL(relativeSpecifier, fromChunkFilename).href;
-    }
-    const syntheticBase = 'http://r/';
-    const fromUrl = new URL(fromChunkFilename, syntheticBase);
-    const resolved = new URL(relativeSpecifier, fromUrl);
-    return resolved.pathname.slice(1); // strip leading '/'
+    // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-raise-unbuilt-dep
   }
 }
 

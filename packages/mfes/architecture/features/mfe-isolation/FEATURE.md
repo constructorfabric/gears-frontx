@@ -35,11 +35,11 @@ description: Specifies isolation of each loaded microfrontend in its own module 
 
 <!-- /toc -->
 
-- [ ] `p1` - **ID**: `cpt-frontx-featstatus-mfe-isolation`
+- [x] `p1` - **ID**: `cpt-frontx-featstatus-mfe-isolation`
 
 ## 1. Feature Context
 
-- [ ] `p2` - `cpt-frontx-feature-mfe-isolation`
+- [x] `p2` - `cpt-frontx-feature-mfe-isolation`
 
 ### 1.1 Overview
 
@@ -88,7 +88,7 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 
 ### Isolated MFE Load
 
-- [ ] `p1` - **ID**: `cpt-frontx-flow-mfe-isolation-load`
+- [x] `p1` - **ID**: `cpt-frontx-flow-mfe-isolation-load`
 
 **Actor**: `cpt-frontx-actor-project-developer`
 
@@ -112,15 +112,15 @@ User-facing interactions that start with an actor and describe the end-to-end fl
 3. [x] - `p1` - System checks the instance-keyed load cache for an existing promise keyed by the extension instance ID - `inst-check-cache`
 4. [x] - `p1` - **IF** a cached load promise exists for this instance ID - `inst-if-cached`
    1. [x] - `p1` - **RETURN** the cached lifecycle (same blob URLs, same module instance, same lifecycle reference) - `inst-return-cached`
-5. [ ] - `p1` - **ELSE** - `inst-else-new-load`
+5. [x] - `p1` - **ELSE** - `inst-else-new-load`
    1. [x] - `p1` - System resolves the registered manifest the entry references by its identifier - `inst-resolve-manifest`
       1. [x] - `p1` - System reads the handler's manifest cache — keyed by manifest id, held by the handler for its lifetime and bounded by the manifests registered — and, on a miss, reads the manifest registered under that identifier from the registry the handler was registered into, through the type system that registry supplied to the handler at registration. It accepts the answer as a manifest only when it is an object carrying a string `id`, an object `metaData` and, when `shared` is present, an array `shared`, and caches an accepted manifest under its `id` for later loads; any other answer is treated as a miss and cached nowhere - `inst-manifest-by-id`
       2. [x] - `p1` - **IF** neither source yields a manifest for the identifier, System raises an MFE load error naming the unresolved reference - `inst-manifest-unresolved-raise`
    2. [x] - `p1` - System verifies that every shared-dependency package name the manifest declares is unique within that manifest, before the fetch-list and whole-package paths divide and before any shared-dependency source is fetched - `inst-assert-unique-names`
       1. [x] - `p1` - **IF** the same package name is declared more than once, regardless of version - `inst-if-duplicate-name`
          1. [x] - `p1` - **RETURN** error — fail the load with a diagnostic naming the duplicated package and the manifest - `inst-raise-duplicate-name`
-   3. [x] - `p1` - System builds the load's shared-dependency blob URLs: **IF** the exposed module has a fetch list, from the shared units that list names, fetched under `cpt-frontx-algo-mfe-loading-manifest-discovery` and minted via `cpt-frontx-algo-mfe-isolation-unit-memo-minting`; **ELSE** from every whole-package entry the manifest declares, via `cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls`, which decides their construction order itself from the fetched sources - `inst-build-shared-blobs`
-   4. [ ] - `p1` - **IF** the exposed module has a fetch list, once the load's listed units are fetched and minted, System writes exactly one diagnostic for the load at `console.warn` level naming the manifest: the bytes of the units this load itself fetched — excluding the microfrontend's own code, requests it joined and lazy batches — and the realm cache's held bytes, entry count, budget and evictions, read through the cache's `getDiagnostics` operation; **IF** the adopted realm cache has no `getDiagnostics` operation, the diagnostic states that the figures are unavailable. The diagnostic is written before the microfrontend's own chunks are minted and does not wait on them: a load that fails before its listed units are minted — a unit, the entry module or an entry of the list's `ownChunks` failing — writes no diagnostic, and a load whose own code fails after the diagnostic is written keeps it - `inst-emit-load-diagnostic`
+   3. [x] - `p1` - System builds the load's shared-dependency blob URLs: **IF** the manifest holds `units` or `lists`, from the shared units the exposed module's list names, fetched under `cpt-frontx-algo-mfe-loading-manifest-discovery` and minted via `cpt-frontx-algo-mfe-isolation-unit-memo-minting`; **ELSE** the manifest holds neither, and the load builds them from every whole-package entry the manifest declares, via `cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls`, which decides their construction order itself from the fetched sources - `inst-build-shared-blobs`
+   4. [x] - `p1` - **IF** the manifest holds `units` or `lists`, once the load's listed units are fetched and minted, System writes exactly one diagnostic for the load at `console.warn` level naming the manifest: the bytes of the units this load itself fetched — excluding the microfrontend's own code, requests it joined and lazy batches — and the realm cache's held bytes, entry count, budget and evictions, read through the cache's `getDiagnostics` operation; **IF** the adopted realm cache has no `getDiagnostics` operation, the diagnostic states that the figures are unavailable. The diagnostic is written before the microfrontend's own chunks are minted and does not wait on them: a load that fails before its listed units are minted — a unit, the entry module or an entry of the list's `ownChunks` failing — writes no diagnostic, and a load whose own code fails after the diagnostic is written keeps it - `inst-emit-load-diagnostic`
    5. [x] - `p1` - System builds the blob URL chain for the entry module and the own chunks of its full static-dependency graph via `cpt-frontx-algo-mfe-isolation-blob-url-chain`, so the own chunks are minted leaves-first after the shared units and the entry module last - `inst-build-expose-chain`
    6. [x] - `p1` - System imports the entry module's blob URL through the trust-kernel guarded import primitive - `inst-import-expose`
    7. [x] - `p1` - System validates that the imported module implements the lifecycle contract (mount and unmount functions) - `inst-validate-lifecycle`
@@ -138,7 +138,7 @@ Internal system functions that implement the isolation mechanism.
 
 ### Blob URL Chain Construction
 
-- [ ] `p1` - **ID**: `cpt-frontx-algo-mfe-isolation-blob-url-chain`
+- [x] `p1` - **ID**: `cpt-frontx-algo-mfe-isolation-blob-url-chain`
 
 **Input**: A chunk filename — the entry module's on the initial build, a lazy chunk's on a lazy build — the requesting lineage (ancestor filenames whose construction transitively awaits this one), a build-scoped failure signal, and per-load state (base URL, entry ID, an in-flight construction registry — a transient join point that lets concurrent requesters for one filename share a single construction — and the per-load map, which holds the shared-dependency blob URLs and is the one durable record of completed constructions)
 
@@ -163,11 +163,11 @@ Internal system functions that implement the isolation mechanism.
 9. [x] - `p1` - Register an in-flight entry for this filename carrying a lineage seeded from the requesting lineage, and thread that lineage — live, not a snapshot — through this construction and into every dependency it recurses into - `inst-register-inflight`
 10. [x] - `p1` - **IF** the build's failure signal is already raised when this construction begins - `inst-if-failed-at-entry`
     1. [x] - `p1` - **RETURN** without fetching, abandoning work this build will never use - `inst-return-failed-at-entry`
-11. [ ] - `p1` - Obtain the own chunk's source text through the handler source-text cache, keyed by the chunk's absolute URL: on the fetch-list path an own chunk the list's `ownChunks` names joins the request the load's round already issued, so its fetch never waits for minting; otherwise the text is fetched from that URL. An own chunk the build reaches that the list's `ownChunks` omits is a producer defect (`cpt-frontx-algo-unit-format-contract-fetch-list-schema-v2` (`inst-producer-obligations`)); the runtime still fetches it from its URL when the chain build reaches it, outside the one-round bound of `cpt-frontx-dod-mfe-loading-one-round-load`. The text is held in the handler source-text cache only and is never admitted to the realm cache; that cache never evicts an in-flight entry (`cpt-frontx-dod-mfe-isolation-handler-source-text-cache`) - `inst-fetch-source`
+11. [x] - `p1` - Obtain the own chunk's source text through the handler source-text cache, keyed by the chunk's absolute URL: on the fetch-list path an own chunk the list's `ownChunks` names joins the request the load's round already issued, so its fetch never waits for minting; otherwise the text is fetched from that URL. An own chunk the build reaches that the list's `ownChunks` omits is a producer defect (the producer output obligations of `cpt-frontx-algo-unit-format-contract-fetch-list-schema`); the runtime still fetches it from its URL when the chain build reaches it, outside the one-round bound of `cpt-frontx-dod-mfe-loading-one-round-load`. The text is held in the handler source-text cache only and is never admitted to the realm cache; that cache never evicts an in-flight entry (`cpt-frontx-dod-mfe-isolation-handler-source-text-cache`) - `inst-fetch-source`
 12. [x] - `p1` - **IF** the build's failure signal was raised by another branch while this fetch was in flight - `inst-if-failed-after-fetch`
     1. [x] - `p1` - **RETURN** without minting a blob URL - `inst-return-failed-after-fetch`
 13. [x] - `p1` - Parse all relative static import filenames from the chunk source - `inst-parse-static-imports`
-14. [x] - `p1` - Fan the sibling dependency recursions out concurrently rather than awaiting each sibling's entire subtree before starting the next, admitting them through a single concurrency budget shared by the whole chain build so that the number of source fetches in flight for that build stays within one fixed width of six, a constant of the runtime, regardless of graph depth or the number of sibling groups. The width applies only to the path without a fetch list; the fetch-list round has no concurrency limit (`cpt-frontx-adr-mfe-asset-discovery`) - `inst-fanout-bounded`
+14. [x] - `p1` - Fan the sibling dependency recursions out concurrently rather than awaiting each sibling's entire subtree before starting the next, admitting them through a single concurrency budget shared by the whole chain build so that the number of source fetches in flight for that build stays within one fixed width of six, a constant of the runtime, regardless of graph depth or the number of sibling groups. The width applies only to the whole-package path; the fetch-list round has no concurrency limit (`cpt-frontx-adr-mfe-asset-discovery`) - `inst-fanout-bounded`
 15. [x] - `p1` - **FOR EACH** dependency filename in the parsed static imports - `inst-for-each-dep`
     1. [x] - `p1` - Recursively build the blob URL chain for the dependency, passing a lineage extended with this chunk's own filename - `inst-recurse-dep`
 16. [x] - `p1` - Await every sibling recursion and scan the outcomes in declaration order — not completion order — for the first failure, so the reported error is deterministic regardless of which sibling lost the wall-clock race - `inst-first-failure-declaration-order`
@@ -182,7 +182,7 @@ Internal system functions that implement the isolation mechanism.
 23. [x] - `p1` - **IF** a declared shared-dependency name survives that assertion - `inst-if-own-bare-specifier`
     1. [x] - `p1` - **RETURN** error — fail this chain build with an `MfeLoadError` naming the chunk, the surviving specifier, and the microfrontend - `inst-raise-own-bare-specifier`
 24. [x] - `p1` - **IF** the rewritten source still carries an undeclared, well-formed package module specifier, by the rule `inst-if-undeclared-specifier` applies to whole-package entries, emit a console warning naming the chunk, that specifier, and the microfrontend, and proceed - `inst-warn-own-undeclared-specifier`
-25. [x] - `p1` - Replace `import.meta.url` occurrences with the chunk's real HTTP base URL to preserve relative URL resolution under blob evaluation - `inst-rewrite-meta-url`
+25. [x] - `p1` - Replace each `import.meta.url` token sequence — never one inside a string or comment — with the chunk's resolved HTTP location, the URL its file was fetched from, to preserve relative URL resolution under blob evaluation - `inst-rewrite-meta-url`
 26. [x] - `p1` - **IF** the rewritten source references the lazy-import ABI entry point - `inst-if-lazy-ref`
     1. [x] - `p1` - Mint or reuse the per-load lazy-loader stub blob URL and inject its import at the top of the source - `inst-inject-lazy-stub`
 27. [x] - `p1` - Wrap the fully rewritten source in a blob, create a blob URL, and record it in the per-load map - `inst-create-blob`
@@ -191,14 +191,14 @@ Internal system functions that implement the isolation mechanism.
 
 ### Shared-Dependency Blob URL Construction
 
-- [ ] `p1` - **ID**: `cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls`
+- [x] `p1` - **ID**: `cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls`
 
-**Input**: MFE manifest whose exposed module has no fetch list and whose shared-dependency names `inst-assert-unique-names` of `cpt-frontx-flow-mfe-isolation-load` has found unique, containing the whole-package entries (name, version, chunk path, and an optional content hash of the entry's file) in the manifest's published enumeration order, which fixes only the sequence in which the declarations are visited (`cpt-frontx-adr-mfe-asset-discovery`)
+**Input**: MFE manifest that holds neither `units` nor `lists` and whose shared-dependency names `inst-assert-unique-names` of `cpt-frontx-flow-mfe-isolation-load` has found unique, containing the whole-package entries (name, version, chunk path, and an optional content hash of the entry's file) in the manifest's published enumeration order, which fixes only the sequence in which the declarations are visited (`cpt-frontx-adr-mfe-asset-discovery`)
 
 **Output**: The per-load map holding one blob URL per whole-package entry declared in the manifest, keyed by package name
 
 **Steps**:
-1. [ ] - `p1` - **FOR EACH** shared dependency declared in the manifest, visited in the manifest's enumeration order — which governs only the sequence of visits, so the enumeration may issue its fetches concurrently, admitted through the same fixed width `inst-fanout-bounded` names; this phase completes before the load's entry-module chain build begins, so the two phases never contribute to one another's in-flight count - `inst-for-each-shared-dep`
+1. [x] - `p1` - **FOR EACH** shared dependency declared in the manifest, visited in the manifest's enumeration order — which governs only the sequence of visits, so the enumeration may issue its fetches concurrently, admitted through the same fixed width `inst-fanout-bounded` names; this phase completes before the load's entry-module chain build begins, so the two phases never contribute to one another's in-flight count - `inst-for-each-shared-dep`
    1. [x] - `p1` - Derive the absolute chunk URL from the load's absolute asset base URL (the manifest's `publicPath` resolved against the host document's base URL) and the dependency's `chunkPath` - `inst-derive-url`
    2. [x] - `p1` - **IF** the whole-package entry declares a content identity (`contentHash`) - `inst-if-hash-declared`
       1. [x] - `p1` - Take the realm cache key `cpt-frontx-algo-unit-format-contract-shared-text-admission` derives for a whole-package entry that declares one (`inst-derive-key`), so reuse is scoped to loads whose declared content identity agrees - `inst-compute-key-hash`
@@ -207,45 +207,47 @@ Internal system functions that implement the isolation mechanism.
       2. [x] - `p1` - Emit an adoption notice naming the dependency, the manifest it came from, and that cross-MFE reuse is disabled for that dependency, once per handler for each package `name@version` and manifest id pair, not per load; the handler remembers the 64 most recently noticed pairs, so its memory stays bounded and a pair older than those may be noticed again; the load proceeds on the location key rather than failing - `inst-emit-adoption-notice`
    4. [x] - `p1` - **IF** the realm cache this copy resolved through the realm rendezvous (`cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous`) — the realm-shared cache every compatible independently loaded copy converges on, or this copy's own local fallback — already holds a promise for this key - `inst-if-cache-hit`
       1. [x] - `p1` - Retrieve the cached source text promise - `inst-retrieve-cached`
-   5. [ ] - `p1` - **ELSE** - `inst-else-fetch`
+   5. [x] - `p1` - **ELSE** - `inst-else-fetch`
       1. [x] - `p1` - Fetch the source text from the absolute chunk URL derived earlier, publishing the in-flight promise in the realm cache under the key before awaiting it and evicting it on rejection under the identity check, as `cpt-frontx-algo-unit-format-contract-shared-text-admission` specifies (`inst-fetch-on-miss`, `inst-evict-on-reject`) - `inst-fetch-and-cache`
-      2. [ ] - `p1` - Issue that fetch as a request of its own that neither reads nor populates the handler source-text cache, so the realm cache alone holds the entry's text and the realm byte budget bounds it - `inst-whole-package-bypass-handler-cache`
+      2. [x] - `p1` - Issue that fetch as a request of its own that neither reads nor populates the handler source-text cache, so the realm cache alone holds the entry's text and the realm byte budget bounds it - `inst-whole-package-bypass-handler-cache`
 2. [x] - `p1` - Resolve the collected sources in dependency order — the sole source of dependency-order correctness for blob construction, derived from the fetched sources themselves and not from the manifest's enumeration order — processing each dependency only after all dependencies it imports have been resolved - `inst-resolve-order`
 3. [x] - `p1` - **IF** a pass over the pending shared dependencies resolves none of them, the remaining set imports one another circularly and no dependency order over it exists - `inst-if-shared-cycle`
    1. [x] - `p1` - **RETURN** error — fail the load with a diagnostic naming the shared dependencies that remain unresolved and the imports among them that form the cycle, rather than minting a module whose bare specifiers are left unrewritten - `inst-raise-shared-cycle`
-4. [ ] - `p1` - **FOR EACH** dependency in resolved order - `inst-for-each-resolved`
+4. [x] - `p1` - **FOR EACH** dependency in resolved order - `inst-for-each-resolved`
    1. [x] - `p1` - Rewrite bare shared-dep specifiers in the source to the already-resolved blob URLs - `inst-rewrite-specifiers`
-   2. [ ] - `p1` - Rewrite every literal and every pattern dynamic import in the entry's text to the lazy-import call `cpt-frontx-algo-mfe-loading-lazy-import-abi` specifies; only a fully opaque `import(expr)` stays native (`cpt-frontx-adr-lazy-import-resolution`). At run time the call's target and the chunks it reaches are found by walking the chunk graph from that target (`cpt-frontx-algo-mfe-isolation-blob-url-chain`) and bind to the whole-package entries already in the per-load map, so a whole-package load resolves a lazy target with no fetch list for it - `inst-rewrite-whole-package-dynamic-imports`
-   3. [x] - `p1` - Assert that no shared-dependency name the manifest declares survives the rewrite as a bare specifier in the rewritten source, checked in the two static import forms the specifier rewrite handles — `from "x"` and `import "x"` — while a dynamic import has become the lazy-import call (`inst-rewrite-whole-package-dynamic-imports`) and stays outside this check (`cpt-frontx-adr-mfe-asset-discovery`) - `inst-assert-shared-dep-no-bare-specifier`
-   4. [x] - `p1` - **IF** a declared shared-dependency name survives that assertion - `inst-if-shared-dep-bare-specifier`
+   2. [x] - `p1` - Rewrite every literal and every pattern dynamic import in the entry's text to the lazy-import call `cpt-frontx-algo-mfe-loading-lazy-import-abi` specifies; only a fully opaque `import(expr)` stays native (`cpt-frontx-adr-lazy-import-resolution`). At run time the call's target and the chunks it reaches are found by walking the chunk graph from that target (`cpt-frontx-algo-mfe-isolation-blob-url-chain`) and bind to the whole-package entries already in the per-load map, so a whole-package load resolves a lazy target with no fetch list for it - `inst-rewrite-whole-package-dynamic-imports`
+   3. [x] - `p1` - Replace every `import.meta.url` token sequence in the entry's text with that entry's resolved location, the HTTP URL its file was fetched from, as for an own chunk (`inst-rewrite-meta-url`), so relative URL resolution survives blob evaluation - `inst-whole-package-meta-url`
+   4. [x] - `p1` - Assert that no shared-dependency name the manifest declares survives the rewrite as a bare specifier in the rewritten source, checked in the two static import forms the specifier rewrite handles — `from "x"` and `import "x"` — while a dynamic import has become the lazy-import call (`inst-rewrite-whole-package-dynamic-imports`) and stays outside this check (`cpt-frontx-adr-mfe-asset-discovery`) - `inst-assert-shared-dep-no-bare-specifier`
+   5. [x] - `p1` - **IF** a declared shared-dependency name survives that assertion - `inst-if-shared-dep-bare-specifier`
       1. [x] - `p1` - **RETURN** error — fail the load with a diagnostic naming the chunk, the surviving specifier, and the microfrontend - `inst-raise-shared-dep-bare-specifier`
-   5. [x] - `p1` - **IF** the rewritten source still carries, in those same two import forms, a specifier the manifest never declared which is well-formed as a package module specifier — an optionally scoped package name with an optional subpath, carrying no whitespace, quote, parenthesis, colon or line break - `inst-if-undeclared-specifier`
+   6. [x] - `p1` - **IF** the rewritten source still carries, in those same two import forms, a specifier the manifest never declared which is well-formed as a package module specifier — an optionally scoped package name with an optional subpath, carrying no whitespace, quote, parenthesis, colon or line break - `inst-if-undeclared-specifier`
       1. [x] - `p1` - Emit a diagnostic naming the chunk, that specifier, and the microfrontend, and proceed with the load (`cpt-frontx-adr-mfe-asset-discovery`) - `inst-warn-undeclared-specifier`
-   6. [x] - `p1` - Wrap the rewritten source in a blob, create a fresh blob URL, and record it in the per-load map under the dependency's package name - `inst-create-dep-blob`
+   7. [x] - `p1` - Wrap the rewritten source in a blob, create a fresh blob URL, and record it in the per-load map under the dependency's package name - `inst-create-dep-blob`
 5. [x] - `p1` - **RETURN** the shared-dependency blob URLs recorded in the per-load map - `inst-return-map`
 
 ### Per-Load Map and Unit Minting
 
-- [ ] `p1` - **ID**: `cpt-frontx-algo-mfe-isolation-unit-memo-minting`
+- [x] `p1` - **ID**: `cpt-frontx-algo-mfe-isolation-unit-memo-minting`
 
 **Input**: The load's reachable unit set — unit ids and their source text admitted to the realm cache under `cpt-frontx-algo-unit-format-contract-shared-text-admission` — and the load's per-load map
 
 **Output**: The per-load map extended to one blob URL per unit the load reaches; raw unit text cached realm-wide, blob URLs minted once per unit per load
 
 **Steps**:
-1. [ ] - `p1` - Walk the load's reachable units leaves-first, processing each unit only after every unit it depends on has a blob URL in this load's per-load map, so a unit's specifiers are always rewritten to minted URLs - `inst-umm-leaves-first`
-2. [ ] - `p1` - **FOR EACH** unit, resolve every intra-package relative import against the member module that carries it — in a multi-module unit each member's relative specifier resolves against that member's own module path, never against the unit's first member alone — so a unit built from an import cycle still mints working specifier edges - `inst-umm-per-member-relative`
-3. [ ] - `p1` - Rewrite every bare specifier to this load's blob URL for the shared-dependency unit it names, including subpath specifiers: a specifier such as `react/jsx-runtime` resolves to the unit of the package's subpath module, not to the package root alone, so no bare specifier survives into a minted blob - `inst-umm-subpath-rewrite`
+1. [x] - `p1` - Walk the load's reachable units leaves-first, processing each unit only after every unit it depends on has a blob URL in this load's per-load map, so a unit's specifiers are always rewritten to minted URLs - `inst-umm-leaves-first`
+2. [x] - `p1` - **FOR EACH** unit, resolve every intra-package relative import against the member module that carries it — in a multi-module unit each member's relative specifier resolves against that member's own module path, never against the unit's first member alone — so a unit built from an import cycle still mints working specifier edges - `inst-umm-per-member-relative`
+3. [x] - `p1` - Rewrite every bare specifier to this load's blob URL for the shared-dependency unit it names, including subpath specifiers: a specifier such as `pkg/subpath` resolves to the unit of the package's subpath module, not to the package root alone, so no bare specifier survives into a minted blob - `inst-umm-subpath-rewrite`
    1. [x] - `p1` - **IF** a declared shared-dependency name nevertheless survives the rewrite as a bare specifier, checked by the rule `inst-assert-shared-dep-no-bare-specifier` applies, **RETURN** error — fail the load, or on a lazy target's first use that lazy import, with an `MfeLoadError` naming the unit, the surviving specifier and the microfrontend; an undeclared, well-formed package module specifier that survives produces a console warning naming the same three and the load proceeds - `inst-umm-unresolved-specifiers`
-   2. [ ] - `p1` - Rewrite every literal and every pattern dynamic import in the unit's text to the lazy-import call `cpt-frontx-algo-mfe-loading-lazy-import-abi` specifies, at mint time — a pattern import with the path computed at runtime and resolved through the fetch list's pattern records; only a fully opaque `import(expr)` stays native, as the one accepted exception to isolation (`cpt-frontx-adr-lazy-import-resolution`). At run time on a fetch-list load, a call from a shared unit whose target has no fetch list fails the load with an `MfeLoadError` and a call from the microfrontend's own code whose target has none is warned about and loads (`cpt-frontx-algo-mfe-loading-lazy-import-abi`); a whole-package load resolves its lazy targets by walking the chunk graph (`inst-rewrite-whole-package-dynamic-imports`) - `inst-umm-dynamic-import-rewrite`
-4. [ ] - `p1` - Mint exactly one blob URL per unit for this load and record it in the per-load map under the unit id, so two dependents of one unit share its module record inside this load's graph while a different load mints its own - `inst-umm-one-blob-per-unit`
-5. [ ] - `p1` - Extend the per-load map, never rewrite it: a lazily reached unit set adds entries to the same map (`cpt-frontx-algo-mfe-loading-lazy-import-abi`, `inst-lai-lazy-roots`) and no entry is replaced, so a specifier rewritten earlier always names a live blob URL - `inst-umm-memo-extendable`
-6. [ ] - `p1` - Keep raw unit text in the realm cache under the key `cpt-frontx-algo-unit-format-contract-shared-text-admission` derives for it (`inst-derive-key`), shared across loads, while the minted blob URLs stay per-load (`cpt-frontx-adr-shared-dep-cache-reach`) - `inst-umm-text-realm-blob-perload`
-7. [ ] - `p1` - **RETURN** the extended per-load map - `inst-umm-return`
+   2. [x] - `p1` - Rewrite every literal and every pattern dynamic import in the unit's text to the lazy-import call `cpt-frontx-algo-mfe-loading-lazy-import-abi` specifies, at mint time — a pattern import with the path computed at runtime and resolved through the fetch list's pattern records; only a fully opaque `import(expr)` stays native, as the one accepted exception to isolation (`cpt-frontx-adr-lazy-import-resolution`). At run time on a fetch-list load, a call from a shared unit whose target has no fetch list fails the load with an `MfeLoadError` and a call from the microfrontend's own code whose target has none is warned about and loads (`cpt-frontx-algo-mfe-loading-lazy-import-abi`); a whole-package load resolves its lazy targets by walking the chunk graph (`inst-rewrite-whole-package-dynamic-imports`) - `inst-umm-dynamic-import-rewrite`
+   3. [x] - `p1` - Replace every `import.meta.url` token sequence in the unit's text with that unit's resolved location, the URL its file was fetched from, as for an own chunk (`inst-rewrite-meta-url`), so relative URL resolution survives blob evaluation, while the unit's cached bytes stay unchanged - `inst-umm-meta-url`
+4. [x] - `p1` - Mint exactly one blob URL per unit for this load and record it in the per-load map under the unit id, so two dependents of one unit share its module record inside this load's graph while a different load mints its own - `inst-umm-one-blob-per-unit`
+5. [x] - `p1` - Extend the per-load map, never rewrite it: a lazily reached unit set adds entries to the same map (`cpt-frontx-algo-mfe-loading-lazy-import-abi`, `inst-lai-lazy-roots`) and no entry is replaced, so a specifier rewritten earlier always names a live blob URL - `inst-umm-memo-extendable`
+6. [x] - `p1` - Keep raw unit text in the realm cache under the key `cpt-frontx-algo-unit-format-contract-shared-text-admission` derives for it (`inst-derive-key`), shared across loads, while the minted blob URLs stay per-load (`cpt-frontx-adr-shared-dep-cache-reach`) - `inst-umm-text-realm-blob-perload`
+7. [x] - `p1` - **RETURN** the extended per-load map - `inst-umm-return`
 
 ### Realm Shared-Dependency Cache Rendezvous
 
-- [ ] `p1` - **ID**: `cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous`
+- [x] `p1` - **ID**: `cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous`
 
 **Input**: The realm's global object, and the protocol version this evaluated copy of the package speaks
 
@@ -255,8 +257,8 @@ Internal system functions that implement the isolation mechanism.
 1. [x] - `p1` - Read the realm-global slot `Symbol.for('@gears-frontx/mfes:shared-dep-text-cache:1')`, whose description carries the protocol version this copy speaks, and expect an entry of shape `{ v: 1, cache }` — `v` the protocol version, compared by equality, and `cache` an object exposing the operations `get`, `set` and `delete` as functions, plus an optional `getDiagnostics` operation returning `{ bytes, entries, budget, evictions }` — the held bytes, entry count, budget and evictions; the accessor is internal, and the shared-unit fetcher on `./unit-loader` reaches the cache only through it, so obtaining the cache adds no exported symbol and no consumer-visible operation (`cpt-frontx-constraint-mfes-realm-shared-dep-cache`) - `inst-rsdc-read-slot`
 2. [x] - `p1` - **IF** the slot holds nothing - `inst-rsdc-if-empty`
    1. [x] - `p1` - Create the cache with the byte budget this handler's configuration sets, or the default budget when it sets none, with the `getDiagnostics` operation, and publish the entry `{ v: 1, cache }` into the slot synchronously, before returning it, so two copies initializing in one realm cannot each end up holding a cache of their own; the first handler that publishes the cache therefore sets the realm's budget - `inst-rsdc-publish`
-3. [ ] - `p1` - **ELSE IF** the entry carries the protocol version this copy speaks - `inst-rsdc-if-version-known`
-   1. [ ] - `p1` - Adopt the cache the entry carries unchanged, recognizing it by `get`, `set` and `delete` being functions rather than by class identity; an adopted cache without `getDiagnostics` is used all the same, and the per-load diagnostic then states that the figures are unavailable (`inst-emit-load-diagnostic`); a budget this handler's configuration sets does not alter the adopted cache, so a configured budget never multiplies the realm's footprint - `inst-rsdc-adopt`
+3. [x] - `p1` - **ELSE IF** the entry carries the protocol version this copy speaks - `inst-rsdc-if-version-known`
+   1. [x] - `p1` - Adopt the cache the entry carries unchanged, recognizing it by `get`, `set` and `delete` being functions rather than by class identity; an adopted cache without `getDiagnostics` is used all the same, and the per-load diagnostic then states that the figures are unavailable (`inst-emit-load-diagnostic`); a budget this handler's configuration sets does not alter the adopted cache, so a configured budget never multiplies the realm's footprint - `inst-rsdc-adopt`
    2. [x] - `p1` - Adopt a structurally conforming entry whichever same-realm code published it: the slot is trusted same-realm coordination state, not an authenticity or confidentiality boundary, so the version and structural checks guard against accidental incompatibility and neither establish publisher identity nor prevent a same-realm publisher from observing or substituting cached source text; no cross-copy authentication is attempted (`cpt-frontx-adr-shared-dep-cache-reach`) - `inst-rsdc-trusted-coordination`
 4. [x] - `p1` - **ELSE** the entry is malformed, or carries a protocol version this copy does not recognize - `inst-rsdc-else-version-unknown`
    1. [x] - `p1` - Treat the slot as absent, emit a diagnostic naming the unrecognized entry, and neither read, mutate, replace nor delete it — a copy that cannot establish the entry's semantics must not act on them, and an incompatible future protocol occupies a slot of its own rather than contending for this one - `inst-rsdc-leave-unknown`
@@ -283,7 +285,7 @@ Internal system functions that implement the isolation mechanism.
 
 ### Isolated Module Lifecycle
 
-- [ ] `p2` - **ID**: `cpt-frontx-state-mfe-isolation-module-lifecycle`
+- [x] `p2` - **ID**: `cpt-frontx-state-mfe-isolation-module-lifecycle`
 
 **States**: UNLOADED, ISOLATED, ACTIVE, DISPOSED
 
@@ -294,11 +296,11 @@ Internal system functions that implement the isolation mechanism.
 2. [x] - `p1` - **FROM** ISOLATED **TO** ACTIVE **WHEN** the lifecycle's mount operation is invoked and the MFE is rendered into the target domain container - `inst-to-active`
 3. [x] - `p1` - **FROM** ACTIVE **TO** DISPOSED **WHEN** the lifecycle's unmount operation is invoked and the MFE is removed from the domain container - `inst-to-disposed`
 4. [x] - `p1` - **FROM** UNLOADED **TO** UNLOADED **WHEN** a load attempt fails, including one whose own chunks import one another in a cycle; the load-cache entry is removed so a subsequent load attempt starts fresh - `inst-load-failed-retry`
-5. [ ] - `p1` - **FROM** DISPOSED **TO** ACTIVE **WHEN** the lifecycle's mount operation is invoked again for the same extension instance; the load-cache entry is reused, so no module is re-evaluated and no blob URL is minted - `inst-remount`
+5. [x] - `p1` - **FROM** DISPOSED **TO** ACTIVE **WHEN** the lifecycle's mount operation is invoked again for the same extension instance; the load-cache entry is reused, so no module is re-evaluated and no blob URL is minted - `inst-remount`
 
 ### Per-Load Blob State
 
-- [ ] `p2` - **ID**: `cpt-frontx-state-mfe-isolation-load-blob-state`
+- [x] `p2` - **ID**: `cpt-frontx-state-mfe-isolation-load-blob-state`
 
 **States**: INITIALIZING, BUILDING, COMPLETE, FAILED
 
@@ -307,10 +309,10 @@ Internal system functions that implement the isolation mechanism.
 **Transitions**:
 1. [x] - `p1` - **FROM** INITIALIZING **TO** BUILDING **WHEN** the shared-dependency blob URLs are constructed and the entry module's chain build begins - `inst-blob-building`
 2. [x] - `p1` - **FROM** BUILDING **TO** COMPLETE **WHEN** all chunks in the dependency graph have blob URLs recorded in the per-load map - `inst-blob-complete`
-3. [ ] - `p1` - **FROM** COMPLETE **TO** BUILDING **WHEN** a lazy target's first use starts a chain build that extends the per-load map - `inst-blob-lazy-extend`
-4. [ ] - `p1` - **FROM** BUILDING **TO** COMPLETE **WHEN** a lazy target's chain build fails; only that lazy import fails, and the per-load map keeps every entry it held - `inst-blob-lazy-failed`
-5. [ ] - `p1` - **FROM** INITIALIZING **TO** FAILED **WHEN** building the shared-dependency blob URLs fails; the load fails and its load-cache entry is removed (`inst-load-failed-retry`) - `inst-blob-shared-failed`
-6. [ ] - `p1` - **FROM** BUILDING **TO** FAILED **WHEN** the entry module's chain build fails; the load fails and its load-cache entry is removed (`inst-load-failed-retry`) - `inst-blob-failed`
+3. [x] - `p1` - **FROM** COMPLETE **TO** BUILDING **WHEN** a lazy target's first use starts a chain build that extends the per-load map - `inst-blob-lazy-extend`
+4. [x] - `p1` - **FROM** BUILDING **TO** COMPLETE **WHEN** a lazy target's chain build fails; only that lazy import fails, and the per-load map keeps every entry it held - `inst-blob-lazy-failed`
+5. [x] - `p1` - **FROM** INITIALIZING **TO** FAILED **WHEN** building the shared-dependency blob URLs fails; the load fails and its load-cache entry is removed (`inst-load-failed-retry`) - `inst-blob-shared-failed`
+6. [x] - `p1` - **FROM** BUILDING **TO** FAILED **WHEN** the entry module's chain build fails; the load fails and its load-cache entry is removed (`inst-load-failed-retry`) - `inst-blob-failed`
 
 ## 5. Definitions of Done
 
@@ -352,7 +354,7 @@ The load cache **MUST** remain class-static within one evaluated copy of the pac
 
 ### Realm-Shared Dependency Source-Text Cache
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-realm-shared-dep-text-cache`
+- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-realm-shared-dep-text-cache`
 
 The system **MUST** hold shared text in one cache per JavaScript realm, the realm cache, which every compatible independently loaded copy of the package in that realm converges on through the version-namespaced rendezvous `cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous` specifies. The realm cache **MUST** hold only shared text — list items and whole-package entries — each admitted as fetched under the key `cpt-frontx-algo-unit-format-contract-shared-text-admission` derives for it (`inst-derive-key`). A microfrontend's own code — its entry module, its further and lazy chunks, and the own chunks a fetch list's `ownChunks` names — **MUST NOT** be admitted to the realm cache.
 
@@ -384,7 +386,7 @@ A structurally conforming protocol entry **MUST** be adopted whichever same-real
 
 ### Handler Source-Text Cache
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-handler-source-text-cache`
+- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-handler-source-text-cache`
 
 Each handler **MUST** hold a microfrontend's own code — its entry module, its further and lazy chunks, and the own chunks a fetch list's `ownChunks` names — in a source-text cache of its own, keyed by absolute URL and holding the in-flight or fulfilled text promise. The handler cache **MUST** hold only that own code: list items and whole-package entries **MUST NOT** pass through it, so the realm byte budget bounds all retained shared text. It **MUST NOT** evict an in-flight entry; its bound of 256 entries with least-recently-used eviction applies to settled entries. Its lifetime is the handler's, and it sits outside the realm byte budget.
 
@@ -415,9 +417,9 @@ An entry references a registered manifest by its identifier. The handler **MUST*
 
 ### Per-Load Map — Extendable, Never Rewritten
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-unit-memo`
+- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-unit-memo`
 
-Each load **MUST** mint its units leaves-first — every unit after the units it depends on — rewriting each unit's bare and relative specifiers to this load's own blob URLs, one blob URL per unit, recorded in the per-load map under each unit id. Relative imports inside a multi-module unit **MUST** resolve against the member module that carries them, never against the unit's first member alone, and a subpath bare specifier (such as `react/jsx-runtime`) **MUST** resolve to the unit of the package's subpath module rather than the package root. The per-load map **MUST** be extendable — a lazily reached unit set adds entries — and **MUST NOT** be rewritten, so an earlier rewrite never names a dead blob URL. Every literal and every pattern dynamic import in a shared unit **MUST** be rewritten to the lazy-import call at mint time; only a fully opaque `import(expr)` stays native. At run time on a fetch-list load, a call from a shared unit whose target has no fetch list **MUST** fail the load with an `MfeLoadError` and a call from the microfrontend's own code whose target has none **MUST** be warned about and load (`cpt-frontx-algo-mfe-loading-lazy-import-abi`). On a whole-package load, every literal and every pattern dynamic import in a whole-package entry **MUST** be rewritten to the lazy-import call at mint time, and a lazy target **MUST** be resolved by walking the chunk graph from it and bound to the whole-package entries already in the per-load map. A declared shared-dependency name that survives the rewrite **MUST** fail the load with an `MfeLoadError` naming the unit, the specifier and the microfrontend, and a surviving undeclared, well-formed specifier **MUST** produce a console warning naming the same three. Raw unit text **MUST** be cached in the realm cache while blob URLs stay per-load.
+Each load **MUST** mint its units leaves-first — every unit after the units it depends on — rewriting each unit's bare and relative specifiers to this load's own blob URLs, one blob URL per unit, recorded in the per-load map under each unit id. Relative imports inside a multi-module unit **MUST** resolve against the member module that carries them, never against the unit's first member alone, and a subpath bare specifier (such as `pkg/subpath`) **MUST** resolve to the unit of the package's subpath module rather than the package root. The per-load map **MUST** be extendable — a lazily reached unit set adds entries — and **MUST NOT** be rewritten, so an earlier rewrite never names a dead blob URL. Every literal and every pattern dynamic import in a shared unit **MUST** be rewritten to the lazy-import call at mint time; only a fully opaque `import(expr)` stays native. At run time on a fetch-list load, a call from a shared unit whose target has no fetch list **MUST** fail the load with an `MfeLoadError` and a call from the microfrontend's own code whose target has none **MUST** be warned about and load (`cpt-frontx-algo-mfe-loading-lazy-import-abi`). On a whole-package load, every literal and every pattern dynamic import in a whole-package entry **MUST** be rewritten to the lazy-import call at mint time, and a lazy target **MUST** be resolved by walking the chunk graph from it and bound to the whole-package entries already in the per-load map. A declared shared-dependency name that survives the rewrite **MUST** fail the load with an `MfeLoadError` naming the unit, the specifier and the microfrontend, and a surviving undeclared, well-formed specifier **MUST** produce a console warning naming the same three. Minting a shared unit or a whole-package entry **MUST** replace `import.meta.url` with that unit's resolved location, as for an own chunk. Raw unit text **MUST** be cached in the realm cache while blob URLs stay per-load.
 
 **Implements**:
 - `cpt-frontx-algo-mfe-isolation-unit-memo-minting`
@@ -433,7 +435,7 @@ Each load **MUST** mint its units leaves-first — every unit after the units it
 
 ### Shared-Dependency Diagnostics
 
-- [ ] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-shared-dep-diagnostics`
+- [x] `p1` - **ID**: `cpt-frontx-dod-mfe-isolation-shared-dep-diagnostics`
 
 On the fetch-list path, each load **MUST** write exactly one diagnostic at `console.warn` level, once the load's listed units are fetched and minted, naming the manifest and giving the bytes of the units that load itself fetched — excluding the microfrontend's own code, requests it joined and lazy batches — together with the realm cache's held bytes, entry count, budget and evictions as its `getDiagnostics` operation returns them, each figure matching the cache's state. The diagnostic **MUST NOT** wait on the microfrontend's own chunks: a load that fails before its listed units are minted — a unit, the entry module or an entry of the list's `ownChunks` failing — **MUST NOT** write it, and a load whose own code fails after it is written keeps it. When the adopted realm cache has no `getDiagnostics` operation, the diagnostic **MUST** state that the figures are unavailable. The retained-memory threshold of `cpt-frontx-nfr-resource-efficiency` is thereby checkable from the runtime's own output.
 
@@ -460,14 +462,15 @@ On the fetch-list path, each load **MUST** write exactly one diagnostic at `cons
 - [x] Compatible independently loaded copies of the package in one realm converge on a single shared-dependency source-text cache — bounded by a byte budget with least-recently-used eviction — through a version-namespaced rendezvous of its own, so a dependency whose key agrees across copies is fetched once for the realm; an unrecognized rendezvous entry is left untouched and the copy serves its loads from a local cache bounded by the same byte budget; the cache survives handler discard and registry disposal; and every load still evaluates its own isolated module graph over the text it reuses
 - [x] Each load mints its reachable units leaves-first into its per-load map; a lazily reached unit set extends the same map and no entry is ever rewritten.
 - [x] A multi-module unit resolves each member's relative imports against that member's own module path, so a unit built from an import cycle mints working specifier edges.
-- [x] A subpath bare specifier such as `react/jsx-runtime` is rewritten to the blob URL of the unit carrying the package's subpath module; no bare specifier survives into a minted blob.
-- [ ] A load on the fetch-list path writes exactly one `console.warn` diagnostic naming the manifest once its listed units are fetched and minted; its fetched-byte figure counts the unit bytes that load itself fetched and excludes the microfrontend's own code, joined requests and lazy batches, and its held bytes, entry count, budget and evictions match what the realm cache's `getDiagnostics` returns; a load whose unit, the entry module or an entry of `ownChunks` fails before its listed units are minted writes none, while a load whose own chunk fails after the diagnostic is written keeps it; when the adopted realm cache has no `getDiagnostics` operation, the diagnostic states that the figures are unavailable.
+- [x] A subpath bare specifier such as `pkg/subpath` is rewritten to the blob URL of the unit carrying the package's subpath module; no bare specifier survives into a minted blob.
+- [x] A load on the fetch-list path writes exactly one `console.warn` diagnostic naming the manifest once its listed units are fetched and minted; its fetched-byte figure counts the unit bytes that load itself fetched and excludes the microfrontend's own code, joined requests and lazy batches, and its held bytes, entry count, budget and evictions match what the realm cache's `getDiagnostics` returns; a load whose unit, the entry module or an entry of `ownChunks` fails before its listed units are minted writes none, while a load whose own chunk fails after the diagnostic is written keeps it; when the adopted realm cache has no `getDiagnostics` operation, the diagnostic states that the figures are unavailable.
 - [x] Admitting text beyond the byte budget evicts least-recently-used entries until the retained UTF-8 bytes fit; without a configured budget the default of 4 MiB (4,194,304 bytes) is enforced, and a `sharedDepTextCacheMaxBytes` value replaces it.
 - [x] The budget of the first handler that publishes the realm cache applies; a later handler configured with a different budget adopts the published cache unchanged, so the bound multiplies by neither handler nor compatible package-copy count.
 - [x] A single text larger than the whole budget is not retained in the realm cache, and the load that fetched it still completes.
 - [x] Every test file that reads, seeds or resets the realm cache itself — one that imports `RealmSharedDepTextCacheProvider` as a value, uses the slot's symbol, or reaches the handler's `sharedDepTextCache` — clears the slot before and after each of its tests, so no test observes a realm cache another test published; a mechanical check over the package's test files enforces it.
-- [ ] The handler source-text cache holds at most 256 settled entries, evicting the least recently used, and never evicts an in-flight entry; it holds only the microfrontend's own code.
+- [x] The handler source-text cache holds at most 256 settled entries, evicting the least recently used, and never evicts an in-flight entry; it holds only the microfrontend's own code.
 - [x] Admission to the realm cache from code outside the package is tested by the acceptance criteria `cpt-frontx-feature-unit-format-contract` gives for `cpt-frontx-dod-unit-format-contract-loader-surface`.
+- [x] Minting a shared unit or a whole-package entry replaces `import.meta.url` with that unit's resolved location, as for an own chunk, and the unit's cached bytes stay unchanged.
 - [x] Every literal and every pattern dynamic import inside a shared unit is rewritten to the lazy-import call at mint time, and only a fully opaque `import(expr)` stays native; at run time on a fetch-list load, a call from a shared unit whose target has no fetch list fails the load with an `MfeLoadError`, while a call from the microfrontend's own code whose target has no fetch list is warned about and loads.
 - [x] On a whole-package load, every literal and every pattern dynamic import in a whole-package entry is rewritten to the lazy-import call at mint time, and on first use its target and the chunks that target reaches are found by walking the chunk graph and bind to the whole-package entries already in the per-load map, with no fetch list for the target.
 - [x] Every specifier a load rewrites — static imports, bare shared-dependency specifiers, and literal and pattern dynamic imports — names an inline-content URL that load minted or the lazy-import call; a fully opaque `import(expr)` is the one specifier left native.
@@ -476,7 +479,7 @@ On the fetch-list path, each load **MUST** write exactly one diagnostic at `cons
 - [x] A static dependency absent from the per-load map when its referrer is rewritten fails the load with a diagnostic naming the referring chunk and the dependency.
 - [x] A chain build that fails does not affect any later independent chain build of the same load: a lazy import that follows a failed one re-attempts construction of every chunk the failed build abandoned, including chunks the two builds share.
 - [x] Sibling static-import dependencies are fetched concurrently, and the number of chunk-source fetches in flight for one chain build never exceeds the runtime's fixed width no matter how deep or how wide the dependency graph is; the failure reported for a group of siblings is still the first in declaration order regardless of completion order.
-- [x] A manifest declaring the same shared-dependency package name more than once fails the load with a diagnostic naming that package, before any shared-dependency source is fetched, whether or not the exposed module has a fetch list.
+- [x] A manifest declaring the same shared-dependency package name more than once fails the load with a diagnostic naming that package, before any shared-dependency source is fetched, whether or not the manifest holds `units` or `lists`.
 - [x] A declared shared-dependency name that survives the rewrite of a whole-package entry as a bare specifier fails the load with a diagnostic naming the chunk, the surviving specifier, and the microfrontend.
 - [x] An undeclared, well-formed specifier that survives the rewrite of a whole-package entry is reported in a diagnostic naming the chunk, the specifier, and the microfrontend, and the load completes rather than failing.
 - [x] On the exposed module's load and on a lazy target's first use, for list items and own chunks alike, a declared shared-dependency name that survives the rewrite fails the load with an `MfeLoadError` naming the chunk, the specifier and the microfrontend, and a surviving undeclared bare specifier produces a console warning naming the same three.
@@ -487,4 +490,4 @@ On the fetch-list path, each load **MUST** write exactly one diagnostic at `cons
 - [x] An entry whose referenced manifest no source resolves fails the load with a diagnostic naming that reference, both when the handler belongs to a registry and when it belongs to none
 - [x] An entry whose registry answers the manifest lookup with a value lacking a string `id` or an object `metaData`, or carrying a `shared` that is not an array, fails the load with a diagnostic naming the reference, and that value is not cached, so a later load reads the registry again
 - [x] A registry answer that is an object carrying a string `id` and an object `metaData` and no `shared` is accepted as a manifest and cached under its `id`.
-- [ ] A realm entry `{ v: 1, cache }` whose `cache` exposes `get`, `set` and `delete` is adopted whether or not it has `getDiagnostics`; a load served by an adopted cache without it completes and its diagnostic states that the figures are unavailable; an entry with another `v`, or a `cache` lacking one of the three operations, is left untouched and the copy serves its loads from its local fallback cache
+- [x] A realm entry `{ v: 1, cache }` whose `cache` exposes `get`, `set` and `delete` is adopted whether or not it has `getDiagnostics`; a load served by an adopted cache without it completes and its diagnostic states that the figures are unavailable; an entry with another `v`, or a `cache` lacking one of the three operations, is left untouched and the copy serves its loads from its local fallback cache

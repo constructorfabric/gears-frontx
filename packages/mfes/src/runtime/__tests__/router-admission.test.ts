@@ -41,7 +41,13 @@ const DOMAIN_ID = 'cti.example.domain.concurrent.v1';
 const DOMAIN_ROUTE = 'screens';
 const EXTENSION_ROUTE = 'home';
 
-interface MockSchema { $id?: string }
+interface MockSchema {
+  $id?: string;
+  id?: string;
+  requiredProperties?: string[];
+  actions?: string[];
+  domainActions?: string[];
+}
 
 function createPlugin(): TypeSystemPlugin<MockSchema> {
   const schemas = new Map<string, MockSchema>();
@@ -553,7 +559,7 @@ describe('router admission', () => {
       requiredProperties: ['cti.example.property~missing.v1'],
       actions: [],
       domainActions: [],
-    } as unknown as MockSchema);
+    });
 
     await expect(
       registry.registerExtension({ id: EXTENSION_ID, domain: DOMAIN_ID, entry: needy, route: EXTENSION_ROUTE } as Extension)

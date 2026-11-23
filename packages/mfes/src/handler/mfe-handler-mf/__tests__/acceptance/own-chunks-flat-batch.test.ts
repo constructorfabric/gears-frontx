@@ -26,7 +26,6 @@ vi.mock('../../mf-dynamic-module-ops', async (importOriginal) => {
 });
 
 import { newHandler } from '../helpers/registered-manifest';
-import { RealmSharedDepTextCacheProvider } from '../../RealmSharedDepTextCacheProvider';
 import { SharedTextAdmission } from '../../SharedTextAdmission';
 import { SharedDepListLoader } from '../../SharedDepListLoader';
 import { LazyLoaderRegistry } from '../../../../lazy-loader/LazyLoaderRegistry';
@@ -45,7 +44,11 @@ import {
 } from '../helpers/manifest-builder';
 import { jsResponse } from '../helpers/fetch-router';
 import { stubSuccessfulImport } from '../helpers/blob-module-stub';
-import { resetRealmSharedDepTextCache } from '../helpers/realm-cache';
+import {
+  realmCacheDiagnostics,
+  realmSharedDepTextCache,
+  resetRealmSharedDepTextCache,
+} from '../helpers/realm-cache';
 
 beforeEach(() => {
   resetRealmSharedDepTextCache();
@@ -164,18 +167,13 @@ describe('acceptance: own chunks in the one round', () => {
     net.ok(own('a'), OWN_TEXT);
     net.ok(ENTRY_URL, entryText('a'));
     await loading;
-    const realm = RealmSharedDepTextCacheProvider.getCache();
+    const realm = realmSharedDepTextCache();
     // The realm cache's real key forms: the list unit is admitted; no key
     // form derived from the own chunk's text is.
     expect(realm.get(SharedTextAdmission.chunkKey(sha256Hex(ITEM_TEXT)))).toBeDefined();
     expect(realm.get(SharedTextAdmission.chunkKey(sha256Hex(OWN_TEXT)))).toBeUndefined();
     // Exactly the one shared text is held.
-    const held = (
-      realm as unknown as {
-        getDiagnostics(): { entries: number };
-      }
-    ).getDiagnostics().entries;
-    expect(held).toBe(1);
+    expect(realmCacheDiagnostics().entries).toBe(1);
   });
 
   it('accepts an absolute own-chunk URL, and the chain build joins its text', async () => {

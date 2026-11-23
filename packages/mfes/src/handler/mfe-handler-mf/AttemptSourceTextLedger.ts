@@ -6,7 +6,7 @@ import type { SharedDepTextCache } from './RealmSharedDepTextCacheProvider';
  *
  * `MfeHandlerMF.fetchSourceText` publishes its in-flight fetch promise in
  * the handler-level, URL-keyed `sourceTextCache` (a copy-local `LruCache`),
- * and `fetchSharedDepSources` does the same in the two-tier-keyed
+ * and the whole-package and list paths do the same in the two-tier-keyed
  * `sharedDepTextCache` — a reference to the REALM-SHARED
  * cache `RealmSharedDepTextCacheProvider.getCache()` returns (or, if that copy fell back,
  * a cache local to this copy — see `RealmSharedDepTextCacheProvider.ts`). Either
@@ -124,7 +124,7 @@ export class AttemptSourceTextLedger {
       }
       // @cpt-begin:cpt-frontx-algo-mfe-loading-attempt-timeout:p1:inst-lto-release-identity-checked
       // Identity-checked, exactly as the eviction-on-rejection in
-      // `fetchSourceText` and `fetchSharedDepSources` is: remove the key
+      // `fetchSourceText` and `SharedTextAdmission` is: remove the key
       // only while it still maps to the very promise this attempt was
       // waiting on, never one a concurrent load has since registered
       // under the same key — the discipline that makes a release from one

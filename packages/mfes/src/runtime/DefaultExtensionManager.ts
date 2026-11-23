@@ -169,6 +169,11 @@ export class DefaultExtensionManager extends ExtensionManager {
     }
 
     // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-contract-match
+    // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-08
+    // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-09
+    // @cpt-begin:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-contract-match
+    // @cpt-begin:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-contract-reject
+    // @cpt-begin:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-06
     const contractResult = validateContract(entry, domainState.domain, this.typeSystem);
     // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-contract-fail-check
     // @cpt-begin:cpt-frontx-state-extension-domain-governance-admission:p1:inst-adm-t1
@@ -188,10 +193,23 @@ export class DefaultExtensionManager extends ExtensionManager {
       // @cpt-end:cpt-frontx-state-extension-domain-governance-admission:p1:inst-adm-t2
     }
     // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-contract-match
+    // @cpt-end:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-06
+    // @cpt-end:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-contract-reject
+    // @cpt-end:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-contract-match
+    // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-09
+    // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-08
 
     // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-type-validate
     // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-type-validate-reject
+    // @cpt-begin:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-01
+    // @cpt-begin:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-02
+    // @cpt-begin:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-01
+    // @cpt-begin:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-02
     validateExtensionType(this.typeSystem, domainState.domain, extension);
+    // @cpt-end:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-02
+    // @cpt-end:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-01
+    // @cpt-end:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-02
+    // @cpt-end:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-01
     // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-type-validate-reject
     // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-type-validate
 
@@ -210,7 +228,21 @@ export class DefaultExtensionManager extends ExtensionManager {
     }
 
     // @cpt-begin:cpt-frontx-state-extension-domain-governance-admission:p1:inst-adm-t4
+    // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-06
+    // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-06a
+    // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-07
+    // @cpt-begin:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-03
+    // @cpt-begin:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-04
+    // @cpt-begin:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-03
+    // @cpt-begin:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-04
     this.validateEntryType(entry.id);
+    // @cpt-end:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-04
+    // @cpt-end:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-03
+    // @cpt-end:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-04
+    // @cpt-end:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-03
+    // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-07
+    // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-06a
+    // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-06
     // @cpt-end:cpt-frontx-state-extension-domain-governance-admission:p1:inst-adm-t4
 
     // @cpt-algo:cpt-frontx-algo-mfe-registry-router-admission:p1
@@ -248,6 +280,10 @@ export class DefaultExtensionManager extends ExtensionManager {
     // throw, or a corrected retry would collide with it in the router.
     // @cpt-begin:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-extension-type-register
     // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-rejection-isolated
+    // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-type-register
+    // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-type-register-fail
+    // @cpt-begin:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-type-register
+    // @cpt-begin:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-type-register-rollback
     try {
       this.typeSystem.register(extension);
     } catch (cause) {
@@ -270,6 +306,10 @@ export class DefaultExtensionManager extends ExtensionManager {
       // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-extension-type-register-reject
     }
     // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-rejection-isolated
+    // @cpt-end:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-type-register-rollback
+    // @cpt-end:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-type-register
+    // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-type-register-fail
+    // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-type-register
     // @cpt-end:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-extension-type-register
     // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-router-extension
     // @cpt-end:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-router-admit
@@ -292,6 +332,9 @@ export class DefaultExtensionManager extends ExtensionManager {
     // @cpt-end:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-algo-ra-extension-rejected
 
     // @cpt-begin:cpt-frontx-state-extension-domain-governance-admission:p1:inst-adm-t3
+    // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-10
+    // @cpt-begin:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-05
+    // @cpt-begin:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-05
     const extensionState: ExtensionState = {
       extension,
       entry,
@@ -304,14 +347,21 @@ export class DefaultExtensionManager extends ExtensionManager {
       error: undefined,
     };
     this.extensions.set(extension.id, extensionState);
+    // @cpt-end:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-05
+    // @cpt-begin:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-06
     domainState.extensions.add(extension.id);
+    // @cpt-end:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-06
+    // @cpt-end:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-05
+    // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-10
 
     // @cpt-begin:cpt-frontx-algo-mfe-registry-lifecycle-stage-triggering:p1:inst-algo-lst-sites
     // Non-blocking: the `init` stage is triggered alongside admission — a
     // notification that admission happened, not a phase admission waits on.
+    // @cpt-begin:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-07
     this.triggerLifecycle(
       extension.id,
       this.typeSystem.resolveLifecycleStageInitId()
+    // @cpt-end:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-07
     );
     // @cpt-end:cpt-frontx-algo-mfe-registry-lifecycle-stage-triggering:p1:inst-algo-lst-sites
     // @cpt-end:cpt-frontx-state-extension-domain-governance-admission:p1:inst-adm-t3
@@ -321,6 +371,7 @@ export class DefaultExtensionManager extends ExtensionManager {
   }
   // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-register-extension
 
+  // @cpt-begin:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-12
   async unregisterExtension(extensionId: string): Promise<void> {
     const extensionState = this.extensions.get(extensionId);
     if (!extensionState) {
@@ -350,6 +401,7 @@ export class DefaultExtensionManager extends ExtensionManager {
     }
 
     this.extensions.delete(extensionId);
+  // @cpt-end:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-12
   }
 
   getDomainState(domainId: string): ExtensionDomainState | undefined {

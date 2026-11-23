@@ -101,7 +101,12 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
   private readonly token: WriterToken;
   // @cpt-end:cpt-frontx-algo-gts-type-provider-realm-store-rendezvous:p1:inst-rs-hold-pair
 
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-return
+  // @cpt-begin:cpt-frontx-flow-gts-type-provider-construct-provider:p1:inst-cp-return
+  // The constructed provider is injectable into the registry factory.
   constructor(options: GtsPluginOptions = {}) {
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-construct-provider:p1:inst-cp-return
+    // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-return
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-load
     const schemas = loadSchemas();
     const lifecycleStages = loadLifecycleStages();
@@ -159,12 +164,7 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
     // Transition: INFRA_SCHEMAS_REGISTERED → READY (all lifecycle instances validated)
     // @cpt-end:cpt-frontx-state-gts-type-provider-init:p1:inst-pi-02
 
-    // @cpt-begin:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-return
     // Provider is now READY with all infrastructure schemas and lifecycle instances registered.
-    // @cpt-begin:cpt-frontx-flow-gts-type-provider-construct-provider:p1:inst-cp-return
-    // The constructed provider is injectable into the registry factory.
-    // @cpt-end:cpt-frontx-flow-gts-type-provider-construct-provider:p1:inst-cp-return
-    // @cpt-end:cpt-frontx-algo-gts-type-provider-infra-registration-v2:p1:inst-irv2-return
 
     // @cpt-begin:cpt-frontx-flow-gts-type-provider-validate-extension-type:p1:inst-vt-01
     // Provider is ready to accept actor-supplied extension type validation requests.
@@ -199,11 +199,11 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
     // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-schema-classify
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-schema-write
     // @cpt-begin:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-register
-    writeSchema(this.pair, this.token, entity);
-    // @cpt-end:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-register
     // @cpt-begin:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-return
     // The schema is on the store pair every compatible provider instance reads.
+    writeSchema(this.pair, this.token, entity);
     // @cpt-end:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-return
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-register
     // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-schema-write
   }
 
@@ -284,12 +284,12 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-register-instance
     // @cpt-begin:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-register
     // @cpt-begin:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-reject
-    writeInstance(this.pair, this.token, jsonEntity);
-    // @cpt-end:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-reject
-    // @cpt-end:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-register
     // @cpt-begin:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-return
     // The schema or instance is on the store pair every compatible provider instance reads.
+    writeInstance(this.pair, this.token, jsonEntity);
     // @cpt-end:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-return
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-reject
+    // @cpt-end:cpt-frontx-flow-gts-type-provider-register-application-type:p1:inst-ras-register
     // @cpt-end:cpt-frontx-algo-gts-type-provider-runtime-registration-v2:p1:inst-rrv2-register-instance
     // @cpt-end:cpt-frontx-algo-mfe-host-communication-history-intent:p1:inst-hi-admit-strict
   }

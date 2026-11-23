@@ -76,8 +76,7 @@ its own - it composes existing kit primitives (`sheet`, `button`, `input`,
   file under `dist/chunks/` at its path below `src/` (the `./chunks/*` null
   export keeps them private), `dist/<name>.js` re-exports its component's
   modules, and a component's CSS sits beside the module compiled from its CSS
-  module. A host sharing the kit at module granularity (the MFE shared-unit
-  producer) then reaches only the modules an import uses.
+  module. A consumer then reaches only the modules an import uses.
   `rollup-plugin-node-externals` externalizes `dependencies`/
   `peerDependencies` (`@base-ui/react`, CVA, `lucide-react`, react, react-dom
   and subpaths like `react/jsx-runtime`) in place of tsup's hand-maintained

@@ -2,7 +2,7 @@
  * List-item blob minter: mints per-load blob URLs for shared-dependency
  * fetch-list items in leaves-first order, driven by the explicit
  * `imports`/`answers` edges each item records — no edge is derived from
- * source text at mint time (`cpt-frontx-algo-unit-format-contract-fetch-list-schema-v2`).
+ * source text at mint time (`cpt-frontx-algo-unit-format-contract-fetch-list-schema`).
  *
  * Dependency order comes from the list itself: a bare-specifier edge is
  * ordered before the item whose `answers` name it; a `{ unit }` edge is
@@ -12,12 +12,14 @@
  * order and fails the load deterministically.
  *
  * Source rewriting: bare specifiers go through the trust kernel's
- * `DynamicModuleOps.rewriteBareSpecifier`; a relative specifier is
- * resolved against the importing item's own `location` to the location
- * of the item that supplies it (chunk locations are content-addressed
- * and live under one shared base, so the resolved location names the
- * supplying item); literal dynamic `import()` calls go through
- * `UnitDynamicImportRewriter` with the load's token resolver.
+ * `DynamicModuleOps.specifierEdits`; a relative specifier is
+ * resolved against the importing item's own resolved location to the
+ * item that supplies it (locations are compared by their resolved URL,
+ * never by spelling); `import.meta.url` becomes the item's resolved
+ * location; literal dynamic `import()` calls go through
+ * `UnitDynamicImportRewriter` with the load's token resolver. After the
+ * rewrite no static relative specifier may survive: a minted item that
+ * still carries one fails the load, naming the item and the specifier.
  *
  * One class per file (`runtime_style`).
  *
@@ -26,9 +28,11 @@
  */
 
 import { MfeLoadError } from '../../errors';
-import { DeterministicLoadFailure } from './DeterministicLoadFailure';
 import { DynamicModuleOps } from './mf-dynamic-module-ops';
 import { SharedDepSpecifierScan } from './mf-shared-dep-specifier-scan';
+import { DynamicImportScan } from '../../unit-format/dynamic-import-scan';
+import { ImportMetaUrlRewriter } from './ImportMetaUrlRewriter';
+import { SourceSplice } from './SourceSplice';
 import { UnitDynamicImportRewriter } from './UnitDynamicImportRewriter';
 import type {
   SharedDepFetchList,
@@ -87,8 +91,7 @@ export class SharedDepListMinter {
   /**
    * Resolve a relative specifier against the importing item's `location`
    * to the shared-base-relative location of the item that supplies it —
-   * the key {@link SharedDepUnit.location} and the list's `lazy` /
-   * `patterns` records are keyed by.
+   * the key the list's `lazy` / `patterns` records are keyed by.
    */
   static resolveLocation(fromLocation: string, specifier: string): string {
     // An absolute item location resolves to an absolute location, the form
@@ -107,13 +110,15 @@ export class SharedDepListMinter {
    * `maps.specifierToBlob` — extended, never replaced. `items` is the
    * load's combined item set (every list registered for the load), so an
    * edge naming an item an earlier batch minted is satisfied by its
-   * existing blob and adds no ordering edge.
+   * existing blob and adds no ordering edge. `resolveUrl` turns an item's
+   * location into the absolute URL its file was fetched from.
    */
   static mint(
     records: readonly SharedDepListRecord[],
     items: ReadonlyMap<string, SharedDepUnit>,
     maps: SharedDepListMintMaps,
     entryId: string,
+    resolveUrl: (location: string) => string,
     dynamicImports?: ListDynamicImportRewrites,
   ): void {
     const keyOf = (item: SharedDepUnit): string =>
@@ -129,6 +134,22 @@ export class SharedDepListMinter {
           (maps.itemBlobByHash.has(keyOf(item)) ||
             ready.some((r) => keyOf(r.item) === keyOf(item))),
       );
+    for (const record of records) {
+      if (maps.blobKeyOf?.has(record.item.location) !== true) continue;
+      for (const edge of record.item.imports) {
+        if (
+          typeof edge !== 'string' &&
+          ![...items.values()].some((item) => item.contentHash === edge.unit)
+        ) {
+          throw new MfeLoadError(
+            `shared unit '${record.item.location}' imports the unit ` +
+              `${edge.unit}, which no unit of the manifest carries, so it ` +
+              'can never be minted.',
+            entryId,
+          );
+        }
+      }
+    }
     let ready = [...records];
     for (let changed = true; changed; ) {
       changed = false;
@@ -195,12 +216,15 @@ export class SharedDepListMinter {
     };
     const blobOf = (key: string): string | undefined =>
       minted.get(key) ?? maps.itemBlobByHash.get(key);
-    // location → blob key over the load's combined item set; built
-    // once rather than per record.
-    const locationToKey = new Map<string, string>();
+    // resolved URL → blob key over the load's combined item set; built
+    // once rather than per record. Items are compared by the URL their
+    // location resolves to, never by its spelling.
+    // @cpt-begin:cpt-frontx-algo-unit-format-contract-fetch-list-schema:p1:inst-location-identity
+    const urlToKey = new Map<string, string>();
     for (const item of reachable) {
-      locationToKey.set(item.location, keyOf(item));
+      urlToKey.set(resolveUrl(item.location), keyOf(item));
     }
+    // @cpt-end:cpt-frontx-algo-unit-format-contract-fetch-list-schema:p1:inst-location-identity
 
     // @cpt-begin:cpt-frontx-algo-mfe-loading-manifest-discovery:p1:inst-md-mint-serialised
     // The whole batch mints in this one synchronous call — nothing
@@ -209,53 +233,72 @@ export class SharedDepListMinter {
     while (pending.size > 0) {
       const before = pending.size;
       for (const [hash, record] of pending) {
+        // @cpt-begin:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-leaves-first
         const deps = depsOf(record);
         if (![...deps].every((d) => minted.has(d) || maps.itemBlobByHash.has(d))) {
           continue;
         }
-        let rewritten = record.text;
-        // Bare-specifier edges: rewrite each declared specifier to the
-        // blob of the item answering it (already in `specifierToBlob`
-        // once its item minted).
+        // @cpt-end:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-leaves-first
+        const unitUrl = resolveUrl(record.item.location);
+        // The text is read once: every rewrite and check below works from
+        // this scan's records.
+        const scan = DynamicImportScan.scan(record.text);
+        // Bare-specifier edges: each declared specifier is rewritten to the
+        // blob of the item answering it (already in `specifierToBlob` once
+        // its item minted). Intra-package relative edges: the source's
+        // relative specifier resolves against this item's resolved location
+        // to the supplying item, whose blob it is rewritten to. The two
+        // sets of spellings are disjoint, so one pass rewrites both.
+        const replacements = new Map<string, string>();
+        // @cpt-begin:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-subpath-rewrite
+        // A subpath specifier is its own edge: it binds to the unit that
+        // answers it, not to the package root.
         for (const edge of record.item.imports) {
           if (typeof edge !== 'string') continue;
           const blob = maps.specifierToBlob.get(edge);
-          if (blob !== undefined) {
-            rewritten = DynamicModuleOps.rewriteBareSpecifier(
-              rewritten,
-              edge,
-              blob,
-            );
-          }
+          if (blob !== undefined) replacements.set(edge, blob);
         }
-        // Intra-package relative edges: the source's relative specifier
-        // resolves against this item's `location` to the supplying
-        // item's location; rewrite to that item's blob.
-        rewritten = rewritten.replace(
-          /(from|import)(\s*["'])([^"']+)(["'])/g,
-          (whole, kind: string, gap: string, specifier: string, quote: string) => {
-            if (!specifier.startsWith('./') && !specifier.startsWith('../')) {
-              return whole as string;
-            }
-            const targetKey = locationToKey.get(
-              SharedDepListMinter.resolveLocation(
-                record.item.location,
-                specifier,
-              ),
-            );
-            const blob =
-              targetKey === undefined ? undefined : blobOf(targetKey);
-            return blob === undefined
-              ? (whole as string)
-              : `${kind}${gap}${blob}${quote}`;
-          },
+        // @cpt-end:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-subpath-rewrite
+        // @cpt-begin:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-per-member-relative
+        for (const { specifier } of scan.imports) {
+          if (!specifier.startsWith('./') && !specifier.startsWith('../')) continue;
+          const targetKey = urlToKey.get(new URL(specifier, unitUrl).href);
+          const blob = targetKey === undefined ? undefined : blobOf(targetKey);
+          if (blob !== undefined) replacements.set(specifier, blob);
+        }
+        // @cpt-end:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-per-member-relative
+        const edits = DynamicModuleOps.specifierEdits(
+          record.text,
+          scan.imports,
+          replacements,
+        );
+        // @cpt-begin:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-meta-url
+        // Only the text that becomes the blob changes: the unit's cached
+        // bytes stay as fetched.
+        edits.push(...ImportMetaUrlRewriter.edits(scan.metaUrls, unitUrl));
+        // @cpt-end:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-meta-url
+        // What the rewrite left unbound: the records no replacement names.
+        const surviving = scan.imports.filter(
+          (imported) => !replacements.has(imported.specifier),
         );
         // @cpt-begin:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-unresolved-specifiers
+        // A static relative specifier no item supplied has no blob to bind:
+        // the unit is refused rather than minted to fail on evaluation.
+        const relativeSurvivor = SharedDepSpecifierScan.findSurvivingRelative(surviving);
+        if (relativeSurvivor !== undefined) {
+          throw new MfeLoadError(
+            `shared unit '${record.item.location}' still imports the ` +
+              `relative specifier '${relativeSurvivor}' after rewriting, for ` +
+              `microfrontend '${entryId}'. No unit of the load is located ` +
+              'where that specifier resolves.',
+            entryId,
+          );
+        }
         if (maps.declaredSpecifiers !== undefined) {
           // Only the unit's own bare `imports` edges can survive: they are
           // what its text was rewritten against.
           const survivor = SharedDepSpecifierScan.findSurvivingDeclared(
-            rewritten,
+            surviving,
             new Set(
               record.item.imports.filter(
                 (edge): edge is string =>
@@ -264,19 +307,17 @@ export class SharedDepListMinter {
             ),
           );
           if (survivor !== undefined) {
-            throw DeterministicLoadFailure.mark(
-              new MfeLoadError(
-                `shared unit '${record.item.location}' still imports the ` +
-                  `bare specifier '${survivor}' after rewriting, for ` +
-                  `microfrontend '${entryId}'. Every specifier a unit of ` +
-                  'the manifest answers must resolve to a blob URL; no ' +
-                  'unit on the load answers it.',
-                entryId,
-              ),
+            throw new MfeLoadError(
+              `shared unit '${record.item.location}' still imports the ` +
+                `bare specifier '${survivor}' after rewriting, for ` +
+                `microfrontend '${entryId}'. Every specifier a unit of ` +
+                'the manifest answers must resolve to a blob URL; no ' +
+                'unit on the load answers it.',
+              entryId,
             );
           }
           for (const specifier of SharedDepSpecifierScan.findUndeclaredWellFormedSpecifiers(
-            rewritten,
+            surviving,
             maps.declaredSpecifiers,
           )) {
             console.warn(
@@ -289,37 +330,47 @@ export class SharedDepListMinter {
           }
         }
         // @cpt-end:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-unresolved-specifiers
+        let rewritten: string;
         if (dynamicImports !== undefined) {
           // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-shared-dynamic-imports
+          // @cpt-begin:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-dynamic-import-rewrite
           rewritten = UnitDynamicImportRewriter.rewrite(
-            rewritten,
+            record.text,
+            scan.calls,
             dynamicImports.loaderUrl,
             record.item.location,
+            edits,
           );
+          // @cpt-end:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-dynamic-import-rewrite
           // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-shared-dynamic-imports
+        } else {
+          rewritten = SourceSplice.apply(record.text, edits);
         }
+        // @cpt-begin:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-one-blob-per-unit
         const blob = URL.createObjectURL(
           new Blob([rewritten], { type: 'text/javascript' }),
         );
         minted.set(hash, blob);
+        // @cpt-end:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-one-blob-per-unit
+        // @cpt-begin:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-return
+        // The per-load maps are extended, never replaced.
         maps.itemBlobByHash.set(hash, blob);
         for (const specifier of record.item.answers) {
           if (!maps.specifierToBlob.has(specifier)) {
             maps.specifierToBlob.set(specifier, blob);
           }
         }
+        // @cpt-end:cpt-frontx-algo-mfe-isolation-unit-memo-minting:p1:inst-umm-return
         pending.delete(hash);
       }
       if (pending.size === before) {
         const names = [...pending.values()]
           .map((r) => `'${r.item.location}' (${r.item.contentHash.slice(0, 12)}…)`)
           .join(', ');
-        throw DeterministicLoadFailure.mark(
-          new MfeLoadError(
-            'circular shared-dependency items: no minting order exists over ' +
-              `${names}.`,
-            entryId,
-          ),
+        throw new MfeLoadError(
+          'circular shared-dependency items: no minting order exists over ' +
+            `${names}.`,
+          entryId,
         );
       }
     }

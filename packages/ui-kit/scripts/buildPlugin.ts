@@ -423,9 +423,8 @@ export function buildPlugin(): PluginOption[] {
           },
           output: {
             // One output file per source module, internal imports kept as
-            // relative module imports (ecosystem_package_build_output): a host
-            // or MFE build shares the kit at module granularity, so a module
-            // only reaches what it imports. The entries keep their names
+            // relative module imports, so a module only reaches what it
+            // imports. The entries keep their names
             // (dist/<name>.js, the `./*` export); every other module lands
             // under chunks/, at its path below src/, which the `./chunks/*`
             // null export keeps out of the public surface.

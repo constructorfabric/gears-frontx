@@ -127,3 +127,153 @@ describe('DynamicImportScan pattern calls', () => {
     expect(calls.map((c) => c.kind)).toEqual(['literal', 'pattern', 'pattern', 'literal']);
   });
 });
+
+describe('DynamicImportScan regex and division', () => {
+  it('reads a `/` after a postfix ++ or -- as division', () => {
+    expect(specifiers('let n = i++ / 2; import("./a.js"); /* a / b */')).toEqual(['./a.js']);
+    expect(specifiers('let n = i-- / 2 / 3; import("./a.js"); // x / y')).toEqual(['./a.js']);
+  });
+
+  it('reads a `/` after a prefix ++ or -- operand list as a regex opener', () => {
+    expect(scan('x = ++/import("./fake.js")/.lastIndex;')).toEqual([]);
+  });
+
+  it.each([
+    'typeof',
+    'void',
+    'delete',
+    'in',
+    'of',
+    'instanceof',
+    'else',
+    'case',
+    'do',
+    'throw',
+    'new',
+    'yield',
+    'await',
+    'return',
+  ])('reads a `/` after the keyword %s as a regex', (keyword) => {
+    expect(scan(`${keyword} /import("./fake.js")/.test(s);`)).toEqual([]);
+  });
+
+  it('reads a `/` after the closing paren of an if, while, for or with head as a regex', () => {
+    for (const head of ['if (a)', 'while (a)', 'for (;;)', 'with (o)']) {
+      expect(scan(`${head} /import("./fake.js")/.test(s);`)).toEqual([]);
+    }
+  });
+
+  it('reads a `/` after any other closing paren or a member named like a keyword as division', () => {
+    expect(specifiers('f(1) / 2; import("./a.js"); // /')).toEqual(['./a.js']);
+    expect(specifiers('x = o.in / 2; import("./a.js"); // /')).toEqual(['./a.js']);
+    expect(specifiers('x = (if_ / 2); import("./a.js"); // /')).toEqual(['./a.js']);
+  });
+});
+
+describe('DynamicImportScan static imports', () => {
+  const imports = (source: string): string[] =>
+    DynamicImportScan.scanImports(source).map((record) => record.specifier);
+
+  it('reads every static import and re-export form', () => {
+    const source = [
+      'import "side";',
+      'import d from "def";',
+      'import {a, b as c} from "named";',
+      "import * as ns from 'star';",
+      'import d2, {e} from "both";',
+      'export * from "all";',
+      'export * as ns2 from "all-ns";',
+      'export {f, g as h} from "re";',
+      'export{i}from"tight";',
+    ].join('\n');
+    expect(imports(source)).toEqual([
+      'side',
+      'def',
+      'named',
+      'star',
+      'both',
+      'all',
+      'all-ns',
+      're',
+      'tight',
+    ]);
+  });
+
+  it('reads a specifier separated from its keyword by a newline or comments', () => {
+    expect(imports('import\n"nl";')).toEqual(['nl']);
+    expect(imports('import {\n  a,\n  b\n}\nfrom\n"multi";')).toEqual(['multi']);
+    expect(imports('import /* c */ "c1"; export * /* c */ from // c\n "c2";')).toEqual([
+      'c1',
+      'c2',
+    ]);
+  });
+
+  it('reports the literal quotes and bounds of the specifier', () => {
+    const source = "import x from 'abc';";
+    const [record] = DynamicImportScan.scanImports(source);
+    expect(source.slice(record.start, record.end)).toBe("'abc'");
+    expect(record.kind).toBe('import');
+  });
+
+  it.each([
+    'export const NAME="react";',
+    'export function f(x){return x==="react"}',
+    'export default function(){return"react"}',
+    ';import("react")',
+    '}import("react")',
+    'const s = "from \\"react\\""; const t = \'import "react"\';',
+    '// import "react"\n/* export * from "react" */',
+    'const t = `import "react" from "react"`;',
+    'x = import.meta.url + "react";',
+    'o.import("react"); o.export("react");',
+    'export {a}\nconst b = "react";',
+  ])('reports no specifier for text that only looks like an import: %s', (source) => {
+    expect(imports(source)).toEqual([]);
+  });
+
+  it('reads a static import that follows an export declaration', () => {
+    expect(imports('export const a = 1;\nimport "x";')).toEqual(['x']);
+  });
+});
+
+describe('DynamicImportScan — import.meta.url records and private members', () => {
+  const metaTexts = (source: string): string[] =>
+    DynamicImportScan.scan(source).metaUrls.map((r) => source.slice(r.start, r.end));
+
+  it('records the token sequence, spaced, commented or optional-chained', () => {
+    expect(metaTexts('a = import.meta.url;')).toEqual(['import.meta.url']);
+    expect(metaTexts('a = import . meta . url;')).toEqual(['import . meta . url']);
+    expect(metaTexts('a = import /*x*/ .meta\n.url;')).toEqual(['import /*x*/ .meta\n.url']);
+    expect(metaTexts('a = import.meta?.url;')).toEqual(['import.meta?.url']);
+    expect(metaTexts('a = `${import.meta.url}x`;')).toEqual(['import.meta.url']);
+  });
+
+  it.each([
+    'a = import.meta.env;',
+    'a = import.meta.urlx;',
+    'a = import.meta.xurl;',
+    'a = o.import.meta.url;',
+    'a = "import.meta.url";',
+    "a = 'import.meta.url';",
+    'a = `import.meta.url`;',
+    '// import.meta.url\n/* import.meta.url */',
+    'a = /import.meta.url/.test(b);',
+    'a = import.metaurl;',
+  ])('records nothing for %s', (source) => {
+    expect(metaTexts(source)).toEqual([]);
+  });
+
+  it('keeps a member in force across a private-name #', () => {
+    expect(scan('o.#import("x");')).toEqual([]);
+    expect(DynamicImportScan.scanImports('o.#import "x";')).toEqual([]);
+    expect(metaTexts('o.#import.meta.url;')).toEqual([]);
+  });
+
+  it('reports every record kind from one walk', () => {
+    const source = 'import "a"; const u = import.meta.url; const m = import("b");';
+    const result = DynamicImportScan.scan(source);
+    expect(result.imports.map((r) => r.specifier)).toEqual(['a']);
+    expect(result.metaUrls).toHaveLength(1);
+    expect(result.calls).toHaveLength(1);
+  });
+});

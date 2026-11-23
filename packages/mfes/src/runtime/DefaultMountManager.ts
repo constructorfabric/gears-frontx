@@ -162,8 +162,14 @@ export class DefaultMountManager extends MountManager {
       // through and start a fresh load rather than returning prematurely.
     }
 
+    // @cpt-begin:cpt-frontx-state-mfe-loading-load-lifecycle:p1:inst-lt-idle-to-loading
+    // @cpt-begin:cpt-frontx-state-mfe-loading-load-lifecycle:p1:inst-lt-error-to-loading
+    // From `idle` on the first load, and from `error` on a later one: the
+    // later load issues its requests afresh.
     extensionState.loadState = 'loading';
     extensionState.error = undefined;
+    // @cpt-end:cpt-frontx-state-mfe-loading-load-lifecycle:p1:inst-lt-error-to-loading
+    // @cpt-end:cpt-frontx-state-mfe-loading-load-lifecycle:p1:inst-lt-idle-to-loading
 
     // `.finally()`'s callback is always scheduled as a microtask
     // continuation of the async IIFE's own promise, which cannot run before
@@ -183,12 +189,18 @@ export class DefaultMountManager extends MountManager {
 
         const lifecycle = await handler.load(entry, extensionState.extension.id);
         extensionState.lifecycle = lifecycle;
+        // @cpt-begin:cpt-frontx-state-mfe-loading-load-lifecycle:p1:inst-lt-loading-to-loaded
         extensionState.loadState = 'loaded';
+        // @cpt-end:cpt-frontx-state-mfe-loading-load-lifecycle:p1:inst-lt-loading-to-loaded
       // @cpt-begin:cpt-frontx-flow-mfe-loading-on-demand-load:p1:inst-load-failure-isolated
       } catch (error) {
         // Only this extension's state changes; every other extension, every
         // domain and the shell are untouched.
+        // @cpt-begin:cpt-frontx-state-mfe-loading-load-lifecycle:p1:inst-lt-loading-to-failed
+        // @cpt-begin:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-08
         extensionState.loadState = 'error';
+        // @cpt-end:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-08
+        // @cpt-end:cpt-frontx-state-mfe-loading-load-lifecycle:p1:inst-lt-loading-to-failed
         extensionState.error = error instanceof Error ? error : new Error(String(error));
         throw error;
       }
@@ -407,7 +419,11 @@ export class DefaultMountManager extends MountManager {
         // line) participates in this decision. The mirror image is
         // `inst-adm-t6` above/below: ADMITTED -> REJECTED is decided by
         // this SAME mount execution failing, never by a chain outcome.
+        // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-12
+        // @cpt-begin:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-07
         extensionState.mountState = 'mounted';
+        // @cpt-end:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-07
+        // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-12
         // @cpt-end:cpt-frontx-state-extension-domain-governance-admission:p1:inst-adm-t8
 
         // @cpt-begin:cpt-frontx-algo-mfe-registry-lifecycle-stage-triggering:p1:inst-algo-lst-sites
@@ -441,11 +457,15 @@ export class DefaultMountManager extends MountManager {
         // @cpt-end:cpt-frontx-state-extension-domain-governance-admission:p1:inst-adm-t7
         // @cpt-end:cpt-frontx-algo-mfe-registry-lifecycle-stage-triggering:p1:inst-algo-lst-sites
 
+        // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-13
         return parentBridge;
+        // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-13
       } catch (error) {
         // @cpt-begin:cpt-frontx-state-extension-domain-governance-admission:p1:inst-adm-t6
+        // @cpt-begin:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-08
         extensionState.mountState = 'error';
         extensionState.error = error instanceof Error ? error : new Error(String(error));
+        // @cpt-end:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-08
         // @cpt-end:cpt-frontx-state-extension-domain-governance-admission:p1:inst-adm-t6
 
         // Mount-failure path: deactivate (not retract/destroy) the acquired
@@ -567,8 +587,10 @@ export class DefaultMountManager extends MountManager {
       throw failure.error;
     }
     // @cpt-end:cpt-frontx-algo-extension-domain-governance-mount-execution:p2:inst-um-teardown-on-failure
+    // @cpt-begin:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-11
     extensionState.mountState = 'unmounted';
     extensionState.error = undefined;
+    // @cpt-end:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-11
   }
   // @cpt-end:cpt-frontx-state-extension-domain-governance-admission:p1:inst-adm-t10
 

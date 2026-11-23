@@ -21,6 +21,7 @@
  * @internal
  */
 
+// @cpt-dod:cpt-frontx-dod-unit-format-contract-shared-text-admission:p1
 import type { AttemptSourceTextLedger } from './AttemptSourceTextLedger';
 import type { SharedDepTextCache } from './RealmSharedDepTextCacheProvider';
 

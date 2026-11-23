@@ -530,12 +530,10 @@ describe('MfeHandlerMF - relative publicPath resolves to an absolute base', () =
     });
   });
 
-  // `chunkPath` is relative to publicPath (MfManifestShared.chunkPath); a
-  // leading '/' still joins under the base, and an absolute http(s) URL is
-  // fetched at its parsed href.
+  // `chunkPath` is relative to publicPath (MfManifestShared.chunkPath), and
+  // an absolute http(s) URL is fetched at its parsed href.
   it.each([
     ['shared/react.js', 'https://host.test/host/mfe/x/shared/react.js'],
-    ['/shared/react.js', 'https://host.test/host/mfe/x/shared/react.js'],
     ['http-helper.js', 'https://host.test/host/mfe/x/http-helper.js'],
     ['https://cdn.test/shared/react.js', 'https://cdn.test/shared/react.js'],
   ])('fetches the shared chunkPath %j at %s', async (chunkPath, expectedUrl) => {
@@ -631,7 +629,9 @@ describe('MfeHandlerMF - relative publicPath resolves to an absolute base', () =
       ' //cdn.test/x.js',
       'ht\ttp://evil.test/x.js',
       '../../x.js',
+      '/shared/react.js',
       '%2e%2e/%2e%2e/x.js',
+      'shared/%2e/react.js',
       'shared\\react.js',
       'x\u007f.js',
       'x\u0085.js',
@@ -682,7 +682,7 @@ describe('MfeHandlerMF - relative publicPath resolves to an absolute base', () =
     );
   });
 
-  it('rewrites import.meta.url to an absolute chunk directory that new URL() accepts when publicPath is "/"', async () => {
+  it('rewrites import.meta.url to the absolute chunk URL that new URL() resolves against when publicPath is "/"', async () => {
     const { sources } = await loadWith('/', 'ext-root-relative-meta-url');
 
     const entrySource = sources.find((source) => source.includes('./x.svg'));
@@ -713,7 +713,7 @@ describe('MfeHandlerMF - relative publicPath resolves to an absolute base', () =
 
 /**
  * Concurrent-fetch behaviour of the two dependency-fanout loops
- * (`fetchSharedDepSources`'s shared-dep loop and
+ * (`WholePackageLoader`'s shared-dep loop and
  * `createBlobUrlChainInternal`'s sibling loop) and the cycle-detection
  * fallback that keeps them from deadlocking on circular dependencies. Prior
  * coverage of these loops only mocked `fetch` to reject immediately, so the
@@ -1448,7 +1448,7 @@ describe('MfeHandlerMF — lazy-import failure isolation', () => {
     // entry afterwards does nothing for B: B resumes on a cleanly-resolved
     // promise with no `blobUrlMap` entry behind it, and — unless it
     // verifies and re-attempts — fails its own build at
-    // `rewriteModuleImports` with the never-built diagnostic, for a chunk
+    // `relativeImportBlob` with the never-built diagnostic, for a chunk
     // that is perfectly fetchable and that nothing ever tried to build on
     // B's behalf.
     const { fetchImpl, callCounts } = createFetchRouter({
@@ -1504,27 +1504,62 @@ describe('MfeHandlerMF — lazy-import failure isolation', () => {
   });
 });
 
+describe('MfeHandlerMF — own-chunk dependencies come from real import statements', () => {
+  it('creates no dependency from a string or comment that merely contains an import', async () => {
+    const routes = {
+      [`${PUBLIC_PATH}assets/lifecycle.js`]: {
+        body:
+          'import "./real.js";\n' +
+          'const s = "from \'./ghost-string.js\'";\n' +
+          "const t = `import './ghost-template.js'`;\n" +
+          "// import './ghost-line.js'\n" +
+          "/* export * from './ghost-block.js' */\n" +
+          'export default {};',
+      },
+      [`${PUBLIC_PATH}assets/real.js`]: { body: 'export const r = 1;' },
+    };
+    const { fetchImpl } = createFetchRouter(routes);
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(fetchImpl as typeof fetch);
+    blobModuleStub.current = {
+      default: { mount: (): void => {}, unmount: (): void => {} },
+    };
+    const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
+    const entry = buildEntry(buildManifest(PUBLIC_PATH, []));
+    try {
+      await expect(handler.load(entry, 'ext-ghost-imports')).resolves.toBeDefined();
+      const requested = fetchSpy.mock.calls.map(([input]) => String(input));
+      expect(requested.some((url) => url.includes('real.js'))).toBe(true);
+      expect(requested.some((url) => url.includes('ghost'))).toBe(false);
+    } finally {
+      blobModuleStub.current = undefined;
+      fetchSpy.mockRestore();
+    }
+  });
+});
+
 describe('MfeHandlerMF — an unbuilt dependency at rewrite time', () => {
-  // Drives the private `rewriteModuleImports` directly. An absence from the
+  // Drives the private `relativeImportBlob` directly. An absence from the
   // per-load blob URL map has a single outcome: there is no sanctioned
   // reason for one, because a detected dependency cycle fails the build
   // where it is detected rather than leaving a hole to be filled from
   // origin here.
-  const rewrite = (
+  const bindRelative = (
     handler: MfeHandlerMF,
-    source: string,
+    relPath: string,
     loadState: unknown,
     chunkFilename: string
   ): string =>
     (
       handler as unknown as {
-        rewriteModuleImports: (
-          src: string,
+        relativeImportBlob: (
+          rel: string,
           state: unknown,
           chunk: string
         ) => string;
       }
-    ).rewriteModuleImports(source, loadState, chunkFilename);
+    ).relativeImportBlob(relPath, loadState, chunkFilename);
 
   it('fails the load with a diagnostic naming the referring chunk and the dependency that was never built', () => {
     const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
@@ -1532,9 +1567,9 @@ describe('MfeHandlerMF — an unbuilt dependency at rewrite time', () => {
 
     let thrown: unknown;
     try {
-      rewrite(
+      bindRelative(
         handler,
-        "import './never-built.js';\nexport const v = 1;",
+        './never-built.js',
         loadState,
         'assets/referrer.js'
       );
@@ -2155,24 +2190,16 @@ describe('MfeHandlerMF — shared-dep cross-MFE cache key (issue #621)', () => {
   });
 
   it('fails the load when a DECLARED shared-dependency name survives rewriting, naming the chunk, the specifier, and the microfrontend', async () => {
-    // Under normal operation this path is unreachable: dependency-order
-    // resolution (`createBlobUrlsInDependencyOrder`) guarantees every
-    // shared dep a chunk imports already has a blob URL by the time that
-    // chunk is rewritten, so `rewriteBareSpecifiers` always removes a
-    // declared name. The only way to exercise the "declared name survives"
-    // branch is to simulate the rewrite step itself failing — a defect this
-    // assertion exists specifically to catch, per
-    // `inst-assert-shared-dep-no-bare-specifier` (the exact inverse of the
-    // per-name rewrite).
+    // A shared dep that bare-imports its own package name cannot bind: its
+    // own blob does not exist yet when its text is rewritten, so the
+    // declared name is left unbound and is reported
+    // (`inst-assert-shared-dep-no-bare-specifier`).
     const routes = {
       [`${PUBLIC_PATH}assets/lifecycle.js`]: {
         body: 'import "dep-b";\nexport default {};',
       },
-      [`${PUBLIC_PATH}shared/dep-a.js`]: {
-        body: 'export const a = 1;',
-      },
       [`${PUBLIC_PATH}shared/dep-b.js`]: {
-        body: 'import "dep-a";\nexport const b = 1;',
+        body: 'import "dep-b";\nexport const b = 1;',
       },
     };
     const { fetchImpl } = createFetchRouter(routes);
@@ -2181,24 +2208,9 @@ describe('MfeHandlerMF — shared-dep cross-MFE cache key (issue #621)', () => {
       .mockImplementation(fetchImpl as typeof fetch);
     stubSuccessfulImport();
 
-    const rewriteSpy = vi
-      .spyOn(
-        MfeHandlerMF.prototype as unknown as {
-          rewriteBareSpecifiers: (
-            source: string,
-            blobUrls: Map<string, string>
-          ) => string;
-        },
-        'rewriteBareSpecifiers'
-      )
-      .mockImplementation((source: string) => source);
-
     const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const entry = buildEntry(
-      buildManifest(PUBLIC_PATH, [
-        sharedDep('dep-a', 'shared/dep-a.js'),
-        sharedDep('dep-b', 'shared/dep-b.js'),
-      ])
+      buildManifest(PUBLIC_PATH, [sharedDep('dep-b', 'shared/dep-b.js')])
     );
 
     try {
@@ -2212,17 +2224,15 @@ describe('MfeHandlerMF — shared-dep cross-MFE cache key (issue #621)', () => {
       expect(thrown).toBeInstanceOf(MfeLoadError);
       const message = (thrown as Error).message;
       expect(message).toContain('dep-b');
-      expect(message).toContain('dep-a');
       expect(message).toContain('ext-declared-bare-specifier-survives');
     } finally {
       blobModuleStub.current = undefined;
-      rewriteSpy.mockRestore();
       fetchSpy.mockRestore();
     }
   });
 
   it('does not trip the bare-specifier detector on a dynamic import()', async () => {
-    // `rewriteBareSpecifier` does not handle the `import("x")` form, so the
+    // `specifierEdits` does not handle the `import("x")` form, so the
     // assertion must not either — otherwise a chunk using dynamic import
     // for an undeclared, genuinely-external package would fail a load that
     // was never broken.

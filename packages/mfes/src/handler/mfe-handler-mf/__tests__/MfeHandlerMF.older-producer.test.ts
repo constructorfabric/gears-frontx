@@ -24,6 +24,8 @@ vi.mock('../mf-dynamic-module-ops', async (importOriginal) => {
 });
 
 import { newHandler, registerManifest } from './helpers/registered-manifest';
+import { jsonManifest } from './helpers/manifest-builder';
+import { jsResponse } from './helpers/fetch-router';
 import { MfeLoadError } from '../../../errors';
 import type { MfeEntryMF } from '../../../types/mfe-entry-mf';
 import type { MfManifest } from '../../../manifest/mf-manifest';
@@ -59,13 +61,6 @@ const olderEntry = (manifest: string): MfeEntryMF => ({
   },
 });
 
-const jsResponse = (body: string): Response =>
-  ({
-    ok: true,
-    headers: { get: () => 'application/javascript' },
-    text: () => Promise.resolve(body),
-  }) as unknown as Response;
-
 afterEach(() => {
   blobModuleStub.current = undefined;
   vi.restoreAllMocks();
@@ -74,10 +69,10 @@ afterEach(() => {
 describe('MfeHandlerMF — older-producer manifest', () => {
   it('loads an entry whose manifest has no shared, units or lists, fetching the entry module alone and reading no ignored field', async () => {
     const urls: string[] = [];
-    vi.spyOn(globalThis, 'fetch').mockImplementation(((input: string | URL | Request) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input: string | URL | Request) => {
       urls.push(String(input));
       return Promise.resolve(jsResponse('export default { mount(){}, unmount(){} };'));
-    }) as unknown as typeof fetch);
+    });
     blobModuleStub.current = { default: { mount: (): void => {}, unmount: (): void => {} } };
 
     const manifest = olderManifest();
@@ -94,10 +89,10 @@ describe('MfeHandlerMF — older-producer manifest', () => {
     const fetched: string[][] = [];
     for (const manifest of [olderManifest(), { id: 'mock.mfe.mf_manifest.v1~plain.v1', metaData: { publicPath: PUBLIC_PATH } }]) {
       const urls: string[] = [];
-      vi.spyOn(globalThis, 'fetch').mockImplementation(((input: string | URL | Request) => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation((input: string | URL | Request) => {
         urls.push(String(input));
         return Promise.resolve(jsResponse('export default { mount(){}, unmount(){} };'));
-      }) as unknown as typeof fetch);
+      });
       blobModuleStub.current = { default: { mount: (): void => {}, unmount: (): void => {} } };
       const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
       await handler.load(olderEntry(registerManifest(manifest)), `ext-${manifest.id}`);
@@ -109,19 +104,19 @@ describe('MfeHandlerMF — older-producer manifest', () => {
 
   it('reports a malformed shared as an unresolved manifest and caches nothing', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const manifest = { ...olderManifest(), shared: 'react' } as unknown as MfManifest;
+    const manifest = jsonManifest({ ...olderManifest(), shared: 'react' });
     const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     await expect(handler.load(olderEntry(registerManifest(manifest)), 'ext-bad-shared')).rejects.toThrow(MfeLoadError);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it('fails one load without disturbing a concurrent load of another entry', async () => {
-    vi.spyOn(globalThis, 'fetch').mockImplementation(((input: string | URL | Request) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input: string | URL | Request) => {
       const url = String(input);
       return url.includes('broken')
         ? Promise.reject(new TypeError('network error for test'))
         : Promise.resolve(jsResponse('export default { mount(){}, unmount(){} };'));
-    }) as unknown as typeof fetch);
+    });
     blobModuleStub.current = { default: { mount: (): void => {}, unmount: (): void => {} } };
 
     const good = olderManifest();

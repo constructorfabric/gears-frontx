@@ -37,8 +37,8 @@ import lifecycleDeactivatedInstance from './frontx.mfes/instances/lifecycle/deac
 import lifecycleDestroyedInstance from './frontx.mfes/instances/lifecycle/destroyed.v1.json';
 
 /**
- * Load all core MFE schema JSON files.
- * Returns 13 schemas: the 4 abstract base types, then the 9 final types.
+ * Load all core MFE schema JSON files: the abstract base types first, then
+ * the final types that derive from them.
  *
  * Application-specific derived schemas (e.g. theme, language, extension_screen)
  * are not part of this set; the application registers them with its own type
@@ -78,7 +78,11 @@ export function loadSchemas(): JSONSchema[] {
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-older-producer-fields
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-manifest-fields
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-formats
+    // @cpt-begin:cpt-frontx-algo-unit-format-contract-fetch-list-schema:p1:inst-validate-manifest-units-lists
+    // @cpt-begin:cpt-frontx-algo-unit-format-contract-fetch-list-schema:p1:inst-value-formats
     manifestSchema as JSONSchema,
+    // @cpt-end:cpt-frontx-algo-unit-format-contract-fetch-list-schema:p1:inst-value-formats
+    // @cpt-end:cpt-frontx-algo-unit-format-contract-fetch-list-schema:p1:inst-validate-manifest-units-lists
     // @cpt-end:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-formats
     // @cpt-end:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-manifest-fields
     // @cpt-begin:cpt-frontx-algo-gts-type-provider-manifest-entry-types:p1:inst-me-entry-fields

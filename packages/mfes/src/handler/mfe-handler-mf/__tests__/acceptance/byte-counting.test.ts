@@ -1,29 +1,22 @@
 /**
- * Acceptance: F-025 — the byte budget counts UTF-8 BYTES, not UTF-16
+ * Acceptance: the byte budget counts UTF-8 BYTES, not UTF-16
  * code units.
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MfeHandlerMF } from '../../MfeHandlerMF';
-import type { SharedDepTextCache } from '../../RealmSharedDepTextCacheProvider';
 import { ENTRY_BASE_ID } from '../helpers/manifest-builder';
-import { resetRealmSharedDepTextCache } from '../helpers/realm-cache';
+import { realmSharedDepTextCache, resetRealmSharedDepTextCache } from '../helpers/realm-cache';
 
 beforeEach(resetRealmSharedDepTextCache);
 afterEach(resetRealmSharedDepTextCache);
 
-function realmCache(handler: MfeHandlerMF): SharedDepTextCache {
-  return (
-    handler as unknown as { sharedDepTextCache: SharedDepTextCache }
-  ).sharedDepTextCache;
-}
-
-describe('acceptance: F-025 byte accounting', () => {
-  it('F-025: a multi-byte text is accounted by its UTF-8 byte length, not its UTF-16 length', async () => {
-    const handler = new MfeHandlerMF(ENTRY_BASE_ID, {
+describe('acceptance: byte accounting', () => {
+  it('a multi-byte text is accounted by its UTF-8 byte length, not its UTF-16 length', async () => {
+    new MfeHandlerMF(ENTRY_BASE_ID, {
       retries: 0,
       sharedDepTextCacheMaxBytes: 100,
     } as ConstructorParameters<typeof MfeHandlerMF>[1]);
-    const cache = realmCache(handler);
+    const cache = realmSharedDepTextCache();
     // 30 emoji = 60 UTF-16 code units but 120 UTF-8 bytes: under UTF-16
     // accounting it fits the 100 budget; under byte accounting it does not.
     const emojiText = '😀'.repeat(30);

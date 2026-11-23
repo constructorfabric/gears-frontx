@@ -1,45 +1,37 @@
 /**
- * Undeclared-specifier diagnostic scan for shared-dependency chunks.
+ * Specifier scans over the text of a minted shared unit or own chunk: the
+ * survivor check and the undeclared-specifier diagnostic.
+ *
+ * Both read the records the comment/string/template/regex-aware
+ * `DynamicImportScan` reported for the text — only the specifier literals
+ * of real static `import "x"`, `import ... from "x"` and
+ * `export ... from "x"` statements — less those a rewrite replaced. A string literal, a comment, an `import(...)` call or
+ * `import.meta` that merely contains such text is never reported, so
+ * neither scan can mistake ordinary code for an import.
  *
  * This is deliberately NOT part of the audited trust kernel
- * (`mf-dynamic-module-ops.ts`): it interpolates nothing into a `RegExp` — the
- * matcher below is a fixed literal, not built from any argument this module
- * receives — so it is not "dynamic construction of specifier matchers" and
- * carries no trust-kernel residency requirement (see the kernel file's
- * header comment and `cpt-frontx-adr-mfe-load-isolation`). Keeping it out of
- * the kernel keeps that file's audited surface from growing with a
- * diagnostic-only heuristic that has no safety property to review.
+ * (`mf-dynamic-module-ops.ts`): it generates no module and builds no
+ * pattern, so it carries no trust-kernel residency requirement (see the
+ * kernel file's header comment and `cpt-frontx-adr-mfe-load-isolation`).
  *
- * The undeclared-specifier scan is heuristic and MUST NEVER be able to fail a
- * load: it reads chunk text without parsing it, so it cannot tell an ordinary
- * string literal from an actual import. Its only callers pass its result to
- * `console.warn` and continue the load unconditionally.
- *
- * The survivor check (`findSurvivingDeclared`) is the one member that can
- * fail a load, and it is narrower: it looks only at import and export
- * statements — a statement keyword at the start of the text or after a `;`
- * or `}` — and only for the specifiers the caller names (the unit's own
- * `imports` edges, or the declared names a chunk could import), so a string
- * or a comment that merely contains `from "x"` never fails anything.
+ * The undeclared-specifier scan is a diagnostic and MUST NEVER be able to
+ * fail a load: its only callers pass its result to `console.warn` and
+ * continue the load unconditionally. The survivor check
+ * (`findSurvivingDeclared`) is the one member that can fail a load, and
+ * only for the specifiers the caller names (the unit's own `imports`
+ * edges, or the declared names a chunk could import).
  *
  * @packageDocumentation
  */
 
+import type { StaticImportRecord } from '../../unit-format/dynamic-import-scan';
+
 /**
- * The undeclared-specifier diagnostic scan. All members are static and
- * pure — the class is a namespace for the scan, never instantiated.
+ * The specifier scans. All members are static and pure — the class is a
+ * namespace for the scans, never instantiated.
  */
 export class SharedDepSpecifierScan {
   protected constructor() {}
-
-  /**
-   * Matches the same two import forms the trust kernel's rewriter and
-   * assertion handle — `from "x"` and `import "x"` — but with no package name
-   * constraint, so it also matches specifiers the manifest never declared.
-   * Fixed literal, no interpolation: safe to keep outside the trust kernel.
-   */
-  private static readonly GENERIC_IMPORT_SPECIFIER_PATTERN =
-    /(from|import)(\s*["'])([^"']+)(["'])/g;
 
   /**
    * A specifier text is well-formed as a package module specifier when it
@@ -47,45 +39,43 @@ export class SharedDepSpecifierScan {
    * alphanumeric), a package name (starting with alphanumeric), and zero or
    * more `/`-separated subpath segments, where each segment uses only the
    * characters npm package names permit (letters, digits, `.`, `_`, `-`, `~`).
-   * This double-checks both the shape (optionally scoped package name with
-   * optional subpath) and the exclusions (no whitespace, quote, parenthesis,
-   * colon, or line break). Already-rewritten `blob:`/`data:` specifiers fail
-   * this grammar because they contain a colon. Excluding parentheses, quotes,
-   * and whitespace/line breaks keeps ordinary code from being mistaken for
-   * a specifier (see the file header and `inst-if-undeclared-specifier`).
+   * Already-rewritten `blob:`/`data:` specifiers fail this grammar because
+   * they contain a colon, as does a relative specifier.
    */
   private static readonly WELL_FORMED_MODULE_SPECIFIER_PATTERN =
     /^(@[a-zA-Z0-9][a-zA-Z0-9._~-]*\/)?[a-zA-Z0-9][a-zA-Z0-9._~-]*(?:\/[a-zA-Z0-9._~-]+)*$/;
 
   /**
-   * Matches the specifier of an import or export statement: the statement
-   * keyword starts the text or follows `;` or `}`, and the quoted specifier
-   * is the first string literal after it.
-   */
-  private static readonly STATEMENT_SPECIFIER_PATTERN =
-    /(?:^|[;}])\s*(?:import|export)\b[^;'"`]*?["']([^"']+)["']/gm;
-
-  /**
-   * The first of `specifiers` that an import or export statement of `source`
-   * still names — a declared specifier that survived a rewrite. Text that
-   * only looks like an import (inside a string or a comment) does not count.
+   * The first of `specifiers` that a surviving static import or re-export
+   * record still names — a declared specifier that survived a rewrite.
    */
   static findSurvivingDeclared(
-    source: string,
+    records: readonly StaticImportRecord[],
     specifiers: ReadonlySet<string>,
   ): string | undefined {
-    for (const match of source.matchAll(
-      SharedDepSpecifierScan.STATEMENT_SPECIFIER_PATTERN,
-    )) {
-      if (specifiers.has(match[1])) return match[1];
+    for (const record of records) {
+      if (specifiers.has(record.specifier)) return record.specifier;
     }
     return undefined;
   }
 
-// @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-undeclared-specifier
   /**
-   * Find every specifier in `source`, in the two import forms above, that is
-   * well-formed as a package module specifier and is NOT one of
+   * The first relative specifier (`./` or `../`) that a surviving static
+   * import or re-export record still names — one no blob URL replaced.
+   */
+  static findSurvivingRelative(
+    records: readonly StaticImportRecord[],
+  ): string | undefined {
+    for (const { specifier } of records) {
+      if (specifier.startsWith('./') || specifier.startsWith('../')) return specifier;
+    }
+    return undefined;
+  }
+
+  // @cpt-begin:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-undeclared-specifier
+  /**
+   * Find every specifier of a surviving static import or re-export record
+   * that is well-formed as a package module specifier and is NOT one of
    * `declaredNames`. Duplicates are reported once. Returns an empty array when
    * there is nothing to warn about.
    *
@@ -93,32 +83,19 @@ export class SharedDepSpecifierScan {
    * only for diagnostics.
    */
   static findUndeclaredWellFormedSpecifiers(
-    source: string,
+    records: readonly StaticImportRecord[],
     declaredNames: ReadonlySet<string>,
   ): string[] {
-    const found: string[] = [];
-    const seen = new Set<string>();
-    for (const match of source.matchAll(
-      SharedDepSpecifierScan.GENERIC_IMPORT_SPECIFIER_PATTERN,
-    )) {
-      const specifier = match[3];
-      if (declaredNames.has(specifier)) {
-        continue;
-      }
+    const found = new Set<string>();
+    for (const { specifier } of records) {
       if (
-        !SharedDepSpecifierScan.WELL_FORMED_MODULE_SPECIFIER_PATTERN.test(
-          specifier,
-        )
+        !declaredNames.has(specifier) &&
+        SharedDepSpecifierScan.WELL_FORMED_MODULE_SPECIFIER_PATTERN.test(specifier)
       ) {
-        continue;
+        found.add(specifier);
       }
-      if (seen.has(specifier)) {
-        continue;
-      }
-      seen.add(specifier);
-      found.push(specifier);
     }
-    return found;
+    return [...found];
   }
 }
 // @cpt-end:cpt-frontx-algo-mfe-isolation-build-shared-dep-blob-urls:p1:inst-if-undeclared-specifier

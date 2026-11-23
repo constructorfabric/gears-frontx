@@ -8,30 +8,26 @@ import { describe, expect, it } from 'vitest';
 
 import { AttemptSourceTextLedger } from '../AttemptSourceTextLedger';
 
-const entriesOf = (ledger: AttemptSourceTextLedger): unknown[] =>
-  (ledger as unknown as { entries: unknown[] }).entries;
-
 const pending = (): Promise<string> => new Promise<string>(() => {});
 
 describe('AttemptSourceTextLedger', () => {
-  it('drops every entry when the attempt settles and refuses later records', async () => {
+  it('drops every entry when the attempt settles and refuses later records', () => {
     const cache = new Map<string, Promise<string>>();
     const ledger = new AttemptSourceTextLedger();
-    const settled = Promise.resolve('text');
-    cache.set('a', settled);
-    cache.set('b', pending());
-    ledger.record(cache, 'a', settled);
-    ledger.record(cache, 'b', cache.get('b') as Promise<string>);
-    await settled;
-    expect(entriesOf(ledger).length).toBeGreaterThan(0);
+    const hung = pending();
+    cache.set('a', hung);
+    ledger.record(cache, 'a', hung);
 
     ledger.settle();
-    expect(entriesOf(ledger)).toHaveLength(0);
+    // A record made after the attempt settled is accepted into nothing.
+    const late = pending();
+    cache.set('b', late);
+    ledger.record(cache, 'b', late);
+    // A release that still held either entry would evict it: nothing is held.
+    ledger.release();
 
-    ledger.record(cache, 'c', pending());
-    expect(entriesOf(ledger)).toHaveLength(0);
-    // Settling removes nothing from any cache.
-    expect([...cache.keys()]).toEqual(['a', 'b']);
+    expect(cache.get('a')).toBe(hung);
+    expect(cache.get('b')).toBe(late);
   });
 
   it('release after settle is a no-op', () => {
@@ -45,7 +41,6 @@ describe('AttemptSourceTextLedger', () => {
     ledger.release();
 
     expect(cache.get('a')).toBe(hung);
-    expect(entriesOf(ledger)).toHaveLength(0);
   });
 
   it('release before settle evicts only unsettled entries, identity-checked', async () => {
@@ -68,6 +63,9 @@ describe('AttemptSourceTextLedger', () => {
     expect(cache.get('done')).toBe(done);
     expect(cache.has('hung')).toBe(false);
     expect(cache.get('replaced')).toBe(replacement);
-    expect(entriesOf(ledger)).toHaveLength(0);
+    // The record is dropped by the release: a second release removes nothing.
+    cache.set('hung', hung);
+    ledger.release();
+    expect(cache.get('hung')).toBe(hung);
   });
 });

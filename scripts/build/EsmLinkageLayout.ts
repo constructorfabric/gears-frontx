@@ -1,9 +1,8 @@
 /**
  * Linkage-first layout of an emitted ESM module, applied to the preserved-module
- * output of the shareable ecosystem packages (`ecosystem_package_build_output`;
- * ADR 0034, Barrels).
+ * output of the shareable ecosystem packages (ADR 0034, Barrels).
  *
- * A consuming or producing build moves a named import off a package's barrel
+ * A build moves a named import off a package's barrel
  * to the module that defines the binding. It does so by reading module
  * linkage — import and export declarations — not by evaluating or fully
  * parsing module bodies. Bundler output does not make that easy: esbuild and

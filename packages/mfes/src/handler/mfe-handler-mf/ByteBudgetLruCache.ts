@@ -1,14 +1,13 @@
 /**
  * Byte-budget LRU cache for realm-shared source text.
  *
- * Ported from `salvage/issue-718-impl-20261105` with two review fixes:
- * byte accounting is in UTF-8 BYTES (`TextEncoder`), not UTF-16 code
- * units (finding F-025), and eviction has no sole-remaining-entry
- * exemption — a single text larger than the whole budget is deliberately
- * not retained past the bound (finding F-012). In-flight entries
+ * Byte accounting is in UTF-8 BYTES (`TextEncoder`), not UTF-16 code
+ * units, because the budget bounds memory the text occupies. Eviction has
+ * no sole-remaining-entry exemption — a single text larger than the whole
+ * budget is deliberately not retained past the bound. In-flight entries
  * contribute zero bytes and are never chosen as eviction victims, so a
  * later large admission cannot evict an unsettled fetch as if it were
- * sized (finding F-026).
+ * sized.
  *
  * Bounds the cache by a byte budget on the source text it retains —
  * once for the whole realm, never multiplied by handler count or by
@@ -122,7 +121,7 @@ export class ByteBudgetLruCache implements SharedDepTextCache {
           if (bytes > this.budget) {
             // A single text larger than the whole budget is never
             // retained — evict it rather than flushing older entries
-            // that legitimately fit (F-012, F-025, F-026).
+            // that legitimately fit.
             this.entries.delete(key);
             this.evictionCount += 1;
             return;
@@ -164,10 +163,10 @@ export class ByteBudgetLruCache implements SharedDepTextCache {
    * Evict least-recently-used FULFILLED entries until the retained bytes
    * fit within the budget. Entries with `bytes === 0` are in flight (or
    * empty) and are skipped — evicting one would reclaim nothing and
-   * would punish a fetch that has not even reported its size (F-026).
+   * would punish a fetch that has not even reported its size.
    * There is no sole-remaining-entry exemption: a single text larger
    * than the whole budget is evicted too rather than silently retained
-   * past the bound (F-012).
+   * past the bound.
    */
   private evictToBudget(): void {
     while (this.totalBytes > this.budget) {

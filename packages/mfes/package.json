@@ -40,7 +40,6 @@
     "type-check": "tsc --noEmit",
     "type-check:test": "tsc -p tsconfig.test.json",
     "test": "npm run test:unit",
-    "test:acceptance": "vitest run --config vitest.acceptance.config.ts",
     "test:unit": "vitest --run --passWithNoTests=false",
     "test:unit:watch": "vitest --watch"
   },
