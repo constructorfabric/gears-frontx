@@ -34,6 +34,7 @@
     "test:unit:watch": "vitest --watch --exclude='**/*.integration.test.ts'"
   },
   "devDependencies": {
+    "@gears-frontx/build-tools": "0.1.0-alpha.0",
     "@gears-frontx/depcruise-config": "0.3.0-alpha.0",
     "@gears-frontx/eslint-config": "0.2.0-alpha.0",
     "@types/node": "^24.0.0",

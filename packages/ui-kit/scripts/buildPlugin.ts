@@ -6,7 +6,7 @@ import nodeExternals from 'rollup-plugin-node-externals';
 import type { Plugin, PluginOption, UserConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 import { libInjectCss } from 'vite-plugin-lib-inject-css';
-import { EsmLinkageLayout } from '../../../scripts/build/EsmLinkageLayout';
+import { EsmLinkageLayout } from '@gears-frontx/build-tools';
 
 /**
  * The drag library's subpaths the source imports, rewritten in the emitted JS to the files they
@@ -334,7 +334,7 @@ export function buildPlugin(): PluginOption[] {
 
   /**
    * Gives every emitted module the linkage-first layout the tsup-built
-   * shareable packages get (scripts/build/EsmLinkageLayout.ts at the repo
+   * shareable packages get (internal/build-tools/EsmLinkageLayout.ts at the repo
    * root): an entry facade such as dist/<name>.js or dist/index.js becomes
    * plain `export { … } from` re-exports, and a module's export clause sits
    * above its body, so a host or MFE build reading linkage can follow each

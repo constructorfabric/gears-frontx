@@ -79,7 +79,7 @@ const PROJECTS_ORCHESTRATION_PACKAGES = Object.freeze(['cli', 'cyber-pilot-kit-f
 // even though the edge only exists at lint/build time. Exempt from the member
 // artifact chain and the publication gate, with that scope stated in the
 // DESIGN rather than implied. Directory names under `internal/`.
-const BUILD_INTERNALS_PACKAGES = Object.freeze(['eslint-config', 'depcruise-config', 'test-support']);
+const BUILD_INTERNALS_PACKAGES = Object.freeze(['eslint-config', 'depcruise-config', 'test-support', 'build-tools']);
 
 // Every ecosystem package, in layer order.
 const ECOSYSTEM_PACKAGES = Object.freeze([
@@ -125,6 +125,10 @@ const ECOSYSTEM_PACKAGE_DIRS = Object.freeze(
  *
  * An omitted or empty list means "zero @gears-frontx dependencies in that group".
  */
+// Shared tsup/esbuild build plugin (internal/build-tools), imported by each
+// tsup-built package's `tsup.config.ts`. Build-time only, so only ever a `dev` edge.
+const BUILD_TOOLS = '@gears-frontx/build-tools';
+
 const ALLOWED_ECOSYSTEM_EDGES = Object.freeze({
   // ---- Published libraries ----
   api: Object.freeze({
@@ -135,6 +139,8 @@ const ALLOWED_ECOSYSTEM_EDGES = Object.freeze({
       // import these, which `core-no-gears-frontx-imports` enforces separately.
       '@gears-frontx/eslint-config',
       '@gears-frontx/depcruise-config',
+      // Shared tsup/esbuild build plugin, imported by `tsup.config.ts`. Build-time only.
+      BUILD_TOOLS,
     ]),
   }),
   mfes: Object.freeze({
@@ -146,7 +152,10 @@ const ALLOWED_ECOSYSTEM_EDGES = Object.freeze({
       // check in `npm run arch:check`.
       '@gears-frontx/gts-plugin',
     ]),
-    dev: Object.freeze([]),
+    dev: Object.freeze([
+      // Shared tsup/esbuild build plugin, imported by `tsup.config.ts`. Build-time only.
+      BUILD_TOOLS,
+    ]),
   }),
   // Standalone browser SDK: no `@gears-frontx` edge in either group. Asserted
   // rather than assumed — an empty entry here is what makes adding one fail.
@@ -154,7 +163,7 @@ const ALLOWED_ECOSYSTEM_EDGES = Object.freeze({
   // Standalone navigation library: no `@gears-frontx` edge in either group
   // (`cpt-frontx-constraint-routing-no-intra-ecosystem-dependency`) — an empty
   // entry here is what makes adding one fail.
-  routing: Object.freeze({ runtime: Object.freeze([]), dev: Object.freeze([]) }),
+  routing: Object.freeze({ runtime: Object.freeze([]), dev: Object.freeze([BUILD_TOOLS]) }),
   // The engine-provider package's one deliberate intra-ecosystem edge: the
   // navigation substrate whose `NavigationHistory` contract it adapts and
   // whose engine-provider port it implements
@@ -162,7 +171,7 @@ const ALLOWED_ECOSYSTEM_EDGES = Object.freeze({
   // `@gears-frontx` edge is permitted, in either group.
   'routing-tanstack': Object.freeze({
     runtime: Object.freeze(['@gears-frontx/routing']),
-    dev: Object.freeze([]),
+    dev: Object.freeze([BUILD_TOOLS]),
   }),
   'gts-plugin': Object.freeze({
     runtime: Object.freeze([
@@ -172,12 +181,12 @@ const ALLOWED_ECOSYSTEM_EDGES = Object.freeze({
       // diagram, specified in `packages/mfes/architecture/features/type-substrate-port/`.
       '@gears-frontx/mfes',
     ]),
-    dev: Object.freeze([]),
+    dev: Object.freeze([BUILD_TOOLS]),
   }),
   // React and react-dom are peers, not `@gears-frontx` edges, so the standalone
   // property holds; the `frontx-ui-kit-interim-*` depcruise rules assert the
   // same isolation at the import-graph level.
-  'ui-kit': Object.freeze({ runtime: Object.freeze([]), dev: Object.freeze([]) }),
+  'ui-kit': Object.freeze({ runtime: Object.freeze([]), dev: Object.freeze([BUILD_TOOLS]) }),
 
   // ---- Projects orchestration ----
   cli: Object.freeze({
@@ -204,6 +213,7 @@ const ALLOWED_ECOSYSTEM_EDGES = Object.freeze({
   'eslint-config': Object.freeze({ runtime: Object.freeze([]), dev: Object.freeze([]) }),
   'depcruise-config': Object.freeze({ runtime: Object.freeze([]), dev: Object.freeze([]) }),
   'test-support': Object.freeze({ runtime: Object.freeze([]), dev: Object.freeze([]) }),
+  'build-tools': Object.freeze({ runtime: Object.freeze([]), dev: Object.freeze([]) }),
 });
 
 /**

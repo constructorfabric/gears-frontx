@@ -442,7 +442,10 @@ export default [
         {
           patterns: [
             {
-              group: ['@gears-frontx/*', '@gears-frontx/*/*'],
+              // `!@gears-frontx/build-tools` carves out the private build plugin the
+              // package's vite build shares with the tsup-built packages: a
+              // build-time workspace edge, not a runtime dependency.
+              group: ['@gears-frontx/*', '@gears-frontx/*/*', '!@gears-frontx/build-tools'],
               message:
                 'ECOSYSTEM VIOLATION: @gears-frontx/ui-kit holds no intra-ecosystem package dependency.',
             },
