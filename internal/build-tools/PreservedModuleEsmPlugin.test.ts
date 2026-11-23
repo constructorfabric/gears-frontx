@@ -129,6 +129,18 @@ describe('PreservedModuleEsmPlugin', () => {
     );
   });
 
+  it('fails when two source modules would emit the same output name', async () => {
+    const root = fixture({
+      'src/index.ts': "export { a } from './a.ts';\nexport { aView } from './a.tsx';\n",
+      'src/a.ts': 'export const a = 1;\n',
+      'src/a.tsx': 'export const aView = 2;\n',
+    });
+
+    await expect(buildFixture(root, 'esm', { index: 'src/index.ts' })).rejects.toThrow(
+      /would both emit a\b/,
+    );
+  });
+
   it('fails on a relative import that resolves to nothing', async () => {
     const root = fixture({ 'src/index.ts': "export * from './missing';\n" });
 

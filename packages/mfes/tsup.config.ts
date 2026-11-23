@@ -1,5 +1,5 @@
 import { defineConfig } from 'tsup';
-import { PreservedModuleEsmPlugin } from '../../scripts/build/PreservedModuleEsmPlugin';
+import { PreservedModuleEsmPlugin } from '@gears-frontx/build-tools';
 
 export default defineConfig({
   entry: {

@@ -36,6 +36,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@gears-frontx/build-tools": "0.1.0-alpha.0",
     "@types/node": "^25.5.0",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",

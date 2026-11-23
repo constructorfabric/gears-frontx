@@ -28,6 +28,7 @@
     "test:unit:watch": "vitest --watch"
   },
   "devDependencies": {
+    "@gears-frontx/build-tools": "0.1.0-alpha.0",
     "@types/node": "^25.5.0",
     "@vitest/coverage-v8": "4.1.4",
     "tsup": "^8.0.0",
