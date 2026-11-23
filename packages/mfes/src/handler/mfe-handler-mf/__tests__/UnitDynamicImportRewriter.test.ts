@@ -5,13 +5,22 @@
  * (`inst-lai-rewrite-shared-dynamic-imports`).
  */
 import { describe, expect, it } from 'vitest';
+import { DynamicImportScan } from '../../../unit-format/dynamic-import-scan';
 import { UnitDynamicImportRewriter } from '../UnitDynamicImportRewriter';
 
 const STUB = 'blob:stub';
 
+const rewrite = (source: string, loaderUrl: () => string, caller: string): string =>
+  UnitDynamicImportRewriter.rewrite(
+    source,
+    DynamicImportScan.scanCalls(source),
+    loaderUrl,
+    caller,
+  );
+
 describe('UnitDynamicImportRewriter', () => {
   it('rewrites a literal import to a call carrying the caller and the specifier', () => {
-    const out = UnitDynamicImportRewriter.rewrite(
+    const out = rewrite(
       "export const a = () => import('./a.js');",
       () => STUB,
       'pkg/index.js',
@@ -23,7 +32,7 @@ describe('UnitDynamicImportRewriter', () => {
   });
 
   it('rewrites a bounded pattern to a call passing the runtime-computed path', () => {
-    const out = UnitDynamicImportRewriter.rewrite(
+    const out = rewrite(
       'export const p = (n) => import(`./l/${n}.js`);',
       () => STUB,
       'pkg/index.js',
@@ -34,7 +43,7 @@ describe('UnitDynamicImportRewriter', () => {
   it('leaves a fully opaque import untouched and mints no stub for it', () => {
     let stubRequests = 0;
     const source = 'export const o = (x) => import(x);';
-    const out = UnitDynamicImportRewriter.rewrite(
+    const out = rewrite(
       source,
       () => {
         stubRequests += 1;
@@ -47,7 +56,7 @@ describe('UnitDynamicImportRewriter', () => {
   });
 
   it('binds under a free alias when the unit already spells __frontx_lazy', () => {
-    const out = UnitDynamicImportRewriter.rewrite(
+    const out = rewrite(
       "const __frontx_lazy = 1; import('./a.js');",
       () => STUB,
       'p.js',
@@ -57,7 +66,7 @@ describe('UnitDynamicImportRewriter', () => {
   });
 
   it('keeps an inner call verbatim inside a pattern substitution', () => {
-    const out = UnitDynamicImportRewriter.rewrite(
+    const out = rewrite(
       'import(`./l/${await import(v)}.js`);',
       () => STUB,
       'p.js',

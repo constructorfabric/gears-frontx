@@ -14,6 +14,7 @@
 // @cpt-dod:cpt-frontx-dod-mfe-registry-handler-injection:p1
 // @cpt-dod:cpt-frontx-dod-mfe-registry-registry-contract:p1
 // @cpt-dod:cpt-frontx-dod-mfe-registry-router-admission:p1
+// @cpt-dod:cpt-frontx-dod-mfe-registry-register-validate-mount:p1
 
 import type { TypeSystemPlugin } from '../type-substrate';
 import { MfeRegistry } from '../registry/MfeRegistry';
@@ -849,6 +850,8 @@ export class DefaultMfeRegistry extends MfeRegistry {
   }
 
   private resolveHandler(entryTypeId: string): MfeHandler | undefined {
+    // @cpt-begin:cpt-frontx-algo-mfe-registry-handler-resolution:p1:inst-algo-hr-02
+    // @cpt-begin:cpt-frontx-algo-mfe-registry-handler-resolution:p1:inst-algo-hr-02a
     // @cpt-begin:cpt-frontx-algo-mfe-registry-handler-resolution:p1:inst-algo-hr-02b
     // Iterate handlers (already priority-sorted) and return the first whose
     // handled base type matches the entry type through the injected type system.
@@ -856,6 +859,8 @@ export class DefaultMfeRegistry extends MfeRegistry {
       this.typeSystem.isTypeOf(entryTypeId, handler.handledBaseTypeId)
     );
     // @cpt-end:cpt-frontx-algo-mfe-registry-handler-resolution:p1:inst-algo-hr-02b
+    // @cpt-end:cpt-frontx-algo-mfe-registry-handler-resolution:p1:inst-algo-hr-02a
+    // @cpt-end:cpt-frontx-algo-mfe-registry-handler-resolution:p1:inst-algo-hr-02
   }
 
   // ─── registerDomain ───────────────────────────────────────────────────────
@@ -863,10 +868,12 @@ export class DefaultMfeRegistry extends MfeRegistry {
   /**
    * Register an extension domain.
    */
+  // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-02
   registerDomain(
     declaration: ExtensionDomain,
     factory: ExtensionDomainImplementationFactory
   ): void {
+    // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-02
     // Once disposal has begun no fresh domain opens
     // (`inst-me-registry-dispose-wait`).
     if (this.disposed) {
@@ -878,12 +885,16 @@ export class DefaultMfeRegistry extends MfeRegistry {
 
     // An already-registered id is refused before anything is changed or
     // presented to the router; the live registration stays as it is.
+    // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-03
+    // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-04
+    // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-04a
     if (this.extensionManager.getDomainState(declaration.id)) {
       throw new DomainValidationError(
         declaration.id,
         new Error(`domain '${declaration.id}' is already registered`)
       );
     }
+    // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-04a
 
     // Step 1: Validate lifecycle hooks and store initial (in-memory, fully
     // reversible) domain state — no init trigger yet, and no type-system
@@ -916,9 +927,11 @@ export class DefaultMfeRegistry extends MfeRegistry {
       implementation = factory.build(ctx);
     } catch (error) {
       // Atomic rollback: clear any partially-registered handlers and remove domain.
+      // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-04b
       ctx.clearCollectedHandlers();
       this.extensionManager.unregisterDomain(declaration.id).catch(() => { /* best-effort */ });
       throw error;
+      // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-04b
     } finally {
       // Function-handle-level invalidation: after build() returns (or throws),
       // any subsequent access to ctx.mounter / ctx.lifecycleTrigger / ctx.registerHandler
@@ -926,6 +939,8 @@ export class DefaultMfeRegistry extends MfeRegistry {
       ctx.invalidate();
     }
     // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-compose-domain
+    // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-04
+    // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-03
 
     // Step 5: Cross-validate handlers vs declaration AND strategy/cardinality matrix.
     // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-cardinality-check
@@ -1021,11 +1036,13 @@ export class DefaultMfeRegistry extends MfeRegistry {
       this.typeSystem.register(declaration);
     } catch (cause) {
       // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-domain-type-register-reject
+      // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-04c
       const err = cause instanceof Error ? cause : new Error(String(cause));
       this.releaseRouterDomain(declaration.id);
       ctx.clearCollectedHandlers();
       this.extensionManager.unregisterDomain(declaration.id).catch(() => { /* best-effort */ });
       throw new DomainValidationError(declaration.id, err);
+      // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-04c
       // @cpt-end:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-domain-type-register-reject
     }
     // @cpt-end:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-domain-type-register
@@ -1386,9 +1403,7 @@ export class DefaultMfeRegistry extends MfeRegistry {
 
       // Developer-invoked registration of an Extension value: delegates entry
       // type-validation, handler resolution, and entry storage to the manager.
-      // @cpt-begin:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-05
       await this.extensionManager.registerExtension(extension);
-      // @cpt-end:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-05
 
       // @cpt-begin:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-algo-ra-present-extension
       // The call above already registered a routed extension with the
@@ -1411,8 +1426,11 @@ export class DefaultMfeRegistry extends MfeRegistry {
   }
 
   // @cpt-state:cpt-frontx-state-mfe-registry-entry-lifecycle:p2
+  // @cpt-begin:cpt-frontx-flow-mfe-registry-unregister-dispose:p1:inst-flow-ud-unregister-extension
   async unregisterExtension(extensionId: string): Promise<void> {
+    // @cpt-end:cpt-frontx-flow-mfe-registry-unregister-dispose:p1:inst-flow-ud-unregister-extension
     return this.operationSerializer.serializeOperation(extensionId, async () => {
+      // @cpt-begin:cpt-frontx-flow-mfe-registry-unregister-dispose:p1:inst-flow-ud-extension-cleanup
       // @cpt-begin:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-09
       // MOUNTED -> UNREGISTERED: extension is unmounted first, then removed.
       await this.extensionManager.unregisterExtension(extensionId);
@@ -1423,13 +1441,16 @@ export class DefaultMfeRegistry extends MfeRegistry {
       this.releaseRouterExtension(extensionId);
       // @cpt-end:cpt-frontx-state-mfe-registry-entry-lifecycle:p2:inst-state-el-10
       // @cpt-end:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-algo-ra-release-extension
+      // @cpt-end:cpt-frontx-flow-mfe-registry-unregister-dispose:p1:inst-flow-ud-extension-cleanup
 
       this.retractPropagatedTarget(extensionId);
       this.advertisableTargets.delete(extensionId);
     });
   }
 
+  // @cpt-begin:cpt-frontx-flow-mfe-registry-unregister-dispose:p1:inst-flow-ud-unregister-domain
   async unregisterDomain(domainId: string): Promise<void> {
+    // @cpt-end:cpt-frontx-flow-mfe-registry-unregister-dispose:p1:inst-flow-ud-unregister-domain
     // The unregistration names the domain registered when it is called.
     const targetState = this.extensionManager.getDomainState(domainId);
     this.pendingUnregistrations.set(domainId, (this.pendingUnregistrations.get(domainId) ?? 0) + 1);
@@ -1509,7 +1530,9 @@ export class DefaultMfeRegistry extends MfeRegistry {
         this.concurrentJoinersByDomain.delete(domainId);
 
         // @cpt-begin:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-algo-ra-release-domain
+        // @cpt-begin:cpt-frontx-flow-mfe-registry-unregister-dispose:p1:inst-flow-ud-domain-cleanup
         this.releaseRouterDomain(domainId);
+        // @cpt-end:cpt-frontx-flow-mfe-registry-unregister-dispose:p1:inst-flow-ud-domain-cleanup
         // @cpt-end:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-algo-ra-release-domain
 
         // @cpt-begin:cpt-frontx-algo-mfe-host-communication-registration-propagation:p2:inst-retract-advertisements
@@ -1587,11 +1610,13 @@ export class DefaultMfeRegistry extends MfeRegistry {
       return;
     }
     // @cpt-end:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-algo-ra-standalone
+    // @cpt-begin:cpt-frontx-flow-mfe-registry-unregister-dispose:p1:inst-flow-ud-release-failure
     try {
       this.router.releaseExtension(extensionId);
     } catch (error) {
       console.error(`[DefaultMfeRegistry] releaseExtension failed for '${extensionId}':`, error);
     }
+    // @cpt-end:cpt-frontx-flow-mfe-registry-unregister-dispose:p1:inst-flow-ud-release-failure
   }
 
   private releaseRouterDomain(domainId: string): void {
@@ -1630,7 +1655,9 @@ export class DefaultMfeRegistry extends MfeRegistry {
   }
 
   // @cpt-begin:cpt-frontx-algo-mfe-host-communication-registration-propagation:p2:inst-retract-own-advertisements
+  // @cpt-begin:cpt-frontx-flow-mfe-registry-unregister-dispose:p1:inst-flow-ud-dispose
   async dispose(): Promise<void> {
+    // @cpt-end:cpt-frontx-flow-mfe-registry-unregister-dispose:p1:inst-flow-ud-dispose
     this.disposed = true;
 
     // Every queue closes first: pending entries fail and take their fallback.

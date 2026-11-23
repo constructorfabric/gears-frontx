@@ -35,7 +35,11 @@
  * @internal
  */
 
-import { ByteBudgetLruCache } from './ByteBudgetLruCache';
+// @cpt-dod:cpt-frontx-dod-mfe-isolation-realm-shared-dep-text-cache:p1
+import {
+  ByteBudgetLruCache,
+  type RealmSharedDepTextCacheDiagnostics,
+} from './ByteBudgetLruCache';
 
 /**
  * The protocol version this evaluated copy of the package speaks. Carried
@@ -55,7 +59,7 @@ const SHARED_DEP_TEXT_CACHE_PROTOCOL_VERSION = 1 as const;
  * same global symbol registry key, and therefore the exact same backing
  * slot on `globalThis`, regardless of which copy's module instance is
  * executing. Mirrors `inbound-bridge-link.ts`'s `RENDEZVOUS_KEY` and the
- * existing `globalThis.__FRONTX_LAZY__` pattern, for the identical reason.
+ * lazy-loader slot (`LazyLoaderRegistry.ts`), for the identical reason.
  * The trailing `:1` is the protocol version baked into the symbol
  * description itself, distinct from (but kept in lockstep with)
  * {@link SHARED_DEP_TEXT_CACHE_PROTOCOL_VERSION}.
@@ -68,7 +72,7 @@ const SHARED_DEP_TEXT_CACHE_KEY = Symbol.for(
  * Realm-wide bound, not per-handler and not per-copy: neither the number of
  * compatible copies coexisting in a realm, nor the number of handlers each
  * constructs, multiplies this cache's footprint. Bounds retained BYTES of
- * shared source text (ADR-0035, finding F-012) — see
+ * shared source text (ADR-0035) — see
  * `ByteBudgetLruCache`. The budget is set by the `MfeLoaderConfig` of the
  * FIRST handler to publish the realm entry (or by this default when none
  * configures one); later handlers adopt the published cache unchanged —
@@ -80,16 +84,18 @@ export const DEFAULT_SHARED_DEP_TEXT_CACHE_MAX_BYTES = 4 * 1024 * 1024;
 
 /**
  * Internal STRUCTURAL interface a realm-shared cache must expose — `get`,
- * `set`, and `delete`, the only operations the loading path needs of it.
- * Deliberately not `LruCache` by class identity: `instanceof` cannot be
- * relied upon across independently evaluated copies of this package, each
- * of which defines its OWN `LruCache` class object with its own identity,
- * even though every copy's class is structurally identical.
+ * `set`, and `delete`, the operations the loading path needs of it — and
+ * may expose `getDiagnostics`, which the per-load diagnostic reads when it
+ * is there. Deliberately not `LruCache` by class identity: `instanceof`
+ * cannot be relied upon across independently evaluated copies of this
+ * package, each of which defines its OWN cache class object with its own
+ * identity, even though every copy's class is structurally identical.
  */
 export interface SharedDepTextCache {
   get(key: string): Promise<string> | undefined;
   set(key: string, value: Promise<string>): void;
   delete(key: string): boolean;
+  getDiagnostics?(): RealmSharedDepTextCacheDiagnostics;
 }
 
 /**
@@ -224,6 +230,7 @@ export class RealmSharedDepTextCacheProvider {
     // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-if-empty
 
     // @cpt-begin:cpt-frontx-algo-unit-format-contract-loader-surface:p1:inst-loader-slot-adopt
+    // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-if-version-known
     if (RealmSharedDepTextCacheProvider.isRecognizedEntry(existing)) {
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-trusted-coordination
       // Adopted whichever same-realm code published it: no cross-copy
@@ -234,11 +241,14 @@ export class RealmSharedDepTextCacheProvider {
       // and must not be presented as, publisher authentication
       // (`cpt-frontx-adr-shared-dep-cache-reach` records this as
       // an accepted consequence).
+      // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-adopt
       // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-return-cache
       return existing.cache;
       // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-return-cache
+      // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-adopt
       // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-trusted-coordination
     }
+    // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-if-version-known
     // @cpt-end:cpt-frontx-algo-unit-format-contract-loader-surface:p1:inst-loader-slot-adopt
 
     // @cpt-begin:cpt-frontx-algo-unit-format-contract-loader-surface:p1:inst-loader-slot-versioned
@@ -249,6 +259,9 @@ export class RealmSharedDepTextCacheProvider {
     // establish the entry's semantics must not act on them. An incompatible
     // future protocol occupies a rendezvous slot of its own (a new
     // `Symbol.for(...)` suffix) rather than contending for this one.
+    // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-leave-unknown
+    // Only a diagnostic is written: nothing is written to
+    // `host[SHARED_DEP_TEXT_CACHE_KEY]`.
     console.debug(
       '[MfeHandlerMF] Realm shared-dependency source-text cache rendezvous slot ' +
         `(${String(SHARED_DEP_TEXT_CACHE_KEY)}) carries an entry this copy does not ` +
@@ -257,8 +270,6 @@ export class RealmSharedDepTextCacheProvider {
         'falling back to a cache local to this copy — reuse degrades to copy scope ' +
         'rather than failing the load.'
     );
-    // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-leave-unknown
-    // (nothing written to `host[SHARED_DEP_TEXT_CACHE_KEY]` here — see comment above)
     // @cpt-end:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-leave-unknown
     // @cpt-begin:cpt-frontx-algo-mfe-isolation-realm-shared-dep-cache-rendezvous:p1:inst-rsdc-fallback-local
     // One shared fallback per evaluated copy (`getFallbackCache`'s

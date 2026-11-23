@@ -49,3 +49,17 @@ export class FetchBudget {
     this.available += 1;
   }
 }
+
+/**
+ * Width of every bounded fan-out on the whole-package path: the number of
+ * chunk-source fetches one chain build may have in flight at once (see
+ * {@link FetchBudget}), and the number of concurrent invocations within one
+ * batch of the shared-dependency source fetches of a single manifest.
+ *
+ * Six is the number of connections a browser opens to one origin over
+ * HTTP/1.1, so a wider fan-out only queues behind that pool instead of
+ * shortening wall-clock time, while it risks minting page-lifetime blob
+ * URLs for work a failed load will never use. The fetch-list round has no
+ * such width.
+ */
+export const MAX_CONCURRENT_FETCHES = 6;

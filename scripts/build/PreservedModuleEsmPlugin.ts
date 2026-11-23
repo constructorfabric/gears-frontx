@@ -1,14 +1,11 @@
 /**
- * Preserved-module ESM output for the shareable ecosystem packages
- * (`ecosystem_package_build_output`, brainstorm issue-718-redo-20261105).
+ * Preserved-module ESM output for the shareable ecosystem packages.
  *
- * A host or MFE build shares an ecosystem package at unit granularity: the
- * producer splits the package's ESM into strongly connected components of its
- * module graph. A single-file bundle is one module, so every importer reaches
- * all of it. This esbuild plugin, given to tsup through `esbuildPlugins`,
- * makes the ESM build emit one file per source module instead: every source
- * module reachable from the public entries becomes an entry point of its own
- * (named by its path under the source root, the public entries keeping their
+ * A single-file bundle is one module, so every importer reaches all of it.
+ * This esbuild plugin, given to tsup through `esbuildPlugins`, makes the ESM
+ * build emit one file per source module instead: every source module
+ * reachable from the public entries becomes an entry point of its own (named
+ * by its path under the source root, the public entries keeping their
  * names), and every relative import between them stays an import of the
  * emitted sibling file, rewritten to its output path with the `.js`
  * extension. The CJS build of the same tsup config is left bundled; the

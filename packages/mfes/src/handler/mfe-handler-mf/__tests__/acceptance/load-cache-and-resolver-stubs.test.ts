@@ -8,6 +8,7 @@
  * manifest without fetch lists walks its own chunk graph, and a registry answer
  * without `shared` is cached under its `id`.
  */
+import { LAZY_LOADER_KEY_NAME } from '../../../../lazy-loader/LazyLoaderRegistry';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { stubbedDynamicModuleOps } from '../helpers/blob-module-stub';
 
@@ -27,6 +28,7 @@ import {
   buildEntry,
   buildManifest,
   ENTRY_BASE_ID,
+  jsonManifest,
   listOf,
   unitOf,
 } from '../helpers/manifest-builder';
@@ -126,9 +128,8 @@ describe('acceptance: a call from one load routes to that load\'s resolver', () 
     const ids = register.mock.results.map((r) => String(r.value));
     expect(new Set(ids).size).toBe(2);
 
-    const globalRegistry = (globalThis as unknown as {
-      __FRONTX_LAZY__: { resolve(id: string, path: string): Promise<string> };
-    }).__FRONTX_LAZY__;
+    const globalRegistry: { resolve(id: string, path: string): Promise<string> } =
+      Reflect.get(globalThis, Symbol.for(LAZY_LOADER_KEY_NAME));
     const before = router.calls.length;
     // The call names load A's id: only A's own lazy chunk is requested.
     const blob = await globalRegistry.resolve(ids[0]!, './lazy.js');
@@ -174,7 +175,7 @@ describe('acceptance: the manifest the registry answers', () => {
     await handler.load(entry, 'ext-cached-1');
     // The registry no longer answers for the id: a second extension of the same manifest
     // is served from the handler's cache under that id.
-    registerManifest({ id: manifest.id } as unknown as MfManifest);
+    registerManifest(jsonManifest({ id: manifest.id }));
     await expect(handler.load(entry, 'ext-cached-2')).resolves.toBeDefined();
   });
 });

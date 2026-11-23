@@ -14,8 +14,8 @@
  * nor a bounded pattern — is left exactly as emitted, native and outside
  * the load's isolated graph.
  *
- * Call sites are located by the comment/string/template-aware
- * `DynamicImportScan`, so an `import(` inside a string, comment,
+ * Call sites arrive as the comment/string/template-aware
+ * `DynamicImportScan`'s records, so an `import(` inside a string, comment,
  * template text or regex is never touched; the trust kernel's own
  * `import(blobUrl)` shape is a non-literal call and stays as emitted.
  * When at least one call is rewritten, the `__frontx_lazy` binding is
@@ -31,7 +31,8 @@
  * @internal
  */
 
-import { DynamicImportScan, type DynamicImportCall } from '../../unit-format/dynamic-import-scan';
+import type { DynamicImportCall } from '../../unit-format/dynamic-import-scan';
+import { SourceSplice, type SourceEdit } from './SourceSplice';
 
 export class UnitDynamicImportRewriter {
   /** The loader stub's exported lazy-import binding (ADR-0022). */
@@ -71,20 +72,29 @@ export class UnitDynamicImportRewriter {
   }
 
   /**
-   * Rewrite every literal and every bounded pattern dynamic import in
-   * `source` for the unit located at `caller`. `loaderUrl` supplies the
+   * `source` with the edits applied and every literal and bounded pattern
+   * dynamic import of `calls` rewritten for the unit located at `caller`,
+   * all in one splice over the original offsets. `loaderUrl` supplies the
    * per-load loader-stub blob URL; it is invoked only when at least one
    * call is rewritten, so the stub is minted on first use and never for a
    * unit without dynamic imports.
    */
   static rewrite(
     source: string,
+    calls: readonly DynamicImportCall[],
     loaderUrl: () => string,
     caller: string,
+    edits: readonly SourceEdit[] = [],
   ): string {
-    const local = UnitDynamicImportRewriter.localBindingName(source);
-    const rewritten = UnitDynamicImportRewriter.rewriteCalls(source, local, caller);
-    if (rewritten === source) return source;
+    if (calls.length === 0) return SourceSplice.apply(source, edits);
+    const local = UnitDynamicImportRewriter.freeName(
+      source,
+      UnitDynamicImportRewriter.ABI_NAME,
+    );
+    const rewritten = SourceSplice.apply(source, [
+      ...edits,
+      ...UnitDynamicImportRewriter.callEdits(calls, local, caller),
+    ]);
     const binding =
       local === UnitDynamicImportRewriter.ABI_NAME
         ? local
@@ -93,48 +103,58 @@ export class UnitDynamicImportRewriter {
   }
 
   /**
-   * Rewrite every literal and bounded pattern dynamic import in `source`
-   * to a call of `local`, without importing the binding. With a `caller`
-   * the call's argument names it (the form {@link callerArgument}
-   * builds); without one the argument is the bare path, for a chunk whose
-   * binding already tags its calls with the chunk's own location.
+   * The edits that rewrite every literal and bounded pattern dynamic
+   * import of `calls` to a call of `local`, without importing the binding.
+   * With a `caller` the call's argument names it (the form
+   * {@link callerArgument} builds); without one the argument is the bare
+   * path, for a chunk whose binding already tags its calls with the
+   * chunk's own location. A pattern call keeps its template verbatim, so
+   * an edit inside the template still applies; its discarded tail
+   * (attributes) is replaced with the closing parentheses.
    */
-  static rewriteCalls(source: string, local: string, caller?: string): string {
+  static callEdits(
+    calls: readonly DynamicImportCall[],
+    local: string,
+    caller?: string,
+  ): SourceEdit[] {
     const prefix =
       caller === undefined
         ? undefined
         : JSON.stringify(UnitDynamicImportRewriter.callerPrefix(caller));
+    const edits: SourceEdit[] = [];
     // Source order, dropping a call nested inside an earlier call's span:
     // the outer replacement keeps the inner text verbatim.
-    const selected: DynamicImportCall[] = [];
     let lastEnd = -1;
-    for (const call of DynamicImportScan.scanCalls(source)) {
+    for (const call of calls) {
       if (call.start < lastEnd) continue;
-      selected.push(call);
       lastEnd = call.closeParen + 1;
-    }
-    let out = source;
-    // Back to front so earlier replacements never shift a later site's
-    // recorded offsets.
-    for (const call of selected.reverse()) {
-      const template =
-        call.kind === 'pattern' ? source.slice(call.argStart, call.argEnd) : '';
-      let argument: string;
       if (call.kind === 'literal') {
-        argument = JSON.stringify(
+        const argument = JSON.stringify(
           caller === undefined
             ? call.specifier
             : UnitDynamicImportRewriter.callerArgument(caller, call.specifier),
         );
+        edits.push({
+          start: call.start,
+          end: call.closeParen + 1,
+          text: `${local}(${argument})`,
+        });
       } else {
-        argument = prefix === undefined ? template : `${prefix}+(${template})`;
+        edits.push(
+          {
+            start: call.start,
+            end: call.argStart,
+            text: prefix === undefined ? `${local}(` : `${local}(${prefix}+(`,
+          },
+          {
+            start: call.argEnd,
+            end: call.closeParen + 1,
+            text: prefix === undefined ? ')' : '))',
+          },
+        );
       }
-      out =
-        out.slice(0, call.start) +
-        `${local}(${argument})` +
-        out.slice(call.closeParen + 1);
     }
-    return out;
+    return edits;
   }
 
   /**
@@ -150,21 +170,6 @@ export class UnitDynamicImportRewriter {
     return (
       `import{${UnitDynamicImportRewriter.ABI_NAME} as ${stub}}from${JSON.stringify(stubUrl)};\n` +
       `const ${UnitDynamicImportRewriter.ABI_NAME}=(p)=>${stub}(${tag}+p);\n`
-    );
-  }
-
-  /**
-   * A local name for the imported ABI binding that collides with no
-   * identifier in `source`: `__frontx_lazy` itself when the unit never
-   * spells it, else the first free `__frontx_lazy_<n>`. The check is
-   * deliberately conservative — any whole-identifier occurrence counts,
-   * even inside a string or comment — since an over-avoided name costs
-   * nothing while a shadowed or redeclared one breaks the module.
-   */
-  private static localBindingName(source: string): string {
-    return UnitDynamicImportRewriter.freeName(
-      source,
-      UnitDynamicImportRewriter.ABI_NAME,
     );
   }
 

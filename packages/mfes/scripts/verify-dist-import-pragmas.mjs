@@ -17,7 +17,7 @@
  * The CJS build is one bundle per entry; only `index.cjs` reaches the
  * blob import (`unit-loader.cjs` ships the shared-unit fetcher and the
  * resolver, which never evaluate a module).
- * The ESM build preserves modules (`ecosystem_package_build_output`): the
+ * The ESM build preserves modules, one file per source module: the
  * import lives in the emitted module of the trust kernel itself,
  * `handler/mfe-handler-mf/mf-dynamic-module-ops.js`. For each format the
  * script checks that the file exists, that both pragmas sit inside an

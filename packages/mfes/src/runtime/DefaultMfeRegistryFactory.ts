@@ -103,9 +103,11 @@ export class DefaultMfeRegistryFactory extends MfeRegistryFactory {
 
     // @cpt-begin:cpt-frontx-flow-mfe-registry-factory-build:p1:inst-flow-fb-03
     // @cpt-begin:cpt-frontx-state-mfe-registry-factory-cache:p1:inst-state-fc-01
+    // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-01
     this.cachedTypeSystem = config.typeSystem;
     this.cachedRouter = config.router;
     this.instance = new DefaultMfeRegistry(config);
+    // @cpt-end:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-01
     return this.instance;
     // @cpt-end:cpt-frontx-state-mfe-registry-factory-cache:p1:inst-state-fc-01
     // @cpt-end:cpt-frontx-flow-mfe-registry-factory-build:p1:inst-flow-fb-03

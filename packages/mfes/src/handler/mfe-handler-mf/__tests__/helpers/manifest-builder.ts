@@ -140,6 +140,15 @@ export function listOf(
   };
 }
 
+/**
+ * A manifest as a registry holds a producer's JSON: whatever shape the
+ * producer wrote, unchecked. Parsing makes the value `any`, so no type
+ * assertion stands between a fixture and the handler's own checks.
+ */
+export function jsonManifest(written: object): MfManifest {
+  return JSON.parse(JSON.stringify(written));
+}
+
 /** The `MfeEntryMF` wrapping `manifest` for `handler.load(...)`. */
 export function buildEntry(
   manifest: MfManifest,

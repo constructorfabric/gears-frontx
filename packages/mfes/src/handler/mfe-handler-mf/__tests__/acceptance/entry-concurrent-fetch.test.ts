@@ -76,7 +76,7 @@ interface Deferred {
 /**
  * A fetch whose responses are settled by the test. Every request of a URL
  * is kept, so a test can settle an earlier request of a URL after a later
- * one was issued; settling a URL that was never requested fails by name.
+ * one was issued; settling a URL nobody requested fails by name.
  */
 function controlledFetch() {
   const issued: string[] = [];
@@ -453,21 +453,13 @@ describe('acceptance: concurrent entry module request', () => {
     net.respondAlways(ITEM_URL, ITEM_TEXT);
     const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     type LoadState = { entrySource?: Promise<string> };
+    type Chain = (state: LoadState, ...rest: unknown[]) => Promise<void>;
     const states: LoadState[] = [];
-    const chain = (
-      handler as unknown as {
-        createBlobUrlChain(state: LoadState, ...rest: unknown[]): Promise<void>;
-      }
-    ).createBlobUrlChain;
-    vi.spyOn(
-      handler as unknown as {
-        createBlobUrlChain(state: LoadState, ...rest: unknown[]): Promise<void>;
-      },
-      'createBlobUrlChain',
-    ).mockImplementation(function (this: unknown, state, ...rest) {
+    const chain: Chain = Reflect.get(handler, 'createBlobUrlChain');
+    Reflect.set(handler, 'createBlobUrlChain', (state: LoadState, ...rest: unknown[]) => {
       states.push(state);
       expect(state.entrySource).toBeInstanceOf(Promise);
-      return chain.call(this, state, ...rest);
+      return chain.call(handler, state, ...rest);
     });
     await handler.load(buildEntry(listManifest()), 'ext-state');
     expect(states).toHaveLength(1);

@@ -49,7 +49,7 @@ How should microfrontends reuse shared-dependency code, so that reuse happens on
 * **Lazy target** — a chunk reached through a literal or pattern dynamic import — an own lazy chunk, or the target of a literal or pattern import inside a shared chunk — which gets its own fetch list; a pattern import has one lazy target per matching file.
 * **Fetch list** — the precomputed flat list of the shared chunks one exposed module or one lazy target needs, together with the locations of the microfrontend's own chunks it reaches statically. The manifest holds every fetch list.
 * **List item** — one shared chunk a fetch list names, by content identity; the manifest holds each such chunk once, with its location, content identity, answered specifiers and import edges.
-* **Whole-package entry** — a shared entry whose `chunkPath` names one file holding the whole package; a load uses whole-package entries when its exposed module has no fetch list.
+* **Whole-package entry** — a shared entry whose `chunkPath` names one file holding the whole package; a load uses whole-package entries only when its manifest holds neither `units` nor `lists`.
 * **Unit** — what reuse operates on: a list-item chunk or a whole-package entry.
 * **Own chunk** — a chunk of a microfrontend's own code: the chunk that backs an exposed module or an own lazy target, and every chunk of its own code that these reach. An own chunk is not shared, carries no content identity and is never admitted to the realm cache.
 * **Round** — a set of requests the runtime issues together; the runtime cannot issue the next round until a response from the current one tells it what to request. Round counts cover only the requests the runtime issues, and a round with nothing to request is not issued, so a stated count is an upper bound.
@@ -183,7 +183,7 @@ One chunk per package entry point plus shared internal chunks, computed from the
 A producer option coarsens the unit: one unit per `exports` subpath with shared internals kept separate, or one unit per whole package.
 
 * Good, because fewer, larger units mean fewer files per load.
-* Bad, because an unsplit barrel or a whole package pulls every dependency of every member into a load; measured against the fixed rule, boot was several times slower and the evaluated bytes several times larger.
+* Bad, because an unsplit barrel or a whole package pulls every dependency of every member into a load.
 * Bad, because the option would change chunk bytes, so content-keyed reuse would depend on every producer choosing the same value.
 
 ### Whole-package chunk per consumer, externals chosen by the consumer's shared list

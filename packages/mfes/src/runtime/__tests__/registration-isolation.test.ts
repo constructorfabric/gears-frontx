@@ -20,6 +20,7 @@ import { ConcurrentMountStrategy } from '../ConcurrentMountStrategy';
 import type { ContainerHooks } from '../MountStrategy';
 import { ActionHandler } from '../../mediator/ActionHandler';
 import { mountedIn } from './helpers/mounted-in';
+import { extensionStateOf } from './helpers/extension-state';
 
 const ACTION_LOAD_EXT = 'cti.example.action~load_ext.v1~';
 const ACTION_MOUNT_EXT = 'cti.example.action~mount_ext.v1~';
@@ -31,7 +32,13 @@ const ENTRY_NO_HANDLER = 'cti.other.entry~nohandler.v1';
 const ENTRY_NEEDS_PROPERTY = 'cti.example.entry~needs.v1';
 const DOMAIN_ID = 'cti.example.domain.concurrent.v1';
 
-interface MockSchema { $id?: string }
+interface MockSchema {
+  $id?: string;
+  id?: string;
+  requiredProperties?: string[];
+  actions?: string[];
+  domainActions?: string[];
+}
 
 function createPlugin(rejects: ReadonlySet<string>): TypeSystemPlugin<MockSchema> {
   const schemas = new Map<string, MockSchema>();
@@ -64,7 +71,7 @@ const domain = (): ExtensionDomain => ({
   defaultActionTimeout: 5000,
   lifecycleStages: [],
   extensionsLifecycleStages: [],
-}) as unknown as ExtensionDomain;
+});
 
 const extension = (id: string, entry: string): Extension => ({ id, domain: DOMAIN_ID, entry }) as Extension;
 
@@ -101,7 +108,7 @@ class Factory extends ExtensionDomainImplementationFactory {
 function setup(rejects: string[] = []) {
   const plugin = createPlugin(new Set(rejects));
   for (const id of [ENTRY_GOOD, ENTRY_BAD, ENTRY_NO_HANDLER]) {
-    plugin.registerSchema({ $id: id, id, requiredProperties: [], actions: [], domainActions: [] } as unknown as MockSchema);
+    plugin.registerSchema({ $id: id, id, requiredProperties: [], actions: [], domainActions: [] });
   }
   // Requires a shared property the domain does not offer: contract matching refuses it.
   plugin.registerSchema({
@@ -110,7 +117,7 @@ function setup(rejects: string[] = []) {
     requiredProperties: ['cti.example.property~missing.v1'],
     actions: [],
     domainActions: [],
-  } as unknown as MockSchema);
+  });
   const registry = new DefaultMfeRegistry({ typeSystem: plugin, mfeHandlers: [new SelectiveHandler()] });
   registry.registerDomain(domain(), new Factory());
   const mounter = registry.getMounter(DOMAIN_ID);
@@ -169,9 +176,7 @@ describe('a failed load disables only its own extension', () => {
     ]);
 
     expect(bad.status).toBe('rejected');
-    const stateOf = (id: string) =>
-      (registry as unknown as { extensionManager: { getExtensionState(id: string): { loadState: string } | undefined } })
-        .extensionManager.getExtensionState(id)?.loadState;
+    const stateOf = (id: string) => extensionStateOf(registry, id)?.loadState;
     expect(stateOf('ext.bad')).toBe('error');
     expect(stateOf('ext.good')).toBe('loaded');
     expect(good.status).toBe('fulfilled');
@@ -201,16 +206,13 @@ describe('the entry state machine over loadState and mountState', () => {
 
   it('moves idle to loading to error and back to loading on a later request that issues its load afresh, then loaded, mounted, unmounted, and removed on unregistration', async () => {
     const plugin = createPlugin(new Set());
-    plugin.registerSchema({ $id: ENTRY_GOOD, id: ENTRY_GOOD, requiredProperties: [], actions: [], domainActions: [] } as unknown as MockSchema);
+    plugin.registerSchema({ $id: ENTRY_GOOD, id: ENTRY_GOOD, requiredProperties: [], actions: [], domainActions: [] });
     const handler = new ControlledHandler();
     const registry = new DefaultMfeRegistry({ typeSystem: plugin, mfeHandlers: [handler] });
     registry.registerDomain(domain(), new Factory());
     const mounter = registry.getMounter(DOMAIN_ID);
     mounter.attach(document.createElement('div'));
-    const state = (id: string) =>
-      (registry as unknown as {
-        extensionManager: { getExtensionState(id: string): { loadState: string; mountState: string } | undefined };
-      }).extensionManager.getExtensionState(id);
+    const state = (id: string) => extensionStateOf(registry, id);
     const turn = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
     await registry.registerExtension(extension('ext.cycle', ENTRY_GOOD));

@@ -26,14 +26,12 @@ export interface FetchRouter {
   readonly calls: string[];
 }
 
-/** A Response-shaped object good enough for the loader's `.ok`/`.text()` use. */
+/** A JavaScript response carrying `body`, or a 404 answer when `ok` is false. */
 export function jsResponse(body: string, ok = true): Response {
-  return {
-    ok,
+  return new Response(body, {
     status: ok ? 200 : 404,
-    headers: { get: () => 'application/javascript' },
-    text: () => Promise.resolve(body),
-  } as unknown as Response;
+    headers: { 'content-type': 'application/javascript' },
+  });
 }
 
 /**

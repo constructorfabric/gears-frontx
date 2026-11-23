@@ -9,6 +9,7 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 import { GtsPlugin } from '../plugin';
+import type { JSONSchema } from '../types';
 import { resetRealm } from './realm-support';
 
 const SCHEMA = 'https://json-schema.org/draft/2020-12/schema';
@@ -180,13 +181,13 @@ describe('a $ref to a final type is closed by that type', () => {
 });
 
 describe('abstract base types stay open', () => {
-  const derived = (base: string, suffix: string, extraProps: Obj, required: string[] = []) => {
+  const derived = (base: string, suffix: string, extraProps: Record<string, JSONSchema>, required: string[] = []) => {
     const id = `${base}test.closure.fixture.${suffix}.v1~`;
     plugin.registerSchema({
       $id: `gts://${id}`,
       $schema: SCHEMA,
       allOf: [{ $ref: `gts://${base}` }],
-      properties: extraProps as never,
+      properties: extraProps,
       required,
     });
     return id;

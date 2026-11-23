@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { build, type Plugin } from 'esbuild';
+import { build } from 'esbuild';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PreservedModuleEsmPlugin } from './PreservedModuleEsmPlugin';
 
@@ -43,7 +43,7 @@ async function buildFixture(
     outdir: path.join(root, 'dist'),
     outExtension: { '.js': format === 'esm' ? '.js' : '.cjs' },
     logLevel: 'silent',
-    plugins: [new PreservedModuleEsmPlugin().toEsbuildPlugin() as unknown as Plugin],
+    plugins: [new PreservedModuleEsmPlugin().toEsbuildPlugin()],
   });
 }
 

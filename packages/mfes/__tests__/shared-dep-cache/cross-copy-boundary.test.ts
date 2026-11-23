@@ -19,11 +19,11 @@
  * trivially "pass" even a module-scoped cache that is fundamentally broken
  * across copies.
  *
- * Most cases drive `fetchSharedDepSources` / `buildSharedDepBlobUrls`
+ * Most cases drive `fetchSources` / `buildSharedDepBlobUrls`
  * directly via reflection (both are `private`), following this package's
  * existing pattern of reflecting into private handler methods for tests
  * that don't need a full `load()` (see `resolveLazyChunk` in
- * `MfeHandlerMF.test.ts`) — `fetchSharedDepSources` alone exercises the
+ * `MfeHandlerMF.test.ts`) — `fetchSources` alone exercises the
  * realm-cache dedup/eviction/fallback behavior without needing to stub
  * dynamic `import()` of a `blob:` URL, which jsdom does not support.
  * `buildSharedDepBlobUrls` additionally mints real blob URLs (via the real,
@@ -37,6 +37,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MfManifest, MfManifestShared } from '../../src/manifest/mf-manifest';
 import type { MfeEntryMF } from '../../src/types/mfe-entry-mf';
 import type { TypeSystemPlugin } from '../../src/type-substrate';
+import type { WholePackageLoader } from '../../src/handler/mfe-handler-mf/WholePackageLoader';
 import { createFakeTypeSystem } from '../../src/handler/mfe-handler-mf/__tests__/helpers/registered-manifest';
 
 /**
@@ -45,7 +46,7 @@ import { createFakeTypeSystem } from '../../src/handler/mfe-handler-mf/__tests__
  * `blob:` URL is unsupported under jsdom/vitest's module loader, so a
  * `load()` that reaches the import step still rejects unless stubbed. Only
  * the staggered-timeout test below needs a load to actually SUCCEED (copy
- * A's retry) — every other test in this file drives `fetchSharedDepSources`
+ * A's retry) — every other test in this file drives `fetchSources`
  * / `buildSharedDepBlobUrls` directly and never reaches this step.
  */
 const blobModuleStub = vi.hoisted(() => ({ current: undefined as unknown }));
@@ -195,24 +196,21 @@ function baseUrlOf(handler: Handler, manifest: MfManifest, entryId: string): str
 /** The entry id `fetchShared` loads under. */
 const FETCH_ENTRY_ID = 'gts.x.test.mfe.entry.v1~x.test.cross_copy.v1';
 
-/** Invoke a handler's private `fetchSharedDepSources` via reflection. */
+/**
+ * The shared texts the handler's whole-package loader fetches for `manifest`,
+ * read from the loader the handler holds (a private field).
+ */
 function fetchShared(
   handler: Handler,
   manifest: MfManifest
 ): Promise<Map<string, string>> {
-  return (
-    handler as unknown as {
-      fetchSharedDepSources: (
-        m: MfManifest,
-        b: string,
-        e: string
-      ) => Promise<Map<string, string>>;
-    }
-  ).fetchSharedDepSources(
+  const loader: WholePackageLoader = Reflect.get(handler, 'wholePackageLoader');
+  const locations = loader.resolveLocations(
     manifest,
     baseUrlOf(handler, manifest, FETCH_ENTRY_ID),
     FETCH_ENTRY_ID
   );
+  return loader.fetchSources(manifest, locations);
 }
 
 /** Invoke a handler's private `buildSharedDepBlobUrls` via reflection. */
@@ -512,9 +510,8 @@ describe('Realm-shared shared-dependency source-text cache across two independen
     expect(fallback1).toBe(fallback2);
     expect(fallback1).not.toBe(bogusEntry.cache);
 
-    // Bounded by the same BYTE budget as the realm cache (ADR-0035,
-    // F-012 — the bound is retained bytes, no longer a 128-mapping
-    // count), checked directly on the fallback before anything else
+    // Bounded by the same BYTE budget as the realm cache (ADR-0035 — the
+    // bound is retained bytes, not a mapping count), checked directly on the fallback before anything else
     // touches it — mirrors the realm-wide byte-LRU test below, against
     // the fallback instance instead.
     const chunk = 'x'.repeat(512 * 1024);
@@ -682,7 +679,7 @@ describe('Realm-shared shared-dependency source-text cache across two independen
     const key = 'dep-v@1.0.0@http://localhost:4101/mfe-a/shared/dep-v.js';
 
     // Kicks off the OLDER fetch through the real production path: this is
-    // what attaches `fetchSharedDepSources`'s own eviction-on-rejection
+    // what attaches `fetchSources`'s own eviction-on-rejection
     // `.catch` to the resulting promise — not a hand-rolled stand-in for
     // it. `fetchShared` itself will go on to reject once `rejectOlder` is
     // called below; that rejection is asserted on, not swallowed silently.
@@ -699,7 +696,7 @@ describe('Realm-shared shared-dependency source-text cache across two independen
     cache.set(key, newer);
 
     rejectOlder?.(new TypeError('older fetch failed'));
-    await olderRejection; // let PRODUCTION's own `.catch` (inside fetchSharedDepSources) run
+    await olderRejection; // let PRODUCTION's own `.catch` (inside fetchSources) run
 
     expect(cache.get(key)).toBe(newer);
 

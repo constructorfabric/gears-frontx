@@ -5,13 +5,15 @@
  * (`cpt-frontx-algo-mfe-loading-manifest-discovery`,
  * `inst-md-mint-list-items`).
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { MfeLoadError } from '../../../errors';
 import {
   SharedDepListMinter,
   type SharedDepListRecord,
 } from '../SharedDepListMinter';
 import type { SharedDepUnit } from '../../../unit-format/fetch-list';
+import { DynamicImportScan } from '../../../unit-format/dynamic-import-scan';
+import { captureMintedSources } from './helpers/minted-sources';
 
 const hash = (n: number): string => String(n).repeat(64).slice(0, 64);
 
@@ -21,6 +23,9 @@ const item = (
   answers: string[] = [],
   imports: SharedDepUnit['imports'] = [],
 ): SharedDepUnit => ({ location, contentHash: hash(n), answers, imports });
+
+const assetUrl = (location: string): string =>
+  new URL(location, 'https://mfe.test/').href;
 
 const maps = () => ({
   itemBlobByHash: new Map<string, string>(),
@@ -45,6 +50,7 @@ describe('SharedDepListMinter.mint', () => {
       ]),
       target,
       'entry',
+      assetUrl,
     );
     expect(target.itemBlobByHash.get(hash(1))).toMatch(/^blob:/);
     expect(target.itemBlobByHash.has(hash(2))).toBe(false);
@@ -65,6 +71,7 @@ describe('SharedDepListMinter.mint', () => {
         ]),
         maps(),
         'entry',
+        assetUrl,
       ),
     ).toThrow(MfeLoadError);
   });
@@ -83,6 +90,7 @@ describe('SharedDepListMinter.mint', () => {
       ]),
       target,
       'entry',
+      assetUrl,
     );
     expect(target.itemBlobByHash.get(hash(1))).toMatch(/^blob:/);
   });
@@ -123,6 +131,7 @@ describe('SharedDepListMinter.mint — relative edges and bare specifiers', () =
       new Map([importer, sibling, parent].map((i) => [i.location, i])),
       target,
       'entry',
+      assetUrl,
     );
     expect(target.itemBlobByHash.get(hash(1))).toMatch(/^blob:/);
     expect(target.itemBlobByHash.get(hash(2))).toMatch(/^blob:/);
@@ -152,6 +161,7 @@ describe('SharedDepListMinter.mint — relative edges and bare specifiers', () =
         new Map([user, root, jsx].map((i) => [i.location, i])),
         target,
         'entry',
+        assetUrl,
       );
     } finally {
       URL.createObjectURL = original;
@@ -185,6 +195,7 @@ describe('SharedDepListMinter.mint — relative edges and bare specifiers', () =
         new Map([a, b].map((i) => [i.location, i])),
         maps(),
         'the-microfrontend',
+        assetUrl,
       );
     } catch (error) {
       thrown = error;
@@ -194,5 +205,44 @@ describe('SharedDepListMinter.mint — relative edges and bare specifiers', () =
     expect(message).toContain('shared/a.js');
     expect(message).toContain('shared/b.js');
     expect(message).toContain('the-microfrontend');
+  });
+
+  it('reads each unit text once and rewrites its specifier, import.meta.url and dynamic import together', async () => {
+    const dep = item('shared/dep.js', 2, ['dep']);
+    const mine = item('shared/mine.js', 1, ['mine'], ['dep']);
+    const text =
+      "import 'dep';\n" +
+      "export const url = new URL('./a.svg', import.meta.url).href;\n" +
+      "export const lazy = () => import('./lazy.js');\n" +
+      "export const note = \"import.meta.url\";\n";
+    const scan = vi.spyOn(DynamicImportScan, 'scan');
+    const minted = captureMintedSources();
+    try {
+      const target = maps();
+      target.specifierToBlob.set('dep', 'blob:dep');
+      target.itemBlobByHash.set(hash(2), 'blob:dep');
+      SharedDepListMinter.mint(
+        [{ item: mine, text }],
+        new Map([
+          [mine.location, mine],
+          [dep.location, dep],
+        ]),
+        target,
+        'entry',
+        assetUrl,
+        { loaderUrl: () => 'blob:stub' },
+      );
+      expect(scan).toHaveBeenCalledTimes(1);
+      const [source] = await minted.sources();
+      expect(source).toContain("import 'blob:dep';");
+      expect(source).toContain(
+        `new URL('./a.svg', ${JSON.stringify('https://mfe.test/shared/mine.js')})`,
+      );
+      expect(source).toContain('__frontx_lazy("rel:shared/mine.js\\n./lazy.js")');
+      expect(source).toContain('export const note = "import.meta.url";');
+    } finally {
+      minted.restore();
+      scan.mockRestore();
+    }
   });
 });

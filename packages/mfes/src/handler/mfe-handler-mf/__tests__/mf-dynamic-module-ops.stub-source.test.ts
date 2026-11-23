@@ -22,6 +22,7 @@
  * source of truth to derive from, so it stays hardcoded — a deliberate
  * pin, not the same category of risk.
  */
+import { LAZY_LOADER_KEY_NAME } from '../../../lazy-loader/LazyLoaderRegistry';
 import { describe, expect, it } from 'vitest';
 import { DynamicModuleOps } from '../mf-dynamic-module-ops';
 
@@ -35,7 +36,7 @@ describe('buildLazyLoaderStubSource', () => {
     expect(source).toBe(
       `const __id=${JSON.stringify('loader-42')};\n` +
         `export const __frontx_lazy=async(p)=>{` +
-        `const u=await globalThis.__FRONTX_LAZY__.resolve(__id,p);` +
+        `const u=await globalThis[Symbol.for(${JSON.stringify(LAZY_LOADER_KEY_NAME)})].resolve(__id,p);` +
         `if(!(${schemeCheck}))throw new TypeError('__frontx_lazy resolved a non-inline-content URL: '+u);` +
         `return import(u);` +
         `};\n`,
@@ -91,14 +92,16 @@ describe('buildLazyLoaderStubSource', () => {
     ) => Promise<unknown>;
     const frontxLazy = factory();
 
-    const originalRegistry = (globalThis as Record<string, unknown>).__FRONTX_LAZY__;
-    (globalThis as Record<string, unknown>).__FRONTX_LAZY__ = {
+    const slotKey = Symbol.for(LAZY_LOADER_KEY_NAME);
+    const originalSlot: unknown = Reflect.get(globalThis, slotKey);
+    Reflect.set(globalThis, slotKey, {
       resolve: async () => 'https://example.com/evil.js',
-    };
+    });
     try {
       await expect(frontxLazy('./whatever')).rejects.toThrow(/non-inline-content URL/);
     } finally {
-      (globalThis as Record<string, unknown>).__FRONTX_LAZY__ = originalRegistry;
+      if (originalSlot === undefined) Reflect.deleteProperty(globalThis, slotKey);
+      else Reflect.set(globalThis, slotKey, originalSlot);
     }
   });
 });
