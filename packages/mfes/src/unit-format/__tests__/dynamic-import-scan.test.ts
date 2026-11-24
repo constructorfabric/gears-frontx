@@ -128,6 +128,18 @@ describe('DynamicImportScan pattern calls', () => {
   });
 });
 
+describe('DynamicImportScan pattern text with a regex literal', () => {
+  it('reports a pattern call whose substitution holds a regex with a `//` inside', () => {
+    const source = 'import(`./l/${p.replace(/\\.\\.\\//g,"")}.js`);';
+    expect(patternText(source)).toEqual(['`./l/${p.replace(/\\.\\.\\//g,"")}.js`']);
+  });
+
+  it('reads a `/` after an operand inside a substitution as division', () => {
+    const source = 'import(`./l/${a / b / c}.js`); import("./x.js");';
+    expect(scan(source)).toHaveLength(2);
+  });
+});
+
 describe('DynamicImportScan regex and division', () => {
   it('reads a `/` after a postfix ++ or -- as division', () => {
     expect(specifiers('let n = i++ / 2; import("./a.js"); /* a / b */')).toEqual(['./a.js']);
@@ -143,7 +155,6 @@ describe('DynamicImportScan regex and division', () => {
     'void',
     'delete',
     'in',
-    'of',
     'instanceof',
     'else',
     'case',
@@ -155,6 +166,25 @@ describe('DynamicImportScan regex and division', () => {
     'return',
   ])('reads a `/` after the keyword %s as a regex', (keyword) => {
     expect(scan(`${keyword} /import("./fake.js")/.test(s);`)).toEqual([]);
+  });
+
+  it('reads a `/` after `of` inside a for head as a regex', () => {
+    expect(scan('for (const m of /import("./fake.js")/g.exec(s)) {}')).toEqual([]);
+  });
+
+  it('reads a `/` after `of` and after the head of a `for await` as a regex', () => {
+    expect(
+      specifiers("for await (const x of /'/g.exec(y)) {} import('./b.js');"),
+    ).toEqual(['./b.js']);
+    expect(
+      specifiers('for await (const x of xs) /import("fake")/.test(s); import("./c.js");'),
+    ).toEqual(['./c.js']);
+  });
+
+  it('reads `of` outside a for head as an identifier, so a following `/` divides', () => {
+    expect(specifiers('let a = of / 2 / 3; import("./a.js");')).toEqual(['./a.js']);
+    expect(specifiers('for (const x of xs) { y = of / 2; import("./b.js"); }')).toEqual(['./b.js']);
+    expect(specifiers('for (const x of f(of / 2)) {} import("./c.js");')).toEqual(['./c.js']);
   });
 
   it('reads a `/` after the closing paren of an if, while, for or with head as a regex', () => {

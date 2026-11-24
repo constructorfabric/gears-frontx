@@ -343,7 +343,15 @@ function classifyExports(sourceFile) {
           }
           if (ts.isPropertyDeclaration(member)) {
             const memberName = member.name.getText(sourceFile);
-            if (member.initializer === undefined) continue;
+            if (member.initializer === undefined) {
+              // Its value is assigned elsewhere (a `static {}` block, the
+              // constructor), where this script cannot see it.
+              unsupported.push({
+                name: `${className}.${memberName}`,
+                reason: 'a class property with no initializer takes its value elsewhere, which this script cannot check',
+              });
+              continue;
+            }
             const classification = classifyExpression(member.initializer, localDecls, member);
             if (classification.outcome === FUNCTION_VALUED) {
               checked.push({ name: `${className}.${memberName}`, node: member });
@@ -353,8 +361,23 @@ function classifyExports(sourceFile) {
                 reason: classification.reason ?? 'unsupported export form',
               });
             }
+            continue;
           }
-          // Constructor and other member kinds carry no callable value.
+          // The constructor cannot be invoked as a plain function, and an
+          // index signature or a `;` element carries no runtime value;
+          // every other member kind (a `static {}` block among them) is
+          // not looked at here, so it fails the check.
+          if (
+            ts.isConstructorDeclaration(member) ||
+            ts.isIndexSignatureDeclaration(member) ||
+            ts.isSemicolonClassElement(member)
+          ) {
+            continue;
+          }
+          unsupported.push({
+            name: `${className}.${ts.isClassStaticBlockDeclaration(member) ? 'static {}' : ts.SyntaxKind[member.kind]}`,
+            reason: 'an unrecognized class member kind cannot be checked by this script',
+          });
         }
       }
       continue;

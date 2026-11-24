@@ -17,6 +17,13 @@ import { MfeLoadError } from '../../errors';
 import { RealmSharedDepTextCacheProvider } from './RealmSharedDepTextCacheProvider';
 import { SharedTextAdmission } from './SharedTextAdmission';
 
+/**
+ * The realm cache's byte budget is set by whichever party publishes the
+ * cache first. Constructing a `SharedUnitFetcher` before any
+ * `MfeHandlerMF` publishes it at the default budget, and a later handler's
+ * `sharedDepTextCacheMaxBytes` is then not applied; construct the handler
+ * first to apply a configured budget.
+ */
 export class SharedUnitFetcher {
   private readonly admission: SharedTextAdmission;
 

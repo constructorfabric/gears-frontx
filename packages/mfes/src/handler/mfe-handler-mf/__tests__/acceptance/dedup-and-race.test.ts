@@ -1,7 +1,7 @@
 /**
  * Acceptance: dedup/race nits: a shared dependency name declared
- * twice on one manifest is fetched once (no duplicate retry/fetch), and
- * an in-flight entry contributes no bytes to eviction pressure.
+ * twice on one manifest is refused before any request, and an in-flight
+ * entry contributes no bytes to eviction pressure.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -38,7 +38,7 @@ beforeEach(resetRealmSharedDepTextCache);
 afterEach(resetRealmSharedDepTextCache);
 
 describe('acceptance: dedup and race nits', () => {
-  it('a shared name declared twice on one manifest is fetched once, not retried per declaration', async () => {
+  it('a shared name declared twice on one manifest is refused before any fetch', async () => {
     const dep: MfManifestShared = {
       name: 'react',
       version: '1.0.0',
@@ -61,23 +61,23 @@ describe('acceptance: dedup and race nits', () => {
     const handler = newHandler(ENTRY_BASE_ID, { retries: 0 });
     const manifest = buildManifest([dep, { ...dep }]);
     try {
-      await handler
-        .load(buildEntry(manifest), 'ext-f026-dupe')
-        .catch(() => undefined);
+      await expect(
+        handler.load(buildEntry(manifest), 'ext-f026-dupe'),
+      ).rejects.toThrow(/declares 'react' more than once/);
       const chunkFetches = router.calls.filter((u) =>
         u.endsWith('shared/react.js'),
       );
       expect(
         chunkFetches.length,
-        'the same shared name declared twice must dedup to one fetch',
-      ).toBeLessThanOrEqual(1);
+        'a duplicate shared name is refused before any request',
+      ).toBe(0);
     } finally {
       fetchSpy.mockRestore();
       blobModuleStub.current = undefined;
     }
   });
 
-  it('an in-flight (unsettled) entry contributes zero bytes — a later large admission must not evict it as if it were sized', async () => {
+  it('an in-flight (unsettled) entry contributes zero bytes — eviction pressure from fulfilled text must skip it', async () => {
     newHandler(ENTRY_BASE_ID, {
       retries: 0,
       sharedDepTextCacheMaxBytes: 64,
@@ -87,13 +87,22 @@ describe('acceptance: dedup and race nits', () => {
     const inFlight = new Promise<string>((r) => {
       resolveInFlight = r;
     });
+    // The in-flight entry is the oldest, so it is the first candidate the
+    // eviction loop meets; the two fulfilled texts together exceed the
+    // budget, each fitting on its own.
     cache.set('pending@1@h1', inFlight);
-    cache.set('big@1@h2', Promise.resolve('y'.repeat(100)));
+    cache.set('first@1@h2', Promise.resolve('x'.repeat(40)));
+    cache.set('second@1@h3', Promise.resolve('y'.repeat(40)));
     await new Promise((r) => setTimeout(r, 0));
-    resolveInFlight('done');
     expect(
       cache.get('pending@1@h1'),
       'an in-flight entry must not be evicted while it has no bytes yet',
-    ).toBeDefined();
+    ).toBe(inFlight);
+    expect(
+      cache.get('first@1@h2'),
+      'the least-recently-used fulfilled entry is the one evicted',
+    ).toBeUndefined();
+    expect(cache.get('second@1@h3')).toBeDefined();
+    resolveInFlight('done');
   });
 });

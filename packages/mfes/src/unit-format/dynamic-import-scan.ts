@@ -102,7 +102,8 @@ export interface UnitScan {
 
 /**
  * Keywords after which an expression starts, so a following `/` opens a
- * regex rather than divides.
+ * regex rather than divides. `of` is not here: it is a keyword only inside
+ * a `for (` head, and minifiers emit it as a plain identifier elsewhere.
  */
 const EXPRESSION_KEYWORDS: ReadonlySet<string> = new Set([
   'return',
@@ -110,7 +111,6 @@ const EXPRESSION_KEYWORDS: ReadonlySet<string> = new Set([
   'void',
   'delete',
   'in',
-  'of',
   'instanceof',
   'else',
   'case',
@@ -220,11 +220,17 @@ export class DynamicImportScan {
     let afterOperand = false;
     let afterDot = false;
     let lastWord = '';
+    // The word before `lastWord`, so a `for await (` head is known.
+    let prevWord = '';
     const parens: boolean[] = [];
+    // For each open parenthesis whether it opened a `for` head: only there
+    // is `of` a keyword.
+    const forHeads: boolean[] = [];
     const token = (endsOperand: boolean): void => {
       afterOperand = endsOperand;
       afterDot = false;
       lastWord = '';
+      prevWord = '';
     };
     let i = 0;
     // Reads the word at `i`: advances past it and updates the token state;
@@ -247,8 +253,13 @@ export class DynamicImportScan {
           metaUrls
         );
       }
-      afterOperand = member || !EXPRESSION_KEYWORDS.has(word);
+      const opensExpression =
+        word === 'of'
+          ? forHeads[forHeads.length - 1] === true
+          : EXPRESSION_KEYWORDS.has(word);
+      afterOperand = member || !opensExpression;
       afterDot = false;
+      prevWord = member ? '' : lastWord;
       lastWord = member ? '' : word;
     };
     while (i < n) {
@@ -344,12 +355,17 @@ export class DynamicImportScan {
         continue;
       }
       if (c === '(') {
-        parens.push(!afterDot && CONTROL_HEAD_KEYWORDS.has(lastWord));
+        const forHead =
+          !afterDot &&
+          (lastWord === 'for' || (lastWord === 'await' && prevWord === 'for'));
+        parens.push(forHead || (!afterDot && CONTROL_HEAD_KEYWORDS.has(lastWord)));
+        forHeads.push(forHead);
         token(false);
         i += 1;
         continue;
       }
       if (c === ')') {
+        forHeads.pop();
         token(!(parens.pop() ?? false));
         i += 1;
         continue;
@@ -711,8 +727,8 @@ export class DynamicImportScan {
 
   /**
    * The index of the first character of `terminators` at bracket depth
-   * zero from `position`, reading past strings, templates and comments;
-   * `undefined` when the source ends first.
+   * zero from `position`, reading past strings, templates, regex literals
+   * and comments; `undefined` when the source ends first.
    */
   private static skipBalanced(
     source: string,
@@ -722,25 +738,52 @@ export class DynamicImportScan {
     const n = source.length;
     let depth = 0;
     let i = position;
+    // Whether the last significant token ends an operand, so that a `/`
+    // divides rather than opens a regex; whether it was a `.`.
+    let afterOperand = false;
+    let afterDot = false;
     while (i < n) {
       const c = source[i];
       if (c === "'" || c === '"') {
         i = DynamicImportScan.skipString(source, i);
+        afterOperand = true;
+        afterDot = false;
         continue;
       }
       if (c === '`') {
         const end = DynamicImportScan.templateEnd(source, i);
         if (end === undefined) return undefined;
         i = end.end;
+        afterOperand = true;
+        afterDot = false;
         continue;
       }
       if (c === '/' && (source[i + 1] === '/' || source[i + 1] === '*')) {
         i = DynamicImportScan.skipTrivia(source, i);
         continue;
       }
+      if (c === '/' && !afterOperand) {
+        i = DynamicImportScan.skipRegex(source, i);
+        afterOperand = true;
+        afterDot = false;
+        continue;
+      }
       if (depth === 0 && terminators.includes(c)) return i;
+      if (DynamicImportScan.isWhitespace(c)) {
+        i += 1;
+        continue;
+      }
+      if (DynamicImportScan.isIdentifierChar(c)) {
+        const end = DynamicImportScan.skipWord(source, i);
+        afterOperand = afterDot || !EXPRESSION_KEYWORDS.has(source.slice(i, end));
+        afterDot = false;
+        i = end;
+        continue;
+      }
       if (c === '(' || c === '[' || c === '{') depth += 1;
       if (c === ')' || c === ']' || c === '}') depth -= 1;
+      afterOperand = c === ')' || c === ']' || c === '}';
+      afterDot = c === '.';
       i += 1;
     }
     return undefined;

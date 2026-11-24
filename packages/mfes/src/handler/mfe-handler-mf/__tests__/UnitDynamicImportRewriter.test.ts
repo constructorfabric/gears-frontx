@@ -65,13 +65,38 @@ describe('UnitDynamicImportRewriter', () => {
     expect(out).toContain('__frontx_lazy_1("rel:p.js\\n./a.js")');
   });
 
-  it('keeps an inner call verbatim inside a pattern substitution', () => {
+  it('keeps an opaque inner call verbatim inside a pattern substitution', () => {
     const out = rewrite(
       'import(`./l/${await import(v)}.js`);',
       () => STUB,
       'p.js',
     );
     expect(out).toContain('+(`./l/${await import(v)}.js`)');
+  });
+
+  it('rewrites a literal inner call inside a pattern substitution', () => {
+    const out = rewrite(
+      "import(`./l/${await import('./d.js')}.js`);",
+      () => STUB,
+      'p.js',
+    );
+    expect(out).toContain(
+      '__frontx_lazy("rel:p.js\\n"+(`./l/${await __frontx_lazy("rel:p.js\\n./d.js")}.js`))',
+    );
+    expect(out).not.toContain("import('./d.js')");
+  });
+
+  it('rewrites a literal call in the template and drops one in the attribute tail of a pattern call', () => {
+    const out = rewrite(
+      "import(`./l/${await import('./d.js')}.js`, { with: { x: import('./e.js') } });",
+      () => STUB,
+      'p.js',
+    );
+    expect(out).toContain(
+      '__frontx_lazy("rel:p.js\\n"+(`./l/${await __frontx_lazy("rel:p.js\\n./d.js")}.js`))',
+    );
+    expect(out).not.toContain('./e.js');
+    expect(out.endsWith('.js`));')).toBe(true);
   });
 
   it('splits an argument back into caller and path', () => {

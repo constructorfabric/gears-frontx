@@ -84,6 +84,86 @@ describe('check-trust-kernel-annotations', () => {
     expect(result.stdout).toContain('Trust-kernel annotation check passed');
   });
 
+  it('fails an exported class property with no initializer', async () => {
+    const fixturePath = await writeFixture('export class K {\n  static load;\n}\n');
+    const result = runChecker(fixturePath);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('K.load');
+  });
+
+  it('fails an exported class static block, which can assign a function the check never sees', async () => {
+    const fixturePath = await writeFixture(
+      [
+        'export class K {',
+        '  static load;',
+        '  static {',
+        '    K.load = (u: string) => import(u);',
+        '  }',
+        '}',
+        '',
+      ].join('\n'),
+    );
+    const result = runChecker(fixturePath);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('K.static {}');
+  });
+
+  it('fails an exported class whose only unrecognized member is a static block', async () => {
+    const fixturePath = await writeFixture('export class K {\n  static {\n    void 0;\n  }\n}\n');
+    const result = runChecker(fixturePath);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('K.static {}');
+  });
+
+  it('passes an exported class whose constructor and annotated methods are the only members', async () => {
+    const fixturePath = await writeFixture(
+      [
+        'export class K {',
+        '  constructor() {}',
+        '',
+        '  /**',
+        '   * @safety-reviewed reviewed by trust-kernel-annotations test fixture',
+        '   * @why exercises the class member path',
+        '   */',
+        '  run() {',
+        '    return 1;',
+        '  }',
+        '}',
+        '',
+      ].join('\n'),
+    );
+    const result = runChecker(fixturePath);
+    expect(result.status).toBe(0);
+  });
+
+  it('passes an exported class with a non-function initialized property', async () => {
+    const fixturePath = await writeFixture('export class K {\n  static n = 1;\n}\n');
+    expect(runChecker(fixturePath).status).toBe(0);
+  });
+
+  it('passes an exported class with an annotated function-valued property', async () => {
+    const fixturePath = await writeFixture(
+      [
+        'export class K {',
+        '  /**',
+        '   * @safety-reviewed reviewed by trust-kernel-annotations test fixture',
+        '   * @why exercises the property path',
+        '   */',
+        '  static f = () => 1;',
+        '}',
+        '',
+      ].join('\n'),
+    );
+    expect(runChecker(fixturePath).status).toBe(0);
+  });
+
+  it('fails an exported class with an unannotated function-valued property', async () => {
+    const fixturePath = await writeFixture('export class K {\n  static f = () => 1;\n}\n');
+    const result = runChecker(fixturePath);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('K.f');
+  });
+
   it('passes the real kernel file with no fixture argument', () => {
     const result = runChecker();
     expect(result.status).toBe(0);

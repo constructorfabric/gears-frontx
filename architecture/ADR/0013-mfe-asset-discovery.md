@@ -24,6 +24,8 @@ description: "Decides that each microfrontend load discovers what it reads and f
   - [Fetch lists as separate documents referenced from the manifest](#fetch-lists-as-separate-documents-referenced-from-the-manifest)
   - [Closed manifest schema](#closed-manifest-schema)
   - [Open manifest schema](#open-manifest-schema)
+  - [Manifest referenced by identifier](#manifest-referenced-by-identifier)
+  - [Manifest carried inline in the MFE entry](#manifest-carried-inline-in-the-mfe-entry)
 - [More Information](#more-information)
 - [Traceability](#traceability)
 
@@ -77,11 +79,16 @@ Manifest schema strictness:
 * **Closed manifest schema** — the schema lists every field, including those older producers write and the runtime ignores, and rejects unknown properties on every object.
 * **Open manifest schema** — the schema lists the required fields and tolerates further properties.
 
+Manifest placement:
+
+* **Manifest referenced by identifier** — the MFE entry names a registered manifest by its identifier, and the registry holds the manifest.
+* **Manifest carried inline in the MFE entry** — the MFE entry embeds the manifest document itself.
+
 ## Decision Outcome
 
-Chosen options: **enriched-manifest-driven discovery**, with **manifest-held fetch lists** for shared-code reachability and a **closed manifest schema**. Together they source every locating and reachability fact from a stable, declared contract owned by the microfrontend, let a load fetch only the shared code its exposed module's fetch list names, with that list known before any request, and keep the contract complete by construction, the lists included.
+Chosen options: **enriched-manifest-driven discovery**, with **manifest-held fetch lists** for shared-code reachability, a **closed manifest schema** and the **manifest referenced by identifier**. Together they source every locating and reachability fact from a stable, declared contract owned by the microfrontend, let a load fetch only the shared code its exposed module's fetch list names, with that list known before any request, and keep the contract complete by construction, the lists included.
 
-**Locating contract.** The locating contract is the MFE entry plus the manifest it references. Manifests are registered, and an MFE entry always references a registered manifest by its identifier. The runtime reads the manifest the MFE entry references from the registry where it was registered. The MFE entry names the exposed module, the file that backs it and its stylesheets; the manifest carries the asset base location, the shared entries, the shared-unit table and the fetch lists. These two declared descriptions supply everything one isolated load requires, with no parsing of compiled output.
+**Locating contract.** The locating contract is the MFE entry plus the manifest it references. Manifests are registered, and an MFE entry always references a registered manifest by its identifier and never embeds one, so each manifest is admitted once under its identifier and every entry that names it reads that one description. The runtime reads the manifest the MFE entry references from the registry where it was registered. The MFE entry names the exposed module, the file that backs it and its stylesheets; the manifest carries the asset base location, the shared entries, the shared-unit table and the fetch lists. These two declared descriptions supply everything one isolated load requires, with no parsing of compiled output.
 
 **Assets.** The runtime reads the manifest's asset base location (`metaData.publicPath`). It reads the entry module — the first element of the MFE entry's `exposeAssets.js.sync` — and the stylesheets (`exposeAssets.css.sync` and `exposeAssets.css.async`) from the MFE entry, and resolves them against the asset base location.
 
@@ -287,6 +294,22 @@ The schema lists the required fields and tolerates further properties.
 * Bad, because a field can be used by the runtime or by a producer without being in the contract, and the gap shows only when a producer omits it.
 * Bad, because a misspelled field is silently ignored.
 
+### Manifest referenced by identifier
+
+The MFE entry names a registered manifest by its identifier, and the registry holds the manifest. An MFE entry carries no inline manifest, and the type system rejects one.
+
+* Good, because the manifest is registered and validated once under its identifier and every entry of the microfrontend shares that one description, so the manifest the load reads is the manifest that was admitted.
+* Good, because the closed MFE entry contract has a single `manifest` field, so one way to locate the manifest exists.
+* Bad, because the manifest must be registered before an entry that references it.
+
+### Manifest carried inline in the MFE entry
+
+The MFE entry embeds the manifest document itself.
+
+* Good, because the entry is self-contained.
+* Bad, because the same manifest is repeated and validated once per entry, and two entries of one microfrontend can carry different copies of it.
+* Bad, because the entry has two ways to locate a manifest, an identifier and an embedded document, and the contract must define which one wins.
+
 ## More Information
 
 The concrete field names and the asset-record shape are descriptive of the present instantiation. The durable decision is that what one load reads and fetches is discovered from a declared, closed contract — the registered MFE entry plus the registered manifest it references — rather than from parsing compiled output; that the shared fetch set is the exposed module's fetch list, held in the manifest; and that shared text is reused under the content identity its producer declares. The semantics of the fields that carry the unit table and the fetch lists (`units`, `lists`, `metaData.sharedBase`) and of the shared-entry content identity are decided in `cpt-frontx-adr-shared-dep-reuse`; the closure of the manifest and MFE entry contracts, their value formats and the location rules are decided here. How a load builds its isolated graph from the fetched sources, including how it handles cycles, is decided in `cpt-frontx-adr-mfe-load-isolation`. How far the source-text cache reaches and how it is bounded are decided in `cpt-frontx-adr-shared-dep-cache-reach`.
@@ -305,7 +328,7 @@ In the present instantiation, the runtime's manifest type is defined in `package
 * INT — applicable and addressed above (INT-ADR-001/002): the MFE entry and the manifest are the integration contract between a microfrontend and the runtime; compatibility follows `cpt-frontx-nfr-evolvability`, at major version 0 a contract change takes no contract-version bump, and a manifest or MFE entry carrying a field outside the contract is rejected. The type system's tests and the parity check confirm the manifest and MFE entry contracts; conformance to the manifest's list format owned by `cpt-frontx-adr-shared-dep-reuse` is verified in each producer's own tests.
 * DATA — applicable and addressed above (DATA-ADR-001): the two closed contracts fix the shape of the discovery data; the field list, whether each field is required, its value format and the runtime's use of it are stated above, and the fetch-list format is decided in `cpt-frontx-adr-shared-dep-reuse`.
 * SEC — applicable and addressed above: the runtime treats a registered MFE entry and its manifest as admitted input, and authenticating them is outside the package. The content identity of every shared unit, and of every whole-package entry that declares a `contentHash`, is the producer's declaration, admitted with the manifest data and used as the sharing key; it is not a grant of trust in code. A microfrontend's own code is trusted by the locations the MFE entry and the manifest name, with no origin or containment check; shared-file locations that must stay inside their base are validated before any request (`cpt-frontx-nfr-security`); a whole-package entry without a `contentHash` is shared only under its absolute location. Code-admission trust and isolation are decided in `cpt-frontx-adr-mfe-load-isolation`.
-* REL — applicable and addressed above: a manifest that holds neither `units` nor `lists` uses its whole-package entries, a manifest that holds either and no list for the exposed module is refused naming the key, and a microfrontend whose manifest or entry is rejected or whose load fails disables only itself. A load that joins another load's in-flight fetch which then rejects retries once from its own URL, and a failed load admits no text after the failure and issues no further request, text admitted before the failure stays in the realm cache, and the in-flight entries it published are released under the identity check (`cpt-frontx-adr-shared-dep-cache-reach`).
+* REL — applicable and addressed above: a manifest that holds neither `units` nor `lists` uses its whole-package entries, a manifest that holds either and no list for the exposed module is refused naming the key, and a microfrontend whose manifest or entry is rejected or whose load fails disables only itself. A load that joins another load's in-flight fetch which then rejects retries once from its own URL, and a failed load admits no text after the failure and issues no further request, text admitted before the failure stays in the realm cache, and the healthy in-flight entries it published stay in the realm cache, so the next attempt joins them (`cpt-frontx-adr-shared-dep-cache-reach`).
 * PERF — applicable and addressed above: a load with a fetch list costs one round — the entry module at high fetch priority, the missing shared units and the own chunks together, with no concurrency limit — and each lazy target one more on first use, within the budget of `cpt-frontx-nfr-runtime-performance`; transfer is governed by `cpt-frontx-nfr-resource-efficiency`, and the per-load diagnostic is decided in `cpt-frontx-adr-shared-dep-cache-reach`.
 * OPS — Not applicable because this is a library mechanism; no deployed-service operational procedure is governed by this decision.
 * MAINT — applicable and addressed above: the contract table, the runtime's types and the type system's types change together in one change and are held equal by a parity check, and the "read nothing outside the contract" rule keeps the contract from drifting.
