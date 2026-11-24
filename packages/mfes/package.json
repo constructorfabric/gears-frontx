@@ -43,7 +43,7 @@
   ],
   "sideEffects": false,
   "peerDependencies": {
-    "@gears-frontx/gts-plugin": "^0.7.0"
+    "@gears-frontx/gts-plugin": "^0.7.1"
   },
   "peerDependenciesMeta": {
     "@gears-frontx/gts-plugin": {
