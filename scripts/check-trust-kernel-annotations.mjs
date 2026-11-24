@@ -37,8 +37,10 @@
  *     expression initializer (might return a function — `export const f =
  *     memoize(() => {})`), a re-export naming a binding this file has no
  *     local declaration for (an import re-export, or a re-export `from`
- *     another module), a destructured export, an exported class or
- *     namespace, or any expression/declaration shape this script has no
+ *     another module), a destructured export, an exported class that
+ *     extends another (its inherited static members are never seen here),
+ *     an exported namespace, a class member this script cannot read (a
+ *     property with no initializer, a `static {}` block), or any expression/declaration shape this script has no
  *     case for. THIS OUTCOME FAILS THE CHECK, unconditionally, with a
  *     message naming the export and telling the reader to either extend
  *     this script to classify the form or rewrite the export so it is
@@ -323,14 +325,24 @@ function classifyExports(sourceFile) {
     // An exported class is function-valued surface member by member: every
     // method and accessor is a function its callers can reach, so each one
     // is checked for the safety annotation on its OWN JSDoc (the contract
-    // `export function` declarations already follow). The constructor is
-    // excluded — it cannot be invoked as a plain function. A property whose
+    // `export function` declarations already follow). A constructor with a
+    // body, or with parameter properties, runs code on every `new` and is
+    // checked the same way; an empty one runs nothing and is skipped. A
+    // class that extends another is unsupported: the members it inherits
+    // are declared elsewhere and never seen here. A property whose
     // initializer is an arrow/function expression is likewise checked;
     // other property initializers are classified by the same rules as
     // variable initializers.
     if (ts.isClassDeclaration(statement)) {
       if (isExported) {
         const className = statement.name?.getText(sourceFile) ?? '(anonymous class)';
+        if (statement.heritageClauses?.some((c) => c.token === ts.SyntaxKind.ExtendsKeyword)) {
+          unsupported.push({
+            name: className,
+            reason: 'an exported class with an extends clause inherits static members this script cannot check',
+          });
+          continue;
+        }
         for (const member of statement.members) {
           if (
             ts.isMethodDeclaration(member) ||
@@ -363,12 +375,17 @@ function classifyExports(sourceFile) {
             }
             continue;
           }
-          // The constructor cannot be invoked as a plain function, and an
-          // index signature or a `;` element carries no runtime value;
+          if (ts.isConstructorDeclaration(member)) {
+            const runsCode =
+              (member.body !== undefined && member.body.statements.length > 0) ||
+              member.parameters.some((p) => p.modifiers !== undefined && p.modifiers.length > 0);
+            if (runsCode) checked.push({ name: `${className}.constructor`, node: member });
+            continue;
+          }
+          // An index signature or a `;` element carries no runtime value;
           // every other member kind (a `static {}` block among them) is
           // not looked at here, so it fails the check.
           if (
-            ts.isConstructorDeclaration(member) ||
             ts.isIndexSignatureDeclaration(member) ||
             ts.isSemicolonClassElement(member)
           ) {
