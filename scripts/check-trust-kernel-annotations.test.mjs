@@ -84,6 +84,48 @@ describe('check-trust-kernel-annotations', () => {
     expect(result.stdout).toContain('Trust-kernel annotation check passed');
   });
 
+  it('fails an exported class with an extends clause, whose inherited statics are unchecked', async () => {
+    const fixturePath = await writeFixture('class B {}\nexport class K extends B {}\n');
+    const result = runChecker(fixturePath);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('extends');
+  });
+
+  it('fails an exported class whose constructor has a body and no annotation', async () => {
+    const fixturePath = await writeFixture(
+      'export class K {\n  constructor() {\n    globalThis.x = 1;\n  }\n}\n',
+    );
+    const result = runChecker(fixturePath);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('K.constructor');
+  });
+
+  it('fails an exported class whose constructor declares a parameter property and no annotation', async () => {
+    const fixturePath = await writeFixture('export class K {\n  constructor(private a: number) {}\n}\n');
+    const result = runChecker(fixturePath);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('K.constructor');
+  });
+
+  it('passes an exported class whose constructor with a body carries the annotation', async () => {
+    const fixturePath = await writeFixture(
+      [
+        'export class K {',
+        '  /**',
+        '   * @safety-reviewed reviewed by trust-kernel-annotations test fixture',
+        '   * @why exercises the annotated constructor path',
+        '   */',
+        '  constructor() {',
+        '    globalThis.x = 1;',
+        '  }',
+        '}',
+        '',
+      ].join('\n'),
+    );
+    const result = runChecker(fixturePath);
+    expect(result.status).toBe(0);
+  });
+
   it('fails an exported class property with no initializer', async () => {
     const fixturePath = await writeFixture('export class K {\n  static load;\n}\n');
     const result = runChecker(fixturePath);

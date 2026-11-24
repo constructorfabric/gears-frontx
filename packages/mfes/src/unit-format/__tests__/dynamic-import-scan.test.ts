@@ -187,6 +187,31 @@ describe('DynamicImportScan regex and division', () => {
     expect(specifiers('for (const x of f(of / 2)) {} import("./c.js");')).toEqual(['./c.js']);
   });
 
+  it('reads `of` in a classic for head as an identifier, so a following `/` divides', () => {
+    expect(
+      specifiers('for(let i=0;i<of/2;i++)f();let s="x";import("./a.js")'),
+    ).toEqual(['./a.js']);
+    expect(specifiers('for(;of/2;)f();let s="x";import("./b.js")')).toEqual(['./b.js']);
+  });
+
+  it('reads `of` inside brackets, braces or parens within a for head as an identifier', () => {
+    expect(specifiers('for (const x of [of / 2]) {} let s="x"; import("./a.js")')).toEqual([
+      './a.js',
+    ]);
+    expect(specifiers('for (const x of {a: of / 2}) {} let s="x"; import("./b.js")')).toEqual([
+      './b.js',
+    ]);
+  });
+
+  it('still reads a `/` after `of` in a for-of head as a regex', () => {
+    expect(
+      specifiers("for (const x of /re/g.exec(s)) {} import('./c.js');"),
+    ).toEqual(['./c.js']);
+    expect(
+      specifiers("for await (const x of /'/g.exec(s)) {} import('./d.js');"),
+    ).toEqual(['./d.js']);
+  });
+
   it('reads a `/` after the closing paren of an if, while, for or with head as a regex', () => {
     for (const head of ['if (a)', 'while (a)', 'for (;;)', 'with (o)']) {
       expect(scan(`${head} /import("./fake.js")/.test(s);`)).toEqual([]);

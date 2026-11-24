@@ -224,8 +224,20 @@ export class DynamicImportScan {
     let prevWord = '';
     const parens: boolean[] = [];
     // For each open parenthesis whether it opened a `for` head: only there
-    // is `of` a keyword.
-    const forHeads: boolean[] = [];
+    // is `of` a keyword, and only while the head can still be a for-of: a
+    // `;` at the head's own depth makes it a classic loop, where `of` is an
+    // identifier. `nest` counts the brackets, braces and substitutions open
+    // inside the head, in which `of` is an identifier too.
+    type ForHead = { head: boolean; classic: boolean; nest: number };
+    const forHeads: ForHead[] = [];
+    const openNest = (): void => {
+      const h = forHeads[forHeads.length - 1];
+      if (h) h.nest += 1;
+    };
+    const closeNest = (): void => {
+      const h = forHeads[forHeads.length - 1];
+      if (h && h.nest > 0) h.nest -= 1;
+    };
     const token = (endsOperand: boolean): void => {
       afterOperand = endsOperand;
       afterDot = false;
@@ -255,7 +267,9 @@ export class DynamicImportScan {
       }
       const opensExpression =
         word === 'of'
-          ? forHeads[forHeads.length - 1] === true
+          ? ((h) => h !== undefined && h.head && !h.classic && h.nest === 0)(
+              forHeads[forHeads.length - 1]
+            )
           : EXPRESSION_KEYWORDS.has(word);
       afterOperand = member || !opensExpression;
       afterDot = false;
@@ -278,6 +292,7 @@ export class DynamicImportScan {
         }
         if (c === '$' && source[i + 1] === '{') {
           stack.push({ type: 'code', depth: 0 });
+          openNest();
           token(false);
           i += 2;
           continue;
@@ -333,6 +348,7 @@ export class DynamicImportScan {
       }
       if (c === '{') {
         top().depth += 1;
+        openNest();
         token(false);
         i += 1;
         continue;
@@ -340,9 +356,11 @@ export class DynamicImportScan {
       if (c === '}') {
         if (top().depth > 0) {
           top().depth -= 1;
+          closeNest();
         } else if (stack.length > 1) {
           // The substitution ends: back into the template's text.
           stack.pop();
+          closeNest();
           i += 1;
           continue;
         }
@@ -359,7 +377,7 @@ export class DynamicImportScan {
           !afterDot &&
           (lastWord === 'for' || (lastWord === 'await' && prevWord === 'for'));
         parens.push(forHead || (!afterDot && CONTROL_HEAD_KEYWORDS.has(lastWord)));
-        forHeads.push(forHead);
+        forHeads.push({ head: forHead, classic: false, nest: 0 });
         token(false);
         i += 1;
         continue;
@@ -370,7 +388,21 @@ export class DynamicImportScan {
         i += 1;
         continue;
       }
+      if (c === '[') {
+        openNest();
+        token(false);
+        i += 1;
+        continue;
+      }
+      if (c === ';') {
+        const h = forHeads[forHeads.length - 1];
+        if (h && h.nest === 0) h.classic = true;
+        token(false);
+        i += 1;
+        continue;
+      }
       if (c === ']') {
+        closeNest();
         token(true);
         i += 1;
         continue;
