@@ -122,12 +122,21 @@ export class UnitDynamicImportRewriter {
         ? undefined
         : JSON.stringify(UnitDynamicImportRewriter.callerPrefix(caller));
     const edits: SourceEdit[] = [];
-    // Source order, dropping a call nested inside an earlier call's span:
-    // the outer replacement keeps the inner text verbatim.
-    let lastEnd = -1;
+    // Source order, dropping a call nested inside the text an earlier
+    // call's replacement discards: all of a literal call, the attribute
+    // tail of a pattern call. A call inside a pattern's template stays
+    // in the kept text, so it is rewritten too.
+    let discardedFrom = -1;
+    let discardedTo = -1;
     for (const call of calls) {
-      if (call.start < lastEnd) continue;
-      lastEnd = call.closeParen + 1;
+      if (call.start >= discardedFrom && call.start < discardedTo) continue;
+      if (call.kind === 'literal') {
+        discardedFrom = call.start;
+        discardedTo = call.closeParen + 1;
+      } else {
+        discardedFrom = call.argEnd;
+        discardedTo = call.closeParen + 1;
+      }
       if (call.kind === 'literal') {
         const argument = JSON.stringify(
           caller === undefined

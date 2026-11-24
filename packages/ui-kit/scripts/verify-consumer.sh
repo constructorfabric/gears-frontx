@@ -377,16 +377,25 @@ done
 
 # The ESM build preserves modules, so the directive is on the module compiled
 # from the source file that declares it — dist/chunks/components/<name>/<name>.js
-# for src/components/<name>/<name>.tsx — and dist/<name>.js is a re-export
-# facade that never carries it (a Server Component importing the facade gets
-# the client reference from the module behind it).
+# for src/components/<name>/<name>.tsx. dist/<name>.js is a re-export facade
+# and carries the banner exactly when its own entry source
+# (src/components/<name>/public.ts) declares the directive, as
+# portal-container's does; otherwise it carries none, and a Server Component
+# importing it gets the client reference from the module behind it. The
+# index entry has no such source and never carries one.
 for name in "${CLIENT_COMPONENTS[@]}" "${SERVER_COMPONENTS[@]}" index; do
   if [ ! -f "$UIKIT_DIR/dist/$name.js" ]; then
     echo "FAIL: dist/$name.js does not exist — did the build fail for this component?"
     exit 1
   fi
-  if head -c 20 "$UIKIT_DIR/dist/$name.js" | grep -qF "use client"; then
-    echo "FAIL: dist/$name.js carries a 'use client' banner — an entry re-exports its modules, and the banner belongs on the module whose source declares it"
+  entry_source="$UIKIT_DIR/src/components/$name/public.ts"
+  if [ "$name" != index ] && [ -f "$entry_source" ] && has_client_directive "$entry_source"; then
+    if ! head -c 20 "$UIKIT_DIR/dist/$name.js" | grep -qF "use client"; then
+      echo "FAIL: dist/$name.js is missing its 'use client' banner — its entry source src/components/$name/public.ts declares the directive"
+      exit 1
+    fi
+  elif head -c 20 "$UIKIT_DIR/dist/$name.js" | grep -qF "use client"; then
+    echo "FAIL: dist/$name.js carries a 'use client' banner — an entry re-exports its modules, and the banner belongs on the module whose source declares it (or on an entry whose own public.ts does)"
     exit 1
   fi
 done

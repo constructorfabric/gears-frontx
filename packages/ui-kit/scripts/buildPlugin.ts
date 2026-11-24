@@ -218,7 +218,8 @@ export function buildPlugin(): PluginOption[] {
    * plugin remembers which source module declared the directive and re-adds
    * it to whichever chunk that module's code lands in: with preserved
    * modules, the module's own file. An entry such as dist/<name>.js is a
-   * re-export facade and gets no banner of its own.
+   * re-export facade and gets a banner only when its own entry source
+   * declares the directive.
    *
    * A chunk earns the banner if ANY of its modules declared it — the
    * source directive is the only input, so this plugin never needs a list
@@ -312,10 +313,10 @@ export function buildPlugin(): PluginOption[] {
         // A module shared by several entries is hoisted into a shared chunk,
         // which leaves its own entry a bare re-export facade: `moduleIds` is
         // empty there, only `facadeModuleId` still names the entry module.
-        // Such a facade must inherit the banner from that module: every
-        // published client entry carries the banner itself
-        // (scripts/verify-consumer.sh checks it), so the client boundary is
-        // visible at the subpath without following the re-export.
+        // Such a facade inherits the banner from that module when the entry
+        // source declares the directive, so the client boundary is visible
+        // at the subpath without following the re-export
+        // (scripts/verify-consumer.sh checks entries against that rule).
         const facadeIsClient =
           chunk.facadeModuleId !== null && clientModuleIds.has(chunk.facadeModuleId);
         if (

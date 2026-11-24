@@ -128,6 +128,11 @@ export class ByteBudgetLruCache implements SharedDepTextCache {
           }
           current.bytes = bytes;
           this.totalBytes += bytes;
+          // The text that just arrived is the most recent use: it takes
+          // the recent end of the order here, not where `set` placed it,
+          // so a slow fetch does not evict itself ahead of older text.
+          this.entries.delete(key);
+          this.entries.set(key, current);
           this.evictToBudget();
         }
       },

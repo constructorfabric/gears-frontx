@@ -144,7 +144,7 @@ The present concrete instantiation of the runtime is `@gears-frontx/mfes`; the c
 
 * ARCH — applicable and addressed above (a structural decision affecting every runtime consumer and hard to reverse once consumers depend on the surface).
 * ARCH-ADR-008 (supersession) — Not applicable because this is a new, standalone decision that supersedes no prior record.
-* INT — applicable: the abstract `MfeRegistry` is the runtime's public integration surface; its breaking-change policy is governed by `cpt-frontx-interface-mfe-runtime`. The root keeps every symbol with a consumer outside the package, so limiting it to them leaves consumers unaffected.
+* INT — applicable: the abstract `MfeRegistry` is the runtime's public integration surface; its breaking-change policy is governed by `cpt-frontx-interface-mfe-runtime`. The root keeps every symbol with a consumer outside the package, so a consumer on the 0.7 surface is unaffected; a consumer on 0.6 imports names the root no longer exports and migrates, which the 0.7.0 version signals.
 * PERF — Not applicable because the facade is a surface-shape decision, not a runtime-performance decision.
 * SEC — Not applicable because the facade introduces no secret, credential, or authorization concern.
 * REL — Not applicable because this governs the public surface, not runtime availability or fault tolerance.
