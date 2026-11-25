@@ -980,11 +980,11 @@ function componentRefSchema(): Record<string, unknown> {
 // A reference to another kit component, as it appears NESTED inside a value
 // object (a recommendation's `component`, an accepted component, a family
 // member) rather than directly on a document property. `$ref`
-// rather than componentRefSchema()'s literal: gts-ts's own ref-resolving
-// walk never reaches this deep (see the comment above), so nothing is lost
-// by defining the grammar once, in vocabulary/component_reference.v1.json,
-// and pointing at it - which is also what turns five near-identical JSON
-// blocks on disk into one type and four references.
+// rather than componentRefSchema()'s literal, so the triple is defined once,
+// in vocabulary/component_reference.v1.json, and every place points at it -
+// which turns five near-identical JSON blocks on disk into one type and four
+// references. A GTS store follows the `$ref` and checks the reference there
+// just as it would inline (see the comment above).
 function componentReferenceRef(): Record<string, unknown> {
   return { $ref: vocabularyTypeId('component_reference') };
 }
@@ -1782,7 +1782,7 @@ export const buildComponentType = memoizeSchema((): Record<string, unknown> => {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     title: 'UiKit component',
     description:
-      "The type every kit component is a well-known INSTANCE of. A component is not a type derived from an abstract component type, so this type carries the whole content model directly: the instance's identity, the version of the vocabulary it was compiled against, everything asserted about the component, what the extraction read off its source, and its props surface. A field whose shape another type owns is a reference to that type (gts.frontx.uikit.vocabulary.*) rather than an inline definition; only a sentence, a capped list of strings and the one reference gts-ts's own walk must find directly on a document property stay inline. See the domain model in the package DESIGN for how they relate.",
+      "The type every kit component is a well-known INSTANCE of. A component is not a type derived from an abstract component type, so this type carries the whole content model directly: the instance's identity, the version of the vocabulary it was compiled against, everything asserted about the component, what the extraction read off its source, and its props surface. A field whose shape another type owns is a reference to that type (gts.frontx.uikit.vocabulary.*) rather than an inline definition; only a sentence, a capped list of strings and the host element's surface reference, which no other field holds, stay inline. See the domain model in the package DESIGN for how they relate.",
     type: 'object',
     properties,
     required: ['$id', 'gts_type', 'metamodel', 'component', ...fields.required, 'x-uikit', 'props'],

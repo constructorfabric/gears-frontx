@@ -722,10 +722,12 @@ describe('diffOwnPropsSchema: narrowing and the forwarded surface', () => {
   };
 
   it('reports an enum appearing on a prop that already carried its type', () => {
-    // The one narrowing gts-ts's own backward check calls compatible
-    // (measured, see check-lib.compat-e2e.test.ts): every value outside the
-    // new union stops validating, and this is the shape the compiler emits
-    // the day a plain `string` prop becomes a literal union.
+    // gts-ts's own backward check reports this narrowing too (see
+    // check-lib.compat-e2e.test.ts), but its verdict covers the whole schema
+    // and names no prop, so this rule is what says `tone` narrowed. Every
+    // value outside the new union stops validating, and this is the shape
+    // the compiler emits the day a plain `string` prop becomes a literal
+    // union.
     const diff = diffOwnPropsSchema(
       { properties: { tone: { type: 'string' } } },
       { properties: { tone: { type: 'string', enum: ['info', 'warning'] } } },
