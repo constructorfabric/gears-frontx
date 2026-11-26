@@ -1577,6 +1577,8 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     isLocation: boolean
   ): Promise<string> {
     const { loader, ctx, resolveAssetUrl, entryId } = sharedDepLists;
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-resolve-bare-specifier
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-fetch-lazy-chunk
     return loader
       .resolveDependent(
         ctx,
@@ -1585,6 +1587,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         sharedDepLists.dynamicImports,
         sharedDepLists.fetchOwnChunk
       )
+      // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-fetch-lazy-chunk
       .then(() => {
         const blob = isLocation
           ? loader.blobForKey(ctx, key)
@@ -1598,6 +1601,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
         }
         return blob;
       });
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-resolve-bare-specifier
   }
 
   /**
@@ -2304,7 +2308,9 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
 
   /** A path that is neither relative, rooted nor an absolute URL. */
   private static isBareSpecifier(path: string): boolean {
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-resolve-relative-path
     return !/^(\.\.?\/|\/|[a-zA-Z][a-zA-Z\d+.-]*:)/.test(path);
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-resolve-relative-path
   }
 
   /**

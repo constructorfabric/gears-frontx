@@ -512,6 +512,7 @@ export class DynamicImportScan {
       if (first !== undefined) {
         const close = DynamicImportScan.callEnd(source, first.end);
         if (close !== undefined) {
+          // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-shared-dynamic-imports
           calls.push(
             first.kind === 'literal'
               ? {
@@ -528,13 +529,16 @@ export class DynamicImportScan {
                   argEnd: first.end,
                 }
           );
+          // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-shared-dynamic-imports
         }
       }
       return afterKeyword;
     }
     if (source[open] === '.') {
+      // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-meta-url
       const end = DynamicImportScan.metaUrlEnd(source, open);
       if (end !== undefined) metaUrls.push({ start: keywordStart, end });
+      // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-meta-url
       return afterKeyword;
     }
     const record = topLevel
@@ -550,6 +554,7 @@ export class DynamicImportScan {
    * not exactly `meta` and `url`.
    */
   private static metaUrlEnd(source: string, dot: number): number | undefined {
+    // @cpt-begin:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-meta-url
     const wordAt = (position: number): { word: string; end: number } => {
       const end = DynamicImportScan.skipWord(source, position);
       return { word: source.slice(position, end), end };
@@ -564,6 +569,7 @@ export class DynamicImportScan {
     i = DynamicImportScan.skipTrivia(source, i);
     const url = wordAt(i);
     return url.word === 'url' ? url.end : undefined;
+    // @cpt-end:cpt-frontx-algo-mfe-isolation-blob-url-chain:p1:inst-rewrite-meta-url
   }
 
   /**
@@ -706,6 +712,7 @@ export class DynamicImportScan {
     source: string,
     position: number
   ): FirstArgument | undefined {
+    // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-shared-dynamic-imports
     const i = DynamicImportScan.skipTrivia(source, position);
     const quote = source[i];
     let first: FirstArgument | undefined;
@@ -737,6 +744,7 @@ export class DynamicImportScan {
     }
     const after = DynamicImportScan.skipTrivia(source, first.end);
     return source[after] === ',' || source[after] === ')' ? first : undefined;
+    // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-rewrite-shared-dynamic-imports
   }
 
   /**
