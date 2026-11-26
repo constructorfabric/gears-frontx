@@ -186,15 +186,19 @@ installed/updated through the **Constructor Studio CLI** (`cfs`), not the
 so it installs from the repository subdirectory:
 
 ```bash
-cfs kit install git/https://github.com/constructorfabric/gears-frontx//packages/cyber-pilot-kit-frontx
+cfs kit install git/https://github.com/constructorfabric/gears-frontx.git//packages/cyber-pilot-kit-frontx
 
 # or, from a local checkout of this repository
 cfs kit install path/packages/cyber-pilot-kit-frontx
+
+# then write the agent integrations for the kit's skills
+cfs generate-agents
 ```
 
 On install, its `frontx_`-prefixed resources (KIT-1) register in the project's
-`.cf-studio/config/core.toml` and become available to agents at session start —
-no training step. As shipped today the kit provides four capabilities:
+`.cf-studio/config/core.toml`. Once `cfs generate-agents` has written the agent
+integrations, they are available to agents at session start — no training step.
+As shipped today the kit provides four capabilities:
 
 - **Ecosystem fluency and request routing** — a top-level skill (`SKILL.md`), navigation rules (`AGENTS.md`), and boundary guidelines that let agents reason correctly about MFEs, extension domains, source-specs, and the ecosystem/template boundary. Its routing section states which capability serves each kind of FrontX request.
 - **Intent-driven project scaffolding** — the developer says what they want built rather than naming a template; the kit matches that intent against the descriptions installed templates declare, applies the chosen set by running `frontx seed`/`frontx add`, and then realizes each unit the intent names through the applied templates' own activated skills. The direct CLI path stays available unchanged for a developer who already holds a reference.
@@ -217,14 +221,14 @@ above.
 ```bash
 FrontX/                              # Ecosystem repository root
 ├── architecture/                   # Constructor Studio SDLC artifacts (PRD, DESIGN, ADR, features)
-├── packages/                       # Ecosystem packages (published to npm)
+├── packages/                       # Ecosystem packages (published to npm, except the kit)
 │   ├── mfes/                       # Published library (core, standalone): MFE runtime — registration, loading, mounting, isolation
 │   ├── gts-plugin/                 # Published library (core, standalone): GTS default type-system provider plugin
 │   ├── api/                        # Published library (core, standalone): API communication protocols + service registry
 │   ├── telemetry/                  # Published library (core, standalone): browser telemetry SDK
 │   ├── ui-kit/                     # Published library (standalone): UI components (artifact chain is recorded debt)
 │   ├── cli/                        # Projects orchestration: template-resolution CLI (`frontx`)
-│   └── cyber-pilot-kit-frontx/     # Projects orchestration: AI Tooling Kit
+│   └── cyber-pilot-kit-frontx/     # Projects orchestration: AI Tooling Kit (private; installed from Git with `cfs`)
 ├── internal/                       # Internal build/lint config workspaces
 ├── scripts/                        # Architecture, version-policy, and test tooling
 └── tsconfig.json                   # TypeScript config (ecosystem packages only)
