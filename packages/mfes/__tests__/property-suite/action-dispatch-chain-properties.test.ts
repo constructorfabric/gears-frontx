@@ -387,13 +387,13 @@ describe('P2 — Immediate execution of the first action', () => {
       const domain: ExtensionDomain = {
         ...makeDomain('d-p2-lifecycle', ['mock.action.v1~probe.v1~']),
         lifecycleStages: ['mock.stage.v1~init.v1'],
+        lifecycle: [
+          {
+            stage: 'mock.stage.v1~init.v1',
+            actions_chain: actionChain('mock.action.v1~probe.v1~', 'd-p2-lifecycle'),
+          },
+        ],
       };
-      domain.lifecycle = [
-        {
-          stage: 'mock.stage.v1~init.v1',
-          actions_chain: actionChain('mock.action.v1~probe.v1~', 'd-p2-lifecycle'),
-        },
-      ];
 
       class GatedFactory extends ExtensionDomainImplementationFactory {
         build(ctx: DomainContext) {

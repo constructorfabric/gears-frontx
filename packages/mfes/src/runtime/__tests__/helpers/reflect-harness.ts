@@ -28,10 +28,10 @@ import type { RouterPort } from '../../../router/RouterPort';
 export const ACTION_LOAD_EXT = 'mock.action.v1~load_ext.v1~';
 export const ACTION_MOUNT_EXT = 'mock.action.v1~mount_ext.v1~';
 export const ACTION_UNMOUNT_EXT = 'mock.action.v1~unmount_ext.v1~';
-const STAGE_INIT = 'mock.stage.v1~init.v1';
-const STAGE_ACTIVATED = 'mock.stage.v1~activated.v1';
-const STAGE_DEACTIVATED = 'mock.stage.v1~deactivated.v1';
-const STAGE_DESTROYED = 'mock.stage.v1~destroyed.v1';
+export const STAGE_INIT = 'mock.stage.v1~init.v1';
+export const STAGE_ACTIVATED = 'mock.stage.v1~activated.v1';
+export const STAGE_DEACTIVATED = 'mock.stage.v1~deactivated.v1';
+export const STAGE_DESTROYED = 'mock.stage.v1~destroyed.v1';
 export const ENTRY_ID = 'mock.entry.v1~widget.v1';
 
 export interface MockSchema { $id?: string }
