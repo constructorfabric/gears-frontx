@@ -11,7 +11,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { GTS, isValidGtsID, type ValidationResult } from '@globaltypesystem/gts-ts';
+import { GTS, GtsRefValidationMode, isValidGtsID, type ValidationResult } from '@globaltypesystem/gts-ts';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -44,6 +44,29 @@ import { checkComponentFreshness, type FreshnessReport } from './freshness';
 
 const kitRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const COMPONENTS_DIR = join(kitRoot, 'src', 'components');
+
+// The GTS store every suite here validates in. gts-ts checks a GTS reference
+// wherever its schema applies, nested value objects included, and by default
+// it looks the target up in the store and validates it too. Here
+// validateInstance checks a reference's grammar only (GtsRefValidationMode.None),
+// unless a call names another mode. Resolving a reference is the kit's own job
+// (resolveComponentRef below, and the element-surface checks in the
+// conformance suite): a component may be referenced before it ships a
+// contract, so before it has an entity in any store to resolve to.
+//
+// Entity updates are allowed: a suite registers a candidate over the committed
+// copy of the same contract (a fresh compile, or a negative control's edited
+// document), and gts-ts otherwise refuses a second registration whose content
+// differs from the first.
+class KitStore extends GTS {
+  constructor() {
+    super({ allowEntityUpdates: true });
+  }
+
+  override validateInstance(id: string, refValidation: GtsRefValidationMode = GtsRefValidationMode.None): ValidationResult {
+    return super.validateInstance(id, refValidation);
+  }
+}
 
 // Every contracts test file that builds a real TypeScript program - directly
 // (extractComponent, listExportedDeclarationNames) or through this module's
@@ -87,13 +110,11 @@ function memoizedFreshnessReport(directory: string, exportStem: string): Freshne
 // identifier, so moving a component's major moves every reference to it,
 // and a component that ships none may only be referenced at major 1.
 //
-// Resolution happens here rather than through the type registry for two
-// reasons, both about what the registry can answer: gts-ts's own reference
-// validator (XGtsRefValidator) walks a schema and does not follow a `$ref`
-// into another type, so a reference held inside a vocabulary type is never
-// reached by it; and most components a `don't` rule points at ship no
-// contract at all, so "the kit ships this component" is a question about
-// the component directory, which no registry knows about.
+// Resolution happens here rather than through the type registry because of
+// what the registry can answer: a component may be referenced before it
+// ships a contract, so "the kit ships this component" is a question about
+// the component directory, which no registry knows about. The stores here
+// check a reference's grammar only (see KitStore above).
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-refs
 export interface ResolvedComponentRef {
   ref: string;
@@ -196,19 +217,38 @@ function composedSurfaceRefs(): Set<string> {
   return refs;
 }
 
-// The registry a component instance is validated in: the component type it
-// is an instance of, the vocabulary that type references, every host element
-// surface a component may name, every component instance the kit ships, and
-// the props type lifted out of each of them.
-//
-// The instances are registered, not only their types: a component reference
-// resolves to the component's own instance, so the wildcard
-// `gts.frontx.uikit._.component.v1~*` an x-gts-ref declares is only
-// resolvable while those instances are in the store (XGtsRefValidator's
-// validateGtsPattern ends in a store.get on the value).
+// What is wrong with the host-element surface a contract names, or undefined
+// when nothing is: the reference must obey the element-surface grammar and
+// name a committed file. This is the only check that fails a well-formed
+// reference naming no committed file, since the registry checks grammar only
+// (see KitStore above), so it is exported for a negative control to call.
+// Both spellings appear on purpose - a reference value is bare, a file's own
+// `$id` carries `gts://` - so the committed set is keyed by the bare form. A
+// contract that names no surface has nothing to resolve, which is the honest
+// answer for DataTable and not a skipped check.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-element-surface-refs
+export function elementSurfaceProblem(meaning: CompiledContract): string | undefined {
+  const ref = forwardsToRef(meaning);
+  if (ref === undefined) return undefined;
+  if (!new RegExp(elementTypeRefPattern()).test(ref)) {
+    return `forwards_to "${ref}" is not a grammatical element-surface reference`;
+  }
+  const committed = new Set(loadElementSurfaces().map((schema) => bareGtsId(String(schema.$id))));
+  if (!committed.has(ref)) return `forwards_to names "${ref}", which no committed file declares`;
+  return undefined;
+}
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-element-surface-refs
+
+// The registry a component instance is validated in beside the whole kit:
+// the component type it is an instance of, the vocabulary that type
+// references, every host element surface a component may name, every
+// component instance the kit ships, and the props type lifted out of each of
+// them. The instances are registered, not only their types, so a document is
+// validated beside every other contract the kit ships. Its references are
+// checked for grammar only, like every store here (see KitStore above).
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-register
 export function registeredKitStore(): GTS {
-  const gts = new GTS();
+  const gts = new KitStore();
   gts.register(buildComponentType());
   registerContractTypes((entity) => gts.register(entity));
   for (const surface of loadElementSurfaces()) gts.register(surface);
@@ -437,23 +477,16 @@ export function assertContractFreshness(directory: string, exportStem: string = 
       // what has to hold is that the reference a contract HOLDS resolves to a
       // committed file, and that the file's own identifier obeys the
       // element-surface grammar rather than merely matching the string the
-      // contract happens to carry. Both spellings appear here on purpose - a
-      // reference value is bare, a file's own `$id` carries `gts://` - so the
-      // committed set is keyed by the bare form the reference is compared
-      // against. A contract that names no surface has nothing to resolve,
-      // which is the honest answer for DataTable and not a skipped check.
+      // contract happens to carry. The reference half is
+      // elementSurfaceProblem above, which button.contract.test.ts also hands
+      // a reference no committed file declares.
       const idPattern = new RegExp(elementTypeIdPattern());
-      const refPattern = new RegExp(elementTypeRefPattern());
-      const committed = new Set<string>();
       for (const schema of loadElementSurfaces()) {
         const id = String(schema.$id);
         expect(id, `${id} is not a grammatical element surface id`).toMatch(idPattern);
-        committed.add(bareGtsId(id));
       }
-      const ref = forwardsToRef(compileContract(directory, exportStem));
-      if (ref === undefined) return;
-      expect(ref, `${exportStem}: forwards_to "${ref}" is not a grammatical element-surface reference`).toMatch(refPattern);
-      expect(committed.has(ref), `${exportStem}: names "${ref}", which no committed file declares`).toBe(true);
+      const problem = elementSurfaceProblem(compileContract(directory, exportStem));
+      expect(problem, `${exportStem}: ${problem}`).toBeUndefined();
     });
 
     it('leaves no committed element surface that no contract names', () => {
@@ -475,12 +508,11 @@ export function assertContractFreshness(directory: string, exportStem: string = 
 
     // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-instance-ref
     it('validates as an instance of the component type, in a registry holding what it names', () => {
-      // The whole document against the whole type: every meaning field, the
-      // extraction block and the props surface, checked by the same validator
-      // that checks any instance against its type. The one reference gts-ts
-      // resolves for us is the host-element surface, which sits directly on a
-      // document property - as deep as its own reference walker goes - so a
-      // surface absent from the registry fails by name here.
+      // The whole document against the whole type, beside the whole kit: every
+      // meaning field, the extraction block and the props surface, checked by
+      // the same validator that checks any instance against its type. The
+      // store checks each reference's grammar; the kit resolves references
+      // itself (resolveComponentRef, and the element-surface checks above).
       const gts = registeredKitStore();
       const contract = compileContract(directory, exportStem);
       gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);
@@ -592,7 +624,7 @@ export interface UnitStoreOptions {
 // the given units - the registry a directory's suite validates its own
 // components in, and, with a part left out, each of its negative controls.
 export function unitStore(units: Iterable<StoreUnit>, options: UnitStoreOptions = {}): GTS {
-  const gts = new GTS();
+  const gts = new KitStore();
   if (options.componentType !== false) gts.register(options.componentType ?? buildComponentType());
   if (options.vocabulary !== false) registerContractTypes((entity) => gts.register(entity));
   registerUnits(gts, units);
@@ -604,11 +636,11 @@ export function unitStore(units: Iterable<StoreUnit>, options: UnitStoreOptions 
 // result for that contract's own id.
 //
 // The whole document is what gets checked: gts-ts finds the type through the
-// instance's own id chain, compiles that type with Ajv and validates the
-// document against it, then walks the document for x-gts-ref values sitting
-// directly on a property. So a missing required meaning field, an unknown
-// key, a malformed component reference and a mistyped extraction block all
-// fail here, by name.
+// instance's own id chain and validates the document against it, the GTS
+// reference keywords included, which check a reference's grammar here (see
+// KitStore above). So a missing required meaning field, an unknown key, a
+// malformed component reference and a mistyped extraction block all fail
+// here, by name.
 //
 // Round-tripped through JSON rather than passed as the in-memory
 // CompiledContract object compileContract returns: an overlay field left
@@ -616,22 +648,22 @@ export function unitStore(units: Iterable<StoreUnit>, options: UnitStoreOptions 
 // drops it - the shape the committed <name>.contract.json, "the canonical
 // contract every consumer reads" per compile.ts's own header comment,
 // actually carries - not merely `undefined` the way the in-memory object
-// still holds it as an own key. Ajv reads those two cases differently
-// against a `type`-constrained property, so registering the in-memory object
-// directly would be testing a shape no real consumer ever sees.
+// still holds it as an own key. A validator such as Ajv reads those two
+// cases differently against a `type`-constrained property, so registering
+// the in-memory object directly would be testing a shape no real consumer
+// ever sees.
 //
-// The committed element surfaces are registered too: `forwards_to` sits
-// directly on a document property, so gts-ts's own reference walker resolves
-// it against this store, and a store without them would fail every component
-// that names one for a reason that has nothing to do with the document.
+// The committed element surfaces are registered too, so the store holds
+// every entity a document may name, although it checks a reference's grammar
+// only.
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-conformance:p1:inst-cf-instance
 export function validateContractInstance(contract: CompiledContract): ValidationResult {
-  const gts = new GTS();
+  const gts = new KitStore();
   gts.register(JSON.parse(JSON.stringify(loadComponentType())) as Record<string, unknown>);
-  // The vocabulary the component type references. Without them the Ajv
-  // compile of that type fails outright rather than reporting a validation
-  // error, which is the right failure - a type whose references are missing
-  // has not checked anything.
+  // The vocabulary the component type references. Without them that type
+  // cannot be compiled and validation fails outright rather than reporting a
+  // validation error, which is the right failure - a type whose references
+  // are missing has not checked anything.
   registerContractTypes((entity) => gts.register(entity));
   for (const surface of loadElementSurfaces()) gts.register(surface);
   gts.register(JSON.parse(JSON.stringify(contract)) as Record<string, unknown>);

@@ -18,6 +18,7 @@ import {
   jsonDiff,
   mapChangedFilesToComponents,
   resolveRenameSource,
+  sharedPropsSchemas,
   synthesizeVersionedId,
   touchesAnyOverlay,
   touchesDependencyManifest,
@@ -229,6 +230,40 @@ describe('diffOwnPropsSchema', () => {
       { properties: { icon: { description: 'TS: ReactNode. Not expressible in JSON Schema, checked by tsc.' } }, required: [] },
     );
     expect(diff).toEqual({ removedProps: [], newlyRequiredProps: [], narrowedProps: [], movedToForwardedSurface: [], compatible: true });
+  });
+});
+
+describe('sharedPropsSchemas', () => {
+  const tail = { 'x-uikit-classification': 'unchecked' };
+  const base = { $id: 'gts://gts.frontx.uikit.props.button.v1~', title: 'UiKit Button', type: 'object' };
+
+  it('keeps only the props both revisions declare, and closes both', () => {
+    const [oldShared, newShared] = sharedPropsSchemas(
+      { ...base, properties: { label: { type: 'string' }, iconName: { type: 'string' } }, required: ['label'], unevaluatedProperties: tail },
+      { ...base, properties: { label: { type: 'string' }, icon: { type: 'string' } }, required: ['label', 'icon'], unevaluatedProperties: tail },
+    );
+    expect(oldShared).toEqual({ ...base, properties: { label: { type: 'string' } }, required: ['label'], unevaluatedProperties: false });
+    expect(newShared).toEqual({ ...base, properties: { label: { type: 'string' } }, required: ['label'], unevaluatedProperties: false });
+  });
+
+  it("keeps each revision's own shape for a shared prop, and its required status", () => {
+    const [oldShared, newShared] = sharedPropsSchemas(
+      { ...base, properties: { tone: { type: 'string' } }, required: [], unevaluatedProperties: tail },
+      { ...base, properties: { tone: { type: 'string', enum: ['info'] } }, required: ['tone'], unevaluatedProperties: tail },
+    );
+    expect(oldShared.properties).toEqual({ tone: { type: 'string' } });
+    expect(oldShared.required).toEqual([]);
+    expect(newShared.properties).toEqual({ tone: { type: 'string', enum: ['info'] } });
+    expect(newShared.required).toEqual(['tone']);
+  });
+
+  it('drops the attribute families, which the own-props diff judges', () => {
+    const [oldShared, newShared] = sharedPropsSchemas(
+      { ...base, properties: {}, required: [], patternProperties: { '^data-': {} }, unevaluatedProperties: tail },
+      { ...base, properties: {}, required: [], unevaluatedProperties: tail },
+    );
+    expect(oldShared).not.toHaveProperty('patternProperties');
+    expect(newShared).not.toHaveProperty('patternProperties');
   });
 });
 
@@ -687,10 +722,12 @@ describe('diffOwnPropsSchema: narrowing and the forwarded surface', () => {
   };
 
   it('reports an enum appearing on a prop that already carried its type', () => {
-    // The one narrowing gts-ts's own backward check calls compatible
-    // (measured, see check-lib.compat-e2e.test.ts): every value outside the
-    // new union stops validating, and this is the shape the compiler emits
-    // the day a plain `string` prop becomes a literal union.
+    // gts-ts's own backward check reports this narrowing too (see
+    // check-lib.compat-e2e.test.ts), but its verdict covers the whole schema
+    // and names no prop, so this rule is what says `tone` narrowed. Every
+    // value outside the new union stops validating, and this is the shape
+    // the compiler emits the day a plain `string` prop becomes a literal
+    // union.
     const diff = diffOwnPropsSchema(
       { properties: { tone: { type: 'string' } } },
       { properties: { tone: { type: 'string', enum: ['info', 'warning'] } } },
