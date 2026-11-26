@@ -73,6 +73,13 @@ jobs:
     - name: Verify ui-kit installs into a clean consumer
       run: npm run test:consumer --workspace=@gears-frontx/ui-kit
 
+    # Packaging acceptance for every package that ships a CommonJS entry
+    # (#503): pack each one and type-check a CommonJS (.cts) and an ESM
+    # (.mts) consumer of every entry point under Node16 and NodeNext, so each
+    # format resolves its own declarations. It packs what build:packages built.
+    - name: Verify dual-format packages type-check in CommonJS and ESM consumers
+      run: npm run test:consumer:dual-format
+
     - name: Audit dependencies for high severity vulnerabilities
       run: npm audit --audit-level=high --omit=dev
 

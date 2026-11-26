@@ -79,7 +79,7 @@ This is the concrete declared shape of the two entry points, owned by this featu
 
 **Routing entry point** - the kit's existing top-level `skill` resource, whose applicability metadata already covers ecosystem-scoped work, gains the routing responsibility. It is extended, not duplicated: an entry point whose only content is a pointer to one other entry point would add a hop and no capability, and a second resource claiming the same top-level name is not declarable. Its document gains a delimited section that states, for each kind of FrontX request, which capability serves it - including that a request to create a new project, and a request to add a unit to a project that already holds applied templates, are both served by the scaffolding entry point below.
 
-**Scaffolding entry point** - a new `skill` resource declared in `.cf-studio-kit.toml` with a `frontx_`-prefixed identifier, `kind = "skill"`, `public = true`, a `source` and `install_path` that address a document nested under a directory the kit ships, `type = "file"`, and non-empty applicability metadata in its own document frontmatter stating that it applies when a developer wants a FrontX project created from a stated intent, or a unit added to a project that already holds applied templates. Neither the resource identifier nor any manifest field names a solution, a framework, or a concrete template, because the manifest's identifier and description fields are scanned against the solution-term list; and neither entry-point document names a concrete template, because resource bodies are scanned against the specific-template-name list. The declared `source` must additionally be covered by the package's published file set, or the resource is declared, validated in the monorepo, and absent from the published package.
+**Scaffolding entry point** - a new `skill` resource declared in `.cf-studio-kit.toml` with a `frontx_`-prefixed identifier, `kind = "skill"`, `public = true`, a `source` and `install_path` that address a document nested under a directory the kit ships, `type = "file"`, and non-empty applicability metadata in its own document frontmatter stating that it applies when a developer wants a FrontX project created from a stated intent, or a unit added to a project that already holds applied templates. Neither the resource identifier nor any manifest field names a solution, a framework, or a concrete template, because the manifest's identifier and description fields are scanned against the solution-term list; and neither entry-point document names a concrete template, because resource bodies are scanned against the specific-template-name list. The declared `source` must additionally be a path Git does not ignore, since a Git-source install receives the kit's directory as Git holds it, or the resource is declared, validated in the monorepo, and absent from every installed copy.
 
 Both entry points are documents, not compiled modules: the scaffolding flow is a sequence of one-shot command invocations with no mid-stream protocol to hold open, so it needs no in-kit module at the process boundary and adds none. The realization leg is documents for the same reason and a stronger one: it is carried out by following the instructions an applied template's own activated extension skill states. The base kit contributes the sequencing - which unit, in which order, how many - and the intent-specific content that only the stated intent can supply, and contributes none of the structure, naming, identifiers, or registration, every one of which the template's own skill states. KIT-3's invariant - that the framework holds no code path materializing or modifying a project file - therefore stands unweakened, because the framework ships no such code path on either leg.
 
@@ -270,13 +270,13 @@ The system **MUST** expose both the top-level routing entry point and the scaffo
 
 **Touches**:
 - Entities: `Kit`
-- Resource shape: two `resources[]` entries of `kind = "skill"` with `public = true`, each `source` addressing a shipped document and covered by the package's published file set
+- Resource shape: two `resources[]` entries of `kind = "skill"` with `public = true`, each `source` addressing a shipped document at a path Git does not ignore
 - No API surface; no persistent database
 
 **Verifiable clauses**:
 - [ ] Both entry points appear in the shipped manifest as `kind = "skill"`, `public = true`, with identifiers matching the `frontx_` prefix rule
 - [ ] Each entry point's document carries non-empty applicability metadata in its frontmatter
-- [ ] Each declared `source` exists on disk and is covered by the package's published file set
+- [ ] Each declared `source` exists on disk at a path Git does not ignore
 - [ ] Neither entry-point document nor either manifest entry names a concrete template, solution, or framework
 
 ### Selection Is Description-Matched over the Local Inventory Only
@@ -392,7 +392,7 @@ The system **MUST** leave the ecosystem in a state where the capability is reach
 ## 6. Acceptance Criteria
 
 - [ ] `architecture/features/ai-project-scaffolding/FEATURE.md` exists with all template sections in order.
-- [ ] The kit declares a top-level routing entry point and a scaffolding entry point as `skill` resources with `frontx_`-prefixed identifiers, `public = true`, and non-empty applicability metadata in each document; the kit's own validation suite asserts each declared `source` exists and is covered by the published file set. (`target`)
+- [ ] The kit declares a top-level routing entry point and a scaffolding entry point as `skill` resources with `frontx_`-prefixed identifiers, `public = true`, and non-empty applicability metadata in each document; the kit's own validation suite asserts each declared `source` exists at a path Git does not ignore. (`target`)
 - [ ] Neither entry-point document nor either manifest entry names a concrete template, solution, or framework, and the solution-agnostic admission check passes over the shipped resource bodies. (`target`)
 - [ ] A request to add a unit to a project that already holds applied templates is routed to the scaffolding entry point rather than to an applied template's own skills, so the unit is offered to the installed inventory before any skill is driven. (`target`)
 - [ ] Stating a project intent in a directory with templates installed yields an application plan naming the template to seed with its pinned reference and each further template to add, presented before any command that writes files is invoked. (`target`)

@@ -97,25 +97,19 @@ describe('shipped manifest on disk — canonical shape and KIT-1 prefix', () => 
     }
   });
 
-  // Existing on disk is not enough: npm publishes only what `files` covers, so
-  // a source outside it leaves the resource declared, validated here, and
-  // ABSENT from the published package - the manifest points at nothing on any
-  // machine that installed the kit rather than checked out this repository
+  // Existing on disk is not enough: a Git-source install receives the kit's
+  // directory as Git holds it, so a source Git ignores (`dist/`, for one)
+  // leaves the resource declared, validated here, and ABSENT from every
+  // installed copy - the manifest points at nothing on any machine that
+  // installed the kit rather than checked out this repository
   // (cpt-frontx-dod-ai-project-scaffolding-declared-skill-surface, clause c).
-  // Assumes `files` holds literal paths, which it does: a glob entry would need
-  // matching rather than the prefix comparison below, and this kit declares none.
-  it('every declared resource source is covered by the package published file set', () => {
-    const published = (
-      JSON.parse(fs.readFileSync(path.join(kitRoot, 'package.json'), 'utf8')) as { files: string[] }
-    ).files.map((entry) => entry.replace(/\/+$/, ''));
+  // `git check-ignore` exits 0 naming the ignored paths, and 1 when none is.
+  it('no declared resource source is a path Git ignores', () => {
+    const sources = loadShippedManifest().kits.flatMap((kit) => kit.resources.map((resource) => resource.source));
+    const result = spawnSync('git', ['check-ignore', '--', ...sources], { cwd: kitRoot, encoding: 'utf8' });
 
-    for (const kit of loadShippedManifest().kits) {
-      for (const resource of kit.resources) {
-        const source = resource.source.replace(/\/+$/, '');
-        const covered = published.some((entry) => source === entry || source.startsWith(`${entry}/`));
-        expect(covered, `${resource.id}: "${resource.source}" is not covered by package.json "files"`).toBe(true);
-      }
-    }
+    expect(result.stdout.trim(), 'declared resource sources Git ignores').toBe('');
+    expect(result.status, result.stderr).toBe(1);
   });
 
   it('the real shipped manifest passes validateKitManifest', () => {
