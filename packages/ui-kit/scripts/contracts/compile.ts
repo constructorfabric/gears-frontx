@@ -1818,10 +1818,12 @@ export const buildComponentType = memoizeSchema((): Record<string, unknown> => {
 // that misspells a field, adds a machine-owned one under a different name, or
 // tries to write JSON-Schema vocabulary (`type`, `required`) fails here by
 // name instead of the field silently not making it into the compiled artifact.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-fields
 export function buildOverlaySchema(): Record<string, unknown> {
   const fields = buildMeaningFields();
   const properties: Record<string, unknown> = {};
   for (const field of SEMANTIC_FIELDS) properties[field] = fields.properties[field];
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-fields
   // The two fields whose compiled shape carries entries the compiler fills:
   // an author writes only the other half, and the schema says so rather than
   // admitting the filled shape and leaving parseOverlay's refusal as the only
@@ -1832,6 +1834,7 @@ export function buildOverlaySchema(): Record<string, unknown> {
   // stays false, and `component` is simply not in `properties`) rather than a
   // separate type - parseOverlay's own early refusal still gives a friendlier
   // message than the resulting "unknown overlay key" would.
+  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-mount-point-shape
   const mountPointProperties = (builtVocabularyType('mount_point').properties ?? {}) as Record<string, unknown>;
   properties.mounted_in = {
     type: 'array',
@@ -1845,6 +1848,8 @@ export function buildOverlaySchema(): Record<string, unknown> {
     description:
       "Containers outside the kit this component is mounted in. The component references in the compiled `mounted_in` are FILLED from every other contract's `accepts.components` and may not be authored - state the nesting in the container's own `accepts.components` instead.",
   };
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-mount-point-shape
+  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-fields
   const familyProperties = (builtVocabularyType('family_membership').properties ?? {}) as Record<string, unknown>;
   properties.family_membership = {
     type: 'object',
@@ -1854,6 +1859,7 @@ export function buildOverlaySchema(): Record<string, unknown> {
     description:
       "Which family this component belongs to and its role in it. `members` is not authorable: the compiler fills it on the root from every contract naming the same family as a part.",
   };
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-fields
   // Authored here and nowhere else in the compiled output: the major is not a
   // FIELD of a component, it is part of the identifier the component carries
   // (and of the props type id lifted out of it), so declaring it on the
@@ -1887,6 +1893,7 @@ export function buildOverlaySchema(): Record<string, unknown> {
       "Contract major of this component's identifiers. Per-component and authored, because moving it is the one acknowledgement the compatibility check accepts for a narrowing - read off a kit-wide constant, that acknowledgement cost a rewrite of every identifier in the kit at once. Absent means 1. A reference to this component from another contract carries the same number, so moving it moves every reference to it.",
   };
 
+  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-fields
   return {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     title: 'UiKit component overlay',
@@ -1906,6 +1913,7 @@ export function buildOverlaySchema(): Record<string, unknown> {
     additionalProperties: false,
   };
 }
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-fields
 
 // Compiled once for the life of the process: the schema is built from pure
 // construction, and compiling it means an Ajv instance plus every vocabulary
@@ -3022,6 +3030,7 @@ export function overlayFailuresMentioning(failures: readonly OverlayFailure[], n
   return failures.filter((failure) => needles.some((needle) => failure.text.includes(needle)));
 }
 
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-structure-derivation:p1:inst-co-derive
 function readOverlaySources(): OverlaySource[] {
   const componentsDir = join(kitRoot, 'src', 'components');
   const sources: OverlaySource[] = [];
@@ -3034,6 +3043,7 @@ function readOverlaySources(): OverlaySource[] {
   }
   return sources;
 }
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-structure-derivation:p1:inst-co-derive
 
 // Read once per process, not once per caller. Both derivations are called
 // per compiled contract and one of them again per family member, so the
