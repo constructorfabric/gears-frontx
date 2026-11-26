@@ -168,6 +168,16 @@ The system **MUST** allow microfrontends to communicate with the host applicatio
 
 **Actors**: `cpt-frontx-actor-project-developer`
 
+#### Sender identity in microfrontend–host communication
+
+- [ ] `p2` - **ID**: `cpt-frontx-fr-mfe-sender-identity`
+
+When a microfrontend communicates with the host application, the system **MUST** tell the host which extension admitted into that host is communicating, and the host **MUST** be able to resolve that extension to its microfrontend. Communication that reaches the host by escalation from a nested runtime **MUST** be attributed to the extension admitted into this host through which it arrived. The system **MUST** establish that identity itself, and **MUST NOT** take it from anything the communicating unit supplies.
+
+**Rationale**: A host that attributes what it receives to a unit, or applies a rule per unit, cannot rely on a label the sender chose, because independently developed units cannot be assumed to trust one another. Attributing telemetry records to the microfrontend that produced them is the first use. A host never admitted a unit nested inside one of its extensions, and an identity passed up for it would be supplied by the communicating unit, so a nested sender is seen as the extension that hosts it; how a consumer treats such senders is its own decision.
+
+**Actors**: `cpt-frontx-actor-project-developer`
+
 #### On-demand load failure handling
 
 - [ ] `p2` - **ID**: `cpt-frontx-fr-mfe-load-failure-handling`
@@ -299,6 +309,7 @@ None owned here. The package is distributed under the root PRD's package-registr
 - [ ] Extension domains enforce admission rules, placement expectations, occupant limits, and required contracts — verifiable via `cpt-frontx-fr-mfe-extension-domain-governance`.
 - [ ] Microfrontends can communicate with the host — verifiable via `cpt-frontx-fr-mfe-host-communication`.
 - [ ] Microfrontends can react to host-state changes — verifiable via `cpt-frontx-fr-mfe-host-communication`.
+- [ ] A host receiving communication from a microfrontend learns which extension admitted into it sent it and can resolve that extension to its microfrontend, communication escalated from a nested runtime is attributed to the extension through which it arrived, and a unit cannot present itself as another — verifiable via `cpt-frontx-fr-mfe-sender-identity`.
 - [ ] Load failures degrade gracefully with diagnostics and recovery or retry outcome — verifiable via `cpt-frontx-fr-mfe-load-failure-handling`.
 - [ ] Shared-code transfer, evaluation scope, retained memory, and the runtime reporting of transferred and retained shared code meet the thresholds stated in `cpt-frontx-nfr-resource-efficiency`.
 - [ ] No unit is placed without passing type validation and domain contract matching — verifiable via `cpt-frontx-fr-mfe-type-validation`, `cpt-frontx-fr-mfe-extension-domain-governance`, and the security NFR's admission measurement.
