@@ -91,8 +91,7 @@ const TYPE_ONLY_EXPORTS = [
   'ValidationResult',
 ];
 
-// Each test builds a TypeScript program; the default timeout is too short on CI runners.
-describe('root barrel — exact public surface', { timeout: 30_000 }, () => {
+describe('root barrel — exact public surface', () => {
   it('exports exactly the runtime values DESIGN §3.3 lists', () => {
     expect(Object.keys(root).sort()).toEqual([...RUNTIME_EXPORTS].sort());
   });

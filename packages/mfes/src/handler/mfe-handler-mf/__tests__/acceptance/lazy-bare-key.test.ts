@@ -222,4 +222,66 @@ describe('acceptance: bare lazy argument resolves through the list under the spe
     net.ok(ABS, ABS_TEXT);
     expect(await resolving).toMatch(/^blob:/);
   });
+  it('resolves an own bare call keyed without ./ as the own chunk when no unit answers it', async () => {
+    const net = controlledFetch();
+    const resolvers = await load(net, { 'lazy.js': listOf([]) }, entry('lazy.js'));
+    const before = net.issued.length;
+    const resolving = resolvers.at(-1)!('lazy.js');
+    await issuedAll(net, [url('assets/lazy.js')]);
+    await settleTurn();
+    expect(net.issued.slice(before)).toEqual([url('assets/lazy.js')]);
+    net.ok(url('assets/lazy.js'), 'export const z = 1;\n');
+    expect(await resolving).toMatch(/^blob:/);
+  });
+
+  it('returns the already-minted blob for an own bare call to a specifier the load minted, with no request', async () => {
+    const net = controlledFetch();
+    const resolvers = await load(net, {}, entry('react'));
+    const before = net.issued.length;
+    const blob = await resolvers.at(-1)!('react');
+    expect(blob).toMatch(/^blob:/);
+    expect(net.issued).toHaveLength(before);
+  });
+
+  it('returns the already-minted blob for a shared unit\'s bare call to a minted specifier, with no request', async () => {
+    const net = controlledFetch();
+    const resolvers = await load(net, { kit: listOf([KIT]) }, entry('./other.js'));
+    const before = net.issued.length;
+    const first = resolvers[0]!('rel:shared/react/index.abc.js\nkit');
+    await issuedAll(net, [url(KIT.location)]);
+    net.ok(url(KIT.location), KIT_TEXT);
+    const blob = await first;
+    const issued = net.issued.length;
+    expect(issued).toBe(before + 1);
+    expect(await resolvers[0]!('rel:shared/react/index.abc.js\nkit')).toBe(blob);
+    expect(net.issued).toHaveLength(issued);
+  });
+
+  it('resolves a subpath key through its list on the first call', async () => {
+    const SUB_TEXT = 'export const s = 1;\n';
+    const SUB: SharedDepUnit = unitOf('shared/pkg/sub.ghi.js', SUB_TEXT, ['pkg/sub']);
+    const net = controlledFetch();
+    const resolvers = await load(net, { 'pkg/sub': listOf([SUB]) }, entry('pkg/sub'), [SUB]);
+    const before = net.issued.length;
+    const resolving = resolvers.at(-1)!('pkg/sub');
+    await issuedAll(net, [url(SUB.location)]);
+    await settleTurn();
+    expect(net.issued.slice(before)).toEqual([url(SUB.location)]);
+    net.ok(url(SUB.location), SUB_TEXT);
+    expect(await resolving).toMatch(/^blob:/);
+  });
+
+  it('resolves a scoped key through its list on the first call', async () => {
+    const SCOPED_TEXT = 'export const q = 1;\n';
+    const SCOPED: SharedDepUnit = unitOf('shared/scope/pkg.jkl.js', SCOPED_TEXT, ['@scope/pkg']);
+    const net = controlledFetch();
+    const resolvers = await load(net, { '@scope/pkg': listOf([SCOPED]) }, entry('@scope/pkg'), [SCOPED]);
+    const before = net.issued.length;
+    const resolving = resolvers.at(-1)!('@scope/pkg');
+    await issuedAll(net, [url(SCOPED.location)]);
+    await settleTurn();
+    expect(net.issued.slice(before)).toEqual([url(SCOPED.location)]);
+    net.ok(url(SCOPED.location), SCOPED_TEXT);
+    expect(await resolving).toMatch(/^blob:/);
+  });
 });
