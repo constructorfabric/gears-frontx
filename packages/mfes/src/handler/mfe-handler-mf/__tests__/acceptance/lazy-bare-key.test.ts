@@ -76,10 +76,11 @@ async function load(
   net: ControlledFetch,
   lazy: Record<string, ReturnType<typeof listOf>>,
   entry: string,
+  extraUnits: SharedDepUnit[] = [],
 ): Promise<Array<(argument: string) => Promise<string>>> {
   const register = vi.spyOn(LazyLoaderRegistry.prototype, 'register');
   const manifest = buildManifest([sharedDep('react')], {
-    units: [REACT, KIT],
+    units: [REACT, KIT, ...extraUnits],
     lists: { './lifecycle': listOf([REACT], { lazy }) },
   });
   const loading = newHandler(ENTRY_BASE_ID, { retries: 0 }).load(
@@ -205,5 +206,20 @@ describe('acceptance: bare lazy argument resolves through the list under the spe
     await until(() => net.count(url(KIT.location)) === 2, 'the retry request');
     net.ok(url(KIT.location), KIT_TEXT);
     expect(await retrying).toMatch(/^blob:/);
+  });
+
+  it('resolves a shared unit\'s absolute-URL call through the list held under that URL as a location', async () => {
+    const ABS = 'https://cdn.example/target.js';
+    const ABS_TEXT = 'export const t = 1;\n';
+    const TARGET: SharedDepUnit = unitOf(ABS, ABS_TEXT);
+    const net = controlledFetch();
+    const resolvers = await load(net, { [ABS]: listOf([TARGET]) }, entry('./other.js'), [TARGET]);
+    const before = net.issued.length;
+    const resolving = resolvers[0]!(`rel:shared/react/index.abc.js\n${ABS}`);
+    await issuedAll(net, [ABS]);
+    await settleTurn();
+    expect(net.issued.slice(before)).toEqual([ABS]);
+    net.ok(ABS, ABS_TEXT);
+    expect(await resolving).toMatch(/^blob:/);
   });
 });

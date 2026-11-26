@@ -1526,17 +1526,22 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       return fail(`__frontx_lazy: unresolvable argument '${argument}'`);
     }
     const { caller, path } = split;
-    const relative = path.startsWith('./') || path.startsWith('../');
+    const bare = MfeHandlerMF.isBareSpecifier(path);
     // A bare specifier is its own key: a unit already answering it is the
-    // target, and no other base applies to it.
-    const key = relative ? SharedDepListMinter.resolveLocation(caller, path) : path;
+    // target, and no other base applies to it. A relative path resolves
+    // against the caller; any other path (an absolute URL, a rooted path)
+    // is already a location and is its own key.
+    const key =
+      !bare && (path.startsWith('./') || path.startsWith('../'))
+        ? SharedDepListMinter.resolveLocation(caller, path)
+        : path;
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-resolve-relative-path
     // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-if-cached
     // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-return-cached
     // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-bare-cached
-    const minted = relative
-      ? loader.blobForKey(ctx, key)
-      : ctx.specifierToBlob.get(key);
+    const minted = bare
+      ? ctx.specifierToBlob.get(key)
+      : loader.blobForKey(ctx, key);
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-bare-cached
     if (minted !== undefined) return Promise.resolve(minted);
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-return-cached
@@ -1560,7 +1565,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     // A shared-unit target requests no own chunk: its unit joins the
     // list's round.
     // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-resolve-bare-specifier
-    return MfeHandlerMF.resolveListedTarget(sharedDepLists, key, relative);
+    return MfeHandlerMF.resolveListedTarget(sharedDepLists, key, bare);
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-resolve-bare-specifier
   }
   // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-when-exercised
@@ -1568,13 +1573,13 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
   /**
    * Resolve a target through the lazy list held under `key`: the list's
    * round runs, then the blob answering the target is read — the target
-   * chunk's item for a location key, the unit answering the specifier for
-   * a bare key.
+   * chunk's item for a location key (relative or absolute), the unit
+   * answering the specifier for a bare key.
    */
   private static resolveListedTarget(
     sharedDepLists: SharedDepListLoadContext,
     key: string,
-    isLocation: boolean
+    bare: boolean
   ): Promise<string> {
     const { loader, ctx, resolveAssetUrl, entryId } = sharedDepLists;
     // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-resolve-bare-specifier
@@ -1589,9 +1594,9 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       )
       // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-fetch-lazy-chunk
       .then(() => {
-        const blob = isLocation
-          ? loader.blobForKey(ctx, key)
-          : ctx.specifierToBlob.get(key);
+        const blob = bare
+          ? ctx.specifierToBlob.get(key)
+          : loader.blobForKey(ctx, key);
         if (blob === undefined) {
           throw new MfeLoadError(
             `__frontx_lazy: the list of '${key}' minted no blob for the ` +
@@ -2296,7 +2301,7 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
       if (minted !== undefined) return minted;
       // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-bare-cached
       if (shared.ctx.dependentLists.has(path)) {
-        return MfeHandlerMF.resolveListedTarget(shared, path, false);
+        return MfeHandlerMF.resolveListedTarget(shared, path, true);
       }
     }
     // @cpt-end:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-resolve-bare-specifier
