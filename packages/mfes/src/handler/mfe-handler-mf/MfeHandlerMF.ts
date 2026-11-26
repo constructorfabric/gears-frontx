@@ -2291,11 +2291,16 @@ class MfeHandlerMF extends MfeHandler<MfeEntryMF, ChildMfeBridge> {
     const split = UnitDynamicImportRewriter.splitCallerArgument(argument);
     const caller = split?.caller ?? loadState.entryChunkFilename;
     const path = split?.path ?? argument;
-    // A bare argument naming a shared package resolves through the list
-    // held under that specifier, never as an own chunk.
+    // A bare argument that a unit answers resolves through the list held
+    // under that specifier, when one is held, and never as an own chunk;
+    // any other bare argument loads as an own chunk.
     // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-resolve-bare-specifier
     const shared = loadState.sharedDepLists;
-    if (shared !== undefined && MfeHandlerMF.isBareSpecifier(path)) {
+    if (
+      shared !== undefined &&
+      MfeHandlerMF.isBareSpecifier(path) &&
+      shared.ctx.declaredSpecifiers.has(path)
+    ) {
       // @cpt-begin:cpt-frontx-algo-mfe-loading-lazy-import-abi:p1:inst-lai-bare-cached
       const minted = shared.ctx.specifierToBlob.get(path);
       if (minted !== undefined) return minted;
