@@ -160,7 +160,7 @@
     },
     "lists": {
       "type": "object",
-      "description": "Every fetch list, held once: keyed by the exposed module name (e.g. './lifecycle', matching the exposedModule of the MFE entry that references this manifest) for a module's list, and by the target's chunk location for a lazy target's or pattern-import matching file's list. See cpt-frontx-adr-shared-dep-reuse.",
+      "description": "Every fetch list, held once: keyed by the exposed module name (e.g. './lifecycle', matching the exposedModule of the MFE entry that references this manifest) for a module's list, by the target's chunk location for a lazy target's or pattern-import matching file's list, or, for a lazy target reached by a bare dynamic import of a shared package, by that target's bare specifier. See cpt-frontx-adr-shared-dep-reuse.",
       "additionalProperties": {
         "type": "object",
         "additionalProperties": false,
@@ -185,7 +185,7 @@
           },
           "lazy": {
             "type": "array",
-            "description": "Keys in lists of the lazy targets this list reaches: each the target's chunk location relative to the base that chunk resolves against.",
+            "description": "Keys in lists of the lazy targets this list reaches: each the target's chunk location relative to the base that chunk resolves against, or, for a lazy target reached by a bare dynamic import of a shared package, the bare specifier of that target.",
             "items": {
               "type": "string",
               "minLength": 1
