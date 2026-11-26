@@ -181,7 +181,8 @@ const parity = (schemas: JSONSchema[] = loadSchemas(), edits: SourceEdit = {}): 
   ];
 };
 
-describe('manifest and MFE entry types equal the runtime contract types', () => {
+// Each test builds a TypeScript program; the default timeout is too short on CI runners.
+describe('manifest and MFE entry types equal the runtime contract types', { timeout: 30_000 }, () => {
   it('reads a non-trivial field tree from the runtime types', () => {
     const { manifest, entry } = typeScriptTrees();
     expect(manifest.kind === 'object' && Object.keys(manifest.fields).sort()).toEqual(['id', 'lists', 'metaData', 'name', 'remoteEntry', 'shared', 'units']);
