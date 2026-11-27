@@ -24,7 +24,7 @@ from whether the working directory already holds applied templates - a
 | Move an applied template to a newer version | `frontx upgrade <projectRoot> <targetVersion>` directly, or its `--json` form, which emits the change set for review and reads a decision back before anything is applied |
 | Understand the ecosystem - runtime substrate, type system, API surface, package boundaries | This document and the guidelines it ships with |
 | Check that a template is publishable | The `frontx` executable directly - `frontx validate <templateDir>` |
-| See how a new page or screen will look before it is built, and choose among drawn options | The route above that builds it - `frontx_project_scaffolding` first for a new project or a new unit - with the page proposal step below, where it applies, taken before that page is built, with no further ask. The base kit draws no proposal itself |
+| See how a new page or screen will look before it is built, or choose among drawn options for it | The route above that builds it - `frontx_project_scaffolding` first for a new project or a new unit - with the page proposal step below, where it applies, taken before that page is built, with no further ask. The base kit draws no proposal itself |
 
 If the request matches none of these, say so and name the capabilities above.
 Do not route it to the closest one; a capability applied to a request it does
