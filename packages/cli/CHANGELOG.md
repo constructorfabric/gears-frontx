@@ -24,8 +24,11 @@ refactoring is not.
   checked in memory and replaces the slot only once every check has passed.
 
 - A `path:` template whose `.frontx` or `.frontx/ai` is itself a symbolic
-  link is refused with `CONTENT_CONFLICT`, like a link below `.frontx/ai/`.
-  It was skipped by the content walk and then followed by the AI-bundle copy.
+  link is refused like a link below `.frontx/ai/`, in any spelling the volume
+  treats as that path (`.FRONTX` on a case-insensitive volume): `register`,
+  `assemble` and `apply` answer `ORIGIN_UNAVAILABLE`, and the AI-bundle copy
+  and review preflight `CONTENT_CONFLICT`. It was skipped by the content walk
+  and then followed by the AI-bundle copy.
 
 - The `PROJECT_INVALID` refusal over a legacy `.frontx/provenance.json` now
   says that every command reading project state, `register` included,

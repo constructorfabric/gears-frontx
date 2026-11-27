@@ -35,6 +35,7 @@ import type {
 } from '../upgrade/types';
 import { PathContainmentError, PathUnreadableError, assertPathWithinProjectRoot, isInside, resolveWriteParentDir } from './fs-project-io';
 import { isReservedTempName } from '../paths/reserved-temp-name';
+import { foldForIdentity } from '../paths/volume-case';
 import { FRONTX_NAMESPACE_ROOT, MANIFEST_FILENAME } from '../manifest/types';
 
 /**
@@ -224,8 +225,11 @@ function walkRegularFiles(root: string, relativeDir: string, isTemplate: boolean
       // A link AT `.frontx` or `.frontx/ai` is refused like one below them:
       // skipping it hid the bundle from this walk while the bundle copy
       // followed it and delivered whatever it pointed at.
+      // Judged by ground identity, not spelling: on a volume that folds case
+      // `.FRONTX` or `.frontx/AI` IS the path the bundle copy reads.
       const posixPath = toPosixPath(relativePath);
-      if (isTemplate && (posixPath.startsWith(AI_BUNDLE_PREFIX) || AI_BUNDLE_PREFIX.startsWith(`${posixPath}/`))) {
+      const ground = foldForIdentity(posixPath);
+      if (isTemplate && (ground.startsWith(AI_BUNDLE_PREFIX) || AI_BUNDLE_PREFIX.startsWith(`${ground}/`))) {
         throw new AiBundleSymlinkError(root, posixPath);
       }
       continue;

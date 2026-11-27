@@ -21,6 +21,7 @@ import {
 } from '../adapters/fs-upgrade-io';
 import { RESERVED_TEMP_SUFFIX } from '../paths/reserved-temp-name';
 import { makeFifo, fifosAvailable } from './support/fifo';
+import { isVolumeCaseInsensitive } from '../paths/volume-case';
 
 let root: string | undefined;
 
@@ -200,6 +201,32 @@ describe('createFsListDiskFilesFn — a symlink inside a template AI bundle', ()
       templateDir: template,
       linkPath: link,
     });
+  });
+
+  // `.FRONTX` and `.frontx/AI` are the bundle path itself only where the
+  // volume folds case; on a case-sensitive one they are unrelated names the
+  // bundle copy never reads, and stay ordinary skipped links.
+  it.each([
+    ['.FRONTX', []],
+    ['.frontx/AI', ['.frontx']],
+    ['.FRONTX/AI/tpl/alias.md', ['.FRONTX/AI/tpl']],
+  ] as const)('judges a differently-cased "%s" link by the volume\'s own path identity', async (link, dirs) => {
+    root = await mkdtemp(path.join(tmpdir(), 'frontx-upgrade-bundle-case-link-'));
+    const template = path.join(root, 'template');
+    const outside = path.join(root, 'outside');
+    await mkdir(path.join(outside, 'ai', 'tpl'), { recursive: true });
+    await writeFile(path.join(outside, 'ai', 'tpl', 'x.md'), 'x', 'utf-8');
+    await mkdir(template);
+    await writeFile(path.join(template, 'frontx-template.json'), '{}', 'utf-8');
+    for (const dir of dirs) await mkdir(path.join(template, dir), { recursive: true });
+    await symlink(outside, path.join(template, link));
+
+    const walk = createFsListDiskFilesFn()(template);
+    if (isVolumeCaseInsensitive(template)) {
+      await expect(walk).rejects.toMatchObject({ name: 'AiBundleSymlinkError', linkPath: link });
+    } else {
+      expect(await walk).toEqual(['frontx-template.json']);
+    }
   });
 
   it('still skips a symlink elsewhere in a template, and any symlink in a folder without a manifest (a project)', async () => {
