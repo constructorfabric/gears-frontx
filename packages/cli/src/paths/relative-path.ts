@@ -7,26 +7,47 @@
 // caller deciding containment by bare string prefix while another decides it by
 // path segment, which makes the same two paths overlap for one and not the
 // other.
+//
+// Ground equality below folds through `foldForIdentity`
+// (`./volume-case.ts`) rather than comparing raw strings: on a
+// case-insensitive volume (macOS/APFS, Windows/NTFS) two spellings differing
+// only in case name the same ground, and treating them as different is the
+// defect a caller-supplied path this module exists to compare correctly
+// would otherwise reintroduce one segment at a time.
+import { foldForIdentity } from './volume-case';
 
 // A safe relative path: no surrounding whitespace, not absolute, no backslash,
 // no unsafe character, and no empty, "." or ".." segment. Rejecting rather than
 // normalizing keeps one spelling per addressed location and keeps the value
 // unable to climb out of the root it is resolved against.
 export function isSafeRelativePath(value: string): boolean {
-  if (value.trim() !== value) return false;
-  if (value.startsWith('/') || value.includes('\\')) return false;
-  if (hasUnsafePathChar(value)) return false;
-  return value.split('/').every((segment) => segment !== '' && segment !== '.' && segment !== '..');
+  return unsafeRelativePathReason(value) === undefined;
 }
 
-// Characters that must never reach a filesystem adapter in a path-like value.
-// A control character (NUL among them) makes the platform API throw, which
-// escapes the result union every caller here returns instead. A colon carries a
-// Windows drive designator, so `C:/outside` would be an absolute path on one
-// platform and an ordinary relative segment on the other — neither a template
-// identity nor a subtree segment has a legitimate use for either.
-function hasUnsafePathChar(value: string): boolean {
-  if (value.includes(':')) return true;
+// Why `value` is not a safe relative path, as a clause that completes "it ...",
+// or `undefined` when it is one. This is the ONE place the rule is written —
+// `isSafeRelativePath` is its yes/no answer — so a refusal can name the check
+// that actually fired without a second copy of the checks to drift from it.
+export function unsafeRelativePathReason(value: string): string | undefined {
+  if (value.trim() !== value) return 'has leading or trailing whitespace';
+  if (value.startsWith('/')) return 'is absolute';
+  if (value.includes('\\')) return 'contains a backslash';
+  // A colon carries a Windows drive designator, so `C:/outside` would be an
+  // absolute path on one platform and an ordinary relative segment on the other
+  // — neither a template identity nor a subtree segment has a legitimate use for
+  // it.
+  if (value.includes(':')) return 'contains a colon (a drive designator on Windows)';
+  if (hasControlChar(value)) return 'contains a control character';
+  if (value.split('/').some((segment) => segment === '' || segment === '.' || segment === '..')) {
+    return 'has an empty, "." or ".." segment';
+  }
+  return undefined;
+}
+
+// A control character (NUL among them) must never reach a filesystem adapter in
+// a path-like value: it makes the platform API throw, which escapes the result
+// union every caller here returns instead.
+export function hasControlChar(value: string): boolean {
   for (const character of value) {
     const code = character.codePointAt(0) ?? 0;
     if (code < 0x20 || code === 0x7f) return true;
@@ -39,7 +60,7 @@ function hasUnsafePathChar(value: string): boolean {
 // subtree, so every comparison below strips it first — otherwise the two
 // spellings would disagree about the same ground and one of them would slip past
 // the check the other is refused by.
-function withoutTrailingSlash(value: string): string {
+export function withoutTrailingSlash(value: string): string {
   return value.endsWith('/') ? value.slice(0, -1) : value;
 }
 
@@ -48,8 +69,8 @@ function withoutTrailingSlash(value: string): string {
 // and `srcx.ts` inside a claim on `src`, so a template declaring one directory
 // would silently capture every sibling whose name merely extends it.
 export function pathWithinSubtree(path: string, subtree: string): boolean {
-  const root = withoutTrailingSlash(subtree);
-  const target = withoutTrailingSlash(path);
+  const root = foldForIdentity(withoutTrailingSlash(subtree));
+  const target = foldForIdentity(withoutTrailingSlash(path));
   return target === root || target.startsWith(`${root}/`);
 }
 
@@ -98,7 +119,145 @@ function addressesNoLocation(value: string): boolean {
 // Over two manifests' exclusive-subtree claims it is the overlap the pre-flight
 // conflict check refuses (`cpt-frontx-dod-cli-scaffolding-conflict-check`).
 export function pathsNest(a: string, b: string): boolean {
-  if (a === b) return true;
+  if (foldForIdentity(a) === foldForIdentity(b)) return true;
   if (addressesNoLocation(a) || addressesNoLocation(b)) return false;
   return pathWithinSubtree(a, b) || pathWithinSubtree(b, a);
+}
+
+// A concrete applied TARGET — unlike a declaration such as `excludedSubtrees`
+// or `projectOwnedRoots`, which may legitimately address no location at all
+// — can be `.`, the project root itself, and a project root is a real
+// location that contains every other well-formed relative path
+// unconditionally (`cpt-frontx-algo-cli-scaffolding-delete-plan`'s own text
+// uses exactly this example: "a target `.` at the project root"). Neither
+// `pathWithinSubtree` nor `pathsNest` can recognize this today, because both
+// treat an argument shaped like `.` the same way they treat a degenerate
+// DECLARATION — which is the correct behavior for a declaration, and the
+// wrong one for a target. `pathWithinTarget`/`targetsNest` are the ONE place
+// that adds the one exception a target needs, rather than changing what
+// `pathWithinSubtree`/`pathsNest` mean for every other caller that already
+// relies on their existing behavior for a declaration.
+export function pathWithinTarget(path: string, target: string): boolean {
+  if (target === '.') return true;
+  return pathWithinSubtree(path, target);
+}
+
+// Whether two concrete applied TARGETS coincide or nest, in either
+// direction — the target-aware counterpart to `pathsNest` above, needed for
+// exactly the reason `pathWithinTarget` is: a target may legitimately be
+// `.`, the project root, which nests with every other target.
+export function targetsNest(a: string, b: string): boolean {
+  if (a === '.' || b === '.') return true;
+  return pathsNest(a, b);
+}
+
+// Re-roots a target-relative declaration (a manifest's declared
+// `excludedSubtrees` entry, a payload's template-relative content path, or
+// an upgrade operation's relative path — every one of them authored the
+// same way, target-relative) under a concrete applied `target`, producing a
+// project-relative path. `target` may legitimately be `.`, the project root
+// (`cpt-frontx-algo-cli-scaffolding-delete-plan`'s own text uses exactly
+// this example: "a target `.` at the project root") — a plain
+// `${target}/${relativePath}` join would then wrongly spell
+// `./docs/readme.md` instead of the plain `docs/readme.md` a real
+// project-relative path resolves to, so `.` is the one case joined as a
+// bare pass-through instead. This was independently restated by every
+// caller that re-roots a declaration under a target — the one join
+// operation the whole package now shares.
+export function joinUnderTarget(target: string, relativePath: string): string {
+  return target === '.' ? relativePath : `${target}/${relativePath}`;
+}
+
+// The one spelling of a project-relative location: `.`, empty and `..` segments
+// folded away, so `app/../other/x.txt` and `other/x.txt` are the same location
+// and are judged as it. `null` when the value cannot be read as a location inside
+// the root it is relative to — absolute, or climbing above that root.
+//
+// Lexical only, never a filesystem question: where a symlink along the way
+// actually leads is what the adapters' containment guards and the upgrade
+// classification's ancestor probe decide, on real disk state. What this answers
+// is which location the STRING names, and it answers it before ownership is
+// judged, because every ownership predicate in this package compares segments
+// of the string it is handed: handed `app/../other/x.txt` it reports ground
+// inside `app` for a file that lands in `other`.
+export function normalizeProjectRelativePath(value: string): string | null {
+  if (value.startsWith('/')) return null;
+  const resolved: string[] = [];
+  for (const segment of value.split('/')) {
+    if (segment === '' || segment === '.') continue;
+    if (segment === '..') {
+      if (resolved.length === 0) return null;
+      resolved.pop();
+      continue;
+    }
+    resolved.push(segment);
+  }
+  return resolved.length === 0 ? '.' : resolved.join('/');
+}
+
+// Why a project-relative path is not spelled as the one location it names, as a
+// clause completing "it ...", or `undefined` when it is. A path the engine is to
+// compare, read or write must already BE its normalised spelling: one that is
+// not either climbs out of the root or names a location other than the one its
+// text shows, and which of those it is changes nothing about what to do with it.
+export function nonCanonicalProjectPathReason(value: string): string | undefined {
+  // The apply canonicaliser (`createFsCanonicalizeTargetFn`) refuses a first
+  // segment of `~`: the shell did not expand it, and resolved literally it
+  // would name a directory called `~` inside the project. A path this engine is
+  // to judge must be one apply could have recorded, so it is refused here too.
+  if (value.split('/')[0] === '~') return 'begins with "~", a home-directory spelling the shell did not expand';
+  const normalized = normalizeProjectRelativePath(value);
+  if (normalized === null) return 'is absolute or climbs out of the project root';
+  if (normalized !== value) return `is not in canonical form (it names "${normalized}")`;
+  return undefined;
+}
+
+// `nonCanonicalProjectPathReason` plus the two character-level checks of the
+// shared rule (`unsafeRelativePathReason`): a control character (NUL among them)
+// makes the platform API throw past every result union, and surrounding
+// whitespace names a different directory than the text appears to. THE grammar a
+// recorded path is judged with — by the project state store (load and write) and
+// by the upgrade engine alike — and, through `canonicalizeForRecording` below,
+// the grammar `apply` and `ownership add` admit a path to the record with, so the
+// engines can never disagree about a state the CLI itself wrote. Backslash and
+// colon are NOT refused: a `path:` origin's folder and the files under it may
+// legitimately carry them.
+export function unaddressableProjectPathReason(value: string): string | undefined {
+  if (hasControlChar(value)) return 'contains a control character';
+  if (value.trim() !== value) return 'has leading or trailing whitespace';
+  return nonCanonicalProjectPathReason(value);
+}
+
+// The ONE gate between a raw, user-typed path and the project state record:
+// the filesystem canonicaliser's answer, but only when that answer is a spelling
+// the record's grammar (`unaddressableProjectPathReason`) accepts. A raw value
+// carrying a control character is refused before the canonicaliser is asked
+// (the platform API throws on a NUL). `null` is "nothing is recorded": every
+// command that records a path (`apply`, `ownership add`) refuses it as an
+// invalid path BEFORE anything is written, so the store never has to refuse what
+// a command has already acted on.
+// Why `canonicalizeForRecording` refused `raw`, when the answer is the record's
+// grammar (a control character, surrounding whitespace, a `~` first segment, a
+// non-canonical spelling) rather than a failure to prove the path stays inside
+// the project root; `undefined` for the latter. The refusal messages of every
+// command that records a path name this reason instead of the containment text,
+// which would send the developer looking for a symlink that is not there.
+export function recordingRefusalReason(raw: string, canonicalizeFn: (raw: string) => string | null): string | undefined {
+  if (hasControlChar(raw)) return 'contains a control character';
+  const canonical = canonicalizeFn(raw);
+  if (canonical === null) {
+    // The canonicaliser refuses a `~` first segment itself, so `./~` never
+    // comes back as a canonical spelling to judge; read the reason off the
+    // normalised raw value.
+    const normalized = normalizeProjectRelativePath(raw);
+    return normalized !== null && normalized.split('/')[0] === '~' ? nonCanonicalProjectPathReason(normalized) : undefined;
+  }
+  return unaddressableProjectPathReason(canonical);
+}
+
+export function canonicalizeForRecording(raw: string, canonicalizeFn: (raw: string) => string | null): string | null {
+  if (hasControlChar(raw)) return null;
+  const canonical = canonicalizeFn(raw);
+  if (canonical === null) return null;
+  return unaddressableProjectPathReason(canonical) === undefined ? canonical : null;
 }

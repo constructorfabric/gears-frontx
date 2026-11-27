@@ -38,9 +38,26 @@ export interface StructuralError {
   message: string;
 }
 
+/**
+ * A denial recorded when a bundle's template identity fails the trust check
+ * (§1.1-1.2, §3 `inst-check-identity-trust`/`inst-return-denied-bundle`) —
+ * deliberately a DISTINCT type from `StructuralError`: the bundle's shape was
+ * never even examined, because the identity itself was rejected before any
+ * of its slots were scanned. A caller must be able to tell a DENIED bundle
+ * apart from a structurally REJECTED entry (§6's DENIED acceptance
+ * criterion) without guessing from a shared shape.
+ */
+export interface TrustDenial {
+  /** The `<template-identity>` whose bundle was excluded on trust grounds. */
+  identity: string;
+  /** Why discovery denied the bundle before inspecting its slots. */
+  reason: string;
+}
+
 /** The AiExtension lifecycle (cpt-frontx-state-template-ai-extensions-extension-lifecycle). */
 export const AiExtensionLifecycleState = {
   BUNDLED: 'BUNDLED',
+  DENIED: 'DENIED',
   DISCOVERED: 'DISCOVERED',
   VALIDATED: 'VALIDATED',
   ACTIVATED: 'ACTIVATED',
@@ -50,11 +67,9 @@ export const AiExtensionLifecycleState = {
 export type AiExtensionLifecycleState = (typeof AiExtensionLifecycleState)[keyof typeof AiExtensionLifecycleState];
 
 /** Outcome of running one bundle entry through the lifecycle. */
-export interface LifecycleResult {
-  state: typeof AiExtensionLifecycleState.ACTIVATED | typeof AiExtensionLifecycleState.REJECTED;
-  entry?: AiExtensionEntry;
-  error?: StructuralError;
-}
+export type LifecycleResult =
+  | { state: typeof AiExtensionLifecycleState.ACTIVATED; entry: AiExtensionEntry; error?: never }
+  | { state: typeof AiExtensionLifecycleState.REJECTED; error: StructuralError; entry?: never };
 
 /** A capability contributed to a named slot, sourced either from the base kit or an installed template. */
 export interface CapabilityContribution {
@@ -77,4 +92,6 @@ export interface ScanAndActivateResult {
   composed: ComposedCapabilitySet;
   errors: StructuralError[];
   lifecycleResults: LifecycleResult[];
+  /** Bundles excluded on trust grounds (§3 **Output** / `inst-return-result`) — distinct from `errors`. */
+  denials: TrustDenial[];
 }

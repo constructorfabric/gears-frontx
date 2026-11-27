@@ -23,7 +23,8 @@ function manifestOf(name: string): TemplateManifest {
   return {
     name,
     version: '1.0.0',
-    ownershipBoundaries: { exclusiveSubtrees: ['src'], sharedFiles: [] },
+    excludedSubtrees: [],
+    description: 'Fixture template for subtree-addressed source-spec tests.',
   };
 }
 
@@ -223,6 +224,122 @@ describe('narrowBundleToSubtree (inst-resolve-subtree)', () => {
     }
     expect(narrowed.path).toBe('shell/../../evil.txt');
   });
+
+  // H2 regression: unrecognised selected value types must be rejected, not silently dropped.
+  it('refuses with invalid-entry when a retained path has an unrecognised value type, not silently skips it', () => {
+    // Bundle built directly — bypasses bundleOf which only accepts strings.
+    const badBundle = JSON.stringify({
+      $frontxTemplateFiles: {
+        'shell/frontx-template.json': 'shell-manifest',
+        'shell/sub/bad.txt': 42,
+      },
+    });
+
+    const narrowed = narrowBundleToSubtree(badBundle, 'shell');
+
+    expect(narrowed.ok).toBe(false);
+    if (narrowed.ok || narrowed.reason !== 'invalid-entry') {
+      expect.unreachable('narrowing must refuse an unrecognised value type, not skip it');
+    }
+    expect(narrowed.path).toBe('shell/sub/bad.txt');
+  });
+
+  // H2 r3: non-canonical base64 in a selected entry must be rejected (escapesSubtree checked first).
+  it('refuses with invalid-entry when a retained BinaryBundleValue carries non-canonical base64', () => {
+    // 'YQ====' has extra padding — Buffer decodes it but it fails the canonical round-trip.
+    const badBase64Bundle = JSON.stringify({
+      $frontxTemplateFiles: {
+        'shell/frontx-template.json': 'shell-manifest',
+        'shell/binary.bin': { encoding: 'base64', data: 'YQ====' },
+      },
+    });
+
+    const narrowed = narrowBundleToSubtree(badBase64Bundle, 'shell');
+
+    expect(narrowed.ok).toBe(false);
+    if (narrowed.ok || narrowed.reason !== 'invalid-entry') {
+      expect.unreachable('narrowing must refuse non-canonical base64, not install a silently corrupted file');
+    }
+    expect(narrowed.path).toBe('shell/binary.bin');
+  });
+
+  // escapesSubtree check runs BEFORE the base64 canonical check (precedence).
+  it('reports escaping-path rather than invalid-entry when a non-canonical entry also escapes the subtree', () => {
+    const escapingAndBadBase64 = JSON.stringify({
+      $frontxTemplateFiles: {
+        'shell/frontx-template.json': 'shell-manifest',
+        'shell/../../evil.bin': { encoding: 'base64', data: 'YQ====' },
+      },
+    });
+
+    const narrowed = narrowBundleToSubtree(escapingAndBadBase64, 'shell');
+
+    expect(narrowed.ok).toBe(false);
+    if (narrowed.ok || narrowed.reason !== 'escaping-path') {
+      expect.unreachable('escaping-path must take precedence over invalid-entry');
+    }
+  });
+
+  // WATCH: escape priority must be global — independent of entry order.
+  // When one entry has invalid base64 AND another entry escapes the subtree,
+  // escaping-path must win regardless of which entry appears first.
+  it('reports escaping-path when an earlier entry has invalid base64 and a later entry escapes (order A)', () => {
+    // Order A: invalid-base64 entry comes first, escaping entry comes later.
+    // Without the two-pass approach the single-pass loop would return
+    // invalid-entry before it ever reaches the escaping entry.
+    const bundle = JSON.stringify({
+      $frontxTemplateFiles: {
+        'shell/frontx-template.json': 'shell-manifest',
+        'shell/bad.bin': { encoding: 'base64', data: 'YQ====' }, // invalid base64, iterated first
+        'shell/../../evil.txt': 'payload',                        // escaping, iterated later
+      },
+    });
+
+    const narrowed = narrowBundleToSubtree(bundle, 'shell');
+
+    expect(narrowed.ok).toBe(false);
+    if (narrowed.ok || narrowed.reason !== 'escaping-path') {
+      expect.unreachable('escaping-path must win over invalid-entry regardless of entry order');
+    }
+  });
+
+  it('reports escaping-path when the escaping entry appears before the invalid base64 entry (order B — control)', () => {
+    // Order B: escaping entry first. Both the old single-pass and the new
+    // two-pass code produce escaping-path here; this is the control that
+    // confirms order B already worked and continues to work.
+    const bundle = JSON.stringify({
+      $frontxTemplateFiles: {
+        'shell/frontx-template.json': 'shell-manifest',
+        'shell/../../evil.txt': 'payload',                        // escaping, iterated first
+        'shell/bad.bin': { encoding: 'base64', data: 'YQ====' }, // invalid base64, iterated later
+      },
+    });
+
+    const narrowed = narrowBundleToSubtree(bundle, 'shell');
+
+    expect(narrowed.ok).toBe(false);
+    if (narrowed.ok || narrowed.reason !== 'escaping-path') {
+      expect.unreachable('escaping-path must win over invalid-entry');
+    }
+  });
+
+  it('reports invalid-entry (not escaping-path) when all entries are within the subtree but one has bad base64 (safe control)', () => {
+    // No escape present — only bad value. After the two-pass refactor this
+    // must still reach pass 2 and report invalid-entry, not silently succeed.
+    const bundle = JSON.stringify({
+      $frontxTemplateFiles: {
+        'shell/frontx-template.json': 'shell-manifest',
+        'shell/bad.bin': { encoding: 'base64', data: 'YQ====' },
+      },
+    });
+
+    const narrowed = narrowBundleToSubtree(bundle, 'shell');
+
+    expect(narrowed.ok).toBe(false);
+    if (narrowed.ok || narrowed.reason !== 'invalid-entry') {
+      expect.unreachable('invalid-entry must still be reported when no escape is present');
+    }
+  });
 });
 
 describe('resolveToInventory — subtree-addressed references (inst-resolve-addr, inst-resolve-subtree, inst-resolve-subtree-empty)', () => {
@@ -239,12 +356,55 @@ describe('resolveToInventory — subtree-addressed references (inst-resolve-addr
     };
   }
 
+  // Criterion: a subtree whose acquired content carries a path that escapes the
+  // subtree once re-rooted is refused with `INVALID_PATH`, and nothing is
+  // written to the local inventory. The code is what the assertion is about:
+  // every subtree failure used to arrive codeless and be painted over by the
+  // dispatcher's `?? 'ORIGIN_UNAVAILABLE'` default, so a containment refusal
+  // was reported as an unreachable origin. `narrowBundleToSubtree` had the
+  // discriminated reason all along; its caller discarded it.
+  it('refuses an escaping re-rooted path with INVALID_PATH, distinctly from an origin that yields nothing', async () => {
+    const escaping = bundleOf({
+      [`shell/${MANIFEST_FILENAME}`]: JSON.stringify(manifestOf('shell')),
+      'shell/../sibling/evil.txt': 'reaches outside the subtree once re-rooted',
+    });
+    const parsed = parseSourceSpec('github:acme/templates//shell@v1.0.0');
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const result = await resolveToInventory({ kind: 'remote', ref: parsed.value }, { fetchFn: fetchOf(escaping, []) });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('INVALID_PATH');
+    expect(result.error.message).toContain('outside the subtree');
+  });
+
+  // The companion half: a subtree holding no content at the referenced version
+  // carries NO resolver-owned code, because the origin failing to yield what
+  // was addressed is the caller's `ORIGIN_UNAVAILABLE` to name. Asserted so the
+  // two refusals stay distinguishable — that distinction is the whole point of
+  // the change above, and an accidental widening here would erase it.
+  it('leaves an empty subtree without a resolver-owned code, so the caller names it', async () => {
+    const empty = bundleOf({ [`other/${MANIFEST_FILENAME}`]: JSON.stringify(manifestOf('other')) });
+    const parsed = parseSourceSpec('github:acme/templates//shell@v1.0.0');
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+
+    const result = await resolveToInventory({ kind: 'remote', ref: parsed.value }, { fetchFn: fetchOf(empty, []) });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBeUndefined();
+    expect(result.error.message).toContain('holds no content');
+  });
+
   it('narrows the acquired content to the addressed subtree and leaves the sibling out', async () => {
     const parsed = parseSourceSpec('github:acme/templates//shell@v1.0.0');
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
 
-    const result = await resolveToInventory(parsed.value, fetchOf(repositoryBundle, []));
+    const result = await resolveToInventory({ kind: 'remote', ref: parsed.value }, { fetchFn: fetchOf(repositoryBundle, []) });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -259,7 +419,7 @@ describe('resolveToInventory — subtree-addressed references (inst-resolve-addr
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
 
-    const result = await resolveToInventory(parsed.value, fetchOf(repositoryBundle, []));
+    const result = await resolveToInventory({ kind: 'remote', ref: parsed.value }, { fetchFn: fetchOf(repositoryBundle, []) });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -274,7 +434,7 @@ describe('resolveToInventory — subtree-addressed references (inst-resolve-addr
     if (!parsed.ok) return;
 
     const urls: string[] = [];
-    await resolveToInventory(parsed.value, fetchOf(repositoryBundle, urls));
+    await resolveToInventory({ kind: 'remote', ref: parsed.value }, { fetchFn: fetchOf(repositoryBundle, urls) });
 
     expect(urls).toEqual(['https://api.github.com/repos/acme/templates/tarball/v1.0.0']);
   });
@@ -288,7 +448,7 @@ describe('resolveToInventory — subtree-addressed references (inst-resolve-addr
       [`shell/${MANIFEST_FILENAME}`]: JSON.stringify(manifestOf('acme-shell')),
       'shell/../../evil.txt': 'payload',
     });
-    const result = await resolveToInventory(parsed.value, fetchOf(hostile, []));
+    const result = await resolveToInventory({ kind: 'remote', ref: parsed.value }, { fetchFn: fetchOf(hostile, []) });
 
     // The resolver must refuse before it returns a record, so nothing reaches
     // the content store and no guard further down has to catch it by throwing.
@@ -303,8 +463,8 @@ describe('resolveToInventory — subtree-addressed references (inst-resolve-addr
     if (!parsed.ok) return;
 
     const result = await resolveToInventory(
-      parsed.value,
-      fetchOf(JSON.stringify(manifestOf('acme-shell')), []),
+      { kind: 'remote', ref: parsed.value },
+      { fetchFn: fetchOf(JSON.stringify(manifestOf('acme-shell')), []) },
     );
 
     expect(result.ok).toBe(false);
@@ -317,7 +477,7 @@ describe('resolveToInventory — subtree-addressed references (inst-resolve-addr
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
 
-    const result = await resolveToInventory(parsed.value, fetchOf(repositoryBundle, []));
+    const result = await resolveToInventory({ kind: 'remote', ref: parsed.value }, { fetchFn: fetchOf(repositoryBundle, []) });
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -333,8 +493,8 @@ describe('resolveToInventory — subtree-addressed references (inst-resolve-addr
       expect.unreachable('both fixture references must parse');
     }
 
-    const shellResult = await resolveToInventory(shell.value, fetchOf(repositoryBundle, []));
-    const mfeResult = await resolveToInventory(mfe.value, fetchOf(repositoryBundle, []));
+    const shellResult = await resolveToInventory({ kind: 'remote', ref: shell.value }, { fetchFn: fetchOf(repositoryBundle, []) });
+    const mfeResult = await resolveToInventory({ kind: 'remote', ref: mfe.value }, { fetchFn: fetchOf(repositoryBundle, []) });
 
     expect(shellResult.ok).toBe(true);
     expect(mfeResult.ok).toBe(true);

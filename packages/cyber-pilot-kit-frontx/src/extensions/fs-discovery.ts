@@ -15,7 +15,9 @@
  * shape) so the algorithm is testable without touching real disk; production
  * usage supplies `createFsBundleReader()` from `fs-bundle-reader.ts`.
  */
-import type { AiExtensionBundle, ExtensionCategory, StructuralError } from './types.js';
+import type { AiExtensionBundle, ExtensionCategory, StructuralError, TrustDenial } from './types.js';
+import { checkIdentityTrust } from './trust.js';
+import { isProjectStateDocument, type ProjectStateDocument } from '../project-state.js';
 
 /** Injectable filesystem access for the AI-extension bundle scan. */
 export interface BundleFsReader {
@@ -43,6 +45,12 @@ export interface DiscoveredBundle {
   bundle: AiExtensionBundle;
   /** Structural errors found at the fs level, scoped to this bundle root. */
   structuralErrors: StructuralError[];
+  /**
+   * Present when this identity's bundle was excluded on trust grounds
+   * (§1.1-1.2, §4 transition 1) — `bundle` and `structuralErrors` are both
+   * empty in that case, because no slot of a denied bundle is ever read.
+   */
+  denial?: TrustDenial;
 }
 
 function joinPath(...parts: string[]): string {
@@ -56,6 +64,7 @@ function isSlotCategory(value: unknown): value is ExtensionCategory {
   return typeof value === 'string' && Object.prototype.hasOwnProperty.call(SLOT_DIR_NAMES, value);
 }
 
+// @cpt-begin:cpt-frontx-algo-template-ai-extensions-contract-scan-activate:p1:inst-validate-entry-shape
 /**
  * Validates one declared entry's ON-DISK shape against its slot's required
  * layout. Distinct from `validateExtensionEntry` (field-shape only) — this
@@ -105,6 +114,24 @@ function validateOnDiskShape(
   }
   return { ok: true };
 }
+// @cpt-end:cpt-frontx-algo-template-ai-extensions-contract-scan-activate:p1:inst-validate-entry-shape
+
+// @cpt-begin:cpt-frontx-algo-template-ai-extensions-contract-scan-activate:p1:inst-check-identity-trust
+/** Reads the kit's projection of project.json. Malformed or unsupported state denies discovery. */
+export function readProjectStateDocument(contentRoot: string, reader: BundleFsReader): ProjectStateDocument | null {
+  const raw = reader.readFile(joinPath(contentRoot, '.frontx', 'project.json'));
+  if (raw === undefined) return null;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+
+  return isProjectStateDocument(parsed) ? parsed : null;
+}
+// @cpt-end:cpt-frontx-algo-template-ai-extensions-contract-scan-activate:p1:inst-check-identity-trust
 
 /**
  * Scans ONE id-scoped bundle root `.frontx/ai/<template-identity>/` for its
@@ -113,8 +140,24 @@ function validateOnDiskShape(
  * structural errors — scoped entirely to this bundle root so a malformed
  * bundle never affects a sibling bundle discovered under the same
  * `.frontx/ai/`.
+ *
+ * The identity's trust check (`checkIdentityTrust`, imported from `./trust.js` — the
+ * SAME predicate `scanAndComposeExtensions` gates on) runs FIRST,
+ * before the anchor is even read: a denied identity's bundle is excluded
+ * from discovery wholesale, and no slot of it — not even `extension.json` —
+ * is ever read (§1.1-1.2, §4 transition 1).
  */
-function discoverSingleBundle(identity: string, bundleRoot: string, reader: BundleFsReader): DiscoveredBundle {
+function discoverSingleBundle(
+  identity: string,
+  bundleRoot: string,
+  reader: BundleFsReader,
+  projectState: ProjectStateDocument | null,
+): DiscoveredBundle {
+  const trust = checkIdentityTrust(identity, projectState);
+  if (!trust.trusted) {
+    return { identity, bundle: [], structuralErrors: [], denial: trust.denial };
+  }
+
   const anchorPath = joinPath(bundleRoot, 'extension.json');
 
   // @cpt-begin:cpt-frontx-algo-template-ai-extensions-contract-scan-activate:p1:inst-load-bundle
@@ -184,6 +227,7 @@ function discoverSingleBundle(identity: string, bundleRoot: string, reader: Bund
   return { identity, bundle, structuralErrors };
 }
 
+// @cpt-begin:cpt-frontx-flow-template-ai-extensions-bundle-publish-discover-activate:p1:inst-initiate-discovery
 /**
  * Resolves every per-template id-scoped bundle root directly under
  * `aiRoot`. A `<template-identity>` is the template's manifest identity
@@ -215,6 +259,7 @@ function resolveBundleRoots(aiRoot: string, reader: BundleFsReader): { identity:
   }
   return roots;
 }
+// @cpt-end:cpt-frontx-flow-template-ai-extensions-bundle-publish-discover-activate:p1:inst-initiate-discovery
 
 /**
  * Scans the scaffolded project's `.frontx/ai/` for EACH per-template
@@ -229,6 +274,11 @@ function resolveBundleRoots(aiRoot: string, reader: BundleFsReader): { identity:
 export function discoverExtensionBundlesFromFs(contentRoot: string, reader: BundleFsReader): DiscoveredBundle[] {
   const aiRoot = joinPath(contentRoot, '.frontx', 'ai');
 
+  // Read ONCE per scan, not once per identity — every discovered identity's
+  // trust check (`checkIdentityTrust`) is decided against this same parsed
+  // document.
+  const projectState = readProjectStateDocument(contentRoot, reader);
+
   // @cpt-begin:cpt-frontx-flow-template-ai-extensions-bundle-publish-discover-activate:p1:inst-initiate-discovery
   // Enumerate each per-template id-scoped bundle root under the scaffolded
   // project's `.frontx/ai/`, resolving scoped npm-style identities
@@ -236,6 +286,6 @@ export function discoverExtensionBundlesFromFs(contentRoot: string, reader: Bund
   // one-segment identities; a bundle-root name that is not a real directory
   // simply is not returned by `listDir` and contributes nothing.
   const bundleRoots = resolveBundleRoots(aiRoot, reader).sort((a, b) => a.identity.localeCompare(b.identity));
-  return bundleRoots.map(({ identity, root }) => discoverSingleBundle(identity, root, reader));
+  return bundleRoots.map(({ identity, root }) => discoverSingleBundle(identity, root, reader, projectState));
   // @cpt-end:cpt-frontx-flow-template-ai-extensions-bundle-publish-discover-activate:p1:inst-initiate-discovery
 }

@@ -13,7 +13,7 @@
 Teams increasingly rely on AI agents to build and maintain frontends. For an agent to do that reliably it needs a product surface that is **stable, narrow, and explicitly contracted** — not an open-ended codebase to guess at. FrontX provides exactly that, across three recurring needs:
 
 - **Stable contracts an agent can target** — a versioned runtime and type-system substrate held to semantic-versioning discipline.
-- **A repository lifecycle an agent can drive end to end** — install, apply, assemble, validate, and upgrade templates, with per-template provenance and review-gated, reversible upgrades.
+- **A repository lifecycle an agent can drive end to end** — register, apply, assemble, validate, and upgrade templates, tracked in one project state document, with review-gated, reversible upgrades.
 - **AI tooling that knows the ecosystem out of the box** — and can be extended with knowledge specific to each template in use.
 
 ## Who FrontX is for
@@ -55,11 +55,11 @@ Owns the **full lifecycle of assembling and evolving a repository from
 templates**:
 
 - Install, list, update, and validate templates from a versioned source
-- Apply a template to seed a new repository or extend an existing one
-- Assemble a repository from multiple templates, resolving referenced presets
+- Register a template's origin under a project, then apply it — as an explicit, target-keyed batch — to seed a new repository or extend an existing one
+- Preview an explicit batch statelessly before applying it
 - Declare each template's ownership boundaries; detect and prevent conflicting assembly before any file is written
-- Record each applied template's provenance independently
-- Upgrade each applied template independently, as a reviewable change set
+- Track every registered template and its applied targets in one project state document
+- Upgrade a registered template to a new origin independently, as a reviewable, reversible change set
 
 Package: `@gears-frontx/cli` — the `frontx` executable, which ships zero bundled
 templates.
@@ -69,12 +69,9 @@ templates.
 Equips **AI agents with ecosystem-wide capabilities** and lets templates
 contribute their own:
 
-- FrontX-specific skills for agents (create microfrontends, validate templates, generate type definitions, …)
-- Template-bundled AI extensions — skills, workflows, guidelines, reference artifacts — alongside the base capabilities
-- Automatic discovery and activation of installed-template extensions, with no manual wiring
-- AI-driven upgrade orchestration with review gates and impact analysis
-- Ecosystem knowledge available at session start, with no training step
-- Template-agnostic: ships zero template-specific content
+- Request routing and intent-driven scaffolding through installed kit skills
+- Template-specific skills, workflows, guidelines and reference artifacts from applied templates
+- Extension discovery and upgrade orchestration APIs for integrating hosts
 
 Package: `@gears-frontx/cyber-pilot-kit-frontx` — the AI Tooling Kit.
 
@@ -112,14 +109,16 @@ and AI Tooling Framework carry a project through its lifecycle.
 
 ### Requirements
 
-- Node.js 24+
+- Node.js 24.14.0+
 - npm 10+
 
 ### Install the CLI
 
-```bash
-npm install -g @gears-frontx/cli
-```
+This walkthrough requires **FrontX CLI 0.4.0**. Follow the
+[source build instructions](QUICK_START.md#install-the-cli) until the release
+is published. After publication, install `@gears-frontx/cli@0.4.0` with
+`npm install -g @gears-frontx/cli@0.4.0` and verify that `frontx version`
+prints `0.4.0`.
 
 The `frontx` CLI is your entry point to the ecosystem. It resolves templates
 from a source you name and manages them across a project's lifecycle; it ships
@@ -128,54 +127,39 @@ template you apply.
 
 ### Scaffold and evolve a project
 
-```bash
-# Install a template from a versioned source (host:owner/repo[//subtree]@ref)
-frontx install github:acme/starter-repo@v1.0.0
+[Create your first project](QUICK_START.md#your-first-project) with a local
+template. The walkthrough creates a manifest, registers it, applies it to
+`app` and verifies the generated file. For a project created by an older CLI,
+follow the [manual migration](QUICK_START.md#migrate-a-project-created-by-an-older-cli).
 
-# Install a template that occupies a subtree of a repository
-frontx install github:acme/templates//shell@v1.0.0
-
-# List installed templates by the identity each manifest declares
-frontx list
-
-# Seed a new repository from an installed template, by that identity -
-# which is what the manifest declares, not the repository it came from.
-# Here github:acme/starter-repo declares "@acme/web-app" in its manifest.
-frontx seed @acme/web-app ./my-app
-
-# Or add a template into an existing repository — writes only the ground the
-# template declares, and refuses, naming the paths, where that ground already
-# holds content no provenance accounts for
-frontx add @acme/web-app ./existing-repo
-
-# Later, upgrade an applied template to a newer version (reviewable change set)
-frontx upgrade ./my-app 1.1.0
-```
-
-`acme` above is a placeholder: any repository can publish templates. The FrontX
-templates are published from
-[`constructorfabric/gears-frontx-templates`](https://github.com/constructorfabric/gears-frontx-templates).
-See that repository's README for the templates it publishes and the source-spec
-to install one.
-
-The CLI records each applied template's provenance under the project's
-`.frontx/` and can upgrade each independently. See [QUICK_START.md](QUICK_START.md)
-for the full command walkthrough and AI-tooling usage.
+For a published template, register a `github:owner/repo[//subtree]@ref`
+origin. The CLI records the full 40-hex commit stated by the archive and
+refuses an archive missing that commit. Consult the
+[templates repository](https://github.com/constructorfabric/gears-frontx-templates)
+for published versions and the [manifest contract](packages/cli/architecture/features/template-manifest/FEATURE.md)
+for compatibility.
 
 ### The FrontX CLI
 
 The `frontx` CLI resolves templates from a source you name and manages them
 within a project. It bundles no templates of its own.
 
+Target paths and template names that differ only by Unicode NFC/NFD
+normalization collide during target conflict checks, batch deduplication, and
+registration. This scoped collision handling does not impose broader portable
+filename restrictions; those apply to AI-bundle names only.
+
 | Command | Purpose |
 |---------|---------|
-| `frontx install <spec>` | Install a template from a source-spec (`host:owner/repo[//subtree]@ref`) into the local inventory, tracked under the identity its manifest declares |
-| `frontx list [--json]` | List installed templates; `--json` emits one machine-readable record per entry, carrying its identity, pinned reference, source address and the description its manifest declares |
-| `frontx seed <templateRef> <targetDir>` | Seed a **new** repository from a template; `templateRef` is the identity shown by `frontx list`, not the repository name |
-| `frontx add <templateRef> <targetDir>` | Add a template into an **existing** repository; writes only the ground the template declares and refuses, naming the paths, where that ground already holds content no applied template's provenance accounts for |
-| `frontx upgrade <projectRoot> <version>` | Upgrade an applied template (reviewable change set) |
-| `frontx validate <templateDir>` | Validate a template manifest for publication |
-| `frontx update-local <identity> <spec>` | Refresh a locally installed template from its source |
+| `frontx install <spec>` | Install into local inventory. |
+| `frontx register <origin>` | Record the manifest name and origin in `.frontx/project.json`. |
+| `frontx assemble --input <batch-json>` | Preview ownership. A missing remote origin may be installed into inventory. |
+| `frontx apply --input <batch-json>` | Materialize the registered templates at the specified targets. |
+| `frontx upgrade <name> <origin>` | Review changes across a template's targets. |
+| `frontx delete <target> --dry-run` | Show which paths deletion would remove and preserve. |
+
+See the [full command reference](QUICK_START.md#cli-command-reference) and
+[confirmation protocol for agents](QUICK_START.md#confirmation-protocol).
 
 ### AI Tooling
 
@@ -194,25 +178,17 @@ cfs kit install path/packages/cyber-pilot-kit-frontx
 
 On install, its `frontx_`-prefixed resources (KIT-1) register in the project's
 `.cf-studio/config/core.toml` and become available to agents at session start —
-no training step. As shipped today the kit provides four capabilities:
-
-- **Ecosystem fluency and request routing** — a top-level skill (`SKILL.md`), navigation rules (`AGENTS.md`), and boundary guidelines that let agents reason correctly about MFEs, extension domains, source-specs, and the ecosystem/template boundary. Its routing section states which capability serves each kind of FrontX request.
-- **Intent-driven project scaffolding** — the developer says what they want built rather than naming a template; the kit matches that intent against the descriptions installed templates declare, applies the chosen set by running `frontx seed`/`frontx add`, and then realizes each unit the intent names through the applied templates' own activated skills. The direct CLI path stays available unchanged for a developer who already holds a reference.
-- **Template-extension discovery & activation** — a template can ship its own skills, workflows, guidelines, and reference artifacts; on `frontx install`, the kit discovers and activates them in the consuming project, with no manual wiring.
-- **AI-driven upgrade orchestration** — the kit drives template upgrades over the CLI's machine-readable command surface (`frontx upgrade --json`), layering review gates, migration analysis, and downstream impact assessment onto the direct CLI path.
-
-Standalone skills such as creating a microfrontend or generating type
-definitions are PRD-declared (under the `project`/`mfe` namespaces) but not yet
-shipped as discrete skills. The framework is template-agnostic and ships zero
-template-specific content; template-specific capabilities arrive through
-template bundles.
+no training step. The [kit skill](packages/cyber-pilot-kit-frontx/SKILL.md)
+routes requests and guides intent-driven project scaffolding. Applying a
+registered template to its first target materializes its AI bundle. Hosts
+can integrate extension discovery and upgrade orchestration through the npm
+package's [TypeScript APIs](packages/cyber-pilot-kit-frontx/src/index.ts).
 
 ### Repository Structure
 
 This repository ships the **ecosystem** — the runtime, type system, API layer,
 CLI, and AI kit. What an application *becomes* is defined by templates, which
-live and version outside this repository, in the templates repository linked
-above.
+live and version outside this repository; see the manifest contract above.
 
 ```bash
 FrontX/                              # Ecosystem repository root
@@ -239,7 +215,7 @@ layer, CLI, and AI kit:
 git clone https://github.com/constructorfabric/gears-frontx.git
 cd gears-frontx
 npm ci
-npm run build:packages       # build all ecosystem packages
+npm run build:packages       # build the packages in the root aggregate (AI kit last)
 npm run test:unit            # unit tests across packages/* and scripts/
 npm run arch:check           # architecture-boundary gates
 npm run arch:deps            # dependency-boundary rules

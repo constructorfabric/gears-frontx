@@ -63,7 +63,13 @@ import path from 'node:path';
  * repo-script depends on `@gears-frontx/cli` being built. Kept honest by the
  * sync-guard test in `ecosystem-packages.test.mjs` rather than by hope.
  */
-export const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'];
+export const DEPENDENCY_FIELDS = [
+  'dependencies',
+  'devDependencies',
+  'peerDependencies',
+  'optionalDependencies',
+  'overrides',
+];
 
 /**
  * @typedef {{ dir: string; name: string; version: string }} EcosystemPackage

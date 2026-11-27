@@ -10,20 +10,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import { joinWithinRoot } from '@gears-frontx/test-support/path-guard';
 import { createLocalFetchFn } from '../local-fetch';
-import { TemplateInventory } from '../../inventory/TemplateInventory';
-import { FsInventoryIndex } from '../fs-inventory-index';
-import { FsContentStore } from '../fs-content-store';
-import { createFsReadContentItemsFn } from '../fs-read-content-items';
-import { createFsWriteFileFn, createFsReadProjectFileFn } from '../fs-project-io';
-import { createFsProvenanceWriteFn } from '../provenance-io';
-import { installCommand } from '../../commands/install';
-import { seedRepository } from '../../commands/seed-repository';
-import { createFsReadTargetDirFn } from '../fs-target-dir';
-
-// A small, self-contained synthetic fixture template checked in under this
-// package's own test fixtures directory — not a real product template (those
-// now live in a separate repository).
-const FIXTURE_SHELL_DIR = path.resolve(__dirname, '../../__tests__/fixtures/fixture-shell');
+import { isBinaryBundleValue, decodeBundleValue, readBundleFiles } from '../../bundle/envelope';
 
 function makeTmpDir(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -40,7 +27,7 @@ describe('createLocalFetchFn — TEST-ONLY local content adapter', () => {
     fs.rmSync(localDir, { recursive: true, force: true });
   });
 
-  it('walks a local directory and returns the $frontxTemplateFiles bundle envelope, ignoring the url argument', async () => {
+  it('walks a local directory and returns the $frontxTemplateFiles bundle envelope with BinaryBundleValue entries, ignoring the url argument', async () => {
     fs.writeFileSync(joinWithinRoot(localDir, 'frontx-template.json'), '{"name":"fixture","version":"1.0.0"}');
     fs.mkdirSync(joinWithinRoot(localDir, 'src'));
     fs.writeFileSync(joinWithinRoot(localDir, 'src', 'index.ts'), 'export {};');
@@ -48,12 +35,31 @@ describe('createLocalFetchFn — TEST-ONLY local content adapter', () => {
     const fetchFn = createLocalFetchFn(localDir);
     const content = await fetchFn('https://this-url-is-ignored.example/anything');
 
-    expect(JSON.parse(content)).toEqual({
-      $frontxTemplateFiles: {
-        'frontx-template.json': '{"name":"fixture","version":"1.0.0"}',
-        [path.join('src', 'index.ts')]: 'export {};',
-      },
-    });
+    const files = readBundleFiles(content);
+    expect(files).toBeDefined();
+    const keys = Object.keys(files!).sort();
+    expect(keys).toEqual(['frontx-template.json', 'src/index.ts'].sort());
+    for (const v of Object.values(files!)) {
+      expect(isBinaryBundleValue(v)).toBe(true);
+    }
+    expect(decodeBundleValue(files!['frontx-template.json'] as never)?.toString('utf-8')).toBe('{"name":"fixture","version":"1.0.0"}');
+    expect(decodeBundleValue(files!['src/index.ts'] as never)?.toString('utf-8')).toBe('export {};');
+  });
+
+  it('preserves exact bytes for a file containing invalid UTF-8 sequences', async () => {
+    const binaryBytes = Buffer.from([0xff, 0xfe, 0x00, 0x01, 0x80, 0x81]);
+    fs.writeFileSync(joinWithinRoot(localDir, 'binary.bin'), binaryBytes);
+    fs.writeFileSync(joinWithinRoot(localDir, 'frontx-template.json'), '{"name":"bin-fixture","version":"1.0.0"}');
+
+    const fetchFn = createLocalFetchFn(localDir);
+    const content = await fetchFn('unused://url');
+    const files = readBundleFiles(content);
+    expect(files).toBeDefined();
+    const v = files!['binary.bin'];
+    expect(isBinaryBundleValue(v)).toBe(true);
+    const decoded = decodeBundleValue(v as never);
+    expect(decoded).not.toBeNull();
+    expect(decoded!.equals(binaryBytes)).toBe(true);
   });
 
   it('skips node_modules/dist/dist-lib and other build/dependency artifact directories', async () => {
@@ -71,7 +77,7 @@ describe('createLocalFetchFn — TEST-ONLY local content adapter', () => {
   });
 
   // F-8 (issue #470 phase 4.5): an agent-state directory can exist inside a
-  // template source dir (e.g. a checked-out template's `.omc/` directory) without being part
+  // template source dir (e.g. `template-shell/.omc/` today) without being part
   // of the template's declared content — it must never leak into the offline
   // bundle this test-only adapter builds. `.omo/` is the same class, written
   // per agent session rather than per working directory.
@@ -96,67 +102,16 @@ describe('createLocalFetchFn — TEST-ONLY local content adapter', () => {
   });
 });
 
-describe('offline e2e — frontx install + seed assemble the fixture-shell/ template OFFLINE (no network)', () => {
-  it('materializes fixture-shell into a project via the local adapter + the real install/seed pipeline', async () => {
-    expect(fs.existsSync(path.join(FIXTURE_SHELL_DIR, 'frontx-template.json'))).toBe(true);
-
-    const inventoryRoot = makeTmpDir('frontx-local-fetch-inventory-');
-    const targetDir = makeTmpDir('frontx-local-fetch-target-');
-    try {
-      const inventory = new TemplateInventory(new FsInventoryIndex(inventoryRoot), new FsContentStore(inventoryRoot));
-      const fetchFn = createLocalFetchFn(FIXTURE_SHELL_DIR);
-
-      const installResult = await installCommand('local:fixture-org/fixture-shell@offline', inventory, fetchFn);
-      expect(installResult.ok).toBe(true);
-
-      const lookupFn = (name: string) => inventory.lookup(name);
-      const readContentFn = createFsReadContentItemsFn(inventoryRoot);
-      const writeFileFn = createFsWriteFileFn();
-      const provenanceWriteFn = createFsProvenanceWriteFn();
-      const readProjectFileFn = createFsReadProjectFileFn();
-
-      // Identity is the manifest's own declared `name`
-      // ("@fixture/shell", `fixture-shell/frontx-template.json`), not the
-      // repository segment ("fixture-shell") the source-spec named.
-      const templateIdentity = '@fixture/shell';
-      const seedResult = await seedRepository(
-        templateIdentity,
-        targetDir,
-        lookupFn,
-        readContentFn,
-        writeFileFn,
-        provenanceWriteFn,
-        createFsReadTargetDirFn(),
-        readProjectFileFn,
-      );
-
-      expect(seedResult.ok).toBe(true);
-      if (!seedResult.ok) return;
-      expect(seedResult.appliedTemplates).toEqual([templateIdentity]);
-
-      // Representative files inside declared exclusive subtrees materialize as REAL on-disk files.
-      expect(fs.existsSync(joinWithinRoot(targetDir, 'package.json'))).toBe(true);
-      expect(fs.existsSync(joinWithinRoot(targetDir, 'src', 'index.ts'))).toBe(true);
-      expect(fs.readFileSync(joinWithinRoot(targetDir, 'src', 'index.ts'), 'utf-8')).toBe(
-        fs.readFileSync(path.join(FIXTURE_SHELL_DIR, 'src', 'index.ts'), 'utf-8'),
-      );
-
-      // Provenance was written OFFLINE, per the same materialize path a real install uses.
-      const provenance = JSON.parse(fs.readFileSync(joinWithinRoot(targetDir, '.frontx', 'provenance.json'), 'utf-8')) as Array<{
-        templateIdentity: string;
-      }>;
-      expect(provenance.map((r) => r.templateIdentity)).toEqual([templateIdentity]);
-
-      // No network / build-artifact directories were ever pulled into the target.
-      expect(fs.existsSync(joinWithinRoot(targetDir, 'node_modules'))).toBe(false);
-      expect(fs.existsSync(joinWithinRoot(targetDir, 'dist'))).toBe(false);
-      // F-8: a template's `.omc/` directory can carry real agent-state on disk, and `.omo/`
-      // is the same class; neither may be seeded as declared template content.
-      expect(fs.existsSync(joinWithinRoot(targetDir, '.omc'))).toBe(false);
-      expect(fs.existsSync(joinWithinRoot(targetDir, '.omo'))).toBe(false);
-    } finally {
-      fs.rmSync(inventoryRoot, { recursive: true, force: true });
-      fs.rmSync(targetDir, { recursive: true, force: true });
-    }
-  });
-});
+// The offline e2e describe block this file used to carry here (`frontx
+// install` + the OLD `seedRepository(templateRef, targetDir, ...)` against
+// the real on-disk `template-shell/`) exercised a command signature checkpoint
+// 3 retires entirely (`commands/seed-repository.ts`'s REWRITE header comment):
+// the new `seedRepository(dir, batch, adoptExisting, deps)` takes a batch and
+// a project-state document, not a bare `templateRef`, and has no
+// `appliedTemplates`/provenance.json shape to assert on. A real end-to-end
+// equivalent for the new model would need `dir` to itself resolve
+// `path:template-shell`'s relative origin against this monorepo's checkout —
+// which only holds when `dir` IS this checkout, not an arbitrary disposable
+// tmp directory this suite creates — so it is not reproduced here; the new
+// seed/apply/assemble pipeline's own fixture-backed coverage lives in
+// `__tests__/entry-flows.test.ts` and `__tests__/cli.test.ts` instead.

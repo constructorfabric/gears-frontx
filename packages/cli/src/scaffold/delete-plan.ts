@@ -1,0 +1,655 @@
+// @cpt-FEATURE:cpt-frontx-feature-cli-scaffolding:p1
+// @cpt-algo:cpt-frontx-algo-cli-scaffolding-delete-plan:p1
+// @cpt-dod:cpt-frontx-dod-cli-scaffolding-delete:p1
+//
+// Computes one already-applied target's deletion plan: which real on-disk
+// paths under it are safe to remove (`toDelete`), and which must be
+// preserved (`toPreserve`). Pure logic behind injected seams — no direct
+// filesystem access here, matching every other scaffold/manifest module's
+// convention (`manifest/validate-content-self-containment.ts`'s
+// `ListPayloadFilesFn`, `scaffold/conflict-check.ts`'s `CanonicalizeTargetFn`,
+// `scaffold/existing-content.ts`'s reader seams).
+//
+// The target's effective ownership — the six-term subtraction
+// `cpt-frontx-algo-cli-scaffolding-uniform-apply`'s own `inst-ua-compute-
+// ownership` step fixes — is computed by calling `effective-ownership.ts`
+// directly rather than restating it: that module's own header comment names
+// this algorithm's `inst-dp-compute-ownership` step as ONE of the two
+// callers of the ONE shared formulation, and marks that step there,
+// alongside `inst-ua-compute-ownership`, as the single implementation both
+// invoke. It is not marked a second time in this file — calling the
+// function is what realizes the step.
+import path from 'node:path';
+import { RESERVED_ENVIRONMENT_ENTRIES, readManifestFromContent } from '../manifest/validate-contract';
+import { computeExclusionRoots, isWithinEffectiveOwnership, reservedEnvironmentPrefix } from './effective-ownership';
+import { resolveRegisteredManifestContent } from './registered-manifest';
+import { pathWithinSubtree, pathWithinTarget, joinUnderTarget, withoutTrailingSlash } from '../paths/relative-path';
+import { parseLocalOrigin } from '../resolver/types';
+import type { CanonicalizeTargetFn } from './conflict-check';
+import { declarationCovered } from '../project-state/retained-ground';
+import type { ProjectStateDocument } from '../project-state/types';
+import type { InventoryEntry } from '../inventory/types';
+import type { ReadFileFn } from '../manifest/types';
+import { FRONTX_NAMESPACE_ROOT } from '../manifest/types';
+import { classifierFromCanonicalize, registeredLocalOriginRaws } from './strict-path';
+import type { ClassifyPathStrictFn } from './strict-path';
+import type { ErrorCode } from '../envelope';
+
+// lookup supplies the installed manifest's current declaration for the union
+// with the owning project's recorded excludedSubtrees.
+export interface DeletePlanInventoryPort {
+  lookup(name: string): InventoryEntry | undefined;
+}
+
+// Enumerates every real file reachable under `absoluteDir`, POSIX-relative
+// to `absoluteDir` (no leading slash) — the concrete on-disk enumeration
+// this algorithm's effective-ownership PREDICATE (`isWithinEffectiveOwnership`)
+// needs turned into an actual list of candidate paths (`inst-dp-compute-
+// ownership`'s own text: a target's effective ownership is a predicate, not
+// an enumeration; this seam is what supplies the candidates the predicate
+// then filters). Resolves to `[]`, never a throw, when `absoluteDir` does
+// not exist at all — an applied target ordinarily DOES exist on disk, but a
+// target whose ground was already partially or fully removed by hand is not
+// this algorithm's error to raise; it simply has fewer real candidates to
+// plan against.
+//
+// Deliberately NOT `ListPayloadFilesFn` (`manifest/types.ts`): that seam is
+// scoped to a TEMPLATE's own directory and, by its own contract, skips
+// `node_modules`. This algorithm's six-term subtraction names no such
+// exclusion, and reusing that behavior here would silently add a seventh,
+// undeclared term to the ONE effective-ownership formula this algorithm
+// shares verbatim with `apply` (`cpt-frontx-algo-cli-scaffolding-uniform-
+// apply`'s own `inst-ua-compute-ownership`).
+export type ListTargetFilesFn = (absoluteDir: string) => Promise<string[]>;
+
+// Enumerates every path under `absoluteDir` that `ListTargetFilesFn` above
+// silently leaves out of ITS OWN enumeration — a FIFO, a socket, a device, a
+// dangling symlink, or a symlink escaping the target's own real root, live
+// or dangling — none of which is a "real file" that seam's contract can
+// answer for, and none of which this algorithm may simply drop: an entry in
+// neither `toDelete` nor `toPreserve` breaks the one promise `delete`'s
+// confirmation gate rests on, that the lists state the blast radius before
+// anything is executed. A DIFFERENT, dedicated seam rather than widening
+// `ListTargetFilesFn`'s own `string[]` contract to somehow carry both
+// answers at once: `ListTargetFilesFn` is shared with callers outside this
+// algorithm (`commands/delete.ts`'s own containment pass reuses its
+// candidate list verbatim), and none of them ask this second question.
+export type ListUnenumerableTargetEntriesFn = (absoluteDir: string) => Promise<string[]>;
+
+export type DeletionPlanResult =
+  | {
+      ok: true;
+      toDelete: string[];
+      toPreserve: string[];
+      // Not itself part of the algorithm's literal `{toDelete, toPreserve}`
+      // output (FEATURE §3 "Compute a Target's Deletion Plan") — surfaced
+      // anyway because `inst-dp-record-owner` already determines it as an
+      // intermediate step, and the caller (`commands/delete.ts`) needs to
+      // know which template's `targets[]` entry to remove `<target>` from.
+      templateName: string;
+      // Present ONLY when the owning template's CURRENT manifest and its
+      // RECORDED project-state declaration were BOTH established and they
+      // name different sets of `excludedSubtrees` (`inst-dp-if-exclusions-
+      // drift`) — the two sources this plan's own `declaredExclusions`
+      // unions (`inst-dp-union-declared-exclusions`) disagreeing with each
+      // other. Surfaced on the plan's own reported shape, not buried in a
+      // comment, so a developer confirming a deletion computed from the
+      // union can see THAT the manifest and the record disagree and WHICH
+      // entries came from which — the union already protects both sides'
+      // ground either way, but silently unioning two disagreeing sources
+      // would hide a fact worth a developer's attention (a vendored
+      // manifest edited after registration without ever re-registering, or
+      // a stale record nobody refreshed). Absent, never an empty object,
+      // when either source could not be established at all (nothing to
+      // compare) or when both agree.
+      exclusionsDrift?: { current: string[]; recorded: string[] };
+      // Present ONLY when the owning entry is marked `exclusionsBackfilled`
+      // (an old file may sit in ground the template relinquished): the
+      // project-relative roots of every declared exclusion beneath THIS target,
+      // for `commands/delete.ts` to record on the entry as `relinquishedGround`
+      // once the target is gone, so the protection the mark gave while the
+      // target stood does not end with it.
+      relinquishedGround?: string[];
+    }
+  | { ok: false; code: ErrorCode; message: string; details?: Record<string, unknown> };
+
+// Derives the project-relative folder a `path:`-installed template's own
+// origin occupies, re-running the SAME canonicalization `register.ts`'s own
+// `resolveOrigin` performs (and discards without storing) at register time —
+// the raw stored `origin` string may carry a `./` prefix or other spelling
+// `computeExclusionRoots`'s whole-path-segment comparisons would not
+// recognize as the plain form a real on-disk path resolves to. `undefined`
+// for a remote origin (no local folder to exclude at all), and also for a
+// local origin whose folder can no longer be proven to stay inside the
+// project root — it was already proven to at register time
+// (`register.ts`'s own `inst-cpreg-install` clause), so a failure here means
+// that ground has since been removed or now escapes via a changed symlink;
+// either way there is nothing real left to subtract, so the term is simply
+// omitted rather than refusing the whole plan over ground that no longer
+// exists.
+function deriveLocalOriginFolder(origin: string, canonicalizeFn: CanonicalizeTargetFn): string | undefined {
+  const relativePath = parseLocalOrigin(origin);
+  if (relativePath === undefined) return undefined;
+  const canonical = canonicalizeFn(relativePath);
+  return canonical ?? undefined;
+}
+
+/**
+ * cpt-frontx-algo-cli-scaffolding-delete-plan — the deletion plan for one
+ * recorded target spelling: its effective ownership, with every registered local
+ * origin protected, minus every nested target belonging to a DIFFERENT registered
+ * template, enumerated against what actually exists on disk. Refuses with
+ * `TARGET_NOT_APPLIED` when `<target>` matches no registered template's
+ * `targets[]` array.
+ */
+export async function computeDeletionPlan(
+  target: string,
+  repoRoot: string,
+  document: ProjectStateDocument,
+  inventory: DeletePlanInventoryPort,
+  canonicalizeFn: CanonicalizeTargetFn,
+  listTargetFilesFn: ListTargetFilesFn,
+  readFileFn: ReadFileFn,
+  listUnenumerableTargetEntriesFn: ListUnenumerableTargetEntriesFn,
+  // Fail-closed locator for registered local origins. Absent in unit tests
+  // with fakes, where the lenient canonicalizer stands in.
+  classifyPathStrictFn: ClassifyPathStrictFn = classifierFromCanonicalize(canonicalizeFn),
+): Promise<DeletionPlanResult> {
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-foreach-template
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-if-found
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-record-owner
+  let ownerName: string | undefined;
+  let ownerEntryFound: ProjectStateDocument['templates'][string] | undefined;
+  for (const [candidateName, candidateEntry] of Object.entries(document.templates)) {
+    if (candidateEntry.targets.includes(target)) {
+      ownerName = candidateName;
+      ownerEntryFound = candidateEntry;
+      break;
+    }
+  }
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-record-owner
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-if-found
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-foreach-template
+
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-if-not-found
+  if (ownerName === undefined || ownerEntryFound === undefined) {
+    // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-return-not-found
+    return {
+      ok: false,
+      code: 'TARGET_NOT_APPLIED',
+      message: `Delete refused: target "${target}" is not an applied instance of a registered template. Check .frontx/project.json for an applied target and retry delete with that path.`,
+      details: { target },
+    };
+    // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-return-not-found
+  }
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-if-not-found
+
+  // The owner was found by iterating the document's OWN entries above, so it
+  // is taken from that iteration rather than looked up by name a second time.
+  const ownerEntry = ownerEntryFound;
+
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-protect-registered-origins
+  // Every registered LOCAL origin — current AND previous, of every entry,
+  // the owner's included — is the developer's source for a template that can
+  // still be restored or re-applied, so its folder is never this plan's to
+  // delete (human ruling 2026-11-09). Each is located with the strict
+  // classifier: an origin whose location cannot be determined (EACCES, EIO, a
+  // link cycle) refuses the whole delete here, before any plan, review or
+  // digest, because a plan computed over an unlocatable source would state a
+  // blast radius nobody verified. A folder that is simply gone (`absent`) or
+  // resolves outside the project (`outside`) does not block. Registered-only:
+  // once an entry is explicitly unregistered its folders are no longer named.
+  const registeredOriginRoots: string[] = [];
+  for (const origin of registeredLocalOriginRaws(document)) {
+    const located = classifyPathStrictFn(origin.raw);
+    if (located.kind === 'unknown') {
+      return {
+        ok: false,
+        code: 'CONTENT_CONFLICT',
+        message:
+          `Aborted — the local origin "${origin.origin}" of "${origin.name}" cannot be located (${located.reason}), so ` +
+          'the delete plan cannot be proven to leave that source folder alone. Restore access to it or fix the ' +
+          'link, then run delete again; nothing deleted.',
+        details: { target, templateName: ownerName, origin: origin.origin, reason: located.reason },
+      };
+    }
+    if (located.kind === 'present' || located.kind === 'absent') registeredOriginRoots.push(located.canonical);
+  }
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-protect-registered-origins
+
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-compute-ownership
+  // The owning template's declared `excludedSubtrees` — resolved from BOTH
+  // available sources and UNIONED, never one overriding the other. Two
+  // earlier orders were each tried and each mirrored the hazard the other
+  // one fixed: "recorded always wins" let a vanished origin widen the plan
+  // (a legacy entry's recorded value never updated once the manifest could
+  // no longer be read), and "current always wins" let a developer NARROW
+  // the vendored manifest after `apply` and un-protect ground the RECORDED
+  // declaration protected when the template was applied (confirmed live:
+  // register with `excludedSubtrees: ["userland/"]`, apply, then narrow the
+  // manifest to `[]` — a subsequent `delete` swept the developer's own
+  // `userland/` file into `toDelete`). The union is safe in both
+  // directions: a narrowed manifest can never un-protect ground the
+  // recorded declaration already protected, and a vanished origin (nothing
+  // for the CURRENT source to supply) can never widen the plan beyond what
+  // the RECORDED declaration allows. `apply`/`assemble`/`ownership` are
+  // deliberately NOT changed to match — they materialize what the manifest
+  // says TODAY, a different question from what a deletion may safely
+  // remove, and over-preserving in a deletion is the safe direction (a
+  // preserved file is named in the list the developer confirms, while a
+  // deleted one is gone).
+  let currentDeclaredExclusions: string[] | undefined;
+
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-resolve-current-manifest
+  // Any reason the CURRENT manifest cannot supply a declaration — genuinely
+  // ABSENT, unreadable as a regular file (a FIFO, a socket, a device, a
+  // directory, or a dangling symlink), or an origin folder that can no
+  // longer be proven to stay inside the project root — is caught here
+  // rather than left to propagate: none of those honestly says "there is no
+  // usable declaration at all", only that THIS source could not supply one,
+  // so the decision belongs to the RECORDED source instead, never to a
+  // thrown exception this step used to let escape uncaught. `originConfirmed
+  // Absent` distinguishes the two DIFFERENT reasons the call below can fail
+  // to supply content — a clean `undefined` return (the origin folder is
+  // genuinely gone, or the inventory holds no entry for it) versus a THROW
+  // (something real stands there but is not a regular file).
+  let currentManifestContent: string | undefined;
+  let originConfirmedAbsent = false;
+  try {
+    currentManifestContent = await resolveRegisteredManifestContent(ownerName, ownerEntry.origin, {
+      repoRoot,
+      inventory,
+      readFileFn,
+      canonicalizeFn,
+    });
+    if (currentManifestContent === undefined) originConfirmedAbsent = true;
+  } catch {
+    currentManifestContent = undefined;
+  }
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-resolve-current-manifest
+
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-if-current-manifest-valid
+  if (currentManifestContent !== undefined) {
+    const manifestResult = readManifestFromContent(currentManifestContent);
+    if (manifestResult.ok) {
+      currentDeclaredExclusions = manifestResult.manifest.excludedSubtrees;
+    }
+  }
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-if-current-manifest-valid
+
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-read-recorded-declaration
+  const recordedDeclaredExclusions: string[] | undefined = ownerEntry.excludedSubtrees;
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-read-recorded-declaration
+
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-else-refuse-unestablished
+  if (currentDeclaredExclusions === undefined && recordedDeclaredExclusions === undefined) {
+    // Neither source could establish a declaration: the current manifest
+    // could not be read (or no longer validates against the four-field
+    // contract) AND no declaration was recorded at registration/upgrade.
+    // Missing content may be restored or fetched again. Orphan-drop also preserves every file.
+    const message = originConfirmedAbsent
+      ? `Aborted — "${ownerName}"'s declared excludedSubtrees could not be established: the current origin is unavailable ` +
+        'and no declaration was recorded. ' +
+        (ownerEntry.origin.startsWith('path:') ? 'Restore the local origin' : 'Fetch the recorded remote origin again') +
+        ` and re-register it to keep the template, or run "frontx unregister ${ownerName}" to drop the unusable registration. Nothing deleted.`
+      : `Aborted — "${ownerName}"'s declared excludedSubtrees could not be established: its current origin ` +
+        'manifest could not be read (or no longer validates against the four-field contract), and no ' +
+        `declaration was recorded at registration. Re-register it ("frontx register ${ownerEntry.origin} ` +
+        '--replace") so the declaration is recorded; nothing deleted.';
+    return {
+      ok: false,
+      code: 'CONTENT_CONFLICT',
+      message,
+      details: { target, templateName: ownerName, origin: ownerEntry.origin },
+    };
+  }
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-else-refuse-unestablished
+
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-union-declared-exclusions
+  const declaredExclusions = dedupeStrings([...(recordedDeclaredExclusions ?? []), ...(currentDeclaredExclusions ?? [])]);
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-union-declared-exclusions
+
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-if-exclusions-drift
+  const exclusionsDrift: { current: string[]; recorded: string[] } | undefined =
+    currentDeclaredExclusions !== undefined &&
+    recordedDeclaredExclusions !== undefined &&
+    !sameStringSet(currentDeclaredExclusions, recordedDeclaredExclusions)
+      ? { current: dedupeStrings(currentDeclaredExclusions), recorded: dedupeStrings(recordedDeclaredExclusions) }
+      : undefined;
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-if-exclusions-drift
+
+  const localOriginFolder = deriveLocalOriginFolder(ownerEntry.origin, canonicalizeFn);
+  const exclusionRoots = [
+    ...computeExclusionRoots({
+      target,
+      excludedSubtrees: declaredExclusions,
+      projectOwnedRoots: document.projectOwnedRoots,
+      localOriginFolder,
+    }),
+    ...registeredOriginRoots,
+  ];
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-compute-ownership
+
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-find-nested
+  const nestedTargets: string[] = [];
+  for (const [otherName, otherEntry] of Object.entries(document.templates)) {
+    if (otherName === ownerName) continue;
+    for (const otherTarget of otherEntry.targets) {
+      if (otherTarget !== target && pathWithinTarget(otherTarget, target)) {
+        nestedTargets.push(otherTarget);
+      }
+    }
+  }
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-find-nested
+
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-find-other-origins
+  // Every OTHER registered template's local `path:` origin folder that sits
+  // beneath this target — confirmed LIVE as a real, disk-verified bug before
+  // this check existed: `listTargetFilesFn` enumerates every REAL file under
+  // `target`, and only the OWNER's own local origin folder was ever excluded
+  // (`localOriginFolder` above); a DIFFERENT registered template's origin
+  // folder (e.g. `vendor/tpl-b`, still holding its manifest and installed
+  // content for a currently-applied target elsewhere) was silently swept
+  // into `toDelete` and genuinely deleted. Mirrors `commands/apply.ts`'s own
+  // `collectLocalOriginFolders` (which protects the identical set of
+  // folders during the pre-flight conflict check for apply/ownership-add) —
+  // the same reserved ground, re-derived for the same reason, here for
+  // deletion instead of for conflict.
+  const otherLocalOriginFolders = Object.entries(document.templates)
+    .filter(([name]) => name !== ownerName)
+    .map(([, candidateEntry]) => deriveLocalOriginFolder(candidateEntry.origin, canonicalizeFn))
+    .filter((folder): folder is string => folder !== undefined && pathWithinTarget(folder, target));
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-find-other-origins
+
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-find-unenumerable
+  // Every FIFO, socket, device, dangling symlink, or escaping symlink found
+  // under `target` — content `listTargetFilesFn` below cannot enumerate as a
+  // comparable file at all, and so would otherwise sit in NEITHER `toDelete`
+  // NOR `toPreserve` (`adapters/fs-project-io.ts`'s own `walkFiles` doc
+  // comment names exactly this class of silently-dropped entry). Filtered
+  // through the identical effective-ownership predicate `toDelete`'s own
+  // candidates pass through below, so an entry OUTSIDE this template's
+  // ownership (inside a nested target or a declared exclusion, say) is never
+  // reported here either — it was never this template's ground to report.
+  const absoluteTargetDir = path.join(repoRoot, target);
+  const rawUnenumerable = await listUnenumerableTargetEntriesFn(absoluteTargetDir);
+  // An entry at or under an environment-owned name BENEATH the target (found by
+  // the delete walks' exact-name prune, or reached as a dangling/special entry
+  // inside one) is disclosed as the reserved entry itself, never as content of
+  // this template. The prefix is taken on the target-relative part only, so a
+  // reserved word spelled in the target's own path does not misfire.
+  const nestedReservedEntries: string[] = [];
+  const unenumerableWithinOwnership = rawUnenumerable
+    .map((relativeFile) => {
+      const reservedBeneath = reservedEnvironmentPrefix(relativeFile);
+      if (reservedBeneath !== undefined) {
+        const entry = joinUnderTarget(target, reservedBeneath);
+        // Listed even when it lies inside another protected ground (a declared
+        // exclusion, an owned root, a nested target, an origin folder): the
+        // ancestor protects the bytes, and this entry is disclosed beside it as
+        // the contract requires. Only the CLI-owned `.frontx` namespace stays
+        // out of the report.
+        if (pathWithinTarget(entry, target) && !pathWithinTarget(entry, FRONTX_NAMESPACE_ROOT)) {
+          nestedReservedEntries.push(entry);
+        }
+        return null;
+      }
+      return joinUnderTarget(target, relativeFile);
+    })
+    .filter((candidate): candidate is string => candidate !== null)
+    .filter((candidate) => isWithinEffectiveOwnership(candidate, target, exclusionRoots));
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-find-unenumerable
+
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-set-preserve
+  // `excludedSubtrees`/`nestedTargets`/`projectOwnedRoots`/reserved
+  // environment entries/other templates' local origin folders/the OWNING
+  // template's own local origin folder (when it too lies beneath `target`)
+  // are surfaced here — only `.frontx` stays OUT of `toPreserve` on purpose
+  // (FEATURE §3's own text: this step decides which of the
+  // already-subtracted exclusion roots to ALSO surface as explicit entries
+  // the caller reports, distinct from ground `computeExclusionRoots`
+  // silently excludes from effective ownership in the prior step without
+  // ever being named back to the caller). The owning template's own origin
+  // folder is named for the same reason a `projectOwnedRoots` entry is:
+  // both are the DEVELOPER's own ground, and
+  // `cpt-frontx-adr-template-ownership-boundary-declaration` rests delete's
+  // safety on these lists stating the blast radius before it is executed —
+  // a developer whose template source sits under the target would
+  // otherwise watch it survive with nothing in the report saying why.
+  // `.frontx` stays out on the opposite ground: it is CLI-owned, not the
+  // developer's, and no confirmation decision turns on it. A DIFFERENT
+  // template's origin folder is not the owner's own infrastructure-ish
+  // exclusion, though — it is exactly as real and as protected as that
+  // other template's own APPLIED TARGET (`nestedTargets` above), so it is
+  // surfaced rather than silently excluded, for the identical reason: a
+  // developer confirming a deletion must see WHY that ground survives.
+  const excludedSubtreeRoots = declaredExclusions.map((declared) => joinUnderTarget(target, declared));
+  // Ground a marked owner records as relinquished when it is deleted: not a
+  // region its durable evidence proves it never wrote.
+  const relinquishedRoots = declaredExclusions
+    .filter((declared) => !declarationCovered(declared, ownerEntry.provenExcludedSubtrees ?? []))
+    .map((declared) => joinUnderTarget(target, declared));
+  const projectOwnedRootsBeneath = document.projectOwnedRoots.filter((root) => pathWithinTarget(root, target));
+  const reservedEntriesBeneath = RESERVED_ENVIRONMENT_ENTRIES.filter((envEntry) => pathWithinTarget(envEntry, target));
+  const ownerLocalOriginFolderBeneath =
+    localOriginFolder !== undefined && pathWithinTarget(localOriginFolder, target) ? [localOriginFolder] : [];
+  // Ground this entry relinquished and recorded (`TemplateEntry.relinquishedGround`),
+  // beneath the target being deleted: an old file may sit there under a
+  // declaration since narrowed away, so the current declaration alone no longer
+  // names it. Preserved whatever the declaration says now, like any exclusion.
+  //
+  // Not only roots strictly beneath the target: the same template may be applied
+  // again AT a retained root, or BELOW it, and the old file is on disk there just
+  // the same. A root equal to or above the target covers every candidate this
+  // plan could name, so all of it is preserved (and reported as such) — the
+  // conservative reading, since an old file cannot be told from a re-adopted one.
+  const ownRetainedBeneath = (ownerEntry.relinquishedGround ?? []).filter(
+    (root) => pathWithinTarget(root, target) || pathWithinTarget(target, root),
+  );
+  const toPreserve = dedupeByGround([
+    ...excludedSubtreeRoots,
+    ...ownRetainedBeneath,
+    ...nestedTargets,
+    ...projectOwnedRootsBeneath,
+    ...reservedEntriesBeneath,
+    ...nestedReservedEntries,
+    ...otherLocalOriginFolders,
+    ...ownerLocalOriginFolderBeneath,
+    ...registeredOriginRoots.filter((root) => pathWithinTarget(root, target) || pathWithinTarget(target, root)),
+    ...unenumerableWithinOwnership,
+  ]);
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-set-preserve
+
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-set-delete
+  const rawFiles = await listTargetFilesFn(absoluteTargetDir);
+  const candidatePaths = rawFiles.map((relativeFile) => joinUnderTarget(target, relativeFile));
+  const toDelete = candidatePaths
+    .filter((candidate) => isWithinEffectiveOwnership(candidate, target, exclusionRoots))
+    .filter((candidate) => !toPreserve.some((preserved) => pathWithinSubtree(candidate, preserved)))
+    .sort();
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-set-delete
+
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-judge-resolved-location
+  // The judgement above compares the SPELLING of each path. `listTargetFilesFn`
+  // follows a symlink, and a recorded target may itself have become one since
+  // `apply`, so a path spelled under the target can be, on disk, ground the
+  // spelling gives no hint of — a project-owned file, another template's
+  // target. Each candidate is therefore judged a second time at the location it
+  // resolves to, against the same boundary resolved the same way; one that does
+  // not stay inside its own resolved target, or lands in resolved ground this
+  // template does not own, is PRESERVED and reported rather than deleted.
+  const resolvedTarget = canonicalizeFn(target);
+  // Another template's declared exclusions, for judging whether ground inside
+  // one of its targets was carved out for a nested owner. Both declarations are
+  // returned SEPARATELY: the recorded one governed what that owner actually
+  // wrote, the current manifest is what it declares now. `current` is
+  // `undefined` when the manifest cannot be read.
+  const declaredExclusionsOfOther = async (
+    name: string,
+    entry: ProjectStateDocument['templates'][string],
+  ): Promise<{ recorded: string[]; current: string[] | undefined }> => {
+    // A backfilled value is the current declaration copied in by a no-op repair,
+    // not what that owner declared when it wrote its files: read it as absent.
+    // A marked owner's durable evidence (`provenExcludedSubtrees`, recorded at
+    // apply time and only narrowed since) is the part of its history that IS
+    // proven, so that alone stands in for the recorded declaration.
+    const recorded = entry.exclusionsBackfilled === true ? [...(entry.provenExcludedSubtrees ?? [])] : [...(entry.excludedSubtrees ?? [])];
+    try {
+      const content = await resolveRegisteredManifestContent(name, entry.origin, {
+        repoRoot,
+        inventory,
+        readFileFn,
+        canonicalizeFn,
+      });
+      const parsed = content === undefined ? undefined : readManifestFromContent(content);
+      if (parsed?.ok) return { recorded, current: [...parsed.manifest.excludedSubtrees] };
+    } catch {
+      // unreadable: no current declaration to agree with the recorded one
+    }
+    return { recorded, current: undefined };
+  };
+  const protectedRoots: string[] = [];
+  // Ground another MARKED entry relinquished beneath a target that has since
+  // been deleted (`TemplateEntry.relinquishedGround`): an old file may still sit
+  // there, and no live target of that entry remains for the ancestor judgement
+  // below to see. Protected whatever this target is (a nested template applied
+  // there later, an alias of it), resolved like every other protected root.
+  for (const [otherName, otherEntry] of Object.entries(document.templates)) {
+    if (otherName === ownerName) continue;
+    for (const ground of otherEntry.relinquishedGround ?? []) {
+      const resolvedGround = canonicalizeFn(ground);
+      if (resolvedGround !== null) protectedRoots.push(resolvedGround);
+    }
+  }
+  // The OWNER's own retained ground is protected at its resolved location in
+  // full, not only the roots spelled under (or over) this target: the target may
+  // have become an in-project symlink INTO that ground since it was recorded, and
+  // a spelling prefilter cannot see that. Equal, ancestor and descendant aliases
+  // all reduce to the containment test below.
+  for (const ground of ownerEntry.relinquishedGround ?? []) {
+    const resolvedGround = canonicalizeFn(ground);
+    if (resolvedGround !== null) protectedRoots.push(resolvedGround);
+  }
+  for (const root of [...exclusionRoots, ...ownRetainedBeneath, ...nestedTargets, ...otherLocalOriginFolders]) {
+    const resolved = canonicalizeFn(root);
+    if (resolved !== null) protectedRoots.push(resolved);
+  }
+  // The lists above were selected by SPELLING: another template's target or
+  // origin folder reaches them only when it is spelled under this target. One
+  // that is spelled elsewhere and RESOLVES into this target's resolved ground
+  // (a recorded alias, a symlinked origin folder) is exactly as much that
+  // template's ground, so every other template's targets and origin folders are
+  // resolved and judged here with no prefilter; the containment test below keeps
+  // only what matters.
+  //
+  // A resolved root that is a strict ANCESTOR of this target's resolved
+  // location is another template's TARGET this one may legitimately nest
+  // inside — but only where that owner declares this ground an excluded
+  // subtree in BOTH its recorded declaration AND its readable current manifest
+  // (re-rooted under ITS resolved target). A declaration present on one side
+  // only proves nothing about the files already on disk, and an unreadable
+  // current manifest cannot agree with anything, so those cases protect. This
+  // is a bounded safety guard, not a ruling on which declaration governs
+  // nesting. Ancestor ground not declared excluded by both is that owner's
+  // payload under the whole-file model, and is protected exactly as equal
+  // ground is. Another template's local origin
+  // folder is source ground, never an outer applied owner, so it protects
+  // everything beneath it whether it is an ancestor or not. One at the SAME
+  // location (two owners of one directory) protects all of it.
+  if (resolvedTarget !== null) {
+    for (const [otherName, otherEntry] of Object.entries(document.templates)) {
+      if (otherName === ownerName) continue;
+      const otherOrigin = deriveLocalOriginFolder(otherEntry.origin, canonicalizeFn);
+      if (otherOrigin !== undefined) {
+        const resolvedOrigin = canonicalizeFn(otherOrigin);
+        if (resolvedOrigin !== null) protectedRoots.push(resolvedOrigin);
+      }
+      let otherDeclared: { recorded: string[]; current: string[] | undefined } | undefined;
+      for (const otherTarget of otherEntry.targets) {
+        const resolved = canonicalizeFn(otherTarget);
+        if (resolved === null) continue;
+        const strictAncestor = resolved !== resolvedTarget && pathWithinTarget(resolvedTarget, resolved);
+        if (strictAncestor) {
+          otherDeclared ??= await declaredExclusionsOfOther(otherName, otherEntry);
+          const coversTarget = (declarations: readonly string[]) =>
+            declarations.some((declared) => pathWithinSubtree(resolvedTarget, joinUnderTarget(resolved, declared)));
+          const declaredAbove =
+            otherDeclared.current !== undefined &&
+            coversTarget(otherDeclared.recorded) &&
+            coversTarget(otherDeclared.current);
+          if (declaredAbove) continue;
+        }
+        protectedRoots.push(resolved);
+      }
+    }
+  }
+  const resolvedPreserved: string[] = [];
+  const confirmedToDelete: string[] = [];
+  for (const candidate of toDelete) {
+    const resolved = canonicalizeFn(candidate);
+    const stays =
+      resolved !== null &&
+      resolvedTarget !== null &&
+      pathWithinTarget(resolved, resolvedTarget) &&
+      // An alias is judged at the location it resolves to: one that lands on or
+      // inside an environment-owned entry is protected whatever it is spelled.
+      reservedEnvironmentPrefix(resolved) === undefined &&
+      !protectedRoots.some((root) => pathWithinTarget(resolved, root));
+    (stays ? confirmedToDelete : resolvedPreserved).push(candidate);
+  }
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-judge-resolved-location
+
+  // @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-return-plan
+  return {
+    ok: true,
+    toDelete: confirmedToDelete,
+    toPreserve: dedupeByGround([...toPreserve, ...resolvedPreserved]),
+    templateName: ownerName,
+    ...(exclusionsDrift ? { exclusionsDrift } : {}),
+    ...(ownerEntry.exclusionsBackfilled === true && relinquishedRoots.length > 0
+      ? { relinquishedGround: dedupeStrings(relinquishedRoots.map(withoutTrailingSlash)) }
+      : {}),
+  };
+  // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-return-plan
+}
+
+// Deduplicates and sorts a declared-`excludedSubtrees` list — used both to
+// build the union `declaredExclusions` from two possibly-overlapping
+// sources (`inst-dp-union-declared-exclusions`) and to normalize each side
+// of an `exclusionsDrift` report (`inst-dp-if-exclusions-drift`) so a
+// caller compares two canonical lists rather than two arbitrarily-ordered
+// ones. Order-insensitive by design: `excludedSubtrees` is a set of
+// declared roots, and two manifests spelling the identical set in a
+// different order are not a drift worth reporting.
+function dedupeStrings(values: readonly string[]): string[] {
+  return Array.from(new Set(values)).sort();
+}
+
+// Set equality for two `excludedSubtrees` declarations, ignoring order and
+// duplicates — the comparison `inst-dp-if-exclusions-drift` needs to decide
+// whether the CURRENT and RECORDED sources actually disagree, as opposed to
+// merely being spelled in a different order.
+function sameStringSet(a: readonly string[], b: readonly string[]): boolean {
+  const left = dedupeStrings(a);
+  const right = dedupeStrings(b);
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+// One entry per preserved GROUND, not per reason it survives. The same
+// directory reaches this set under two spellings — a nested target names it
+// without a trailing separator, a manifest's `excludedSubtrees` declaration
+// with one — and a plain string `Set` keeps both, so the confirmation gate
+// listed `src-app/mfe_packages` and `src-app/mfe_packages/` as if they were
+// two different things. Collapsed on the same normalization
+// `pathWithinSubtree` already applies before comparing, keeping the
+// trailing-separator spelling when one exists, since that one says the
+// ground is a directory.
+function dedupeByGround(entries: readonly string[]): string[] {
+  const byGround = new Map<string, string>();
+  for (const entry of entries) {
+    const ground = withoutTrailingSlash(entry);
+    const kept = byGround.get(ground);
+    if (kept === undefined || (!kept.endsWith('/') && entry.endsWith('/'))) byGround.set(ground, entry);
+  }
+  return Array.from(byGround.values()).sort();
+}

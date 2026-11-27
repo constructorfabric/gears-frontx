@@ -2,6 +2,7 @@
 // @cpt-algo:cpt-frontx-algo-template-resolution-bounded-update:p1
 import type { InventoryEntry, InventoryIndexPort } from './types';
 import { InventoryState } from './types';
+import { setOwn } from '../own-record';
 
 // In-memory JSON-based index; supports in-memory mode for tests and
 // can be extended with a file-backed persistence layer.
@@ -40,7 +41,7 @@ export class InventoryIndex implements InventoryIndexPort {
 
   toJSON(): string {
     const obj: Record<string, InventoryEntry> = {};
-    this.entries.forEach((v, k) => { obj[k] = v; });
+    this.entries.forEach((v, k) => { setOwn(obj, k, v); });
     return JSON.stringify(obj, null, 2);
   }
 }

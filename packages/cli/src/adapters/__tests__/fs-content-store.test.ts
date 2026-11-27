@@ -7,9 +7,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import { joinWithinRoot } from '@gears-frontx/test-support/path-guard';
-import { FsContentStore } from '../fs-content-store';
+import { FsContentStore, InvalidBundleError } from '../fs-content-store';
 import { resolveInstalledContentPath } from '../fs-installed-content-path';
+import { InvalidBundleKeyError, isBinaryBundleValue, decodeBundleValue, readBundleFiles, encodeBundleValue } from '../../bundle/envelope';
 import { MANIFEST_FILENAME } from '../../manifest/types';
+import { UnreachablePathError } from '../fs-project-io';
 
 describe('FsContentStore', () => {
   let root: string;
@@ -31,7 +33,24 @@ describe('FsContentStore', () => {
     const manifestPath = joinWithinRoot(resolveInstalledContentPath(root, 'my-template'), MANIFEST_FILENAME);
     expect(fs.existsSync(manifestPath)).toBe(true);
     expect(fs.readFileSync(manifestPath, 'utf-8')).toBe('{"name":"my-template"}');
-    expect(store.read('my-template')).toBe('{"name":"my-template"}');
+    // read() now returns a bundle JSON with BinaryBundleValue entries
+    const raw = store.read('my-template');
+    expect(raw).toBeDefined();
+    const files = readBundleFiles(raw!);
+    expect(files).toBeDefined();
+    const mv = files![MANIFEST_FILENAME];
+    expect(isBinaryBundleValue(mv)).toBe(true);
+    if (isBinaryBundleValue(mv)) expect(decodeBundleValue(mv)?.toString('utf-8')).toBe('{"name":"my-template"}');
+  });
+
+  it('replace() unlinks a dangling installed-slot symlink before creating the new directory', () => {
+    const store = new FsContentStore(root);
+    const installedPath = resolveInstalledContentPath(root, 'tpl');
+    fs.symlinkSync(path.join(root, 'missing-target'), installedPath, 'dir');
+
+    expect(() => store.replace('tpl', '{"name":"tpl","version":"2.0.0"}')).not.toThrow();
+    expect(fs.lstatSync(installedPath).isDirectory()).toBe(true);
+    expect(fs.readFileSync(path.join(installedPath, MANIFEST_FILENAME), 'utf-8')).toBe('{"name":"tpl","version":"2.0.0"}');
   });
 
   // inst-resolve-write — a JSON file-map bundle materializes as the
@@ -48,8 +67,46 @@ describe('FsContentStore', () => {
     expect(fs.readFileSync(joinWithinRoot(installedPath, MANIFEST_FILENAME), 'utf-8')).toBe(bundle[MANIFEST_FILENAME]);
     expect(fs.readFileSync(joinWithinRoot(installedPath, 'src', 'index.ts'), 'utf-8')).toBe(bundle['src/index.ts']);
 
-    const roundTripped = JSON.parse(store.read('my-template')!);
-    expect(roundTripped).toEqual({ $frontxTemplateFiles: bundle });
+    // read() now returns a bundle JSON with BinaryBundleValue; decode each entry and compare
+    const raw2 = store.read('my-template')!;
+    const files2 = readBundleFiles(raw2);
+    expect(files2).toBeDefined();
+    const decoded: Record<string, string> = {};
+    for (const [k, v] of Object.entries(files2!)) {
+      expect(isBinaryBundleValue(v)).toBe(true);
+      if (isBinaryBundleValue(v)) decoded[k] = decodeBundleValue(v)!.toString('utf-8');
+    }
+    expect(decoded).toEqual(bundle);
+  });
+
+  it('write() refuses an invalid bundle key before creating any inventory content', () => {
+    const store = new FsContentStore(root);
+    const bundle = JSON.stringify({
+      $frontxTemplateFiles: {
+        [MANIFEST_FILENAME]: '{"name":"my-template"}',
+        '../other-template.txt': null,
+      },
+    });
+
+    expect(() => store.write('my-template', bundle)).toThrowError(InvalidBundleKeyError);
+    expect(fs.readdirSync(root)).toEqual([]);
+  });
+
+  it('replace() refuses an invalid bundle key before removing the installed version', () => {
+    const store = new FsContentStore(root);
+    store.write('my-template', '{"name":"my-template","version":"1.0.0"}');
+    const installedPath = resolveInstalledContentPath(root, 'my-template');
+    const originalManifest = fs.readFileSync(joinWithinRoot(installedPath, MANIFEST_FILENAME), 'utf-8');
+    const bundle = JSON.stringify({
+      $frontxTemplateFiles: {
+        [MANIFEST_FILENAME]: '{"name":"my-template","version":"2.0.0"}',
+        '../other-template.txt': 'must not be written',
+      },
+    });
+
+    expect(() => store.replace('my-template', bundle)).toThrowError(InvalidBundleKeyError);
+    expect(fs.readFileSync(joinWithinRoot(installedPath, MANIFEST_FILENAME), 'utf-8')).toBe(originalManifest);
+    expect(fs.existsSync(joinWithinRoot(root, 'other-template.txt'))).toBe(false);
   });
 
   it('has() reflects real on-disk presence', () => {
@@ -85,5 +142,264 @@ describe('FsContentStore', () => {
     // Only pre-existing sibling temp-dir entries may exist; none were created
     // by this write (the assertion is that no NEW sibling appeared).
     expect(entriesOutsideRoot.every((entry) => !entry.includes('my-template'))).toBe(true);
+  });
+
+  // DEFECT: `assertWithinRoot` (`../fs-installed-content-path.ts`) used to
+  // prove containment with pure `path.relative` string arithmetic — no
+  // filesystem call at all — so a symlink INSIDE the store pointing OUTSIDE
+  // it escaped the check entirely: the lexical path was inside the store, so
+  // the check passed, and the template's payload landed at whatever the
+  // symlink actually resolved to. A REAL symlink (not a fake seam) is what
+  // proves the fix resolves the link via the filesystem rather than by
+  // string comparison alone.
+  describe('a symlink at the installed content path escaping the store root', () => {
+    let outside: string;
+
+    beforeEach(() => {
+      outside = fs.mkdtempSync(path.join(os.tmpdir(), 'frontx-fs-content-store-outside-'));
+    });
+
+    afterEach(() => {
+      fs.rmSync(outside, { recursive: true, force: true });
+    });
+
+    it('write() refuses instead of writing through the symlink, and the outside directory survives untouched', () => {
+      fs.writeFileSync(joinWithinRoot(outside, 'keep.txt'), 'DEVELOPER-OWNED — must survive', 'utf-8');
+      fs.mkdirSync(resolveInstalledContentPath(root, '@x'), { recursive: true });
+      fs.symlinkSync(outside, resolveInstalledContentPath(root, '@x/inv'), 'dir');
+
+      const store = new FsContentStore(root);
+      expect(() => store.write('@x/inv', 'content')).toThrow();
+
+      expect(fs.readFileSync(joinWithinRoot(outside, 'keep.txt'), 'utf-8')).toBe(
+        'DEVELOPER-OWNED — must survive',
+      );
+      expect(fs.readdirSync(outside)).toEqual(['keep.txt']);
+    });
+
+    // The write side proved containment a round before the read side did,
+    // and `apply` reads its payload from this store: a symlink here let a
+    // payload from outside the inventory land in the developer's project
+    // under `ok:true`.
+    it('read() refuses instead of returning content from outside the store', () => {
+      fs.writeFileSync(joinWithinRoot(outside, MANIFEST_FILENAME), '{"name":"@x/inv"}', 'utf-8');
+      fs.writeFileSync(joinWithinRoot(outside, 'foreign.txt'), 'FOREIGN PAYLOAD', 'utf-8');
+      fs.mkdirSync(resolveInstalledContentPath(root, '@x'), { recursive: true });
+      fs.symlinkSync(outside, resolveInstalledContentPath(root, '@x/inv'), 'dir');
+
+      const store = new FsContentStore(root);
+      expect(() => store.read('@x/inv')).toThrow();
+    });
+
+    it('has() refuses instead of reporting outside content as installed', () => {
+      fs.writeFileSync(joinWithinRoot(outside, 'foreign.txt'), 'FOREIGN PAYLOAD', 'utf-8');
+      fs.mkdirSync(resolveInstalledContentPath(root, '@x'), { recursive: true });
+      fs.symlinkSync(outside, resolveInstalledContentPath(root, '@x/inv'), 'dir');
+
+      const store = new FsContentStore(root);
+      expect(() => store.has('@x/inv')).toThrow();
+    });
+
+    it('read() still works through a symlink that resolves back INSIDE the store', () => {
+      const realDir = resolveInstalledContentPath(root, '@x/real');
+      fs.mkdirSync(realDir, { recursive: true });
+      fs.writeFileSync(path.join(realDir, MANIFEST_FILENAME), 'manifest text', 'utf-8');
+      fs.symlinkSync(realDir, resolveInstalledContentPath(root, '@x/aliased'), 'dir');
+
+      const store = new FsContentStore(root);
+      const rawAliased = store.read('@x/aliased');
+      const filesAliased = readBundleFiles(rawAliased!);
+      const mvAliased = filesAliased?.[MANIFEST_FILENAME];
+      expect(isBinaryBundleValue(mvAliased)).toBe(true);
+      if (isBinaryBundleValue(mvAliased)) expect(decodeBundleValue(mvAliased)?.toString('utf-8')).toBe('manifest text');
+      expect(store.has('@x/aliased')).toBe(true);
+    });
+
+    it('replace() refuses instead of writing through the symlink or removing what it points at, and the outside directory survives untouched', () => {
+      fs.writeFileSync(joinWithinRoot(outside, 'keep.txt'), 'DEVELOPER-OWNED — must survive', 'utf-8');
+      fs.mkdirSync(resolveInstalledContentPath(root, '@x'), { recursive: true });
+      fs.symlinkSync(outside, resolveInstalledContentPath(root, '@x/inv'), 'dir');
+
+      const store = new FsContentStore(root);
+      expect(() => store.replace('@x/inv', 'content')).toThrow();
+
+      expect(fs.existsSync(outside)).toBe(true);
+      expect(fs.readFileSync(joinWithinRoot(outside, 'keep.txt'), 'utf-8')).toBe(
+        'DEVELOPER-OWNED — must survive',
+      );
+      expect(fs.readdirSync(outside)).toEqual(['keep.txt']);
+    });
+  });
+
+  // inst-resolve-write-guard / inst-bupd-replace-guard — DEFECT 3c: a
+  // non-directory entry standing where an installed content path's own
+  // ancestor directory belongs (a scoped identity's own leading segment,
+  // e.g. `@x` in `@x/inv`, replaced by a plain file) used to reach
+  // `fs.mkdirSync(installedPath, { recursive: true })` unguarded, failing
+  // with a bare `ENOTDIR` no caller here catches — an unstructured
+  // internal-error exit with no `--json` envelope.
+  describe('a non-directory entry blocking an ancestor of the installed content path', () => {
+    it('write() refuses with UnreachablePathError naming the blocking file instead of a raw ENOTDIR', () => {
+      const scopeSegment = resolveInstalledContentPath(root, '@x');
+      fs.mkdirSync(path.dirname(scopeSegment), { recursive: true });
+      fs.writeFileSync(scopeSegment, 'not-a-directory', 'utf-8');
+
+      const store = new FsContentStore(root);
+      let thrown: unknown;
+      try {
+        store.write('@x/inv', 'content');
+      } catch (error) {
+        thrown = error;
+      }
+      expect(thrown).toBeInstanceOf(UnreachablePathError);
+      expect((thrown as UnreachablePathError).blockingAncestor).toBe(scopeSegment);
+    });
+
+    it('replace() refuses with UnreachablePathError naming the blocking file instead of a raw ENOTDIR', () => {
+      const scopeSegment = resolveInstalledContentPath(root, '@x');
+      fs.mkdirSync(path.dirname(scopeSegment), { recursive: true });
+      fs.writeFileSync(scopeSegment, 'not-a-directory', 'utf-8');
+
+      const store = new FsContentStore(root);
+      expect(() => store.replace('@x/inv', 'content')).toThrow(UnreachablePathError);
+    });
+  });
+
+  // H2 regression: present-but-invalid envelope must throw and leave store/index untouched.
+  describe('invalid bundle envelope is rejected before any store mutation', () => {
+    it('write() throws InvalidBundleError for malformed (non-canonical) base64 and creates no content', () => {
+      const store = new FsContentStore(root);
+      const content = JSON.stringify({ $frontxTemplateFiles: { [MANIFEST_FILENAME]: { encoding: 'base64', data: '/w===' } } });
+      expect(() => store.write('tpl', content)).toThrow(InvalidBundleError);
+      expect(fs.readdirSync(root)).toEqual([]);
+    });
+
+    it('write() throws InvalidBundleError for an empty file map and creates no content', () => {
+      const store = new FsContentStore(root);
+      const content = JSON.stringify({ $frontxTemplateFiles: {} });
+      expect(() => store.write('tpl', content)).toThrow(InvalidBundleError);
+      expect(fs.readdirSync(root)).toEqual([]);
+    });
+
+    it('write() throws InvalidBundleError for an unrecognised value type and creates no content', () => {
+      const store = new FsContentStore(root);
+      const content = JSON.stringify({ $frontxTemplateFiles: { [MANIFEST_FILENAME]: 42 } });
+      expect(() => store.write('tpl', content)).toThrow(InvalidBundleError);
+      expect(fs.readdirSync(root)).toEqual([]);
+    });
+
+    // H2 r3: marker-level invalidity — $frontxTemplateFiles value is not a plain object map
+    it.each([
+      { label: 'null marker value', content: JSON.stringify({ $frontxTemplateFiles: null }) },
+      { label: 'array marker value', content: JSON.stringify({ $frontxTemplateFiles: [] }) },
+      { label: 'number marker value', content: JSON.stringify({ $frontxTemplateFiles: 42 }) },
+      { label: 'string marker value', content: JSON.stringify({ $frontxTemplateFiles: 'not-a-map' }) },
+    ])('write() throws InvalidBundleError for $label and creates no content', ({ content }) => {
+      const store = new FsContentStore(root);
+      expect(() => store.write('tpl', content)).toThrow(InvalidBundleError);
+      expect(fs.readdirSync(root)).toEqual([]);
+    });
+
+    it('replace() throws InvalidBundleError for malformed base64 and leaves the installed version unchanged', () => {
+      const store = new FsContentStore(root);
+      store.write('tpl', '{"name":"tpl","version":"1.0.0"}');
+      const installedPath = resolveInstalledContentPath(root, 'tpl');
+      const originalManifest = fs.readFileSync(path.join(installedPath, MANIFEST_FILENAME), 'utf-8');
+
+      const bad = JSON.stringify({ $frontxTemplateFiles: { [MANIFEST_FILENAME]: { encoding: 'base64', data: 'YQ====' } } });
+      expect(() => store.replace('tpl', bad)).toThrow(InvalidBundleError);
+      expect(fs.readFileSync(path.join(installedPath, MANIFEST_FILENAME), 'utf-8')).toBe(originalManifest);
+    });
+
+    // Verify destructive seam (rmSync) is not called for null/array/number/string marker.
+    // If the installed directory still exists after the failed replace, rmSync was not called.
+    it.each([
+      { label: 'null marker', bad: JSON.stringify({ $frontxTemplateFiles: null }) },
+      { label: 'array marker', bad: JSON.stringify({ $frontxTemplateFiles: ['x'] }) },
+      { label: 'number marker', bad: JSON.stringify({ $frontxTemplateFiles: 0 }) },
+      { label: 'string marker', bad: JSON.stringify({ $frontxTemplateFiles: 'x' }) },
+    ])('replace() with $label throws before removing the installed version', ({ bad }) => {
+      const store = new FsContentStore(root);
+      store.write('tpl', '{"name":"tpl","version":"1.0.0"}');
+      const installedPath = resolveInstalledContentPath(root, 'tpl');
+      const originalManifest = fs.readFileSync(path.join(installedPath, MANIFEST_FILENAME), 'utf-8');
+
+      expect(() => store.replace('tpl', bad)).toThrow(InvalidBundleError);
+      // Original manifest still present — proves rmSync was not called on the installed directory.
+      expect(fs.existsSync(path.join(installedPath, MANIFEST_FILENAME))).toBe(true);
+      expect(fs.readFileSync(path.join(installedPath, MANIFEST_FILENAME), 'utf-8')).toBe(originalManifest);
+    });
+
+    // Absent marker is NOT an error — it is the legitimate bare-manifest fallback.
+    it('write() with absent $frontxTemplateFiles writes content as the manifest file (legitimate fallback)', () => {
+      const store = new FsContentStore(root);
+      store.write('tpl', '{"name":"tpl","version":"1.0.0"}');
+      const installedPath = resolveInstalledContentPath(root, 'tpl');
+      expect(fs.readFileSync(path.join(installedPath, MANIFEST_FILENAME), 'utf-8')).toBe('{"name":"tpl","version":"1.0.0"}');
+    });
+  });
+
+  // H3 regression: __proto__ as a bundle key must be preserved as an own entry.
+  it('preserves a __proto__ file through write/read without prototype pollution', () => {
+    const store = new FsContentStore(root);
+    const protoContent = '{"proto":"file"}';
+    // Object literal `{ '__proto__': x }` sets the prototype, not an own prop.
+    // Use null-prototype + defineProperty to produce a JSON string with
+    // "__proto__" as a real key: `{"frontx-template.json":"...","__proto__":...}`.
+    const fileMap = Object.create(null) as Record<string, unknown>;
+    Object.defineProperty(fileMap, MANIFEST_FILENAME, { value: '{"name":"tpl","version":"1.0.0"}', enumerable: true });
+    Object.defineProperty(fileMap, '__proto__', { value: encodeBundleValue(Buffer.from(protoContent, 'utf-8')), enumerable: true });
+    const bundle = JSON.stringify({ $frontxTemplateFiles: fileMap });
+    store.write('tpl', bundle);
+
+    const installedPath = resolveInstalledContentPath(root, 'tpl');
+    expect(fs.existsSync(path.join(installedPath, '__proto__'))).toBe(true);
+    expect(fs.readFileSync(path.join(installedPath, '__proto__'), 'utf-8')).toBe(protoContent);
+
+    const raw = store.read('tpl')!;
+    const files = readBundleFiles(raw);
+    expect(files).toBeDefined();
+    expect(Object.prototype.hasOwnProperty.call(files, '__proto__')).toBe(true);
+    const v = files!['__proto__'];
+    expect(isBinaryBundleValue(v)).toBe(true);
+    expect(decodeBundleValue(v as never)?.toString('utf-8')).toBe(protoContent);
+  });
+
+  // DEFECT 1 (regression): the store root itself reached through a
+  // symlinked ancestor — the exact `/tmp` shape (`/tmp` is a symlink to
+  // `/private/tmp` on macOS) a live repro hit as `FRONTX_INVENTORY_ROOT=/tmp/
+  // frontx-store` — used to refuse with `UnreachablePathError` naming the
+  // symlinked ancestor itself, because `firstNonDirectoryComponentOf`
+  // decided with `lstatSync(...).isDirectory()`, which is never true for a
+  // symlink no matter what it resolves to. Built with a REAL symlink in a
+  // temp tree so this does not depend on `/tmp` itself being one on the host
+  // running this suite.
+  describe('an inventory root reached through a symlinked ancestor', () => {
+    let outerBase: string;
+
+    afterEach(() => {
+      if (outerBase) fs.rmSync(outerBase, { recursive: true, force: true });
+    });
+
+    it('write() succeeds, materializing content on the REAL side of the link', () => {
+      outerBase = fs.mkdtempSync(path.join(os.tmpdir(), 'frontx-fs-content-store-symlinked-root-'));
+      const realStoreParent = path.join(outerBase, 'real');
+      fs.mkdirSync(realStoreParent, { recursive: true });
+      const linkedAncestor = path.join(outerBase, 'linked');
+      fs.symlinkSync(realStoreParent, linkedAncestor, 'dir');
+      // Neither the store root nor anything beneath it exists yet — the
+      // ordinary shape of a fresh local inventory store's first write.
+      const storeRoot = path.join(linkedAncestor, 'frontx-store');
+
+      const store = new FsContentStore(storeRoot);
+      store.write('@x/inv', 'content');
+
+      const installedPath = resolveInstalledContentPath(storeRoot, '@x/inv');
+      expect(fs.readFileSync(joinWithinRoot(installedPath, MANIFEST_FILENAME), 'utf-8')).toBe('content');
+      // Materialized on the REAL side of the link, not merely reachable
+      // through it.
+      const realInstalledPath = resolveInstalledContentPath(path.join(realStoreParent, 'frontx-store'), '@x/inv');
+      expect(fs.readFileSync(joinWithinRoot(realInstalledPath, MANIFEST_FILENAME), 'utf-8')).toBe('content');
+    });
   });
 });

@@ -5,7 +5,17 @@
 // normalizations it deliberately does NOT perform — a caller reading only the
 // consumers cannot tell an unhandled spelling from a handled one.
 import { describe, it, expect } from 'vitest';
-import { pathWithinSubtree, pathsNest } from '../paths/relative-path';
+import {
+  isSafeRelativePath,
+  nonCanonicalProjectPathReason,
+  normalizeProjectRelativePath,
+  pathWithinSubtree,
+  pathsNest,
+  pathWithinTarget,
+  targetsNest,
+  unaddressableProjectPathReason,
+  unsafeRelativePathReason,
+} from '../paths/relative-path';
 
 describe('pathWithinSubtree — containment by whole path segments', () => {
   it.each([
@@ -107,5 +117,141 @@ describe('pathsNest — containment asked in both directions', () => {
     );
 
     expect(asymmetric).toEqual([]);
+  });
+});
+
+describe('pathWithinTarget / targetsNest — the root-aware counterparts for concrete TARGETS', () => {
+  // A concrete applied target, unlike a declaration such as `excludedSubtrees`
+  // or `projectOwnedRoots`, can legitimately be `.`, the project root — and a
+  // project root contains every other well-formed relative path
+  // unconditionally. `pathWithinSubtree`/`pathsNest` correctly do NOT grant
+  // `.` this meaning (an empty or otherwise degenerate DECLARATION addresses
+  // no location at all, which is the right behavior for a declaration); these
+  // two are the one place that adds the target-specific exception.
+
+  it('treats "." as containing every other path, unlike pathWithinSubtree', () => {
+    expect(pathWithinTarget('src/index.ts', '.')).toBe(true);
+    expect(pathWithinSubtree('src/index.ts', '.')).toBe(false);
+  });
+
+  it('still defers to pathWithinSubtree for a non-root target', () => {
+    expect(pathWithinTarget('packages/app/src', 'packages/app')).toBe(true);
+    expect(pathWithinTarget('packages/other', 'packages/app')).toBe(false);
+  });
+
+  it('"." nests with every other target, unlike pathsNest', () => {
+    expect(targetsNest('.', 'packages/app')).toBe(true);
+    expect(targetsNest('packages/app', '.')).toBe(true);
+    expect(pathsNest('.', 'packages/app')).toBe(false);
+  });
+
+  it('two non-root targets still defer to pathsNest for coincidence/nesting', () => {
+    expect(targetsNest('packages/app', 'packages/app/src')).toBe(true);
+    expect(targetsNest('packages/app', 'packages/app-shell')).toBe(false);
+  });
+
+  it('"." nests with itself', () => {
+    expect(targetsNest('.', '.')).toBe(true);
+  });
+});
+
+describe('isSafeRelativePath / unsafeRelativePathReason — the one rule for a path-like value from outside', () => {
+  it.each([
+    'frontx-template.json',
+    'src/App.tsx',
+    '.gitignore',
+    '.frontx/ai/my-tpl/note.md',
+    '@scope/name',
+    'a..b/c',
+    'docs/a b.md',
+  ])('accepts %j', (value) => {
+    expect(isSafeRelativePath(value)).toBe(true);
+    expect(unsafeRelativePathReason(value)).toBeUndefined();
+  });
+
+  it.each([
+    { value: '', reason: 'empty' },
+    { value: '.', reason: 'empty, "." or ".."' },
+    { value: '..', reason: 'empty, "." or ".."' },
+    { value: 'src/', reason: 'empty, "." or ".."' },
+    { value: 'src//x', reason: 'empty, "." or ".."' },
+    { value: 'a/./b', reason: 'empty, "." or ".."' },
+    { value: 'src/../x', reason: 'empty, "." or ".."' },
+    { value: '/etc/passwd', reason: 'absolute' },
+    { value: 'a\\b', reason: 'backslash' },
+    { value: 'C:/x', reason: 'colon' },
+    { value: 'docs/a:b.md', reason: 'colon' },
+    { value: ' src/x', reason: 'whitespace' },
+    { value: 'src/x ', reason: 'whitespace' },
+    { value: 'a\u0001b', reason: 'control character' },
+    { value: 'a\u007fb', reason: 'control character' },
+    { value: 'a\0b', reason: 'control character' },
+  ])('refuses $value, saying why ($reason)', ({ value, reason }) => {
+    expect(isSafeRelativePath(value)).toBe(false);
+    expect(unsafeRelativePathReason(value)).toContain(reason);
+  });
+});
+
+describe('normalizeProjectRelativePath — the one spelling of a project-relative location', () => {
+  it.each([
+    { value: 'app/src/x.ts', normalized: 'app/src/x.ts' },
+    { value: 'app/../other/x.txt', normalized: 'other/x.txt' },
+    { value: 'src/../.frontx/injected.json', normalized: '.frontx/injected.json' },
+    { value: './app//src/./x.ts', normalized: 'app/src/x.ts' },
+    { value: 'app/..', normalized: '.' },
+    { value: '.', normalized: '.' },
+    { value: '', normalized: '.' },
+    // Not a platform path: a backslash is an ordinary character here, exactly as
+    // it is on the POSIX volumes this predicate is stated for.
+    { value: 'a\\b/c', normalized: 'a\\b/c' },
+    { value: 'a:b/c', normalized: 'a:b/c' },
+  ])('spells $value as $normalized', ({ value, normalized }) => {
+    expect(normalizeProjectRelativePath(value)).toBe(normalized);
+  });
+
+  it.each(['..', '../x', 'app/../../x', 'a/b/../../../x', '/etc/passwd', '/'])('refuses %s — it is absolute or climbs out of the root', (value) => {
+    expect(normalizeProjectRelativePath(value)).toBeNull();
+  });
+});
+
+describe('nonCanonicalProjectPathReason — a path the engine may judge is already its own normalised spelling', () => {
+  it.each(['app', 'app/src/x.ts', '.', 'other/x.txt', 'a\\b', 'a:b'])('accepts %s', (value) => {
+    expect(nonCanonicalProjectPathReason(value)).toBeUndefined();
+  });
+
+  it.each([
+    { value: 'app/../other/x.txt', reason: 'is not in canonical form (it names "other/x.txt")' },
+    { value: 'app//x.ts', reason: 'is not in canonical form (it names "app/x.ts")' },
+    { value: './app/x.ts', reason: 'is not in canonical form (it names "app/x.ts")' },
+    { value: 'app/', reason: 'is not in canonical form (it names "app")' },
+    { value: '../x', reason: 'is absolute or climbs out of the project root' },
+    { value: '/etc/x', reason: 'is absolute or climbs out of the project root' },
+    { value: '~', reason: 'begins with "~"' },
+    { value: '~/x', reason: 'begins with "~"' },
+  ])('refuses $value', ({ value, reason }) => {
+    expect(nonCanonicalProjectPathReason(value)).toContain(reason);
+  });
+});
+
+describe('unaddressableProjectPathReason — the engine-side judgement adds the character-level checks', () => {
+  it.each([
+    { value: 'app\u0000', reason: 'contains a control character' },
+    { value: 'app\u0001/x', reason: 'contains a control character' },
+    { value: 'app ', reason: 'has leading or trailing whitespace' },
+    { value: ' app', reason: 'has leading or trailing whitespace' },
+    { value: 'app/../x', reason: 'is not in canonical form' },
+    { value: '~/x', reason: 'begins with "~"' },
+  ])('refuses $value', ({ value, reason }) => {
+    expect(unaddressableProjectPathReason(value)).toContain(reason);
+  });
+
+  it.each(['app', '.', 'a\\b', 'a:b'])('accepts %s', (value) => {
+    expect(unaddressableProjectPathReason(value)).toBeUndefined();
+  });
+
+  // The state store judges with the narrower predicate: apply's canonicaliser
+  // lets these through to its writes, so the store must not refuse them after.
+  it.each(['app ', 'app\u0001'])('leaves %j to the engine, not the state store', (value) => {
+    expect(nonCanonicalProjectPathReason(value)).toBeUndefined();
   });
 });

@@ -1,7 +1,7 @@
 // @cpt-dod:cpt-frontx-dod-unit-test-generation-and-agent-verification-standard-test-convention:p1
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import process from 'node:process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -219,7 +219,8 @@ describe('git-backed helpers (temp repository)', () => {
   const git = (args) => execFileSync('git', args, { cwd: repo, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 
   beforeEach(async () => {
-    repo = await mkdtemp(path.join(tmpdir(), 'frontx-dco-repo-'));
+    // Canonicalise: on macOS tmpdir() is under the /var -> /private/var symlink, and git reports the real path.
+    repo = await realpath(await mkdtemp(path.join(tmpdir(), 'frontx-dco-repo-')));
     // Pin the committer through the environment so the case is independent
     // of whatever identity the machine running the suite has configured, and
     // so no GIT_AUTHOR_* leaks in from an enclosing hook or rebase.
@@ -290,7 +291,14 @@ describe('git-backed helpers (temp repository)', () => {
   it('resolveIdentities still resolves the committer when user.name is unset', () => {
     git(['config', '--unset', 'user.name']);
     git(['config', '--unset', 'user.email']);
-    // git var falls back to GIT_COMMITTER_* from the environment.
-    expect(resolveIdentities({ cwd: repo, env })).toEqual([{ name: 'Alice', email: 'alice@example.com' }]);
+    // git var falls back to GIT_COMMITTER_* from the environment. With user.name unset git would invent the author
+    // from the OS account (GECOS + hostname), which is machine-dependent, so pin a DISTINCT author through
+    // GIT_AUTHOR_*. The author must differ from the committer: resolveIdentities dedupes, so an identical author
+    // would mask a broken committer path. Both identities are expected, author first.
+    const pinnedEnv = { ...env, GIT_AUTHOR_NAME: 'Bob', GIT_AUTHOR_EMAIL: 'bob@example.com' };
+    expect(resolveIdentities({ cwd: repo, env: pinnedEnv })).toEqual([
+      { name: 'Bob', email: 'bob@example.com' },
+      { name: 'Alice', email: 'alice@example.com' },
+    ]);
   });
 });

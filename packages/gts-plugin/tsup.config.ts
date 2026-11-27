@@ -1,7 +1,8 @@
 import { defineConfig } from 'tsup';
 import { PreservedModuleEsmPlugin } from '@gears-frontx/build-tools';
+import { tsupInventoryOptions } from '../../scripts/audit-production-inventory.mjs';
 
-export default defineConfig({
+export default defineConfig(({ outDir }) => ({
   entry: {
     index: 'src/index.ts',
   },
@@ -9,6 +10,7 @@ export default defineConfig({
   dts: true,
   clean: true,
   sourcemap: true,
+  ...tsupInventoryOptions(outDir),
   splitting: false,
   // The ESM output preserves modules, one file per source module; CJS stays
   // bundled.
@@ -17,4 +19,4 @@ export default defineConfig({
   // external, the output would import a JSON file, which Node's ESM loader
   // rejects without an import attribute. Only that one file is inlined.
   noExternal: ['@globaltypesystem/gts-ts/package.json'],
-});
+}));

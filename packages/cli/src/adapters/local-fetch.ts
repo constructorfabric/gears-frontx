@@ -1,7 +1,11 @@
 // TEST-ONLY — this file carries NO `@cpt` marker and traces to NO FEATURE
 // instruction. It is NOT product behavior: it introduces no new source-spec
-// host or grammar and does not change the `FetchFn` seam's signature
-// (`packages/cli/src/resolver/types.ts`, `(url: string) => Promise<string>`).
+// host or grammar. The `FetchFn` seam (`packages/cli/src/resolver/types.ts`)
+// widened to `(url: string) => Promise<string | FetchResult>` so an adapter
+// CAN report a pin (`inst-resolve-pin`); this adapter still returns a bare
+// `Promise<string>` — it has no pin to report, a `path:` origin's own
+// resolution never even reaches a `FetchFn` — which remains a valid,
+// narrower realization of that seam.
 //
 // It realizes that EXISTING seam with a local-directory adapter so
 // `frontx install` + `frontx seed` can assemble an on-disk template
@@ -9,15 +13,15 @@
 // the real materialize path. It walks a local directory and
 // emits the exact bundle envelope `FsContentStore`
 // (`packages/cli/src/adapters/fs-content-store.ts`) already materializes —
-// `{ "$frontxTemplateFiles": { <relative path>: <file text>, ... } }` — the
+// `{ "$frontxTemplateFiles": { <relative path>: <base64 envelope>, ... } }` — the
 // same envelope the real GitHub adapter (`github-fetch.ts`) produces. The
 // `url` argument the seam passes is ignored: the local adapter's whole point
 // is to serve fixed on-disk content regardless of the fetch address the
 // pure-logic resolver built from the parsed source-spec.
 import fs from 'node:fs';
 import path from 'node:path';
-import { BUNDLE_MARKER } from '../bundle/envelope';
-import type { FetchFn } from '../resolver/types';
+import { BUNDLE_MARKER, encodeBundleValue, BinaryBundleValue } from '../bundle/envelope';
+import { setOwn } from '../own-record';
 
 /** Directory names never included in the local bundle: build and dependency
  * artifacts, plus the agent session-state directories (`.omc/`, `.omo/`) that
@@ -52,7 +56,18 @@ export interface LocalFetchOptions {
  * failures reject the returned promise, matching the real `FetchFn`
  * contract's error path (`resolveToInventory`'s `inst-resolve-fetch-fail`).
  */
-export function createLocalFetchFn(localDir: string, options: LocalFetchOptions = {}): FetchFn {
+// Declared return type is narrower than `FetchFn` itself (a plain
+// `Promise<string>` producer rather than `Promise<string | FetchResult>`):
+// this adapter never has a pin to report, and a `string`-returning function
+// is still assignable everywhere a `FetchFn` is expected (return-type
+// covariance), so every call site that consumes this fake's result directly
+// as a string — this is a TEST-ONLY adapter used that way throughout its own
+// test suite — keeps compiling without a `typeof` narrowing it has no reason
+// to perform.
+export function createLocalFetchFn(
+  localDir: string,
+  options: LocalFetchOptions = {},
+): (url: string) => Promise<string> {
   const excludedDirs = options.excludedDirs ?? DEFAULT_EXCLUDED_DIRS;
 
   return async function localFetch(_url: string): Promise<string> {
@@ -60,9 +75,9 @@ export function createLocalFetchFn(localDir: string, options: LocalFetchOptions 
       throw new Error(`Local fetch source directory does not exist or is not a directory: "${localDir}"`);
     }
     const files = walkDirectory(localDir, excludedDirs);
-    const bundle: Record<string, string> = {};
+    const bundle: Record<string, BinaryBundleValue> = {};
     for (const relativePath of files.sort()) {
-      bundle[relativePath] = fs.readFileSync(path.join(localDir, relativePath), 'utf-8');
+      setOwn(bundle, relativePath, encodeBundleValue(fs.readFileSync(path.join(localDir, relativePath))));
     }
     return JSON.stringify({ [BUNDLE_MARKER]: bundle });
   };

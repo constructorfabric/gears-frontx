@@ -46,9 +46,17 @@ description: "Agent navigation rules for FrontX ecosystem package boundaries, CL
 
 - CLI resolves templates by source-spec at runtime; it bundles no template content
 - Source-spec format: `host:owner/repo[//subtree]@ref` — the optional `//subtree` addresses a template occupying a subdirectory of a repository
-- Supported commands are `install`, `list`, `update-local`, `validate`, `seed`, `add`, `upgrade`, and `help`
-- `seed` applies a template into a **new** repository, `add` into an **existing** one; both take the identity the template's own manifest declares, which is what `list` reports. `seed` refuses a target that already holds content and names the exact rule in its refusal - read that rather than reproducing the rule here, since a copy of it in this file is a copy that falls out of step
-- `list --json` is the machine-readable form: one record per installed template carrying its identity, pinned reference, source address, and declared description
+- Use `frontx help` for commands and `frontx version` for the installed version. The current defaults set is empty. Start a project with `register <origin>` and `apply --input <batch-json>`.
+- Registration records the manifest's `name` in `.frontx/project.json`. A GitHub archive must state its full 40-hex commit. A local `path:` origin names a folder inside the project. Legacy CLI state requires a manual migration from a verified baseline and backup.
+- `assemble` and `apply` accept the same batch, `{"templates":{"<name>":["<target>"]}}`. Previewing checks ownership and may install a missing remote template into inventory. Applying rechecks the batch. A first target materializes the template's AI bundle when present.
+- For a destructive change or an AI bundle replacement, show the developer the complete CLI plan, including target, preservation and AI bundle effects. Wait for their explicit approval before repeating the same command with `--json --yes --plan-digest=<approved digest>`. A changed plan requires a fresh decision. A no-op or superseded review without a digest has nothing to confirm. A delete dry run issues no digest.
+- `delete` protocol for agents:
+  1. Run `delete <target> --json`. On `CONFIRMATION_REQUIRED`, show the developer ALL of these fields from `details`: `target`, `templateName`, `toDelete`, `toPreserve`, `exclusionsDrift` and `relinquishedGround` when present, `aiBundle` (including the reviewed tree and local edits on last-target removal), and `planDigest`.
+  2. Only after the developer approves that plan, run `delete <target> --json --yes --plan-digest=<details.planDigest>`. Without `--plan-digest`, `--yes` deletes nothing. `--dry-run` is a preview only: it issues no digest.
+  3. On `planChangedSinceReview: true`, show the WHOLE new plan and wait for fresh approval of its digest. Never re-confirm automatically.
+  4. The digest covers the listed paths, flags and reviewed AI bundle tree, including file hashes and link targets. It does not bind file bytes of ordinary target files. The check is not atomic with deletion. Check successful output for `aiBundleResidue`.
+- Treat `upgrade <name> --recover` as a mutation even on its first JSON call. It can finalize, cancel or release verified work immediately. Pending post-commit tasks require a review. Inspect refusals and keep any named receipts.
+- Check stdout, stderr and exit status. An unexpected internal exception exits 2; under `--json` it still answers with one `INTERNAL` envelope on stdout. In `list --json`, `data.installed` omits names registered to this project.
 
 ## When a request is to create or extend a project
 

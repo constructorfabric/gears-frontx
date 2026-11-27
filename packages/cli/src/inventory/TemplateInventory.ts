@@ -45,7 +45,7 @@ export class TemplateInventory {
     if (!parseResult.ok) {
       // @cpt-begin:cpt-frontx-flow-template-resolution-install:p1:inst-install-parse-reject
       // @cpt-begin:cpt-frontx-state-template-resolution-inventory-lifecycle:p1:inst-state-parse-fail-loop
-      return { ok: false, error: { message: parseResult.error.message } };
+      return { ok: false, error: { code: 'INVALID_INPUT', message: parseResult.error.message } };
       // @cpt-end:cpt-frontx-state-template-resolution-inventory-lifecycle:p1:inst-state-parse-fail-loop
       // @cpt-end:cpt-frontx-flow-template-resolution-install:p1:inst-install-parse-reject
     }
@@ -53,7 +53,7 @@ export class TemplateInventory {
 
     // @cpt-begin:cpt-frontx-flow-template-resolution-install:p1:inst-install-resolve
     // @cpt-begin:cpt-frontx-state-template-resolution-inventory-lifecycle:p1:inst-state-to-resolved
-    const resolveResult = await resolveToInventory(parseResult.value, fetchFn);
+    const resolveResult = await resolveToInventory({ kind: 'remote', ref: parseResult.value }, { fetchFn });
     // @cpt-end:cpt-frontx-state-template-resolution-inventory-lifecycle:p1:inst-state-to-resolved
     // @cpt-end:cpt-frontx-flow-template-resolution-install:p1:inst-install-resolve
 
@@ -62,7 +62,7 @@ export class TemplateInventory {
     if (!resolveResult.ok) {
       // @cpt-begin:cpt-frontx-flow-template-resolution-install:p1:inst-install-reach-fail
       // @cpt-begin:cpt-frontx-state-template-resolution-inventory-lifecycle:p1:inst-state-fetch-fail-loop
-      return { ok: false, error: { message: resolveResult.error.message } };
+      return { ok: false, error: { message: resolveResult.error.message, code: resolveResult.error.code } };
       // @cpt-end:cpt-frontx-state-template-resolution-inventory-lifecycle:p1:inst-state-fetch-fail-loop
       // @cpt-end:cpt-frontx-flow-template-resolution-install:p1:inst-install-reach-fail
     }
@@ -86,9 +86,7 @@ export class TemplateInventory {
     const sameTemplate = occupant !== undefined && addressesSameTemplate(occupant.source, parseResult.value);
     // An identity that nests with an installed one is refused even though the
     // two are different keys, because they are not different directories.
-    const nesting = this.index
-      .all()
-      .find((entry) => entry.name !== record.name && pathsNest(entry.name, record.name));
+    const nesting = this.overlappingOther(record.name);
 
     if (occupant !== undefined && !sameTemplate) {
       // @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-collision-fail
@@ -96,6 +94,7 @@ export class TemplateInventory {
       return {
         ok: false,
         error: {
+          code: 'REGISTRATION_CONFLICT',
           message:
             `Template identity "${record.name}" is already installed from "${occupant.source}", ` +
             `so "${record.source}" was not installed. Run "frontx update-local ${record.name} ${record.source}" ` +
@@ -111,6 +110,7 @@ export class TemplateInventory {
       return {
         ok: false,
         error: {
+          code: 'REGISTRATION_CONFLICT',
           message:
             `Template identity "${record.name}" would be materialized inside the content path of the ` +
             `installed template "${nesting.name}", or the other way round, so "${record.source}" was not ` +
@@ -200,6 +200,7 @@ export class TemplateInventory {
       return {
         ok: false,
         error: {
+          code: 'TEMPLATE_NOT_REGISTERED',
           message: `Template not found in local inventory: "${name}". Install it first with the install command.`,
         },
       };
@@ -216,14 +217,14 @@ export class TemplateInventory {
     // @cpt-begin:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-parse-check
     if (!parseResult.ok) {
       // @cpt-begin:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-parse-reject
-      return { ok: false, error: { message: parseResult.error.message } };
+      return { ok: false, error: { code: 'INVALID_INPUT', message: parseResult.error.message } };
       // @cpt-end:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-parse-reject
     }
     // @cpt-end:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-parse-check
 
     // @cpt-begin:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-fetch
     // @cpt-begin:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-fetch
-    const resolveResult = await resolveToInventory(parseResult.value, fetchFn);
+    const resolveResult = await resolveToInventory({ kind: 'remote', ref: parseResult.value }, { fetchFn });
     // @cpt-end:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-fetch
     // @cpt-end:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-fetch
 
@@ -232,7 +233,7 @@ export class TemplateInventory {
     if (!resolveResult.ok) {
       // @cpt-begin:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-reach-fail
       // @cpt-begin:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-fetch-fail
-      return { ok: false, error: { message: resolveResult.error.message } };
+      return { ok: false, error: { message: resolveResult.error.message, code: resolveResult.error.code } };
       // @cpt-end:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-fetch-fail
       // @cpt-end:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-reach-fail
     }
@@ -249,11 +250,14 @@ export class TemplateInventory {
     // for another under the entry's identity, with no acquisition-level failure to
     // notice. Here the declared identity settles whether the two are one template;
     // the install guard above settles the same question from the reference.
+    // @cpt-begin:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-identity-mismatch-check
     if (record.name !== existing.name) {
+      // @cpt-begin:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-identity-mismatch
       // @cpt-begin:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-identity-mismatch-fail
       return {
         ok: false,
         error: {
+          code: 'REGISTRATION_CONFLICT',
           message:
             `Source-spec "${record.source}" resolves to the template "${record.name}", ` +
             `not to "${existing.name}", so the installed template was left unchanged. ` +
@@ -261,8 +265,45 @@ export class TemplateInventory {
         },
       };
       // @cpt-end:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-identity-mismatch-fail
+      // @cpt-end:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-identity-mismatch
     }
+    // @cpt-end:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-identity-mismatch-check
     // @cpt-end:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-identity-mismatch
+
+    // @cpt-begin:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-if-overlap
+    // @cpt-begin:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-if-overlap
+    // `FsContentStore.replace` clears the entry's content path before writing it.
+    // If another indexed name addresses the same or a nested location as this one,
+    // as the CLI compares names (`pathsNest`: lexical, with the process's first
+    // case probe), that clearing would also remove the other entry's files while
+    // leaving it indexed. Refused before any write. This is a name comparison,
+    // not proof of physical identity or separation (another volume, Unicode
+    // aliases, symlinks inside the store are not examined), and the message
+    // does not tell the user to delete anything or claim the locations are
+    // independent.
+    const overlapping = this.overlappingOther(existing.name);
+    if (overlapping !== undefined) {
+      // @cpt-begin:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-return-overlap
+      // @cpt-begin:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-return-overlap
+      return {
+        ok: false,
+        error: {
+          code: 'REGISTRATION_CONFLICT',
+          message:
+            `Inventory entries "${existing.name}" and "${overlapping.name}" address the same or nested ` +
+            `content locations under the inventory root as this CLI compares names, so replacing ` +
+            `"${existing.name}"'s content could also change or remove content of "${overlapping.name}". ` +
+            'This update did not change the inventory index or any inventory content. Do not modify the inventory ' +
+            'until you have made a full backup of its ' +
+            'index and content and established which files belong to which entry; the CLI does not ' +
+            'reconcile or remove either entry.',
+        },
+      };
+      // @cpt-end:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-return-overlap
+      // @cpt-end:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-return-overlap
+    }
+    // @cpt-end:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-if-overlap
+    // @cpt-end:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-if-overlap
 
     // @cpt-begin:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-write
     // @cpt-begin:cpt-frontx-algo-template-resolution-bounded-update:p1:inst-bupd-replace
@@ -293,10 +334,22 @@ export class TemplateInventory {
     // @cpt-end:cpt-frontx-flow-template-resolution-update-local:p1:inst-update-success
   }
 
+  // The other indexed entry, if any, whose name the CLI's comparison (`pathsNest`)
+  // places at the same or a nested location as `name`. The entry's own name is
+  // never a match.
+  private overlappingOther(name: string): InventoryEntry | undefined {
+    return this.index.all().find((entry) => entry.name !== name && pathsNest(entry.name, name));
+  }
+
   // --- lookup (shared resolver access for scaffolding) ---
 
   lookup(name: string): InventoryEntry | undefined {
     return this.index.lookup(name);
+  }
+
+  /** The installed content actually stored for `name` (read back after a promotion). */
+  readInstalled(name: string): string | undefined {
+    return this.store.read(name);
   }
 
   // --- state machine query ---

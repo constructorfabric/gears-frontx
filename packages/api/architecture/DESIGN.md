@@ -178,7 +178,7 @@ None. The package imports no other package in this ecosystem — the property ro
 | axios | HTTP transport client | Provides the request/response transport behind the protocol-separated surface; declared as a peer dependency so the surface carries no hard runtime coupling to a specific transport (`cpt-frontx-adr-api-surface-organization`). |
 
 **Dependency Rules** (per project conventions):
-- `axios` is a peer dependency (`>=1.0.0 <1.14.1`), not a runtime dependency — the package carries no runtime `dependencies` on any data-fetching or state-management library
+- This release requires `axios@1.20.0` as an exact peer dependency, as declared in [the package manifest](../package.json). When upgrading `@gears-frontx/api`, consumers must align their Axios dependency with the exact peer version declared by the target API release. The package declares no runtime `dependencies` on data-fetching or state-management libraries.
 - The streaming protocol reaches the browser's native `EventSource` API directly rather than through any bundled dependency
 
 ### 3.6 Interactions & Sequences
@@ -233,4 +233,4 @@ The package's central design tension is staying below PRD interface altitude whi
 - **Features**: [features/](./features/)
 - **Root chain**: [PRD](../../../architecture/PRD.md), [DESIGN](../../../architecture/DESIGN.md), [DECOMPOSITION](../../../architecture/DECOMPOSITION.md)
 
-This package's requirements are owned by its own [PRD](./PRD.md), per the 3-layer model: each member explains its own reqs, and the root PRD describes the layers and the requirements binding every member equally. The design elements that moved here from the root DESIGN under the artifact-federation refactoring keep their identifiers unchanged, so citations from the root DECOMPOSITION and this package's FEATUREs resolve as before.
+This package's requirements are owned by its own [PRD](./PRD.md), per the 3-layer model: each member explains its own reqs, and the root PRD describes the layers and the requirements binding every member equally. Every design element this package owns is cited under the identifier the root DECOMPOSITION and this package's FEATUREs use, so those citations resolve here.
