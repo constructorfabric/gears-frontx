@@ -193,13 +193,16 @@ describe('abstract base types stay open', () => {
     return id;
   };
 
-  it('the base action, referenced by an actions chain, accepts a property of its own', () => {
-    accepts(domain({ lifecycle: [{ stage: STAGE_INIT, actions_chain: { action: mountAction({ extra: 1 }) } }] }));
+  it('the base action, referenced by an actions chain, accepts a property the action\'s own type declares', () => {
+    const type = derived('gts.frontx.mfes.comm.action.v1~', 'chainx', { flavour: { type: 'string' } });
+    accepts(domain({ lifecycle: [{ stage: STAGE_INIT, actions_chain: { action: { type, target: DOMAIN_ID, flavour: 'a' } } }] }));
   });
 
-  it('a concrete action with an extra property is open inside next and fallback, and rejected when registered as its own type', () => {
+  it('a concrete action with an extra property is refused in a hook\'s action, next and fallback, as when registered as its own type', () => {
     const chain = { action: mountAction({ extra: 1 }) };
-    accepts(domain({ lifecycle: [{ stage: STAGE_INIT, actions_chain: { action: mountAction(), next: chain, fallback: chain } }] }));
+    rejects(domain({ lifecycle: [{ stage: STAGE_INIT, actions_chain: chain }] }));
+    rejects(domain({ lifecycle: [{ stage: STAGE_INIT, actions_chain: { action: mountAction(), next: chain } }] }));
+    rejects(domain({ lifecycle: [{ stage: STAGE_INIT, actions_chain: { action: mountAction(), fallback: chain } }] }));
     rejects(mountAction({ extra: 1 }));
   });
 

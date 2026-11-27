@@ -205,6 +205,8 @@ The system **MUST** ensure the MFE Runtime holds the type-substrate port exclusi
 
 The system **MUST** delegate every schema validation and type-hierarchy-resolution operation to the injected port and **MUST NOT** perform any local schema interpretation, format parsing, or direct schema field inspection inside the runtime.
 
+When the runtime registers a domain or an extension through `register`, the provider **MUST** also validate each action in the declaration's lifecycle hooks against the action's own registered type, through every `next` and `fallback` in each chain. The check covers each action's type and shape, including what kind of entity each reference names. An action's target **MUST** be registered or be the declaration itself. The provider **MUST NOT** require the entities an action's payload names to be registered: a hook action may name, for example as a `mount_ext` subject, an extension of the domain being registered, which registers after the domain. The mediator checks that they are registered when it dispatches the action. When any action fails, `register` **MUST** throw and **MUST** persist nothing. The runtime relies on this to refuse, at registration, a hook that would otherwise fail only when the mediator dispatches it (`inst-algo-ra-domain-hook-actions`, `inst-algo-ra-extension-hook-actions`).
+
 **Implements**:
 - `cpt-frontx-algo-type-substrate-port-schema-validation-delegation`
 - `cpt-frontx-algo-type-substrate-port-type-of-resolution`
@@ -220,4 +222,5 @@ The system **MUST** delegate every schema validation and type-hierarchy-resoluti
 - [x] A CI boundary check on MFE Runtime source returns 0 hits for any concrete type-definition format literals, schema field access beyond identifier, or format-specific imports
 - [x] A conforming `TypeSystemPlugin` implementation can be injected into the runtime without any runtime modification
 - [x] The runtime correctly rejects a microfrontend whose declared type identifier fails port validation, surfacing port-supplied error details to the caller
+- [x] The runtime rejects a domain or extension registration when the port refuses an action in one of its lifecycle hooks, and leaves nothing of the declaration registered
 - [x] The runtime correctly resolves type hierarchy through the port for handler-selection decisions, without local identifier parsing

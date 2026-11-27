@@ -285,7 +285,14 @@ export class DefaultExtensionManager extends ExtensionManager {
     // @cpt-begin:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-type-register
     // @cpt-begin:cpt-frontx-algo-mfe-registry-register-extension:p2:inst-algo-re-type-register-rollback
     try {
+      // @cpt-begin:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-algo-ra-extension-hook-actions
+      // This call also checks each lifecycle hook action against its own
+      // type. That check does not ask that the entities an action names be
+      // registered, so a hook's payload may name the extension itself or a
+      // sibling registered after it. A hook action that fails takes the rollback
+      // below like any other invalid declaration.
       this.typeSystem.register(extension);
+      // @cpt-end:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-algo-ra-extension-hook-actions
     } catch (cause) {
       // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-extension-type-register-reject
       // A release failure here is secondary to the type-system rejection

@@ -43,3 +43,12 @@ export const FRONTX_LIFECYCLE_STAGE_DESTROYED =
  * matched through the GTS library, never by string prefix.
  */
 export const FRONTX_SHARED_PROPERTY_PATTERN = 'gts.frontx.mfes.comm.shared_property.v1~*';
+
+/**
+ * Patterns matching every domain and every extension: instances of the domain
+ * and extension types, whose lifecycle hook actions the instance write checks
+ * against each action's own type. Matched through the GTS library, never by
+ * string prefix.
+ */
+export const FRONTX_DOMAIN_PATTERN = 'gts.frontx.mfes.ext.domain.v1~*';
+export const FRONTX_EXTENSION_PATTERN = 'gts.frontx.mfes.ext.extension.v1~*';

@@ -1033,7 +1033,14 @@ export class DefaultMfeRegistry extends MfeRegistry {
     // left-behind admission would collide with a corrected retry under the
     // same domain id.
     try {
+      // @cpt-begin:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-algo-ra-domain-hook-actions
+      // This call also checks each lifecycle hook action against its own
+      // type. That check does not ask that the entities an action names be
+      // registered, so a hook's payload may name the domain's own extensions,
+      // which register after it. A hook action that fails takes the rollback
+      // below like any other invalid declaration.
       this.typeSystem.register(declaration);
+      // @cpt-end:cpt-frontx-algo-mfe-registry-router-admission:p1:inst-algo-ra-domain-hook-actions
     } catch (cause) {
       // @cpt-begin:cpt-frontx-flow-extension-domain-governance-admission:p1:inst-domain-type-register-reject
       // @cpt-begin:cpt-frontx-flow-mfe-registry-register-validate-mount:p1:inst-flow-rvm-04c

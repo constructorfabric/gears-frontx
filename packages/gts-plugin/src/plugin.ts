@@ -240,7 +240,19 @@ export class GtsPlugin implements TypeSystemPlugin<JSONSchema> {
    * `registerSchema`, so the outcome never depends on which method a runtime
    * used or on load order; content that is not representable as JSON is
    * refused as a schema; an instance cannot be written under a type
-   * identifier or over a registered type.
+   * identifier or over a registered type; a domain or an extension is refused
+   * when an action in its lifecycle hooks, reached through `next` or
+   * `fallback` included, fails the action's own type.
+   *
+   * Lifecycle hook actions: a domain's or an extension's own schema checks
+   * each hook action only against the base action type, which accepts a
+   * domain or an extension as a target. Each action is then validated against
+   * its own type. That check does not ask that the entities an action names
+   * be registered, so an action's payload may name an entity registered after
+   * the declaration; its `target` must still be registered or be the
+   * declaration itself. A `mount_ext`
+   * action that targets an extension is refused here, at registration, instead
+   * of failing only when the mediator dispatches it.
    *
    * Named instance pattern: the schema is resolved from the chained instance
    * ID automatically (`gts.frontx.mfes.ext.extension.v1~acme.widget.v1` →

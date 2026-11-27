@@ -15,8 +15,8 @@
 
 import { Gts, GtsRefValidationMode, createJsonEntity, type JsonEntity } from '@globaltypesystem/gts-ts';
 import { canonicalText, copyContent, cyrb53, deepCopyJson, sameContent } from './canonical';
-import { FRONTX_SHARED_PROPERTY_PATTERN } from './constants';
-import { keyName, type StorePair, type WriterToken } from './store-pair';
+import { FRONTX_DOMAIN_PATTERN, FRONTX_EXTENSION_PATTERN, FRONTX_SHARED_PROPERTY_PATTERN } from './constants';
+import { keyName, type StoreLike, type StorePair, type WriterToken } from './store-pair';
 
 // @cpt-algo:cpt-frontx-algo-gts-type-provider-schema-write:p1
 // @cpt-algo:cpt-frontx-algo-gts-type-provider-instance-write:p1
@@ -24,13 +24,27 @@ import { keyName, type StorePair, type WriterToken } from './store-pair';
 
 
 /**
- * The reference check every validation asks of the library: a referenced entity
- * only has to be on the store, not valid. Every stored instance was validated
+ * The reference check every validation asks of the library, except a lifecycle
+ * hook action's at registration ({@link HOOK_ACTION_REFERENCE_CHECK}): a referenced
+ * entity only has to be on the store, not valid. Every stored instance was validated
  * when it was written, but a type is not validated when it is registered. A
  * validity check would let one type the library rejects fail every entity that
  * lists it, and would validate a dispatch target's references again on every action.
  */
 export const REFERENCE_CHECK = GtsRefValidationMode.AnyPresent;
+
+/**
+ * The reference check registration asks of a lifecycle hook action: none. The
+ * action's type still decides what kind of entity each reference must name,
+ * for example that a `mount_ext` action targets a domain, but not whether that
+ * entity is on the store yet. The declaration's own validation still checks
+ * each action against the base action type, so an action's `target` must be
+ * on the store or be the declaration itself. Its payload may name an entity
+ * registered after the declaration, such as an extension of the domain being
+ * registered, since an extension registers only after its domain. The mediator
+ * validates the action with {@link REFERENCE_CHECK} when it dispatches it.
+ */
+const HOOK_ACTION_REFERENCE_CHECK = GtsRefValidationMode.None;
 
 export function safeStringify(value: unknown): string {
   try {
@@ -214,10 +228,75 @@ function raiseInvalid(pair: StorePair, entity: JsonEntity, failure: string): nev
 }
 // @cpt-end:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-raise
 
+// @cpt-begin:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-hook-actions
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+/** Why one hook action fails its own type, or undefined when it passes. */
+function actionFailure(scratch: StoreLike, action: unknown): string | undefined {
+  // The library reads the action's type from its `type` field, as for an anonymous instance.
+  const wrapped = createJsonEntity(action);
+  const typeId = wrapped.schemaId;
+  if (!typeId) return 'the GTS library found no type identifier in this action';
+  const result = scratch.validateTransientInstance(wrapped.content, typeId, null, HOOK_ACTION_REFERENCE_CHECK);
+  if (result.ok) return undefined;
+  return `its type '${typeId}' refuses it: ${result.error || 'unknown validation error'}`;
+}
+
+/**
+ * Why the first lifecycle hook action of a domain or an extension fails its
+ * own type, or undefined when every action passes or the candidate is neither.
+ *
+ * The candidate's own schema checks a hook action only against the base action
+ * type, which accepts a domain or an extension as a target. Each action's own
+ * type is narrower: `mount_ext`, for one, targets a domain only. Without this
+ * check such an action would fail only when the mediator dispatches it, which
+ * can leave the hook's chain half done.
+ *
+ * Checks each action's type and shape, including the kind of entity each
+ * reference names, but not that the named entity is registered
+ * ({@link HOOK_ACTION_REFERENCE_CHECK}), so an action's payload may name an
+ * entity registered after the candidate. The candidate's own schema still
+ * requires each action's `target` to be on the store or to be the candidate
+ * itself. The library decides whether
+ * the candidate is a domain or an extension; the walk over the hooks and each
+ * chain's `next` and `fallback` links reads no identifier.
+ */
+function hookActionFailure(scratch: StoreLike, entity: JsonEntity): string | undefined {
+  const isDeclaration =
+    Gts.matchIDPattern(entity.id, FRONTX_DOMAIN_PATTERN).match ||
+    Gts.matchIDPattern(entity.id, FRONTX_EXTENSION_PATTERN).match;
+  if (!isDeclaration || !isRecord(entity.content)) return undefined;
+  const hooks = entity.content.lifecycle;
+  if (!Array.isArray(hooks)) return undefined;
+
+  for (const [index, hook] of hooks.entries()) {
+    if (!isRecord(hook)) continue;
+    // Depth first in dispatch order: an action, then its `next` chain, then its `fallback` chain.
+    const pending: Array<{ chain: unknown; path: string }> = [
+      { chain: hook.actions_chain, path: `lifecycle[${index}].actions_chain` },
+    ];
+    const seen = new Set<unknown>();
+    while (pending.length > 0) {
+      const { chain, path } = pending.pop()!;
+      if (!isRecord(chain) || seen.has(chain)) continue;
+      seen.add(chain);
+      const failure = failureOf(() => actionFailure(scratch, chain.action));
+      if (failure !== undefined) return `the lifecycle hook action at ${path}.action fails: ${failure}`;
+      pending.push({ chain: chain.fallback, path: `${path}.fallback` });
+      pending.push({ chain: chain.next, path: `${path}.next` });
+    }
+  }
+  return undefined;
+}
+// @cpt-end:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-hook-actions
+
 /**
  * Validate an instance against the pair's current state, then write it,
  * replacing what the store held under its identifier. An anonymous instance
- * is only validated.
+ * is only validated. A domain or an extension is written only when every
+ * action in its lifecycle hooks also validates against the action's own type.
  *
  * @throws Error when validation fails; the store is then exactly as it was
  */
@@ -267,13 +346,19 @@ export function writeInstance(pair: StorePair, token: WriterToken, entity: JsonE
   // @cpt-begin:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-validate
   // Validation runs even when the content equals what is held: the verdict
   // always comes from the library, never from an earlier call.
-  const failure = failureOf(() => {
+  let failure = failureOf(() => {
     scratch.register(entity);
     const result = scratch.validateInstance(id, REFERENCE_CHECK);
     if (result.ok && result.valid) return undefined;
     return result.ok ? 'schema validation returned invalid' : (result.error || 'unknown validation error');
   });
   // @cpt-end:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-validate
+
+  // @cpt-begin:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-hook-actions
+  // The scratch store holds the candidate at this point, so a hook action may
+  // name the domain or extension being registered.
+  if (failure === undefined) failure = failureOf(() => hookActionFailure(scratch, entity));
+  // @cpt-end:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-hook-actions
 
   // @cpt-begin:cpt-frontx-algo-gts-type-provider-instance-write:p1:inst-iw-if-invalid
   // @cpt-begin:cpt-frontx-algo-gts-type-provider-type-closure:p1:inst-tc-return
