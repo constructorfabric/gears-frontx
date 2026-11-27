@@ -275,6 +275,13 @@ as the first. A filesystem-wide search issued from outside the project tree is a
 defect, not a search strategy: a run that reached for `find / -iname` was hunting
 a type that sat in `node_modules/@gears-frontx/api/dist/` the whole time.
 
+**Before the first unit is built, apply the page proposal rule of the Request
+Routing section in the kit's top-level document** to the new pages or screens
+among these units: take or offer the step once for all of them. If you offer it,
+end your turn here and build nothing; the flow may stop at this point. On the
+person's reply, take the step or not as that rule says, then resume here with
+the first unit.
+
 For each unit from step 3.11, in plan order:
 
 1. **Find the covering skill.** Look in the bundle of the template that owns the

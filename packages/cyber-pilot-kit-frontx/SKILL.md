@@ -35,19 +35,22 @@ The page proposal step is a skill in an applied template's bundle under
 applied counts, activated or not. It builds nothing and never replaces or precedes
 the route that builds: it applies when a new page or screen is about to be built,
 on whatever route builds it. That means a page built from the applied bundles'
-skills. A page a template writes while it is applied - by `frontx seed` or
-`frontx add` - is that template's shipped content and gets no proposal and no
-offer; tell a person who asked to see it first that it comes ready from the
-template. When no applied bundle offers it, build without it and do not report its
-absence as a missing capability. A person who asked to see the page or options
-first gets the step with no further ask. Otherwise, for new pages or screens whose
-look the person has neither seen nor described, offer it once, in one short line
-covering them all, in the person's own language - every text the step shows them
-is in that language too; never offer again for a screen already offered or
-declined. Take the step only if the person accepts; a refusal, no answer, or a
-wish to build at once means build now, without waiting or asking again. Make no
-offer when the person already gave a design, a mockup or an exact description, or
-when the change is small - a fix, one more field, a text change. Only the person
+skills. A page a template writes while it is applied - by `frontx seed` or `frontx
+add` - is that template's shipped content and gets no proposal and no offer; tell
+a person who asked to see it first that it comes ready from the template. When no
+applied bundle offers the step, build without it; tell a person who asked to see
+the page first that this project offers no drawn proposal, then build. That line
+answers the person and is not an error: do not report the absence as a missing
+capability or as an unmatched request. A person who asked to see the page or
+options first gets the step with no further ask. Otherwise, for new pages or
+screens whose look the person has neither seen nor described, offer it once, in
+one short line covering them all, in the person's own language - every text the
+step shows them is in that language too; never offer again for a screen already
+offered or declined. The offer ends your turn: build nothing in it. A reply that
+accepts takes the step. Any other reply (a refusal, a wish to build at once, or
+one that ignores the offer) means build now, with no second ask. Make no offer
+when the person already gave a design, a mockup or an exact description, or when
+the change is small - a fix, one more field, a text change. Only the person
 chooses an option; never pick one for them.
 
 <!-- frontx:routing:end -->
