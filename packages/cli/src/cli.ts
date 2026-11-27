@@ -242,6 +242,7 @@ export function parseInvocation(argv: string[]): ParsedInvocation {
 
 // --- usage/help (cpt-frontx-flow-cli-invocation-help) ---
 
+// @cpt-begin:cpt-frontx-flow-cli-invocation-help:p1:inst-help-usage
 export function usageText(): string {
   return [
     'Usage: frontx <command> [args]',
@@ -291,6 +292,7 @@ export function usageText(): string {
     '',
   ].join('\n');
 }
+// @cpt-end:cpt-frontx-flow-cli-invocation-help:p1:inst-help-usage
 
 // --- adapter wiring (Phases 9-10 concrete I/O adapters + fs-project-io glue) ---
 
@@ -577,6 +579,7 @@ export async function writeInteractiveLineOrEscalate(
 // @cpt-end:cpt-frontx-flow-cli-invocation-run-command:p1:inst-run-return-write-failed-escalate
 // @cpt-end:cpt-frontx-flow-cli-invocation-run-command:p1:inst-run-return-if-write-failed
 
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-prompt
 function createInteractiveDeletionConfirm(): ConfirmDeletionFn {
   // Filenames may contain terminal controls. Keep each reviewed path on one visible line.
   const display = (value: string) => value.replace(/[\\\p{Cc}\p{Zl}\p{Zp}]/gu,
@@ -620,6 +623,7 @@ function createInteractiveDeletionConfirm(): ConfirmDeletionFn {
     }
   };
 }
+// @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-prompt
 
 /**
  * The plain-language statement a human reads about `RETAINED_GROUND` skips,
@@ -712,6 +716,7 @@ function createInteractiveConfirm(question: string): ConfirmRecoveryFn {
   };
 }
 
+// @cpt-begin:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-present-changeset
 function createInteractiveUpgradeApproval(): PresentUpgradePlanFn {
   return async function presentUpgradePlan(plan): Promise<'approved' | 'declined'> {
     // Rendered from the PROJECTED plan, and as a file/action list rather than
@@ -746,6 +751,7 @@ function createInteractiveUpgradeApproval(): PresentUpgradePlanFn {
     }
   };
 }
+// @cpt-end:cpt-frontx-flow-upgrade-changeset-review-approval:p1:inst-present-changeset
 
 
 // --- dispatch (cpt-frontx-flow-cli-invocation-run-command) ---
@@ -756,6 +762,7 @@ function createInteractiveUpgradeApproval(): PresentUpgradePlanFn {
 // exactly as `delete`'s `--json`/`--dry-run`/`--yes` flags are (`commands/
 // delete.ts`'s own header: flags are wired at the dispatch layer, never
 // inside the command module).
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-uniform-apply:p1:inst-ua-receive
 function parseBatchInput(raw: string): { ok: true; batch: UniformApplyBatch } | { ok: false; message: string } {
   let parsed: unknown;
   try {
@@ -779,6 +786,7 @@ function parseBatchInput(raw: string): { ok: true; batch: UniformApplyBatch } | 
   }
   return { ok: true, batch: { templates } };
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-uniform-apply:p1:inst-ua-receive
 
 // Extracts a `--flag <value>` pair from `args`, returning the value (or
 // `undefined` when the flag is absent or carries no following token) and

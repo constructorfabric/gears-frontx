@@ -45,6 +45,7 @@ interface CliEnvelopeError {
 }
 type CliEnvelope = { ok: true; data: unknown } | { ok: false; error: CliEnvelopeError };
 
+// @cpt-begin:cpt-frontx-dod-ai-upgrade-orchestration-single-engine:p1:inst-parse-json-result
 function parseCliEnvelope(raw: string): CliEnvelope | undefined {
   let parsed: unknown;
   try {
@@ -67,6 +68,7 @@ function parseCliEnvelope(raw: string): CliEnvelope | undefined {
     },
   };
 }
+// @cpt-end:cpt-frontx-dod-ai-upgrade-orchestration-single-engine:p1:inst-parse-json-result
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -84,6 +86,7 @@ function isSha256(value: unknown): value is string {
   return typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 }
 
+// @cpt-begin:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1:inst-relay-changeset
 function reviewableFiles(value: unknown): boolean {
   return Array.isArray(value) && value.every(file => isRecord(file) && typeof file.path === 'string' && isSha256(file.sha256) &&
     typeof file.length === 'number' && Number.isSafeInteger(file.length) && file.length >= 0 && (file.linkTarget === undefined || typeof file.linkTarget === 'string'));
@@ -100,7 +103,9 @@ function isReviewablePlan(plan: unknown): plan is ReviewablePlan {
     (ai === undefined || (isRecord(ai) && typeof ai.destination === 'string' && Array.isArray(ai.changes) &&
       ai.changes.every(entry => stringFields(entry, 'path', 'kind')) && reviewableFiles(ai.files) && reviewableFiles(ai.existing)));
 }
+// @cpt-end:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1:inst-relay-changeset
 
+// @cpt-begin:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1:inst-relay-changeset
 function mapConfirmationDetailsToChangeSet(details: Record<string, unknown> | undefined, name: string): ChangeSet | undefined {
   if (!details || details.name !== name || !isReviewablePlan(details.plan) || details.plan.name !== name ||
       (details.notes !== undefined && !strings(details.notes))) return undefined;
@@ -121,6 +126,7 @@ function mapConfirmationDetailsToChangeSet(details: Record<string, unknown> | un
     notes: details.notes ?? [],
   };
 }
+// @cpt-end:cpt-frontx-dod-ai-upgrade-orchestration-gate-enforced:p1:inst-relay-changeset
 
 /**
  * Factory returning a concrete `InvokeUpgradeCommandFn` bound to the built

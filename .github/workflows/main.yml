@@ -9,7 +9,9 @@ on:
 # Every job here only reads the repo: nothing pushes, comments, or releases —
 # upload-artifact needs no contents scope. Declared once at the workflow level
 # (with persist-credentials: false on each checkout) so the default read/write
-# token never reaches repository-controlled scripts.
+# token never reaches repository-controlled scripts. The one step handed this
+# read-only token is each Studio job's `cfs update` bootstrap (the pinned
+# Constructor Studio CLI, for its GitHub API version lookup).
 permissions:
   contents: read
 
@@ -224,6 +226,10 @@ jobs:
       # .cf-studio/.core is gitignored (Constructor-Studio-owned, regenerated
       # on demand) — materialize it before invoking studio.py directly.
       - name: Bootstrap Constructor Studio runtime
+        # cfs resolves the pinned version through the GitHub API; unauthenticated
+        # calls share the runner IP's 60/h quota and fail with HTTP 403.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: cfs update -y --no-interactive --with-kits yes --version ${{ steps.cfs-version.outputs.version }}
 
       - name: Validate artifacts and traceability
@@ -251,6 +257,10 @@ jobs:
         run: pipx install "git+https://github.com/constructorfabric/studio.git@${{ steps.cfs-version.outputs.version }}"
 
       - name: Bootstrap Constructor Studio runtime
+        # cfs resolves the pinned version through the GitHub API; unauthenticated
+        # calls share the runner IP's 60/h quota and fail with HTTP 403.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: cfs update -y --no-interactive --with-kits yes --version ${{ steps.cfs-version.outputs.version }}
 
       - name: Validate installed kits
@@ -278,6 +288,10 @@ jobs:
         run: pipx install "git+https://github.com/constructorfabric/studio.git@${{ steps.cfs-version.outputs.version }}"
 
       - name: Bootstrap Constructor Studio runtime
+        # cfs resolves the pinned version through the GitHub API; unauthenticated
+        # calls share the runner IP's 60/h quota and fail with HTTP 403.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: cfs update -y --no-interactive --with-kits yes --version ${{ steps.cfs-version.outputs.version }}
 
       - name: Check spec coverage thresholds

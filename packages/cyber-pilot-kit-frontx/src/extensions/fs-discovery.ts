@@ -64,6 +64,7 @@ function isSlotCategory(value: unknown): value is ExtensionCategory {
   return typeof value === 'string' && Object.prototype.hasOwnProperty.call(SLOT_DIR_NAMES, value);
 }
 
+// @cpt-begin:cpt-frontx-algo-template-ai-extensions-contract-scan-activate:p1:inst-validate-entry-shape
 /**
  * Validates one declared entry's ON-DISK shape against its slot's required
  * layout. Distinct from `validateExtensionEntry` (field-shape only) — this
@@ -113,7 +114,9 @@ function validateOnDiskShape(
   }
   return { ok: true };
 }
+// @cpt-end:cpt-frontx-algo-template-ai-extensions-contract-scan-activate:p1:inst-validate-entry-shape
 
+// @cpt-begin:cpt-frontx-algo-template-ai-extensions-contract-scan-activate:p1:inst-check-identity-trust
 /** Reads the kit's projection of project.json. Malformed or unsupported state denies discovery. */
 export function readProjectStateDocument(contentRoot: string, reader: BundleFsReader): ProjectStateDocument | null {
   const raw = reader.readFile(joinPath(contentRoot, '.frontx', 'project.json'));
@@ -128,6 +131,7 @@ export function readProjectStateDocument(contentRoot: string, reader: BundleFsRe
 
   return isProjectStateDocument(parsed) ? parsed : null;
 }
+// @cpt-end:cpt-frontx-algo-template-ai-extensions-contract-scan-activate:p1:inst-check-identity-trust
 
 /**
  * Scans ONE id-scoped bundle root `.frontx/ai/<template-identity>/` for its
@@ -223,6 +227,7 @@ function discoverSingleBundle(
   return { identity, bundle, structuralErrors };
 }
 
+// @cpt-begin:cpt-frontx-flow-template-ai-extensions-bundle-publish-discover-activate:p1:inst-initiate-discovery
 /**
  * Resolves every per-template id-scoped bundle root directly under
  * `aiRoot`. A `<template-identity>` is the template's manifest identity
@@ -254,6 +259,7 @@ function resolveBundleRoots(aiRoot: string, reader: BundleFsReader): { identity:
   }
   return roots;
 }
+// @cpt-end:cpt-frontx-flow-template-ai-extensions-bundle-publish-discover-activate:p1:inst-initiate-discovery
 
 /**
  * Scans the scaffolded project's `.frontx/ai/` for EACH per-template

@@ -242,6 +242,7 @@ function removeEntryWithoutFollowing(entryPath: string): void {
  * propagates rather than silently reading as "no bundle here", the same
  * asymmetry `createFsUnlinkDiskFileFn` (`./fs-upgrade-io.ts`) draws between
  * "already gone" and every other failure. */
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-if-bundle-exists
 export function createFsBundleExistsFn(): BundleExistsFn {
   return async function bundleExists(root: string, manifestName: string): Promise<boolean> {
     try {
@@ -255,6 +256,7 @@ export function createFsBundleExistsFn(): BundleExistsFn {
     }
   };
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-if-bundle-exists
 
 // SYMLINK-ABORT: replacing `.frontx/ai/<manifestName>/` with a symlink to a
 // path inside the project that does not exist, then applying again, would
@@ -353,6 +355,7 @@ function isStillOwnDirectory(dest: string, ownFd: number): boolean {
  * io.ts`) already call, so parent-directory resolution for a path that may
  * pass through a dangling symlink has exactly one formulation across every
  * writer in this package, never a second independently-reasoned one. */
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 export function createFsCopyBundleFn(): CopyBundleFn {
   return async function copyBundle(sourceRoot: string, destRoot: string, manifestName: string): Promise<void> {
     const source = bundlePath(sourceRoot, manifestName);
@@ -426,6 +429,7 @@ export function createFsCopyBundleFn(): CopyBundleFn {
     }
   };
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-copy
 
 /** Real `RemoveBundleFn` — removes the bundle folder recursively; a no-op
  * (never a throw) when it is already absent, matching every other adapter
@@ -434,6 +438,7 @@ export function createFsCopyBundleFn(): CopyBundleFn {
  *
  * Proven to stay inside `root`, symlinks resolved, before the removal — see
  * `createFsCopyBundleFn` above for why this check exists. */
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-remove
 export function createFsRemoveBundleFn(): RemoveBundleFn {
   return async function removeBundle(root: string, manifestName: string): Promise<void> {
     const dest = bundlePath(root, manifestName);
@@ -446,3 +451,4 @@ export function createFsRemoveBundleFn(): RemoveBundleFn {
     removeEntryWithoutFollowing(dest);
   };
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-ai-bundle:p1:inst-aib-remove

@@ -107,6 +107,7 @@ export function createGithubFetchFn(options: GithubFetchOptions = {}): FetchFn {
 
 const TAR_BLOCK_SIZE = 512;
 
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-fetch
 async function readBoundedBody(url: string, response: Response, limit: number): Promise<Buffer> {
   const tooLarge = (): Error =>
     new Error(`GitHub tarball for "${url}" exceeds the ${limit}-byte archive limit; the archive was refused.`);
@@ -130,6 +131,7 @@ async function readBoundedBody(url: string, response: Response, limit: number): 
   }
   return Buffer.concat(chunks, total);
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-fetch
 
 interface UnpackedGithubTarball {
   files: Record<string, BinaryBundleValue>;
@@ -145,6 +147,7 @@ interface UnpackedGithubTarball {
 const PER_FILE_PAX_KEYS = new Set(['path', 'mtime', 'atime', 'ctime', 'linkpath']);
 const UTF8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-fetch
 /**
  * GUNZIPs the GitHub tarball response and UNTARs it, strictly: header
  * checksums, octal sizes and the end-of-archive marker are checked;
@@ -280,16 +283,20 @@ function unpackGithubTarball(url: string, tarballBytes: Buffer, maxExpandedBytes
   }
   return { files, pinnedRef: commit, symlinks };
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-fetch
 
 // Strict octal: digits 0-7 only, then at least one NUL/space terminator to the
 // end of the field. A sign, a leading blank, a digit 8/9 or GNU base-256
 // (high bit set) all yield `undefined`.
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-pin
 function parseOctalField(header: Buffer, start: number, length: number): number | undefined {
   const field = header.toString('latin1', start, start + length);
   const match = /^([0-7]+)[\0 ]+$/.exec(field);
   return match ? parseInt(match[1]!, 8) : undefined;
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-pin
 
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-pin
 function ustarName(header: Buffer, refuse: (why: string) => Error): string {
   const field = (start: number, end: number): string => {
     const bytes = header.subarray(start, end);
@@ -304,11 +311,13 @@ function ustarName(header: Buffer, refuse: (why: string) => Error): string {
   const prefix = header.toString('latin1', 257, 262) === 'ustar' ? field(345, 500) : '';
   return prefix ? `${prefix}/${name}` : name;
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-pin
 
 // `<len> <key>=<value>\n` records, `len` the exact byte count of the record
 // (1-6 digits, no leading zero). Records must consume the body exactly; only
 // trailing NUL padding is tolerated. Repeated keys, invalid UTF-8 values, and
 // every other deviation refuse — nothing is skipped as best effort.
+// @cpt-begin:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-pin
 function parsePaxRecords(body: Buffer, refuse: (why: string) => Error): Map<string, string> {
   const records = new Map<string, string>();
   let index = 0;
@@ -338,6 +347,7 @@ function parsePaxRecords(body: Buffer, refuse: (why: string) => Error): Map<stri
   }
   return records;
 }
+// @cpt-end:cpt-frontx-algo-template-resolution-resolve-to-inventory:p1:inst-resolve-pin
 
 // Inventory-root path resolution — the local inventory store root
 // (`cpt-frontx-adr-template-acquisition-and-location`) that

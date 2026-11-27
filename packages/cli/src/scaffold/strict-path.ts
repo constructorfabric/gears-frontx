@@ -36,6 +36,7 @@ export function classifierFromCanonicalize(canonicalizeFn: CanonicalizeTargetFn)
   };
 }
 
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-protect-registered-origins
 /** Raw relative paths of every registered LOCAL origin, current and previous, owner included. */
 export function registeredLocalOriginRaws(document: ProjectStateDocument): { name: string; origin: string; raw: string }[] {
   const out: { name: string; origin: string; raw: string }[] = [];
@@ -53,11 +54,13 @@ export function registeredLocalOriginRaws(document: ProjectStateDocument): { nam
   }
   return out;
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-protect-registered-origins
 
 export type BundleFootprintVerdict =
   | { ok: true }
   | { ok: false; reason: string; bundlePath: string; origin?: string; name?: string };
 
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-if-origin-in-bundle-footprint
 /**
  * Whether removing the owner's AI bundle (`.frontx/ai/<owner>`, removed
  * recursively, a final symlink removed as a link) would destroy or break a
@@ -136,3 +139,4 @@ export function bundleFootprintVerdict(
   }
   return { ok: true };
 }
+// @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-if-origin-in-bundle-footprint

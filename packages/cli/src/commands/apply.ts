@@ -164,6 +164,7 @@ function collectLocalOriginFolders(document: ProjectStateDocument, canonicalizeF
   return folders;
 }
 
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-conflict-check:p1:inst-cc-combine
 /**
  * The recorded-target claim set every registered template's `targets[]`
  * joins onto its own manifest's `excludedSubtrees` — the declared list is
@@ -224,6 +225,7 @@ async function buildRecordedTargetClaims(
   }
   return claims;
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-conflict-check:p1:inst-cc-combine
 
 export interface ResolveAndCheckDeps {
   inventory: UniformApplyInventoryPort;
@@ -501,6 +503,7 @@ export async function resolveAndCheckBatch(
 // `entry.target`, because a non-`.` target would otherwise re-root the
 // manifest as `<target>/frontx-template.json`, which a check against the
 // bare `MANIFEST_FILENAME` would never recognize.
+// @cpt-begin:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-compute-payload
 async function computePayloadForTarget(
   entry: ContributionEntry,
   readInstalledContentFn: ReadInstalledContentFn,
@@ -521,11 +524,13 @@ async function computePayloadForTarget(
   }
   return { payload, skipped };
 }
+// @cpt-end:cpt-frontx-algo-cli-scaffolding-existing-content:p1:inst-ec-compute-payload
 
 // The human-readable name for each `uncomparableCauses` `kind` — the one
 // formulation both branches of `describePathCause` below read from, so the
 // wording for, say, `'special'` cannot drift between "at the path" and "as
 // an ancestor" phrasing.
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-existing-conflict
 function describeCauseKind(kind: 'symlink' | 'file' | 'directory' | 'special'): string {
   switch (kind) {
     case 'symlink':
@@ -594,6 +599,7 @@ function describeContentConflictCause(
   }
   return `Aborted — existing content ${clauses.join('; and it ')}; nothing written.`;
 }
+// @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-return-existing-conflict
 
 export interface ApplyPipelineDeps extends ResolveAndCheckDeps {
   readInstalledContentFn: ReadInstalledContentFn;

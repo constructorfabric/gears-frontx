@@ -1774,6 +1774,7 @@ export function createFsClassifyPathStrictFn(projectRoot: string): ClassifyPathS
 }
 // @cpt-end:cpt-frontx-algo-cli-scaffolding-delete-plan:p1:inst-dp-protect-registered-origins
 
+// @cpt-begin:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-if-origin-in-bundle-footprint
 export function createFsEntryKindFn(projectRoot: string): EntryKindFn {
   const realRoot = realPathOrNull(projectRoot);
   if (realRoot === null) throw new Error(`project root could not be resolved: ${projectRoot}`);
@@ -1788,3 +1789,4 @@ export function createFsEntryKindFn(projectRoot: string): EntryKindFn {
     }
   };
 }
+// @cpt-end:cpt-frontx-flow-cli-scaffolding-delete-target:p1:inst-del-if-origin-in-bundle-footprint
