@@ -655,6 +655,7 @@ function narrowFilter(filter: KeyFilter, kind: 'omit' | 'pick', keys: readonly s
 
 // A filter's content as text, to tell two filters apart whatever order
 // their keys were added in.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-host-union
 function filterKey(filter: KeyFilter): string {
   return JSON.stringify([
     [...filter.omitted].sort(),
@@ -676,6 +677,7 @@ function mergeBranchFilters(filters: readonly KeyFilter[]): KeyFilter {
   if (distinct.some((one) => one === NO_KEY_FILTER || filterKey(one) === filterKey(NO_KEY_FILTER))) return NO_KEY_FILTER;
   return { omitted: new Set(), anyOf: distinct };
 }
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-host-union
 
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-axes-omit-pick
 function unreadableFilter(filter: KeyFilter, keyText: string): KeyFilter {
@@ -693,6 +695,7 @@ function keyAllowed(filter: KeyFilter | undefined, key: string): boolean {
 
 // The same keys read off an instantiated helper's key argument: a string
 // literal type or a union of them.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-axes-omit-pick
 function literalKeysOfType(type: ts.Type): string[] | undefined {
   // `never` (`Omit<X, never>`, `keyof {}`) names no key: it removes nothing.
   if (type.flags & ts.TypeFlags.Never) return [];
@@ -717,6 +720,7 @@ function literalKeysOf(node: ts.TypeNode): string[] | undefined {
   }
   return keys;
 }
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-axes-omit-pick
 
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
 function typeRefParts(
@@ -782,6 +786,7 @@ function namesHostElement(shape: HeritageShape | undefined): boolean {
 // interface several tags share (HTMLElement, HTMLHeadingElement,
 // HTMLTableCellElement) is absent on purpose: which of them a component
 // renders is not in its type, and a guess would name the wrong surface.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-host-argument
 const DOM_INTERFACE_TAGS: Readonly<Record<string, string>> = {
   HTMLAnchorElement: 'a',
   HTMLButtonElement: 'button',
@@ -807,6 +812,7 @@ const DOM_INTERFACE_TAGS: Readonly<Record<string, string>> = {
   HTMLUListElement: 'ul',
   SVGSVGElement: 'svg',
 };
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-host-argument
 
 // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-extraction:p1:inst-ex-heritage
 function declaredUnder(declarations: readonly ts.Declaration[], pattern: RegExp): boolean {

@@ -95,6 +95,7 @@ export interface ElementSurfaceDiff {
 // props vanished, which arrived, and which became mandatory. Split out from
 // the shape checks below because the two answer different questions and a
 // reader of either should not have to skip the other.
+// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-compat-decision:p1:inst-cd-element-surface
 function compareElementSurfaceNames(
   oldSchema: ElementSurfaceSchemaLike,
   newSchema: ElementSurfaceSchemaLike,
@@ -129,6 +130,7 @@ function compareElementSurfaceNames(
     newlyRequired: (newSchema.required ?? []).filter((name) => name in newProps && !oldRequired.has(name)),
   };
 }
+// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-compat-decision:p1:inst-cd-element-surface
 
 const NEWLY_REQUIRED_REASON = 'became required where it was optional (or absent) before';
 

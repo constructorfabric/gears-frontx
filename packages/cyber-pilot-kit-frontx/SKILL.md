@@ -24,10 +24,34 @@ from whether the working directory already holds applied templates - a
 | Move an applied template to a newer version | `frontx upgrade <projectRoot> <targetVersion>` directly, or its `--json` form, which emits the change set for review and reads a decision back before anything is applied |
 | Understand the ecosystem - runtime substrate, type system, API surface, package boundaries | This document and the guidelines it ships with |
 | Check that a template is publishable | The `frontx` executable directly - `frontx validate <templateDir>` |
+| See how a new page or screen will look before it is built, or choose among drawn options for it | The route above that builds it - `frontx_project_scaffolding` first for a new project or a new unit - with the page proposal step below, where it applies, taken before that page is built, with no further ask. The base kit draws no proposal itself |
 
 If the request matches none of these, say so and name the capabilities above.
 Do not route it to the closest one; a capability applied to a request it does
 not serve produces a confident wrong answer.
+
+The page proposal step is a skill in an applied template's bundle under
+`.frontx/ai/<template-identity>/`, read from disk - a bundle scaffolding has just
+applied counts, activated or not. It builds nothing and never replaces or precedes
+the route that builds: it applies when a new page or screen is about to be built,
+on whatever route builds it. That means a page built from the applied bundles'
+skills. A page a template writes while it is applied - by `frontx seed` or `frontx
+add` - is that template's shipped content and gets no proposal and no offer; tell
+a person who asked to see it first that it comes ready from the template. When no
+applied bundle offers the step, build without it; tell a person who asked to see
+the page first that this project offers no drawn proposal, then build. That line
+answers the person and is not an error: do not report the absence as a missing
+capability or as an unmatched request. A person who asked to see the page or
+options first gets the step with no further ask. Otherwise, for new pages or
+screens whose look the person has neither seen nor described, offer it once, in
+one short line covering them all, in the person's own language - every text the
+step shows them is in that language too; never offer again for a screen already
+offered or declined. The offer ends your turn: build nothing in it. A reply that
+accepts takes the step. Any other reply (a refusal, a wish to build at once, or
+one that ignores the offer) means build now, with no second ask. Make no offer
+when the person already gave a design, a mockup or an exact description, or when
+the change is small - a fix, one more field, a text change. Only the person
+chooses an option; never pick one for them. Build that page from what they chose.
 
 <!-- frontx:routing:end -->
 
