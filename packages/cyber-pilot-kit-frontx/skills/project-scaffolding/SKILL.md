@@ -276,11 +276,12 @@ defect, not a search strategy: a run that reached for `find / -iname` was huntin
 a type that sat in `node_modules/@gears-frontx/api/dist/` the whole time.
 
 **Before the first unit is built, apply the page proposal rule of the Request
-Routing section in the kit's top-level document** to the new pages or screens
-among these units: take or offer the step once for all of them. If you offer it,
-end your turn here and build nothing; the flow may stop at this point. On the
-person's reply, take the step or not as that rule says, then resume here with
-the first unit.
+Routing section in the kit's top-level document** to each new page or screen
+among these units, then take or offer the step once for the pages it applies to.
+If you offer it, end your turn here and build nothing; the flow may stop at this
+point. On the person's reply, take the step or not as that rule says, then
+resume here with the first unit; what the person chose in the step is part of
+the stated intent for that page.
 
 For each unit from step 3.11, in plan order:
 

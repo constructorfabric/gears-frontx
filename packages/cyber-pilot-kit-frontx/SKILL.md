@@ -51,7 +51,7 @@ accepts takes the step. Any other reply (a refusal, a wish to build at once, or
 one that ignores the offer) means build now, with no second ask. Make no offer
 when the person already gave a design, a mockup or an exact description, or when
 the change is small - a fix, one more field, a text change. Only the person
-chooses an option; never pick one for them.
+chooses an option; never pick one for them. Build that page from what they chose.
 
 <!-- frontx:routing:end -->
 
