@@ -215,7 +215,7 @@ layer, CLI, and AI kit:
 git clone https://github.com/constructorfabric/gears-frontx.git
 cd gears-frontx
 npm ci
-npm run build:packages       # build the packages in the root aggregate (AI kit excluded)
+npm run build:packages       # build the packages in the root aggregate (AI kit last)
 npm run test:unit            # unit tests across packages/* and scripts/
 npm run arch:check           # architecture-boundary gates
 npm run arch:deps            # dependency-boundary rules

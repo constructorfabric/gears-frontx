@@ -3,8 +3,8 @@
 ## Install the CLI
 
 This guide uses FrontX CLI **0.4.0**, Node.js 24.14.0 or later, and npm
-10 or later. Until 0.4.0 is published, build it from the root of a Git clone at the
-[0.4.0 source checkout](https://github.com/constructorfabric/gears-frontx/tree/98984ad88321add1da4126aa348219dffb1dc3c3).
+10 or later. Until 0.4.0 is published, build it from the root of a Git clone of the
+[`main` branch](https://github.com/constructorfabric/gears-frontx/tree/main).
 The following commands put the built CLI on this shell's search path.
 
 ```sh
@@ -275,8 +275,8 @@ orchestration through the npm package's [TypeScript APIs](packages/cyber-pilot-k
 ## Contributor reference
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for repository setup and validation.
-The root `build:packages` and `type-check` aggregates omit the AI kit. To
-check that package, run its scripts explicitly:
+The root `type-check` aggregate omits the AI kit; `build:packages` builds it
+last. To check that package, run its scripts explicitly:
 
 ```sh
 npm run build --workspace=@gears-frontx/cyber-pilot-kit-frontx

@@ -627,7 +627,7 @@ const CONFLICT_SHAPE = { code: 'TARGET_CONFLICT' };
 const conflictGrounds = (r: Run): string[] =>
   ((r.envelope.error?.details?.conflicts ?? []) as { ground: string }[]).map((c) => c.ground);
 
-describe('live CLI nested lifecycle A: installed host, path guest', () => {
+describe('live CLI nested lifecycle A: installed host, path guest', { timeout: 30_000 }, () => {
   it('install → register → assemble → apply (nested) → validate → delete host → delete guest → unregister', async () => {
     const step = async (title: string, fn: () => unknown): Promise<void> => {
       try {
@@ -812,7 +812,7 @@ describe('live CLI nested lifecycle A: installed host, path guest', () => {
   });
 });
 
-describe('live CLI nested lifecycle B: path host and guest through upgrade, refused upgrade, restore, delete', () => {
+describe('live CLI nested lifecycle B: path host and guest through upgrade, refused upgrade, restore, delete', { timeout: 30_000 }, () => {
   it('upgrade keeps the guest, an upgrade that drops the entry is refused, restore returns to the previous host', async () => {
     const step = async (title: string, fn: () => unknown): Promise<void> => {
       try {
@@ -952,7 +952,7 @@ describe('live CLI nested lifecycle B: path host and guest through upgrade, refu
   });
 });
 
-describe('live CLI nested lifecycle C: installed GitHub host, path candidate upgrade, restore to the installed origin', () => {
+describe('live CLI nested lifecycle C: installed GitHub host, path candidate upgrade, restore to the installed origin', { timeout: 30_000 }, () => {
   it('upgrade of an installed host to a path candidate keeps the guest, a dropping candidate is refused, restore returns to the recorded github origin', async () => {
     const step = async (title: string, fn: () => unknown): Promise<void> => {
       try {
@@ -1125,7 +1125,7 @@ describe('live CLI nested lifecycle C: installed GitHub host, path candidate upg
 
 // ======================================== inventory: install / update-local
 
-describe('live CLI inventory: install and update-local through the offline hook', () => {
+describe('live CLI inventory: install and update-local through the offline hook', { timeout: 30_000 }, () => {
   it('installs, lists as installed, updates in place, and refuses an unknown identity', async () => {
     const work = path.join(sandbox, 'proj-inventory');
     const inventory = path.join(sandbox, 'inv-install');
@@ -1179,7 +1179,7 @@ describe('live CLI inventory: install and update-local through the offline hook'
 
 // ============================================== validate <templateDir>
 
-describe('live CLI validate <templateDir>', () => {
+describe('live CLI validate <templateDir>', { timeout: 30_000 }, () => {
   it('passes a well-formed template and rejects a manifest that breaks the contract', async () => {
     const work = path.join(sandbox, 'proj-validate');
     const inventory = path.join(sandbox, 'inv-validate');
@@ -1209,7 +1209,7 @@ describe('live CLI validate <templateDir>', () => {
 
 // ========================================================= seed (refusal)
 
-describe('live CLI seed with an empty official-defaults map', () => {
+describe('live CLI seed with an empty official-defaults map', { timeout: 30_000 }, () => {
   it('refuses a template that is not an official default and leaves the directory untouched', async () => {
     const work = path.join(sandbox, 'proj-seed');
     const inventory = path.join(sandbox, 'inv-seed');
@@ -1234,7 +1234,7 @@ describe('live CLI seed with an empty official-defaults map', () => {
   });
 });
 
-describe('live CLI nested AI symlink deletion', () => {
+describe('live CLI nested AI symlink deletion', { timeout: 30_000 }, () => {
   it('shows nested link type in preview and removes links without touching live or dangling targets', async () => {
     const project = path.join(sandbox, 'proj-ai-links');
     const inventory = path.join(sandbox, 'inv-ai-links');

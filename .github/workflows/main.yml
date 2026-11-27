@@ -8,10 +8,10 @@ on:
 
 # Every job here only reads the repo: nothing pushes, comments, or releases —
 # upload-artifact needs no contents scope. Declared once at the workflow level
-# (with persist-credentials: false on each checkout) so the default read/write
-# token never reaches repository-controlled scripts. The one step handed this
-# read-only token is each Studio job's `cfs update` bootstrap (the pinned
-# Constructor Studio CLI, for its GitHub API version lookup).
+# (with persist-credentials: false on each checkout) so the token is read-only
+# and is not persisted in any checkout. It is supplied to one step only, each
+# Studio job's `cfs update` bootstrap, where the pinned Constructor Studio CLI
+# uses it for its GitHub API calls.
 permissions:
   contents: read
 
