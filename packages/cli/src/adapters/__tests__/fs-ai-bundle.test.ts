@@ -472,6 +472,23 @@ describe('fs-ai-bundle real adapters (source bundle symlink refusal)', () => {
     expect(await readFile(path.join(dest, 'previous.md'), 'utf-8')).toBe('the bundle that was here');
     expect(existsSync(path.join(dest, 'extension.json'))).toBe(false);
   });
+
+  it('copyBundle refuses a source whose .frontx/ai is itself a symlink instead of copying what it points at', async () => {
+    sourceRoot = await mkdtemp(path.join(tmpdir(), 'frontx-ai-bundle-rootlink-src-'));
+    destRoot = await mkdtemp(path.join(tmpdir(), 'frontx-ai-bundle-rootlink-dest-'));
+    await writeFile(path.join(sourceRoot, 'frontx-template.json'), JSON.stringify({ name: MANIFEST_NAME }), 'utf-8');
+    const outside = path.join(sourceRoot, 'outside-ai');
+    await mkdir(path.join(outside, MANIFEST_NAME), { recursive: true });
+    await writeFile(path.join(outside, MANIFEST_NAME, 'x.md'), 'not template content', 'utf-8');
+    await mkdir(path.join(sourceRoot, '.frontx'));
+    await symlink(outside, path.join(sourceRoot, '.frontx', 'ai'));
+
+    await expect(createFsCopyBundleFn()(sourceRoot, destRoot, MANIFEST_NAME)).rejects.toMatchObject({
+      name: 'AiBundleSymlinkError',
+      linkPath: '.frontx/ai',
+    });
+    expect(existsSync(path.join(destRoot, '.frontx', 'ai', MANIFEST_NAME, 'x.md'))).toBe(false);
+  });
 });
 
 // The pin is the only identity this call trusts: when the directory cannot

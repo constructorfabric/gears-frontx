@@ -38,10 +38,15 @@ function pathOccupied(p: string): boolean {
 
 export function createStagedInventory(real: TemplateInventory, resolveInstalledContentPathFn: (name: string) => string) {
   const staged = new Map<string, { spec: string; fetchFn: FetchFn; entry: InventoryEntry }>();
+  // The inventory is shared between projects and holds one slot per name, so a
+  // slot may hold another ref than this project's pinned origin. A staged
+  // candidate is pending until the real slot holds ITS source; a slot from
+  // any other source is foreign to this batch and never served in its place.
+  const isPending = (name: string, entry: InventoryEntry): boolean => real.lookup(name)?.source !== entry.source;
 
   const inventory: UniformApplyInventoryPort = {
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve
-    lookup: (name) => real.lookup(name) ?? staged.get(name)?.entry,
+    lookup: (name) => staged.get(name)?.entry ?? real.lookup(name),
     // @cpt-end:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve
     // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve
     install: async (spec, fetchFn) => {
@@ -79,7 +84,7 @@ export function createStagedInventory(real: TemplateInventory, resolveInstalledC
   // @cpt-begin:cpt-frontx-flow-cli-scaffolding-add-template:p1:inst-add-resolve
   const readInstalledContent = (base: ReadInstalledContentFn): ReadInstalledContentFn => async (installedContentPath) => {
     for (const [name, { entry }] of staged) {
-      if (real.lookup(name) !== undefined) continue;
+      if (!isPending(name, entry)) continue;
       if (path.resolve(installedContentPath) === path.resolve(resolveInstalledContentPathFn(name))) return itemsOf(entry.content);
     }
     return base(installedContentPath);
@@ -115,10 +120,15 @@ export function createStagedInventory(real: TemplateInventory, resolveInstalledC
   const commit = async (): Promise<
     { ok: true } | { ok: false; code: ErrorCode; message: string; details: Record<string, unknown> }
   > => {
-    const pending = [...staged].filter(([name]) => real.lookup(name) === undefined);
-    for (const [name] of pending) {
+    const pending = [...staged].flatMap(([name, candidate]) => {
+      const slot = real.lookup(name);
+      return slot?.source === candidate.entry.source ? [] : [{ name, ...candidate, indexed: slot !== undefined }];
+    });
+    for (const { name, indexed } of pending) {
       const contentPath = resolveInstalledContentPathFn(name);
-      if (pathOccupied(contentPath)) {
+      // An indexed slot is replaced by the install below; only an occupied
+      // path the index does not know is residue.
+      if (!indexed && pathOccupied(contentPath)) {
         return {
           ok: false,
           code: 'CONTENT_CONFLICT',
@@ -154,7 +164,7 @@ export function createStagedInventory(real: TemplateInventory, resolveInstalledC
         details: { failed: name, slot, contentPath, ...(indexed !== undefined ? { indexed } : {}), installedInventorySlots: [...installedNow] },
       };
     };
-    for (const [name, { spec, fetchFn, entry }] of pending) {
+    for (const { name, spec, fetchFn, entry } of pending) {
       let installed: Awaited<ReturnType<TemplateInventory['install']>>;
       try {
         installed = await real.install(spec, fetchFn);

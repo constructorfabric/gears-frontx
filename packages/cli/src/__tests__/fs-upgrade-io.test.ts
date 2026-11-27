@@ -180,6 +180,28 @@ describe('createFsListDiskFilesFn — a symlink inside a template AI bundle', ()
     });
   });
 
+  it.each(['.frontx', '.frontx/ai'])('refuses a template whose "%s" is itself a symlink, even one pointing outside the folder', async (link) => {
+    root = await mkdtemp(path.join(tmpdir(), 'frontx-upgrade-bundle-root-link-'));
+    const template = path.join(root, 'template');
+    const outside = path.join(root, 'outside');
+    await mkdir(path.join(outside, 'ai', 'tpl'), { recursive: true });
+    await writeFile(path.join(outside, 'ai', 'tpl', 'x.md'), 'x', 'utf-8');
+    await mkdir(template);
+    await writeFile(path.join(template, 'frontx-template.json'), '{}', 'utf-8');
+    if (link === '.frontx') {
+      await symlink(outside, path.join(template, '.frontx'));
+    } else {
+      await mkdir(path.join(template, '.frontx'));
+      await symlink(path.join(outside, 'ai'), path.join(template, '.frontx', 'ai'));
+    }
+
+    await expect(createFsListDiskFilesFn()(template)).rejects.toMatchObject({
+      name: 'AiBundleSymlinkError',
+      templateDir: template,
+      linkPath: link,
+    });
+  });
+
   it('still skips a symlink elsewhere in a template, and any symlink in a folder without a manifest (a project)', async () => {
     root = await mkdtemp(path.join(tmpdir(), 'frontx-upgrade-bundle-link-ok-'));
     await writeFile(path.join(root, 'frontx-template.json'), '{}', 'utf-8');

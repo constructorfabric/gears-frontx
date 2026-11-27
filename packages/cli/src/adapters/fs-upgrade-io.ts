@@ -56,7 +56,7 @@ export class AiBundleSymlinkError extends Error {
 
   constructor(templateDir: string, linkPath: string) {
     super(
-      `The template at "${templateDir}" carries the symbolic link "${linkPath}" inside its AI bundle (.frontx/ai/); ` +
+      `The template at "${templateDir}" carries the symbolic link "${linkPath}" in its AI bundle path (.frontx/ai/); ` +
         'symbolic links are not supported in a template AI bundle — replace it with a regular file. The template was refused.',
     );
     this.name = 'AiBundleSymlinkError';
@@ -221,8 +221,12 @@ function walkRegularFiles(root: string, relativeDir: string, isTemplate: boolean
     // (`createFsListTargetFilesFn` needs one precisely because it does
     // follow links).
     if (entry.isSymbolicLink()) {
-      if (isTemplate && toPosixPath(relativePath).startsWith(AI_BUNDLE_PREFIX)) {
-        throw new AiBundleSymlinkError(root, toPosixPath(relativePath));
+      // A link AT `.frontx` or `.frontx/ai` is refused like one below them:
+      // skipping it hid the bundle from this walk while the bundle copy
+      // followed it and delivered whatever it pointed at.
+      const posixPath = toPosixPath(relativePath);
+      if (isTemplate && (posixPath.startsWith(AI_BUNDLE_PREFIX) || AI_BUNDLE_PREFIX.startsWith(`${posixPath}/`))) {
+        throw new AiBundleSymlinkError(root, posixPath);
       }
       continue;
     }

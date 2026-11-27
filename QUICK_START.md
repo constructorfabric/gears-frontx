@@ -60,7 +60,8 @@ On success, the last two commands print the exported constant and `PASS`.
 Run subsequent project commands from inside the new `my-project` directory.
 
 `assemble` checks target ownership without writing to the project. It may fetch
-a missing registered remote template into local inventory. `apply` rechecks the
+a registered remote template into local inventory when the template is missing
+there or its slot holds another ref, replacing that slot. `apply` rechecks the
 batch and examines existing files. When a first application would replace an
 existing AI bundle, use the [confirmation protocol](#confirmation-protocol).
 Review all changes under `details.aiReplacements[].changes`, including additions
@@ -198,8 +199,8 @@ failed. A targetless registration can then be removed with
    the variable holds the digest the developer approved.
 
 Expected JSON results use the [CLI envelope](architecture/ADR/0042-cli-machine-readable-output.md).
-An unexpected internal exception can exit 2 with diagnostics only on stderr.
-Check the exit status and stderr before parsing empty stdout.
+An unexpected internal exception exits 2 and, under `--json`, still answers
+with one envelope whose `error.code` is `INTERNAL`.
 
 ## CLI command reference
 

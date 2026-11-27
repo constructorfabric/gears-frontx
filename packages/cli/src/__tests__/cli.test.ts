@@ -629,6 +629,22 @@ describe('dispatch: install (cpt-frontx-flow-template-resolution-install)', () =
     expect(outcome.stderr).toContain('inventory store exploded');
   });
 
+  it('reports an unexpected failure of any command as one INTERNAL envelope under --json', async () => {
+    const brokenInventory = {
+      install: vi.fn(async () => {
+        throw new Error('inventory store exploded');
+      }),
+    } as unknown as TemplateInventory;
+    const { deps } = makeDeps({ inventory: brokenInventory });
+    const outcome = await run(['install', 'github:acme/foo@v1.0.0', '--json'], deps);
+    expect(outcome.exitCode).toBe(EXIT_INTERNAL_ERROR);
+    expect(outcome.stderr).toBeUndefined();
+    expect(JSON.parse(outcome.stdout ?? '')).toEqual({
+      ok: false,
+      error: { code: 'INTERNAL', message: 'inventory store exploded' },
+    });
+  });
+
   it('reports an inventory store bundle-key refusal as INVALID_PATH under --json', async () => {
     const invalidBundle = new InvalidBundleKeyError('../other-template.txt', 'contains a ".." path segment');
     const refusingInventory = {

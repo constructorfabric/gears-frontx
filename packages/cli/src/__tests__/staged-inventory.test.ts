@@ -28,6 +28,31 @@ describe('staged batch auto-install (plan-ai-recovery r9 §4/§203)', () => {
     expect(real.lookup('demo')).toMatchObject({ name: 'demo' });
   });
 
+  // The inventory is shared: another project may have put a different ref of
+  // the same template into the one slot this name has.
+  it('serves and installs the pinned candidate when the slot holds another ref of the template', async () => {
+    const foreign = JSON.stringify({ [BUNDLE_MARKER]: { 'frontx-template.json': manifest, 'src/a.ts': 'export const a = 2;' } });
+    const real = new TemplateInventory();
+    expect((await real.install('github:acme/demo@v2.0.0', (async () => foreign) as FetchFn)).ok).toBe(true);
+    const foreignSource = real.lookup('demo')?.source;
+
+    const staged = createStagedInventory(real, (name) => `/inv/${name}`);
+    expect((await staged.inventory.install('github:acme/demo@v1.0.0', (async () => content) as FetchFn)).ok).toBe(true);
+
+    const served = staged.inventory.lookup('demo');
+    expect(served?.source).toBe('github:acme/demo@v1.0.0');
+    expect(served?.content).toBe(content);
+    const base = vi.fn(async () => []);
+    const items = await staged.readInstalledContent(base)('/inv/demo');
+    expect(items.find((i) => i.path === 'src/a.ts')?.content.toString()).toBe('export const a = 1;');
+    expect(base).not.toHaveBeenCalled();
+    expect(real.lookup('demo')?.source).toBe(foreignSource); // nothing adopted before commit
+
+    expect(await staged.commit()).toEqual({ ok: true });
+    expect(real.lookup('demo')?.source).toBe('github:acme/demo@v1.0.0');
+    expect(real.readInstalled('demo')).toBe(content);
+  });
+
   it('keeps a file named node_modules and skips files beneath node_modules directories', async () => {
     const staged = createStagedInventory(new TemplateInventory(), (name) => `/inv/${name}`);
     const files = {

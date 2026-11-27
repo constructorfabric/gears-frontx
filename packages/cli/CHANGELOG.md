@@ -14,6 +14,19 @@ refactoring is not.
 
 ### Changed
 
+- Under `--json`, an unexpected internal failure of any command now answers
+  with one `INTERNAL` envelope on stdout (exit 2). Only `delete` did; every
+  other command exited 2 with empty stdout.
+
+- `apply` and `seed` no longer fail with "was installed but could not be read
+  back from the local inventory" when the shared inventory slot of a
+  registered template holds another ref. The project's pinned origin is
+  checked in memory and replaces the slot only once every check has passed.
+
+- A `path:` template whose `.frontx` or `.frontx/ai` is itself a symbolic
+  link is refused with `CONTENT_CONFLICT`, like a link below `.frontx/ai/`.
+  It was skipped by the content walk and then followed by the AI-bundle copy.
+
 - The `PROJECT_INVALID` refusal over a legacy `.frontx/provenance.json` now
   says that every command reading project state, `register` included,
   refuses, names the first step (move the file aside, keeping it) and states

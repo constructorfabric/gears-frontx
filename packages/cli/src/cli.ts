@@ -1186,7 +1186,9 @@ export async function decideAiReplacements(input: {
         const canonical = input.canonicalizeFn(origin.slice('path:'.length));
         if (canonical === null) return { kind: 'unknown' };
         root = path.join(projectRoot, canonical);
-      } else if (deps.inventory.lookup(name) !== undefined) {
+      } else if (deps.inventory.lookup(name)?.source === origin) {
+        // A slot holding another source is not this project's candidate
+        // (`commands/staged-inventory.ts`): it is acquired in memory below.
         root = deps.resolveInstalledContentPathFn(name);
       }
       if (root !== undefined) {
@@ -3233,7 +3235,9 @@ export async function run(argv: string[], deps: CliDeps): Promise<CommandOutcome
     // The dispatched behavior failed unexpectedly -> internal-error exit code.
     // @cpt-begin:cpt-frontx-state-cli-invocation-run:p1:inst-st-dispatched-internal-error
     const message = error instanceof Error ? error.message : String(error);
-    if (recognizedCommand === 'delete' && parseJsonMode(parsed.args)) {
+    // Every command answers `--json` with one envelope, failures included
+    // (`cpt-frontx-adr-cli-machine-readable-output`).
+    if (parseJsonMode(parsed.args)) {
       return { exitCode: EXIT_INTERNAL_ERROR, stdout: JSON.stringify(err('INTERNAL', message)) };
     }
     return { exitCode: EXIT_INTERNAL_ERROR, stderr: message };

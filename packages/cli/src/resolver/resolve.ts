@@ -170,7 +170,7 @@ async function resolveLocalOrigin(rawOrigin: string, deps: ResolveDeps): Promise
         ok: false,
         error: {
           message:
-            `Local origin "${rawOrigin}" carries the symlink "${readError.linkPath}" inside its AI bundle, and symlinks ` +
+            `Local origin "${rawOrigin}" carries the symlink "${readError.linkPath}" in its AI bundle path (.frontx/ai/), and symlinks ` +
             'are not supported in a template AI bundle; the template was refused.',
         },
       };

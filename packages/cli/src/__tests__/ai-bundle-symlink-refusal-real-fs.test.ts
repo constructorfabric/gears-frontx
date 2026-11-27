@@ -62,7 +62,7 @@ describe('a symlink inside the AI bundle is refused at acquisition', () => {
 
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('unreachable');
-    expect(result.error.message).toContain('carries the symlink ".frontx/ai/@x/a/alias.md" inside its AI bundle');
+    expect(result.error.message).toContain('carries the symlink ".frontx/ai/@x/a/alias.md" in its AI bundle path');
     expect(result.error.message).toContain('refused');
   });
 

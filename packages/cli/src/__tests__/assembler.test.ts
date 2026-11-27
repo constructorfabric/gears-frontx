@@ -21,6 +21,9 @@ import type { TargetClaim } from '../scaffold/conflict-check';
 import type { ProjectStateDocument, TemplateEntry } from '../project-state/types';
 import type { InventoryEntry } from '../inventory/types';
 import { InventoryState } from '../inventory/types';
+import { TemplateInventory } from '../inventory/TemplateInventory';
+import { createStagedInventory } from '../commands/staged-inventory';
+import { BUNDLE_MARKER } from '../bundle/envelope';
 
 function manifestContent(name: string, excludedSubtrees: string[] = []): string {
   return JSON.stringify({
@@ -204,6 +207,29 @@ describe('uniformApply — staging an explicit batch (cpt-frontx-algo-cli-scaffo
 
     expect(install).toHaveBeenCalledWith(origin, expect.any(Function));
     expect(result.ok).toBe(true);
+  });
+
+  // The same case through the real staged inventory `apply` uses, not a fake
+  // whose `lookup` changes its answer after `install`.
+  it('resolves the pinned origin through the staged inventory when the shared slot holds another ref', async () => {
+    const bundle = (marker: string) =>
+      JSON.stringify({ [BUNDLE_MARKER]: { 'frontx-template.json': manifestContent('template-a'), 'a.txt': marker } });
+    const real = new TemplateInventory();
+    expect((await real.install('github:acme/template-a@v2', async () => bundle('v2'))).ok).toBe(true);
+    const origin = 'github:acme/template-a@v1';
+    const document = makeDocument({ 'template-a': { origin, version: '1.0.0', targets: [] } });
+    const staged = createStagedInventory(real, (name) => `/inv/${name}`);
+
+    const result = await uniformApply(
+      { templates: { 'template-a': ['apps/foo'] } },
+      document,
+      makeDeps({ inventory: staged.inventory, fetchFn: async () => bundle('v1') }),
+    );
+
+    expect(result).toMatchObject({ ok: true });
+    expect(real.lookup('template-a')?.source).toBe('github:acme/template-a@v2'); // untouched until commit
+    expect(await staged.commit()).toEqual({ ok: true });
+    expect(real.lookup('template-a')?.source).toBe(origin);
   });
 
   // inst-ua-auto-install's success branch: not yet available, install succeeds,

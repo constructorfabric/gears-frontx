@@ -56,7 +56,7 @@ description: "Agent navigation rules for FrontX ecosystem package boundaries, CL
   3. On `planChangedSinceReview: true`, show the WHOLE new plan and wait for fresh approval of its digest. Never re-confirm automatically.
   4. The digest covers the listed paths, flags and reviewed AI bundle tree, including file hashes and link targets. It does not bind file bytes of ordinary target files. The check is not atomic with deletion. Check successful output for `aiBundleResidue`.
 - Treat `upgrade <name> --recover` as a mutation even on its first JSON call. It can finalize, cancel or release verified work immediately. Pending post-commit tasks require a review. Inspect refusals and keep any named receipts.
-- Check stdout, stderr and exit status. An unexpected internal exception can exit 2 with stderr only. In `list --json`, `data.installed` omits names registered to this project.
+- Check stdout, stderr and exit status. An unexpected internal exception exits 2; under `--json` it still answers with one `INTERNAL` envelope on stdout. In `list --json`, `data.installed` omits names registered to this project.
 
 ## When a request is to create or extend a project
 
