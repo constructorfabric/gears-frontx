@@ -1818,8 +1818,8 @@ export const buildComponentType = memoizeSchema((): Record<string, unknown> => {
 // that misspells a field, adds a machine-owned one under a different name, or
 // tries to write JSON-Schema vocabulary (`type`, `required`) fails here by
 // name instead of the field silently not making it into the compiled artifact.
-// @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-fields
 export function buildOverlaySchema(): Record<string, unknown> {
+  // @cpt-begin:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-fields
   const fields = buildMeaningFields();
   const properties: Record<string, unknown> = {};
   for (const field of SEMANTIC_FIELDS) properties[field] = fields.properties[field];
@@ -1912,8 +1912,8 @@ export function buildOverlaySchema(): Record<string, unknown> {
     required: ['component', ...fields.required],
     additionalProperties: false,
   };
+  // @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-fields
 }
-// @cpt-end:cpt-frontx-ui-kit-algo-component-contracts-component-type-schema:p2:inst-ts-fields
 
 // Compiled once for the life of the process: the schema is built from pure
 // construction, and compiling it means an Ajv instance plus every vocabulary
